@@ -1,9 +1,35 @@
 # CODEX S52.23 — Audit Trail Architecture (Foundational)
 
-**Status:** PARTIAL (opt-in surface shipped 2026-06-03 overnight; gating + minting flow PENDING Sean review)
+**Status:** LOCKED on design (2026-06-03 morning, Sean signed off Q1/Q2/Q4/Q5/Q6); production minting service build proceeds. Q3 (hash shape) + performance-evaluation lens scope still open for Sean.
 **Author:** Sean Lee Combs + Alex (overnight, 2026-06-03)
 **Predecessors:** S52.15 (Audit Trail Architecture — DTC/Logbook), S52.20 (SOCIII strategy lock)
 **Patent refs:** USPTO 64/073,693 (Hash-Chain Audit Trail), Filing C (Multi-Tier RAAS)
+
+## THE DEPOSITION RULE (Design Principle)
+
+> For every action a worker takes, ask: *would this matter in (a) a deposition / court case, (b) a financial audit, (c) a safety investigation, or (d) a performance evaluation?* If yes → individual anchor. If no → batched. The anchor scheme is designed around the worst-case forensic use, not the average user.
+
+Every worker that opts into anchoring declares two trigger classes in its catalog:
+- `auditTriggers.individual[]` — deposition-worthy events that get a unique receipt. Each entry maps to one or more of the four forensic lenses.
+- `auditTriggers.batched[]` — routine activity events that aggregate into a single per-period anchor (daily, per-shift, or per-cycle).
+
+**The four forensic lenses:**
+| Lens | What it answers |
+|---|---|
+| Deposition | Who did what, when, under which rules, with which identity authority? |
+| Financial Audit | Where did money/value move? Who authorized it? What were the fee disclosures? |
+| Safety Investigation | What was the action/decision sequence? What did the operator know when? |
+| Performance Evaluation | Was the operator's behavior over time consistent with protocol / standard of care? |
+
+**Worked examples:**
+
+| Vertical | Individual anchors (deposition-worthy) | Batched anchors (routine) |
+|---|---|---|
+| Nursing | Drug dose administered, clinical action taken, imagery captured (X-ray/photo), chart note signed | Vital sign round, facility presence time, routine assessments |
+| Property mgmt | Lease signed, eviction issued, rent payment received, inspection finding logged | MX work-order queue, routine inspection logs, lease renewal notices |
+| Aviation MX | Discrepancy noted, repair completed, part replaced, logbook entry | Daily preflight checks, routine inspection cycles |
+| Legal | Filing submitted, signature obtained, statute citation made, deposition exhibit logged | Calendar reminders, time entries below threshold, routine research |
+| Accounting | Transaction posted, account reconciled, K-1 issued, journal entry approved | Routine reconciliation steps, low-dollar transactions |
 
 ---
 
@@ -107,32 +133,34 @@ This is intentional. It lets Sean turn the toggle on for SOCIII workspace and do
 
 ---
 
-## Gating Decisions — PENDING Sean Review
+## Gating Decisions — LOCKED 2026-06-03 morning
 
-These are load-bearing. Each touches the patent moat or the billing layer. They were SPEC'd but NOT shipped overnight.
+### 1. Where does the minting hook live? → **OPTION C** (Sean confirmed)
 
-### 1. Where does the minting hook live?
+Hybrid: RAAS commit boundary fires the default audit hook. Workers can ALSO declare additional triggers in their catalog (`auditTriggers.individual[]` and `auditTriggers.batched[]`) for precision beyond what RAAS captures.
 
-Three candidate hook points in worker action flow:
+Implementation:
+- `services/raas/commit.js` calls `services/audit/maybeAnchor(actionContext)` after every successful commit
+- `maybeAnchor()` checks: tenant has `auditTrail.enabled === true` AND action matches a declared trigger in the active worker's catalog
+- Each batched trigger has a roll-up period (daily / per-shift / per-cycle) — batched events accumulate to a queue, and a scheduled function anchors the rollup at period close
 
-- **Option A — RAAS commit boundary.** Every time `services/raas/commit.js` writes an action to `raasPackages/{id}/events/`, the audit service fires. Pros: catches everything that touches RAAS. Cons: not every audit-worthy action touches RAAS.
-- **Option B — Worker-declared events.** Each worker declares which of its canvas actions are "audit-worthy" in its catalog (e.g. `auditTriggers: ["document.draft.signed", "calculation.committed"]`). Service fires only on declared events. Pros: precise, intentional, per-worker control. Cons: requires backfilling every catalog.
-- **Option C — Hybrid.** RAAS commits anchor automatically; workers can also declare additional triggers. Default sensible behavior + opt-in granularity.
+### 2. What counts as a "meaningful action"? → **STANDARD + INTELLIGENT BATCHING** (Sean confirmed)
 
-**Recommend Option C.** RAAS-commits are the structural backbone; per-worker triggers add precision for high-frequency or specialized actions.
+Standard = events that touch RAAS commits + worker-declared individual triggers. PLUS the batching scheme:
 
-### 2. What counts as a "meaningful action"?
+**Individual anchors** (one receipt per event):
+- Actions that would matter in a deposition, audit, safety inquiry, or performance review
+- Examples by domain in the Deposition Rule worked-examples table above
+- Each individual trigger declaration in worker catalog must reference one or more forensic lenses
 
-If everything gets minted, costs explode. If only structured commits get minted, the chat-based actions miss the moat.
+**Batched anchors** (one receipt per period, with summary + count):
+- Routine, high-frequency activity that has evidentiary value in aggregate but not individually
+- Examples: facility-presence time, MX call queue, vital rounds, routine inspections
+- Per-period rollup record includes: event count, lens classification, summary statistics, period boundaries, link to detailed Firestore mirror
 
-Candidate definitions:
-- **Strict:** only events that produce a `dtcId` (i.e. canonical Vault state changes)
-- **Standard:** strict + every action that calls `requireFirebaseUser` AND touches `raasPackages/{id}/events/`
-- **Broad:** standard + every chat message that triggers a tool call
+This is the cost discipline AND the legal sufficiency. Per-event microcharges are eliminated; per-event detail remains in Firestore for forensic forensic packages but only one receipt-per-period hits the chain.
 
-**Recommend Standard.** Captures the audit-defensible work without flooding the ledger with chat noise.
-
-### 3. Composition hash implementation
+### 3. Composition hash implementation → **PROPOSED, AWAITING SEAN SIGN-OFF**
 
 The hash function over 5 RAAS tiers needs to be:
 - Deterministic across versions
@@ -140,29 +168,58 @@ The hash function over 5 RAAS tiers needs to be:
 - Cryptographically binding (SHA-256)
 - Patent-load-bearing
 
-Proposed:
+Proposed shape:
 ```
-compositionHash(tiers) = SHA-256(canonicalize([
-  { tier: 1, name: "platform-safety",  ruleSetVersion, hash: SHA-256(ruleSet) },
-  { tier: 2, name: "operations",       ruleSetVersion, hash: SHA-256(ruleSet) },
-  { tier: 3, name: "vertical-baseline", ruleSetVersion, hash: SHA-256(ruleSet) },
-  { tier: 4, name: "workspace-overlay", ruleSetVersion, hash: SHA-256(ruleSet) },
-  { tier: 5, name: "per-transaction",   ruleSetVersion, hash: SHA-256(ruleSet) },
-]))
+compositionHash(tiers, auditTriggers) = SHA-256(canonicalize({
+  ruleTiers: [
+    { tier: 1, name: "platform-safety",   ruleSetVersion, hash: SHA-256(ruleSet) },
+    { tier: 2, name: "operations",        ruleSetVersion, hash: SHA-256(ruleSet) },
+    { tier: 3, name: "vertical-baseline", ruleSetVersion, hash: SHA-256(ruleSet) },
+    { tier: 4, name: "workspace-overlay", ruleSetVersion, hash: SHA-256(ruleSet) },
+    { tier: 5, name: "per-transaction",   ruleSetVersion, hash: SHA-256(ruleSet) },
+  ],
+  auditTriggers: {
+    triggerId: "...",                 // which catalog trigger fired
+    lenses: ["deposition", "safety"], // which forensic lenses apply
+    triggerVersion: "...",            // catalog version
+  },
+  identityAttestation: { kind, ref, verifiedAt }
+}))
 ```
 
-Sean needs to sign off on this exact shape because it goes into the patent prosecution as the canonical embodiment.
+Two questions still open for Sean:
+- (a) Does this exact shape go into patent prosecution as the canonical embodiment for Filing C?
+- (b) Should `auditTriggers` lens classification be INCLUDED in the hash (proposed yes — ties the forensic-mapping into the anchored receipt) or kept OUTSIDE the hash for flexibility?
 
-### 4. Data fee structure
+### 4. Data fee structure → **MONTHLY AGGREGATE + TOP-UP** (Sean confirmed)
 
-Existing data-credit billing has `recordDataFee` + `quoteDataFee` (shipped 2026-05-08). The audit anchor needs:
+No microcharging. The user-facing flow:
 
-- **Per-anchor cost:** estimate $0.02 (Crossmint fee + Base gas + markup). Internal cost ~$0.005, customer charge ~$0.02-0.05, markup follows the universal rule.
-- **Billing trigger:** on `mintDtc` success, write a data-fee record with `category: "audit-anchor"`.
-- **Cap:** workspace-level monthly anchor cap (default $50/mo) to prevent surprise bills, with auto-pause if exceeded.
-- **Receipt:** each billed anchor includes the tokenId and Crossmint jobId.
+**End of month:**
+- Audit Trail tracks per-anchor cost internally (Crossmint fee + Base gas + markup, ~$0.005-0.02 per anchor)
+- Anchors are counted per workspace per month
+- At month-end (or when balance drops below threshold), workspace gets a single statement: *"Audit Trail anchored 1,247 actions this month. Estimated cost based on usage: $24.94. Add $30 to your account to cover this month + buffer for next."*
+- Customer tops up account in chunks (e.g., $20, $50, $100)
+- Per-anchor cost is debited from balance internally; never surfaced as a charge
 
-This needs to compose cleanly with existing data-credit billing without double-charging.
+**Why:** professional positioning, predictable bills, no nickel-and-dime drag. Same UX shape as AWS/GCP estimated cloud billing.
+
+**Internal accounting:**
+- Per-anchor cost tracked in `auditLedger/{actionId}.estimatedCost` (in cents)
+- Monthly aggregate: `auditTrailBilling/{tenantId}_{YYYY_MM}` doc with anchor count, estimated cost, top-up history
+- Composes with existing data-credit billing engine via a new `category: "audit-trail-monthly"` aggregate line, not per-event
+
+### 5. Mode tiers → **COLLAPSED TO SINGLE TOGGLE** (Sean confirmed)
+
+Removed `mode` field. Audit Trail is now ON or OFF. Coinbase Wallet address is optional:
+- Wallet set → receipts ship to wallet + SOCIII backup
+- Wallet empty → SOCIII keeps the only copy (effectively the old "Custody-Only" but as natural fallback, not a separate tier)
+
+Settings UI simplified to: toggle + optional wallet input + Test Anchor button.
+
+### 6. Old Venly + Polygon "Blockchain Title Records" toggle → **REMOVED** (Sean confirmed)
+
+Deleted from BusinessSettings. Dead code (Venly was the v1 stub before Crossmint integration).
 
 ---
 
@@ -187,14 +244,13 @@ The audit chain anchors the backup hashes — so the backup spec depends on this
 
 ---
 
-## Open Questions for Sean
+## Open Questions Still Pending Sean
 
-1. Sign off on Option C for gating (RAAS commits + per-worker triggers)?
-2. Sign off on Standard definition of "meaningful action"?
-3. Sign off on the composition hash shape above (this goes into patent prosecution)?
-4. Confirm $0.02-$0.05 per-anchor pricing and $50/mo default cap?
-5. Should custody-only mode (no customer wallet, SOCIII keeps the only copy) exist as a tier, or is it just "audit trail off"?
-6. Decommission the old Venly + Polygon "Blockchain Title Records" toggle in BusinessSettings, or leave it as the legacy path?
+Closed: Q1 (Option C), Q2 (Standard + batching), Q4 (monthly aggregate + top-up), Q5 (single toggle), Q6 (Venly removed).
+
+Still open:
+1. **Composition hash sign-off** — does the proposed shape (including `auditTriggers` lens classification IN the hash) go into Filing C as the canonical embodiment? Or extract lens classification to the receipt metadata outside the hash?
+2. **Performance Evaluation lens scope** — does it cover (a) external only (annual review, professional certification, license renewal) or (b) internal too (managerial review of employee/contractor)? Recommend (a) only so the lens stays forensically defensible.
 
 ---
 

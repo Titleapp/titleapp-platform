@@ -10822,17 +10822,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // Enabling requires: workspace admin role + identity verification on file.
     if (route === "/tenant:auditTrail:update" && method === "POST") {
       try {
-        const { tenantId, enabled, mode, coinbaseWalletAddress } = body || {};
+        const { tenantId, enabled, coinbaseWalletAddress } = body || {};
         if (!tenantId) return jsonError(res, 400, "Missing tenantId");
         if (typeof enabled !== "boolean") return jsonError(res, 400, "Missing enabled (boolean)");
-        const validMode = mode == null || ["full", "custody-only"].includes(mode);
-        if (!validMode) return jsonError(res, 400, "Invalid mode (must be 'full' or 'custody-only')");
-        // Loose 0x-prefix check; full validation deferred to mint time.
+        // Wallet address optional. If present, validate shape.
         if (coinbaseWalletAddress != null && coinbaseWalletAddress !== "" && !/^0x[a-fA-F0-9]{40}$/.test(coinbaseWalletAddress)) {
           return jsonError(res, 400, "Invalid Coinbase Wallet address (expected 0x + 40 hex)");
-        }
-        if (enabled === true && mode === "full" && !coinbaseWalletAddress) {
-          return jsonError(res, 400, "Coinbase Wallet address required for 'full' mode");
         }
         // Workspace admin gate
         const m = await db.collection("memberships")
@@ -10865,7 +10860,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const update = enabled === true
           ? {
               "auditTrail.enabled": true,
-              "auditTrail.mode": mode || "full",
               "auditTrail.coinbaseWalletAddress": coinbaseWalletAddress || null,
               "auditTrail.optInAt": nowServerTs(),
               "auditTrail.optInBy": auth.user.uid,
@@ -10884,7 +10878,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           tenantId,
           auditTrail: {
             enabled,
-            mode: enabled ? (mode || "full") : null,
             coinbaseWalletAddress: enabled ? (coinbaseWalletAddress || null) : null,
           },
         });
@@ -10959,7 +10952,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           mintReason: mintResult.reason || null,
           chain: "base",
           coinbaseWalletAddress: at.coinbaseWalletAddress || null,
-          custodyOnly: at.mode === "custody-only",
+          custodyOnly: !at.coinbaseWalletAddress,
           mintedAt: mintResult.ok ? nowServerTs() : null,
           createdAt: nowServerTs(),
           isTestAnchor: true,

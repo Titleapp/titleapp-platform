@@ -1336,11 +1336,7 @@ function BusinessSettings() {
               onChange={(e) => {
                 const next = e.target.checked;
                 if (next) {
-                  if (auditTrail.mode === "full" && !auditTrailWalletInput) {
-                    setAuditTrailError("Coinbase Wallet address required to enable in Full mode (or switch to Custody-Only).");
-                    return;
-                  }
-                  saveAuditTrail({ enabled: true, mode: auditTrail.mode || "full", coinbaseWalletAddress: auditTrailWalletInput });
+                  saveAuditTrail({ enabled: true, coinbaseWalletAddress: auditTrailWalletInput || null });
                 } else {
                   if (!window.confirm("Disable Audit Trail? New actions will no longer be anchored. Existing receipts remain in your records.")) return;
                   saveAuditTrail({ enabled: false });
@@ -1369,60 +1365,28 @@ function BusinessSettings() {
                 When enabled, every meaningful action your workers take is sealed into a tamper-evident receipt and anchored to an independent public registry. You hold the receipts; SOCIII keeps a backup copy for recovery. Records survive even catastrophic infrastructure loss.
               </div>
 
-              {/* Mode selector */}
+              {/* Coinbase Wallet — optional. If set, receipts ship to wallet + SOCIII backup. If empty, SOCIII keeps the only copy. */}
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Mode</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[
-                    { value: "full", label: "Full", desc: "Receipts go to your wallet + SOCIII backup" },
-                    { value: "custody-only", label: "Custody Only", desc: "SOCIII keeps the only copy (no customer wallet)" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        setAuditTrail((p) => ({ ...p, mode: opt.value }));
-                        if (auditTrail.enabled) {
-                          saveAuditTrail({ enabled: true, mode: opt.value, coinbaseWalletAddress: opt.value === "full" ? auditTrailWalletInput : null });
-                        }
-                      }}
-                      style={{
-                        flex: 1, padding: "10px 14px", borderRadius: 10, textAlign: "left",
-                        border: auditTrail.mode === opt.value ? "2px solid #7c3aed" : "1px solid #e2e8f0",
-                        background: auditTrail.mode === opt.value ? "rgba(124,58,237,0.06)" : "white",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, fontSize: 13, color: auditTrail.mode === opt.value ? "#6d28d9" : "#1e293b" }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{opt.desc}</div>
-                    </button>
-                  ))}
+                <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Coinbase Wallet Address <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional)</span></label>
+                <input
+                  type="text"
+                  placeholder="0x… (leave empty for SOCIII-only custody)"
+                  value={auditTrailWalletInput}
+                  onChange={(e) => setAuditTrailWalletInput(e.target.value.trim())}
+                  onBlur={() => {
+                    if (auditTrail.enabled && auditTrailWalletInput !== auditTrail.coinbaseWalletAddress) {
+                      saveAuditTrail({ enabled: true, coinbaseWalletAddress: auditTrailWalletInput || null });
+                    }
+                  }}
+                  style={{
+                    width: "100%", padding: "10px 12px", borderRadius: 10,
+                    border: "1px solid #e2e8f0", fontFamily: "monospace", fontSize: 13,
+                  }}
+                />
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                  EVM-compatible address on Base. When set, receipts ship to your wallet automatically; SOCIII keeps a backup copy for recovery. Leave empty to have SOCIII hold the only copy.
                 </div>
               </div>
-
-              {/* Coinbase Wallet input — only for full mode */}
-              {auditTrail.mode === "full" && (
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Coinbase Wallet Address</label>
-                  <input
-                    type="text"
-                    placeholder="0x…"
-                    value={auditTrailWalletInput}
-                    onChange={(e) => setAuditTrailWalletInput(e.target.value.trim())}
-                    onBlur={() => {
-                      if (auditTrail.enabled && auditTrailWalletInput && auditTrailWalletInput !== auditTrail.coinbaseWalletAddress) {
-                        saveAuditTrail({ enabled: true, mode: "full", coinbaseWalletAddress: auditTrailWalletInput });
-                      }
-                    }}
-                    style={{
-                      width: "100%", padding: "10px 12px", borderRadius: 10,
-                      border: "1px solid #e2e8f0", fontFamily: "monospace", fontSize: 13,
-                    }}
-                  />
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                    EVM-compatible address on Base. Receipts ship here automatically.
-                  </div>
-                </div>
-              )}
 
               {/* Status summary */}
               {auditTrail.enabled && (
@@ -1493,88 +1457,6 @@ function BusinessSettings() {
                 Patent-pending architecture (USPTO 64/073,693 + Filing C). See the <a href="/workers/audit-trail" style={{ color: "#7c3aed" }}>Audit Trail worker</a> to view your ledger, download receipts, and configure recovery options.
               </div>
             </>
-          )}
-        </div>
-      </div>
-
-      {/* Blockchain Title Records */}
-      <div className="card" style={{ marginBottom: "16px" }}>
-        <div className="cardHeader">
-          <div>
-            <div className="cardTitle">Blockchain Title Records</div>
-            <div className="cardSub">Mint immutable proof of authorship for your AI Workers on Polygon via Venly</div>
-          </div>
-          <label style={{ position: "relative", display: "inline-block", width: 48, height: 26, flexShrink: 0 }}>
-            <input
-              type="checkbox"
-              checked={business.blockchain.enabled}
-              onChange={(e) => {
-                setBusiness({ ...business, blockchain: { ...business.blockchain, enabled: e.target.checked } });
-                localStorage.setItem("BLOCKCHAIN_ENABLED", String(e.target.checked));
-              }}
-              style={{ opacity: 0, width: 0, height: 0 }}
-            />
-            <span style={{
-              position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: business.blockchain.enabled ? "#7c3aed" : "#cbd5e1",
-              borderRadius: 26, transition: "0.3s",
-            }}>
-              <span style={{
-                position: "absolute", height: 20, width: 20, left: business.blockchain.enabled ? 24 : 4, bottom: 3,
-                backgroundColor: "white", borderRadius: "50%", transition: "0.3s",
-              }} />
-            </span>
-          </label>
-        </div>
-        <div style={{ padding: "16px" }}>
-          {business.blockchain.enabled && (
-            <div>
-              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px", lineHeight: 1.6 }}>
-                When enabled, a title record is minted when you publish a Worker.
-                Anyone can verify your authorship at your title URL.
-              </div>
-              <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "12px" }}>
-                Wallet: SOCIII via Venly (gas fees covered)
-              </div>
-
-              {/* Title Records List */}
-              {business.blockchain.titleRecords && business.blockchain.titleRecords.length > 0 && (
-                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#475569", marginBottom: "8px" }}>Your Title Records</div>
-                  {business.blockchain.titleRecords.map((record, idx) => (
-                    <div key={record.record_id || idx} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "8px 0", borderBottom: "1px solid #f8fafc",
-                    }}>
-                      <div>
-                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b" }}>{record.workerName || "Worker"}</div>
-                        <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-                          v{record.version} · Minted {record.minted_at ? new Date(record.minted_at).toLocaleDateString() : ""}
-                        </div>
-                      </div>
-                      <a
-                        href={record.polygonscan_url || `https://polygonscan.com/tx/${record.tx_hash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: "12px", color: "#7c3aed", textDecoration: "none" }}
-                      >
-                        View on PolygonScan
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {(!business.blockchain.titleRecords || business.blockchain.titleRecords.length === 0) && (
-                <div style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic" }}>
-                  No title records minted yet. Publish a Worker to create your first title.
-                </div>
-              )}
-            </div>
-          )}
-          {!business.blockchain.enabled && (
-            <div style={{ fontSize: "13px", color: "#94a3b8" }}>
-              Enable to mint blockchain title records for your AI Workers on Polygon.
-            </div>
           )}
         </div>
       </div>
