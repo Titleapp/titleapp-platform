@@ -373,7 +373,7 @@ Drafts multi-party legal instrument bundles with counsel-review markers and DBX-
 Your firm's clauses + brand voice live in the workspace Studio Locker. The worker pulls them when the matter type matches a Studio Locker override.
 
 ## Audit trail
-Every drafted document, every signature event, every bundle execution is appended to the matter's DTC as an NFT (per the audit-trail architecture). The agreement itself becomes a compound DTC when signed.
+Every drafted document, every signature event, every bundle execution is appended to the matter's DTC as a logbook entry (per the audit-trail architecture). The agreement itself becomes a compound DTC when signed.
 
 ## Counsel review is a feature, not a friction
 The "counsel-review-required" marker is intentional. SOCIII is not your law firm. The worker is faster and more consistent than handing a paralegal a template, but it doesn't replace the judgment your counsel brings.
@@ -415,7 +415,7 @@ Estimated wire-up time: 2-3 hours including SAMPLE fixture authoring + smoke tes
 
 ## Related
 
-- `[[CODEX-S52.15-Audit-Trail-Architecture-DTC-NFT-Model]]` — the audit-trail layer this worker writes against
+- `[[CODEX-S52.15-Audit-Trail-Architecture-DTC-Logbook-Model]]` — the audit-trail layer this worker writes against
 - `feedback_use_sean_lee_combs_in_all_external_copy` — naming rule enforced in core.yml
 - `feedback_no_personal_guarantees_on_loans` — refused by default in core.yml
 - `project_user_counsel_attestation_pattern` — counsel-review-required marker

@@ -78,9 +78,9 @@ The current SDK contract is stable enough for a creator to author and ship a wor
 
 - **Intent Spec format** — v1 spec defined, validator partial. **[See current spec →](/docs/intent-spec)**
 - **QA-001 validator** — runs assertions defined in intent-spec on each PR. v1 partial. **[See QA-001 →](/docs/qa-001)**
-- **Canvas tab schema** — v1 stable, all 238 existing workers carry the schema. **[See canvas tabs →](/docs/canvas-tabs)**
+- **Canvas tab schema** — v1 stable, the platform's 1,000+ workers carry the schema. **[See canvas tabs →](/docs/canvas-tabs)**
 
-When in doubt about a convention, **read an existing worker** in the [open-source repo](https://github.com/sociii/sociii) — every worker is itself documentation.
+When in doubt about a convention, **read an existing worker** in the [open-source repo](https://github.com/SOCIII-Inc/sociii) — every worker is itself documentation.
 
 ## What comes next
 

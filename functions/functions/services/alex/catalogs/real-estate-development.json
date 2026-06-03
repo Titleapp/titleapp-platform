@@ -2419,7 +2419,9 @@
       ]
     }
   ],
-  "bundles": [
+  "_bundles_deprecated_2026_06_02": "Customer-named bundles (Scott/JMA, Layton Construction, BlackRock) removed per pricing-discipline audit. Bundle pricing was off-ladder ($740/$630/$3216) and surfaced specific customer names in catalog. To rebuild as generic personas later, see archived versions in git history.",
+  "bundles": [],
+  "_archived_bundles": [
     {
       "id": "scott-jma-capital",
       "name": "Scott/JMA Capital",

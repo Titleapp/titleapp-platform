@@ -14,6 +14,28 @@ const S = {
   heroTitle: { fontSize: 32, fontWeight: 700, marginBottom: 8 },
   heroDesc: { fontSize: 16, opacity: 0.9, maxWidth: 500, margin: "0 auto" },
   main: { maxWidth: 1100, margin: "0 auto", padding: "32px 24px" },
+  searchRow: {
+    display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap",
+  },
+  searchBar: {
+    flex: 1, minWidth: 280, display: "flex", alignItems: "center",
+    background: "#ffffff", border: "1.5px solid #e5e7eb", borderRadius: 12,
+    padding: "10px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+  },
+  searchInput: {
+    flex: 1, border: "none", outline: "none", fontSize: 15,
+    color: "#111827", background: "transparent", fontFamily: "inherit",
+  },
+  searchClear: {
+    border: "none", background: "transparent", fontSize: 20, color: "#9ca3af",
+    cursor: "pointer", padding: "0 4px", lineHeight: 1,
+  },
+  askAlexCta: {
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    background: "#7c3aed", color: "white", textDecoration: "none",
+    padding: "11px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+    whiteSpace: "nowrap",
+  },
   filters: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28, justifyContent: "center" },
   filterBtn: { padding: "6px 16px", borderRadius: 20, border: "1px solid #d1d5db", background: "white", fontSize: 13, fontWeight: 500, color: "#374151", cursor: "pointer" },
   filterBtnActive: { padding: "6px 16px", borderRadius: 20, border: "1px solid #7c3aed", background: "#7c3aed", fontSize: 13, fontWeight: 500, color: "white", cursor: "pointer" },
@@ -126,6 +148,33 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
       </div>
 
       <div style={S.main}>
+        <div style={S.searchRow}>
+          <div style={S.searchBar}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search workers — paralegal, accounting, mission builder..."
+              style={S.searchInput}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} style={S.searchClear} aria-label="Clear search">×</button>
+            )}
+          </div>
+          <a
+            href="/meet-alex?intent=worker-recommendation"
+            style={S.askAlexCta}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            Ask Alex which worker fits
+          </a>
+        </div>
         <div style={S.filters}>
           {SUITES.map((s) => (
             <button

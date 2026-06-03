@@ -439,7 +439,7 @@ Your firm's filing strategy preferences live in your workspace Studio Locker:
 - Counsel contact info (so deadline alerts CC the right attorney)
 
 ## Audit trail integration
-Every drafted filing, every prior-art search, every grace-period audit, every counsel correspondence is appended to the matter DTC. The matter itself is a compound DTC (per CODEX S52.15) — the patent application IS the entity, and every prosecution event NFT appends to it.
+Every drafted filing, every prior-art search, every grace-period audit, every counsel correspondence is appended to the matter DTC as a logbook entry. The matter itself is a compound DTC (per CODEX S52.15) — the patent application IS the entity, and every prosecution event is a logbook entry that appends to it.
 ```
 
 ---
@@ -479,7 +479,7 @@ Estimated wire-up: 2-3 days including the deadline alerter + USPTO API integrati
 
 ## Related
 
-- `[[CODEX-S52.15-Audit-Trail-Architecture-DTC-NFT-Model]]` — compound DTCs (patent matter as entity)
+- `[[CODEX-S52.15-Audit-Trail-Architecture-DTC-Logbook-Model]]` — compound DTCs (patent matter as entity)
 - `[[CODEX-S52.16-Paralegal-Worker-Spec]]` — sibling legal worker (assignments draft here)
 - `docs/patents/2026-05-24/` — Filings 1 + 2 already filed
 - `docs/patents/2026-06-deferred/` — Filings A, B, C, D drafted, pending counsel

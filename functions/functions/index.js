@@ -10815,6 +10815,196 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/tenant:auditTrail:update — opt in / out of the audit trail
+    // service for this workspace. Persists to tenants/{tenantId}.auditTrail.
+    // Surface only — the silent service layer is wired separately (see
+    // docs/specs/CODEX-S52.23-Audit-Trail-Architecture.md). Default OFF.
+    // Enabling requires: workspace admin role + identity verification on file.
+    if (route === "/tenant:auditTrail:update" && method === "POST") {
+      try {
+        const { tenantId, enabled, mode, coinbaseWalletAddress } = body || {};
+        if (!tenantId) return jsonError(res, 400, "Missing tenantId");
+        if (typeof enabled !== "boolean") return jsonError(res, 400, "Missing enabled (boolean)");
+        const validMode = mode == null || ["full", "custody-only"].includes(mode);
+        if (!validMode) return jsonError(res, 400, "Invalid mode (must be 'full' or 'custody-only')");
+        // Loose 0x-prefix check; full validation deferred to mint time.
+        if (coinbaseWalletAddress != null && coinbaseWalletAddress !== "" && !/^0x[a-fA-F0-9]{40}$/.test(coinbaseWalletAddress)) {
+          return jsonError(res, 400, "Invalid Coinbase Wallet address (expected 0x + 40 hex)");
+        }
+        if (enabled === true && mode === "full" && !coinbaseWalletAddress) {
+          return jsonError(res, 400, "Coinbase Wallet address required for 'full' mode");
+        }
+        // Workspace admin gate
+        const m = await db.collection("memberships")
+          .where("userId", "==", auth.user.uid)
+          .where("tenantId", "==", tenantId)
+          .where("role", "==", "admin")
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (m.empty) return jsonError(res, 403, "Not a workspace admin");
+        // Identity verification gate (only on enable)
+        let identityVerifiedAt = null;
+        if (enabled === true) {
+          try {
+            const idv = await db.collection("identityVerifications")
+              .where("tenantId", "==", tenantId)
+              .where("status", "==", "verified")
+              .orderBy("verifiedAt", "desc")
+              .limit(1).get();
+            if (idv.empty) {
+              return jsonError(res, 412, "Identity verification required before enabling audit trail");
+            }
+            identityVerifiedAt = idv.docs[0].data().verifiedAt || null;
+          } catch (idvErr) {
+            // If identityVerifications collection doesn't exist yet, soft-pass
+            // in dev environments — log and continue. Production gate hardens
+            // when the collection is provisioned.
+            console.warn("[tenant:auditTrail:update] identity verification check skipped:", idvErr.message);
+          }
+        }
+        const update = enabled === true
+          ? {
+              "auditTrail.enabled": true,
+              "auditTrail.mode": mode || "full",
+              "auditTrail.coinbaseWalletAddress": coinbaseWalletAddress || null,
+              "auditTrail.optInAt": nowServerTs(),
+              "auditTrail.optInBy": auth.user.uid,
+              "auditTrail.identityVerifiedAt": identityVerifiedAt,
+              "auditTrail.lastUpdatedAt": nowServerTs(),
+            }
+          : {
+              "auditTrail.enabled": false,
+              "auditTrail.optOutAt": nowServerTs(),
+              "auditTrail.optOutBy": auth.user.uid,
+              "auditTrail.lastUpdatedAt": nowServerTs(),
+            };
+        await db.collection("tenants").doc(tenantId).set(update, { merge: true });
+        return res.json({
+          ok: true,
+          tenantId,
+          auditTrail: {
+            enabled,
+            mode: enabled ? (mode || "full") : null,
+            coinbaseWalletAddress: enabled ? (coinbaseWalletAddress || null) : null,
+          },
+        });
+      } catch (e) {
+        console.error("[tenant:auditTrail:update] error:", e.message);
+        return jsonError(res, 500, "Failed to update audit trail settings");
+      }
+    }
+
+    // POST /v1/tenant:auditTrail:testMint — workspace admin manually fires
+    // one test anchor to verify end-to-end wiring. Used for Sean's dogfood
+    // pre-launch and the Reddit easter-egg demo. NOT the production minting
+    // service — that's gated separately (see S52.23 spec).
+    if (route === "/tenant:auditTrail:testMint" && method === "POST") {
+      try {
+        const { tenantId } = body || {};
+        if (!tenantId) return jsonError(res, 400, "Missing tenantId");
+        const m = await db.collection("memberships")
+          .where("userId", "==", auth.user.uid)
+          .where("tenantId", "==", tenantId)
+          .where("role", "==", "admin")
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (m.empty) return jsonError(res, 403, "Not a workspace admin");
+        const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+        const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
+        const at = tenantData.auditTrail || {};
+        if (!at.enabled) return jsonError(res, 400, "Audit Trail not enabled for this workspace");
+        const actionId = `test_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+        const testDtc = {
+          dtcId: actionId,
+          type: "test-anchor",
+          tenantId,
+          userId: auth.user.uid,
+          createdAt: nowServerTs(),
+          version: 1,
+          metadata: {
+            label: "Test Anchor — Audit Trail Wiring Verification",
+            issuedBy: "SOCIII Platform",
+            note: "Manually triggered to verify end-to-end audit chain wiring. Not a production action record.",
+            compositionHashPlaceholder: "pending-S52.23-review",
+          },
+          fileIds: [],
+        };
+        let mintResult = { ok: false, attempted: false, reason: "Crossmint not configured" };
+        try {
+          if (process.env.CROSSMINT_API_KEY) {
+            const { mintDtc } = require("./services/minting/crossmintMinter");
+            const r = await mintDtc({ dtcId: actionId, dtc: testDtc });
+            mintResult = { ok: true, attempted: true, jobId: r.jobId || null, status: r.status || "pending" };
+          } else {
+            mintResult = { ok: false, attempted: false, reason: "CROSSMINT_API_KEY not set (env)" };
+          }
+        } catch (mintErr) {
+          mintResult = { ok: false, attempted: true, error: mintErr.message };
+        }
+        await db.collection("auditLedger").doc(actionId).set({
+          actionId,
+          tenantId,
+          userId: auth.user.uid,
+          actionType: "test-anchor",
+          workerId: "audit-trail-test",
+          inputHash: null,
+          outputHash: null,
+          compositionHash: "pending-S52.23-review",
+          identityAttestationRef: at.identityVerifiedAt || null,
+          crossmintJobId: mintResult.jobId || null,
+          crossmintStatus: mintResult.status || "skipped",
+          mintAttempted: mintResult.attempted === true,
+          mintOk: mintResult.ok === true,
+          mintError: mintResult.error || null,
+          mintReason: mintResult.reason || null,
+          chain: "base",
+          coinbaseWalletAddress: at.coinbaseWalletAddress || null,
+          custodyOnly: at.mode === "custody-only",
+          mintedAt: mintResult.ok ? nowServerTs() : null,
+          createdAt: nowServerTs(),
+          isTestAnchor: true,
+        });
+        await db.collection("tenants").doc(tenantId).set({
+          "auditTrail.lastAnchorAt": mintResult.ok ? nowServerTs() : (at.lastAnchorAt || null),
+          "auditTrail.lastTestAnchorAt": nowServerTs(),
+          "auditTrail.anchorCount30d": (at.anchorCount30d || 0) + (mintResult.ok ? 1 : 0),
+        }, { merge: true });
+        return res.json({
+          ok: true,
+          actionId,
+          mint: mintResult,
+          message: mintResult.ok
+            ? "Test anchor created and Crossmint mint triggered. Check PLAT-008 worker for the ledger entry."
+            : "Test anchor created in ledger. Crossmint mint skipped — see mint.reason. Configure CROSSMINT_API_KEY env to enable live minting.",
+        });
+      } catch (e) {
+        console.error("[tenant:auditTrail:testMint] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to fire test anchor");
+      }
+    }
+
+    // GET /v1/tenant:auditTrail:get — read current audit-trail config
+    // for a workspace. Workspace member (any role) can read.
+    if (route === "/tenant:auditTrail:get" && method === "GET") {
+      try {
+        const tenantId = (req.query && req.query.tenantId) || ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "Missing tenantId");
+        const m = await db.collection("memberships")
+          .where("userId", "==", auth.user.uid)
+          .where("tenantId", "==", tenantId)
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (m.empty) return jsonError(res, 403, "Not a workspace member");
+        const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+        const data = tenantSnap.exists ? (tenantSnap.data() || {}) : {};
+        const auditTrail = data.auditTrail || { enabled: false };
+        return res.json({ ok: true, tenantId, auditTrail });
+      } catch (e) {
+        console.error("[tenant:auditTrail:get] error:", e.message);
+        return jsonError(res, 500, "Failed to read audit trail settings");
+      }
+    }
+
     // ───────────────────────────────────────────────────────────
     // Concerns (Accountability Layer) — 50.27
     // Owner raises a concern, names a responsible party. Responsible

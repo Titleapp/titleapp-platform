@@ -58,12 +58,25 @@ export default function CreatorGallery() {
 function Header() {
   return (
     <header style={header}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
         <img src={sociiiMarkUrl} alt="SOCIII" style={{ width: 32, height: 32 }} />
         <span style={{ color: COLORS.text, fontSize: 20, fontWeight: 600, letterSpacing: 0.3 }}>sociii</span>
-      </div>
-      <a href="https://sociii.ai/build" style={{ color: COLORS.textDim, fontSize: 13, textDecoration: "none" }}>
-        Build your own →
+      </a>
+      <a
+        href="/onboard/creator"
+        style={{
+          background: COLORS.accent,
+          color: "#ffffff",
+          textDecoration: "none",
+          padding: "12px 22px",
+          borderRadius: 10,
+          fontSize: 15,
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          boxShadow: "0 4px 16px rgba(124,58,237,0.3)",
+        }}
+      >
+        Become a creator →
       </a>
     </header>
   );

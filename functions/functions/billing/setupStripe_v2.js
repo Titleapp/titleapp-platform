@@ -78,6 +78,16 @@ const PRODUCTS = [
     metadata: { titleapp_product: 'worker_tier_3' },
   },
   {
+    tag: 'worker_tier_4',
+    name: 'Digital Worker — $99',
+    description: 'Top-tier specialist workers. Replace a senior specialist or a whole category of software. Examples: Litigation Discovery, Compliance Defense, Transaction DD, Closing Attorney, type-rated CoPilots.',
+    prices: [
+      { nickname: 'Worker $99/mo',  unit_amount: 9900,  currency: 'usd', interval: 'month' },
+      { nickname: 'Worker $990/yr', unit_amount: 99000, currency: 'usd', interval: 'year'  },
+    ],
+    metadata: { titleapp_product: 'worker_tier_4' },
+  },
+  {
     tag: 'pilot_free',
     name: 'Pilot Suite — Free',
     description: 'Free forever. Manual logbook, currency & medical tracker, PDF export. No credit card.',

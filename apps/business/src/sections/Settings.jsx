@@ -770,6 +770,127 @@ function BusinessSettings() {
   const [editSection, setEditSection] = useState(null);
   const [formData, setFormData] = useState({});
 
+  // ── Audit Trail (workspace-level, Firestore-backed) — S52.23 ────
+  const [auditTrail, setAuditTrail] = useState({
+    enabled: false,
+    mode: "full",
+    coinbaseWalletAddress: "",
+    optInAt: null,
+    lastAnchorAt: null,
+    loading: true,
+  });
+  const [auditTrailSaving, setAuditTrailSaving] = useState(false);
+  const [auditTrailError, setAuditTrailError] = useState(null);
+  const [auditTrailWalletInput, setAuditTrailWalletInput] = useState("");
+
+  async function loadAuditTrail() {
+    const wsId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID");
+    if (!wsId || wsId === "vault" || wsId === "personal") {
+      setAuditTrail((p) => ({ ...p, loading: false }));
+      return;
+    }
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const res = await fetch(`${apiBase}/api?path=/v1/tenant:auditTrail:get&tenantId=${encodeURIComponent(wsId)}`, {
+        headers: { Authorization: `Bearer ${token}`, "x-tenant-id": wsId },
+      });
+      const data = await res.json();
+      if (data && data.ok && data.auditTrail) {
+        const at = data.auditTrail;
+        setAuditTrail({
+          enabled: !!at.enabled,
+          mode: at.mode || "full",
+          coinbaseWalletAddress: at.coinbaseWalletAddress || "",
+          optInAt: at.optInAt || null,
+          lastAnchorAt: at.lastAnchorAt || null,
+          loading: false,
+        });
+        setAuditTrailWalletInput(at.coinbaseWalletAddress || "");
+      } else {
+        setAuditTrail((p) => ({ ...p, loading: false }));
+      }
+    } catch (e) {
+      console.warn("[auditTrail] load failed:", e.message);
+      setAuditTrail((p) => ({ ...p, loading: false }));
+    }
+  }
+
+  const [auditTrailTesting, setAuditTrailTesting] = useState(false);
+  const [auditTrailTestResult, setAuditTrailTestResult] = useState(null);
+
+  async function fireTestAnchor() {
+    setAuditTrailTesting(true);
+    setAuditTrailTestResult(null);
+    try {
+      const wsId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID");
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const res = await fetch(`${apiBase}/api?path=/v1/tenant:auditTrail:testMint`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "x-tenant-id": wsId },
+        body: JSON.stringify({ tenantId: wsId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setAuditTrailTestResult({ ok: false, message: data.error || data.message || `HTTP ${res.status}` });
+      } else {
+        setAuditTrailTestResult({
+          ok: true,
+          actionId: data.actionId,
+          mintOk: data.mint?.ok === true,
+          mintAttempted: data.mint?.attempted === true,
+          message: data.message || "Test anchor created.",
+          jobId: data.mint?.jobId || null,
+        });
+        loadAuditTrail();
+      }
+    } catch (e) {
+      setAuditTrailTestResult({ ok: false, message: e?.message || "Network error" });
+    }
+    setAuditTrailTesting(false);
+  }
+
+  async function saveAuditTrail({ enabled, mode, coinbaseWalletAddress }) {
+    setAuditTrailSaving(true);
+    setAuditTrailError(null);
+    try {
+      const wsId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID");
+      if (!wsId || wsId === "vault" || wsId === "personal") {
+        setAuditTrailError("Audit Trail requires a business workspace.");
+        setAuditTrailSaving(false);
+        return;
+      }
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const payload = { tenantId: wsId, enabled, mode };
+      if (coinbaseWalletAddress != null) payload.coinbaseWalletAddress = coinbaseWalletAddress || null;
+      const res = await fetch(`${apiBase}/api?path=/v1/tenant:auditTrail:update`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "x-tenant-id": wsId },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        const msg = data.error || data.message || `HTTP ${res.status}`;
+        setAuditTrailError(msg);
+        if (res.status === 412) {
+          setAuditTrailError("Identity verification required. Complete identity verification in Settings → Identity before enabling.");
+        }
+      } else {
+        setAuditTrail((p) => ({
+          ...p,
+          enabled: !!data.auditTrail.enabled,
+          mode: data.auditTrail.mode || "full",
+          coinbaseWalletAddress: data.auditTrail.coinbaseWalletAddress || "",
+        }));
+      }
+    } catch (e) {
+      setAuditTrailError(e?.message || "Save failed.");
+    }
+    setAuditTrailSaving(false);
+  }
+
   function handleEditClick(section) {
     setEditSection(section);
     if (section === "business") {
@@ -827,6 +948,7 @@ function BusinessSettings() {
   useEffect(() => {
     loadMyCompanies();
     loadWorkspaceMembers();
+    loadAuditTrail();
   }, []);
 
   async function loadWorkspaceMembers() {
@@ -1188,6 +1310,190 @@ function BusinessSettings() {
           <div style={{ fontFamily: "monospace", padding: "12px", background: "#f8fafc", borderRadius: "8px", fontSize: "13px" }}>
             ta_prod_••••••••••••••••••••••••
           </div>
+        </div>
+      </div>
+
+      {/* Audit Trail — S52.23 foundational architecture */}
+      <div className="card" style={{ marginBottom: "16px", border: "1px solid #c4b5fd", background: auditTrail.enabled ? "linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)" : "white" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              Audit Trail
+              {auditTrail.enabled && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 9999,
+                  background: "#ede9fe", color: "#6d28d9", textTransform: "uppercase", letterSpacing: 0.5,
+                }}>Enabled</span>
+              )}
+            </div>
+            <div className="cardSub">Cryptographically anchored record of every meaningful platform action. Required for regulated work.</div>
+          </div>
+          <label style={{ position: "relative", display: "inline-block", width: 48, height: 26, flexShrink: 0, opacity: auditTrailSaving ? 0.5 : 1 }}>
+            <input
+              type="checkbox"
+              disabled={auditTrailSaving || auditTrail.loading}
+              checked={auditTrail.enabled}
+              onChange={(e) => {
+                const next = e.target.checked;
+                if (next) {
+                  if (auditTrail.mode === "full" && !auditTrailWalletInput) {
+                    setAuditTrailError("Coinbase Wallet address required to enable in Full mode (or switch to Custody-Only).");
+                    return;
+                  }
+                  saveAuditTrail({ enabled: true, mode: auditTrail.mode || "full", coinbaseWalletAddress: auditTrailWalletInput });
+                } else {
+                  if (!window.confirm("Disable Audit Trail? New actions will no longer be anchored. Existing receipts remain in your records.")) return;
+                  saveAuditTrail({ enabled: false });
+                }
+              }}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{
+              position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: auditTrail.enabled ? "#7c3aed" : "#cbd5e1",
+              borderRadius: 26, transition: "0.3s",
+            }}>
+              <span style={{
+                position: "absolute", height: 20, width: 20, left: auditTrail.enabled ? 24 : 4, bottom: 3,
+                backgroundColor: "white", borderRadius: "50%", transition: "0.3s",
+              }} />
+            </span>
+          </label>
+        </div>
+        <div style={{ padding: "16px" }}>
+          {auditTrail.loading ? (
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Loading…</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, marginBottom: 14 }}>
+                When enabled, every meaningful action your workers take is sealed into a tamper-evident receipt and anchored to an independent public registry. You hold the receipts; SOCIII keeps a backup copy for recovery. Records survive even catastrophic infrastructure loss.
+              </div>
+
+              {/* Mode selector */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Mode</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[
+                    { value: "full", label: "Full", desc: "Receipts go to your wallet + SOCIII backup" },
+                    { value: "custody-only", label: "Custody Only", desc: "SOCIII keeps the only copy (no customer wallet)" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setAuditTrail((p) => ({ ...p, mode: opt.value }));
+                        if (auditTrail.enabled) {
+                          saveAuditTrail({ enabled: true, mode: opt.value, coinbaseWalletAddress: opt.value === "full" ? auditTrailWalletInput : null });
+                        }
+                      }}
+                      style={{
+                        flex: 1, padding: "10px 14px", borderRadius: 10, textAlign: "left",
+                        border: auditTrail.mode === opt.value ? "2px solid #7c3aed" : "1px solid #e2e8f0",
+                        background: auditTrail.mode === opt.value ? "rgba(124,58,237,0.06)" : "white",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: 13, color: auditTrail.mode === opt.value ? "#6d28d9" : "#1e293b" }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Coinbase Wallet input — only for full mode */}
+              {auditTrail.mode === "full" && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Coinbase Wallet Address</label>
+                  <input
+                    type="text"
+                    placeholder="0x…"
+                    value={auditTrailWalletInput}
+                    onChange={(e) => setAuditTrailWalletInput(e.target.value.trim())}
+                    onBlur={() => {
+                      if (auditTrail.enabled && auditTrailWalletInput && auditTrailWalletInput !== auditTrail.coinbaseWalletAddress) {
+                        saveAuditTrail({ enabled: true, mode: "full", coinbaseWalletAddress: auditTrailWalletInput });
+                      }
+                    }}
+                    style={{
+                      width: "100%", padding: "10px 12px", borderRadius: 10,
+                      border: "1px solid #e2e8f0", fontFamily: "monospace", fontSize: 13,
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                    EVM-compatible address on Base. Receipts ship here automatically.
+                  </div>
+                </div>
+              )}
+
+              {/* Status summary */}
+              {auditTrail.enabled && (
+                <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, fontSize: 12, color: "#475569" }}>
+                  {auditTrail.optInAt && (
+                    <div>Opted in: {new Date(typeof auditTrail.optInAt === "object" && auditTrail.optInAt._seconds ? auditTrail.optInAt._seconds * 1000 : auditTrail.optInAt).toLocaleString()}</div>
+                  )}
+                  {auditTrail.lastAnchorAt ? (
+                    <div>Last anchor: {new Date(typeof auditTrail.lastAnchorAt === "object" && auditTrail.lastAnchorAt._seconds ? auditTrail.lastAnchorAt._seconds * 1000 : auditTrail.lastAnchorAt).toLocaleString()}</div>
+                  ) : (
+                    <div style={{ color: "#94a3b8", fontStyle: "italic" }}>Anchoring service activates after Sean's review of the gating spec (S52.23). Toggle is live; receipts will start once the service layer is wired.</div>
+                  )}
+                </div>
+              )}
+
+              {/* Error surface */}
+              {auditTrailError && (
+                <div style={{
+                  marginTop: 12, padding: "10px 12px", borderRadius: 8,
+                  background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 12,
+                }}>
+                  {auditTrailError}
+                </div>
+              )}
+
+              {/* Test Anchor — admin-only, for verifying end-to-end wiring */}
+              {auditTrail.enabled && (
+                <div style={{ marginTop: 14, padding: "12px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#92400e" }}>Send Test Anchor</div>
+                      <div style={{ fontSize: 11, color: "#78350f", marginTop: 2 }}>
+                        Fire one manual anchor to verify end-to-end wiring. Production gating service goes live after spec review.
+                      </div>
+                    </div>
+                    <button
+                      className="iconBtn"
+                      disabled={auditTrailTesting}
+                      onClick={fireTestAnchor}
+                      style={{ whiteSpace: "nowrap", background: "#f59e0b", color: "white", borderColor: "#f59e0b" }}
+                    >
+                      {auditTrailTesting ? "Anchoring…" : "Send Test Anchor"}
+                    </button>
+                  </div>
+                  {auditTrailTestResult && (
+                    <div style={{
+                      marginTop: 10, padding: "8px 10px", borderRadius: 6, fontSize: 12,
+                      background: auditTrailTestResult.ok ? "#dcfce7" : "#fee2e2",
+                      color: auditTrailTestResult.ok ? "#166534" : "#991b1b",
+                      lineHeight: 1.5,
+                    }}>
+                      {auditTrailTestResult.ok ? (
+                        <>
+                          <div style={{ fontWeight: 600 }}>{auditTrailTestResult.mintOk ? "Anchor sealed to the public registry." : "Anchor recorded in ledger (sealing step skipped)."}</div>
+                          <div style={{ fontSize: 11, marginTop: 2 }}>actionId: <code>{auditTrailTestResult.actionId}</code></div>
+                          {auditTrailTestResult.jobId && <div style={{ fontSize: 11 }}>job ID: <code>{auditTrailTestResult.jobId}</code></div>}
+                          <div style={{ fontSize: 11, marginTop: 4 }}>{auditTrailTestResult.message}</div>
+                        </>
+                      ) : (
+                        <div>{auditTrailTestResult.message}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ marginTop: 14, fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+                Patent-pending architecture (USPTO 64/073,693 + Filing C). See the <a href="/workers/audit-trail" style={{ color: "#7c3aed" }}>Audit Trail worker</a> to view your ledger, download receipts, and configure recovery options.
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -11,7 +11,7 @@ You should have already completed **[Install the tools](/docs/install)** — Cla
 In your terminal:
 
 ```
-git clone https://github.com/sociii/sociii.git
+git clone https://github.com/SOCIII-Inc/sociii.git
 cd sociii
 claude
 ```
@@ -82,7 +82,7 @@ For the v1 build, 3–5 tabs is plenty. You can add more later.
 ## Step 6 — Run the validator
 
 ```
-npm run validate -- nurse-eval-001
+npm run validate-worker -- --worker=&lt;your-handle&gt;/nurse-eval-001
 ```
 
 The QA-001 validator runs your assertions and reports what passed and what failed. Anything failing comes back with a plain-language explanation and a button to ask Claude Code to fix it.
@@ -98,12 +98,12 @@ git commit -m "Add nurse-eval-001 worker"
 git push origin nurse-eval-001
 ```
 
-Then open a PR on github.com/sociii/sociii. CI runs the validator + an AI reviewer. Most PRs merge automatically. If the reviewer flags something, Claude Code can address the feedback and push again.
+Then open a PR on github.com/SOCIII-Inc/sociii. CI runs the validator + an AI reviewer. Most PRs merge automatically. If the reviewer flags something, Claude Code can address the feedback and push again.
 
 ## Step 8 — Watch your worker go live
 
 Within a few minutes of merge:
-- Your worker appears in the SOCIII Marketplace at `sociii.ai/marketplace`
+- Your worker appears in the SOCIII Marketplace at `sociii.ai/workers`
 - Your public Creator Profile lights up at `sociii.ai/c/<your-github-handle>`
 - A platform-funded reviewer (**Forge Reviews**) subscribes to your worker and writes a structured first review
 - Your worker is discoverable in search

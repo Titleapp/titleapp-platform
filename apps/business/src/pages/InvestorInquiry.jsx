@@ -129,9 +129,9 @@ export default function InvestorInquiry() {
         </p>
 
         <div style={S.stats}>
-          <div style={S.stat}><div style={S.statVal}>1,000+</div><div style={S.statLbl}>Governed workers</div></div>
-          <div style={S.stat}><div style={S.statVal}>8</div><div style={S.statLbl}>Live industries</div></div>
-          <div style={S.stat}><div style={S.statVal}>$35K</div><div style={S.statLbl}>Burn / 5 months</div></div>
+          <div style={S.stat}><div style={S.statVal}>1,000+</div><div style={S.statLbl}>Digital workers</div></div>
+          <div style={S.stat}><div style={S.statVal}>Patent</div><div style={S.statLbl}>Audit-trail substrate</div></div>
+          <div style={S.stat}><div style={S.statVal}>Open</div><div style={S.statLbl}>Source SDK</div></div>
         </div>
 
         <form style={S.form} onSubmit={submit}>

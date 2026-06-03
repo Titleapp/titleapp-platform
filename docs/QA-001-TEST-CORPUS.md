@@ -674,7 +674,37 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
-(slot for next bug)
+### TC-043: Catalog schema regex rejects multi-hyphen worker IDs
+
+- **Date:** 2026-06-02 (S52.16/S52.17 catalog build)
+- **Worker:** All catalogs — surfaced by `catalog-completeness` check
+- **Family:** 1 (Catalog ↔ Firestore parity)
+- **Severity:** P0 (warn-only at load, so prod still runs — but every validation pass flags 10+ false-positives)
+- **Real bug:** `services/alex/catalogs/schema.js` regex is `^[A-Z][A-Z0-9]{0,3}-[A-Z0-9]{1,4}$` — exactly one hyphen. Production catalogs ship `BANK-FUND-001`, `INV-FUND-001`, `INV-ANALYST-001`, etc. — all rejected. Forced PAT-001 (not PATENT-001) for new Patent Worker just to pass.
+- **Test:** Run `catalog-completeness` check; assert all live workers in all catalogs pass the regex.
+- **Fix:** Loosen regex to `^[A-Z][A-Z0-9]{0,5}(-[A-Z0-9]{1,8})+$` (or pick the canonical shape and migrate IDs). Pre-existing tech debt; non-blocking.
+
+### TC-044: `type:individual` not in VALID_TYPES enum
+
+- **Date:** 2026-06-02
+- **Worker:** RES-001 in `real-estate-professional.json`
+- **Family:** 1 (Catalog ↔ Firestore parity)
+- **Severity:** P0 (warn-only at load)
+- **Real bug:** `services/alex/catalogs/schema.js` VALID_TYPES allows only `[standalone, pipeline, composite, copilot, orchestrator, platform]`. RES-001 declares `type: "individual"`. Loader warns and continues; runtime impact unknown — anything depending on type semantics fails silently.
+- **Test:** `catalog-completeness` check asserts every worker.type ∈ VALID_TYPES.
+- **Fix:** Either add `individual` to VALID_TYPES (if it's a legitimate worker shape — solo-professional template), or fix RES-001 to use the right one.
+
+### TC-045: New worker spec → catalog → QA validator end-to-end pass
+
+- **Date:** 2026-06-02 (S52.16/S52.17 worker build)
+- **Worker:** PARA-001 (Paralegal) + PAT-001 (Patent Worker)
+- **Family:** 1 + 5 (Catalog parity + RAAS module load)
+- **Severity:** P0 (the build-discipline test — does the new-worker pipeline actually work?)
+- **The build:** legal.json drafted from CODEX S52.16/S52.17 specs. canvasTabs (7 + 9), constraintRaasSources (4 + 7), controlCenterContribution, intent, vault, referrals, coming_soon all declared.
+- **The validator:** Added `catalog-completeness` check to `scripts/qa-001/checks/`. Validates structural fields, canvas tab schema, RAAS source shape.
+- **Pass:** 0 findings against legal vertical on first run. Test catches the future bug class where a creator (or session-future-me) drops a worker into a catalog without the structural fields — frontend would fall back to generic [Overview, Activity, Resources] and the worker would look broken.
+- **What QA-001 caught BEFORE Sean dogfooded:** 11 P0 + 957 P1 findings across legacy catalogs — pre-existing debt, not introduced by this build. Filed task #382 for triage. Sean was clean to dogfood the new legal workers immediately.
+- **Success-metric impact:** First worker build under new QA-001 discipline. Catches written into the validator on the same day as the spec — the right ratio shape.
 
 ---
 

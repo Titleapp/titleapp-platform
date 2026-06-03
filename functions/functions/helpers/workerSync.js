@@ -267,12 +267,23 @@ const MARKETPLACE_SLUG_MAP = {
   "PLAT-005": "hr-people",
   "PLAT-006": "platform-contacts",
   "PLAT-007": "platform-legal",
+  "PLAT-008": "audit-trail",
 
   // Banking & Finance vertical — CODEX 50.15 P0-11/P0-12
   "BANK-FUND-001": "fundraise",
 
   // General — cross-vertical utility workers (CODEX 50.18 follow-up 2026-05-11)
   "GEN-001": "scheduling",
+
+  // Legal vertical — CODEX S52.16 + S52.17 (2026-06-02)
+  "PARA-001": "paralegal",
+  "PAT-001": "patent",
+
+  // Legal vertical expansion — CODEX S52.22 (2026-06-02)
+  "LIT-001": "litigation-discovery",
+  "DEF-001": "compliance-defense",
+  "DD-001": "transaction-due-diligence",
+  "CLO-001": "closing-attorney",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -668,6 +679,14 @@ const HEADLINE_MAP = {
   "ad-dms-integration": "Reynolds, CDK, and Dealertrack data quality monitored for integration errors",
   "ad-daily-report": "Daily and weekly gross reporting by department with trend alerts",
   "ad-alex": "Your dealership, orchestrated — ops briefing to pricing recommendations",
+  // Legal vertical
+  "paralegal": "Multi-party legal instruments papered, cross-doc validated, signature-package-ready — counsel reviews, you ship",
+  "patent": "Your patent portfolio's lifecycle on rails — drafts, deadlines, family-tree, grace-period hard-stops — counsel files",
+  "audit-trail": "Every action recorded, every record anchored, every backup signed — the substrate that makes the moat real",
+  "litigation-discovery": "Case-bringable RESPA/AfBA/escrow patterns surfaced from the substrate — prosecution-grade for AGs, demand-letter-ready for plaintiff firms",
+  "compliance-defense": "Audit your client book against the substrate before AG or plaintiff bar finds them — exposure scores, remediation roadmaps, audit-anchored forward defense",
+  "transaction-due-diligence": "Every parcel in every deal — title risk, encumbrances, FIRPTA, OFAC, zoning — DD memos that survive scrutiny",
+  "closing-attorney": "Every closing audit-anchored as malpractice defense — chain-of-title verified, disclosures clean, carrier reports ready",
 };
 
 // Catalog vertical → Firestore vertical (VERTICAL-001: uses config/verticals.js aliases)

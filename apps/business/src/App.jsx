@@ -5060,7 +5060,17 @@ export default function App() {
   const isCreatorLanding = !!creatorLandingSlug;
 
   // ── /creator (no slug) — generic gallery / IG-bio destination ──
-  const isCreatorGallery = /^\/creator\/?$/.test(window.location.pathname);
+  // /work is a sibling route to /creator with the OF-for-smart-people framing (S52.20)
+  const isCreatorGallery = /^\/(creator|work)\/?$/.test(window.location.pathname);
+
+  // ── /pricing route intercept (S52.20 — bundle tiers) ──
+  const isPricingPage = /^\/pricing\/?$/.test(window.location.pathname);
+
+  // ── /press route intercept (Medium-style article series) ──
+  const isPressIndex = /^\/press\/?$/.test(window.location.pathname);
+  const pressArticleMatch = window.location.pathname.match(/^\/press\/([a-z0-9-]+)\/?$/);
+  const isPressArticle = !!pressArticleMatch;
+  const pressSlug = pressArticleMatch ? pressArticleMatch[1] : null;
 
   // ── /creator-workspace/:slug — "what my finished worker looks like to me" (S52.12 salvage) ──
   const creatorWorkspaceMatch = window.location.pathname.match(/^\/creator-workspace\/([a-z0-9-]+)\/?$/);
@@ -5885,10 +5895,22 @@ export default function App() {
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B0E14" }} />}><CreatorLanding /></React.Suspense>;
   }
 
-  // ── /creator (gallery): IG-bio-style fallback when no character slug ──
+  // ── /creator and /work (gallery): IG-bio-style fallback when no character slug ──
   if (isCreatorGallery) {
     const CreatorGallery = React.lazy(() => import("./pages/CreatorGallery"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#000" }} />}><CreatorGallery /></React.Suspense>;
+  }
+
+  // ── /pricing: bundle tiers (S52.20) ──
+  if (isPricingPage) {
+    const PricingPage = React.lazy(() => import("./pages/PricingPage"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#fff" }} />}><PricingPage /></React.Suspense>;
+  }
+
+  // ── /press and /press/<slug>: Medium-style article series ──
+  if (isPressIndex || isPressArticle) {
+    const PressPage = React.lazy(() => import("./pages/PressPage"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#fff" }} />}><PressPage slug={pressSlug} /></React.Suspense>;
   }
 
   // ── /creator-workspace/<slug>: creator's view of their own finished worker (S52.12) ──

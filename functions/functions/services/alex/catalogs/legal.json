@@ -1,0 +1,520 @@
+{
+  "vertical": "legal",
+  "name": "Legal",
+  "version": "1.1.0",
+  "lifecycle": [
+    { "phase": 0, "name": "Intake / Matter Setup", "description": "Identify parties, scope, jurisdiction; open the matter" },
+    { "phase": 1, "name": "Drafting / Discovery / Defense / DD / Closing", "description": "Substrate-driven workflows per constituency" },
+    { "phase": 2, "name": "Counsel Review", "description": "User's counsel reviews; attests at activation" },
+    { "phase": 3, "name": "Execution / Filing", "description": "Counterparty signature, attorney filing — user-driven" },
+    { "phase": 4, "name": "Prosecution / Maintenance / Forward Defense", "description": "Deadline tracking, office actions, maintenance fees, forward-defense documentation" }
+  ],
+  "suites": [
+    { "id": "instruments", "name": "Legal Instruments" },
+    { "id": "ip-portfolio", "name": "IP Portfolio" },
+    { "id": "legal-enforcement", "name": "Legal Enforcement" },
+    { "id": "legal-defense", "name": "Legal Defense" },
+    { "id": "biglaw-re", "name": "Big Law Real Estate" },
+    { "id": "attorney-state-closings", "name": "Attorney-State Closings" }
+  ],
+  "workers": [
+    {
+      "id": "PARA-001",
+      "name": "Paralegal",
+      "slug": "paralegal",
+      "suite": "Legal Instruments",
+      "phase": 1,
+      "type": "composite",
+      "pricing": { "monthly": 49, "currency": "USD", "trial_days": 14 },
+      "status": "live",
+      "capabilitySummary": "Drafts multi-party legal instrument bundles (loan, warrant, advisor RSPA, IP assignment, employment offer) from templates with counsel-review markers, cross-document validation, signature-package handoff to Dropbox Sign, and counterparty-facing adversarial AI review prompts. Does not advise, does not file, does not replace counsel.",
+      "tags": ["legal", "paralegal", "drafting", "instruments", "loan", "warrant", "advisor", "rspa", "ip-assignment", "employment-offer", "dbx-sign"],
+      "valueBucket": ["legal_papering", "counterparty_workflow"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "open_matters"
+      },
+      "temporalType": "event_driven",
+      "forge": { "enabled": true, "forge_price": 1.34 },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-DELAWARE",
+      "constraintRaasSources": [
+        { "moduleId": "sec-rule-501-accredited-investor", "required": true, "load_when": "matter_type:warrant|advisor|rspa" },
+        { "moduleId": "securities-exchange-act-section-15-finder", "required": true, "load_when": "matter_type:advisor|rspa" },
+        { "moduleId": "delaware-gcl", "required": true, "load_when": "always" },
+        { "moduleId": "irs-83b-election", "required": false, "load_when": "matter_type:rspa|advisor" }
+      ],
+      "canvasTabs": [
+        { "id": "current-matter", "label": "Current matter", "signal": "card:current-matter", "default": true, "order": 0, "view": "paralegal", "description": "Active matter — parties, terms, status, next action" },
+        { "id": "documents", "label": "Documents", "signal": "card:documents", "order": 1, "view": "paralegal", "description": "Drafted instruments in this matter — counsel-review-required markers, version trail" },
+        { "id": "counterparties", "label": "Counterparties", "signal": "card:counterparties", "order": 2, "view": "paralegal", "description": "All parties to the matter — entity types, jurisdictions, contact info, signing roles" },
+        { "id": "templates", "label": "Templates", "signal": "card:templates", "order": 3, "view": "paralegal", "description": "Platform templates + Studio Locker firm-specific overrides" },
+        { "id": "signatures", "label": "Signature status", "signal": "card:signature-status", "order": 4, "view": "paralegal", "description": "Dropbox Sign status per recipient, per document" },
+        { "id": "counsel-review", "label": "Counsel review", "signal": "card:counsel-review", "order": 5, "view": "paralegal", "description": "Flagged questions for counsel; attestation status" },
+        { "id": "audit-trail", "label": "Audit trail", "signal": "card:audit-trail", "order": 6, "view": "paralegal", "description": "Logbook entries on this matter's DTC — every draft, every signature event, hash-anchored" }
+      ],
+      "controlCenterContribution": {
+        "section": "legal_matters",
+        "kpis": ["open_matters", "drafts_pending_counsel", "signatures_outstanding", "matters_signed_30d"]
+      },
+      "intent": {
+        "scope_in": [
+          "Draft instruments from declared templates",
+          "Assemble bundles with cross-document references validated",
+          "Generate counterparty-facing AI review prompts",
+          "Mark every draft DRAFT — counsel-review-required",
+          "Produce Dropbox-Sign-ready PDFs with signature flow declared",
+          "Track signature status from DBX Sign webhooks",
+          "Store executed originals as compound DTCs in Vault"
+        ],
+        "scope_out": [
+          "Legal advice",
+          "Determining whether a transaction is legal",
+          "Replacing counsel review",
+          "Negotiating terms",
+          "Custody of notarized originals",
+          "Filing with any authority"
+        ],
+        "refusal_modes": [
+          "User asks for legal advice — redirect to counsel",
+          "User asks to file with any authority — out of scope",
+          "Bundle math doesn't reconcile — hard stop",
+          "User asks worker to act as authorized signer — refused"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.16-Paralegal-Worker-Spec.md"
+      },
+      "vault": {
+        "reads": ["legal-templates", "studio-locker", "matter-files"],
+        "writes": ["matter-files", "executed-originals", "signature-receipts"]
+      },
+      "referrals": [
+        { "event": "matter_type:ip_assignment + assignor_entity_is_dissolving_llc", "routesTo": "BIZ-LAW-001" },
+        { "event": "matter_type:warrant|rspa + securities_offering", "routesTo": "BANK-FUND-001" },
+        { "event": "matter_type:employment_offer", "routesTo": "PLAT-006" }
+      ],
+      "coming_soon": [
+        "Notarization handoff (currently user-coordinated)",
+        "Automated foreign-counsel routing for non-US parties",
+        "Embedded signing on canvas (today handed off to DBX Sign)",
+        "Counsel attestation webhook (today manually marked)"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.16. Justification: this worker has been used informally throughout S52.x (Kent RSPA+IP+Standby Offer; Robert Loan+Warrant+Advisor; advisor letters batch). Counsel-review-required marker is non-negotiable per project_user_counsel_attestation_pattern. Flipped to live 2026-06-02 per user-counsel attestation — Sean attests as founder for SOCIII's own legal-instrument drafting; every produced document still carries DRAFT — counsel-review-required header."
+    },
+    {
+      "id": "PAT-001",
+      "name": "Patent Worker",
+      "slug": "patent",
+      "suite": "IP Portfolio",
+      "phase": 4,
+      "type": "composite",
+      "pricing": { "monthly": 79, "currency": "USD", "trial_days": 14 },
+      "status": "live",
+      "capabilitySummary": "Manages a patent portfolio's full lifecycle — provisional drafting, deadline tracking, prior-art audit via USPTO+Google Patents+EPO, family-tree management, foreign filing decisions, prosecution response candidates. Hard-stops on 35 USC 102(b) grace-period violations and maintenance-fee deadlines. Does not file, does not opine on patentability, does not represent user before USPTO.",
+      "tags": ["legal", "ip", "patent", "uspto", "provisional", "prosecution", "grace-period", "maintenance-fees", "family-tree", "prior-art"],
+      "valueBucket": ["ip_protection", "deadline_discipline"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "patent_deadlines"
+      },
+      "temporalType": "always_on",
+      "forge": { "enabled": true, "forge_price": 1.34 },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-USPTO",
+      "constraintRaasSources": [
+        { "moduleId": "35-usc-101-patentable-subject-matter", "required": true, "load_when": "always" },
+        { "moduleId": "35-usc-102-novelty-grace-period", "required": true, "load_when": "always" },
+        { "moduleId": "35-usc-103-non-obviousness", "required": true, "load_when": "matter_type:new_provisional|provisional_to_nonprovisional|continuation|cip" },
+        { "moduleId": "35-usc-116-joint-inventorship", "required": true, "load_when": "always" },
+        { "moduleId": "mpep-2100-patentability", "required": true, "load_when": "matter_type:office_action_response" },
+        { "moduleId": "uspto-fee-schedule-current", "required": true, "load_when": "always" },
+        { "moduleId": "pct-article-22-national-phase-deadline", "required": true, "load_when": "matter_type:pct_filing|national_phase" }
+      ],
+      "canvasTabs": [
+        { "id": "portfolio", "label": "Portfolio", "signal": "card:portfolio-summary", "default": true, "order": 0, "view": "patent", "description": "All filings — filed, drafted, deferred — by status, jurisdiction, family" },
+        { "id": "deadlines", "label": "Deadlines", "signal": "card:deadline-calendar", "order": 1, "view": "patent", "description": "Hard-stop dates: provisional→non-provisional 12-month, PCT priority, national phase 30/31-month, office action 3-month, maintenance fees" },
+        { "id": "filings", "label": "Filings", "signal": "card:filing-list", "order": 2, "view": "patent", "description": "One row per filing — app number, named inventors, assignee, status, counsel" },
+        { "id": "family-tree", "label": "Family tree", "signal": "card:family-tree", "order": 3, "view": "patent", "description": "Parent-child relationships across continuations, divisionals, CIPs, PCT, foreign nationals" },
+        { "id": "inventors", "label": "Inventors", "signal": "card:inventor-roster", "order": 4, "view": "patent", "description": "Inventor list with contribution attribution — 35 USC 116 reconciliation" },
+        { "id": "prior-art", "label": "Prior art", "signal": "card:prior-art-references", "order": 5, "view": "patent", "description": "USPTO + Google Patents + EPO Espacenet search results — references, not opinions" },
+        { "id": "disclosures", "label": "Public disclosures", "signal": "card:disclosure-timeline", "order": 6, "view": "patent", "description": "Every public disclosure (papers, talks, demos, GitHub commits, social posts) mapped against grace-period viability" },
+        { "id": "foreign-filing", "label": "Foreign filing", "signal": "card:foreign-filing-matrix", "order": 7, "view": "patent", "description": "Per-country cost / value matrix; PCT vs. direct nationals; absolute-novelty warnings" },
+        { "id": "audit-trail", "label": "Audit trail", "signal": "card:audit-trail", "order": 8, "view": "patent", "description": "Logbook entries on each matter DTC — every draft, prior-art search, grace-period audit, counsel correspondence" }
+      ],
+      "controlCenterContribution": {
+        "section": "ip_portfolio",
+        "kpis": ["filings_active", "filings_drafted_pending_counsel", "deadlines_next_90d", "grace_period_warnings", "maintenance_fees_due"]
+      },
+      "intent": {
+        "scope_in": [
+          "Drafting provisionals + non-provisionals + claim sets",
+          "Tracking USPTO + PCT + national-phase + maintenance-fee deadlines (alerts at 90/60/30/14/7/3/1 days)",
+          "Auditing public disclosures against 35 USC 102(b) one-year grace period",
+          "Patent family management — parent-child cross-reference validation",
+          "Inventor list reconciliation per 35 USC 116",
+          "Foreign filing decision support — country cost/value matrix",
+          "Prior art search via USPTO PatFT + Google Patents + EPO Espacenet (results, not opinions)",
+          "Office action response drafting",
+          "Assignment document drafting (inventor → company)"
+        ],
+        "scope_out": [
+          "Filing with any patent office",
+          "Patentability opinions",
+          "Final claim-scope decisions",
+          "Responding to office actions on the user's behalf",
+          "Cost estimates with specificity",
+          "Representing user before USPTO"
+        ],
+        "refusal_modes": [
+          "User asks for patentability opinion — redirect to counsel",
+          "User asks to file directly with USPTO — out of scope",
+          "User asks to backdate disclosure or filing — refused (fraud)",
+          "Grace period violation detected — hard stop with explanation",
+          "Inventor list incomplete — refused until reconciled"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.17-Patent-Worker-Spec.md"
+      },
+      "vault": {
+        "reads": ["patent-portfolio", "invention-disclosures", "counsel-correspondence", "studio-locker"],
+        "writes": ["filing-drafts", "deadline-calendar", "grace-period-audits", "prior-art-reports", "office-action-responses"]
+      },
+      "referrals": [
+        { "event": "matter_type:assignment + assignor_is_individual_inventor", "routesTo": "PARA-001" },
+        { "event": "matter_type:assignment + assignor_is_dissolving_entity", "routesTo": "BIZ-LAW-001" },
+        { "event": "new_invention_disclosure_from_capture_pipeline", "routesTo": "PAT-001" }
+      ],
+      "data_fees": [
+        { "source": "uspto:patent-search", "base_cost_cents": 0, "marked_up_cost_cents": 2, "note": "Free USPTO Open Data API; charge customer 100% markup ($0.02/query)" },
+        { "source": "google:patents-search", "base_cost_cents": 0, "marked_up_cost_cents": 2, "note": "BigQuery query; charge customer 100% markup" },
+        { "source": "epo:espacenet-search", "base_cost_cents": 0, "marked_up_cost_cents": 2, "note": "Free EPO API; charge customer 100% markup" }
+      ],
+      "coming_soon": [
+        "USPTO PatFT live integration (today the prior-art tab is fixture-only)",
+        "Google Patents BigQuery wiring",
+        "EPO Espacenet wiring",
+        "Deadline-alerter cron (today calendar is read-only)",
+        "Counsel CC on every alert email (Studio Locker field exists, not wired)",
+        "Maintenance fee auto-renewal handoff (counsel-mediated today)"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.17. SOCIII's own portfolio is dogfood case: 3 provisionals filed 2026-05-24/25 (Audit Trail, Knowledge Capture, RAAS 5-Tier) + 3 drafted pending counsel (Escrow Locker, Title & Property Assurance, Build-Without-Code). Hard grace-period deadline ~2027-06-01 for canvas content types + wearable contexts newly disclosed on sociii.ai/docs. Flipped to live 2026-06-02 per user-counsel attestation; every drafted filing still carries DRAFT — counsel-review-required header; PATENT WORKER NEVER FILES (counsel files)."
+    },
+    {
+      "id": "LIT-001",
+      "name": "Litigation Discovery",
+      "slug": "litigation-discovery",
+      "suite": "Legal Enforcement",
+      "phase": 1,
+      "type": "composite",
+      "pricing": { "monthly": 79, "currency": "USD", "trial_days": 30 },
+      "status": "development",
+      "capabilitySummary": "Surfaces case-bringable violation patterns from the Parcel Atlas substrate (RESPA Section 8, AfBA non-disclosure, escrow self-dealing, steering, deed fraud). Generates prosecution-grade or demand-letter-grade evidence packages tailored to State AG or plaintiff firm constituency. AG tier subsidized as forcing-function distribution channel; plaintiff firm tier monetized. Does not litigate.",
+      "tags": ["legal", "litigation", "respa", "afba", "escrow-self-dealing", "steering", "deed-fraud", "discovery", "evidence-package", "state-ag", "plaintiff-bar"],
+      "valueBucket": ["legal_enforcement", "case_discovery"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "open_cases"
+      },
+      "temporalType": "always_on",
+      "forge": { "enabled": false, "forge_price": null },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONWIDE",
+      "constraintRaasSources": [
+        { "moduleId": "respa-section-8-kickback-detection", "required": true, "load_when": "always" },
+        { "moduleId": "respa-section-9-required-use-detection", "required": true, "load_when": "always" },
+        { "moduleId": "afba-disclosure-pattern-recognition", "required": true, "load_when": "always" },
+        { "moduleId": "fair-housing-act-steering-patterns", "required": true, "load_when": "always" },
+        { "moduleId": "state-unfair-deceptive-practices-acts", "required": true, "load_when": "tier:state_ag" }
+      ],
+      "canvasTabs": [
+        { "id": "case-pipeline", "label": "Case Pipeline", "signal": "card:case-pipeline", "default": true, "order": 0, "view": "litigation", "description": "Identified case-bringable patterns sorted by aggregate damages exposure or political value to AG" },
+        { "id": "violation-patterns", "label": "Violation Patterns", "signal": "card:violation-patterns", "order": 1, "view": "litigation", "description": "Substrate-surfaced patterns with evidence weight scoring" },
+        { "id": "targets", "label": "Defendants / Subpoena Targets", "signal": "card:targets", "order": 2, "view": "litigation", "description": "Brokers / title cos / lenders / escrow holders with highest evidence weight; tier-gated" },
+        { "id": "evidence-packages", "label": "Evidence Packages", "signal": "card:evidence-packages", "order": 3, "view": "litigation", "description": "Generated evidence binders for filed cases or open investigations" },
+        { "id": "demand-letters", "label": "Demand Letters", "signal": "card:demand-letters", "order": 4, "view": "litigation", "description": "PARA-001-drafted demand letters with substrate-derived exhibits attached" },
+        { "id": "case-status", "label": "Case Status", "signal": "card:case-status", "order": 5, "view": "litigation", "description": "Tracked open cases / investigations with timeline + counsel CC + next deadlines" },
+        { "id": "press-watchlist", "label": "Press Watchlist", "signal": "card:press-watchlist", "order": 6, "view": "litigation", "description": "Tracked press coverage of cases brought from substrate" },
+        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 7, "view": "litigation", "description": "Logbook of evidence queries + generated packages + handoffs to PARA-001" }
+      ],
+      "controlCenterContribution": {
+        "section": "legal_enforcement",
+        "kpis": ["cases_active", "evidence_packages_generated_30d", "damages_exposure_in_pipeline", "press_mentions_30d"]
+      },
+      "intent": {
+        "scope_in": [
+          "Surfacing violation patterns from the Parcel Atlas substrate",
+          "Generating evidence packages (prosecution-grade for AGs, demand-letter-grade for plaintiff firms)",
+          "Ranking defendants / subpoena targets by evidence weight + dollar exposure",
+          "Handing off to PARA-001 for instrument drafting",
+          "Tracking case status across the firm's docket",
+          "Press watchlist for cases brought from substrate"
+        ],
+        "scope_out": [
+          "Filing cases (user files; we provide evidence)",
+          "Issuing subpoenas (AG issues; we identify targets)",
+          "Settling cases",
+          "Practicing law",
+          "Substituting for counsel review"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.22-Legal-Worker-Family-Expansion.md"
+      },
+      "vault": {
+        "reads": ["parcel-atlas-substrate", "open-cases", "counsel-correspondence", "studio-locker"],
+        "writes": ["evidence-packages", "demand-letters", "case-status", "press-watchlist", "audit-trail"]
+      },
+      "referrals": [
+        { "event": "evidence_package_ready_for_demand_letter", "routesTo": "PARA-001" },
+        { "event": "evidence_package_ready_for_complaint_filing", "routesTo": "PARA-001" },
+        { "event": "ag_tier_subpoena_target_identified", "routesTo": "PARA-001" }
+      ],
+      "consumes_substrate": ["parcel-atlas"],
+      "coming_soon": [
+        "Direct PACER integration",
+        "State court docket integration (Westlaw / Lexis API)",
+        "Press release auto-generation upon case filing (AG mode only)",
+        "Co-counsel matchmaking"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.22. Consumes ESC-013 Parcel Atlas substrate. AG tier is the forcing function in the four-constituency sales motion; plaintiff bar tier is fast monetization. Development status until Parcel Atlas substrate ships."
+    },
+    {
+      "id": "DEF-001",
+      "name": "Compliance Defense",
+      "slug": "compliance-defense",
+      "suite": "Legal Defense",
+      "phase": 1,
+      "type": "composite",
+      "pricing": { "monthly": 79, "currency": "USD", "trial_days": 30 },
+      "status": "development",
+      "capabilitySummary": "Proactively audits defense-firm client books against the Parcel Atlas substrate. Surfaces pre-litigation exposure for each client (RESPA Section 8 fingerprints, AfBA non-disclosure, escrow self-dealing signals, steering patterns). Generates remediation roadmaps + forward-defense documentation. Hardens client posture before AG / plaintiff bar action. Does not litigate.",
+      "tags": ["legal", "defense", "compliance", "remediation", "respa", "afba", "client-audit", "forward-defense"],
+      "valueBucket": ["legal_defense", "exposure_remediation"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "client_exposure"
+      },
+      "temporalType": "always_on",
+      "forge": { "enabled": false, "forge_price": null },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONWIDE",
+      "constraintRaasSources": [
+        { "moduleId": "respa-section-8-kickback-detection", "required": true, "load_when": "always" },
+        { "moduleId": "afba-disclosure-pattern-recognition", "required": true, "load_when": "always" },
+        { "moduleId": "escrow-self-dealing-detection", "required": true, "load_when": "always" },
+        { "moduleId": "cfpb-enforcement-precedents", "required": true, "load_when": "always" },
+        { "moduleId": "state-bar-malpractice-standards", "required": true, "load_when": "always" }
+      ],
+      "canvasTabs": [
+        { "id": "client-book", "label": "Client Book", "signal": "card:client-book", "default": true, "order": 0, "view": "defense", "description": "Defense firm's client list with per-client exposure score derived from substrate match" },
+        { "id": "exposure-map", "label": "Exposure Map", "signal": "card:exposure-map", "order": 1, "view": "defense", "description": "Heat map of each client's exposure across pattern dimensions" },
+        { "id": "remediation", "label": "Remediation Roadmaps", "signal": "card:remediation", "order": 2, "view": "defense", "description": "Per-client remediation plans" },
+        { "id": "forward-defense", "label": "Forward Defense Docs", "signal": "card:forward-defense", "order": 3, "view": "defense", "description": "Audit-anchored documentation of remediation for evidence-of-good-faith" },
+        { "id": "alerts", "label": "Enforcement Alerts", "signal": "card:alerts", "order": 4, "view": "defense", "description": "Active AG investigations + plaintiff filings matching firm's client patterns" },
+        { "id": "competitor-exposure", "label": "Competitor Exposure", "signal": "card:competitor-exposure", "order": 5, "view": "defense", "description": "Competitor firms' client exposure (informational for client acquisition)" },
+        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 6, "view": "defense", "description": "Logbook of audits run + remediation actions + forward-defense generation" }
+      ],
+      "controlCenterContribution": {
+        "section": "legal_defense",
+        "kpis": ["clients_audited", "high_exposure_clients", "remediation_in_progress", "forward_defense_packages"]
+      },
+      "intent": {
+        "scope_in": [
+          "Auditing defense firm's client book against the Parcel Atlas substrate",
+          "Generating per-client exposure scores",
+          "Producing remediation roadmaps per client",
+          "Generating forward-defense documentation packages",
+          "Alerting firm to active AG investigations matching their clients",
+          "Tracking remediation progress"
+        ],
+        "scope_out": [
+          "Litigating cases",
+          "Settling cases",
+          "Substituting for counsel judgment",
+          "Practicing law"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.22-Legal-Worker-Family-Expansion.md"
+      },
+      "vault": {
+        "reads": ["parcel-atlas-substrate", "firm-client-list", "remediation-history", "studio-locker"],
+        "writes": ["client-audits", "remediation-roadmaps", "forward-defense-packages", "enforcement-alerts", "audit-trail"]
+      },
+      "referrals": [
+        { "event": "remediation_requires_instrument_drafting", "routesTo": "PARA-001" },
+        { "event": "client_at_critical_exposure", "routesTo": "platform-marketing" }
+      ],
+      "consumes_substrate": ["parcel-atlas"],
+      "coming_soon": [
+        "State bar CLE-eligible reporting",
+        "Malpractice carrier premium-reduction partnerships",
+        "Industry benchmarking dashboards"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.22. Reactive to LIT-001 AG/plaintiff activity. Development status until Parcel Atlas ships and LIT-001 activates first case-press cycle."
+    },
+    {
+      "id": "DD-001",
+      "name": "Transaction Due Diligence",
+      "slug": "transaction-due-diligence",
+      "suite": "Big Law Real Estate",
+      "phase": 1,
+      "type": "composite",
+      "pricing": { "monthly": 79, "currency": "USD", "trial_days": 30 },
+      "status": "development",
+      "capabilitySummary": "Generates transaction-time audit-chain reports on every parcel in a deal — portfolio acquisition, REIT, real-estate fund, commercial-property purchase. Surfaces title risk + encumbrance risk + chain-of-title gaps + zoning/permit issues. Produces DD memoranda formatted for client delivery. Reduces big-law partner DD review time from days to hours per parcel.",
+      "tags": ["legal", "due-diligence", "big-law", "ma", "reit", "real-estate-fund", "title-risk", "portfolio-acquisition"],
+      "valueBucket": ["transaction_dd", "risk_surfacing"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "active_deals"
+      },
+      "temporalType": "event_driven",
+      "forge": { "enabled": false, "forge_price": null },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONWIDE",
+      "constraintRaasSources": [
+        { "moduleId": "chain-of-title-gap-detection", "required": true, "load_when": "always" },
+        { "moduleId": "encumbrance-completeness-validation", "required": true, "load_when": "always" },
+        { "moduleId": "fincen-gto-thresholds-by-jurisdiction", "required": true, "load_when": "deal_amount_above_threshold" },
+        { "moduleId": "firpta-foreign-buyer-detection", "required": true, "load_when": "always" },
+        { "moduleId": "ofac-sdn-list", "required": true, "load_when": "always" },
+        { "moduleId": "zoning-entitlement-check", "required": false, "load_when": "deal_type:commercial|development" }
+      ],
+      "canvasTabs": [
+        { "id": "active-deals", "label": "Active Deals", "signal": "card:active-deals", "default": true, "order": 0, "view": "biglaw", "description": "Open transactions with status, parcel count, DD progress, target close" },
+        { "id": "portfolio-map", "label": "Portfolio Map", "signal": "card:portfolio-map", "order": 1, "view": "biglaw", "description": "GeoJSON map of all parcels in the current transaction with risk-color overlay" },
+        { "id": "title-risk", "label": "Title Risk", "signal": "card:title-risk", "order": 2, "view": "biglaw", "description": "Per-parcel chain-of-title analysis with gap detection + flags" },
+        { "id": "encumbrances", "label": "Encumbrances", "signal": "card:encumbrances", "order": 3, "view": "biglaw", "description": "Active liens, easements, deed restrictions per parcel; aggregate exposure" },
+        { "id": "regulatory", "label": "Regulatory Layer", "signal": "card:regulatory", "order": 4, "view": "biglaw", "description": "FIRPTA / FinCEN GTO / OFAC matches, zoning, environmental flags" },
+        { "id": "dd-memos", "label": "DD Memoranda", "signal": "card:dd-memos", "order": 5, "view": "biglaw", "description": "Generated DD memos formatted for client delivery; counsel-review-required markers" },
+        { "id": "comparables", "label": "Comparable Deals", "signal": "card:comparables", "order": 6, "view": "biglaw", "description": "Recent comparable transactions with audit-chain provenance for valuation defensibility" },
+        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 7, "view": "biglaw", "description": "Logbook of DD queries + memos + handoffs" }
+      ],
+      "controlCenterContribution": {
+        "section": "biglaw_re",
+        "kpis": ["active_deals", "parcels_in_dd", "high_risk_parcels_flagged", "dd_memos_delivered_30d"]
+      },
+      "intent": {
+        "scope_in": [
+          "Transaction-time audit-chain reports on every parcel in a deal",
+          "Title risk + encumbrance risk + chain-of-title gap surfacing",
+          "FIRPTA / FinCEN GTO / OFAC compliance flagging",
+          "Zoning + entitlement check for commercial / development deals",
+          "DD memoranda formatted for client delivery",
+          "Comparable deal surfacing with audit-chain provenance",
+          "Multi-jurisdictional portfolio handling"
+        ],
+        "scope_out": [
+          "Legal opinions on title status",
+          "Closing the transaction",
+          "Negotiating terms",
+          "Substituting for partner judgment on deal-breaker materiality"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.22-Legal-Worker-Family-Expansion.md"
+      },
+      "vault": {
+        "reads": ["parcel-atlas-substrate", "active-deals", "comparable-deals", "studio-locker"],
+        "writes": ["dd-memos", "risk-reports", "regulatory-flags", "audit-trail"]
+      },
+      "referrals": [
+        { "event": "ofac_match_detected", "routesTo": "PARA-001" },
+        { "event": "title_defect_requires_quiet_title_action", "routesTo": "PARA-001" },
+        { "event": "deal_closing_imminent", "routesTo": "esc-escrow-locker" }
+      ],
+      "consumes_substrate": ["parcel-atlas"],
+      "coming_soon": [
+        "iManage / NetDocuments integration",
+        "Practice management integration (Clio / Centerbase / Aderant)",
+        "Lender title insurance auto-quote based on substrate risk",
+        "REIT-specific SOX-friendly audit documentation"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.22. Big-law partner adoption — longest sales cycle but highest contract size. Development status until Parcel Atlas ships."
+    },
+    {
+      "id": "CLO-001",
+      "name": "Closing Attorney",
+      "slug": "closing-attorney",
+      "suite": "Attorney-State Closings",
+      "phase": 1,
+      "type": "composite",
+      "pricing": { "monthly": 79, "currency": "USD", "trial_days": 30 },
+      "status": "development",
+      "capabilitySummary": "Anchors every closing on the SOCIII audit chain in attorney-closing states (NJ, NY, MA, CT, NC, SC, GA, etc.). Generates per-closing forward-defense documentation establishing documentable care for malpractice exposure. Provides closing pipeline + per-closing risk surface + practice-wide audit trail. Reduces closing time by automating chain-of-title, encumbrance, and disclosure verification. Does not substitute for attorney judgment.",
+      "tags": ["legal", "closing-attorney", "attorney-states", "malpractice-defense", "forward-defense", "title-verification", "closing-workflow"],
+      "valueBucket": ["closing_workflow", "malpractice_defense"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "closing_pipeline"
+      },
+      "temporalType": "always_on",
+      "forge": { "enabled": false, "forge_price": null },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-ATTORNEY-STATES",
+      "constraintRaasSources": [
+        { "moduleId": "chain-of-title-gap-detection", "required": true, "load_when": "always" },
+        { "moduleId": "encumbrance-completeness-validation", "required": true, "load_when": "always" },
+        { "moduleId": "state-bar-malpractice-standards", "required": true, "load_when": "always" },
+        { "moduleId": "trid-tila-respa-disclosure-rules", "required": true, "load_when": "always" },
+        { "moduleId": "state-specific-closing-requirements", "required": true, "load_when": "always" }
+      ],
+      "canvasTabs": [
+        { "id": "closing-pipeline", "label": "Closing Pipeline", "signal": "card:closing-pipeline", "default": true, "order": 0, "view": "closing_attorney", "description": "Active closings sorted by target close date with status, parties, exposure score" },
+        { "id": "per-closing", "label": "Closing Detail", "signal": "card:closing-detail", "order": 1, "view": "closing_attorney", "description": "Single-closing workspace with chain-of-title verification, encumbrance check, disclosure compliance, signature flow" },
+        { "id": "forward-defense", "label": "Forward Defense", "signal": "card:forward-defense", "order": 2, "view": "closing_attorney", "description": "Per-closing forward-defense documentation packages (audit-anchored evidence of care)" },
+        { "id": "exposure-map", "label": "Practice Exposure", "signal": "card:practice-exposure", "order": 3, "view": "closing_attorney", "description": "Practice-wide exposure; identifies trend risk + carrier-reportable patterns" },
+        { "id": "cle-tracker", "label": "CLE Credits", "signal": "card:cle-tracker", "order": 4, "view": "closing_attorney", "description": "CLE credits earned via state bar partnerships" },
+        { "id": "carrier-reports", "label": "Malpractice Carrier Reports", "signal": "card:carrier-reports", "order": 5, "view": "closing_attorney", "description": "Carrier-formatted reports demonstrating audit-anchored process; supports premium reduction" },
+        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 6, "view": "closing_attorney", "description": "Logbook of all closings + forward-defense docs + carrier interactions" }
+      ],
+      "controlCenterContribution": {
+        "section": "closing_attorney",
+        "kpis": ["closings_active", "closings_completed_30d", "forward_defense_packages", "cle_credits_earned_ytd"]
+      },
+      "intent": {
+        "scope_in": [
+          "Anchoring every closing on the SOCIII audit chain",
+          "Generating per-closing forward-defense documentation",
+          "Pre-closing verification: chain-of-title, encumbrances, disclosures, TRID compliance",
+          "Signature flow integration with Dropbox Sign + state-specific notary requirements",
+          "Closing pipeline management",
+          "Practice-wide exposure monitoring",
+          "CLE credit tracking via state bar partnerships",
+          "Malpractice carrier reporting"
+        ],
+        "scope_out": [
+          "Substituting for attorney judgment on materiality of defects",
+          "Providing legal advice to closing parties",
+          "Issuing title insurance",
+          "Acting as escrow agent"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.22-Legal-Worker-Family-Expansion.md"
+      },
+      "vault": {
+        "reads": ["parcel-atlas-substrate", "closing-pipeline", "carrier-correspondence", "studio-locker"],
+        "writes": ["closing-records", "forward-defense-packages", "carrier-reports", "audit-trail"]
+      },
+      "referrals": [
+        { "event": "closing_requires_instrument_drafting", "routesTo": "PARA-001" },
+        { "event": "title_defect_blocks_closing", "routesTo": "esc-lien-clearance" },
+        { "event": "closing_completed", "routesTo": "esc-recording-monitor" }
+      ],
+      "consumes_substrate": ["parcel-atlas"],
+      "coming_soon": [
+        "State bar association CLE-credit partnerships (NJ, NY, MA, NC, GA first)",
+        "Malpractice carrier premium-reduction partnerships",
+        "Direct integration with state e-recording portals",
+        "Multi-attorney firm workflow"
+      ],
+      "_status_note": "Spec'd 2026-06-02 per CODEX-S52.22. Structural adoption channel in attorney-closing states (~19 states require attorney closings). Development status until Parcel Atlas ships."
+    }
+  ],
+  "_bundles_removed_2026_06_02": "Per Amazon-model pricing discipline. Each worker is a discrete product at its tier price. No bundle-and-save framing.",
+  "bundles": []
+}

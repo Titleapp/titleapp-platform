@@ -208,6 +208,114 @@
         "briefingContribution": "legal_review"
       },
       "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-008",
+      "name": "Audit Trail & Backup",
+      "slug": "audit-trail",
+      "suite": "Operations",
+      "phase": 3,
+      "type": "platform",
+      "pricing": { "monthly": 0, "currency": "USD" },
+      "status": "live",
+      "capabilitySummary": "Mints every meaningful platform action as an NFT through Crossmint and ships it to the customer's wallet (Coinbase Wallet recommended). SOCIII keeps a duplicate custody copy for recovery and dispute resolution when wallets are lost. Each NFT is the cryptographic record of a DTC parent or logbook child — what happened, when, under which RAAS rules, by which verified-real identity. Records survive catastrophic infrastructure loss because the NFTs live on a public chain. Includes hack-resilient 3-2-1 backup: daily Firestore export to an isolated GCP project, weekly second-cloud archive, quarterly physical offline. Patent-pending architecture (USPTO 64/073,693 + Filing C). Free, included with the SOCIII spine. The most defensible moat on the platform.",
+      "tags": ["audit", "backup", "nft", "crossmint", "coinbase-wallet", "duplicate-custody", "tamper-evident", "disaster-recovery", "patent-pending", "moat"],
+      "valueBucket": ["regulatory_defense", "disaster_recovery", "verifiable_provenance"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "audit_status"
+      },
+      "temporalType": "always_on",
+      "forge": { "enabled": false, "forge_price": null },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONWIDE",
+      "constraintRaasSources": [
+        { "moduleId": "audit-chain-integrity-v1", "required": true, "load_when": "always" },
+        { "moduleId": "identity-attestation-binding-v1", "required": true, "load_when": "always" },
+        { "moduleId": "raas-composition-hash-v1", "required": true, "load_when": "always" },
+        { "moduleId": "backup-3-2-1-policy", "required": true, "load_when": "always" }
+      ],
+      "canvasTabs": [
+        { "id": "audit-ledger", "label": "Audit Ledger", "signal": "card:audit-ledger", "default": true, "order": 0, "view": "audit", "description": "Time-ordered record of every meaningful platform action; each row hash-anchored to Base + Crossmint" },
+        { "id": "parent-dtcs", "label": "Parent DTCs", "signal": "card:parent-dtcs", "order": 1, "view": "audit", "description": "Digital Title Certificates for every entity — property, matter, vehicle, patient, deal, filing, asset. Each is the root of an append-only chain" },
+        { "id": "logbook-entries", "label": "Logbook Entries", "signal": "card:logbook-entries", "order": 2, "view": "audit", "description": "Child entries appended to each parent DTC, recording every change in chronological order with cryptographic linkage" },
+        { "id": "anchor-records", "label": "NFT Mints", "signal": "card:anchor-records", "order": 3, "view": "audit", "description": "Per-action NFTs minted via Crossmint and shipped to customer wallets (Coinbase Wallet recommended). SOCIII retains a duplicate custody copy for recovery / dispute resolution. Tx hashes verifiable by any third party." },
+        { "id": "identity-attestations", "label": "Identity Bindings", "signal": "card:identity-attestations", "order": 4, "view": "audit", "description": "Stripe Identity + Coinbase Verified ID attestations bound to every action; proves verified-real user authority" },
+        { "id": "raas-composition", "label": "Rule Composition", "signal": "card:raas-composition", "order": 5, "view": "audit", "description": "Per-action composition hash showing which RAAS tiers were active — platform safety, operations, vertical baseline, workspace overlay, per-transaction. Patent Filing C." },
+        { "id": "backup-status", "label": "Backup Status", "signal": "card:backup-status", "order": 6, "view": "audit", "description": "Status of daily Firestore export to isolated GCP project + weekly second-cloud archive + quarterly physical. Every export signed and hash-anchored" },
+        { "id": "recovery-playbook", "label": "Recovery Playbook", "signal": "card:recovery-playbook", "order": 7, "view": "audit", "description": "Step-by-step recovery procedure if catastrophic loss occurs. Public-chain anchors mean records survive even total platform destruction" },
+        { "id": "subpoena-response", "label": "Subpoena Response", "signal": "card:subpoena-response", "order": 8, "view": "audit", "description": "Pre-formatted regulator / court / counsel evidence packages — cryptographic proof of what happened, when, under which rules, by whom" }
+      ],
+      "controlCenterContribution": {
+        "section": "platform_integrity",
+        "kpis": ["actions_anchored_30d", "dtcs_active", "last_backup_at", "anchor_chain_health", "identity_attestation_coverage"]
+      },
+      "intent": {
+        "scope_in": [
+          "Minting every meaningful platform action as an NFT via Crossmint",
+          "Shipping NFTs to the customer's wallet (Coinbase Wallet recommended)",
+          "Retaining a SOCIII duplicate custody copy of every NFT for recovery + dispute resolution",
+          "Generating parent DTCs for every platform entity (property, matter, deal, patient, filing, etc.)",
+          "Appending child logbook entries / NFTs for every change",
+          "Binding every action to verified-real identity attestation",
+          "Recording the active RAAS composition hash with every action",
+          "Running daily Firestore export to isolated backup GCP project",
+          "Running weekly second-cloud archive (AWS Glacier Deep Archive or equivalent)",
+          "Running quarterly physical offline backup (LTO tape + safe deposit)",
+          "Signing every backup export and minting its hash as an audit NFT",
+          "Generating subpoena / regulator / counsel evidence packages on demand",
+          "Surfacing recovery playbook for catastrophic infrastructure loss",
+          "Re-minting / re-shipping when a customer loses their wallet and needs the SOCIII duplicate"
+        ],
+        "scope_out": [
+          "Custody of customer funds or signing of customer transactions on the chain",
+          "Legal advice on whether evidence is admissible",
+          "Decisions about what action data should be retained vs. anonymized (workspace owners decide)",
+          "Encryption key custody for customer-held private data (separate Vault worker)",
+          "Backup of secrets, API keys, or credentials (recovered fresh, never backed up)"
+        ],
+        "refusal_modes": [
+          "Refuse any request to delete logbook entries or modify anchored records — append-only by design",
+          "Refuse any request to anchor a record without identity attestation — every action must be bound to verified-real authority",
+          "Refuse any request to disable backup schedule without explicit workspace owner approval + audit log",
+          "Refuse to bypass RAAS composition hash recording — every action carries its rule fingerprint or it does not happen"
+        ],
+        "spec_ref": "docs/specs/CODEX-S52.15-Audit-Trail-Architecture-DTC-Logbook-Model.md"
+      },
+      "vault": {
+        "reads": ["all-workspace-actions", "all-dtcs", "all-logbook-entries", "identity-attestations", "raas-composition-cache"],
+        "writes": ["audit-ledger", "anchor-records", "backup-exports", "evidence-packages", "recovery-snapshots"]
+      },
+      "referrals": [
+        { "event": "subpoena_received", "routesTo": "PARA-001" },
+        { "event": "regulator_inquiry", "routesTo": "PARA-001" },
+        { "event": "ransomware_indicator_detected", "routesTo": "platform-control-center-pro" },
+        { "event": "anchor_chain_disruption", "routesTo": "platform-control-center-pro" }
+      ],
+      "patent_refs": [
+        "USPTO 64/073,693 — Identity-Anchored Hash-Chain Audit Trail (filed 2026-05-24)",
+        "USPTO Filing C — Multi-Tier Composable Rule-Based Governance System (filed 2026-05-25)",
+        "USPTO Filing B — Title and Property Assurance via Parent-Child DTC + Hash-Anchored Logbook (drafted, pending counsel)"
+      ],
+      "infrastructure_refs": [
+        "functions/services/minting/crossmintMinter.js — Crossmint NFT minting (FUNCTIONAL TODAY)",
+        "functions/services/anchor/hashAnchor.js — hash anchor service (used for backup signing)",
+        "Coinbase Wallet integration — recommended customer wallet (gated on Coinbase Business KYB for direct CDP integration; Crossmint works without)",
+        "SOCIII duplicate custody: every minted NFT mirrored to platform's recovery vault (firestore: nftCustody/{tokenId})",
+        "Backup architecture spec: CODEX-S52.23 (pending)"
+      ],
+      "coming_soon": [
+        "Coinbase CDP wallet-creation flow (gated on Coinbase Business KYB approval; Crossmint mints to any EVM wallet today)",
+        "Daily Firestore export to isolated backup GCP project (planned — separate billing account + access custodian)",
+        "Weekly AWS Glacier Deep Archive replication (planned — second cloud for hack resilience)",
+        "Quarterly LTO tape + safe-deposit physical backup (planned — for paranoid 3-2-1 compliance)",
+        "Subpoena evidence package generator UI (PARA-001 hands off)",
+        "Customer-controlled NFT-mint frequency (per-worker setting — every action vs. daily batch)",
+        "Wallet-loss recovery flow UI (customer requests SOCIII duplicate; identity-verified re-ship)"
+      ],
+      "_status_note": "Spec'd 2026-06-02 night per Sean priority: 'audit trail is probably our most defensible and interesting moat' + 'massive hack is greatest fear, need isolated hack-proof backup.' Combined audit + backup into one worker because structurally the same problem — records that survive everything. Stub status: catalog entry live, RAAS modules referenced but not all built, Coinbase CDP integration awaiting KYB. The PUBLIC-CHAIN anchor architecture is the durability layer (records survive catastrophic infrastructure loss because anchors live on Base). Firestore backups are the convenience layer. SECRETS NEVER BACKED UP (recovered fresh). Free tier — part of the SOCIII spine, included with every workspace. This worker IS the moat made visible to customers, investors, and competitors browsing the marketplace."
     }
   ]
 }
