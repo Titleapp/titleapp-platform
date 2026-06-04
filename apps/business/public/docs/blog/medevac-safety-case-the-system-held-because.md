@@ -1,141 +1,123 @@
-# The system held because the people in it are good. That's not safety. That's luck.
+# What do you fucking hate about your job that's obvious to you and invisible to your manager?
 
-*A medevac pilot's case for why dispatch and operations control have to get better — and why "better" has to come from outside the existing software stack.*
-
----
-
-## Last week, on a routine flight
-
-A PC-12 climbed out of a Hawaiian airport with a child patient on 100% supplemental oxygen, the child's mother riding along, an experienced flight medical crew, and one pilot in the front seat. The takeoff briefing covered, as every medevac takeoff briefing covers, the emergency turnback procedures the crew would follow in the event of engine failure, fire, or structural detachment.
-
-At 1,500 feet on climb-out, on the first power reduction, the control yoke and the entire front of the aircraft began vibrating violently — stick-shaker intensity — accompanied by a strange humming sound. The crew alerting system showed nothing. The medical crew in the back, working on the patient, couldn't feel the vibration at all.
-
-The pilot's first thought was a catastrophic engine failure in progress. He pulled to maximum L/D, turned the aircraft back toward the departure airport — he was at 5,000 feet, well within glide range with a shut-down engine — and declared a Pan-Pan emergency for a mechanical issue. He asked the tower to inspect the aircraft for fire, smoke, or oil on landing. Fire rolled to meet the aircraft at the tarmac. The pilot used the emergency shutdown procedure because the child in the back was on 100% oxygen and any post-landing fire risk could not be tolerated. Standard precautionary-landing procedure. The medical crew was informed at every step.
-
-The aircraft landed safely. The pilot called the operator's dispatch and asked to be connected to the Aircraft Maintenance Operations Center.
-
-Dispatch's first question: *"Why aren't you in Honolulu?"*
-
-The pilot explained: *"We need to arrange alternative transport for the patient. I had an in-flight emergency."*
-
-Dispatch's response: *"Well, that's going to be kind of hard."*
-
-There was no Pilot Manager on Call available.
-
-The next day, the operator put the aircraft right back into revenue service. They couldn't replicate the issue on the ground in five minutes. They moved on.
-
-It would later become clear — to the pilot, on his own time, doing his own research — that the symptom set is documented for the PC-12 NG. It is **not** an engine failure or a structural detachment. It is a failure of the air conditioning system bleed-air valve, located behind the instrument panel. The valve has not been replaced. The aircraft is still flying.
+*The "OF for smart people" principle, told through the case of why nobody has fixed medevac dispatch yet.*
 
 ---
 
-## What happened, and what almost happened
+## The principle
 
-What happened: a working medevac pilot caught a poorly-characterized mechanical signal, made a textbook precautionary landing, kept a critically ill child and his mother safe, kept his medical crew informed, and brought everyone home. Then he called his employer and discovered the employer had no functional operational response to what he had just survived.
+There is a question that, once you start asking it of people who actually do skilled professional work for a living, never stops yielding answers.
 
-What almost happened: in a slightly different version of this story — with a slightly less experienced pilot, slightly less calm medical crew, slightly worse weather, slightly higher density altitude, slightly later in a duty day — the aircraft enters an uncommanded configuration the pilot mis-diagnoses, the patient destabilizes, the precautionary landing becomes a forced landing, and the newspaper writes about it.
+The question is: **what do you absolutely hate about your job that is completely obvious to you, and completely invisible to whoever runs the meeting?**
 
-That second version of the story happens roughly **every sixty days** in US helicopter air ambulance operations.
+Ask a senior paralegal. Ask a Part 135 chief pilot. Ask an ER charge nurse on her fifteenth year. Ask a county recorder who's been processing deeds for two decades. Ask a maintenance controller at a regional Part 135 op. Ask a senior escrow officer. Ask a dispatcher at a CRE leasing brokerage. Ask an underwriter who's seen the same insurance fraud pattern come through under three different names in the last ninety days.
 
-It almost happened to a child last week.
+They will not need a long warm-up. They will start telling you about the thing that breaks every week. They will tell you why it breaks. They will tell you what would catch it. They will tell you why it never gets caught.
 
----
+Then they will tell you that they have brought it up at every staff meeting for the last four years, that the people in the meetings nod politely, that nothing changes, and that the reason nothing changes is that the people running the meetings have never done the work, do not understand the work, and are budgeting against the wrong cost.
 
-## The data nobody likes to look at
+If you have run a regulated business and you have not noticed this pattern, the pattern is noticing you.
 
-The National Transportation Safety Board's most recent special investigation report on Part 135 air ambulance — AIR-24-03, July 2024 — found that **twelve specific accidents between 2010 and 2022** were caused, in whole or in significant part, by failures in operational control or flight-locating. Those twelve accidents alone account for **forty-five fatalities and thirteen serious injuries**.
+The SOCIII platform is the structural response to that pattern. The pitch is short: domain experts get an SDK, build a digital worker that catches the thing only they can see, and earn revenue every time someone subscribes to it. The platform handles the regulatory substrate, the audit trail, the identity layer, the billing.
 
-Twelve accidents. That's a baseline.
-
-In the period 2002 through 2005, the NTSB counted **fifty-five air ambulance accidents** — fifty-four fatalities, eighteen serious injuries — in just four years. That's roughly one fatal medevac event every month for four straight years. It is the period Sean refers to when he says "every other month a fatal." He's not exaggerating. The data agrees with him.
-
-The 2014 rulemaking that produced 14 CFR Part 135 Subpart L — the rule that finally required Helicopter Air Ambulance operators with ten or more aircraft to operate an Operations Control Center — helped. Fatal helicopter EMS accidents have fallen by roughly 75% since the OCC mandate took effect in 2016. The rule worked.
-
-The rule did not work *enough*.
-
-The current Part 135 fatal accident rate in air ambulance is still **approximately fifty to one hundred times worse than Part 121 scheduled airline operations**. The current night fatal accident rate is still **three to four times worse than non-medevac Part 135 charter operations**. Survival rates for a VFR-rated pilot who inadvertently enters instrument meteorological conditions: **fourteen percent**.
-
-And then there is the rule itself, which the NTSB has been clear about for the better part of a decade: it has structural holes.
+This blog post is about one of those domains.
 
 ---
 
-## What Subpart L did not fix
+## Medevac dispatch, as a worked example
 
-The Operations Control Specialists who staff the centers required by Subpart L are not certificated dispatchers. The Federal Aviation Administration does not issue them a certificate, does not require them to pass a knowledge test administered by the FAA, does not require them to demonstrate practical skill in a real-time scenario. Their training program — eighty hours initially, forty hours per year recurrent — is FAA-approved at the operator level. The qualifications of the individuals filling those seats vary enormously between operators.
+Helicopter air ambulance — the on-scene rotor-wing transport from a highway crash or a remote clinic — has been killing pilots, medical crews, and patients in the United States at a rate that any other regulated commercial aviation segment would not accept.
 
-The Operations Control Specialist does not share legal operational control with the Pilot-In-Command. In a Part 121 airline operation, the dispatcher and the captain jointly release the flight; the dispatcher can refuse to release a flight, and can recall a flight, on safety grounds. In a Subpart L Helicopter Air Ambulance operation, the OCS is advisory only. They can identify a hazard. They cannot override a pilot's decision to launch into that hazard.
+The numbers, from National Transportation Safety Board sources:
 
-The Subpart L rule applies only to operators with ten or more helicopters. Smaller air ambulance operators — a meaningful share of the industry, including many of the regional and rural operations that serve the patients most likely to need air transport in the first place — are outside the rule entirely.
+- From 2002 through 2005, NTSB counted **fifty-five air ambulance accidents** — **fifty-four fatalities, eighteen serious injuries** in four years. Roughly one fatal event per month for that entire period.
+- From 2010 through 2015, NTSB counted **forty-seven helicopter air ambulance accidents — twenty-one fatal**. One fatal accident every three to four months.
+- After 14 CFR Part 135 Subpart L took effect in 2016, requiring Operations Control Centers at larger HEMS operators, fatal accidents fell to roughly **one per year** from 2016 through 2021. The rule worked.
+- The rule did not work *enough*. **The current Part 135 air ambulance fatal accident rate is still approximately fifty to one hundred times worse than Part 121 scheduled airline operations** and three to four times worse than non-medevac Part 135 charter.
+- A VFR-rated helicopter pilot who inadvertently enters instrument meteorological conditions has approximately a **fourteen percent survival rate**.
 
-The rule covers helicopters. The Cessna SkyCourier and the Pilatus PC-12 and the King Air 350 and the Lear 35 that move patients between cities and across states are not covered by Subpart L at all. The advisory circular that applies to fixed-wing medevac, AC 135-15, was last updated in 1990.
+NTSB's 2024 special investigation report on Part 135 operations — AIR-24-03 — identified **twelve specific accidents between 2010 and 2022 where operational control or flight-locating deficiencies were direct contributing factors**. Those twelve accidents alone account for **forty-five fatalities and thirteen serious injuries**.
 
-And then there is the systemic finding the NTSB has been making since 2006 and made again, with sharper language, in its 2024 report: a recommendation that the FAA *require certificated dispatchers, holding joint operational control authority with the PIC*, in all Part 135 operations except single-pilot single-PIC. That recommendation is not yet a rule. The rule has not been written. The notice of proposed rulemaking has not been issued.
+A few of those twelve, in summary, from the public record:
 
-The system that catches the pilot before the pilot catches himself is not the system that exists. It is the system that the safety board has been recommending for nearly twenty years.
+**Survival Flight, Zaleski, Ohio, January 2019.** Bell 407 helicopter, night flight, snow and instrument conditions, controlled flight into forested terrain. Three fatalities. NTSB found that the accepting pilot reviewed the weather for approximately twenty-eight seconds before launching. **Three other operators had already refused the same flight** for weather. The operations control specialist handling the flight, per the report, "did not fully use the weather tool available for preflight and in-flight planning."
 
-In the meantime, what stands between the patient and the newspaper is the pilot, the medical crew, and — in too many cases — luck.
+**Air Methods, Enterprise, Alabama, March 2016.** Night helicopter air ambulance, visual flight rules into instrument meteorological conditions, controlled flight into terrain shortly after pickup. Three fatalities. NTSB found that **the operations control computer program had destination coordinates entered in the wrong format**, returned weather for the wrong location showing visual conditions when the actual destination was in instrument conditions, and that after the helicopter had departed, the operations control specialists discovered the error but **did not alert the pilot**.
 
----
+**Air Methods, Hazelhurst, Wisconsin, April 2018.** Single-pilot helicopter, night cruise, loss of control. Three fatalities. Probable cause, per NTSB: "the pilot's loss of helicopter control as a result of fatigue during cruise flight at night." The pre-flight risk assessment had been scored "low risk" and approved at 1727 hours — **over five hours before impact** — and was never re-scored as conditions and the duty day changed. Cockpit recordings captured the pilot yawning approximately fifty minutes before the loss of control. NTSB language: the scoring approach "provided the illusion of managing risk." Seventeen months after the accident, no company-wide fitness-for-duty change had been implemented.
 
-## What the existing software stack does not do
+**Air Methods, Mosby, Missouri, August 2011.** Four fatalities including the patient. Fuel exhaustion. The pilot had **told the communication specialist before takeoff that he did not have enough fuel to reach the hospital** and asked for help finding a fuel stop. The communication specialist was not qualified to provide that operational guidance, and the qualified operations control function was never looped in.
 
-The medevac operator running last week's flight uses, like nearly every operator in the country, some combination of: a dispatch program called Flight Vector that tracks currency and shows mission status; a safety management system called Baldwin; a maintenance hub like RAMCO; some flavor of pilot tool, generally ForeFlight; an electronic patient care record, often emsCharts. Some operators add Spidertracks for satellite tracking, NinthBrain for credentialing, Air Maestro for scheduling.
+There are more.
 
-These tools are not *bad*. They were built by people who cared about the work. Each does its slice of the job competently.
+The unifying NTSB finding across all twelve cases, in the language of AIR-24-03:
 
-What they do not do — collectively, in concert, in real time — is catch the failure modes the NTSB keeps naming in case after case after case. They do not flag, before takeoff, that the same flight was just refused by three other operators for weather. They do not re-score the pre-flight risk assessment as conditions change at the aircraft six hours into a duty day. They do not cross-reference the patient's clinical acuity against the receiving facility's actual capability tonight, with surgical theater availability and blood bank status. They do not realize that the dispatcher answering the phone has never been trained to recognize the difference between a precautionary landing and a request to abandon a mission. They do not realize that the maintenance team putting the aircraft back into service without replacing the suspected component has missed a documented PC-12 NG failure mode.
+> *"Essential operational control functions, such as preflight weather and fuel planning, flight release, flight monitoring, or flight locating, were performed without adequate company procedures or by individuals who lacked the training, knowledge, or experience to effectively perform such critical safety duties."*
 
-They do not connect the airworthiness reality to the operational decision. They do not connect the medical decision to the aviation envelope. They do not give the pilot a peer in the operations center who actually understands what the pilot is looking at out the windscreen.
+In plain language: the people in the operations centers, on the days when the accidents happened, were not the right people, did not have the right tools, and were not held to a standard that would have caught the flight before it killed the people on it.
 
-The people in those operations centers are usually doing their best with the tools they have. The tools they have were designed to track operations, not to participate in safety decisions.
-
----
-
-## What needs to be different
-
-A dispatch and operations-control layer for medevac that actually catches the failure modes the safety board names will need to do several specific things that nothing in the current stack does:
-
-**It will need to know aviation at the level of a certificated dispatcher.** Meteorology to the depth required by the FAA Part 65 Subpart C dispatcher curriculum. Performance and weight-and-balance to the standard required for Part 121 release decisions. Operational rules for Part 135 air ambulance — both helicopter Subpart L and fixed-wing AC 135-15 — at the level required to spot a launch decision that violates the operator's own approved limits.
-
-**It will need to know clinical care at the level of an emergency medical dispatcher.** The IAED Medical Priority Dispatch System protocols. The capability-level matching of patient acuity to receiving facility. The understanding of what equipment, crew, and configuration a NICU transport requires that a trauma scene response does not.
-
-**It will need to know the operator's reality, not the regulatory floor.** The actual maintenance status of the actual aircraft, including open MEL items, deferred discrepancies, and the operator's own ops specs limitations. The actual crew rest state, including time-zone shifts, prior-week sleep, and fatigue exposure beyond what the duty/rest regulation captures. The hospital helipads' actual operating hours and weight limits. The local airspace's actual NOTAMs.
-
-**It will need to keep watching after the flight launches.** Not a one-time pre-flight score, but a continuous risk assessment that re-scores as conditions change, as the duty day extends, as weather develops along the actual flown route. The Hazelhurst, Wisconsin fatality of 2018 was approved on a pre-flight risk assessment scored *five hours and thirteen minutes* before the helicopter hit the ground. That score was never refreshed.
-
-**It will need to share, across operators, the information that no single operator can have alone.** When three operators in a region refuse the same flight for the same weather, the fourth operator should know about those refusals before launching. The Survival Flight crash in Zaleski, Ohio in 2019 — three fatal — flew into weather that three other operators had already turned down. The information existed. It was not connected.
-
-**It will need to be defensible.** Every decision it makes, every input it considered, every rule it applied, every override it accepted — captured in an audit record that survives a subpoena, a Federal Aviation Administration enforcement action, a National Transportation Safety Board investigation, an insurance claim, a civil suit, a Centers for Medicare and Medicaid Services billing audit. Designed around the worst-case forensic use, not the average user.
-
-That last point is the part of this that is not just a software product. It is a substrate. It is the part the existing software stack cannot retrofit, because it was not designed for it.
+This is the operational reality the working pilots, paramedics, and flight nurses in the industry have known for decades. It is the thing they hate about their job. It is the thing that, with rare exceptions, the people in the management meetings have not built a fix for.
 
 ---
 
-## What we are building
+## Why nobody has fixed this from inside the industry
 
-A dispatch worker for medevac operations that does the things above. Built as a digital worker in the SOCIII platform. Authored by a working Part 135 medevac pilot, on the same SDK that any domain expert in any regulated profession can use to author a worker for their own work.
+Three structural reasons, each worth naming because each is the kind of structural reason that recurs across regulated professions.
 
-We are starting with the dispatch decision: the go/no-go call, the aircraft selection, the crew assignment, the route plan, the receiving-facility selection. We are building it to consume the data the operator already has — Flight Vector for dispatch state, ForeFlight for flight planning, RAMCO for maintenance reality, emsCharts for clinical record interoperability where the HIPAA boundary permits, the NOAA HEMS Tool for weather, public NOTAM and TFR feeds. We are building it to push the dispatch output where the pilot already works — into ForeFlight via the published Dispatch API, so the brief shows up in the pilot's iPad without the pilot having to do anything different.
+**First**, the existing software stack is competent at the thing it was built for — tracking — and was not built for the thing the safety record requires, which is participating in safety decisions in real time. Flight Vector tracks status and currency. Baldwin manages safety reporting after the fact. RAMCO tracks maintenance. ForeFlight is a pilot's tool, not a dispatch tool. emsCharts records care after it happens. Each of these is, at its job, the right answer. Stacked together, none of them flag, before takeoff, that three other operators just refused this flight. None of them re-score the pre-flight risk assessment as the duty day extends and the weather develops. None of them cross-reference the patient's actual clinical acuity against the receiving facility's actual surgical theater availability tonight. None of them share data across operators in a way that closes the gap a single operations control center cannot close alone.
 
-We are building the audit layer underneath it — the layer that no existing dispatch tool has — because the safety case the NTSB has been making for twenty years rests on a documented record of who knew what when, and that record does not exist today.
+**Second**, the Operations Control Specialist role created by the 2014 rulemaking is an advisory role, not an authoritative one. Unlike a certificated dispatcher in Part 121 scheduled airline operations — who shares legal operational control with the captain and can refuse to release or recall a flight — the OCS in helicopter air ambulance cannot override the pilot's decision to launch into a hazard the OCS has identified. They can flag. They cannot stop. That structural asymmetry is the wedge NTSB has been pushing on for years, and in 2024 finally formalized as Safety Recommendation A-24-13: *require certificated dispatchers, holding joint operational control authority with the PIC, in all Part 135 operations except single-pilot operations.* That recommendation is not yet rule. The notice of proposed rulemaking has not been issued.
 
-We are not building a crypto product. We are building infrastructure. The audit anchor is, for the patient and their family and the pilot and the medical crew, the difference between a deposition that goes one way and a deposition that goes the other way.
+**Third**, the people in the seats are usually doing their best with the tools they have, and the tools they have were designed under a budget that assumed the role was administrative rather than safety-critical. Industry conversation pegs the typical entry-level salary for a medevac communication-center staffer in the high teens to low twenties per hour. Compare that to the salary required to attract someone with both a Part 65 dispatcher certificate's depth of aviation knowledge and an IAED Emergency Medical Dispatcher certificate's depth of clinical triage knowledge, and the gap explains itself. The operators that try to hire to that combined standard cannot find candidates. The candidates do not exist because the training pipeline does not exist. The training pipeline does not exist because the regulatory floor does not require it.
 
-We will ship it as an open SDK so other working pilots, with their own operational reality and their own state regulatory overlay, can fork it for their own operations. We will ship the substrate it runs on as a closed and patented platform, because the substrate is the moat and the moat is what keeps the platform viable long enough to matter.
+Operationally, in the cases NTSB documents, what stands between the patient and the newspaper is the pilot, the medical crew, and luck.
 
-We are starting with one operator. We are starting with one rural clinic in Alaska that will, when this is running, have access to the same dispatch intelligence as a Level I trauma center in Seattle. We are starting with one receiving hospital that will, when this is running, see what is coming, prepped exactly the way it needs to be prepped, before the helicopter is wheels up at the sending site.
+This is not safety. This is a system held together by individual heroism.
 
-We are starting because the system as it stands today catches the patient about half the time — and the other half of the time the catch is the pilot and the medical crew, doing it manually, under stress, alone.
+The medical crews, on average, are good. The pilots, on average, are good. The senior people in the field are *very* good. The system as it currently exists could not function if the senior practitioners were not, every shift, manually catching the things the system did not catch.
 
-That is not safety. That is luck.
+When a senior practitioner is not on shift — when the pilot is the third-year captain, when the OCS is a six-month hire, when the flight nurse is filling in from the ground service for the weekend — the system performs the way it was designed.
 
-We are building this because it should not be luck.
+That is the day the newspaper writes about it.
 
 ---
 
-*The PC-12 in the story above landed safely. The patient survived the diversion and was transported by alternate means. The aircraft was returned to service the day after the incident. The aircraft is still flying. The valve has not been replaced.*
+## The "OF for smart people" principle, applied
 
-*The pilot is fine.*
+This is what the SOCIII platform is for. The thesis is short:
 
-*Most days, in this industry, the pilot is fine.*
+Domain experts are sitting on the answer to the question above for every regulated profession in the country. Pilots, paralegals, nurses, escrow officers, dispatchers, county recorders, controllers, underwriters, charge nurses, lab directors. The thing they fucking hate about their job is the thing they could fix if they had a way to capture their judgment in code and ship it as a tool.
 
-*The point of this work is to make "most days" into "every day," and to take the burden of that off the pilot.*
+For thirty years there has been no economic mechanism for them to do that. They could quit and start a SaaS company — most don't, because they would rather do the work. They could write a book — books go stale and never get read by the operations managers who needed them most. They could run a training program — training programs scale linearly and the senior practitioner ages out. They could be a paid expert witness in the litigation that follows the accident — by which point everyone the expert witness might have saved is already dead.
+
+What they have not had, until now, is a way to take the rules they know, encode them in a digital worker that runs against AI, ship that worker into the market, and earn revenue every time a customer subscribes to it.
+
+That is what an SDK plus a marketplace plus an audit substrate is for.
+
+The worker we are starting with — `dispatch-medevac-001` — does the dispatch and operations-control function for medevac in a way that the existing stack does not. It cross-references the patient's acuity to the receiving hospital's actual capability tonight. It pulls actual weather, actual NOTAMs, actual maintenance state of the actual aircraft. It re-scores the pre-flight risk assessment as the duty day extends. It maintains a cross-operator turndown registry so that the fourth operator knows when three others have already refused the flight. It does the math an FAA-certificated airline dispatcher would do, while preserving the legal operational authority of the pilot-in-command that Part 135 requires. It captures every decision, every input, every override in an audit record that survives a National Transportation Safety Board investigation, a Federal Aviation Administration enforcement action, a Centers for Medicare and Medicaid Services billing audit, and a civil deposition.
+
+It will be built by a working pilot. The platform supplies the substrate — the rule engine, the audit chain, the identity layer, the billing rail, the patent moat. The pilot supplies the thirty years of knowing what should and should not get caught.
+
+When that worker ships and a clinic in rural Alaska or a hospital in central Wyoming subscribes to it, the dispatch intelligence that the senior practitioner has been manually providing in the head of one captain on one shift becomes the dispatch intelligence that the system provides on every shift, for every flight, on every aircraft, in every operator that subscribes.
+
+This is what scale means when you actually have the right people authoring.
+
+---
+
+## What we are doing next
+
+We are starting the dispatch worker. We are publishing the SDK so other working pilots in other regulated specialties — and working paralegals, working nurses, working escrow officers, working county recorders — can fork it and build the worker they would have built if anyone had given them the time and the leverage.
+
+We are not running a fundraising tour right now. The platform is being built by the founder, who is a working Part 135 pilot, on his own time, alongside the flying. The dispatch worker is being built because the safety record of the industry he flies in is what it is, and because the question at the top of this post is the question that keeps yielding answers.
+
+When the platform raises, the founder will tell the founding story in long form. For now, the founding story is the question.
+
+What do you fucking hate about your job that's obvious to you and invisible to your manager?
+
+If you have an answer, the SDK is open. The instructions are at `sociii.ai/docs/install`. Bring the thing you hate and the rules you know. The platform will handle the rest.
+
+---
+
+*This post cites the public NTSB record. Specific names of accidents, cases, and dates are matters of public record published by the National Transportation Safety Board and are linked in the source footer. Operating companies named in this post are named because they appear in the published NTSB findings. Nothing in this post should be construed as describing or commenting on any active or non-public investigation.*
+
+*Sources: NTSB Special Investigation Report AIR-24-03 (2024); NTSB Safety Recommendation A-24-13; NTSB Special Investigation SIR-06-01; NTSB Accident Report AAR-20/01; case files CEN19FA072, ERA16FA140, CEN11FA599, N127LN; 14 CFR Part 135 Subpart L; FAA AC 135-14B; FAA AC 135-15; published industry safety analysis in *Air Medical Journal*, *Prehospital and Disaster Medicine*, and the Journal of Aviation/Aerospace Education and Research.*
