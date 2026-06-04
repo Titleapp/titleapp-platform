@@ -67,6 +67,23 @@ success_criteria:
   - "User accepts the SOAP draft without major rewrites > 70% of the time"
   - "Flagged labs are clinically accurate per board-certified review"
   - "No false positives on PII detection"
+
+auditTriggers:
+  individual:
+    - id: chart-note-signed
+      description: "Clinical chart note signed and committed"
+      lenses: [deposition, performance]
+      capturedFields: [noteId, patientId, signedBy, timestamp, contentHash]
+    - id: med-order-recommended
+      description: "Worker recommends a medication order"
+      lenses: [deposition, safety, performance]
+      capturedFields: [orderId, medication, dose, patientId, recommendedBy, ruleVersion]
+  batched:
+    - id: chart-review
+      description: "Routine chart review without state change"
+      rollupPeriod: shift
+      lenses: [performance]
+      summaryFields: [nurseId, shiftId, chartsReviewed]
 ```
 
 ## What each field is for
@@ -82,6 +99,8 @@ success_criteria:
 **assertions** — Testable claims about behavior. The QA-001 validator uses these. Group by `family` (structural, behavioral, edge-case, performance). **[See QA-001 →](/docs/qa-001)**
 
 **success_criteria** — Human-readable, not auto-tested. These describe what "this worker is working well" means in your domain. The Forge Review uses these to assess your first ship.
+
+**auditTriggers** — Declares which worker actions get cryptographically anchored individually vs batched. The **Deposition Rule** decides: would this matter in a deposition, financial audit, safety investigation, or performance review? Yes → individual; no → batched. Required for any regulated worker. **[See Audit Trail →](/docs/audit-trail)**
 
 ## How Claude Code helps you draft this
 

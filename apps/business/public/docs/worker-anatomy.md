@@ -6,7 +6,7 @@ Every Digital Worker on SOCIII is a directory of six files. This page shows what
 
 ```
 my-worker/
-├── catalog.json        ← what the marketplace lists
+├── catalog.json        ← what the marketplace lists (includes auditTriggers)
 ├── intent-spec.yml     ← what success looks like
 ├── rules/
 │   ├── core.yml        ← invariants that always hold
@@ -49,6 +49,39 @@ What the marketplace lists. Read by Firestore at deploy time.
 **Required fields:** `slug`, `label`, `vertical`, `creator`, `tagline`, `pricing`, `lane`.
 
 `lane` is one of `open` / `marketplace` / `experimental`. **[See three lanes →](/docs/three-lanes)**
+
+### auditTriggers (recommended for any regulated worker)
+
+Workers that touch regulated work declare which of their actions get individually anchored vs batched. The **Deposition Rule** decides: would this matter in a deposition, financial audit, safety investigation, or performance review? Yes → individual; no → batched.
+
+```json
+{
+  "auditTriggers": {
+    "individual": [
+      {
+        "id": "chart-note-signed",
+        "description": "Clinical chart note signed and committed",
+        "lenses": ["deposition", "performance"],
+        "capturedFields": ["noteId", "patientId", "signedBy", "timestamp", "contentHash"]
+      }
+    ],
+    "batched": [
+      {
+        "id": "vital-round",
+        "description": "Routine vital sign collection across patients on shift",
+        "rollupPeriod": "shift",
+        "lenses": ["performance"],
+        "summaryFields": ["nurseId", "shiftId", "patientCount", "outOfRangeCount"]
+      }
+    ]
+  }
+}
+```
+
+Lens values: `deposition`, `financial-audit`, `safety`, `performance` (one or more per trigger).
+Rollup periods: `hourly`, `shift`, `daily`, `weekly`, `monthly`.
+
+The platform handles the actual anchoring — composition hash, identity binding, public-registry receipt, backup custody. You just declare what gets anchored. **[See Audit Trail →](/docs/audit-trail)**
 
 `forge.enabled` defaults to `true` for the Marketplace lane. Set `forge.enabled: false` if you want to skip the platform-funded first-month review on your first ship. `forge.forge_price` defaults to `1.34` (USD); this is the one-time, one-month amount SOCIII pays — the creator receives a flat **$1.00 net**. There is no recurring Forge payment; the subscription auto-cancels at day 30. **[See Forge Reviews →](/docs/review-cycle)**
 

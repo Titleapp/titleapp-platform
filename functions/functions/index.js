@@ -10924,12 +10924,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         };
         let mintResult = { ok: false, attempted: false, reason: "Crossmint not configured" };
         try {
-          if (process.env.CROSSMINT_API_KEY) {
+          if (process.env.CROSSMINT_SERVER_API_KEY) {
             const { mintDtc } = require("./services/minting/crossmintMinter");
             const r = await mintDtc({ dtcId: actionId, dtc: testDtc });
             mintResult = { ok: true, attempted: true, jobId: r.jobId || null, status: r.status || "pending" };
           } else {
-            mintResult = { ok: false, attempted: false, reason: "CROSSMINT_API_KEY not set (env)" };
+            mintResult = { ok: false, attempted: false, reason: "CROSSMINT_SERVER_API_KEY not set (env)" };
           }
         } catch (mintErr) {
           mintResult = { ok: false, attempted: true, error: mintErr.message };
@@ -10968,7 +10968,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           mint: mintResult,
           message: mintResult.ok
             ? "Test anchor created and Crossmint mint triggered. Check PLAT-008 worker for the ledger entry."
-            : "Test anchor created in ledger. Crossmint mint skipped — see mint.reason. Configure CROSSMINT_API_KEY env to enable live minting.",
+            : "Test anchor created in ledger. Crossmint mint skipped — see mint.reason. Configure CROSSMINT_SERVER_API_KEY env to enable live minting.",
         });
       } catch (e) {
         console.error("[tenant:auditTrail:testMint] error:", e.message);

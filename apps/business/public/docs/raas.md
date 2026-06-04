@@ -47,7 +47,7 @@ Examples (you can't disable these):
 ## Tier 1 — platform operations
 
 Examples (you can't disable these either):
-- Append-only audit trail — every action your worker takes appends an event to Firestore
+- Append-only audit trail — every action appends an event to Firestore; meaningful actions additionally seal a tamper-evident receipt anchored to an independent public registry per the [Deposition Rule](/docs/audit-trail). Workspace opts in to anchoring; declaration of which events anchor individually vs batched lives in each worker's `auditTriggers`.
 - Identity-verified signatures — any e-signature requires Stripe Identity verification first
 - Subscription enforcement — workers run only when the workspace has an active entitlement
 - Role-based access — workspace member roles gate which capabilities a user can invoke

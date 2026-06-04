@@ -24,6 +24,7 @@ export const DOCS_MANIFEST = [
       { slug: "intent-spec",  title: "Intent Spec",         description: "How to describe what success looks like before any code exists." },
       { slug: "canvas-tabs",  title: "Canvas",              description: "The right-panel surface — tabs, content types (text · structured · image · video · sequence), runtime content creation, and wearable render contexts." },
       { slug: "raas",         title: "RAAS (Rules + AI)",   description: "Five-tier rule hierarchy: platform safety · operations · vertical baselines (jurisdictional law) · workspace overlays (Studio Locker) · per-transaction rules." },
+      { slug: "audit-trail",  title: "Audit Trail",         description: "The Deposition Rule — declaring which worker actions get individually anchored vs batched, mapped to four forensic lenses (deposition · financial audit · safety · performance)." },
       { slug: "qa-001",       title: "QA-001 validator",    description: "How the platform checks your worker before it ships to the Marketplace." },
     ],
   },

@@ -17,7 +17,13 @@ The platform's data-integrity invariant: every action a worker takes appends an 
 A declared expectation in your [Intent Spec](#intent-spec) that the platform enforces at runtime via [QA-001](#qa-001). Each assertion is a one-line claim about your worker (e.g., "rejects inputs that mention scheduling without a date"). The validator runs these against your fixtures during build and against live invocations after publish. Assertions are the contract between you (the creator) and the platform that your worker behaves as advertised.
 
 ## Audit chain
-The cryptographic record of every governance event in SOCIII. Each worker action is serialized, hashed, signed by the platform, and anchored to a public blockchain (Base in current embodiment). The full event payload is retained off-chain; the on-chain hash provides tamper-evidence. Together with [version pinning](#composition-hash) this enables reconstruction of the exact rules under which any historical action was governed — the foundation for regulatory audit, dispute resolution, and AI accountability. See Filing C in the patent portfolio for the architectural claim.
+The cryptographic record of every governance event in SOCIII. Each worker action is serialized, hashed, signed by the platform, and anchored to an independent public registry (Polygon in production today; Base planned for the institutional-credibility narrative — both are EVM-compatible and the substrate is chain-agnostic). The full event payload is retained off-chain; the on-chain hash provides tamper-evidence. Together with [version pinning](#composition-hash) this enables reconstruction of the exact rules under which any historical action was governed — the foundation for regulatory audit, dispute resolution, and AI accountability. See Filing C in the patent portfolio for the architectural claim. **[See Audit Trail →](/docs/audit-trail)**
+
+## Audit Trail
+The platform-level accountability layer that seals meaningful worker actions into tamper-evident receipts and anchors them to a public registry. Foundational platform infrastructure — parallel to [Vault](#vault) and [Drive](#drive) — and reserved as the patent moat (creators cannot author audit-trail variants). Workspace admins opt in via Settings; the [Deposition Rule](#deposition-rule) governs what gets anchored. **[See Audit Trail →](/docs/audit-trail)**
+
+## auditTriggers
+The declaration in a worker's `catalog.json` / `intent-spec.yml` that lists which actions get cryptographically anchored. Has two classes: `individual[]` (per-action anchors for deposition-worthy events) and `batched[]` (per-period rollup anchors for routine activity). Each trigger declares which [forensic lenses](#forensic-lens) apply. Required for any regulated worker. **[See Audit Trail →](/docs/audit-trail)**
 
 ---
 
@@ -53,6 +59,11 @@ A person who has authored at least one worker on SOCIII. Marketplace-lane creato
 
 ---
 
+## Deposition Rule
+SOCIII's design principle for declaring [auditTriggers](#audittriggers): *for every action a worker takes, would this matter in (a) a deposition, (b) a financial audit, (c) a safety investigation, or (d) a performance evaluation? If yes → individual anchor; if no → batched.* The audit trail is designed around the worst-case forensic use, not the average user. **[See Audit Trail → Deposition Rule →](/docs/audit-trail)**
+
+---
+
 ## Data Credits / Data Fees
 Variable runtime costs metered and billed by the platform with a universal **100% markup**. Scope: every external data-API call (Apollo, ATTOM, MLS, etc.) AND every model token cost (Claude, GPT, Gemini, image / video / audio generators). The customer pays base × 2; the creator earns 20% of the markup; the platform earns 80%. Independent of and additive to the [subscription split](#earnings). Non-negotiable platform-wide. **[See Earnings & payouts →](/docs/earnings)**
 
@@ -81,6 +92,11 @@ For Marketplace-lane workers: creator earns 75% of net subscription revenue, pla
 
 ## Endpoint
 A single addressable URL on an [API](#api). Where an API is the contract, an endpoint is one specific route — for example, `POST /v1/workers/{slug}/invocations` is an endpoint inside SOCIII's worker API. Each endpoint declares its method, params, body shape, and response shape. Generally, "calling the API" means calling some endpoint inside it.
+
+---
+
+## Forensic lens
+One of four use cases the [audit trail](#audit-trail) is designed around: **deposition** (legal proceedings), **financial-audit** (SEC, Sarbanes, state-AG), **safety** (NTSB, OSHA, medical board), **performance** (annual review, professional certification, license renewal). Every [auditTriggers](#audittriggers) declaration maps one or more lenses to each anchor so the Audit Trail worker can generate evidence packages filtered by lens (a "deposition packet" or "Sarbanes packet"). **[See Audit Trail → Forensic lenses →](/docs/audit-trail)**
 
 ---
 
