@@ -338,6 +338,18 @@ export const CANVAS_TYPES = {
     emptyPrompt: "Ask any worker to generate an image to see it here.",
     _title: "Generated Image",
   },
+
+  // Video content (2026-06-04) — YouTube embeds, direct mp4/webm, etc.
+  // Sean's directive: video is the difference between "people are
+  // scared of this shit" and "people get it instantly."
+  "card:video": {
+    component: "VideoCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Drop a YouTube URL or direct video link to see it here.",
+    _title: "Video",
+  },
 };
 
 /**

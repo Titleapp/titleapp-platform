@@ -41,6 +41,21 @@ LAYER 1 — OPT-IN (workspace settings)
 
 The architecture is patent-pending — USPTO Application 64/073,693 (Hash-Chain Audit Trail) and Filing C (Multi-Tier RAAS Composition). Anyone wanting the cryptographic schematic can read the patent applications directly.
 
+## Chain-agnostic by design
+
+SOCIII is not a crypto company. The audit chain is infrastructure — the same way Postgres is infrastructure for a SaaS app. We don't issue a token, don't run our own chain, and don't take sides in chain partisanship.
+
+Practically, this means:
+
+- **We use Polygon today.** Development and current production anchoring run on Polygon, an EVM-compatible Layer 2.
+- **We recommend Layer 2 EVM chains.** Polygon, Base, Optimism, Arbitrum. The platform's architecture works on any of these without changing the SDK contract — the chain is a settlement target, not a worker-author concern.
+- **Base is the recommended customer-facing target as wallet UX matures.** Base's Smart Wallet model (passkey-based, no seed phrase, email-recoverable) is materially more accessible than traditional non-custodial wallets — most customers in regulated industries (nurses, paralegals, escrow officers, dispatchers) won't ever onboard to a metamask-shaped wallet, but they will sign in to a passkey wallet. As the audit-trail customer experience scales, Base + Smart Wallet becomes the default recommendation precisely because it removes the wallet-UX cliff that historically blocked non-crypto-native users from on-chain primitives.
+- **We do not recommend Layer 1 chains.** Traditional Ethereum mainnet and Bitcoin gas economics make per-action audit anchoring economically unworkable. They're fine for occasional batched commits, but not for the real-time per-meaningful-action shape SOCIII is built around.
+- **We do not currently recommend Solana.** Its program and account structure don't fit this anchoring pattern at present writing — useful for other applications, not this one.
+- **We do not operate our own chain.** No SOCIII token, no SOCIII L2. Adding one would commit us to chain partisanship that the audit-substrate thesis doesn't need or benefit from.
+
+The customer-facing impact: a worker authored against this SDK runs the same whether the anchor lands on Polygon, Base, or any future EVM L2. The chain is a deploy-time substrate choice; the SDK contract doesn't change.
+
 ## The Deposition Rule
 
 For every action a worker takes, ask:

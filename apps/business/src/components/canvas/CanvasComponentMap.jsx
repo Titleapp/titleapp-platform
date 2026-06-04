@@ -25,6 +25,7 @@ import TransactionCard from "./TransactionCard";
 import WorkProductCard from "./WorkProductCard";
 import ChartCard from "./ChartCard";
 import ImageCard from "./ImageCard";
+import VideoCard from "./VideoCard";
 import MapCard from "./MapCard";
 import AircraftCard from "./AircraftCard";
 import FlightPlanningCard from "./FlightPlanningCard";
@@ -50,6 +51,7 @@ const CANVAS_COMPONENT_MAP = {
   WorkProductCard,
   ChartCard,
   ImageCard,
+  VideoCard,
   MapCard,
   AircraftCard,
   FlightPlanningCard,
