@@ -4992,6 +4992,12 @@ export default function App() {
   const isWorkerSandbox = /^\/sandbox\/worker\/?$/.test(window.location.pathname);
   const isWorkerBuildLog = /^\/sandbox\/worker\/buildlog\/?$/.test(window.location.pathname);
 
+  // ── /sandbox/video route intercept (S52.25 — VideoCard dogfood) ───
+  // Renders the VideoCard component with a real YouTube URL so Sean can
+  // visually confirm the embed pipe end-to-end without wiring it through
+  // a worker catalog. Quick "see it work" test surface.
+  const isVideoTest = /^\/sandbox\/video\/?$/.test(window.location.pathname);
+
   // ── /marketplace/:slug route intercept ─────────────────────
   // Public marketplace listing page — no auth required
   const marketplaceMatch = window.location.pathname.match(/^\/marketplace\/([a-z0-9-]+)\/?$/);
@@ -5794,6 +5800,41 @@ export default function App() {
       <SandboxErrorBoundary>
         <WorkerSandbox />
       </SandboxErrorBoundary>
+    );
+  }
+
+  // ── VideoCard dogfood test (S52.25) ───────────────────────────
+  if (isVideoTest) {
+    const VideoCard = React.lazy(() => import("./components/canvas/VideoCard"));
+    const SEAN_TEST_VIDEO = "https://youtube.com/shorts/C9iv9zJE6sg?si=8wTVcH7hl-IAr9bE";
+    return (
+      <div style={{ minHeight: "100vh", background: "#F8F9FC", padding: "32px 16px" }}>
+        <div style={{ maxWidth: 480, margin: "0 auto" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>VideoCard dogfood — YouTube Short</h1>
+          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 24, lineHeight: 1.5 }}>
+            Renders the new VideoCard component with a real YouTube Short URL.
+            Confirms URL parsing, youtube-nocookie embed, 9:16 aspect for shorts,
+            and the canvas card shell wrapping.
+          </p>
+          <React.Suspense fallback={<div style={{ padding: 24, color: "#94a3b8" }}>Loading video card…</div>}>
+            <VideoCard
+              resolved={{ _title: "Today's YouTube Short" }}
+              context={{
+                payload: {
+                  videoUrl: SEAN_TEST_VIDEO,
+                  title: "Today's YouTube Short",
+                  description: "Posted to YouTube earlier today. Rendered here via the new VideoCard component, signal card:video, 9:16 aspect for shorts, youtube-nocookie iframe for privacy.",
+                  aspectRatio: "9:16",
+                },
+              }}
+              onDismiss={null}
+            />
+          </React.Suspense>
+          <div style={{ marginTop: 24, padding: "12px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
+            <strong>What you should see:</strong> the YouTube Short renders in a vertical 9:16 frame with a "Open on YouTube ↗" link below. If you see "Loading video card…" forever, the lazy import failed. If you see the unrecognized-URL message, URL parsing is broken.
+          </div>
+        </div>
+      </div>
     );
   }
 
