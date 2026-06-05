@@ -2114,15 +2114,45 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               updatedAt: nowServerTs(),
             }, { merge: true });
 
+            // S52.29f — ChatPanel.jsx reads data.response (line 1320), not
+            // data.message. Ship both so legacy + new clients both work.
             return res.json({
               ok: true,
+              response: aiText,
               message: aiText,
               showSignup: false,
               conversationState: 'creator_authoring',
             });
           } catch (creatorJourneyErr) {
             console.error("[creator-journey intercept] failed:", creatorJourneyErr.message, creatorJourneyErr.stack);
-            // Fall through to chatEngine if AI call fails — better than empty response.
+            // S52.29f — instead of falling through (which lands in chatEngine
+            // and returns nothing for this intent), surface a graceful
+            // surface-specific fallback so Sean never sees "No response
+            // received." on /creators/journey when the AI call fails.
+            const errCode = creatorJourneyErr && creatorJourneyErr.code;
+            const fallbackText = errCode === 'anthropic_timeout'
+              ? "Took too long to think — let's try that again. What's the worker for, in one sentence?"
+              : "Hit a snag generating that response. One more try — tell me what the worker should do.";
+            try {
+              sessionState.creatorAuthoringHistory = sessionState.creatorAuthoringHistory || [];
+              sessionState.creatorAuthoringHistory.push({ role: 'assistant', content: fallbackText });
+              await sessionRef.set({
+                state: sessionState,
+                surface: 'creator-journey',
+                userId: authUser.uid,
+                ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                updatedAt: nowServerTs(),
+              }, { merge: true });
+            } catch (persistErr) {
+              console.warn("[creator-journey intercept] fallback persist failed:", persistErr.message);
+            }
+            return res.json({
+              ok: true,
+              response: fallbackText,
+              message: fallbackText,
+              showSignup: false,
+              conversationState: 'creator_authoring_degraded',
+            });
           }
         }
 
