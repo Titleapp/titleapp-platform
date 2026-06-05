@@ -1,0 +1,182 @@
+{
+  "id": "site_recon_rules_v1",
+  "version": "v1",
+  "domain": "real-estate-data-substrate",
+  "worker_id": "SITE-RECON-001",
+  "spec_ref": "docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md",
+  "required_inputs": [
+    "user_persona",
+    "search_input",
+    "session_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "RULE-01-cost-gate",
+      "label": "cost_gate",
+      "logic": "Every data pull must show the projected cost and receive explicit user confirmation before execution.",
+      "trigger": "any_data_pull",
+      "eval": { "field": "session.cost_projection_confirmed", "operator": "==", "threshold": true },
+      "on_fail": "block_pull, show_cost_modal"
+    },
+    {
+      "id": "RULE-03-audit-anchor-required",
+      "label": "audit_anchor_required",
+      "logic": "Every data pull must produce a pull-receipt anchored to PLAT-008 Audit Trail. No receipt means no pull.",
+      "trigger": "any_data_pull",
+      "eval": { "field": "session.pull_receipt_anchored_to_plat008", "operator": "==", "threshold": true },
+      "on_fail": "rollback_pull, surface_error"
+    },
+    {
+      "id": "RULE-09-no-investment-advice",
+      "label": "no_investment_advice",
+      "logic": "Output text must not state that a parcel is a good investment. Output feasibility signals + named blockers only.",
+      "trigger": "any_output_generation",
+      "eval": { "field": "output.contains_investment_recommendation", "operator": "==", "threshold": false },
+      "on_fail": "strip_recommendation, surface_feasibility_signal_only"
+    },
+    {
+      "id": "RULE-10-cross-worker-timeout",
+      "label": "cross_worker_timeout",
+      "logic": "Cross-worker calls (W-002, PLAT-008, Vault DTC, Land Use AI Attorney, Permit Processors) must time out gracefully and surface a named blocker. No silent failures.",
+      "trigger": "cross_worker_call",
+      "eval": { "field": "call.response_received_within_timeout", "operator": "==", "threshold": true },
+      "on_fail": "surface_named_blocker_CROSS_WORKER_TIMEOUT"
+    },
+    {
+      "id": "RULE-11-input-validation",
+      "label": "input_validation",
+      "logic": "Reject malformed inputs: fictional ZIP codes, malformed APNs, search radii greater than 5 miles, polygon inputs exceeding 10 square miles. Surface a specific input-error message.",
+      "trigger": "parcel_search_input",
+      "eval": { "field": "input.well_formed_and_within_limits", "operator": "==", "threshold": true },
+      "on_fail": "refuse_search, surface_specific_error"
+    },
+    {
+      "id": "RULE-12-fair-housing-pattern",
+      "label": "fair_housing_pattern",
+      "logic": "Refuse searches that suggest redlining, steering, or any pattern correlated with protected-class avoidance. Surface a regulatory note and decline to execute. RAAS Tier 2 Fair Housing module governs detection.",
+      "trigger": "parcel_search_input",
+      "eval": { "field": "input.fair_housing_pattern_detected", "operator": "==", "threshold": false },
+      "on_fail": "refuse_search, surface_fair_housing_regulatory_note"
+    },
+    {
+      "id": "RULE-14-map-required",
+      "label": "map_required",
+      "logic": "Every Opportunities tab render must include a map marker layer alongside the table. No table-only views in v1.",
+      "trigger": "opportunities_tab_render",
+      "eval": { "field": "render.map_marker_layer_present", "operator": "==", "threshold": true },
+      "on_fail": "block_tab_render, surface_render_error"
+    },
+    {
+      "id": "RULE-17-visual-before-verdict",
+      "label": "visual_before_verdict",
+      "logic": "Street View OR satellite imagery must render for the parcel before any feasibility verdict is shown. Operator must have the option to see the parcel before reading the verdict. Non-negotiable because it changes which verdicts a human will trust.",
+      "trigger": "feasibility_verdict_render",
+      "eval": { "field": "render.street_view_or_satellite_rendered_for_parcel", "operator": "==", "threshold": true },
+      "on_fail": "block_verdict_render, pull_imagery_first"
+    },
+    {
+      "id": "RULE-07-apn-retirement",
+      "label": "apn_retirement",
+      "logic": "Parcels with retired APNs must be removed from the ranked opportunity list and surfaced as a named blocker in the Feasibility tab.",
+      "trigger": "apn_status_check",
+      "eval": { "field": "parcel.apn_active", "operator": "==", "threshold": true },
+      "on_fail": "remove_from_ranked_list, surface_blocker_APN_RETIRED"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "RULE-02-persona-lock",
+      "label": "persona_lock",
+      "logic": "Persona must not be silently upgraded. A First-Timer who runs 20 sessions stays a First-Timer until they explicitly self-upgrade in Settings.",
+      "trigger": "persona_upgrade_attempt",
+      "eval": { "field": "upgrade.user_explicit_request", "operator": "==", "threshold": true },
+      "on_fail": "retain_current_persona"
+    },
+    {
+      "id": "RULE-04-green-verdict-conditions",
+      "label": "green_verdict_conditions",
+      "logic": "Green verdict requires: clean title chain, fresh assessor data, fresh AVM, active APN, no coastal commission overlay, no historic district overlay. Any failure caps verdict at Yellow with named blocker.",
+      "trigger": "feasibility_scoring",
+      "eval": { "field": "parcel.green_conditions_all_met", "operator": "==", "threshold": true },
+      "on_fail": "cap_verdict_at_yellow_or_red, attach_named_blocker"
+    },
+    {
+      "id": "RULE-05-stale-assessor-data",
+      "label": "stale_assessor_data",
+      "logic": "Assessor data older than 180 days (6 months) triggers a staleness warning. Verdict capped at Yellow. Parcel still appears in ranked list.",
+      "trigger": "assessor_data_age_check",
+      "eval": { "field": "parcel.assessor_data_age_days", "operator": "<=", "threshold": 180 },
+      "on_fail": "staleness_warning, max_verdict_yellow"
+    },
+    {
+      "id": "RULE-06-owner-mismatch-flag",
+      "label": "owner_mismatch_flag",
+      "logic": "Owner-of-record mismatch flags the parcel Yellow with OWNER_MISMATCH blocker. Parcel remains in the ranked list.",
+      "trigger": "owner_of_record_check",
+      "eval": { "field": "parcel.owner_record_consistent", "operator": "==", "threshold": true },
+      "on_fail": "cap_verdict_at_yellow, blocker_OWNER_MISMATCH, retain_in_list"
+    },
+    {
+      "id": "RULE-08-list-cap",
+      "label": "list_cap",
+      "logic": "Ranked list capped at 50 parcels per session. Default is 10. User may expand up to 50 but must confirm cost projection before expansion.",
+      "trigger": "parcel_list_generation",
+      "eval": { "field": "list.parcel_count", "operator": "<=", "threshold": 50 },
+      "on_fail": "truncate_at_50, confirm_expansion_cost"
+    },
+    {
+      "id": "RULE-13-avm-freshness",
+      "label": "avm_freshness",
+      "logic": "AVM data older than 30 days triggers a staleness warning. Verdict capped at Yellow. Separate threshold from assessor data (RULE-05).",
+      "trigger": "avm_age_check",
+      "eval": { "field": "parcel.avm_age_days", "operator": "<=", "threshold": 30 },
+      "on_fail": "staleness_warning, max_verdict_yellow"
+    },
+    {
+      "id": "RULE-15-youtube-discovery-cap",
+      "label": "youtube_discovery_cap",
+      "logic": "YouTube video discovery returns at most 3 results per parcel. Each result must meet filter: duration > 60s, view count > 100, uploaded within last 36 months.",
+      "trigger": "youtube_search",
+      "eval": { "field": "youtube.results_meet_cap_and_filter", "operator": "==", "threshold": true },
+      "on_fail": "truncate_to_3, drop_results_below_filter"
+    },
+    {
+      "id": "RULE-16-view-premium-detection",
+      "label": "view_premium_detection",
+      "logic": "When same-floorplan units in the same building/stack show price variance greater than 15%, render the unit stack with per-floor view imagery and attach VIEW_PREMIUM_SUSPECTED caveat. Never silently treat divergent comps as equivalent. The ATTOM same-floorplan-different-floor anomaly is explained by view, not by data noise.",
+      "trigger": "comparable_sales_analysis",
+      "eval": { "field": "comp.same_floorplan_price_variance_percent", "operator": "<=", "threshold": 15 },
+      "on_fail": "attach_caveat_VIEW_PREMIUM_SUSPECTED, render_unit_stack_imagery"
+    }
+  ],
+  "telemetry": {
+    "track": [
+      "pull_receipts_written_to_plat008",
+      "cost_gate_confirmations",
+      "cost_gate_rejections",
+      "feasibility_verdict_distribution",
+      "persona_upgrade_attempts_blocked",
+      "cross_worker_timeouts",
+      "fair_housing_refusals",
+      "view_premium_caveats_attached",
+      "session_cost_compression_ratio_vs_pursuit_fund"
+    ],
+    "session_kpis": [
+      "parcels_reviewed",
+      "green_count",
+      "yellow_count",
+      "red_count",
+      "total_data_spend_usd",
+      "attom_cost_usd",
+      "sociii_markup_usd",
+      "pursuit_fund_savings_usd",
+      "cost_compression_ratio"
+    ]
+  },
+  "compose_with": [
+    "fair_housing_act_v0",
+    "deposition_rule_anchor_classification_v0",
+    "attom_api_usage_terms_v0",
+    "ccpa_data_privacy_v0"
+  ]
+}
