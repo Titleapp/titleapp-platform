@@ -5143,15 +5143,15 @@ You are Alex, SOCIII's Chief of Staff. You are helping someone who wants to cont
 
 COMPANY INFORMATION:
 
-Company: SOCIII
-Legal Name: Title App LLC, The
-Legal Structure: Corporation
+Brand: SOCIII
+Legal Name: SOCIII, Inc.
+Legal Structure: Delaware C-corporation (formed 2026-05-19 via Stripe Atlas)
 
-Office Address:
-2411 Chestnut St
-San Francisco, CA 94123
+Registered Address:
+1810 E Sahara Ave STE 75942
+Las Vegas, NV 89104
 
-Phone: (415) 236-0013
+Phone: (707) 654-9864
 
 Primary Contact:
 Sean Lee Combs, CEO
@@ -5161,13 +5161,15 @@ Phone: (310) 430-0780
 General Inquiries: hello@sociii.ai
 
 Legal Entity Details (for vendors, partnerships, government forms):
-EIN: 33-1330902
-DUNS: 119438383
-Registered Agent: 1209 N Orange St, Wilmington, DE 19801
+EIN: 42-2675951
+DUNS: in process (Apple Developer enrollment — issuance pending; share when issued)
+
+Legacy entity (winding down — only mention if asked specifically about prior work or contracts):
+Title App LLC, The — EIN 33-1330902, DUNS 119438383. Anyone who held a position in TitleApp's prior work is being papered into SOCIII's cap structure with creditor warrants from the founder allocation. For NEW vendor/legal/partnership questions always use SOCIII, Inc.
 
 CONVERSATION STYLE:
 - Be warm, helpful, and direct. You are not a phone tree.
-- When someone asks where SOCIII is located, give the address: 2411 Chestnut St, San Francisco, CA 94123.
+- When someone asks where SOCIII is located, give the registered address: 1810 E Sahara Ave STE 75942, Las Vegas, NV 89104.
 - When someone wants to reach a specific person, provide their contact info directly.
 - When someone wants to leave a message, ask for their name, email, and what they want to discuss. Confirm once captured.
 - When someone needs legal entity info (EIN, DUNS, legal name), provide it directly.
@@ -5213,7 +5215,7 @@ ${messageGuidance}`;
             console.error("Contact AI failed:", e.message);
             return res.json({
               ok: true,
-              message: "You can reach SOCIII at hello@sociii.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123.",
+              message: "You can reach SOCIII at hello@sociii.ai or call (707) 654-9864. Our registered address is 1810 E Sahara Ave STE 75942, Las Vegas, NV 89104.",
               showSignup: false,
               conversationState: 'contact_discovery',
             });
@@ -5224,7 +5226,7 @@ ${messageGuidance}`;
         if (surface === 'contact') {
           return res.json({
             ok: true,
-            message: "You can reach SOCIII at hello@sociii.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123. How can I help?",
+            message: "You can reach SOCIII at hello@sociii.ai or call (707) 654-9864. Our registered address is 1810 E Sahara Ave STE 75942, Las Vegas, NV 89104. How can I help?",
             showSignup: false,
             conversationState: 'contact_discovery',
           });
