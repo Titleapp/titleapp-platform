@@ -40,22 +40,40 @@ async function getToken() {
 async function fetchCreatorProfile() {
   const token = await getToken();
   if (!token) return { status: "none", profile: null };
+
+  // S52.28m — broaden the "active creator" signal beyond profileComplete.
+  // Sean is actively building workers but hasn't filled bio/title yet. The
+  // single profile check was too strict. Treat ANY of these as creator
+  // intent: (1) localStorage flag set when user hit the creator journey
+  // page once (S52.28g auto-completion marker), (2) profile has ANY field,
+  // (3) profileComplete is true. This way the sidebar reflects intent, not
+  // just polish.
+  const journeyTouched = localStorage.getItem("ta_journey_autocomplete_signin") === "true";
+  const manualToggle = localStorage.getItem("IS_CREATOR") === "true";
+
   try {
     const res = await fetch(`${API_BASE}/api?path=/v1/creator:profile`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    if (!data.ok || !data.profile) {
-      return { status: "none", profile: null };
+    const p = (data && data.ok && data.profile) ? data.profile : null;
+
+    if (p?.profileComplete || manualToggle) {
+      return { status: "active", profile: p };
     }
-    const p = data.profile;
-    const status = p.profileComplete
-      ? "active"
-      : (p.title || p.bio || p.yearsExperience || p.credentials || p.linkedIn)
-        ? "in_progress"
-        : "none";
-    return { status, profile: p };
+    if (p && (p.title || p.bio || p.yearsExperience || p.credentials || p.linkedIn)) {
+      return { status: "active", profile: p };
+    }
+    if (journeyTouched) {
+      // User has been on the journey at least once — they're actively
+      // exploring being a creator, so show the multi-item view.
+      return { status: "in_progress", profile: p };
+    }
+    return { status: "none", profile: p };
   } catch (_) {
+    if (journeyTouched || manualToggle) {
+      return { status: "in_progress", profile: null };
+    }
     return { status: "none", profile: null };
   }
 }
