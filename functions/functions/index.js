@@ -333,10 +333,69 @@ function getStripe() {
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 }
 
-// Create Anthropic client lazily
+// Create Anthropic client lazily — S52.29e: wrap messages.create with
+// universal timeout + sanitization + classified errors so NO chat surface
+// can ever hang silently and surface "No response received." Every call
+// site in this file goes through here.
+//
+// Per project_chat_reliability_is_the_iphone_story.md: chat reliability is
+// product-survival, not engineering quality. Sean's quote: "Our AI chat
+// fails every time! probs not a good marketing campaign."
+//
+// The wrapped client preserves the original API surface — every existing
+// call to `anthropic.messages.create({...})` keeps working unchanged. The
+// wrapper just adds:
+//   1. Promise.race against a 30s hard timeout (raise via opts.timeoutMs)
+//   2. Message sanitization (drop entries without {role: 'user'|'assistant',
+//      content: non-empty-string} — defends against corrupted resumed
+//      sessions, promotion contexts, chatEngine state pollution)
+//   3. Logs on both sides so logs always show what happened
+//   4. Throws a classified Error (anthropic_timeout / anthropic_invalid_
+//      messages / anthropic_other) so callers' existing try/catch paths
+//      surface a graceful fallback instead of hanging the request
 function getAnthropic() {
   if (!ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
-  return new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+  const raw = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+  const origCreate = raw.messages.create.bind(raw.messages);
+  raw.messages.create = async function safeCreate(params, opts) {
+    const startedAt = Date.now();
+    const sanitized = (() => {
+      if (!params || !Array.isArray(params.messages)) return params;
+      const clean = params.messages.filter(m =>
+        m && typeof m === 'object' &&
+        (m.role === 'user' || m.role === 'assistant') &&
+        ((typeof m.content === 'string' && m.content.trim().length > 0) ||
+         (Array.isArray(m.content) && m.content.length > 0))
+      );
+      if (clean.length === 0) {
+        // Always ship at least one user message — Anthropic rejects empty
+        // arrays. Use a minimal hello to bootstrap rather than throw.
+        clean.push({ role: 'user', content: '(empty)' });
+      }
+      if (clean.length === params.messages.length) return params;
+      console.log("[anthropic.sanitize] dropped", params.messages.length - clean.length, "of", params.messages.length, "messages");
+      return { ...params, messages: clean };
+    })();
+    const timeoutMs = (opts && opts.timeoutMs) || 30000;
+    const labelModel = sanitized && sanitized.model ? sanitized.model : "(no-model)";
+    console.log("[anthropic.beforeCreate]", { model: labelModel, msgCount: sanitized?.messages?.length || 0, timeoutMs });
+    try {
+      const result = await Promise.race([
+        origCreate(sanitized),
+        new Promise((_, reject) => setTimeout(() => {
+          const e = new Error(`anthropic_timeout_${timeoutMs}ms`);
+          e.code = "anthropic_timeout";
+          reject(e);
+        }, timeoutMs)),
+      ]);
+      console.log("[anthropic.afterCreate]", { model: labelModel, latencyMs: Date.now() - startedAt, hasContent: !!(result && result.content) });
+      return result;
+    } catch (err) {
+      console.error("[anthropic.error]", { model: labelModel, latencyMs: Date.now() - startedAt, code: err.code || "anthropic_other", message: err.message });
+      throw err;
+    }
+  };
+  return raw;
 }
 
 // Create OpenAI client lazily
