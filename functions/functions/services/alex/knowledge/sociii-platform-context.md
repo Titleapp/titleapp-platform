@@ -1,9 +1,78 @@
 # SOCIII Platform Context — Alex Knowledge File
 
-**Last updated:** 2026-05-30 (Saturday session)
-**Wiring status:** Not yet auto-loaded into prompt assembly. The digest version is embedded in `prompts/core.js` under `CURRENT PLATFORM STATE`. Full integration is task CODEX 51.15 (Alex IR knowledge + HR handoff).
+**Last updated:** 2026-06-05 (S52.28 follow-up refresh — task #406/#411)
+**Wiring status:** Digest embedded in `prompts/core.js` under `STRATEGY LOCK` + `CURRENT PLATFORM STATE`. Every Alex surface inherits this via `promptBuilder.assemblePrompt()`. Per-vertical overlays still live in `prompts/surfaces.js`.
 
 This file is the canonical "what's true today" reference for Alex. When a user asks about platform state, current workers, recent decisions, or strategic direction, Alex's answer must reconcile with this doc.
+
+---
+
+## STRATEGY LOCK (2026-06-02 — supersedes all prior framings)
+
+SOCIII is **the audit-anchored regulatory verification layer for the largest US asset class** — $85T+ real property — distributed as a **free supplement**. The forcing-function wedge is **State Attorneys General**, not consumers, not direct enterprise sales. Distribution channel is **Bloomberg-grade financial media**, not Wikileaks-style activist drops. **Sublette County, Wyoming** is pilot #1 (small jurisdiction, friendly recorder, real failure modes already documented).
+
+This lock supersedes earlier "RE-vertical broker tool" and "Zillow replacement" framings. All product, pitch, and partnership decisions derive from this. Codified in CODEX S52.20 (strategy), S52.21 (Parcel Atlas), S52.22 (legal worker family).
+
+## Legal Worker Family (S52.22)
+
+Six workers, all spec'd:
+- **PARA-001 (Paralegal)** — LIVE
+- **PAT-001 (Patent Worker)** — LIVE
+- **LIT-001 (Litigation)** — DRAFT, pending build
+- **DEF-001 (Defense)** — DRAFT, pending build
+- **DD-001 (Due Diligence)** — DRAFT, pending build
+- **CLO-001 (Closing)** — DRAFT, pending build
+
+Family is the canonical reference for legal-vertical authoring patterns.
+
+## Parcel Atlas (S52.21) + Sublette WY Pilot
+
+**ESC-013 Parcel Atlas** pre-populates the DTC pipeline for a county's recorded parcels. Combines with the **Title Abstract worker (S52.20)** as the operational stack for the real-property substrate thesis. Sublette WY is pilot #1.
+
+## Chain-Agnostic Positioning (UNIVERSAL RULE)
+
+SOCIII is an **audit substrate**, NOT a crypto company.
+- **Production:** Polygon (today)
+- **Recommended class:** L2 EVM (Polygon / Base / Optimism / Arbitrum)
+- **NEVER:** Solana ("at present writing — contract structure"), our own chain, L1 (gas)
+
+Chain is deploy-time substrate, never the headline. Press / decks / landing never lead with chain. When asked directly: *"we're not a crypto company — we recommend and build on L2 EVM chains, currently Polygon."*
+
+## Deposition Rule (placement rule)
+
+The Deposition Rule (four forensic lenses + individual vs. batched anchor classification) is SOCIII's corporate sales pitch. It **stays in `/docs/audit-trail`** and the SDK contract — never in brochure copy, press, landing, or pitch decks. Marketing references outcomes ("evidence packages by lens," "survives a subpoena three years later") and LINKS to the dev doc. Tethered to schema = credibility. Pulled out = dilution.
+
+## "OF for Smart People" Creator Thesis
+
+Strategic narrative question for ALL creator onboarding, marketing, investor framing:
+
+> "What do you fucking hate about your job that's obvious to you and invisible to your manager?"
+
+Asked of any senior practitioner in any regulated profession, the answer comes immediately. That answer IS their worker spec. Lead every creator interview, onboarding flow, and pitch problem-slide with this question.
+
+## Audit Trail (S52.23 — opt-in surface live)
+
+**PLAT-008 Audit Trail Worker** is stubbed and live. Three endpoints + Settings card + spec doc deployed. Test Anchor button fires a real Crossmint mint if env is set; falls back to ledger-only otherwise. Production gating questions (hook location, "meaningful" definition, composition hash format, data fees) PENDING Sean review. Showcase-tier work (canvas renderers, featured slot, demo page) tracked as task #403.
+
+## Creator Model (Substack Pattern — 2026-05-31)
+
+Visual no-code sandbox is dead. Creators use **Claude Code directly** + fork the open-source repo + a **sponsored Anthropic Team seat**. Three tiers documented in business model. Plus a **Fellow exception** (max 7, Ruthie is first).
+
+When a user asks about authoring a worker, route them to:
+- `/creators/journey` (the canonical onboarding surface), OR
+- The authoring chat surface (middle-panel chat there is authoring-mode by default post-S52.28)
+
+NOT to a "sandbox builder."
+
+## Bug #407 Closed (S52.28)
+
+The magic-link template firing as auto-reply on any authed user with a stale guest-flow state is **FIXED platform-wide** via defensive guest-state reset in `functions/index.js`. If Alex ever replies "Still waiting? Check your spam folder…" to a logged-in user mid-conversation, that is a regression — flag it.
+
+## Language Rules
+
+- Use **"Sean Lee Combs"** (NOT "Sean Combs") in ALL external/customer-facing/marketing/legal/patent/press/public-bio copy. Internal/code/commits OK with "Sean." The middle name disambiguates from Sean "Diddy" Combs.
+- Use **"logbook entry"** or **"audit anchor"** in user-facing surfaces — NEVER "NFT," "mint," "token," or "crypto" vocabulary even when the underlying mechanism uses a chain.
+- **NO personal guarantees on company loans, ever.** Corporate borrower only. Outreach must never imply Sean personally covers if company can't.
 
 ---
 
