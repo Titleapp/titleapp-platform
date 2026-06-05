@@ -1951,6 +1951,15 @@ exports.api = onRequest(
           }
         }
 
+        // ── DIAG S52.28k — trace where execution lands after session resume ──
+        console.log("[diag.afterResume]", {
+          step: sessionState?.step || "(none)",
+          hasContext: !!body?.context,
+          ctxCurrentSection: body?.context?.currentSection || "(missing)",
+          hasUserId: !!sessionState?.userId,
+          authUid: authUser?.uid?.slice(0, 8) || "(no-auth)",
+        });
+
         // ── Creator authoring intercept (bug fix 2026-06-04, hoisted 2026-06-05) ──
         // /creators/journey middle-panel chat: short-circuit chatEngine and
         // call the AI with an authoring system prompt. The 'authenticated'
@@ -1965,9 +1974,18 @@ exports.api = onRequest(
         // branch at the `if (body.selectedWorker && ...)` check eats the
         // request and the authoring intercept never runs.
         const isCreatorJourney = !!(body && body.context && body.context.currentSection === 'creator-journey');
+        console.log("[diag.interceptGate]", {
+          isCreatorJourney,
+          hasAuth: !!authUser,
+          hasInput: !!userInput,
+          action,
+          willFire: isCreatorJourney && !!authUser && !!userInput && !action,
+        });
         if (isCreatorJourney && authUser && userInput && !action) {
+          console.log("[diag.interceptFiring]");
           try {
             const anthropic = getAnthropic();
+            console.log("[diag.interceptGotAnthropic]");
             if (!Array.isArray(sessionState.creatorAuthoringHistory)) {
               sessionState.creatorAuthoringHistory = [];
             }
@@ -2025,7 +2043,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               conversationState: 'creator_authoring',
             });
           } catch (creatorJourneyErr) {
-            console.error("[creator-journey intercept] failed:", creatorJourneyErr.message);
+            console.error("[creator-journey intercept] failed:", creatorJourneyErr.message, creatorJourneyErr.stack);
             // Fall through to chatEngine if AI call fails — better than empty response.
           }
         }
