@@ -38,6 +38,7 @@
 "use strict";
 
 const FRONTDOOR = process.env.FRONTDOOR || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const AUTH_BEARER = process.env.AUTH_BEARER || ""; // optional — required for auth-surface canaries
 
 function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -46,16 +47,23 @@ function uuid() {
   });
 }
 
-async function askAlex({ surface, prompt, sessionId }) {
+async function askAlex({ surface, prompt, sessionId, authed, currentSection }) {
   const url = `${FRONTDOOR}/api?path=/v1/chat:message`;
+  const headers = { "Content-Type": "application/json" };
+  if (authed && AUTH_BEARER) {
+    headers.Authorization = `Bearer ${AUTH_BEARER}`;
+  }
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       sessionId: sessionId || uuid(),
       userInput: prompt,
       surface,
-      context: { source: "verify-alex-cascade-script" },
+      context: {
+        source: "verify-alex-cascade-script",
+        currentSection: currentSection || "dashboard",
+      },
     }),
   });
   const json = await res.json().catch(() => ({ ok: false, message: "(non-JSON response)" }));
@@ -127,21 +135,87 @@ const CANARIES = [
     mustInclude: ["sociii, inc."],
     mustNotInclude: ["titleapp llc is the current entity"],
   },
+  // ──────────────────────────────────────────────────────────────
+  // AUTHENTICATED surfaces — only run if AUTH_BEARER is provided.
+  // These hit the business workspace COS Alex, the creator-journey
+  // middle panel intercept, and the worker-chat path (Alex-as-COS
+  // inside an active worker). They exercise core.js (assemblePrompt)
+  // AND the sovereign prepend in the creator-journey intercept.
+  // ──────────────────────────────────────────────────────────────
+  {
+    surface: "business",
+    authed: true,
+    currentSection: "dashboard",
+    label: "[AUTH] COS Alex /dashboard — strategy lock",
+    prompt: "what is sociii's actual positioning?",
+    mustInclude: ["audit"],
+    mustNotInclude: ["zillow replacement", "real estate broker tool"],
+  },
+  {
+    surface: "business",
+    authed: true,
+    currentSection: "dashboard",
+    label: "[AUTH] COS Alex /dashboard — language rule",
+    prompt: "describe the AI agents",
+    mustInclude: [],
+    mustNotInclude: ["zillow"],
+  },
+  {
+    surface: "business",
+    authed: true,
+    currentSection: "creator-journey",
+    label: "[AUTH] creator-journey middle panel — Intent Spec opening",
+    prompt: "I have an idea for a worker. Can you help me develop the concept?",
+    mustInclude: ["one sentence"],
+    mustNotInclude: ["spam folder", "magic link", "still waiting"],
+  },
+  {
+    surface: "business",
+    authed: true,
+    currentSection: "creator-journey",
+    label: "[AUTH] creator-journey — bug #407 regression check",
+    prompt: "yes, ready",
+    mustInclude: [],
+    mustNotInclude: ["spam folder", "check your spam", "still waiting", "resend the link"],
+  },
+  {
+    surface: "business",
+    authed: true,
+    currentSection: "platform-accounting",
+    label: "[AUTH] worker chat — Accounting / strategy aware",
+    prompt: "before we look at numbers, remind me what sociii actually does",
+    mustInclude: [],
+    mustNotInclude: ["zillow replacement", "real estate broker tool"],
+  },
 ];
 
 async function main() {
   console.log(`verify-alex-cascade — Frontdoor: ${FRONTDOOR}`);
-  console.log(`Running ${CANARIES.length} canaries…\n`);
+  const hasAuth = !!AUTH_BEARER;
+  const authCanaries = CANARIES.filter(c => c.authed);
+  if (authCanaries.length && !hasAuth) {
+    console.log(`AUTH_BEARER not set — skipping ${authCanaries.length} auth-surface canaries.`);
+    console.log(`To run those: AUTH_BEARER=<id-token> node scripts/verify-alex-cascade.js`);
+  } else if (hasAuth) {
+    console.log(`AUTH_BEARER present — running auth-surface canaries too.`);
+  }
+  const active = CANARIES.filter(c => !c.authed || hasAuth);
+  console.log(`Running ${active.length} canaries…\n`);
 
   let pass = 0;
   let fail = 0;
   const failures = [];
 
-  for (const canary of CANARIES) {
-    process.stdout.write(`[${canary.surface}] ${canary.label}\n   q: "${canary.prompt}"\n   `);
+  for (const canary of active) {
+    process.stdout.write(`[${canary.surface}${canary.authed ? "/auth" : ""}] ${canary.label}\n   q: "${canary.prompt}"\n   `);
     let reply = "";
     try {
-      const json = await askAlex({ surface: canary.surface, prompt: canary.prompt });
+      const json = await askAlex({
+        surface: canary.surface,
+        prompt: canary.prompt,
+        authed: !!canary.authed,
+        currentSection: canary.currentSection,
+      });
       reply = json.message || json.response || "(no reply)";
     } catch (e) {
       reply = `(error: ${e.message})`;
