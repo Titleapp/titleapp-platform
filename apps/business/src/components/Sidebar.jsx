@@ -4,6 +4,7 @@ import { collection, getDocs, getFirestore, query, where, limit } from "firebase
 import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
 import { getWorkerColor } from "../utils/workerColors";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
+import useCreatorStatus from "../hooks/useCreatorStatus";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
@@ -1140,6 +1141,9 @@ export default function Sidebar({
   const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
   const [gamesCollapsed, setGamesCollapsed] = useState(true);
   const workerCtx = useWorkerState();
+  // S52.28d — state-aware creator section (task #410). Hook is cached at
+  // module scope; only the first Sidebar mount triggers the network fetch.
+  const creatorStatus = useCreatorStatus();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
 
@@ -1736,16 +1740,61 @@ export default function Sidebar({
             </button>
             {!creatorCollapsed && (
               <nav className="nav">
-                <button
-                  className="navItem"
-                  onClick={() => { window.location.href = "/creators/journey"; }}
-                  style={{
-                    width: "100%", textAlign: "left", cursor: "pointer",
-                    fontWeight: 500, paddingLeft: 20, fontSize: 13,
-                  }}
-                >
-                  Become a Creator
-                </button>
+                {creatorStatus.status === "none" ? (
+                  <button
+                    className="navItem"
+                    onClick={() => { window.location.href = "/creators/journey"; }}
+                    style={{
+                      width: "100%", textAlign: "left", cursor: "pointer",
+                      fontWeight: 500, paddingLeft: 20, fontSize: 13,
+                    }}
+                  >
+                    Become a Creator
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="navItem"
+                      onClick={() => { window.location.href = "/creators/journey"; }}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        paddingLeft: 20, fontSize: 13,
+                      }}
+                    >
+                      Journey{creatorStatus.status === "in_progress" ? " (continue)" : ""}
+                    </button>
+                    <button
+                      className="navItem"
+                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        paddingLeft: 20, fontSize: 13,
+                      }}
+                    >
+                      My Workers
+                    </button>
+                    <button
+                      className="navItem"
+                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        paddingLeft: 20, fontSize: 13,
+                      }}
+                    >
+                      My Creator Profile
+                    </button>
+                    <button
+                      className="navItem"
+                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        paddingLeft: 20, fontSize: 13,
+                      }}
+                    >
+                      Earnings
+                    </button>
+                  </>
+                )}
               </nav>
             )}
           </div>
