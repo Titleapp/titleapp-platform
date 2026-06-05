@@ -117,6 +117,11 @@ function getDocPipeline() {
 
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
+// S52.28c — sovereign strategy context prepended to every hand-rolled surface
+// prompt in this file (investor, discovery, sandbox, developer, contact,
+// authoring intercept). Prompts that flow through assemblePrompt() already
+// carry the full core.js context; this digest covers the bypass paths.
+const { getSovereignContext } = require("./services/alex/prompts/sovereign");
 
 // 50.27 — Voice-mode + canvas-snapshot + RAAS-isolation prompt augmentation.
 // Used by both worker-direct chat path and Alex chat path. Keeps both code
@@ -3628,7 +3633,9 @@ IDENTITY RULES:
             authGuidance = '\nYou know this investor\'s name and they are engaged. If the conversation is going well, naturally suggest data room access: "By the way, want me to get you into the data room? Just takes your email and you will have the deck, business plan, and SAFE terms in front of you while we talk." Do NOT force it if they are asking an unrelated question. Just weave it in when there is a natural pause.';
           }
 
-          const investSystemPrompt = `You are Alex, SOCIII's investor relations AI. You are having a conversation with a potential investor.
+          const investSystemPrompt = `${getSovereignContext()}
+
+You are Alex, SOCIII's investor relations AI. You are having a conversation with a potential investor.
 
 IDENTITY:
 SOCIII is the Digital Worker platform. The underlying architecture is called RAAS (Rules + AI-as-a-Service). When talking to investors, use "Digital Worker" as the primary term. You may explain RAAS as the technical architecture name if asked about the technology: "SOCIII is the Digital Worker platform. The underlying architecture is called RAAS — Rules plus AI-as-a-Service. Every Digital Worker operates within defined rules with a complete audit trail."
@@ -3836,7 +3843,9 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
             phaseGuidance += '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here. Do NOT suggest signup.';
           }
 
-          const discoverySystemPrompt = `You are the SOCIII welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
+          const discoverySystemPrompt = `${getSovereignContext()}
+
+You are the SOCIII welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
 
 CRITICAL RULES:
 - For the FIRST 4-6 exchanges, just have a conversation. Learn about them. Be curious. Be human.
@@ -4393,7 +4402,9 @@ After the 4th answer, say "Interactions locked in" and stop.
           } else if (resolvedPath === 'worker') {
             creatorPathCtx = '\nCREATOR MODE: The creator is building a Digital Worker.\n';
           }
-          const sandboxSystemPrompt = `You are Alex, Chief of Staff at SOCIII. You help people build and publish Digital Workers and games -- no coding needed. You are inside the Creator Sandbox.
+          const sandboxSystemPrompt = `${getSovereignContext()}
+
+You are Alex, Chief of Staff at SOCIII. You help people build and publish Digital Workers and games -- no coding needed. You are inside the Creator Sandbox.
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
@@ -4462,7 +4473,9 @@ NEVER:
 - Say "it might be loading" or "give it a moment" about the canvas — if a build is running, say so affirmatively; otherwise keep moving the conversation forward.
 ${nameGuidance}${authGuidance}`;
 
-          const devSystemPrompt = `You are Alex, SOCIII's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
+          const devSystemPrompt = `${getSovereignContext()}
+
+You are Alex, SOCIII's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
 
 RULE #1 -- BE BRIEF:
 - 2-3 sentences per response. That's it.
@@ -5124,7 +5137,9 @@ CONVERSATION STYLE:
             }
           }
 
-          const contactSystemPrompt = `You are Alex, SOCIII's Chief of Staff. You are helping someone who wants to contact or learn about SOCIII.
+          const contactSystemPrompt = `${getSovereignContext()}
+
+You are Alex, SOCIII's Chief of Staff. You are helping someone who wants to contact or learn about SOCIII.
 
 COMPANY INFORMATION:
 
@@ -5270,7 +5285,9 @@ ${messageGuidance}`;
               sessionState.creatorAuthoringHistory = sessionState.creatorAuthoringHistory.slice(-30);
             }
 
-            const authoringSystemPrompt = `You are Alex, SOCIII's authoring partner. The user is on /creators/journey and wants to design a Digital Worker.
+            const authoringSystemPrompt = `${getSovereignContext()}
+
+You are Alex, SOCIII's authoring partner. The user is on /creators/journey and wants to design a Digital Worker.
 
 Your job: walk them through the Intent Spec — five rounds, one question at a time.
 
