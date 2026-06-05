@@ -5999,8 +5999,12 @@ export default function App() {
   }
 
   // ── Meet Alex: logged-in user clicking Sign In → redirect to dashboard ────
-  if (isMeetAlex && token && !meetAlexLock) {
-    const maParams = new URLSearchParams(window.location.search);
+  // Exception: ?intent=create-worker keeps signed-in users on the MeetAlex
+  // shell so the Creator Journey "Talk to Alex" handoff lands in an authoring
+  // chat surface, not the Vault home.
+  const maParams = new URLSearchParams(window.location.search);
+  const isCreatorAuthoring = isMeetAlex && maParams.get("intent") === "create-worker";
+  if (isMeetAlex && token && !meetAlexLock && !isCreatorAuthoring) {
     if (maParams.get("action") === "signin") {
       window.history.replaceState({}, "", "/");
     }
@@ -6012,7 +6016,8 @@ export default function App() {
   // (meetAlexLock). Once lock releases and token exists, fall through to workspace.
   // S52.7 — also handles /start/<campaign> paths via the same guest shell;
   // MeetAlex reads campaign context off the URL.
-  if ((isMeetAlex || isStartCampaign) && (!token || meetAlexLock)) {
+  // Creator-authoring intent uses the same shell for signed-in users too.
+  if ((isMeetAlex || isStartCampaign) && (!token || meetAlexLock || isCreatorAuthoring)) {
     const guestVertical = new URLSearchParams(window.location.search).get("vertical") || "";
     const guestId = sessionStorage.getItem("ta_guest_sid") || Math.random().toString(36).slice(2) + Date.now().toString(36);
     if (!sessionStorage.getItem("ta_guest_sid")) sessionStorage.setItem("ta_guest_sid", guestId);

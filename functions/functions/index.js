@@ -1951,6 +1951,21 @@ exports.api = onRequest(
           sessionState.userId = authUser.uid;
         }
 
+        // Bug #407 — defensive reset: if user is authenticated but session was
+        // resumed from a guest-flow terminal state (signup/signin state machine
+        // in chatEngine.js), reset it. Otherwise the magic-link reply ("Still
+        // waiting? Check your spam folder...") fires on every workspace message.
+        const GUEST_FLOW_STEPS = new Set([
+          'magic_link_sent', 'creating_account', 'signin_email',
+          'collect_name', 'collect_email',
+          'collect_company_name', 'collect_company_description',
+          'choose_audience',
+        ]);
+        if (authUser && sessionState.step && GUEST_FLOW_STEPS.has(sessionState.step)) {
+          console.log("[chatEngine.tick.guestStateReset]", { uid: authUser.uid.slice(0, 8), prevStep: sessionState.step });
+          sessionState.step = 'authenticated';
+        }
+
         // Check for promoted guest session context (35.3-T2)
         if (sessionSnap.exists && !sessionState.promotionLoaded) {
           const snapData = typeof sessionSnap.data === "function" ? sessionSnap.data() : sessionSnap;
@@ -5235,6 +5250,76 @@ ${messageGuidance}`;
             showSignup: false,
             conversationState: 'invest_discovery',
           });
+        }
+
+        // ── Creator authoring intercept (bug fix 2026-06-04) ──
+        // /creators/journey middle-panel chat: short-circuit chatEngine and
+        // call the AI with an authoring system prompt. The 'authenticated'
+        // case in chatEngine is keyword-routed and has no path for "I want
+        // to build a worker" intent — returns nothing, frontend shows
+        // "No response received." This handler keeps Alex in authoring mode.
+        const isCreatorJourney = !!(body && body.context && body.context.currentSection === 'creator-journey');
+        if (isCreatorJourney && authUser && userInput && !action) {
+          try {
+            const anthropic = getAnthropic();
+            if (!Array.isArray(sessionState.creatorAuthoringHistory)) {
+              sessionState.creatorAuthoringHistory = [];
+            }
+            sessionState.creatorAuthoringHistory.push({ role: 'user', content: userInput });
+            if (sessionState.creatorAuthoringHistory.length > 30) {
+              sessionState.creatorAuthoringHistory = sessionState.creatorAuthoringHistory.slice(-30);
+            }
+
+            const authoringSystemPrompt = `You are Alex, SOCIII's authoring partner. The user is on /creators/journey and wants to design a Digital Worker.
+
+Your job: walk them through the Intent Spec — five rounds, one question at a time.
+
+Round 1: What is the worker for? (one sentence — what does it do that no other worker on the platform does?)
+Round 2: What does success look like? (3-5 measurable outcomes the worker produces)
+Round 3: Who is the user? (persona + the specific situation that brings them to the worker)
+Round 4: What can go wrong? (failure modes — what should the worker refuse, escalate, or flag?)
+Round 5: What other workers does it depend on? (integration map — which platform workers feed it data or receive its output?)
+
+After Round 5: summarize the spec back to them in 5 bullet points. Ask if anything needs revision. Then propose a worker ID (slug-case, e.g. dispatch-medevac-001) and a one-paragraph elevator pitch.
+
+STYLE:
+- Plain text only. No markdown headers, no bullet lists in your replies unless explicitly summarizing the spec at the end.
+- One question per turn. Short. Direct.
+- If the user gives a vague answer, push back gently with a specific follow-up. Don't accept first drafts.
+- Acknowledge what they said in one phrase before asking the next thing.
+- Never reset the conversation. Never offer a magic link. Never ask for their email.
+- You are NOT the Chief of Staff right now. You are the worker-authoring partner. Stay in this role.
+
+If they ask off-topic questions (about SOCIII, billing, other workers), give a one-line answer and steer back to where you left off in the Intent Spec.`;
+
+            const aiResp = await anthropic.messages.create({
+              model: 'claude-sonnet-4-5-20250929',
+              max_tokens: 1024,
+              system: authoringSystemPrompt,
+              messages: sessionState.creatorAuthoringHistory,
+            });
+            const aiText = (aiResp.content[0] && aiResp.content[0].text) || "Tell me about the worker. What does it do that no other worker on the platform does?";
+
+            sessionState.creatorAuthoringHistory.push({ role: 'assistant', content: aiText });
+
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'creator-journey',
+              userId: authUser.uid,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            return res.json({
+              ok: true,
+              message: aiText,
+              showSignup: false,
+              conversationState: 'creator_authoring',
+            });
+          } catch (creatorJourneyErr) {
+            console.error("[creator-journey intercept] failed:", creatorJourneyErr.message);
+            // Fall through to chatEngine if AI call fails — better than empty response.
+          }
         }
 
         // Build services for chatEngine (called during processing)

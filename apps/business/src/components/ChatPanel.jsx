@@ -75,6 +75,7 @@ const CONTEXTUAL_MESSAGES = {
   "investor-id-check": "Identity verification and risk acknowledgment. Both are required for full access to investor materials.",
   "investor-wallet": "Your investment position and ownership tokens. After investing and share conversion, your ownership record will appear here.",
   "investor-profile": "Your investor profile. You can update your information and preferences here.",
+  "creator-journey": "You're here to design a worker. In one sentence -- what does it do that no other worker on the platform does? No need to wordsmith. We sharpen it together from there.",
 };
 
 const PERSONAL_CONTEXTUAL_MESSAGES = {

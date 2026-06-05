@@ -22,11 +22,16 @@ export default function MeetAlex() {
   const [action] = useState(() =>
     new URLSearchParams(window.location.search).get("action") || ""
   );
+  const [intent] = useState(() =>
+    new URLSearchParams(window.location.search).get("intent") || ""
+  );
   const isSignIn = action === "signin";
   const isSignUp = action === "signup";
+  const isCreatorAuthoring = intent === "create-worker";
   // signup/signin both gate the auth UI up front. Free-chat flow only kicks in
   // when there's no explicit action= param (e.g. plain /meet-alex from a campaign link).
-  const [nameCollected, setNameCollected] = useState(isSignIn || isSignUp);
+  // Creator authoring mode skips name collection — the user is already signed in.
+  const [nameCollected, setNameCollected] = useState(isSignIn || isSignUp || isCreatorAuthoring);
   const userMsgCount = useRef(0);
   const [showSave, setShowSave] = useState(isSignIn || isSignUp);
   const [savedAccount, setSavedAccount] = useState(false);
@@ -226,6 +231,9 @@ export default function MeetAlex() {
           sessionStorage.setItem("ta_campaign_id", campaign.campaignId);
           sessionStorage.setItem("ta_campaign_worker", campaign.workerSlug);
         } catch (_) {}
+      } else if (isCreatorAuthoring) {
+        // Creator Journey Step 3 handoff \u2014 start the Intent Spec round.
+        opening = "You're starting a new worker. In one sentence \u2014 what does it do that no other worker on the platform does?\n\nNo need to wordsmith. The version we sharpen later starts here.";
       } else if (isSignIn) {
         opening = "Welcome back. Sign in below to pick up where you left off.";
       } else if (isSignUp) {
@@ -646,7 +654,7 @@ export default function MeetAlex() {
         </div>
         <div>
           <div style={S.headerName}>Alex</div>
-          <div style={S.headerSub}>Chief of Staff</div>
+          <div style={S.headerSub}>{isCreatorAuthoring ? "Worker authoring" : "Chief of Staff"}</div>
         </div>
         <div style={S.logo}>SOCIII</div>
       </div>
