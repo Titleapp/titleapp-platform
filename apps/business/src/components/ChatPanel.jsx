@@ -1810,6 +1810,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>{(() => {
+          // S52.28g — on /creators/journey the middle-panel chat IS the
+          // authoring surface. Header swap matches the meet-alex authoring
+          // mode shipped in S52.28 so the surface visibly identifies as a
+          // different mode from COS Alex. Friction #3 in the RES-DATA-001
+          // dogfood log.
+          if (currentSection === 'creator-journey') return 'Alex / Worker authoring';
           if (activeWorkerName) return `${activeWorkerName} -- Chief of Staff`;
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');

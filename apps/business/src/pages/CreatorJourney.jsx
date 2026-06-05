@@ -134,6 +134,46 @@ export default function CreatorJourney({ embedded = false }) {
     return () => unsub();
   }, [refresh]);
 
+  // S52.28g — Friction #4 skip-ahead. The user is signed in (by definition
+  // they're past Discover + Sign-up), so auto-mark Steps 1 + 2 complete the
+  // first time they land here. localStorage marker so we don't re-mark if
+  // they explicitly untick later. From the RES-DATA-001 dogfood log.
+  useEffect(() => {
+    if (!state.ok || state.loading) return;
+    if (localStorage.getItem("ta_journey_autocomplete_signin") === "true") return;
+    const toAdvance = [];
+    if (!state.completedIds.has("discover")) toAdvance.push("discovery");
+    if (!state.completedIds.has("sign-up")) toAdvance.push("commitment");
+    if (toAdvance.length === 0) {
+      localStorage.setItem("ta_journey_autocomplete_signin", "true");
+      return;
+    }
+    (async () => {
+      for (const beatId of toAdvance) {
+        await apiFetch("/v1/journey:advance", {
+          method: "POST",
+          body: JSON.stringify({ beatId, completed: true }),
+        }).catch(() => {});
+      }
+      localStorage.setItem("ta_journey_autocomplete_signin", "true");
+      refresh();
+    })();
+  }, [state.ok, state.loading, state.completedIds, refresh]);
+
+  // S52.28g — Friction #4 "I already have my tools" bulk skip. One click
+  // marks the Tools step (Step 5) complete for creators with Claude +
+  // Claude Code + GitHub already set up.
+  async function markToolsComplete() {
+    setBusy(true);
+    try {
+      await apiFetch("/v1/journey:advance", {
+        method: "POST",
+        body: JSON.stringify({ beatId: "install", completed: true }),
+      });
+      await refresh();
+    } finally { setBusy(false); }
+  }
+
   async function toggleStep(stepId) {
     setBusy(true);
     try {
@@ -231,6 +271,16 @@ export default function CreatorJourney({ embedded = false }) {
           <p style={S.toolsHint}>
             New to the terminal? On Mac it's called "Terminal" — find it via Spotlight (Cmd+Space). On Windows, use "Windows Terminal" from the Microsoft Store. No prior coding required; you'll mostly be talking to Claude Code.
           </p>
+          {!state.completedIds.has("tools") && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={markToolsComplete}
+              style={S.skipToolsBtn}
+            >
+              I already have these — skip to Step 6 →
+            </button>
+          )}
         </section>
 
         <section style={S.stepsSection}>
@@ -396,6 +446,14 @@ const S = {
   toolsHint: {
     fontSize: 12, color: "#64748b", lineHeight: 1.5,
     padding: 12, background: "#f1f5f9", borderRadius: 8, marginTop: 6,
+  },
+
+  skipToolsBtn: {
+    display: "block", marginTop: 12, padding: "10px 16px",
+    fontSize: 13, fontWeight: 600, color: "#7c3aed",
+    background: "transparent", border: "1.5px dashed #c4b5fd",
+    borderRadius: 8, cursor: "pointer", width: "100%",
+    fontFamily: "inherit",
   },
 
   stepsSection: { display: "flex", flexDirection: "column", gap: 12 },
