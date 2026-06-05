@@ -194,6 +194,202 @@
       ]
     },
     {
+      "id": "SITE-RECON-001",
+      "name": "Site Recon",
+      "slug": "site-recon-001",
+      "suite": "Investment",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29,
+        "currency": "USD",
+        "trial_days": 14,
+        "per_pull_data_fees": true,
+        "markup_percent": 100,
+        "creator_share_of_markup_percent": 20
+      },
+      "status": "live",
+      "capabilitySummary": "Turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict (green/yellow/red + named blocker) on each — done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later. Visual context (Street View + sun direction + YouTube neighborhood video) is rendered alongside data because location is more than a motto. 100-1000x cost compression vs traditional pursuit funds ($50K-$500K to hundreds of dollars).",
+      "tags": [
+        "real-estate",
+        "parcel-search",
+        "attom",
+        "feasibility",
+        "audit-substrate",
+        "sublette-wy-pilot",
+        "cost-compression",
+        "street-view",
+        "maps",
+        "youtube",
+        "persona-adaptive"
+      ],
+      "valueBucket": [
+        "make_money",
+        "save_money"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "parcel_pipeline"
+      },
+      "temporalType": "always_on",
+      "forge": {
+        "enabled": true,
+        "forge_price": 1.34
+      },
+      "lane": "marketplace",
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONAL",
+      "constraintRaasSources": [
+        {
+          "moduleId": "fair-housing-act",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "ccpa-data-privacy",
+          "required": true,
+          "load_when": "jurisdiction:california"
+        },
+        {
+          "moduleId": "attom-api-usage-terms",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "deposition-rule-anchor-classification",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "coastal-commission-jurisdiction-ca",
+          "required": false,
+          "load_when": "parcel.coastal_overlay_present"
+        },
+        {
+          "moduleId": "historic-district-overlays",
+          "required": false,
+          "load_when": "parcel.historic_overlay_present"
+        }
+      ],
+      "canvasTabs": [
+        {
+          "id": "historical",
+          "label": "Historical",
+          "signal": "card:historical",
+          "default": true,
+          "order": 0,
+          "view": "site-recon",
+          "description": "Title chain + assessor history + prior sales on map. Street View embed. Deed transfer timeline."
+        },
+        {
+          "id": "opportunities",
+          "label": "Opportunities",
+          "signal": "card:opportunities",
+          "order": 1,
+          "view": "site-recon",
+          "description": "Ranked parcel list + map markers (color-coded by verdict). Toggle list, map, or split view. Session roll-up with cost compression vs pursuit fund baseline."
+        },
+        {
+          "id": "feasibility",
+          "label": "Feasibility",
+          "signal": "card:feasibility",
+          "order": 2,
+          "view": "site-recon",
+          "description": "Per-parcel detail with verdict + named blocker. Overlay layers (coastal, historic, flood, opportunity zone). YouTube neighborhood videos. Sun + view analysis. W-002 handoff."
+        }
+      ],
+      "controlCenterContribution": {
+        "section": "parcel_pipeline",
+        "kpis": [
+          "parcels_reviewed_30d",
+          "green_verdicts_30d",
+          "pursuit_fund_savings_30d",
+          "cost_compression_ratio",
+          "handoffs_to_w002_30d"
+        ]
+      },
+      "intent": {
+        "scope_in": [
+          "Pull and rank parcels from a defined search area using ATTOM data",
+          "Return a feasibility verdict with a named blocker per parcel",
+          "Surface row-level underwriting cost before user commits to deeper pull",
+          "Render every result with geographic context (maps + Street View + satellite + overlays)",
+          "Surface relevant YouTube videos of the area for visual neighborhood context",
+          "Anchor every pull to PLAT-008 per Deposition Rule",
+          "Hand off ranked opportunities to W-002 with one click",
+          "Record every pull as a logbook entry in Vault DTC",
+          "Gate every data spend with a cost projection before execution",
+          "Detect persona (First-Timer / Active Operator / Veteran) at onboarding and adapt UX accordingly",
+          "Detect price variance among same-floorplan units in a stack and surface view-premium caveat"
+        ],
+        "scope_out": [
+          "Brokerage — does not facilitate offers, negotiations, or transactions",
+          "Consumer Zillow-style property search",
+          "Certified appraisal (AVM is one input, not a valuation)",
+          "Zoning attorney work (v2 worker)",
+          "Permit expediter work (v2 worker)",
+          "Full underwriting (handed to W-002)",
+          "Investment advice or buy/sell recommendations"
+        ],
+        "refusal_modes": [
+          "Fair Housing pattern detected → refuse search, surface regulatory note",
+          "Malformed input (fictional ZIP, bad APN, search radius >5mi) → refuse with specific error",
+          "Cost projection not confirmed → block pull, show cost modal",
+          "Pull receipt cannot be written to PLAT-008 → rollback pull, surface error",
+          "User asks for investment recommendation → strip recommendation language, surface feasibility signal only",
+          "User attempts to auto-upgrade persona via system → reject, retain current tier"
+        ],
+        "spec_ref": "docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md"
+      },
+      "vault": {
+        "reads": [
+          "parcel-atlas",
+          "attom-cache",
+          "market-scorecard"
+        ],
+        "writes": [
+          "parcel-logbook",
+          "pull-receipts",
+          "ranked-opportunity-lists",
+          "feasibility-verdicts",
+          "session-roll-ups"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "green or yellow verdict + user clicks handoff",
+          "routesTo": "W-002"
+        },
+        {
+          "event": "any data pull",
+          "routesTo": "PLAT-008"
+        },
+        {
+          "event": "jurisdiction has Parcel Atlas pre-anchored data",
+          "routesTo": "ESC-013"
+        },
+        {
+          "event": "parcel requires entitlement check",
+          "routesTo": "PERMIT-PROC-001"
+        },
+        {
+          "event": "parcel requires title chain validation depth",
+          "routesTo": "ESC-003"
+        }
+      ],
+      "coming_soon": [
+        "Zoning/Entitlement live integration (v2 — currently placeholder blocker)",
+        "Permit Processor live integration (v2 — currently placeholder blocker)",
+        "Confidence score (Low/Medium/High) per parcel (v2)",
+        "Engineers team integration for soils/environmental flags (v2)",
+        "Parcel Atlas read-through for pre-anchored jurisdictions beyond Sublette WY",
+        "Drone footage / 3D massing view (when Google Earth API tier signed)",
+        "Per-condo unit-stack visual differentiation for view-premium pricing"
+      ],
+      "_status_note": "Spec'd 2026-06-05 per docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md. Status: live as platform-spine worker. Co-developed by Sean Lee Combs via Claude.ai interview pattern + SOCIII authoring flow — first creator worker built end-to-end via the Substack-pattern model. 30 QA-001 assertions defined. Visual context (Street View + sun direction + YouTube) elevated to load-bearing per Sean: ATTOM price anomalies (same floorplan different floors) are only explained by visual context. ATTOM pricing tagged ESTIMATE PENDING until $500/mo tier signed."
+    },
+    {
       "id": "W-003",
       "name": "Site Due Diligence",
       "slug": "site-due-diligence",
