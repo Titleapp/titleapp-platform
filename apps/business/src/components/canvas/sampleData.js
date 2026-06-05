@@ -660,6 +660,85 @@ const SPINE_FIXTURES = {
       ],
     },
   },
+
+  // ──────────────────────────────────────────────────────────────
+  // SITE-RECON-001 — Sean's first creator worker (S52.29)
+  // Oakland Market Street parcel walkthrough across the 3 canvas
+  // tabs. Visual context (Street View + maps + YouTube) is load-
+  // bearing per Sean's RULE-17 — render imagery BEFORE the verdict.
+  // ──────────────────────────────────────────────────────────────
+  "site-recon-001": {
+    "historical": {
+      title: "3241 Market Street, Oakland — Historical",
+      subtitle: "Sample · APN 013-0921-007-00 · 5-year chain",
+      region: "Oakland, CA",
+      locations: [
+        { address: "3241 Market Street, Oakland, CA 94608", label: "APN 013-0921-007 · Last sale $410K (2019)" },
+      ],
+      fields: [
+        { label: "Owner of record",   value: "Market St Holdings LLC" },
+        { label: "Last sale",         value: "$410,000 · 2019-12-24" },
+        { label: "Assessed value",    value: "$388,000 (2025)" },
+        { label: "AVM (ATTOM)",       value: "$415,000 · fresh (8 days)" },
+        { label: "Title chain depth", value: "Clean (3 transfers since 1998)" },
+        { label: "Assessor freshness", value: "Fresh (3 months — under 6-month threshold)" },
+      ],
+      sections: [
+        { heading: "Deed transfer timeline", body: "2019-12-24 · Grant Deed · Prior owner → Market St Holdings LLC · $410,000\n2014-06-11 · Quitclaim · estate transfer to prior owner\n1998-03-02 · Original grant · documented chain start" },
+        { heading: "Visual context", body: "Street View: south-facing primary facade, morning sun exposure. Satellite shows 5,136 sqft lot, single-story structure. No power infrastructure adjacent. Quiet residential block." },
+      ],
+    },
+    "opportunities": {
+      title: "Oakland 94601 · 0.5 mi radius",
+      subtitle: "Sample · 5 of 10 ranked · search cost $4.20 (est)",
+      region: "Oakland, CA",
+      locations: [
+        { address: "3241 Market Street, Oakland, CA 94608",   label: "🟢 GREEN · $410K (2019)" },
+        { address: "3255 Market Street, Oakland, CA 94608",   label: "🟡 YELLOW · Owner mismatch" },
+        { address: "3198 Market Street, Oakland, CA 94608",   label: "🟡 YELLOW · Stale data (8 mo)" },
+        { address: "3270 Market Street, Oakland, CA 94608",   label: "🟢 GREEN · $520K (2023)" },
+        { address: "831 32nd Street, Oakland, CA 94608",       label: "🔴 RED · APN retired (removed)" },
+      ],
+      fields: [
+        { label: "Total spend",         value: "$4.20" },
+        { label: "ATTOM cost",          value: "$2.10" },
+        { label: "SOCIII markup",       value: "$2.10" },
+        { label: "Parcels reviewed",    value: "5 of 10 returned" },
+        { label: "Green / Yellow / Red", value: "2 / 2 / 1" },
+        { label: "Pursuit fund baseline", value: "$50,000 (duplex tier)" },
+        { label: "Cost compression",    value: "11,900× vs traditional pursuit" },
+      ],
+      sections: [
+        { heading: "Ranked list", body: "#1  3241 Market St · GREEN · clean title, fresh data, no overlay\n#2  3255 Market St · YELLOW · owner-of-record mismatch (retained in list)\n#3  3198 Market St · YELLOW · assessor data 8 months stale\n#4  3270 Market St · GREEN · recent transfer 2023, clean\n#5  831 32nd St · RED · APN retired (removed from ranked list)" },
+        { heading: "Session roll-up", body: "Pull receipt: PLAT-008-20260605-Oakland-013-0921 [anchored to audit trail]\nView mode: split (map + list)\nNext action: Tap any GREEN row → 'Hand off to W-002 Real Estate Analyst'" },
+      ],
+    },
+    "feasibility": {
+      title: "3241 Market Street — Feasibility detail",
+      subtitle: "Sample · GREEN verdict · confidence pending v2",
+      region: "Oakland, CA",
+      locations: [
+        { address: "3241 Market Street, Oakland, CA 94608", label: "🟢 GREEN" },
+      ],
+      fields: [
+        { label: "Verdict",               value: "🟢 GREEN" },
+        { label: "Named blocker",         value: "None" },
+        { label: "AVM estimate",          value: "$415,000" },
+        { label: "Assessed value delta",  value: "+$27,000 (AVM > assessed)" },
+        { label: "Last sale delta",       value: "+$5,000 since 2019" },
+        { label: "Days since last transfer", value: "2,355 days" },
+        { label: "Coastal commission",    value: "Not in jurisdiction" },
+        { label: "Historic district",     value: "No" },
+        { label: "Flood zone (FEMA)",     value: "Zone X — minimal risk" },
+        { label: "Opportunity zone",      value: "Yes — Census tract 4063.00" },
+      ],
+      sections: [
+        { heading: "Visual context (RULE-17 — rendered before verdict)", body: "Street View embedded — south-facing facade, morning sun, quiet residential block, no power infrastructure or sound walls within view. Satellite shows 5,136 sqft lot. Comparable sales (within 0.5 mi) shown as map pins with hover-revealed prices." },
+        { heading: "YouTube neighborhood context (top 3)", body: "1. Fruitvale district walking tour · 4:12 · 8.4K views\n2. Oakland 94601 real estate update Q1 2026 · 7:33 · 2.1K views\n3. East Oakland infill development panel · 18:42 · 1.6K views" },
+        { heading: "Actions", body: "• Go Deeper — additional ATTOM data products (title chain depth, mortgage history). Est. cost: +$0.80\n• Hand off to W-002 Real Estate Analyst → confirmation modal\n• Save to Vault → parcel logbook entry written" },
+      ],
+    },
+  },
 };
 
 // Aviation CoPilot fixtures — shared content across the 11 CoPilots; aircraft

@@ -24,6 +24,7 @@ const { validateWorkerRecord, autoFixWorkerRecord, TIER_0_DEFAULTS } = require("
 const MARKETPLACE_SLUG_MAP = {
   "W-001": "market-research",
   "W-002": "cre-analyst",
+  "SITE-RECON-001": "site-recon",
   "W-003": "site-due-diligence",
   "W-004": "land-use-entitlement",
   "W-005": "architecture-review",
@@ -466,6 +467,7 @@ const RULESET_MAP = {
 const DISPLAY_NAME_MAP = {
   "W-001": "Market Research",
   "W-002": "CRE Deal Analyst",
+  "SITE-RECON-001": "Site Recon",
   "W-010": "Government Relations",
   "W-030": "Appraisal & Valuation",
   "W-034": "Rent Roll & Revenue",
