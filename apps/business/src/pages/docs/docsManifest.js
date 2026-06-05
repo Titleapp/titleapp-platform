@@ -12,6 +12,7 @@ export const DOCS_MANIFEST = [
     section: "Get started",
     pages: [
       { slug: "what-is-sociii", title: "What is SOCIII?", description: "The platform thesis, the marketplace, and why Digital Workers." },
+      { slug: "sandbox-walkthrough", title: "Sandbox walkthrough — your first hour", description: "The pre-terminal half: the four-screen layout, signing into the journey, and the Intent Spec rounds that sharpen your idea before any code exists." },
       { slug: "install",        title: "Install the tools",  description: "Claude account, Claude Code, GitHub — what each one does." },
       { slug: "your-first-worker", title: "Your first worker", description: "From cloning the repo to your first PR — what the conversation with Claude Code looks like." },
     ],
