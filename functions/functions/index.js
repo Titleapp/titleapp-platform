@@ -1986,13 +1986,24 @@ exports.api = onRequest(
           try {
             const anthropic = getAnthropic();
             console.log("[diag.interceptGotAnthropic]");
-            if (!Array.isArray(sessionState.creatorAuthoringHistory)) {
-              sessionState.creatorAuthoringHistory = [];
-            }
+            // S52.29d — sanitize the messages array. Resumed sessions can carry
+            // stale creatorAuthoringHistory from old testing OR corrupted state
+            // (the bug Sean hit 2026-06-05 — Anthropic call hung 46s+ then
+            // Cloud Run killed it, no catch). Defensive: keep only well-formed
+            // {role, content} entries from the existing history, then push the
+            // current input. If anything looks off, start fresh.
+            const rawHistory = Array.isArray(sessionState.creatorAuthoringHistory) ? sessionState.creatorAuthoringHistory : [];
+            const cleanHistory = rawHistory.filter(m =>
+              m && typeof m === 'object' &&
+              (m.role === 'user' || m.role === 'assistant') &&
+              typeof m.content === 'string' && m.content.trim().length > 0
+            );
+            sessionState.creatorAuthoringHistory = cleanHistory;
             sessionState.creatorAuthoringHistory.push({ role: 'user', content: userInput });
             if (sessionState.creatorAuthoringHistory.length > 30) {
               sessionState.creatorAuthoringHistory = sessionState.creatorAuthoringHistory.slice(-30);
             }
+            console.log("[diag.interceptHistoryClean]", { count: sessionState.creatorAuthoringHistory.length, droppedFromResume: rawHistory.length - cleanHistory.length });
 
             const authoringSystemPrompt = `${getSovereignContext()}
 
@@ -2018,13 +2029,21 @@ STYLE:
 
 If they ask off-topic questions (about SOCIII, billing, other workers), give a one-line answer and steer back to where you left off in the Intent Spec.`;
 
-            const aiResp = await anthropic.messages.create({
-              model: 'claude-sonnet-4-5-20250929',
-              max_tokens: 1024,
-              system: authoringSystemPrompt,
-              messages: sessionState.creatorAuthoringHistory,
-            });
-            const aiText = (aiResp.content[0] && aiResp.content[0].text) || "Tell me about the worker. What does it do that no other worker on the platform does?";
+            console.log("[diag.interceptBeforeAnthropicCall]", { systemLen: authoringSystemPrompt.length, msgCount: sessionState.creatorAuthoringHistory.length });
+            // S52.29d — 25s timeout race. If Anthropic doesn't respond by
+            // then, surface a graceful message instead of letting Cloud Run
+            // kill the function silently (Sean's "No response received").
+            const aiResp = await Promise.race([
+              anthropic.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 1024,
+                system: authoringSystemPrompt,
+                messages: sessionState.creatorAuthoringHistory,
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("anthropic_timeout_25s")), 25000)),
+            ]);
+            console.log("[diag.interceptAfterAnthropicCall]", { hasContent: !!(aiResp && aiResp.content) });
+            const aiText = (aiResp && aiResp.content && aiResp.content[0] && aiResp.content[0].text) || "Tell me about the worker. What does it do that no other worker on the platform does?";
 
             sessionState.creatorAuthoringHistory.push({ role: 'assistant', content: aiText });
 
