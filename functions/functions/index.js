@@ -353,6 +353,39 @@ function getStripe() {
 //   4. Throws a classified Error (anthropic_timeout / anthropic_invalid_
 //      messages / anthropic_other) so callers' existing try/catch paths
 //      surface a graceful fallback instead of hanging the request
+// S52.31a (2026-06-06) — Anthropic per-call pricing in $/million tokens.
+// Layer 1 of the AI cost telemetry plan. Used by the wrapper to compute
+// per-call costUsd alongside the response and write to aiUsage. Numbers
+// are list prices; update on every Anthropic pricing change. Unknown
+// models fall back to OPUS pricing so we never UNDER-estimate.
+const ANTHROPIC_PRICING_PER_MTOK = {
+  // Sonnet 4.5 (default for chat surfaces today)
+  "claude-sonnet-4-5-20250929": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
+  "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
+  // Opus 4.x
+  "claude-opus-4-7": { input: 15, output: 75, cacheRead: 1.50, cacheWrite: 18.75 },
+  "claude-opus-4-8": { input: 15, output: 75, cacheRead: 1.50, cacheWrite: 18.75 },
+  // Haiku
+  "claude-haiku-4-5-20251001": { input: 1, output: 5, cacheRead: 0.10, cacheWrite: 1.25 },
+};
+const ANTHROPIC_FALLBACK_PRICING = ANTHROPIC_PRICING_PER_MTOK["claude-opus-4-7"];
+
+function computeAnthropicCostUsd(model, usage) {
+  if (!usage) return 0;
+  const p = ANTHROPIC_PRICING_PER_MTOK[model] || ANTHROPIC_FALLBACK_PRICING;
+  const inputTok = usage.input_tokens || 0;
+  const outputTok = usage.output_tokens || 0;
+  const cacheReadTok = usage.cache_read_input_tokens || 0;
+  const cacheWriteTok = usage.cache_creation_input_tokens || 0;
+  // Pricing is per 1M tokens.
+  return (
+    (inputTok * p.input) +
+    (outputTok * p.output) +
+    (cacheReadTok * p.cacheRead) +
+    (cacheWriteTok * p.cacheWrite)
+  ) / 1_000_000;
+}
+
 function getAnthropic() {
   if (!ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
   const raw = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
@@ -377,6 +410,11 @@ function getAnthropic() {
       return { ...params, messages: clean };
     })();
     const timeoutMs = (opts && opts.timeoutMs) || 30000;
+    // S52.31a — context for AI cost telemetry. Callers can pass
+    // opts.context = { tenantId, userId, workerSlug, surface } so the
+    // aiUsage row carries attribution. Calls without context still
+    // record token volume + cost so we never lose aggregate visibility.
+    const ctx = (opts && opts.context) || {};
     const labelModel = sanitized && sanitized.model ? sanitized.model : "(no-model)";
     console.log("[anthropic.beforeCreate]", { model: labelModel, msgCount: sanitized?.messages?.length || 0, timeoutMs });
     try {
@@ -388,7 +426,48 @@ function getAnthropic() {
           reject(e);
         }, timeoutMs)),
       ]);
-      console.log("[anthropic.afterCreate]", { model: labelModel, latencyMs: Date.now() - startedAt, hasContent: !!(result && result.content) });
+      const latencyMs = Date.now() - startedAt;
+      console.log("[anthropic.afterCreate]", { model: labelModel, latencyMs, hasContent: !!(result && result.content) });
+
+      // S52.31a — Layer 1 token capture. Fire-and-forget write to
+      // aiUsage collection. NEVER awaits — adds zero latency. If
+      // Firestore is unreachable the call still succeeds; we just
+      // lose this one telemetry row. Per-call costUsd computed from
+      // ANTHROPIC_PRICING_PER_MTOK table above. Aggregator (Layer 2)
+      // reads this collection to compute tenant rolling spend.
+      try {
+        const usage = (result && result.usage) || null;
+        if (usage) {
+          const costUsd = computeAnthropicCostUsd(labelModel, usage);
+          admin.firestore().collection("aiUsage").add({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            provider: "anthropic",
+            model: labelModel,
+            tenantId: ctx.tenantId || null,
+            userId: ctx.userId || null,
+            workerSlug: ctx.workerSlug || null,
+            surface: ctx.surface || null,
+            inputTokens: usage.input_tokens || 0,
+            outputTokens: usage.output_tokens || 0,
+            cacheReadTokens: usage.cache_read_input_tokens || 0,
+            cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+            costUsd, // platform cost — markup happens at the pricing layer
+            latencyMs,
+            stopReason: result.stop_reason || null,
+          }).catch(writeErr => {
+            console.warn("[aiUsage] write failed:", writeErr.message);
+          });
+        } else {
+          // No usage on response — log so we know which call sites
+          // are returning unexpected shapes (e.g. streaming without
+          // final-usage accumulation).
+          console.warn("[aiUsage] no usage on response", { model: labelModel });
+        }
+      } catch (telemetryErr) {
+        // Telemetry MUST NOT block or fail the response.
+        console.warn("[aiUsage] telemetry path threw:", telemetryErr.message);
+      }
+
       return result;
     } catch (err) {
       console.error("[anthropic.error]", { model: labelModel, latencyMs: Date.now() - startedAt, code: err.code || "anthropic_other", message: err.message });
