@@ -762,6 +762,47 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-065 — Spec-in-repo URL drift (the inverse-TC-063 failure mode)
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 9 live E2E, CODE-side live probe)
+- **Worker:** Alex prompt-author + CODEX S52.34 grounding doc (both quoted from `gisOverlayService.js`)
+- **Family:** 6 (Loop-participant ground-truth grounding — extended from TC-062/063 to cover external-service layer)
+- **Severity:** P0 (the wrong URLs would have caused silent false-negatives on CCC + OZ overlays in production — both layers returning `false` for parcels that actually intersect them)
+- **Real bug:** Step 9's live E2E probe found that **2 of 4 GIS endpoint URLs in `gisOverlayService.js` were wrong**, and CODEX S52.34 quoted them VERBATIM with an anti-fabrication guard ("any deviation is fabrication"). Specifically: (a) `coastalCommission` pointed at `Coastal_Zone_Boundary/FeatureServer/0` which is a Polyline layer — point-in-polygon queries against a polyline fail by design (would have returned `false` for genuinely-coastal parcels like Malibu); corrected to `services9/Coastal_Zone_Polygon/FeatureServer/0`. (b) `opportunityZones` pointed at `services.arcgis.com/VTyQ9soqVukalItT/.../Opportunity_Zones/FeatureServer/0` which returns wrong-shaped point features; corrected to same org but `FeatureServer/13` (HUD's national QOZ polygon dataset). Plus: geometry payload format `{x, y, spatialReference}` is rejected by HUD's OZ layer; simplified to `lng,lat` string for all four. **The committed-spec immune system (TC-063's fix) pointed at WRONG ground truth.** In TC-063, Alex fabricated content; the spec was correct, and cross-check caught the fabrication. TC-065 is the OPPOSITE: Alex faithfully quoted the spec, but the spec had drifted away from external reality. The immune response was LIVE PROBING by Code, not committed-spec cross-reference.
+- **Test:** (a) Every Step 9 (or final-polish step) of any creator worker build must include a live-probe verification subtask for every external service URL the worker calls. (b) For each endpoint, assert layer geometry-type matches the query (polygon endpoints for point-in-polygon queries; reject Polyline targets at lint time). (c) Adversarial: re-probe quarterly with positive + negative controls (point known to be in OZ → return positive; point known to be out → return negative). (d) Lint anti-fabrication guards in CODEX grounding docs: when a guard says "deviation = fabrication," verify the source-of-truth URL passes a live probe FIRST.
+- **Mitigation that worked:** Code ran live probes during E2E instead of trusting the spec verbatim. The "flag and stop, don't paper over" constraint applied at the right layer — Code reported the discrepancy + corrected, rather than silently shipping the wrong URLs.
+- **Fix:** Corrected URLs live in `gisOverlayService.js` since Step 9 ship (commit 24279549). CODEX S52.34 corrigendum applied (commit 0fe9c6ed). Spec v1.2 must add a `sampleAddress.verifyMethod` + `externalEndpoints.verifyMethod` schema field declaring how each external URL gets re-pinned at build time.
+
+---
+
+## TC-066 — Locked spec content fabricated AT ORIGIN (distinct from TC-065 decay-over-time)
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 9 live ATTOM probe)
+- **Worker:** SITE-RECON-001-Worker-Spec-v1.1.md §4 (Oakland sample) + S52.29 fixtures (`apps/business/src/components/canvas/sampleData.js`)
+- **Family:** 6 (Loop-participant ground-truth grounding — distinct LAYER from TC-065)
+- **Severity:** P0 (would have shipped a marketplace listing whose "real Oakland parcel" sample returns empty for first-time users — kill-the-trial-on-day-one class)
+- **Real bug:** The spec's canonical Oakland sample address — `3241 Market Street, Oakland, CA 94608` — is UNRESOLVABLE in ATTOM across 5 address variants. The whole block returns `SuccessWithoutResult`. The address was **fabricated at spec-authoring time** BEFORE the grounding discipline (post-TC-063) existed, then mirrored into S52.29 fixtures, CODEX S52.29 documentation, the Worker Spec v1.1 §4, the Step 5 onboarding flow, and the canvas tab default fixtures. Every downstream artifact treated it as ground truth because every Alex / Code session looked at the spec, found the address, and trusted it. Distinct from TC-065 (decay over time, original author honest): TC-066 is "wrong from origin, never verified." Most insidious because no past truth exists to cross-check against — the only correction signal is the live external service returning empty.
+- **Silver lining:** RULE-11's zero-results gate fired CORRECTLY at live load (400 `ADDRESS_NOT_FOUND` across 5 variants) — production code handled the unresolvable input the way the spec said it should. QA-024-adjacent behavior confirmed in production.
+- **Test:** (a) Every worker spec must declare `sampleAddress.verifyMethod` ∈ {`live_external_probe`, `synthetic_for_demo_only`}. The synthetic case must be VISIBLY marked in fixtures + docs so it never gets quoted as "real." (b) Spec-authoring round MUST include a live probe of the canonical sample address against the worker's primary external service — pass=verified, fail=spec rejected. (c) Adversarial: pick a random sample from each shipped worker's spec quarterly + probe live; assert resolvable.
+- **Mitigation that worked:** Code's Step 9 E2E protocol mandated "real ATTOM lookup against the spec's canonical sample" and Code took that literally instead of patching around it. The four-way loop's "spec-in-repo is the immune system" framing (TC-063) is necessary-but-not-sufficient for canonical sample inputs — needs to be paired with live-probe at spec-authoring time.
+- **Fix:** Spec v1.2 must replace `3241 Market Street Oakland` with an ATTOM-verified East Bay address (live probe before commit). `sampleData.js` Oakland fixtures get the same address. Marker comment in `sampleData.js` reads `// FABRICATED_PENDING_REPLACEMENT — TC-066 — see CODEX S52.34 corrigendum`.
+
+---
+
+## TC-067 — Alex environment-state assumption (recommends terminal command without verifying tool installed)
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 9 closing, Sean unblock attempt)
+- **Worker:** Alex (web `/creators/journey` instance) + Platform-Alex (T1)
+- **Family:** 6 (Loop-participant ground-truth grounding — new LAYER: local environment / machine state)
+- **Severity:** P1 (silent failure mode: the creator THINKS the command ran; downstream steps fail confusingly until a tool-using participant — Code — attempts to use the assumed result)
+- **Real bug:** Web-Alex recommended Sean run `gcloud auth application-default login` to unblock the workerSync trigger. Alex made the recommendation confidently. Sean ran the keystroke. The command errored at `command not found` (gcloud was not installed on Sean's Mac). No ADC file landed. Alex had no visibility — generated the "Sean is unblocked, finish Step 9" handoff anyway. Code caught the silent failure by ATTEMPTING TO USE the (nonexistent) credentials and reporting back: "gcloud is not installed on this Mac — your `gcloud auth application-default login` couldn't have run." Distinct from TC-062/063/065/066 (all CONTENT grounding failures); TC-067 is at the ENVIRONMENT layer — Alex made a CORRECT recommendation for a STANDARD developer environment but had no read access to Sean's actual machine.
+- **Test:** (a) Lint every Alex authoring/coaching prompt that emits a bare terminal command depending on installed tooling (`gcloud`, `gh`, `brew`, `kubectl`, `docker`, language interpreters not in `/usr/bin/`) — must either wrap with an availability check OR defer the path-picking to Code with an outcome description. (b) Adversarial: in a clean sandbox with no SDKs installed, ask Alex how to do a credentialed cloud operation; assert the response either includes an install path OR explicitly defers to Code. (c) Assert any "run this" command in Alex's response is one of: (i) safe on any Unix box (POSIX builtins), or (ii) wrapped with `command -v X || install-X`, or (iii) explicitly handed to Code with "tell Code: '<outcome>'."
+- **Mitigation that worked:** Code attempted to USE the credentials and surfaced the actual failure. The "loop-participant who has access to ground truth is the one to trust" principle held — Code has terminal access, Alex doesn't, therefore environment-dependent recommendations belong to Code.
+- **Fix shape:** Alex system prompt (web + T1 + every surface) adds: "If you are recommending a terminal command that depends on installed tooling, wrap with availability check OR defer path-picking to Code with outcome description." Codified in CODEX S52.35.
+- **Fix:** (pending — Alex system prompt updates across all surfaces)
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:

@@ -10,7 +10,7 @@
 
 Five corrections applied from Code's live verification pass during Step 9 execution. The original doc body is preserved below for historical fidelity; inline correction markers (⚠️ → ✅) point at each fix.
 
-### 1. GIS URL corrections (TC-064 — spec-in-repo drift)
+### 1. GIS URL corrections (TC-065 — spec-in-repo drift)
 2 of 4 URLs in the "Locked GIS endpoint URLs" block were wrong. CCC pointed at a Polyline layer (Coastal_Zone_Boundary/FeatureServer/0 is a Polyline → point-in-polygon queries fail by design). OZ pointed at a different org's points layer instead of HUD's national QOZ polygon dataset. Geometry payload format also corrected (HUD's OZ layer rejects `{x,y,spatialReference}` JSON-object form; all four endpoints accept simple `lng,lat` string).
 
 **Verified-live URLs (Code, 2026-06-06):**
@@ -26,7 +26,7 @@ const ENDPOINTS = {
 
 Memory: [[project-step9-gis-url-corrections-inverse-tc063]]. Source-of-truth file `functions/functions/workers/site-recon-001/gisOverlayService.js` carries the corrections in production.
 
-### 2. Oakland sample address (TC-065 — spec fabricated at origin)
+### 2. Oakland sample address (TC-066 — spec fabricated at origin)
 `3241 Market Street, Oakland, CA 94608` is UNRESOLVABLE in ATTOM across 5 address variants (returns SuccessWithoutResult). Quoted here as "real Oakland parcel" but **never live-verified at spec-authoring time** — a fabrication baked into spec v1.1 §4 + S52.29 fixtures BEFORE the grounding discipline existed. Test 1 (Oakland regression) is **UNRUNNABLE** until spec v1.2 lands an ATTOM-verified replacement.
 
 **Silver lining:** RULE-11's zero-results gate fired live (400 ADDRESS_NOT_FOUND) — production-load dogfood of the input-validation contract. Memory: [[project-tc065-locked-spec-fabricated-at-origin]].
@@ -37,8 +37,8 @@ Tests 1 + 2 assert `vaultStatus: "linked"`. The worker returns `"ok"`. Code is g
 ### 4. CCC non-CA semantics (`null` → `false`)
 Test 2 says `coastalCommission returns null (not California)`. The worker returns `false` for categorically-out-of-jurisdiction parcels. `false` is the stronger, more correct semantics — asserts "definitively not in the CCC zone" rather than "unknown." Update Test 2 to `coastalCommission: false`.
 
-### 5. Environment-state failure class (TC-066 — extends anti-fabrication guard)
-Step 9 closing surfaced a new failure class NOT covered by the "Anti-fabrication guard for Code" block below. Web-Alex (the prompt-author surface in `/creators/journey`) recommended `gcloud auth application-default login` without verifying gcloud was installed on Sean's machine. The original guard covers CONTENT grounding (URLs, addresses, slugs); TC-066 is an ENVIRONMENT-STATE assumption — a separate failure layer. **Pattern lock:** Alex describes the desired outcome; Code picks the path that works on the user's environment. Codified in `docs/CODEX-S52.35-Environment-Grounding-Rule.md`. Memory: [[project-tc066-alex-environment-state-assumption]].
+### 5. Environment-state failure class (TC-067 — extends anti-fabrication guard)
+Step 9 closing surfaced a new failure class NOT covered by the "Anti-fabrication guard for Code" block below. Web-Alex (the prompt-author surface in `/creators/journey`) recommended `gcloud auth application-default login` without verifying gcloud was installed on Sean's machine. The original guard covers CONTENT grounding (URLs, addresses, slugs); TC-067 is an ENVIRONMENT-STATE assumption — a separate failure layer. **Pattern lock:** Alex describes the desired outcome; Code picks the path that works on the user's environment. Codified in `docs/CODEX-S52.35-Environment-Grounding-Rule.md`. Memory: [[project-tc066-alex-environment-state-assumption]].
 
 ### Also surfaced during Step 9 closing (platform-QA findings, separate memory)
 - 153MB PC-12 PDF in deploy bundle (deploy bundle bloat — `firebase.json` `functions.ignore` didn't take effect; stash-deploy-restore was the working pattern)
@@ -66,7 +66,7 @@ Below is the verbatim ground truth for each.
 
 ## Locked GIS endpoint URLs (verbatim from `functions/functions/workers/site-recon-001/gisOverlayService.js`)
 
-> ⚠️ **THE BLOCK BELOW IS THE ORIGINAL-AS-WRITTEN. Two URLs were WRONG.** See Corrigendum item 1 (top of doc) for the live-verified correct URLs. The original is preserved below to document the drift that TC-064 caught.
+> ⚠️ **THE BLOCK BELOW IS THE ORIGINAL-AS-WRITTEN. Two URLs were WRONG.** See Corrigendum item 1 (top of doc) for the live-verified correct URLs. The original is preserved below to document the drift that TC-065 caught.
 
 ```js
 const ENDPOINTS = {
@@ -77,14 +77,14 @@ const ENDPOINTS = {
 };
 ```
 
-These were *intended* to be the four URLs. Step 9's live-probe pass surfaced that the CCC and OZ URLs had drifted — Code's gisOverlayService comment was right that "a wrong URL degrades soft into errors[]," and Code's choice to LIVE PROBE (not just cross-check the committed spec) is what caught TC-064. **The pin step's job is now expanded: live-probe over committed-spec when external services are involved.**
+These were *intended* to be the four URLs. Step 9's live-probe pass surfaced that the CCC and OZ URLs had drifted — Code's gisOverlayService comment was right that "a wrong URL degrades soft into errors[]," and Code's choice to LIVE PROBE (not just cross-check the committed spec) is what caught TC-065. **The pin step's job is now expanded: live-probe over committed-spec when external services are involved.**
 
 ---
 
 ## Sample parcels
 
 ### Oakland (regression baseline — already in fixtures since S52.29)
-- **Address:** `3241 Market Street, Oakland, CA 94608`  ⚠️ **UNRUNNABLE — TC-065:** Live ATTOM lookup at Step 9 returned `SuccessWithoutResult` across 5 address variants. Address was fabricated at spec-authoring time, never live-verified. Test 1 is **UNRUNNABLE** until spec v1.2 lands an ATTOM-verified replacement. See Corrigendum #2 (top of doc). RULE-11's zero-results gate DID fire live (400 ADDRESS_NOT_FOUND) — that's the silver lining: production code handled the unresolvable input correctly.
+- **Address:** `3241 Market Street, Oakland, CA 94608`  ⚠️ **UNRUNNABLE — TC-066:** Live ATTOM lookup at Step 9 returned `SuccessWithoutResult` across 5 address variants. Address was fabricated at spec-authoring time, never live-verified. Test 1 is **UNRUNNABLE** until spec v1.2 lands an ATTOM-verified replacement. See Corrigendum #2 (top of doc). RULE-11's zero-results gate DID fire live (400 ADDRESS_NOT_FOUND) — that's the silver lining: production code handled the unresolvable input correctly.
 - **Use:** regression E2E. Result MUST match what the existing canvas fixtures show (Opportunities tab ranked-list position, Feasibility tab GREEN with stated overlays, Historical tab 5-year chain + AVM + visual context note "south-facing, morning sun"). If the live result diverges from the fixture, that's the regression to report — do NOT silently update the fixture.
 
 ### Sublette WY (NEW pin — pilot parcel for county-instrumentation campaign)
@@ -234,7 +234,7 @@ After workerSync succeeds, post a review-request payload to the Forge Reviews qu
 
 ## E2E test spec
 
-### Test 1 — Oakland regression  ⚠️ UNRUNNABLE (TC-065)
+### Test 1 — Oakland regression  ⚠️ UNRUNNABLE (TC-066)
 Inputs:
 - `searchByAddress` with `address: "3241 Market Street, Oakland, CA 94608"`, `confirmCost: true`
 Assertions:
