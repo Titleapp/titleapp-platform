@@ -1425,7 +1425,7 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "ATTOM_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -6001,6 +6001,17 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         console.error("title:lookup failed:", e);
         return jsonError(res, 500, "Failed to look up title record");
       }
+    }
+
+    // ── SITE-RECON-001 (creator worker: sean-combs) ──────────────
+    // POST /v1/workers/site-recon-001/search-by-address
+    // Two-phase cost gate + raw ATTOM pull. Build Step 1 of spec v1.1.
+    if ((route === "/workers/site-recon-001/search-by-address" || route === "/site-recon:search-by-address") && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { searchByAddress } = require("./workers/site-recon-001/searchByAddress");
+      return await searchByAddress(req, res, { body, ctx, jsonError });
     }
 
     // GET /v1/raas:catalog — public RAAS store catalog
