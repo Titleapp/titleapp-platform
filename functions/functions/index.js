@@ -2146,6 +2146,42 @@ exports.api = onRequest(
             }
             console.log("[diag.interceptHistoryClean]", { count: sessionState.creatorAuthoringHistory.length, droppedFromResume: rawHistory.length - cleanHistory.length });
 
+            // ── Site Recon canvas bridge (S52.35) ────────────────────
+            // "Run Site Recon on <address> [with a N-mile radius]" runs the
+            // worker conversationally: quote → "confirm" → execute, with a
+            // canvas payload the journey page renders into the three tabs.
+            // Same production handlers, same billing/receipts/Vault.
+            try {
+              const { handleSiteReconChat } = require("./workers/site-recon-001/chatIntent");
+              const srCtx = {
+                userId: authUser.uid,
+                tenantId: (req.headers["x-tenant-id"] || body.tenantId || "vault").toString(),
+              };
+              const sr = await handleSiteReconChat({ userInput, sessionState, ctx: srCtx });
+              if (sr.handled) {
+                sessionState.creatorAuthoringHistory.push({ role: "assistant", content: sr.text });
+                await sessionRef.set({
+                  state: sessionState,
+                  surface: "creator-journey",
+                  userId: authUser.uid,
+                  ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                  updatedAt: nowServerTs(),
+                }, { merge: true });
+                return res.json({
+                  ok: true,
+                  response: sr.text,
+                  message: sr.text,
+                  canvas: sr.canvas || null,
+                  showSignup: false,
+                  conversationState: "creator_authoring",
+                });
+              }
+            } catch (srErr) {
+              // Bridge failures fall through to the authoring conversation —
+              // never break the chat over a worker-dispatch problem.
+              console.error("[site-recon chat bridge] failed:", srErr.message);
+            }
+
             const authoringSystemPrompt = `${getSovereignContext()}
 
 You are Alex, SOCIII's authoring partner. The user is on /creators/journey and wants to design a Digital Worker.

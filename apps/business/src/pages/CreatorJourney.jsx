@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { auth } from "../firebase";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import SiteReconCanvas from "../components/canvas/SiteReconCanvas";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -93,8 +94,19 @@ const STEPS = [
 export default function CreatorJourney({ embedded = false }) {
   const [state, setState] = useState({ loading: true, completedIds: new Set() });
   const [busy, setBusy] = useState(false);
+  // S52.35 — worker canvas payloads dispatched by ChatPanel take over the
+  // canvas slot (e.g. Site Recon results). Back button restores the steps.
+  const [canvasPayload, setCanvasPayload] = useState(null);
 
   useEffect(() => { document.title = "Your SOCIII Creator Steps"; }, []);
+
+  useEffect(() => {
+    const onCanvas = (e) => {
+      if (e?.detail?.type === "site-recon-results") setCanvasPayload(e.detail);
+    };
+    window.addEventListener("sociii:canvas:payload", onCanvas);
+    return () => window.removeEventListener("sociii:canvas:payload", onCanvas);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -221,6 +233,17 @@ export default function CreatorJourney({ embedded = false }) {
   // page chrome (Header + full-bleed background) so the journey renders
   // cleanly inside the canvas slot alongside sidebar + Alex chat.
   const pageStyle = embedded ? { ...S.page, minHeight: 0, background: "transparent" } : S.page;
+
+  // S52.35 — a live worker canvas payload replaces the steps board until
+  // the user navigates back.
+  if (canvasPayload) {
+    return (
+      <div style={pageStyle}>
+        {!embedded && <Header />}
+        <SiteReconCanvas payload={canvasPayload} onBack={() => setCanvasPayload(null)} />
+      </div>
+    );
+  }
 
   return (
     <div style={pageStyle}>

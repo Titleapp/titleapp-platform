@@ -1330,6 +1330,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setIsTyping(false);
       setDealContext(null);
       if (workerCtx?.completeWork) workerCtx.completeWork();
+      // S52.35 — canvas payloads from worker chat-dispatch (e.g. Site Recon
+      // results). The canvas surface listens and renders; chat just relays.
+      if (data.canvas && typeof data.canvas === 'object') {
+        try { window.dispatchEvent(new CustomEvent('sociii:canvas:payload', { detail: data.canvas })); } catch {}
+      }
       // Intercept |||COMMAND||| blocks before storing in state
       const { clean: cleanedAlex, commands } = interceptAlexCommands(data.response || '');
       for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
