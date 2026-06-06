@@ -1765,7 +1765,7 @@ export default function Sidebar({
                     </button>
                     <button
                       className="navItem"
-                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
                       style={{
                         width: "100%", textAlign: "left", cursor: "pointer",
                         paddingLeft: 20, fontSize: 13,
@@ -1775,7 +1775,7 @@ export default function Sidebar({
                     </button>
                     <button
                       className="navItem"
-                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      onClick={() => { window.location.href = "/creators/dashboard?tab=profile"; }}
                       style={{
                         width: "100%", textAlign: "left", cursor: "pointer",
                         paddingLeft: 20, fontSize: 13,
@@ -1785,7 +1785,7 @@ export default function Sidebar({
                     </button>
                     <button
                       className="navItem"
-                      onClick={() => onNavigate && onNavigate("creator-dashboard")}
+                      onClick={() => { window.location.href = "/creators/dashboard?tab=earnings"; }}
                       style={{
                         width: "100%", textAlign: "left", cursor: "pointer",
                         paddingLeft: 20, fontSize: 13,

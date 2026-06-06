@@ -50,44 +50,38 @@ const STEPS = [
     action: { label: "Talk to Alex", url: "/meet-alex?intent=create-worker" },
   },
   {
-    id: "preview",
-    n: 4,
-    title: "Get a shareable preview",
-    what: "We render a server-side mockup of your Worker based on what you and Alex designed. You'll get a URL you can text or email to colleagues — show your network what you're building before you've written a line of code.",
-  },
-  {
-    id: "tools",
-    n: 5,
-    title: "Set up your tools",
-    what: "This is the technical step. You install three things: an Anthropic Claude account (one sign-up gets you both the browser chat and the terminal tool), Claude Code (the terminal tool itself), and a GitHub account (free — used to publish your worker). The 'Tools' panel at the top of this page has the install links — work through them in order. If you get stuck, paste a screenshot into Claude Chat (browser) and it will walk you through.",
-  },
-  {
     id: "build",
-    n: 6,
+    n: 4,
     title: "Build your worker in Claude Code",
-    what: "Open your terminal in the SOCIII repo. Type 'claude'. Tell it what you want to build — Claude Code does the file editing while you focus on the domain. Your intent, rules, sample data, and assertions all get authored conversationally.",
+    what: "Open your terminal in the SOCIII repo. Type 'claude'. Tell it what you want to build — Claude Code does the file editing while you focus on the domain. Your intent, rules, sample data, and assertions all get authored conversationally. (Need the install links? The 'Tools' panel at the top of this page has them.)",
   },
   {
     id: "validate",
-    n: 7,
+    n: 5,
     title: "Validate it works",
     what: "Run the validator. It checks that your worker has all required pieces and that your assertions pass. Anything that fails comes back with a plain-language explanation and a button to ask Claude Code to fix it. Then red-team your own work — add assertions that should fail, see if they do.",
   },
   {
+    id: "preview",
+    n: 6,
+    title: "Get a shareable preview",
+    what: "Once your worker validates, we render a server-side preview. You'll get a URL you can text or email to colleagues — show your network the real working thing, not a mockup.",
+  },
+  {
     id: "ship",
-    n: 8,
+    n: 7,
     title: "Ship it",
     what: "Push your code. Open a pull request. CI runs the validator plus an AI reviewer. Most PRs merge automatically. Your worker is then listed on the SOCIII Marketplace at sociii.ai with your name on it — and your public Creator Profile goes live at sociii.ai/c/&lt;your-handle&gt;.",
   },
   {
     id: "first-customer",
-    n: 9,
+    n: 8,
     title: "Your first customer",
     what: "Forge Reviews — an independent reviewer funded by SOCIII — subscribes to your Worker shortly after it lists. You get your first paying customer and a structured private review. If they flag issues, you have a window to fix things before the review publishes.",
   },
   {
     id: "earn",
-    n: 10,
+    n: 9,
     title: "Earn",
     what: "Share your Worker with your professional network. Email primary, LinkedIn secondary. Most early Workers get their first 50 customers from the creator's own network — that's why your expertise matters. Payouts land on the 5th of each month.",
   },
@@ -232,7 +226,7 @@ export default function CreatorJourney({ embedded = false }) {
         <section style={S.heroSection}>
           <h1 style={S.h1}>Your SOCIII Creator Steps</h1>
           <p style={S.heroSub}>
-            From "I have expertise" to "I have a publicly-recognized business built on it." Ten steps. You mark what's done as you go.
+            From "I have expertise" to "I have a publicly-recognized business built on it." Nine steps. You mark what's done as you go.
           </p>
           <div style={S.progressBar}>
             <div style={{ ...S.progressFill, width: `${progressPct}%` }} />

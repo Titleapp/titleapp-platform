@@ -5040,6 +5040,7 @@ export default function App() {
 
   const isSociiiBuild = /^\/build\/?$/.test(window.location.pathname);
   const isCreatorJourney = /^\/creators\/journey\/?$/.test(window.location.pathname);
+  const isCreatorDashboard = /^\/creators\/dashboard\/?$/.test(window.location.pathname);
 
   // S52.3 — /docs (index) + /docs/<slug> (page)
   const isDocsIndex = /^\/docs\/?$/.test(window.location.pathname);
@@ -6106,7 +6107,10 @@ export default function App() {
     // "Sign in to see your creator steps" gate from inside the page).
     if (token) {
       return (
-        <AppShell currentSection="creator-journey" onNavigate={() => {}}>
+        <AppShell currentSection="creator-journey" onNavigate={(section) => {
+          if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
+          if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
+        }}>
           <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading creator journey…</div>}>
             <CreatorJourney embedded />
           </React.Suspense>
@@ -6114,6 +6118,17 @@ export default function App() {
       );
     }
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorJourney /></React.Suspense>;
+  }
+
+  if (isCreatorDashboard && token) {
+    return (
+      <AppShell currentSection="creator-dashboard" onNavigate={(section) => {
+        if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
+        if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
+      }}>
+        <CreatorDashboard />
+      </AppShell>
+    );
   }
 
   if (handoffInProgress || currentView === "loading") {
