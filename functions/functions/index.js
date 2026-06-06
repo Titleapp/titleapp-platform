@@ -6147,6 +6147,15 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return await recordVisualAcknowledgment(req, res, { body, ctx, jsonError });
     }
 
+    // Step 7 — W-002 handoff (token-based, no re-pull on the happy path).
+    if ((route === "/workers/site-recon-001/handoff-to-title-abstract" || route === "/site-recon:handoff-to-title-abstract") && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { handoffToTitleAbstract } = require("./workers/site-recon-001/handoffToTitleAbstract");
+      return await handoffToTitleAbstract(req, res, { body, ctx, jsonError });
+    }
+
     // GET /v1/raas:catalog — public RAAS store catalog
     if (route === "/raas:catalog" && method === "GET") {
       try {

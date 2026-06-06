@@ -27,6 +27,8 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+const admin = require("firebase-admin");
 const { quoteDataFee, recordDataFee } = require("../../services/billing/dataFee");
 const { scoreFeasibility } = require("./scoreFeasibility");
 const { sha256 } = require("../../services/signatureService/blockchain");
@@ -201,10 +203,65 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
     });
   }
 
+  // ── Cache + handoff token (Step 7 — single-parcel handoff path) ──
+  const apnVal = prop0?.identifier?.apn || attomId || parsed.address1;
+  const apnKey = String(apnVal).replace(/[^A-Za-z0-9_.-]+/g, "-").slice(0, 200);
+  const parcelRender = {
+    apn: prop0?.identifier?.apn || null,
+    attomId,
+    address1: parsed.address1,
+    address2: parsed.address2,
+    lat: Number(prop0?.location?.latitude ?? NaN) || null,
+    lng: Number(prop0?.location?.longitude ?? NaN) || null,
+  };
+  let searchId = null;
+  let handoffToken = null;
+  let handoffExpiresAt = null;
+  try {
+    const db = admin.firestore();
+    const nowMs = Date.now();
+    searchId = `search_${nowMs.toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    await db.collection("search-results").doc(searchId).set({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId || null,
+      receiptId: anchor.receiptId || null,
+      searchArea: null, // single-address pull, no area
+      rankedParcels: [{ rank: 1, parcel: parcelRender, feasibility, overlays }],
+      createdAtMs: nowMs,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection("search-results").doc(searchId)
+      .collection("parcels").doc(apnKey).set({
+        parcel: parcelRender,
+        feasibility,
+        overlays,
+        bundle: attom,
+        createdAtMs: nowMs,
+      });
+    handoffToken = crypto.randomBytes(16).toString("hex");
+    handoffExpiresAt = new Date(nowMs + 15 * 60 * 1000).toISOString();
+    await db.collection("handoff-tokens").doc(handoffToken).set({
+      searchId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId || null,
+      createdAtMs: nowMs,
+      expiresAtMs: nowMs + 15 * 60 * 1000,
+      usedApns: [],
+    });
+  } catch (cacheErr) {
+    searchId = null;
+    handoffToken = null;
+    handoffExpiresAt = null;
+    console.warn(`[${WORKER_ID}] search cache/token write failed (non-fatal):`, cacheErr.message);
+  }
+
   return res.json({
     ok: true,
     phase: "pull",
     worker: WORKER_ID,
+    searchId,
+    handoffToken,
+    handoffExpiresAt,
     address: { ...params },
     fee: {
       chargedUsd: quote.costBilledCents / 100,

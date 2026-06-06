@@ -45,8 +45,12 @@ const auditTrail = require("../../services/auditTrailService");
 const gis = require("./gisOverlayService");
 
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 const WORKER_ID = "site-recon-001";
+const HANDOFF_TOKEN_TTL_MS = 15 * 60 * 1000; // Step 7 — 15-minute handoff window
+
+function apnKeyOf(s) { return String(s).replace(/[^A-Za-z0-9_.-]+/g, "-").slice(0, 200); }
 const SPEC_VERSION = "SITE-RECON-001-v1.1";
 const SOURCE_PROPERTY = "attom:property";
 const SOURCE_SNAPSHOT = "attom:snapshot";
@@ -471,19 +475,51 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
     overlays: r.overlays || null,
   }));
   let searchCached = false;
+  let handoffToken = null;
+  let handoffExpiresAt = null;
   try {
-    await admin.firestore().collection("search-results").doc(searchId).set({
+    const db = admin.firestore();
+    const nowMs = Date.now();
+    await db.collection("search-results").doc(searchId).set({
       userId: ctx.userId,
       tenantId: ctx.tenantId || null,
       batchId,
       receiptId: anchor.receiptId || null,
       searchArea: summarizeArea(area, filtered.length, ranked.length),
       rankedParcels: renderParcels,
-      createdAtMs: Date.now(),
+      createdAtMs: nowMs,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    // Step 7: per-parcel bundle subdocs — full ATTOM bundles live here (each
+    // well under the 1MB doc limit) so the W-002 handoff never re-pulls.
+    await Promise.all(
+      ranked.map((r, i) =>
+        db.collection("search-results").doc(searchId)
+          .collection("parcels").doc(apnKeyOf(r.parcel.apn || r.parcel.attomId || r.parcel.address1)).set({
+            parcel: renderParcels[i].parcel,
+            feasibility: r.feasibility,
+            overlays: r.overlays || null,
+            bundle: r.bundle,
+            createdAtMs: nowMs,
+          })
+      )
+    );
+    // Step 7: handoff token — 15-min TTL, valid across multiple parcels
+    // (spec §2: promote ANY ranked parcel), per-APN idempotency via usedApns.
+    handoffToken = crypto.randomBytes(16).toString("hex");
+    handoffExpiresAt = new Date(nowMs + HANDOFF_TOKEN_TTL_MS).toISOString();
+    await db.collection("handoff-tokens").doc(handoffToken).set({
+      searchId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId || null,
+      createdAtMs: nowMs,
+      expiresAtMs: nowMs + HANDOFF_TOKEN_TTL_MS,
+      usedApns: [],
     });
     searchCached = true;
   } catch (cacheErr) {
+    handoffToken = null;
+    handoffExpiresAt = null;
     console.warn(`[${WORKER_ID}] search-result cache write failed (non-fatal):`, cacheErr.message);
   }
 
@@ -492,6 +528,8 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
     phase: "pull",
     worker: WORKER_ID,
     searchId: searchCached ? searchId : null,
+    handoffToken,
+    handoffExpiresAt,
     searchArea: summarizeArea(area, filtered.length, ranked.length),
     rankedParcels: ranked.map((r, i) => ({
       rank: i + 1,
