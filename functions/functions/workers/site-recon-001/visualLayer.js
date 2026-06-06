@@ -24,6 +24,7 @@
 
 const admin = require("firebase-admin");
 const auditTrail = require("../../services/auditTrailService");
+const vault = require("./vaultIntegration");
 
 const SEARCH_CACHE_COLLECTION = "search-results";
 const ACK_COLLECTION = "visual-acknowledgments";
@@ -215,11 +216,23 @@ async function recordVisualAcknowledgment(req, res, { body, ctx, jsonError }) {
     });
   }
 
+  // Vault DTC logbook mirror (Step 8 — soft). Address recovered from the
+  // cached search so the entry lands on the right parcel DTC.
+  const cachedParcel = (loaded.doc.rankedParcels || []).find(
+    (p) => p?.parcel?.apn === apn || (p?.parcel?.apn && String(p.parcel.apn).replace(/[^A-Za-z0-9_.-]+/g, "-").slice(0, 200) === ackKey)
+  ) || null;
+  const vaultResult = await vault.createVaultLogbookEntry(
+    { execution_type: "site-recon:visual-acknowledgment", timestamp, receiptId: anchor.receiptId || null, txHash: anchor.txHash, metadata: { searchId, apn, visualsViewed: ackDoc.visualsViewed } },
+    { apn, address1: cachedParcel?.parcel?.address1, address2: cachedParcel?.parcel?.address2, attomId: cachedParcel?.parcel?.attomId },
+    ctx
+  );
+
   return res.json({
     ok: true,
     acknowledgmentId: `${searchId}/${ackKey}`,
     receiptId: anchor.receiptId || null,
     timestamp,
+    vaultStatus: vaultResult.ok ? "ok" : "unavailable",
   });
 }
 

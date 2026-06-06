@@ -36,6 +36,8 @@ const { pullParcelBundle } = require("./attomClient");
 // Namespace requires (not destructured) so smoke tests can stub per-case.
 const auditTrail = require("../../services/auditTrailService");
 const gis = require("./gisOverlayService");
+const vault = require("./vaultIntegration");
+const { validateZipInAddress, fairHousingScreen } = require("./inputValidation");
 
 const SOURCE = "attom:property"; // registered in dataFee.js SOURCE_REGISTRY ($3 actual × 2.0 markup)
 const WORKER_ID = "site-recon-001";
@@ -83,6 +85,17 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
   const parsed = parseAddress(body.address);
   if (parsed.error) return jsonError(res, 400, parsed.error, { code: "INVALID_ADDRESS" });
 
+  // ── RULE-11 (hard stop): fictional-ZIP check BEFORE any spend ──
+  const zipCheck = validateZipInAddress(parsed.address2);
+  if (!zipCheck.ok) return jsonError(res, 400, zipCheck.message, { code: zipCheck.code, reason: zipCheck.reason });
+
+  // ── RULE-12 (hard stop): Fair Housing screen. Structural compliance —
+  // this endpoint accepts only an address string; the RAAS Tier 2
+  // fair-housing-act module (catalog-declared) governs chat-layer
+  // detection. Any future freeform field MUST route through this screen.
+  const fh = fairHousingScreen(body);
+  if (!fh.ok) return res.status(fh.status).json({ ok: false, code: fh.code, message: fh.message });
+
   // One address = one property report = 1 billable unit.
   const units = 1;
 
@@ -117,6 +130,13 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
   const params = { address1: parsed.address1, address2: parsed.address2 };
   // detail = assessor + owner of record + APN; salesHistory raw; AVM valuation
   const { propertyDetail, salesHistory, avm } = await pullParcelBundle(params, apiKey);
+
+  // ── RULE-11: fictional address — ATTOM zero-results surfaces a specific
+  // error instead of an empty success. No fee, no receipt: nothing was
+  // delivered to the user.
+  if (!propertyDetail?.data?.property?.length) {
+    return jsonError(res, 400, `No property found at "${parsed.address1}, ${parsed.address2}" — check the address and try again.`, { code: "INVALID_ADDRESS", reason: "ADDRESS_NOT_FOUND" });
+  }
 
   // ── Record the data fee (universal data-credit billing — non-negotiable).
   // recordDataFee is non-fatal by design; billing never blocks the response.
@@ -203,6 +223,13 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
     });
   }
 
+  // ── Vault DTC logbook mirror (Step 8 — soft, never blocks) ─────
+  const vaultResult = await vault.createVaultLogbookEntry(
+    { execution_type: "site-recon:property-pull", timestamp: pulledAt, receiptId: anchor.receiptId || null, txHash: anchor.txHash, metadata: receiptMetadata },
+    { apn: prop0?.identifier?.apn, attomId, address1: parsed.address1, address2: parsed.address2 },
+    ctx
+  );
+
   // ── Cache + handoff token (Step 7 — single-parcel handoff path) ──
   const apnVal = prop0?.identifier?.apn || attomId || parsed.address1;
   const apnKey = String(apnVal).replace(/[^A-Za-z0-9_.-]+/g, "-").slice(0, 200);
@@ -279,6 +306,8 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
     parcel: attom,
     overlays,
     feasibility,
+    vaultStatus: vaultResult.ok ? "ok" : "unavailable",
+    ...(vaultResult.ok ? { vaultEntryId: vaultResult.entryId, parcelDtcId: vaultResult.dtcId } : {}),
   });
 }
 

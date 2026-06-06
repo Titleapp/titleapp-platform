@@ -28,6 +28,8 @@ const auditTrail = require("../../services/auditTrailService");
 const w002 = require("./titleAbstractStub");
 const { pullParcelBundle } = require("./attomClient");
 const scoring = require("./scoreFeasibility");
+const vault = require("./vaultIntegration");
+const { validateApn } = require("./inputValidation");
 
 const WORKER_ID = "site-recon-001";
 const SOURCE_PROPERTY = "attom:property";
@@ -50,8 +52,10 @@ async function rePullProjection(userId) {
 
 async function handoffToTitleAbstract(req, res, { body, ctx, jsonError }) {
   const token = (body.handoffToken || "").toString();
-  const apn = (body.apn || "").toString();
-  if (!apn) return jsonError(res, 400, "apn is required.", { code: "INVALID_APN" });
+  // RULE-11 (hard stop): structural APN validation — specific error, no spend.
+  const apnCheck = validateApn(body.apn);
+  if (!apnCheck.ok) return jsonError(res, 400, apnCheck.message, { code: apnCheck.code, reason: apnCheck.reason });
+  const apn = apnCheck.apn;
   if (!token) return jsonError(res, 400, "handoffToken is required.", { code: "INVALID_TOKEN" });
   const apnKey = apnKeyOf(apn);
   const db = getDb();
@@ -206,8 +210,16 @@ async function handoffToTitleAbstract(req, res, { body, ctx, jsonError }) {
     }
   }
 
+  // Vault DTC logbook mirror (Step 8 — soft, never blocks).
+  const vaultResult = await vault.createVaultLogbookEntry(
+    { execution_type: "site-recon:w002-handoff", timestamp, receiptId: anchor.receiptId || null, txHash: anchor.txHash, metadata: { apn, handoffMethod, titleAbstractJobId: job.jobId, linkedSearchId } },
+    { apn, attomId: parcelRef?.attomId, address1: parcelRef?.address1, address2: parcelRef?.address2 },
+    ctx
+  );
+
   return res.json({
     ok: true,
+    vaultStatus: vaultResult.ok ? "ok" : "unavailable",
     handoff: {
       titleAbstractWorkerId: w002.W002_WORKER_ID,
       titleAbstractJobId: job.jobId,

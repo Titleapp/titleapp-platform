@@ -43,6 +43,8 @@ const billing = require("../../services/billing/dataFee");
 const scoring = require("./scoreFeasibility");
 const auditTrail = require("../../services/auditTrailService");
 const gis = require("./gisOverlayService");
+const vault = require("./vaultIntegration");
+const { fairHousingScreen } = require("./inputValidation");
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -281,12 +283,21 @@ async function pullInChunks(parcels, apiKey, ctx) {
  * Route handler. index.js does auth + ctx extraction and delegates here.
  */
 async function searchByArea(req, res, { body, ctx, jsonError }) {
+  // RULE-11 geometry caps (radius ≤5mi, polygon ≤10sqmi, vertex bounds)
+  // enforced in validateInput since Step 4.
   const validated = validateInput(body);
   if (validated.error) {
     const { status, code, message } = validated.error;
     return jsonError(res, status, message, { code });
   }
   const { area, limit } = validated;
+
+  // ── RULE-12 (hard stop): Fair Housing screen. Structural compliance —
+  // geometry/lot-size/land-use-code inputs only, no demographic vectors by
+  // construction; RAAS Tier 2 fair-housing-act module governs chat-layer
+  // detection. Future freeform fields MUST route through this screen.
+  const fh = fairHousingScreen(body);
+  if (!fh.ok) return res.status(fh.status).json({ ok: false, code: fh.code, message: fh.message });
 
   const apiKey = process.env.ATTOM_API_KEY || "";
   if (!apiKey) return jsonError(res, 500, "ATTOM API key not configured", { code: "ATTOM_KEY_MISSING" });
@@ -458,6 +469,14 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
     });
   }
 
+  // ── Vault DTC logbook mirror (Step 8 — one entry per manifest parcel,
+  // spec §8 batch path; soft, never blocks) ──
+  const vaultBatch = await vault.createVaultLogbookEntriesForBatch(
+    { execution_type: "site-recon:area-search", timestamp: pulledAt, receiptId: anchor.receiptId || null, txHash: anchor.txHash, metadata: receiptMetadata },
+    receiptMetadata.parcelRefBatch.parcelManifest.map((m, i) => ({ ...m, address1: ranked[i]?.parcel?.address1, address2: ranked[i]?.parcel?.address2 })),
+    ctx
+  );
+
   // ── Cache the render payload for the visual layer (Step 6) ────
   // 24h TTL per spec §9 session persistence. Render payload only (parcel
   // ref + feasibility + overlays), NOT raw ATTOM bundles — 50 full bundles
@@ -558,6 +577,8 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
       totalFeeUsd: (pulledCount * (billing.SOURCE_REGISTRY[SOURCE_PROPERTY].actualCentsPerUnit * billing.SOURCE_REGISTRY[SOURCE_PROPERTY].markup)) / 100,
       feeEventId: fee.eventId || null,
     },
+    vaultStatus: vaultBatch.status,
+    vaultEntries: vaultBatch.entries,
     // Informational expansion gate — stateful delta-dedup awaits session
     // resume infra (spec §9). Client re-queries with a higher limit.
     expansionAvailable: filtered.length > ranked.length + removedRetired + skippedFailures,
