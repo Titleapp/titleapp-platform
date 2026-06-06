@@ -211,16 +211,37 @@ function scoreFeasibility(attom, options = {}) {
     flags.push("no_sale_last_36mo");
   }
 
-  // ── Check: overlays (RED conditions — GIS integration pending) ──
+  // ── Check: overlays (Step 5 — GIS integration live) ─────────────
+  // overlays.evaluated === false means ALL GIS sources failed: coerce both
+  // RED-condition fields to unknown regardless of what they hold. Per-source
+  // failures arrive as nulls and degrade to unknown individually.
+  const overlaysUsable = overlays.evaluated !== false;
+  const coastalVal = overlaysUsable ? overlays.coastalCommission : null;
+  const historicVal = overlaysUsable ? overlays.historicDistrict : null;
   checks.coastalCommission =
-    overlays.coastalCommission === true ? "fail" :
-    overlays.coastalCommission === false ? "pass" : "unknown";
+    coastalVal === true ? "fail" :
+    coastalVal === false ? "pass" : "unknown";
   checks.historicDistrict =
-    overlays.historicDistrict === true ? "fail" :
-    overlays.historicDistrict === false ? "pass" : "unknown";
+    historicVal === true ? "fail" :
+    historicVal === false ? "pass" : "unknown";
   if (checks.coastalCommission === "unknown" || checks.historicDistrict === "unknown") {
     flags.push("overlays_not_evaluated");
     confidence -= 10;
+  }
+
+  // Flood + Opportunity Zone signals (only when GIS actually evaluated).
+  // Full FEMA SFHA list, not just A/AE/VE — any Special Flood Hazard Area
+  // zone carries the same insurance/feasibility weight.
+  const SFHA_ZONES = ["A", "AE", "AH", "AO", "AR", "A99", "V", "VE"];
+  if (overlays.evaluated === true) {
+    if (SFHA_ZONES.includes(overlays.floodZone)) {
+      flags.push("flood_zone_special_hazard");
+      confidence -= 10;
+    }
+    if (overlays.opportunityZone === true) {
+      flags.push("opportunity_zone");
+      confidence += 5;
+    }
   }
 
   // ── Title chain (RULE-04 input — not pulled in v1) ──
@@ -228,7 +249,7 @@ function scoreFeasibility(attom, options = {}) {
   flags.push("title_chain_not_evaluated");
   confidence -= 10;
 
-  confidence = Math.max(0, confidence);
+  confidence = Math.max(0, Math.min(100, confidence));
 
   // ── Verdict resolution: RED > YELLOW > GREEN, first-hit blocker ──
   let verdict = "GREEN";

@@ -31,8 +31,9 @@ const { quoteDataFee, recordDataFee } = require("../../services/billing/dataFee"
 const { scoreFeasibility } = require("./scoreFeasibility");
 const { sha256 } = require("../../services/signatureService/blockchain");
 const { pullParcelBundle } = require("./attomClient");
-// Namespace require (not destructured) so smoke tests can stub writeAuditRecord.
+// Namespace requires (not destructured) so smoke tests can stub per-case.
 const auditTrail = require("../../services/auditTrailService");
+const gis = require("./gisOverlayService");
 
 const SOURCE = "attom:property"; // registered in dataFee.js SOURCE_REGISTRY ($3 actual × 2.0 markup)
 const WORKER_ID = "site-recon-001";
@@ -126,15 +127,36 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
     metadata: { address1: parsed.address1, address2: parsed.address2 },
   });
 
+  // ── GIS overlays (Step 5 — feeds the RED conditions + flood/OZ flags) ──
+  const prop0 = propertyDetail?.data?.property?.[0];
+  const overlays = await gis.getOverlays(
+    {
+      lat: Number(prop0?.location?.latitude ?? NaN),
+      lng: Number(prop0?.location?.longitude ?? NaN),
+      state: prop0?.address?.countrySubd || (parsed.address2.match(/\b([A-Z]{2})\b/) || [])[1] || null,
+      apn: prop0?.identifier?.apn || null,
+    },
+    ctx
+  );
+
   // ── Score the bundle (Step 2 — RULE-04..07, RULE-13) ────────────
   const attom = { propertyDetail, salesHistory, avm };
-  const feasibility = scoreFeasibility(attom);
+  const feasibility = scoreFeasibility(attom, { overlays });
 
   // ── Anchor the pull to PLAT-008 (Step 3 — RULE-03, non-negotiable) ──
-  const attomId = propertyDetail?.data?.property?.[0]?.identifier?.attomId ?? null;
+  const attomId = prop0?.identifier?.attomId ?? null;
   const pulledAt = new Date().toISOString();
   const receiptMetadata = {
     parcelRef: { address1: parsed.address1, address2: parsed.address2, attomId },
+    // Step 5 additive: overlay state at scoring time (spec §8 overlay_layer_state)
+    overlays: {
+      floodZone: overlays.floodZone,
+      coastalCommission: overlays.coastalCommission,
+      historicDistrict: overlays.historicDistrict,
+      opportunityZone: overlays.opportunityZone,
+      evaluated: overlays.evaluated,
+      errors: overlays.errors,
+    },
     feasibility: {
       verdict: feasibility.verdict,
       namedBlocker: feasibility.namedBlocker,
@@ -198,6 +220,7 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
       anchoredAt: pulledAt,
     },
     parcel: attom,
+    overlays,
     feasibility,
   });
 }

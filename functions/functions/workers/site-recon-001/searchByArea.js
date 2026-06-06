@@ -42,6 +42,7 @@ const { attomGet, pullParcelBundle } = require("./attomClient");
 const billing = require("../../services/billing/dataFee");
 const scoring = require("./scoreFeasibility");
 const auditTrail = require("../../services/auditTrailService");
+const gis = require("./gisOverlayService");
 
 const WORKER_ID = "site-recon-001";
 const SPEC_VERSION = "SITE-RECON-001-v1.1";
@@ -174,6 +175,7 @@ function extractSnapshotParcels(snapResp) {
       apn: p?.identifier?.apn ?? null,
       address1: p?.address?.line1 ?? null,
       address2: p?.address?.line2 ?? ([p?.address?.locality, p?.address?.countrySubd, p?.address?.postal1].filter(Boolean).join(", ") || null),
+      state: p?.address?.countrySubd ?? null,
       lat: Number(p?.location?.latitude ?? NaN),
       lng: Number(p?.location?.longitude ?? NaN),
       lotSqft: p?.lot?.lotsize2 ?? null,
@@ -244,7 +246,7 @@ function rankParcels(scored) {
   });
 }
 
-async function pullInChunks(parcels, apiKey) {
+async function pullInChunks(parcels, apiKey, ctx) {
   const results = [];
   for (let i = 0; i < parcels.length; i += PULL_CHUNK_SIZE) {
     const chunk = parcels.slice(i, i + PULL_CHUNK_SIZE);
@@ -252,10 +254,15 @@ async function pullInChunks(parcels, apiKey) {
       chunk.map(async (p) => {
         const params = p.attomId ? { attomid: p.attomId } : { address1: p.address1, address2: p.address2 };
         try {
-          const bundle = await pullParcelBundle(params, apiKey);
-          return { parcel: p, bundle };
+          // Bundle + GIS overlays concurrently (Step 5). Overlay failures
+          // degrade soft inside getOverlays — they never sink the parcel.
+          const [bundle, overlays] = await Promise.all([
+            pullParcelBundle(params, apiKey),
+            gis.getOverlays({ lat: p.lat, lng: p.lng, state: p.state, apn: p.apn }, ctx),
+          ]);
+          return { parcel: p, bundle, overlays };
         } catch (e) {
-          return { parcel: p, bundle: null, pullError: e.message };
+          return { parcel: p, bundle: null, overlays: null, pullError: e.message };
         }
       })
     );
@@ -344,8 +351,8 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
     }
   }
 
-  // ── Phase 2: pull bundles, score, RULE-07 removal ──────────────
-  const pulled = await pullInChunks(capped, apiKey);
+  // ── Phase 2: pull bundles + overlays, score, RULE-07 removal ───
+  const pulled = await pullInChunks(capped, apiKey, ctx);
 
   const scored = [];
   let removedRetired = 0;
@@ -356,14 +363,14 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
       console.warn(`[${WORKER_ID}] parcel pull failed — excluded:`, { attomId: item.parcel.attomId, error: item.pullError });
       continue;
     }
-    const feasibility = scoring.scoreFeasibility(item.bundle);
+    const feasibility = scoring.scoreFeasibility(item.bundle, { overlays: item.overlays || undefined });
     // RULE-07: retired APN parcels are REMOVED from the ranked list, not
     // flagged. Decrement, don't substitute.
     if (feasibility.blockerCode === "APN_RETIRED") {
       removedRetired++;
       continue;
     }
-    scored.push({ parcel: item.parcel, bundle: item.bundle, feasibility });
+    scored.push({ parcel: item.parcel, bundle: item.bundle, overlays: item.overlays, feasibility });
   }
 
   // Bill the ACTUAL pulled count (bundles we paid ATTOM for), not the limit.
@@ -461,6 +468,7 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
         lng: r.parcel.lng,
       },
       attom: r.bundle,
+      overlays: r.overlays,
       feasibility: r.feasibility,
     })),
     parcelCountReturned: ranked.length,

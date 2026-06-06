@@ -47,6 +47,11 @@ const SOURCE_REGISTRY = {
   // ingest + Firestore scan costs. Charged per screen call, not per match.
   "ofac:screen":         { actualCentsPerUnit: 1, markup: 5.0, label: "OFAC SDN sanctions screen" },
 
+  // GIS overlays (FEMA flood / CA Coastal / NRHP historic / Opportunity
+  // Zones) — free public ArcGIS feeds; fee covers ingest + compute, same
+  // posture as ofac:screen. Charged per fresh parcel evaluation; cache free.
+  "gis:overlays":        { actualCentsPerUnit: 1, markup: 5.0, label: "GIS overlay evaluation (4 layers)" },
+
   // Property data. ATTOM rate updated per Sean 2026-06-01 — actual cost is
   // $3/property report, 2× markup ⇒ user pays $6.
   "attom:property":      { actualCentsPerUnit: 300, markup: 2.0, label: "ATTOM property data" },
