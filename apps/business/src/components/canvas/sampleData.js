@@ -690,7 +690,7 @@ const SPINE_FIXTURES = {
     },
     "opportunities": {
       title: "Oakland 94601 · 0.5 mi radius",
-      subtitle: "Sample · 5 of 10 ranked · search cost $4.20 (est)",
+      subtitle: "Sample · 5 of 10 ranked · search cost $30 (5 parcels × $6)",
       region: "Oakland, CA",
       locations: [
         { address: "3241 Market Street, Oakland, CA 94608",   label: "🟢 GREEN · $410K (2019)" },
@@ -700,13 +700,13 @@ const SPINE_FIXTURES = {
         { address: "831 32nd Street, Oakland, CA 94608",       label: "🔴 RED · APN retired (removed)" },
       ],
       fields: [
-        { label: "Total spend",         value: "$4.20" },
-        { label: "ATTOM cost",          value: "$2.10" },
-        { label: "SOCIII markup",       value: "$2.10" },
+        { label: "Total spend",         value: "$30 (5 parcels × $6)" },
+        { label: "ATTOM cost",          value: "$15 ($3 per parcel)" },
+        { label: "SOCIII markup",       value: "$15" },
         { label: "Parcels reviewed",    value: "5 of 10 returned" },
         { label: "Green / Yellow / Red", value: "2 / 2 / 1" },
         { label: "Pursuit fund baseline", value: "$50,000 (duplex tier)" },
-        { label: "Cost compression",    value: "11,900× vs traditional pursuit" },
+        { label: "Cost compression",    value: "1,667× vs traditional pursuit" },
       ],
       sections: [
         { heading: "Ranked list", body: "#1  3241 Market St · GREEN · clean title, fresh data, no overlay\n#2  3255 Market St · YELLOW · owner-of-record mismatch (retained in list)\n#3  3198 Market St · YELLOW · assessor data 8 months stale\n#4  3270 Market St · GREEN · recent transfer 2023, clean\n#5  831 32nd St · RED · APN retired (removed from ranked list)" },

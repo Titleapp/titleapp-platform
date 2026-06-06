@@ -66,6 +66,9 @@ const STEPS = [
     n: 6,
     title: "Get a shareable preview",
     what: "Once your worker validates, we render a server-side preview. You'll get a URL you can text or email to colleagues — show your network the real working thing, not a mockup.",
+    actions: [
+      { label: "Open your creator dashboard to preview", url: "/creators/dashboard?tab=workers" },
+    ],
   },
   {
     id: "ship",
@@ -272,7 +275,7 @@ export default function CreatorJourney({ embedded = false }) {
               onClick={markToolsComplete}
               style={S.skipToolsBtn}
             >
-              I already have these — skip to Step 6 →
+              I already have these — skip the tools setup →
             </button>
           )}
         </section>
