@@ -1,8 +1,53 @@
 # CODEX S52.34 — Site Recon Step 9 grounding (Sublette + Oakland E2E + intent.md + workerSync + marketplace review)
 
-**Date:** 2026-06-06
-**Status:** Step 8 SHIPPED (cba44812) — 8 of 9 Steps complete + clean 9/9 smoke tests + Alex Option 2 recovery passed rubric-#5. Step 9 grounding cut BEFORE the prompt is sent to web-Alex, per the process rule effective post-TC-063.
-**Resume point:** post-S52.33 (Step 8 Vault DTC bridge + RULE-11/12 enforcement shipped) + Step 9 marks the marketplace-ready milestone
+**Date:** 2026-06-06 (original) · **Corrigendum:** 2026-06-06 ~12:00 HST
+**Status:** SHIPPED — Step 9 complete (commit 24279549), deploy succeeded attempt 5 (bundle stash-slimmed 147MB→3.3MB), workerSync ran (digitalWorkers/site-recon synced, 3 tabs, 6 raasSources), marketplace review queued (marketplaceReviewQueue/SITE-RECON-001_1780779625037, 7-day SLA, first-listing).
+**Resume point:** N/A — 9 of 9 complete; this doc now reads as a historical grounding doc with corrigendum.
+
+---
+
+## ⚠️ CORRIGENDUM 2026-06-06 ~12:00 HST (post live E2E)
+
+Five corrections applied from Code's live verification pass during Step 9 execution. The original doc body is preserved below for historical fidelity; inline correction markers (⚠️ → ✅) point at each fix.
+
+### 1. GIS URL corrections (TC-064 — spec-in-repo drift)
+2 of 4 URLs in the "Locked GIS endpoint URLs" block were wrong. CCC pointed at a Polyline layer (Coastal_Zone_Boundary/FeatureServer/0 is a Polyline → point-in-polygon queries fail by design). OZ pointed at a different org's points layer instead of HUD's national QOZ polygon dataset. Geometry payload format also corrected (HUD's OZ layer rejects `{x,y,spatialReference}` JSON-object form; all four endpoints accept simple `lng,lat` string).
+
+**Verified-live URLs (Code, 2026-06-06):**
+```js
+const ENDPOINTS = {
+  femaFlood:         "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",
+  coastalCommission: "https://services9.arcgis.com/wwVnNW92ZHUIr0V0/arcgis/rest/services/Coastal_Zone_Polygon/FeatureServer/0/query",
+  historicDistricts: "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/1/query",
+  opportunityZones:  "https://services.arcgis.com/VTyQ9soqVukalItT/arcgis/rest/services/Opportunity_Zones/FeatureServer/13/query"
+};
+// geometry param: simple "lng,lat" string (NOT JSON-object form)
+```
+
+Memory: [[project-step9-gis-url-corrections-inverse-tc063]]. Source-of-truth file `functions/functions/workers/site-recon-001/gisOverlayService.js` carries the corrections in production.
+
+### 2. Oakland sample address (TC-065 — spec fabricated at origin)
+`3241 Market Street, Oakland, CA 94608` is UNRESOLVABLE in ATTOM across 5 address variants (returns SuccessWithoutResult). Quoted here as "real Oakland parcel" but **never live-verified at spec-authoring time** — a fabrication baked into spec v1.1 §4 + S52.29 fixtures BEFORE the grounding discipline existed. Test 1 (Oakland regression) is **UNRUNNABLE** until spec v1.2 lands an ATTOM-verified replacement.
+
+**Silver lining:** RULE-11's zero-results gate fired live (400 ADDRESS_NOT_FOUND) — production-load dogfood of the input-validation contract. Memory: [[project-tc065-locked-spec-fabricated-at-origin]].
+
+### 3. vaultStatus assertion (one-word fix)
+Tests 1 + 2 assert `vaultStatus: "linked"`. The worker returns `"ok"`. Code is ground truth; the correct assertion is `vaultStatus: "ok"`.
+
+### 4. CCC non-CA semantics (`null` → `false`)
+Test 2 says `coastalCommission returns null (not California)`. The worker returns `false` for categorically-out-of-jurisdiction parcels. `false` is the stronger, more correct semantics — asserts "definitively not in the CCC zone" rather than "unknown." Update Test 2 to `coastalCommission: false`.
+
+### 5. Environment-state failure class (TC-066 — extends anti-fabrication guard)
+Step 9 closing surfaced a new failure class NOT covered by the "Anti-fabrication guard for Code" block below. Web-Alex (the prompt-author surface in `/creators/journey`) recommended `gcloud auth application-default login` without verifying gcloud was installed on Sean's machine. The original guard covers CONTENT grounding (URLs, addresses, slugs); TC-066 is an ENVIRONMENT-STATE assumption — a separate failure layer. **Pattern lock:** Alex describes the desired outcome; Code picks the path that works on the user's environment. Codified in `docs/CODEX-S52.35-Environment-Grounding-Rule.md`. Memory: [[project-tc066-alex-environment-state-assumption]].
+
+### Also surfaced during Step 9 closing (platform-QA findings, separate memory)
+- 153MB PC-12 PDF in deploy bundle (deploy bundle bloat — `firebase.json` `functions.ignore` didn't take effect; stash-deploy-restore was the working pattern)
+- `/v1/admin:workers:sync` + `:scheduled` sibling appear to lack admin-role enforcement
+- `raas_tier_2` empty warning on workerSync (operator-policy rules to add later)
+
+Memory: [[project-step9-platform-qa-findings-pdf-and-admin-routes]].
+
+---
 
 ---
 
@@ -21,23 +66,25 @@ Below is the verbatim ground truth for each.
 
 ## Locked GIS endpoint URLs (verbatim from `functions/functions/workers/site-recon-001/gisOverlayService.js`)
 
+> ⚠️ **THE BLOCK BELOW IS THE ORIGINAL-AS-WRITTEN. Two URLs were WRONG.** See Corrigendum item 1 (top of doc) for the live-verified correct URLs. The original is preserved below to document the drift that TC-064 caught.
+
 ```js
 const ENDPOINTS = {
-  femaFlood: "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",
-  coastalCommission: "https://services2.arcgis.com/yh4PJtbnaZ3vAF5M/ArcGIS/rest/services/Coastal_Zone_Boundary/FeatureServer/0/query",
-  historicDistricts: "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/1/query",
-  opportunityZones: "https://services.arcgis.com/VTyQ9soqVukalItT/arcgis/rest/services/Opportunity_Zones/FeatureServer/0/query"
+  femaFlood: "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",                                          // ✅ verified live
+  coastalCommission: "https://services2.arcgis.com/yh4PJtbnaZ3vAF5M/ArcGIS/rest/services/Coastal_Zone_Boundary/FeatureServer/0/query", // ⚠️ WRONG — Polyline layer; corrected to services9/Coastal_Zone_Polygon (see Corrigendum #1)
+  historicDistricts: "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/1/query",          // ✅ verified live
+  opportunityZones: "https://services.arcgis.com/VTyQ9soqVukalItT/arcgis/rest/services/Opportunity_Zones/FeatureServer/0/query"        // ⚠️ WRONG — wrong layer; corrected to FeatureServer/13 (HUD national QOZ, see Corrigendum #1)
 };
 ```
 
-These are the four URLs. Any Step 9 test that asserts against a different URL is fabrication. Code's gisOverlayService comment notes: *"endpoint URLs are best-known as of 2026-06-06. The FEMA NFHL layer is long-stable; CCC / NRHP / OZ layer URLs get pinned during the Sublette WY + Oakland E2E pass (Step 9). A wrong URL degrades soft into errors[]."* — that's the pin step Step 9 closes.
+These were *intended* to be the four URLs. Step 9's live-probe pass surfaced that the CCC and OZ URLs had drifted — Code's gisOverlayService comment was right that "a wrong URL degrades soft into errors[]," and Code's choice to LIVE PROBE (not just cross-check the committed spec) is what caught TC-064. **The pin step's job is now expanded: live-probe over committed-spec when external services are involved.**
 
 ---
 
 ## Sample parcels
 
 ### Oakland (regression baseline — already in fixtures since S52.29)
-- **Address:** `3241 Market Street, Oakland, CA 94608`
+- **Address:** `3241 Market Street, Oakland, CA 94608`  ⚠️ **UNRUNNABLE — TC-065:** Live ATTOM lookup at Step 9 returned `SuccessWithoutResult` across 5 address variants. Address was fabricated at spec-authoring time, never live-verified. Test 1 is **UNRUNNABLE** until spec v1.2 lands an ATTOM-verified replacement. See Corrigendum #2 (top of doc). RULE-11's zero-results gate DID fire live (400 ADDRESS_NOT_FOUND) — that's the silver lining: production code handled the unresolvable input correctly.
 - **Use:** regression E2E. Result MUST match what the existing canvas fixtures show (Opportunities tab ranked-list position, Feasibility tab GREEN with stated overlays, Historical tab 5-year chain + AVM + visual context note "south-facing, morning sun"). If the live result diverges from the fixture, that's the regression to report — do NOT silently update the fixture.
 
 ### Sublette WY (NEW pin — pilot parcel for county-instrumentation campaign)
@@ -187,7 +234,7 @@ After workerSync succeeds, post a review-request payload to the Forge Reviews qu
 
 ## E2E test spec
 
-### Test 1 — Oakland regression
+### Test 1 — Oakland regression  ⚠️ UNRUNNABLE (TC-065)
 Inputs:
 - `searchByAddress` with `address: "3241 Market Street, Oakland, CA 94608"`, `confirmCost: true`
 Assertions:
@@ -195,22 +242,27 @@ Assertions:
 - Phase 2 returns verdict + GIS overlays (floodZone, coastalCommission, historicDistrict, opportunityZone — all four fields present, errors[] empty or only soft-fail labels)
 - Audit anchor written to PLAT-008
 - Vault entry written under the Oakland parcel's DTC
-- vaultStatus: "linked"
+- ~~vaultStatus: "linked"~~ → **vaultStatus: "ok"** (Corrigendum #3)
 - Response shape matches existing `Historical` tab fixture for this address (5-year chain + AVM + visual context note)
 
-### Test 2 — Sublette WY new pin
+**Step 9 result:** Test 1 returned 400 ADDRESS_NOT_FOUND. The address is unresolvable in ATTOM. RULE-11 zero-results gate fired correctly. Re-enable Test 1 with an ATTOM-verified Oakland (or East Bay) parcel in spec v1.2.
+
+### Test 2 — Sublette WY new pin  ✅ PASSED (live)
 Inputs:
-- `searchByAddress` with `address: "<real Sublette parcel Code looked up>"`, `confirmCost: true`
+- `searchByAddress` with `address: "9708 US Highway 191, Pinedale, WY 82941"`, `confirmCost: true`
+- **Pinned APN:** `01-00-10382` · **ATTOM ID:** `310685984` · Triple-verified (county FIPS 56035 + APN encoded in public record + live ATTOM return)
 Assertions:
-- ATTOM call fires (or fails with a documented error if Sublette has no ATTOM coverage — that's also a finding worth pinning)
-- floodZone returns some value (likely "X" or "AE" for Green River corridor parcels)
-- coastalCommission returns null (not California)
-- historicDistrict returns true/false (depending on the parcel — assert based on what Code picks)
-- opportunityZone returns true/false (depending on the parcel)
-- errors[] empty
-- Audit anchor written
-- Vault entry written
-- `vaultStatus: "linked"`
+- ATTOM call fires ✅ (Sublette has coverage — S52.34 open question CLOSED YES)
+- floodZone returns some value (likely "X" or "AE" for Green River corridor parcels) ✅ returned `X`
+- ~~coastalCommission returns null (not California)~~ → **coastalCommission returns false** (Corrigendum #4 — `false` is stronger semantics) ✅ returned `false`
+- historicDistrict returns true/false (depending on the parcel — assert based on what Code picks) ✅ returned `false`
+- opportunityZone returns true/false (depending on the parcel) ✅ returned `false`
+- errors[] empty ✅
+- Audit anchor written ✅
+- Vault entry written ✅
+- ~~vaultStatus: "linked"~~ → **vaultStatus: "ok"** (Corrigendum #3) ✅
+
+**Step 9 verdict:** YELLOW / "Stale assessor data" / confidence 40 / flags `missing_avm`, `no_sales_history`, `assessor_data_age_180plus`, `owner_record_incomplete`, `title_chain_not_evaluated` — the honest result for thin frontier-county data. The [[project-county-instrumentation-campaign]] thesis demonstrating itself in production. $6 fee charged, receipt anchored with rulesetHash exact-match.
 
 ### Test 3 — Sublette WY with the FOUR endpoint URLs verified verbatim
 After Sublette test completes, dump the actual URL each overlay called (via gisOverlayService logs) and assert against the four URLs quoted above. This is the URL-pinning step. If any URL has drifted (e.g., NPS retired the NRHP layer at the path above), Step 9 reports it and the spec docs get updated.
