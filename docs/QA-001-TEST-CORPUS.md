@@ -723,6 +723,19 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-062 — Alex context drift: surface-to-surface spec citation conflict
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 3, CODE+ALEX+CLAUDE loop)
+- **Worker:** Alex (web `/creators/journey` instance vs terminal instance)
+- **Family:** 6 (Alex context coherence) — new family; distinct from TC-061 (chat engine resilience)
+- **Severity:** P0 (would have shipped a spec-violating audit trail on the platform whose thesis IS the audit trail)
+- **Real bug:** Two active Alex instances held conflicting Step 3 specs. Terminal-Alex authored + committed CODEX S52.31 (anchor failure → 503 rollback per RULE-03). Hours later, web-Alex issued a Step 3 prompt from stale context that (1) cited **RULE-10 incorrectly** to make the audit anchor non-blocking — directly contradicting RULE-03's `on_fail: rollback_pull`; (2) put `blockchainAnchor` + Crossmint in the response schema, violating the vocabulary lock; (3) directed an HTTP call to a nonexistent endpoint (`/api/workers/plat-008/audit-trail/anchor`) instead of the in-process `auditTrailService.writeAuditRecord()`. The danger class: **citing a real rule number incorrectly sounds authoritative** — worse than pure hallucination, because a first-time creator has no basis to doubt it. Secondary symptom: web-Alex's own acknowledgment mislabeled TC-061 as "Supabase/Firebase stack confusion" (TC-061 is the snag loop; the stack drift was never a TC).
+- **Test:** (a) After any CODEX commit that changes worker-build guidance, assert the `/creators/journey` Alex system prompt / knowledge surface reflects it before the next authoring turn (staleness check: compare CODEX HEAD referenced by web-Alex vs repo HEAD). (b) Adversarial: ask both Alex surfaces the same spec question (e.g., "what happens when the audit anchor write fails for site-recon-001?") — assert identical rule citation AND identical on_fail behavior. (c) Lint Alex authoring prompts for vocabulary-lock violations (blockchain/crypto/NFT/mint/Crossmint in proposed response schemas) before they reach the creator.
+- **Mitigation that worked:** Claude Code (creator side) cross-checked the prompt against the spec + committed CODEX before building, per the "flag and stop, don't paper over" constraint. The loop's defense-in-depth held — but only because the creator-side agent was instructed to verify. Platform-side fix should not depend on that.
+- **Fix:** (pending — Alex knowledge-refresh-on-CODEX-commit, candidate for the daily housekeeping checklist's "Alex refresh across ALL surfaces" step becoming an automated hook)
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:
