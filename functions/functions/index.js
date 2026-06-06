@@ -1504,14 +1504,10 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  // S52.31b (2026-06-06) — ATTOM_API_KEY temporarily removed from secrets array.
-  // Added during Site Recon Step 1 build, but the secret was never created in
-  // Secret Manager — deploy fails at validation: "Secret ATTOM_API_KEY not
-  // found or has no versions". Site Recon handler degrades cleanly: returns
-  // ATTOM_KEY_MISSING when process.env.ATTOM_API_KEY is undefined.
-  // RE-ADD after `firebase functions:secrets:set ATTOM_API_KEY` is run with
-  // the actual ATTOM key. Tracked as task #447.
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA"] },
+  // S52.31c (2026-06-06) — ATTOM_API_KEY restored to secrets array after Sean
+  // set the (sandbox) secret in Secret Manager via firebase functions:secrets:set.
+  // Live ATTOM calls confirmed on the ATTOM dashboard post-deploy.
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
