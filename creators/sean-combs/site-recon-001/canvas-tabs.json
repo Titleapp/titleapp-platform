@@ -1,0 +1,31 @@
+{
+  "workerSlug": "site-recon",
+  "version": "1.0.0",
+  "canvasTabs": [
+    {
+      "id": "opportunities",
+      "label": "Opportunities",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Ranked parcel list with Green/Yellow/Red verdicts, verdict-coded map markers, per-row cost-to-go-deeper, and one-click W-002 handoff on Green/Yellow rows"
+    },
+    {
+      "id": "historical",
+      "label": "Historical",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Title chain, assessor history, prior sales, and staleness flags for the selected parcel — with parcel boundary map and Street View"
+    },
+    {
+      "id": "feasibility",
+      "label": "Feasibility",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Single-parcel verdict card with named blocker, underwriting inputs, GIS overlay flags (flood/coastal/historic/OZ), and action buttons"
+    }
+  ]
+}

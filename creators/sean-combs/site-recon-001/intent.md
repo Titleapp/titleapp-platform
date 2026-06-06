@@ -7,24 +7,29 @@
 **Built:** 2026-06-05 → 2026-06-06 (Steps 1–9 via four-way authoring loop)
 **Ground-truth ruleset:** `functions/functions/raas/rulesets/site_recon_rules_v1.json`
 
-## Round 1 — Purpose
+## What it does
 
 > "Site Recon turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict on each — done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later."
 
 Site Recon is the data substrate every other SOCIII real estate Digital Worker consumes. It converts a starting hunch — a neighborhood, a parcel, a zip code — into a bounded, ranked list of opportunities, each carrying a Green/Yellow/Red feasibility verdict, a plain-language named blocker, and a full audit anchor. The economic case: traditional pursuit funds cost $50K–$500K; Site Recon delivers the same first-look signal for tens of dollars.
 
-## Round 2 — Operator persona + success outcome
+## Who uses it
 
-Personas (spec §10, detected at onboarding, never silently upgraded): **First-Timer** (0 deals closed — education-forward), **Active Operator** (1–50 deals — standard density), **Veteran Developer** (50+ deals — dense data, CSV/JSON export, single-click cost gate).
+Commercial real estate developers, industrial site selectors, retail expansion teams. Personas (spec §10, detected at onboarding, never silently upgraded): **First-Timer** (0 deals closed — education-forward), **Active Operator** (1–50 deals — standard density), **Veteran Developer** (50+ deals — dense data, CSV/JSON export, single-click cost gate).
 
 The defining user voice, from the authoring session: *"I have a county and a use case (warehouse, drugstore, apartment complex). Show me the 10 parcels where I won't get stuck in permitting hell."*
 
-Success looks like:
+## What success looks like
+
 1. **Time to shortlist:** minutes from search to ranked list, vs. weeks of manual GIS queries
 2. **False-positive discipline:** a GREEN verdict survives downstream underwriting the overwhelming majority of the time — GREEN must be *earned by evaluated passes, never granted by missing data* (tri-state check design)
 3. **Evidence packages survive depositions:** every search, visual acknowledgment, and handoff anchored to PLAT-008 and mirrored to the parcel's Vault DTC logbook, queryable years later
 4. **Cost per decision in dollars, not thousands:** ATTOM pull ($6/parcel) + GIS overlays ($0.05/fresh evaluation) + audit anchor, all metered through the cost gate with explicit confirmation
 5. **Zero Fair Housing violations:** RULE-12 enforced fail-closed
+
+## What this worker is NOT
+
+Per spec §1: not a brokerage tool, not a consumer property search (not a Zillow replacement), not a valuation service (AVM is an input, not an appraisal), not a zoning attorney or permit expediter, not a substitute for full due diligence. It produces a ranked shortlist and a defensible feasibility signal; full underwriting belongs to W-002.
 
 ## Round 3 — Constraints
 
@@ -34,9 +39,7 @@ Success looks like:
 - Vault: DTC-anchored, every action becomes a logbook entry on the parcel's DTC
 - Audit anchor: PLAT-008 individual + batch receipts (Crossmint chain anchor optional)
 
-## Round 4 — Out of scope
-
-Per spec §1 ("What Site Recon Is NOT"): not a brokerage tool, not a consumer property search (not a Zillow replacement), not a valuation service (AVM is an input, not an appraisal), not a zoning attorney or permit expediter, not a substitute for full due diligence.
+## Round 4 — Follow-on workers
 
 Follow-on workers this scopes toward (per the worker-dependency map that emerged from this build):
 - **W-002 Real Estate Analyst** ("Title Abstract" in build naming — reconcile v1.2) — receives the one-click handoff for full underwriting
