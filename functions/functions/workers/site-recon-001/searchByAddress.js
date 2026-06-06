@@ -9,17 +9,18 @@
  * Two-phase cost gate (spec RULE-01 — cost gate is non-negotiable):
  *   Phase 1 (confirmCost !== true): quote via quoteDataFee, return projection, stop.
  *   Phase 2 (confirmCost === true): pull ATTOM property detail + sales history +
- *     AVM, record the data fee, return raw JSON. No processing, no scoring —
- *     Step 1 just proves the data flows.
+ *     AVM, record the data fee, score the bundle via scoreFeasibility (Step 2),
+ *     return { parcel, feasibility }.
  *
  * Not yet wired (later build steps per spec v1.1):
  *   - PLAT-008 pull-receipt + Vault DTC logbook entry (RULE-03) — Step TBD
- *   - Feasibility verdict (RULE-04..07, RULE-13) — Step TBD
  *   - Full input validation: APN format, radius, polygon (RULE-11) — Step TBD
  *   - Fair Housing pattern screen (RULE-12) — Step TBD
+ *   - GIS overlays (coastal/historic/FEMA/OZ) feeding scoring — Step TBD
  */
 
 const { quoteDataFee, recordDataFee } = require("../../services/billing/dataFee");
+const { scoreFeasibility } = require("./scoreFeasibility");
 
 const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
 const SOURCE = "attom:property"; // registered in dataFee.js SOURCE_REGISTRY ($3 actual × 2.0 markup)
@@ -118,6 +119,10 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
     metadata: { address1: parsed.address1, address2: parsed.address2 },
   });
 
+  // ── Score the bundle (Step 2 — RULE-04..07, RULE-13) ────────────
+  const attom = { propertyDetail, salesHistory, avm };
+  const feasibility = scoreFeasibility(attom);
+
   return res.json({
     ok: true,
     phase: "pull",
@@ -131,7 +136,8 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
       },
       feeEventId: fee.eventId || null,
     },
-    attom: { propertyDetail, salesHistory, avm },
+    parcel: attom,
+    feasibility,
   });
 }
 
