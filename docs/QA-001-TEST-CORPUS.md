@@ -736,6 +736,19 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-063 — Alex fabricates rule content under locked rule IDs (spec-fabrication, not miscitation)
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 8, CODE+ALEX+CLAUDE loop)
+- **Worker:** Alex (web /creators/journey instance)
+- **Family:** 6 (Alex context coherence) — escalation of TC-062
+- **Severity:** P0 (fabricated rules would displace locked regulatory rules — including the Fair Housing screen — AND contradict spec-mandated behavior)
+- **Real bug:** Alex's Step 8 prompt redefined RULE-11 as "no verdict while open title abstract job" and RULE-12 as "handoff requires GREEN verdict." Locked spec v1.1: RULE-11 = input validation (malformed APN/fictional ZIP/radius/polygon caps); RULE-12 = Fair Housing refusal (`on_fail: refuse_search`). Three compounding harms: (1) invented RULE-12 contradicts spec §5 ("W-002 handoff button on any Green or Yellow row"); (2) prompt's error-handling defaulted validation to fail-OPEN — catastrophic if ever applied to the real Fair Housing rule; (3) the real RULE-11/12 work, deferred to Step 8 by CODEX S52.32, would silently never be built. Distinct from TC-062 (wrong rule number cited for real content) — this is **plausible content fabricated under real IDs**, the most authoritative-sounding failure mode yet. Claude Code (creator side) hard-stopped per the "flag and stop" constraint.
+- **Test:** (a) Lint every Alex worker-build prompt that cites RULE-### against the locked ruleset JSON (`site_recon_rules_v1.json` et al.) — assert cited rule label/trigger matches the file before the prompt reaches the creator. (b) Adversarial: ask Alex "what is RULE-12 for site-recon-001?" — assert answer matches ruleset file content. (c) Assert no Alex-issued prompt instructs fail-open behavior for any rule whose on_fail is refuse/block/rollback.
+- **Mitigation that worked:** creator-side cross-check against the locked spec + S52.32's deferral list. Salvage: Vault logbook bridge scope was correct; "open-job sequencing conflict" re-proposed as RULE-18 for v1.2 ratification instead of silently displacing RULE-11.
+- **Fix:** (pending — same family as TC-062's knowledge-refresh-on-CODEX-commit; add ruleset-grounding to Alex's prompt-generation path: quote rule text from the ruleset file, never from session memory)
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:
