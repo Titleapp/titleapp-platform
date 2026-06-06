@@ -44,8 +44,12 @@ async function sendAlert(to, subject, body) {
  * Phase 1: Simulated blockchain (SHA-256 hash chain, mock gas cost).
  * Phase 2: Venly API → Polygon on-chain write.
  *
- * @param {object} executionData — { worker_id, user_id, org_id, event_id, execution_type, timestamp }
- * @returns {{ txHash: string, gasCost: number, fee: number }}
+ * @param {object} executionData — { worker_id, user_id, org_id, event_id, execution_type, timestamp, metadata? }
+ *   metadata (optional): worker-specific receipt content (e.g., Site Recon's
+ *   parcelRef + feasibility + composition). Persisted on the record and
+ *   included in the hash payload when present; omitted entirely otherwise,
+ *   so existing callers' hashes are unchanged.
+ * @returns {{ receiptId: string, txHash: string, gasCost: number, fee: number }}
  */
 async function writeAuditRecord(executionData) {
   const db = getDb();
@@ -57,6 +61,7 @@ async function writeAuditRecord(executionData) {
     user_id: executionData.user_id,
     execution_type: executionData.execution_type,
     timestamp: executionData.timestamp || new Date().toISOString(),
+    ...(executionData.metadata !== undefined ? { metadata: executionData.metadata } : {}),
   });
   const hash = crypto.createHash("sha256").update(payload).digest("hex");
   const txHash = "0x" + hash;
@@ -65,12 +70,13 @@ async function writeAuditRecord(executionData) {
   const gasCost = 0.001;
 
   // ── Write to auditRecords collection (append-only) ───────────
-  await db.collection("auditRecords").add({
+  const recordRef = await db.collection("auditRecords").add({
     event_id: executionData.event_id,
     worker_id: executionData.worker_id,
     user_id: executionData.user_id,
     org_id: executionData.org_id || null,
     execution_type: executionData.execution_type,
+    ...(executionData.metadata !== undefined ? { metadata: executionData.metadata } : {}),
     txHash,
     chain: "polygon",
     gas_cost_actual: gasCost,
@@ -90,6 +96,7 @@ async function writeAuditRecord(executionData) {
   }
 
   return {
+    receiptId: recordRef.id,
     txHash,
     gasCost,
     fee: auditTrailFeePerRecord,
