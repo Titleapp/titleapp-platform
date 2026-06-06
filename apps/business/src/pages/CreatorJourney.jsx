@@ -95,14 +95,26 @@ export default function CreatorJourney({ embedded = false }) {
   const [state, setState] = useState({ loading: true, completedIds: new Set() });
   const [busy, setBusy] = useState(false);
   // S52.35 — worker canvas payloads dispatched by ChatPanel take over the
-  // canvas slot (e.g. Site Recon results). Back button restores the steps.
-  const [canvasPayload, setCanvasPayload] = useState(null);
+  // canvas slot (e.g. Site Recon results). Back button returns to the steps
+  // WITHOUT discarding results — a return pill brings them back, and
+  // sessionStorage survives a refresh.
+  const [canvasPayload, setCanvasPayload] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("sociii_canvas_payload") || "null"); } catch { return null; }
+  });
+  const [showCanvas, setShowCanvas] = useState(() => !!canvasPayload && sessionStorage.getItem("sociii_canvas_visible") === "1");
 
   useEffect(() => { document.title = "Your SOCIII Creator Steps"; }, []);
 
   useEffect(() => {
     const onCanvas = (e) => {
-      if (e?.detail?.type === "site-recon-results") setCanvasPayload(e.detail);
+      if (e?.detail?.type === "site-recon-results") {
+        setCanvasPayload(e.detail);
+        setShowCanvas(true);
+        try {
+          sessionStorage.setItem("sociii_canvas_payload", JSON.stringify(e.detail));
+          sessionStorage.setItem("sociii_canvas_visible", "1");
+        } catch {}
+      }
     };
     window.addEventListener("sociii:canvas:payload", onCanvas);
     return () => window.removeEventListener("sociii:canvas:payload", onCanvas);
@@ -235,19 +247,37 @@ export default function CreatorJourney({ embedded = false }) {
   const pageStyle = embedded ? { ...S.page, minHeight: 0, background: "transparent" } : S.page;
 
   // S52.35 — a live worker canvas payload replaces the steps board until
-  // the user navigates back.
-  if (canvasPayload) {
+  // the user navigates back. Results are kept; the pill below returns.
+  if (canvasPayload && showCanvas) {
     return (
       <div style={pageStyle}>
         {!embedded && <Header />}
-        <SiteReconCanvas payload={canvasPayload} onBack={() => setCanvasPayload(null)} />
+        <SiteReconCanvas
+          payload={canvasPayload}
+          onBack={() => { setShowCanvas(false); try { sessionStorage.setItem("sociii_canvas_visible", "0"); } catch {} }}
+        />
       </div>
     );
   }
+  const resultsPill = canvasPayload && !showCanvas ? (
+    <button
+      type="button"
+      onClick={() => { setShowCanvas(true); try { sessionStorage.setItem("sociii_canvas_visible", "1"); } catch {} }}
+      style={{
+        position: "sticky", top: 8, zIndex: 5, display: "inline-flex", alignItems: "center", gap: 8,
+        margin: "8px 0 0 8px", padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+        background: "#8b5cf6", color: "white", border: "none", fontSize: 13, fontWeight: 600,
+        boxShadow: "0 2px 8px rgba(139,92,246,0.4)",
+      }}
+    >
+      📍 Site Recon results ({canvasPayload.parcels?.length ?? 0} parcels) →
+    </button>
+  ) : null;
 
   return (
     <div style={pageStyle}>
       {!embedded && <Header />}
+      {resultsPill}
       <main style={S.main}>
         <section style={S.heroSection}>
           <h1 style={S.h1}>Your SOCIII Creator Steps</h1>
