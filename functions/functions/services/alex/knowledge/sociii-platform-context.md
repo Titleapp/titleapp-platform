@@ -1,6 +1,6 @@
 # SOCIII Platform Context — Alex Knowledge File
 
-**Last updated:** 2026-06-05 (S52.28 follow-up refresh — task #406/#411)
+**Last updated:** 2026-06-05 night (S52.29 + S52.30 + Site Recon Steps 1+2 + four-way authoring loop validated)
 **Wiring status:** Digest embedded in `prompts/core.js` under `STRATEGY LOCK` + `CURRENT PLATFORM STATE`. Every Alex surface inherits this via `promptBuilder.assemblePrompt()`. Per-vertical overlays still live in `prompts/surfaces.js`.
 
 This file is the canonical "what's true today" reference for Alex. When a user asks about platform state, current workers, recent decisions, or strategic direction, Alex's answer must reconcile with this doc.
@@ -57,6 +57,67 @@ Asked of any senior practitioner in any regulated profession, the answer comes i
 ## Creator Model (Substack Pattern — 2026-05-31)
 
 Visual no-code sandbox is dead. Creators use **Claude Code directly** + fork the open-source repo + a **sponsored Anthropic Team seat**. Three tiers documented in business model. Plus a **Fellow exception** (max 7, Ruthie is first).
+
+## Four-Way Authoring Loop (Validated 2026-06-05)
+
+The creator authoring loop is **FOUR parties working in parallel**, not one or two:
+
+| Party | Role |
+|---|---|
+| **Creator (Sean / future creators)** | Domain expert + decision authority + arbiter when AIs disagree |
+| **Claude.ai (open chat)** | Drafting partner, unbounded brainstorm, fast prose generation |
+| **Alex (SOCIII)** | RAAS-bounded orchestrator: persona, constraint enforcement, Intent Spec locking, audit anchoring, cross-worker context |
+| **Claude Code** | Ground-truth executor inside the actual repo — reads real files, rejects prompts that don't match real stack, writes real implementations, runs real tests |
+
+When Alex and Code disagree, GROUND TRUTH wins — AND Alex re-derives the correct instruction instead of being silently patched. This is RAAS as a constraint engine catching cross-tool drift in real time. Sean directive: "We need to make this a feature not a bug in our training materials."
+
+Live validation 2026-06-05 night: Sean built SITE-RECON-001 Steps 1+2 via this loop. Alex's first prompt declared a Next.js/TS/Supabase stack; Code rejected it (repo is Firebase/JS/Cloud Functions); Sean passed Code's findings back to Alex with no corrections; Alex re-grounded the whole prompt against the real stack. Two correction rounds total. Steps 1+2 shipped + committed + deployed.
+
+When a creator asks "how is SOCIII different from Claude/ChatGPT?", the answer is: **it's not one or the other** — it's Claude + ChatGPT + SOCIII Alex + Claude Code all working together on YOUR job, where SOCIII contributes what the general-purpose AIs cannot (persona stickiness, RAAS guardrails, cross-worker context, audit anchor, regulatory posture, platform schema enforcement, and the GROUND-TRUTH lap that catches platform drift).
+
+## Creator-Build IS the Platform-QA Modality (2026-06-05 insight)
+
+Sean: *"We can keep building new workers and see how far we get each time. That way I'm not wasting time on the same worker again and again."*
+
+Each NEW worker build exercises a DIFFERENT platform cross-section → finds DIFFERENT defects. Same-worker iteration hits diminishing returns immediately. Rotate workers, not iterations.
+
+Concrete: 5 real platform defects surfaced during ONE Site Recon session — TC-061 creator-journey snag loop / ATTOM cost spec drift (~14× low) / Drive save persistence failure / Step 4 shareable preview never firing / Step 5 redundant in journey panel. NONE found by a QA test pass. ALL found because Sean was building a real worker.
+
+This flips QA economics: the marketplace IS the QA program, the QA program IS the marketplace. Creator builds ship product AND grow the QA-001 corpus simultaneously. Scales with the creator economy, not as a separate cost center.
+
+Build-rotation order (per dependency map): Site Recon → Land Use AI Attorney → W-002 enhancement → Comms Hub → dispatch-medevac.
+
+## Site Recon (SITE-RECON-001) — First Substack-Pattern Worker, Steps 1+2 Shipped 2026-06-05
+
+Real-estate operator's hunch → ranked list of underwriteable parcels with Green/Yellow/Red feasibility verdicts + audit anchors. First worker built end-to-end through the four-way authoring loop.
+
+**What shipped tonight:**
+- Step 1 (commit `1a6ae7e3`): `searchByAddress` endpoint at POST `/v1/workers/site-recon-001/search-by-address`, two-phase cost gate via existing `quoteDataFee`/`recordDataFee` helpers, ATTOM property-detail + sales-history + AVM pull, raw JSON passthrough. Route wired inside the single `exports.api` handler per locked architecture.
+- Step 2 (commit `e0fd9797`): `scoreFeasibility.js` verdict engine. Tri-state pass/fail/unknown checks (unknowns become flags, never fabricated passes — Deposition Rule applied to verdicts). Smoke-tested against 7 QA-corpus-shaped fixtures including QA-003 stale assessor, QA-005 owner mismatch, QA-006 APN retired, QA-017 coastal overlay, QA-026 stale AVM. `blockerCode` constants + plain-English `namedBlocker` split.
+- TC-061 captured (commit `6d43fb28`): creator-journey Alex snag loop on long pasted Code reports — fix pending T1.
+
+**What's pending (Steps 3-9):** PLAT-008 audit anchor + rollback (RULE-03 non-negotiable) / GIS overlays for FEMA + CA Coastal / visual rendering (RULE-17 visual_before_verdict) / W-002 handoff button / Sublette WY end-to-end test / ping Sean for marketplace review.
+
+**Pricing reconciliation flagged:** ATTOM registered at $3 actual / $6 user per property report. Spec v1.1's `$4.20/10-parcels` was a placeholder; needs update on next spec pass. Real numbers live in `dataFee.js` SOURCE_REGISTRY.
+
+## County Property Record Instrumentation Campaign (S52.30 CONCEPT)
+
+NOT approved for execution. Concept doc: `docs/CODEX-S52.30-County-Instrumentation-Concept.md`. Use ATTOM + AUDIT-001 to instrument entire small remote county's parcel records, then certified-mail recorder + council + state AG with a 50-word NO-OFFER notification. Creator-framed (Sean Lee Combs + Kim Bennett, NOT SOCIII corporate). Four-county sequence: Sublette WY → Mono CA → remote NV → remote TX. ~$200 total direct cost. Distribution: vibe coding / dev communities (NOT title press). Tests the standard-of-care legal theory in the cheapest possible way.
+
+**Six honest gaps must close before Sublette runs:** DLA Piper drafts (not reviews) the three letter templates + assesses strongest counterargument honestly / ATTOM TOS confirmed for bulk pulls + public anchoring + commercial platform use / Kim Bennett informed consent (real conversation, not yes-default briefing) / anchor script batch completeness test on synthetic 8K-parcel list / verification link non-technical UAT (Pinedale WY recorder pattern, <30 sec, pass/fail) / AG letter tone reviewed against "most aggressive staff reading finds nothing actionable" standard.
+
+THE cleanest dogfood case for the audit substrate thesis — exercises every Moat Stack v1 layer.
+
+## Moat Stack v1 (`docs/MOAT-STACK-V1.md`)
+
+Five-layer defensibility argument:
+1. **Persona** — Alex behaves differently per role / vertical / experience level
+2. **RAAS constraint engine** — business logic in rules, not prompts; tenant-configurable
+3. **Audit substrate** — every meaningful action produces a logbook entry; chain-anchored
+4. **Composable catalog** — workers reference each other's outputs (Site Recon → W-002 → Closing)
+5. **Open SDK + closed platform** — Apache-licensed worker SDK; platform billing/audit/identity/marketplace stay closed
+
+Window: 18 months. Pre-2026-06-28 patent counsel session queued (#428). Stripe-for-regulated-execution thesis: SOCIII is the action button under Google/OpenAI/Claude's answer to a regulated-profession question.
 
 When a user asks about authoring a worker, route them to:
 - `/creators/journey` (the canonical onboarding surface), OR
