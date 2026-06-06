@@ -126,6 +126,49 @@ Output of Round 6 lands in `intent.md` as a "Visual Narrative" section + drives 
 
 ---
 
+## The Trump Rule — the FLOOR for boring/regulated domains
+
+Sean named the floor below which canvas cannot ship:
+
+> "At minimum think of boring things as at least a deck of information with some graphics. For this property vertical, think of them more as sales or feasibility reports that rely heavily on maps imagery (google maps, street view) charts and such. Let's call this the trump rule. People are generally stupid, heavily medicated and don't read."
+
+The Trump Rule is a named sub-principle of Canvas-Worker Parity. It addresses the "even boring workers should have some visual attractiveness" qualifier from the shoot-the-film insight. The heuristic in plain language: *design for someone who is stupid, heavily medicated, and doesn't read* — a deliberately blunt re-statement of well-documented UX wisdom (F-pattern reading, 5-second tests, deck-design over wall-of-text). The bluntness is the point; it forces designers to internalize the audience.
+
+### The unifying question per vertical
+
+> *"If your worker were a paid report a regulated industry pays $X for today, what does that report look like?"*
+
+SOCIII workers compete against $5K feasibility reports, $500/hr lawyer memos, $300 inspection reports, $2K fundraise data rooms. Those reports are visual-heavy slide decks, map-heavy summaries, chart-heavy dashboards — not walls of text. Canvas must match the reference aesthetic.
+
+### The FLOOR per vertical (validator-enforced after grace period)
+
+| Vertical | Trump Rule reference | Required visual primitives |
+|---|---|---|
+| Real estate / property | $5K sales-pursuit / feasibility report | Google Maps + Street View + comparison tables with status badges + before/after photo grids + KPI cards |
+| Legal | $500/hr lawyer memo / deposition prep | Timeline of events + evidence tiles + citation cards with verdict badges + redaction overlays |
+| Accounting / finance | CPA-prepared financial statement | KPI dashboard + period-over-period charts + account drill-down tiles + variance status markers |
+| Aviation | ForeFlight / Jeppesen flight planning | Map + sectional chart fragments + METAR/TAF cards + aircraft type photos |
+| Compliance / regulatory | Audit binder | Timeline + evidence cards + checklist with attestations + signed-document tiles |
+| Healthcare / medevac | Triage dashboard | Map + patient cards with status colors + timeline + vitals chart |
+| HR / workforce | Org-chart with roster cards | Photo grid + status-coded role badges + timeline |
+| IR / fundraise | LP pitch deck / data room | KPI dashboard + cap table waterfall + commitment timeline + LP grid |
+
+Any worker shipping in one of these verticals without the required visual primitives gets a P1 finding at first (grace period), P0 after the cross-surface sweep completes. New worker verticals get added to the table as the platform expands.
+
+### How the Trump Rule integrates with the 5-part mechanism
+
+- **Part 1 (Principle)** — Trump Rule is the named FLOOR sub-principle
+- **Part 2 (bindCanvas helper)** — helper accepts a `vertical` parameter; defaults to vertical-appropriate Trump-Rule-compliant skill bundles (property vertical → map + street view + comparison table + KPI cards baked in)
+- **Part 3 (Validator)** — validator rejects canvases that don't meet vertical-appropriate Trump-Rule floor (property worker without a map = FAIL after grace period)
+- **Part 4 (Cross-surface sweep, #452)** — sweep audits each shipped worker against its vertical's Trump-Rule floor; lifts existing workers up to bar
+- **Part 5 (Visual Narrative Round 6)** — Alex's prompts during Round 6 explicitly reference the vertical's reference document ("we're competing with the $5K feasibility report — what does THAT look like, and how do we match it?")
+
+### Why the FLOOR matters now
+
+Customer's first impression is what makes them stay or churn. A wall-of-text canvas in a vertical where the customer expects map + Street View + KPI grid signals "this isn't actually built for me" within 3 seconds. The customer churns before evaluating the underlying intelligence.
+
+For the property vertical specifically: SITE-RECON-001's canvas (Code's `2d3e9e66` ship) — and every subsequent property worker — MUST have Google Maps as a tab, Street View embedded per parcel, comparison tables with verdict badges, and KPI cards (cost, confidence, time saved). That's the minimum to compete with the existing $5K-per-pursuit market.
+
 ## The tool stack that makes Round 6 shippable
 
 Without specific tools, Round 6 would be abstract design questions creators can't visualize. The platform ALREADY has three pieces that make it executable:
