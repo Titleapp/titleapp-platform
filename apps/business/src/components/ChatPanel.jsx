@@ -1092,7 +1092,21 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const driveSucceeded = driveUploadResults.filter(r => r.status === 'fulfilled').length;
         const driveFailed = driveUploadResults.filter(r => r.status === 'rejected');
         if (driveFailed.length > 0) {
-          console.warn('[ChatPanel] Some files failed Drive upload:', driveFailed.map(r => r.reason?.message || r.reason));
+          // S52.30b — surface the FULL rejection per file so future "Drive save
+          // failed" reports include the exact step that broke (sign / PUT /
+          // finalize) instead of a generic warning.
+          driveFailed.forEach((r, i) => {
+            const reason = r.reason;
+            console.error('[ChatPanel] Drive upload failed for file', i, {
+              message: reason?.message || String(reason),
+              stack: reason?.stack,
+              tenantId: localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault',
+              activeWorkerSlug: activeWorkerSlug || null,
+              filename: currentFiles[i]?.name,
+              fileSize: currentFiles[i]?.size,
+              fileType: currentFiles[i]?.type,
+            });
+          });
         }
 
         setMessages(prev => {

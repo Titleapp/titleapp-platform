@@ -17746,10 +17746,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       // Mirror into storageObjects/ so the Drive UI (which lists from that
       // collection via /v1/storage:list) sees chat-attached files. Schema
       // mirrors lib/storage/index.js upload().
+      //
+      // S52.30b (2026-06-06) — 'vault' is the magic-value tenantId meaning
+      // "personal vault, no workspace yet" (set by ChatPanel default when
+      // creators land on /creators/journey before having a workspace).
+      // Previously isWorkspace was tenantId !== uid which mis-classified
+      // 'vault' as a business workspace and wrote scope:'business' +
+      // orgId:'vault' — Drive UI's personal-list query never found those
+      // rows, so creator-journey uploads appeared to "save failed" even
+      // when the mirror write succeeded. Explicitly exclude 'vault'.
       try {
         const uid = auth.user.uid;
         const tenantId = ctx.tenantId;
-        const isWorkspace = tenantId && tenantId !== uid;
+        const isWorkspace = tenantId && tenantId !== uid && tenantId !== 'vault';
         const workerSlug = data.related?.workerSlug || null;
         await db.doc(`storageObjects/${fileId}`).set({
           objectId: fileId,
