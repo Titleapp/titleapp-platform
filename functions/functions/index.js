@@ -6123,6 +6123,30 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return await searchByArea(req, res, { body, ctx, jsonError });
     }
 
+    // Step 6 — visual layer payloads (canvas renders later).
+    // GET map layer / GET street view / POST RULE-17 acknowledgment.
+    if ((route === "/workers/site-recon-001/generate-map-layer" || route === "/site-recon:generate-map-layer") && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { generateMapLayer } = require("./workers/site-recon-001/visualLayer");
+      return await generateMapLayer(req, res, { ctx, jsonError });
+    }
+    if ((route === "/workers/site-recon-001/get-street-view" || route === "/site-recon:get-street-view") && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { getStreetView } = require("./workers/site-recon-001/visualLayer");
+      return await getStreetView(req, res, { ctx, jsonError });
+    }
+    if ((route === "/workers/site-recon-001/record-visual-acknowledgment" || route === "/site-recon:record-visual-acknowledgment") && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { recordVisualAcknowledgment } = require("./workers/site-recon-001/visualLayer");
+      return await recordVisualAcknowledgment(req, res, { body, ctx, jsonError });
+    }
+
     // GET /v1/raas:catalog — public RAAS store catalog
     if (route === "/raas:catalog" && method === "GET") {
       try {

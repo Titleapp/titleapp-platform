@@ -44,6 +44,8 @@ const scoring = require("./scoreFeasibility");
 const auditTrail = require("../../services/auditTrailService");
 const gis = require("./gisOverlayService");
 
+const admin = require("firebase-admin");
+
 const WORKER_ID = "site-recon-001";
 const SPEC_VERSION = "SITE-RECON-001-v1.1";
 const SOURCE_PROPERTY = "attom:property";
@@ -452,10 +454,44 @@ async function searchByArea(req, res, { body, ctx, jsonError }) {
     });
   }
 
+  // ── Cache the render payload for the visual layer (Step 6) ────
+  // 24h TTL per spec §9 session persistence. Render payload only (parcel
+  // ref + feasibility + overlays), NOT raw ATTOM bundles — 50 full bundles
+  // would blow Firestore's 1MB doc limit. Non-fatal: a failed cache write
+  // means the map layer 404s and the canvas re-runs the search.
+  const searchId = `search_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const renderParcels = ranked.map((r, i) => ({
+    rank: i + 1,
+    parcel: {
+      attomId: r.parcel.attomId, apn: r.parcel.apn,
+      address1: r.parcel.address1, address2: r.parcel.address2,
+      lat: r.parcel.lat, lng: r.parcel.lng,
+    },
+    feasibility: r.feasibility,
+    overlays: r.overlays || null,
+  }));
+  let searchCached = false;
+  try {
+    await admin.firestore().collection("search-results").doc(searchId).set({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId || null,
+      batchId,
+      receiptId: anchor.receiptId || null,
+      searchArea: summarizeArea(area, filtered.length, ranked.length),
+      rankedParcels: renderParcels,
+      createdAtMs: Date.now(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    searchCached = true;
+  } catch (cacheErr) {
+    console.warn(`[${WORKER_ID}] search-result cache write failed (non-fatal):`, cacheErr.message);
+  }
+
   return res.json({
     ok: true,
     phase: "pull",
     worker: WORKER_ID,
+    searchId: searchCached ? searchId : null,
     searchArea: summarizeArea(area, filtered.length, ranked.length),
     rankedParcels: ranked.map((r, i) => ({
       rank: i + 1,
