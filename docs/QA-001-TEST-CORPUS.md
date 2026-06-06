@@ -708,6 +708,21 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-061 — Creator-journey Alex snags permanently after long pasted message (snag loop)
+
+- **Date:** 2026-06-05 (caught in dogfood — SITE-RECON-001 build test, CODE+ALEX+CLAUDE loop)
+- **Worker:** Alex / Worker authoring intercept (`index.js` ~2095, S52.29d/f block)
+- **Family:** 5 (Chat engine resilience)
+- **Severity:** P0 (kills the creator authoring flow — the Sandbox's core surface)
+- **Real bug:** Sean pasted a long (~2.5KB) Claude Code report-back into the authoring chat. Alex returned "Hit a snag generating that response" — and then returned the same snag on the NEXT, short message ("Can you save our work to date?"). Two compounding defects:
+  1. **Timeout fallback never matches.** The 25s race rejects with `new Error("anthropic_timeout_25s")` — `.code` is undefined and the message string doesn't equal `'anthropic_timeout'`, so the `errCode === 'anthropic_timeout'` check at index.js:2133 can NEVER be true. Real timeouts display the generic "Hit a snag" text, masking the root cause.
+  2. **No self-heal / likely poisoned session.** The catch path pushes the fallback assistant message into `creatorAuthoringHistory` and persists it. Whatever condition made the first call fail (25s timeout on long history, or a malformed history entry from the resume-clean path) persists into the session doc, so every subsequent turn re-fails → permanent snag loop. The fallback retries nothing and repairs nothing.
+- **Likely root cause:** 25s `Promise.race` timeout. The function itself has `timeoutSeconds: 300`; 25s is far more conservative than the platform allows, and a 30-message history + 2.5KB paste plausibly exceeds it. Confirm via Cloud Run logs: `[creator-journey intercept] failed:` lines carry the actual error message + stack.
+- **Test:** (a) Paste a 3KB user message into /creators/journey authoring chat with 25+ messages of history. Assert: a real response returns (raise/remove the 25s race, or stream). (b) Simulate Anthropic timeout. Assert: the timeout-specific fallback text renders, not the generic snag. (c) After ANY snag response, send "hello". Assert: next turn succeeds — the session must self-heal, not loop. (d) Assert the snag fallback is NOT persisted into history more than once consecutively (or history is compacted on failure).
+- **Fix:** (T1 session — pending)
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:
