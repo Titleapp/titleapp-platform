@@ -13,7 +13,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const VERDICT_COLORS = { GREEN: "#22c55e", YELLOW: "#eab308", RED: "#ef4444" };
 const MARKER_COLORS = { GREEN: "green", YELLOW: "yellow", RED: "red" };
 
-function staticMapUrl(parcels, selectedRank) {
+function staticMapUrl(parcels, selectedRank, mapType = "hybrid", zoom = null) {
   const pts = parcels.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
   if (!pts.length || !MAPS_KEY) return null;
   const groups = {};
@@ -28,7 +28,11 @@ function staticMapUrl(parcels, selectedRank) {
       return `markers=color:${color}%7Csize:${size}%7C${locs.join("%7C")}`;
     })
     .join("&");
-  return `https://maps.googleapis.com/maps/api/staticmap?size=640x420&maptype=hybrid&${markers}&key=${MAPS_KEY}`;
+  // zoom=null lets Static Maps auto-fit the markers; explicit zoom needs a center.
+  const centerLat = pts.reduce((s, p) => s + p.lat, 0) / pts.length;
+  const centerLng = pts.reduce((s, p) => s + p.lng, 0) / pts.length;
+  const zoomPart = zoom != null ? `&center=${centerLat},${centerLng}&zoom=${zoom}` : "";
+  return `https://maps.googleapis.com/maps/api/staticmap?size=640x420&scale=2&maptype=${mapType}${zoomPart}&${markers}&key=${MAPS_KEY}`;
 }
 
 function streetViewUrl(p) {
@@ -37,12 +41,21 @@ function streetViewUrl(p) {
 }
 
 export default function SiteReconCanvas({ payload, onBack }) {
-  const [tab, setTab] = useState("list");
+  // Street View first — the visual tells the story before the table does
+  // (Sean's Lahaina dogfood call; same thesis as RULE-17 visual-before-verdict).
+  const [tab, setTab] = useState("street");
   const [selectedRank, setSelectedRank] = useState(null);
   const [handoffs, setHandoffs] = useState({}); // apn -> { status, jobId, message }
   const [brokenImgs, setBrokenImgs] = useState({}); // url -> true (key restriction / no imagery)
+  const [mapType, setMapType] = useState("hybrid"); // hybrid | roadmap
+  const [zoom, setZoom] = useState(null); // null = auto-fit to markers
   const parcels = payload?.parcels || [];
-  const mapUrl = useMemo(() => staticMapUrl(parcels, selectedRank), [parcels, selectedRank]);
+  const mapUrl = useMemo(() => staticMapUrl(parcels, selectedRank, mapType, zoom), [parcels, selectedRank, mapType, zoom]);
+  const centroid = useMemo(() => {
+    const pts = parcels.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (!pts.length) return null;
+    return { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lng: pts.reduce((s, p) => s + p.lng, 0) / pts.length };
+  }, [parcels]);
 
   async function handoff(p) {
     setHandoffs((h) => ({ ...h, [p.apn]: { status: "running" } }));
@@ -81,7 +94,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
       </div>
 
       <div style={S.tabs}>
-        {[["list", "Ranked List"], ["map", "Map"], ["street", "Street View"]].map(([id, label]) => (
+        {[["street", "Street View"], ["map", "Map"], ["list", "Ranked List"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ ...S.tabBtn, ...(tab === id ? S.tabActive : {}) }}>{label}</button>
         ))}
       </div>
@@ -105,9 +118,9 @@ export default function SiteReconCanvas({ payload, onBack }) {
                     <td style={S.td}>{p.confidenceScore != null ? `${p.confidenceScore}%` : "—"}</td>
                     <td style={{ ...S.td, fontSize: 12, maxWidth: 220 }}>{p.namedBlocker || "—"}</td>
                     <td style={S.td}>
-                      {canHandoff && !h && <button style={S.handoffBtn} onClick={(e) => { e.stopPropagation(); handoff(p); }}>Hand off → W-002</button>}
+                      {canHandoff && !h && <button style={S.handoffBtn} onClick={(e) => { e.stopPropagation(); handoff(p); }}>Hand off → Title Abstract</button>}
                       {h?.status === "running" && <span style={S.dim}>Handing off…</span>}
-                      {h?.status === "done" && <span style={{ color: VERDICT_COLORS.GREEN, fontSize: 12 }}>Queued · {h.jobId}</span>}
+                      {h?.status === "done" && <span style={{ color: "#16a34a", fontSize: 12 }} title={`Job ${h.jobId}`}>✓ Sent to Title Abstract — full underwriting queued</span>}
                       {h?.status === "error" && <span style={{ color: VERDICT_COLORS.RED, fontSize: 12 }}>{h.message}</span>}
                     </td>
                   </tr>
@@ -132,6 +145,13 @@ export default function SiteReconCanvas({ payload, onBack }) {
                 ))}
               </div>
             )}
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
+            <button style={S.mapCtl} onClick={() => setMapType((t) => (t === "hybrid" ? "roadmap" : "hybrid"))}>{mapType === "hybrid" ? "Map view" : "Satellite view"}</button>
+            <button style={S.mapCtl} onClick={() => setZoom((z) => Math.min(20, (z ?? 16) + 1))}>＋ Zoom in</button>
+            <button style={S.mapCtl} onClick={() => setZoom((z) => Math.max(10, (z ?? 16) - 1))}>－ Zoom out</button>
+            {zoom != null && <button style={S.mapCtl} onClick={() => setZoom(null)}>Fit all pins</button>}
+            {centroid && <a style={{ ...S.mapCtl, textDecoration: "none", display: "inline-flex", alignItems: "center" }} href={`https://www.google.com/maps/@${centroid.lat},${centroid.lng},17z`} target="_blank" rel="noreferrer">Open in Google Maps ↗</a>}
+          </div>
           <div style={S.mapLegend}>
             {selectedRank && <span>Highlighted: #{selectedRank} (larger pin) · </span>}
             <span style={{ color: VERDICT_COLORS.GREEN }}>● Green</span> <span style={{ color: VERDICT_COLORS.YELLOW }}>● Yellow</span> <span style={{ color: VERDICT_COLORS.RED }}>● Red</span>
@@ -196,4 +216,5 @@ const styles = {
   streetCaption: { padding: "10px 12px", fontSize: 13, color: "#1f2937" },
   imgFallback: { padding: "32px 16px", textAlign: "center", fontSize: 13 },
   mapsLink: { color: "#7c3aed", textDecoration: "none", fontWeight: 600 },
+  mapCtl: { background: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
 };
