@@ -40,6 +40,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
   const [tab, setTab] = useState("list");
   const [selectedRank, setSelectedRank] = useState(null);
   const [handoffs, setHandoffs] = useState({}); // apn -> { status, jobId, message }
+  const [brokenImgs, setBrokenImgs] = useState({}); // url -> true (key restriction / no imagery)
   const parcels = payload?.parcels || [];
   const mapUrl = useMemo(() => staticMapUrl(parcels, selectedRank), [parcels, selectedRank]);
 
@@ -119,9 +120,18 @@ export default function SiteReconCanvas({ payload, onBack }) {
 
       {tab === "map" && (
         <div style={S.mediaWrap}>
-          {mapUrl
-            ? <img src={mapUrl} alt="Parcel map — verdict-coded markers" style={S.mapImg} />
-            : <div style={S.dim}>Map unavailable — no parcel coordinates or Maps key.</div>}
+          {mapUrl && !brokenImgs[mapUrl]
+            ? <img src={mapUrl} alt="Parcel map — verdict-coded markers" style={S.mapImg} onError={() => setBrokenImgs((b) => ({ ...b, [mapUrl]: true }))} />
+            : (
+              <div style={S.imgFallback}>
+                <div style={S.dim}>Map image unavailable{mapUrl ? " — the Maps key needs this site in its referrer allowlist (Google Cloud Console → Credentials)." : " — no parcel coordinates or Maps key."}</div>
+                {parcels.filter((p) => Number.isFinite(p.lat)).slice(0, 10).map((p) => (
+                  <div key={p.rank} style={{ marginTop: 6 }}>
+                    <a style={S.mapsLink} href={`https://www.google.com/maps?q=${p.lat},${p.lng}`} target="_blank" rel="noreferrer">#{p.rank} {p.address1 || p.apn} ({p.verdict}) — open in Google Maps ↗</a>
+                  </div>
+                ))}
+              </div>
+            )}
           <div style={S.mapLegend}>
             {selectedRank && <span>Highlighted: #{selectedRank} (larger pin) · </span>}
             <span style={{ color: VERDICT_COLORS.GREEN }}>● Green</span> <span style={{ color: VERDICT_COLORS.YELLOW }}>● Yellow</span> <span style={{ color: VERDICT_COLORS.RED }}>● Red</span>
@@ -136,9 +146,14 @@ export default function SiteReconCanvas({ payload, onBack }) {
             const url = streetViewUrl(p);
             return (
               <div key={p.rank} style={S.streetCard}>
-                {url
-                  ? <img src={url} alt={`Street View — ${p.address1 || p.apn}`} style={S.streetImg} loading="lazy" />
-                  : <div style={{ ...S.dim, padding: 40 }}>No imagery</div>}
+                {url && !brokenImgs[url]
+                  ? <img src={url} alt={`Street View — ${p.address1 || p.apn}`} style={S.streetImg} loading="lazy" onError={() => setBrokenImgs((b) => ({ ...b, [url]: true }))} />
+                  : (
+                    <div style={S.imgFallback}>
+                      <div style={S.dim}>Imagery unavailable</div>
+                      {Number.isFinite(p.lat) && <a style={S.mapsLink} href={`https://www.google.com/maps?q=&layer=c&cbll=${p.lat},${p.lng}`} target="_blank" rel="noreferrer">Open Street View ↗</a>}
+                    </div>
+                  )}
                 <div style={S.streetCaption}>
                   <span style={{ ...S.badge, background: VERDICT_COLORS[p.verdict] || "#6b7280", marginRight: 8 }}>{p.verdict}</span>
                   #{p.rank} {p.address1 || p.apn}
@@ -153,29 +168,32 @@ export default function SiteReconCanvas({ payload, onBack }) {
   );
 }
 
+// Light palette — the journey canvas slot renders on a white background.
 const styles = {
-  wrap: { padding: 20, color: "#e5e7eb", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+  wrap: { padding: 20, color: "#111827", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
-  title: { fontSize: 18, fontWeight: 700 },
-  meta: { fontSize: 12.5, color: "#9ca3af", marginTop: 4 },
-  backBtn: { background: "transparent", color: "#a78bfa", border: "1px solid #4c1d95", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13 },
-  tabs: { display: "flex", gap: 4, borderBottom: "1px solid #374151", marginBottom: 14 },
-  tabBtn: { background: "transparent", color: "#9ca3af", border: "none", padding: "10px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderBottom: "2px solid transparent" },
-  tabActive: { color: "#e5e7eb", borderBottom: "2px solid #8b5cf6" },
+  title: { fontSize: 18, fontWeight: 700, color: "#111827" },
+  meta: { fontSize: 12.5, color: "#6b7280", marginTop: 4 },
+  backBtn: { background: "white", color: "#7c3aed", border: "1px solid #c4b5fd", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontWeight: 600 },
+  tabs: { display: "flex", gap: 4, borderBottom: "1px solid #e5e7eb", marginBottom: 14 },
+  tabBtn: { background: "transparent", color: "#6b7280", border: "none", padding: "10px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", borderBottom: "2px solid transparent" },
+  tabActive: { color: "#111827", borderBottom: "2px solid #8b5cf6" },
   tableWrap: { overflowX: "auto" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13.5 },
-  th: { textAlign: "left", padding: "8px 10px", color: "#9ca3af", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, borderBottom: "1px solid #374151" },
-  tr: { cursor: "pointer", borderBottom: "1px solid #1f2937" },
-  trSelected: { background: "rgba(139, 92, 246, 0.12)" },
-  td: { padding: "10px" },
-  badge: { color: "#0b0f19", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999 },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 13.5, color: "#1f2937" },
+  th: { textAlign: "left", padding: "8px 10px", color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, borderBottom: "1px solid #e5e7eb" },
+  tr: { cursor: "pointer", borderBottom: "1px solid #f3f4f6" },
+  trSelected: { background: "rgba(139, 92, 246, 0.08)" },
+  td: { padding: "10px", color: "#1f2937" },
+  badge: { color: "white", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999 },
   handoffBtn: { background: "#8b5cf6", color: "white", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
-  dim: { color: "#6b7280", fontSize: 13 },
+  dim: { color: "#9ca3af", fontSize: 13 },
   mediaWrap: { textAlign: "center" },
-  mapImg: { maxWidth: "100%", borderRadius: 12, border: "1px solid #374151" },
-  mapLegend: { fontSize: 12.5, color: "#9ca3af", marginTop: 10 },
+  mapImg: { maxWidth: "100%", borderRadius: 12, border: "1px solid #e5e7eb" },
+  mapLegend: { fontSize: 12.5, color: "#6b7280", marginTop: 10 },
   streetGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 },
-  streetCard: { background: "#111827", border: "1px solid #374151", borderRadius: 12, overflow: "hidden" },
+  streetCard: { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" },
   streetImg: { width: "100%", display: "block" },
-  streetCaption: { padding: "10px 12px", fontSize: 13 },
+  streetCaption: { padding: "10px 12px", fontSize: 13, color: "#1f2937" },
+  imgFallback: { padding: "32px 16px", textAlign: "center", fontSize: 13 },
+  mapsLink: { color: "#7c3aed", textDecoration: "none", fontWeight: 600 },
 };
