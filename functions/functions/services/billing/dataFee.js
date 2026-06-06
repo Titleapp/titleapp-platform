@@ -50,6 +50,10 @@ const SOURCE_REGISTRY = {
   // Property data. ATTOM rate updated per Sean 2026-06-01 — actual cost is
   // $3/property report, 2× markup ⇒ user pays $6.
   "attom:property":      { actualCentsPerUnit: 300, markup: 2.0, label: "ATTOM property data" },
+  // Area-search snapshot (thin id/address list, no full report). ESTIMATE
+  // PENDING ATTOM tier confirmation — billed per universal data-credit rule:
+  // every external call charges through, even quote-phase queries.
+  "attom:snapshot":      { actualCentsPerUnit: 10, markup: 2.0, label: "ATTOM area snapshot query" },
   "firstam:title":       { actualCentsPerUnit: 1000, markup: 1.5, label: "First American title detail" },
   "mls:listing":         { actualCentsPerUnit: 50, markup: 2.0, label: "MLS listing pull" },
 

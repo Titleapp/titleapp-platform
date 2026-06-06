@@ -30,10 +30,10 @@ const path = require("path");
 const { quoteDataFee, recordDataFee } = require("../../services/billing/dataFee");
 const { scoreFeasibility } = require("./scoreFeasibility");
 const { sha256 } = require("../../services/signatureService/blockchain");
+const { pullParcelBundle } = require("./attomClient");
 // Namespace require (not destructured) so smoke tests can stub writeAuditRecord.
 const auditTrail = require("../../services/auditTrailService");
 
-const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
 const SOURCE = "attom:property"; // registered in dataFee.js SOURCE_REGISTRY ($3 actual × 2.0 markup)
 const WORKER_ID = "site-recon-001";
 const SPEC_VERSION = "SITE-RECON-001-v1.1";
@@ -67,21 +67,6 @@ function parseAddress(raw) {
     address1: s.slice(0, idx).trim(),
     address2: s.slice(idx + 1).trim(),
   };
-}
-
-// ── ATTOM fetch helper ───────────────────────────────────────────
-async function attomGet(path, params, apiKey) {
-  const url = new URL(`${ATTOM_BASE}${path}`);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  try {
-    const resp = await fetch(url.toString(), {
-      headers: { apikey: apiKey, accept: "application/json" },
-    });
-    const json = await resp.json().catch(() => null);
-    return { endpoint: path, httpStatus: resp.status, ok: resp.ok, data: json };
-  } catch (e) {
-    return { endpoint: path, httpStatus: null, ok: false, error: e.message };
-  }
 }
 
 /**
@@ -127,11 +112,8 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
   if (!apiKey) return jsonError(res, 500, "ATTOM API key not configured", { code: "ATTOM_KEY_MISSING" });
 
   const params = { address1: parsed.address1, address2: parsed.address2 };
-  const [propertyDetail, salesHistory, avm] = await Promise.all([
-    attomGet("/property/detail", params, apiKey),      // assessor, owner of record, APN status
-    attomGet("/saleshistory/detail", params, apiKey),  // sales history (raw — last-5 slicing comes with scoring)
-    attomGet("/attomavm/detail", params, apiKey),      // AVM valuation
-  ]);
+  // detail = assessor + owner of record + APN; salesHistory raw; AVM valuation
+  const { propertyDetail, salesHistory, avm } = await pullParcelBundle(params, apiKey);
 
   // ── Record the data fee (universal data-credit billing — non-negotiable).
   // recordDataFee is non-fatal by design; billing never blocks the response.

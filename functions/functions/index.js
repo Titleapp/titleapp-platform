@@ -6113,6 +6113,16 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return await searchByAddress(req, res, { body, ctx, jsonError });
     }
 
+    // POST /v1/workers/site-recon-001/search-by-area — Step 4 (the spine).
+    // Radius/polygon → ranked list + ONE batch audit receipt (CODEX S52.32).
+    if ((route === "/workers/site-recon-001/search-by-area" || route === "/site-recon:search-by-area") && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      const { searchByArea } = require("./workers/site-recon-001/searchByArea");
+      return await searchByArea(req, res, { body, ctx, jsonError });
+    }
+
     // GET /v1/raas:catalog — public RAAS store catalog
     if (route === "/raas:catalog" && method === "GET") {
       try {
