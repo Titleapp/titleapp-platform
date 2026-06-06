@@ -2089,18 +2089,20 @@ STYLE:
 If they ask off-topic questions (about SOCIII, billing, other workers), give a one-line answer and steer back to where you left off in the Intent Spec.`;
 
             console.log("[diag.interceptBeforeAnthropicCall]", { systemLen: authoringSystemPrompt.length, msgCount: sessionState.creatorAuthoringHistory.length });
-            // S52.29d — 25s timeout race. If Anthropic doesn't respond by
-            // then, surface a graceful message instead of letting Cloud Run
-            // kill the function silently (Sean's "No response received").
-            const aiResp = await Promise.race([
-              anthropic.messages.create({
-                model: 'claude-sonnet-4-5-20250929',
-                max_tokens: 1024,
-                system: authoringSystemPrompt,
-                messages: sessionState.creatorAuthoringHistory,
-              }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error("anthropic_timeout_25s")), 25000)),
-            ]);
+            // S52.30a (2026-06-06, TC-061 fix) — call the wrapped getAnthropic()
+            // directly. The wrapper from S52.29e already applies timeout +
+            // sanitization + .code='anthropic_timeout' on its own race.
+            // Previous outer Promise.race wrapped the wrapper with a tighter 25s
+            // timeout whose Error had no .code, making the catch's timeout
+            // branch dead code. Removed. Bumped timeoutMs to 60s for build-phase
+            // pastes (long Code report-backs blow 25s easily; function declares
+            // 300s).
+            const aiResp = await anthropic.messages.create({
+              model: 'claude-sonnet-4-5-20250929',
+              max_tokens: 1024,
+              system: authoringSystemPrompt,
+              messages: sessionState.creatorAuthoringHistory,
+            }, { timeoutMs: 60000 });
             console.log("[diag.interceptAfterAnthropicCall]", { hasContent: !!(aiResp && aiResp.content) });
             const aiText = (aiResp && aiResp.content && aiResp.content[0] && aiResp.content[0].text) || "Tell me about the worker. What does it do that no other worker on the platform does?";
 
@@ -2125,17 +2127,28 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
             });
           } catch (creatorJourneyErr) {
             console.error("[creator-journey intercept] failed:", creatorJourneyErr.message, creatorJourneyErr.stack);
-            // S52.29f — instead of falling through (which lands in chatEngine
-            // and returns nothing for this intent), surface a graceful
-            // surface-specific fallback so Sean never sees "No response
-            // received." on /creators/journey when the AI call fails.
+            // S52.30a (2026-06-06, TC-061 fix) — self-heal: do NOT persist the
+            // failed turn into creatorAuthoringHistory. Previous code pushed
+            // user msg before the call AND fallback after, poisoning the
+            // session: every subsequent turn pulled the failed exchange back
+            // and re-failed identically (snag loop). New behavior:
+            //   1. Roll back the pre-call user-message push (slice last off)
+            //   2. Persist surface metadata only — no message history mutation
+            //   3. Return the fallback string to user (not stored server-side)
+            // Next turn: client re-sends user input, server sees pristine
+            // history from before the failure, retries with a smaller window.
             const errCode = creatorJourneyErr && creatorJourneyErr.code;
             const fallbackText = errCode === 'anthropic_timeout'
-              ? "Took too long to think — let's try that again. What's the worker for, in one sentence?"
-              : "Hit a snag generating that response. One more try — tell me what the worker should do.";
+              ? "Took too long to think — let's try that again. Shorter input or rephrase?"
+              : "Hit a snag generating that response. One more try — rephrase and resend.";
             try {
-              sessionState.creatorAuthoringHistory = sessionState.creatorAuthoringHistory || [];
-              sessionState.creatorAuthoringHistory.push({ role: 'assistant', content: fallbackText });
+              // Roll back the user-message push from line ~2061 so next turn
+              // sees the same history we had BEFORE this failed attempt.
+              if (Array.isArray(sessionState.creatorAuthoringHistory) &&
+                  sessionState.creatorAuthoringHistory.length > 0 &&
+                  sessionState.creatorAuthoringHistory[sessionState.creatorAuthoringHistory.length - 1].role === 'user') {
+                sessionState.creatorAuthoringHistory.pop();
+              }
               await sessionRef.set({
                 state: sessionState,
                 surface: 'creator-journey',
@@ -2144,7 +2157,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                 updatedAt: nowServerTs(),
               }, { merge: true });
             } catch (persistErr) {
-              console.warn("[creator-journey intercept] fallback persist failed:", persistErr.message);
+              console.warn("[creator-journey intercept] rollback persist failed:", persistErr.message);
             }
             return res.json({
               ok: true,
