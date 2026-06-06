@@ -42,7 +42,16 @@
   },
   "functions": {
     "source": "functions/functions",
-    "runtime": "nodejs22"
+    "runtime": "nodejs22",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "*.log",
+      "**/*.bak.*",
+      ".env.local",
+      ".secret.local",
+      "services/copilot/baselines/**/*.pdf"
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",
