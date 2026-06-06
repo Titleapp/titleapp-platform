@@ -27,9 +27,20 @@
  * feeds, but ingest/compute cost-recovery — same precedent as ofac:screen).
  * Cache hits are free.
  *
- * NOTE: endpoint URLs are best-known as of 2026-06-06. The FEMA NFHL layer
- * is long-stable; CCC / NRHP / OZ layer URLs get pinned during the Sublette
- * WY + Oakland E2E pass (Step 9). A wrong URL degrades soft into errors[].
+ * ENDPOINTS PINNED 2026-06-06 (Step 9 E2E pass) — each verified live with
+ * positive + negative control points:
+ *   femaFlood:        Oakland → FLD_ZONE "X" ✓
+ *   coastalCommission: Santa Monica beach → 1 feature; Fresno → 0 ✓
+ *     (CORRECTED from Coastal_Zone_Boundary — that service is the boundary
+ *      LINE layer; points never intersect it. Coastal_Zone_Polygon under
+ *      the CCC org services9/wwVnNW92ZHUIr0V0 is the zone polygon.)
+ *   historicDistricts: French Quarter → "Vieux Carre Historic District" ✓
+ *     (layer 1 = NRHP Polygons; layer 0 is points)
+ *   opportunityZones:  West Oakland → GEOID10 06001402200; Beverly Hills → 0 ✓
+ *     (CORRECTED to HUD org VTyQ9soqVukalItT, layer 13 — the national QOZ
+ *      dataset, serviceItemId ef143299845841f8abb95969c01f88b5)
+ * Geometry protocol: simple "lng,lat" form — the HUD layer rejects the
+ * JSON-object geometry; all four accept the simple form.
  */
 
 const admin = require("firebase-admin");
@@ -42,10 +53,9 @@ const SFHA_ZONES = ["A", "AE", "AH", "AO", "AR", "A99", "V", "VE"]; // Special F
 
 const ENDPOINTS = {
   femaFlood: "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query",
-  // VERIFY at E2E (Step 9) — layer URLs for these three:
-  coastalCommission: "https://services2.arcgis.com/yh4PJtbnaZ3vAF5M/ArcGIS/rest/services/Coastal_Zone_Boundary/FeatureServer/0/query",
+  coastalCommission: "https://services9.arcgis.com/wwVnNW92ZHUIr0V0/arcgis/rest/services/Coastal_Zone_Polygon/FeatureServer/0/query",
   historicDistricts: "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/1/query",
-  opportunityZones: "https://services.arcgis.com/VTyQ9soqVukalItT/arcgis/rest/services/Opportunity_Zones/FeatureServer/0/query",
+  opportunityZones: "https://services.arcgis.com/VTyQ9soqVukalItT/arcgis/rest/services/Opportunity_Zones/FeatureServer/13/query",
 };
 
 function getDb() { return admin.firestore(); }
@@ -53,7 +63,9 @@ function getDb() { return admin.firestore(); }
 // ── ArcGIS point-in-polygon query with hard timeout ──────────────
 async function arcgisPointQuery(serviceUrl, lat, lng, outFields = "*") {
   const url = new URL(serviceUrl);
-  url.searchParams.set("geometry", JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } }));
+  // Simple "lng,lat" geometry form — the HUD OZ layer rejects the
+  // JSON-object form; all four pinned services accept simple.
+  url.searchParams.set("geometry", `${lng},${lat}`);
   url.searchParams.set("geometryType", "esriGeometryPoint");
   url.searchParams.set("inSR", "4326");
   url.searchParams.set("spatialRel", "esriSpatialRelIntersects");

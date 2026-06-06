@@ -6152,6 +6152,15 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return await handoffToTitleAbstract(req, res, { body, ctx, jsonError });
     }
 
+    // Step 9 — marketplace review request hook (Forge Reviews queue stub).
+    if (route === "/marketplace:review:request" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const { fireReviewPing } = require("./workers/site-recon-001/marketplaceReviewPing");
+      const result = await fireReviewPing({ shippedCommit: body.shippedCommit, shippedDate: body.shippedDate });
+      return res.status(result.ok ? 200 : 503).json(result);
+    }
+
     // GET /v1/raas:catalog — public RAAS store catalog
     if (route === "/raas:catalog" && method === "GET") {
       try {
