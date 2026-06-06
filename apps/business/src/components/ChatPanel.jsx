@@ -1331,8 +1331,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setDealContext(null);
       if (workerCtx?.completeWork) workerCtx.completeWork();
       // S52.35 — canvas payloads from worker chat-dispatch (e.g. Site Recon
-      // results). The canvas surface listens and renders; chat just relays.
+      // results). WRITE-THROUGH first (sessionStorage), then dispatch: if the
+      // canvas surface isn't mounted at dispatch instant the event is lost,
+      // but the next mount hydrates the latest payload (stale-canvas bug,
+      // Sean's back-to-back Lahaina searches).
       if (data.canvas && typeof data.canvas === 'object') {
+        try {
+          sessionStorage.setItem('sociii_canvas_payload', JSON.stringify(data.canvas));
+          sessionStorage.setItem('sociii_canvas_visible', '1');
+        } catch {}
         try { window.dispatchEvent(new CustomEvent('sociii:canvas:payload', { detail: data.canvas })); } catch {}
       }
       // Intercept |||COMMAND||| blocks before storing in state

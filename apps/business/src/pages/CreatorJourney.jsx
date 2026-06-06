@@ -253,6 +253,7 @@ export default function CreatorJourney({ embedded = false }) {
       <div style={pageStyle}>
         {!embedded && <Header />}
         <SiteReconCanvas
+          key={canvasPayload.searchId || canvasPayload.anchoredAt || "sr"}
           payload={canvasPayload}
           onBack={() => { setShowCanvas(false); try { sessionStorage.setItem("sociii_canvas_visible", "0"); } catch {} }}
         />

@@ -63,9 +63,44 @@ async function resolveCenter(address, ctx) {
   return { lat, lng, formatted: hit?.address?.oneLine || address };
 }
 
+// Dollar figures from the ATTOM bundle: AVM → assessed → last sale.
+function extractValues(bundle) {
+  const prop = bundle?.propertyDetail?.data?.property?.[0];
+  const avm = bundle?.avm?.data?.property?.[0]?.avm?.amount?.value ?? null;
+  const assessed =
+    prop?.assessment?.assessed?.assdttlvalue ??
+    prop?.assessment?.market?.mktttlvalue ??
+    null;
+  const sales = bundle?.salesHistory?.data?.property?.[0]?.salehistory || [];
+  let lastSalePrice = null;
+  let lastSaleDate = null;
+  for (const tx of sales) {
+    const amt = tx?.amount?.saleamt ?? tx?.sale?.amount?.saleamt ?? null;
+    const date = tx?.saleTransDate || tx?.sale?.saleTransDate || null;
+    if (amt && (!lastSaleDate || (date && date > lastSaleDate))) {
+      lastSalePrice = amt;
+      lastSaleDate = date;
+    }
+  }
+  // Unified display value — precedence: AVM (Market Estimate) → assessed
+  // (Tax Assessment) → last sale (Last Sale). Each carries its source date.
+  const avmDate = bundle?.avm?.data?.property?.[0]?.avm?.eventDate ?? null;
+  const taxYear = prop?.assessment?.tax?.taxyear ?? null;
+  let valueUsd = null, valueType = null, valueDate = null;
+  if (avm != null) {
+    valueUsd = avm; valueType = "Market Estimate"; valueDate = avmDate;
+  } else if (assessed != null) {
+    valueUsd = assessed; valueType = "Tax Assessment"; valueDate = taxYear ? String(taxYear) : (prop?.vintage?.lastModified ?? null);
+  } else if (lastSalePrice != null) {
+    valueUsd = lastSalePrice; valueType = "Last Sale"; valueDate = lastSaleDate;
+  }
+  return { avmValue: avm, assessedValue: assessed, lastSalePrice, lastSaleDate, valueUsd, valueType, valueDate };
+}
+
 function slimParcels(rankedParcels) {
   return (rankedParcels || []).map((r) => ({
     rank: r.rank,
+    ...extractValues(r.attom || r.bundle || null),
     apn: r.parcel?.apn ?? null,
     attomId: r.parcel?.attomId ?? null,
     address1: r.parcel?.address1 ?? null,
@@ -191,7 +226,7 @@ async function executePending(pending, sessionState, ctx) {
   const b = res.body;
   const parcels = pending.mode === "area"
     ? slimParcels(b.rankedParcels)
-    : slimParcels([{ rank: 1, parcel: { apn: b.parcel?.propertyDetail?.data?.property?.[0]?.identifier?.apn, attomId: b.parcel?.propertyDetail?.data?.property?.[0]?.identifier?.attomId, address1: b.address?.address1, address2: b.address?.address2, lat: Number(b.parcel?.propertyDetail?.data?.property?.[0]?.location?.latitude ?? NaN) || null, lng: Number(b.parcel?.propertyDetail?.data?.property?.[0]?.location?.longitude ?? NaN) || null }, feasibility: b.feasibility, overlays: b.overlays }]);
+    : slimParcels([{ rank: 1, attom: b.parcel, parcel: { apn: b.parcel?.propertyDetail?.data?.property?.[0]?.identifier?.apn, attomId: b.parcel?.propertyDetail?.data?.property?.[0]?.identifier?.attomId, address1: b.address?.address1, address2: b.address?.address2, lat: Number(b.parcel?.propertyDetail?.data?.property?.[0]?.location?.latitude ?? NaN) || null, lng: Number(b.parcel?.propertyDetail?.data?.property?.[0]?.location?.longitude ?? NaN) || null }, feasibility: b.feasibility, overlays: b.overlays }]);
 
   const counts = verdictCounts(parcels);
   const canvas = {

@@ -13,6 +13,22 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const VERDICT_COLORS = { GREEN: "#22c55e", YELLOW: "#eab308", RED: "#ef4444" };
 const MARKER_COLORS = { GREEN: "green", YELLOW: "yellow", RED: "red" };
 
+function fmtValue(p) {
+  if (p.valueUsd == null) return null;
+  const amt = `$${Number(p.valueUsd).toLocaleString()}`;
+  let date = p.valueDate || "";
+  // Normalize to MM/DD/YYYY; bare years (tax assessment) stay as-is.
+  if (/^\d{4}-\d{2}-\d{2}/.test(date)) {
+    const [y, m, d] = date.slice(0, 10).split("-");
+    date = `${m}/${d}/${y}`;
+  } else if (/^\d{4}-\d{2}$/.test(date)) {
+    const [y, m] = date.split("-");
+    date = `${m}/${y}`;
+  }
+  const detail = [p.valueType, date].filter(Boolean).join(", ");
+  return { amt, detail };
+}
+
 function staticMapUrl(parcels, selectedRank, mapType = "hybrid", zoom = null) {
   const pts = parcels.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
   if (!pts.length || !MAPS_KEY) return null;
@@ -103,7 +119,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
         <div style={S.tableWrap}>
           <table style={S.table}>
             <thead>
-              <tr>{["#", "Address", "APN", "Verdict", "Conf", "Blocker", ""].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              <tr>{["#", "Address", "APN", "Verdict", "Value", "Conf", "Blocker", ""].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {parcels.map((p) => {
@@ -115,6 +131,14 @@ export default function SiteReconCanvas({ payload, onBack }) {
                     <td style={S.td}>{[p.address1, p.address2].filter(Boolean).join(", ") || "—"}</td>
                     <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{p.apn || "—"}</td>
                     <td style={S.td}><span style={{ ...S.badge, background: VERDICT_COLORS[p.verdict] || "#6b7280" }}>{p.verdict}</span></td>
+                    <td style={S.td}>
+                      {(() => {
+                        const v = fmtValue(p);
+                        return v
+                          ? <><span style={{ fontWeight: 600 }}>{v.amt}</span>{v.detail && <div style={{ fontSize: 11, color: "#6b7280" }}>{v.detail}</div>}</>
+                          : <span style={S.dim}>N/A</span>;
+                      })()}
+                    </td>
                     <td style={S.td}>{p.confidenceScore != null ? `${p.confidenceScore}%` : "—"}</td>
                     <td style={{ ...S.td, fontSize: 12, maxWidth: 220 }}>{p.namedBlocker || "—"}</td>
                     <td style={S.td}>
