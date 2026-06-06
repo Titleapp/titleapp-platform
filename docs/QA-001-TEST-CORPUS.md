@@ -749,6 +749,19 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-064 — Creator-journey responses clip at max_tokens with no indicator (third occurrence)
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Steps 6/8/9, CODE+ALEX+CLAUDE loop)
+- **Worker:** Alex / Worker authoring intercept (`index.js` S52.29d block, `max_tokens: 1024`)
+- **Family:** 5 (Chat engine resilience) — sibling of TC-061, distinct defect
+- **Severity:** P1 (silently truncates build-phase content; clipped THREE Step prompts in one build — Step 9's prompt is physically unemittable under the cap)
+- **Real bug:** The authoring intercept caps responses at `max_tokens: 1024` (~750 words), sized for round-by-round Intent Spec dialogue. Build-phase outputs (multi-section Step prompts, intent-spec drafts) exceed it and truncate MID-WORD ("External APIs: - ATT"). The UI renders the partial with no truncation indicator, no continue affordance — user discovers the clip only by reading carefully or pasting downstream. `stop_reason: max_tokens` is available on the API response and is ignored.
+- **Test:** (a) Ask authoring Alex for any >1200-token output. Assert: full content arrives (raised cap or auto-continuation), OR a visible "response truncated — continue?" affordance renders. (b) Assert the intercept checks `stop_reason`; on `max_tokens`, either auto-continues (re-prompt with partial) or appends an explicit truncation marker. NEVER render a silent partial.
+- **Fix shape:** raise `max_tokens` to 4096+ for authoring surface (cost-trivial vs. the failure), check `stop_reason`, add continuation handling. Same file/block as TC-061's fix — T1 territory.
+- **Fix:** (pending)
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:
