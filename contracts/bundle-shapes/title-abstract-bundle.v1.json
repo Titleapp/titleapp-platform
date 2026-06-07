@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/title-abstract-bundle.v1.json",
+  "title": "title-abstract-bundle/v1",
+  "description": "Title Abstract Report bundle emitted by TITLE-ABSTRACT-001. Consumed by LAW-LANDUSE-001 (legal opinion), W-002 (deal analysis), FEASIBILITY-001 (market study), and any downstream worker that needs full parcel context with audit lineage. NOT an insured title product — see notes.compliance.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Sean (substrate sweep for Track B-1 build)",
+  "inheritsFrom": [
+    "CODEX S52.43 (Platform RAAS Invariants)",
+    "CODEX S52.19 (ATTOM Integration + Title Abstract Report)",
+    "CODEX S52.15 (Audit Trail Architecture — DTC + Logbook)"
+  ],
+  "type": "object",
+  "required": ["parcelRef", "sections", "auditAnchor", "verificationStatus", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelRef": {
+      "type": "object",
+      "description": "Reference to the parcel-bundle/v1 this Abstract was assembled from. Bundle-to-bundle composition per accepts-contract substrate.",
+      "required": ["bundleShape", "apn"],
+      "properties": {
+        "bundleShape": { "type": "string", "const": "parcel-bundle/v1" },
+        "apn": { "type": "string" },
+        "attomId": { "type": "string" },
+        "dtcId": { "type": "string" },
+        "sourceBundle": { "$ref": "https://sociii.ai/contracts/bundle-shapes/parcel-bundle.v1.json" }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "description": "The seven Title Abstract Report sections per CODEX S52.19. Each section is independently populated; missing sections declare gaps (EH-04) rather than fabricate.",
+      "properties": {
+        "vesting": {
+          "type": "object",
+          "properties": {
+            "currentOwner": { "type": "string" },
+            "vestingType": { "type": "string" },
+            "chain": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "owner": { "type": "string" },
+                  "from": { "type": "string", "format": "date" },
+                  "to": { "type": "string", "format": "date" },
+                  "deedType": {
+                    "type": "string",
+                    "enum": ["warranty", "quitclaim", "special_warranty", "trust", "grant", "interspousal", "tax", "sheriff", "other"]
+                  },
+                  "instrumentNumber": { "type": "string" }
+                }
+              }
+            },
+            "sourcePulls": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/sourcePull" }
+            }
+          }
+        },
+        "encumbrances": {
+          "type": "object",
+          "properties": {
+            "activeMortgages": { "type": "array", "items": { "type": "object" } },
+            "liens": { "type": "array", "items": { "type": "object" } },
+            "easements": { "type": "array", "items": { "type": "object" } },
+            "ccrsHoa": { "type": "object" },
+            "complianceFlag": {
+              "type": "string",
+              "const": "NOT_CERTIFIED_FOR_TITLE_INSURANCE_CLOSURE",
+              "description": "Mandatory disclaimer (S52.19 §2): the Abstract surfaces what data sources have; certified clearance for a transaction closure requires a title attorney / escrow officer."
+            },
+            "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+          }
+        },
+        "tax": {
+          "type": "object",
+          "properties": {
+            "currentAssessedValue": { "type": "number" },
+            "currentAvm": { "type": "number" },
+            "taxHistory": { "type": "array", "items": { "type": "object" } },
+            "specialAssessments": { "type": "array", "items": { "type": "object" } },
+            "delinquencies": { "type": "array", "items": { "type": "object" } },
+            "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+          }
+        },
+        "risk": {
+          "type": "object",
+          "properties": {
+            "femaFloodZone": { "type": "string" },
+            "wildfireRiskScore": { "type": "number" },
+            "earthquakeRisk": { "type": "object" },
+            "climateProjections": { "type": "object" },
+            "crimeScore": { "type": "object" },
+            "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+          }
+        },
+        "opportunity": {
+          "type": "object",
+          "properties": {
+            "avm": { "type": "object", "properties": { "value": { "type": "number" }, "confidenceLow": { "type": "number" }, "confidenceHigh": { "type": "number" } } },
+            "comparableSales": { "type": "array", "items": { "type": "object" } },
+            "daysOnMarketBySubmarket": { "type": "number" },
+            "walkScore": { "type": "integer" },
+            "transitScore": { "type": "integer" },
+            "bikeScore": { "type": "integer" },
+            "schoolDistrict": { "type": "object" },
+            "demographics": { "type": "object" },
+            "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+          }
+        },
+        "buildability": {
+          "type": "object",
+          "properties": {
+            "zoningCode": { "type": "string" },
+            "permittedUses": { "type": "array", "items": { "type": "string" } },
+            "setbacks": { "type": "object" },
+            "maxFar": { "type": "number" },
+            "maxHeightFt": { "type": "number" },
+            "permitHistory": { "type": "array", "items": { "type": "object" } },
+            "subdivisionSignals": { "type": "object" },
+            "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+          }
+        },
+        "auditReceipt": {
+          "type": "object",
+          "description": "Section 7: the differentiator. Every data pull that fed the Abstract surfaces here as a logbook-entry reference.",
+          "properties": {
+            "compoundDtcId": { "type": "string" },
+            "totalDataFeeUsd": { "type": "number" },
+            "totalPulls": { "type": "integer" },
+            "logbookEntryIds": { "type": "array", "items": { "type": "string" } },
+            "chainAnchorTxHash": { "type": "string" },
+            "chainAnchoredAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    "verificationStatus": {
+      "type": "object",
+      "required": ["confidence", "perSectionConfidence"],
+      "properties": {
+        "confidence": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+        "perSectionConfidence": {
+          "type": "object",
+          "properties": {
+            "vesting": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+            "encumbrances": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+            "tax": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+            "risk": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+            "opportunity": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+            "buildability": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }
+          }
+        },
+        "gapsDeclared": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "section": { "type": "string" },
+              "field": { "type": "string" },
+              "reason": { "type": "string", "examples": ["ATTOM coverage gap", "source contradicted", "data older than refresh threshold"] }
+            }
+          }
+        }
+      }
+    },
+    "auditAnchor": {
+      "type": "object",
+      "required": ["anchorTxHash", "anchoredAt", "compoundDtcId"],
+      "properties": {
+        "anchorTxHash": { "type": "string" },
+        "anchorChain": { "type": "string", "enum": ["base", "polygon"], "default": "base" },
+        "anchoredAt": { "type": "string", "format": "date-time" },
+        "compoundDtcId": { "type": "string" },
+        "logbookEntryIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "const": "TITLE-ABSTRACT-001" },
+        "workerVersion": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string" }
+      }
+    },
+    "emittedAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "sourcePull": {
+      "type": "object",
+      "required": ["endpoint", "pulledAt", "costUsd"],
+      "properties": {
+        "endpoint": { "type": "string", "examples": ["attom:property", "attom:lending", "county_recorder:document_lookup"] },
+        "pulledAt": { "type": "string", "format": "date-time" },
+        "costUsd": { "type": "number" },
+        "responseHash": { "type": "string" },
+        "logbookEntryId": { "type": "string" }
+      }
+    }
+  },
+  "notes": {
+    "compliance": "The Title Abstract Report is NOT an insured title product. SOCIII does NOT certify lien clearance for transaction closure. encumbrances.complianceFlag is a mandatory disclaimer on every bundle.",
+    "reagan_rule_application": "Every numeric / categorical field in any section MUST carry a sourcePulls entry. Fields without sourcePulls are treated as user_supplied + verified: false and surfaced with an unverified badge in downstream renderings.",
+    "britney_rule_application": "Sections sourced from a single API endpoint MUST NOT have fields populated that the endpoint didn't return. Per-section gaps declared in verificationStatus.gapsDeclared rather than fabricated.",
+    "deposition_rule_application": "auditAnchor.compoundDtcId references a single Vault DTC entry that snapshots ALL sourcePulls across all sections. A forensic auditor reconstructs the full report state at emit time from the DTC + chain anchor.",
+    "accepts_contract_application": "Workers declaring accepts: ['title-abstract-bundle/v1'] gain typed access to the seven-section structure. LAW-LANDUSE-001 reads sections.buildability + sections.encumbrances. W-002 reads sections.opportunity + sections.tax. FEASIBILITY-001 reads sections.opportunity + sections.buildability."
+  }
+}

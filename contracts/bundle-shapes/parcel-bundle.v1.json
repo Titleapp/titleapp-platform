@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/parcel-bundle.v1.json",
+  "title": "parcel-bundle/v1",
+  "description": "Canonical parcel reference bundle emitted by SITE-RECON-001 and consumed by downstream RE workers (TITLE-ABSTRACT-001, ZONING-001, LAW-LANDUSE-001, W-002 Real Estate Analyst, FEASIBILITY-001). Carries the minimum identification + audit lineage a downstream worker needs to pull deeper data without re-discovering the parcel.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Sean (substrate sweep for LAW-LANDUSE-001 build)",
+  "inheritsFrom": [
+    "CODEX S52.43 (Platform RAAS Invariants — Reagan Rule + Britney Rule + EH-01)",
+    "CODEX S52.41 (Substrate-Precedence)",
+    "CODEX S52.15 (Audit Trail Architecture — DTC + Logbook)"
+  ],
+  "type": "object",
+  "required": ["parcelId", "address", "jurisdiction", "verificationStatus", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelId": {
+      "type": "object",
+      "description": "Canonical identification. APN is the legal anchor; attomId is the ATTOM lookup key; dtcId is the SOCIII Vault DTC reference.",
+      "required": ["apn"],
+      "properties": {
+        "apn": { "type": "string", "description": "Assessor Parcel Number as recorded by the county. Verbatim — no normalization that loses leading zeros." },
+        "attomId": { "type": "string", "description": "ATTOM property record ID. Optional but required for downstream ATTOM pulls." },
+        "dtcId": { "type": "string", "description": "SOCIII Vault DTC reference if a parcel-DTC has been minted; absent if this is a fresh discovery." },
+        "fips": { "type": "string", "description": "5-digit county FIPS code (state+county). Required for HUD / Census ACS lookups." }
+      }
+    },
+    "address": {
+      "type": "object",
+      "required": ["street", "locality", "region", "country"],
+      "properties": {
+        "street": { "type": "string", "examples": ["9708 US-191"] },
+        "unit": { "type": "string" },
+        "locality": { "type": "string", "examples": ["Pinedale"] },
+        "region": { "type": "string", "examples": ["WY"], "description": "USPS 2-letter state code." },
+        "postalCode": { "type": "string" },
+        "country": { "type": "string", "default": "US" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "verifyMethod": {
+          "type": "string",
+          "enum": ["geocoder_match", "attom_resolve", "user_supplied_unverified", "manual_audit_match"],
+          "description": "How the lat/lng + address were verified. user_supplied_unverified per Reagan Rule (CODEX S52.43 §5) — accepted graciously, treated as unverified until cross-referenced."
+        }
+      }
+    },
+    "jurisdiction": {
+      "type": "object",
+      "description": "Layered jurisdiction stack for the parcel. Each layer carries the rule code + a live retrievalUrl (Britney Rule + EH-01 — no model-recalled URLs).",
+      "properties": {
+        "country": { "type": "string", "default": "US" },
+        "state": { "type": "string" },
+        "county": { "type": "string" },
+        "municipality": { "type": "string", "description": "City / town / village. Absent for unincorporated parcels." },
+        "specialDistricts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "examples": ["school", "fire", "water", "irrigation", "improvement"] },
+              "name": { "type": "string" },
+              "code": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "physical": {
+      "type": "object",
+      "description": "Physical parcel characteristics. All numeric fields carry units; never bare numbers.",
+      "properties": {
+        "lotSizeSqFt": { "type": "number" },
+        "lotSizeAcres": { "type": "number" },
+        "buildingSqFt": { "type": "number" },
+        "bedrooms": { "type": "integer" },
+        "bathrooms": { "type": "number" },
+        "yearBuilt": { "type": "integer" },
+        "stories": { "type": "integer" },
+        "propertyType": {
+          "type": "string",
+          "enum": ["single_family", "multi_family", "condo", "townhouse", "commercial", "industrial", "agricultural", "vacant_land", "mixed_use", "other"]
+        }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "description": "Current owner of record. NEVER inferred — must come from authoritative source (county recorder OR ATTOM) with retrievedAt timestamp.",
+      "properties": {
+        "currentOwner": { "type": "string" },
+        "vestingType": {
+          "type": "string",
+          "enum": ["sole", "joint_tenants", "tenants_in_common", "community_property", "trust", "llc", "corp", "partnership", "unknown"]
+        },
+        "ownershipSince": { "type": "string", "format": "date" },
+        "source": { "type": "string", "examples": ["attom:property", "county_recorder", "deed_doc"] },
+        "verified": { "type": "boolean", "description": "Per Reagan Rule — true only if cross-referenced; false default for single-source pulls." }
+      }
+    },
+    "verificationStatus": {
+      "type": "object",
+      "description": "Audit lineage. Required for the bundle to be honored by downstream workers — without verification metadata a downstream cannot anchor its own outputs.",
+      "required": ["confidence", "verifiedFields", "unverifiedFields"],
+      "properties": {
+        "confidence": {
+          "type": "string",
+          "enum": ["GREEN", "YELLOW", "RED"],
+          "description": "RAG verdict. GREEN: all required fields verified against ≥2 sources OR 1 authoritative source. YELLOW: required fields present, single-source. RED: required fields missing or contradictory across sources."
+        },
+        "confidenceScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "verifiedFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Dot-paths of fields that have been cross-referenced. E.g., 'ownership.currentOwner', 'physical.lotSizeSqFt'."
+        },
+        "unverifiedFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Dot-paths of fields present but NOT cross-referenced. Downstream workers must surface a 'based on unverified data' caveat when relying on these."
+        },
+        "missingFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required-or-expected fields the source did not provide. Per EH-04 hyper-local gap declaration."
+        }
+      }
+    },
+    "auditAnchor": {
+      "type": "object",
+      "description": "PLAT-008 anchor reference if the parcel-bundle has been recorded to a DTC logbook. Optional; required when the bundle flows downstream to a worker that itself anchors.",
+      "properties": {
+        "anchorTxHash": { "type": "string" },
+        "anchorChain": { "type": "string", "enum": ["base", "polygon", "ethereum"], "default": "base" },
+        "anchoredAt": { "type": "string", "format": "date-time" },
+        "logbookEntryId": { "type": "string" }
+      }
+    },
+    "media": {
+      "type": "array",
+      "description": "Optional video-tile/v1 attachments — drone aerials, council hearings, news clips contextually tied to the parcel.",
+      "items": {
+        "$ref": "https://sociii.ai/contracts/bundle-shapes/video-tile.v1.json"
+      }
+    },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "examples": ["SITE-RECON-001"] },
+        "workerVersion": { "type": "string", "examples": ["1.1.0"] },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string", "description": "Per Active Persona Gate (CODEX S52.43 §3) — who paid for the discovery." }
+      }
+    },
+    "emittedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "notes": {
+    "reagan_rule_application": "Any field populated from user_supplied input MUST carry source: 'user_supplied' + verified: false until cross-referenced against ATTOM or county recorder. Downstream workers treat unverified fields as advisory, not authoritative.",
+    "britney_rule_application": "Downstream workers MUST NOT add detail to a parcel-bundle field that the bundle didn't carry. If TITLE-ABSTRACT-001 needs an APN-suffix detail not in the bundle, it pulls it itself — never invents it.",
+    "deposition_rule_application": "When auditAnchor is populated, the bundle's full retrievedHash chain is reconstructable from the logbook entry. A forensic auditor three years later can verify which fields were known at discovery time vs added by downstream workers.",
+    "accepts_contract_application": "Workers declaring 'accepts: [\"parcel-bundle/v1\"]' in their catalog gain a typed input contract. The catalog discovery layer (CODEX S52.42) uses this to route handoffs dynamically without hardcoded target lists."
+  }
+}
