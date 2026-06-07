@@ -149,12 +149,84 @@
       "phase": 0,
       "type": "standalone",
       "pricing": {
-        "monthly": 79
+        "monthly": 0,
+        "currency": "USD",
+        "free_worker": true,
+        "per_pull_data_fees": true,
+        "pricing_note": "Free to add \u2014 pay only for data: ATTOM property + comparable pulls at substrate cost + 100% markup. Typical deal analysis (1 parcel + 5 comps + market snapshot) \u2248 $4\u2013$12. Aligned to S52.43 FREE-worker product principle (2026-06-07).",
+        "markup_percent": 100,
+        "creator_share_of_markup_percent": 20
       },
+      "creator": "sociii-spine",
+      "jurisdiction": "US-NATIONAL",
+      "lane": "marketplace",
       "status": "live",
-      "capabilitySummary": "Real estate investment analyst \u2014 deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals.",
+      "capabilitySummary": "Real estate investment analyst \u2014 deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals. Now consumes parcel-bundle/v1 from SITE-RECON-001 + title-abstract-bundle/v1 from TITLE-ABSTRACT-001 and emits a deal-analysis-bundle/v1 with embedded Market Snapshot demographics + comparable sales (replaces standalone Market Feasibility worker per S52.43 worker-dependency-clarity insight).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
+      "emits": [
+        "deal-analysis-bundle/v1"
+      ],
+      "accepts": [
+        "parcel-bundle/v1",
+        "title-abstract-bundle/v1",
+        "video-tile/v1"
+      ],
+      "constraintRaasSources": [
+        {
+          "moduleId": "fair-housing-act",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "attom-api-usage-terms",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "deposition-rule-anchor-classification",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "census-acs-fair-use",
+          "required": true,
+          "load_when": "always"
+        }
+      ],
+      "canvasTabs": [
+        {
+          "id": "verdict",
+          "label": "Deal Score",
+          "signal": "card:verdict",
+          "default": true,
+          "order": 0
+        },
+        {
+          "id": "market-snapshot",
+          "label": "Market Snapshot",
+          "signal": "card:marketSnapshot",
+          "order": 1
+        },
+        {
+          "id": "comparables",
+          "label": "Comparables",
+          "signal": "card:comparables",
+          "order": 2
+        },
+        {
+          "id": "comparison",
+          "label": "Side-by-Side",
+          "signal": "card:dealComparison",
+          "order": 3
+        },
+        {
+          "id": "audit-receipt",
+          "label": "Audit Receipt",
+          "signal": "card:auditReceipt",
+          "order": 4
+        }
+      ],
       "vault": {
         "reads": [
           "market_scorecard",
@@ -163,7 +235,8 @@
         "writes": [
           "deal_analysis",
           "deal_score",
-          "deal_comparison_matrix"
+          "deal_comparison_matrix",
+          "market_snapshot"
         ]
       },
       "referrals": [
@@ -173,7 +246,7 @@
         },
         {
           "event": "Deal accepted triggers title search",
-          "routesTo": "W-044"
+          "routesTo": "TITLE-ABSTRACT-001"
         },
         {
           "event": "Deal accepted triggers capital stack analysis",
