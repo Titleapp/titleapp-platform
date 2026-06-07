@@ -1,8 +1,8 @@
 # BILLING-ARCHITECTURE.md — Canonical substrate reference
 
-**Date:** 2026-06-06
-**Purpose:** Single source of truth for how pricing + billing + wallet works across all SOCIII workers. Authored after the LAW-LANDUSE-001 spec invented untethered pricing (TC-069) and the top-up-vs-gate field drift surfaced during Sean's Site Recon test. Per the substrate-precedence rule (CODEX S52.41 candidate), worker specs MUST reference this doc; they may never invent billing mechanics.
-**Status:** v1 — captures actual production behavior as of `e1b6d3e7` (HEAD). Architecture questions in §6 await Sean's ratification.
+**Date:** 2026-06-06 · **Updated:** 2026-06-06 ~16:30 HST with Sean's BILLING RULING (prepaid-only canon)
+**Purpose:** Single source of truth for how pricing + billing + wallet works across all SOCIII workers. Authored after the LAW-LANDUSE-001 spec invented untethered pricing (TC-069), the top-up-vs-gate field drift surfaced during Sean's Site Recon test, and Sean ratified the prepaid-only billing canon resolving the platform's open philosophy question. Per the substrate-precedence rule (CODEX S52.41), worker specs MUST reference this doc; they may never invent billing mechanics.
+**Status:** v2 — incorporates Sean's BILLING RULING. The earlier "Pool A vs Pool B / drifts as open questions" framing was itself partial-congruence drift (TC-068 at the substrate-doc layer); revised. Substrate work proceeds against this doc.
 
 ---
 
@@ -69,58 +69,66 @@ Actual costs require Sean to confirm vendor pricing before commit.
 
 ---
 
-## §4 — Two billing-pool model
+## §4 — The canonical billing model: prepaid-only
 
-The substrate uses **two separate pools** that serve different purposes. Understanding this distinction is load-bearing:
+Per Sean's BILLING RULING 2026-06-06 ~16:00 HST: **prepaid-only across both revenue lines that touch user balance**. The first-draft of this doc framed billing as a two-pool architecture with open drift questions; that framing was itself partial-congruence as camouflage (correct facts at the field layer, wrong layer of analysis). The platform's canonical model:
 
-### Pool A — `prepaidCredits` (credit-call pool, count-based)
-- **Used for:** session-level inference + connector calls (`executionCredits` units)
-- **Read by:** `checkAndDeductCredits` (callWithHealthCheck.js:132)
-- **Written by:** credit-pack purchase webhook (stripeWebhook.js:780-789), subscription credit allocations
-- **Personal Vault field:** `users/{uid}.billing.prepaidCredits ?? users/{uid}.prepaidCredits` (dual-write for legacy compat)
+### Single user balance pool, written by every top-up, read by every gate, deducted by every charge
+
+- **Personal Vault field:** `users/{uid}.billing.prepaidCredits` (with `users/{uid}.prepaidCredits` root mirror for legacy reads)
 - **Workspace field:** `tenants/{tenantId}.prepaidCredits`
-- **Deducted at:** call-time, atomically before the call proceeds. Returns `INSUFFICIENT_CREDITS` if short.
-- **Top-up path:** credit-pack purchase Stripe checkout (writes `data.metadata.credits` count)
+- **Top-up writes:** Stripe checkout (`balance_topup` or `credit_pack`) credits THIS field
+- **Gate reads:** session credit check (`checkAndDeductCredits`) AND worker wallet gate (Site Recon's `chatIntent.js`) read THIS field
+- **Charge deducts:** atomic at event time — `recordDataFee` decrements THIS field; `checkAndDeductCredits` decrements THIS field
+- **Insufficient = refuse, never float:** no overflow-to-invoice; auto-recharge (`checkBalanceRecharge` / `handleUpdateAutoRecharge`) is the convenience layer that makes prepaid livable
 
-### Pool B — `billing.balance` (data-fee dollar pool, USD-based)
-- **Used for:** data-fee pass-through charges (Apollo, ATTOM, GIS, NOTAMIFY, etc.)
-- **Read by:** `chargeOverageToStripe` (usageProcessor.js:130)
-- **Written by:** `creditBalanceFromCheckout` top-up webhook (usageProcessor.js:282)
-- **Personal Vault field:** `users/{uid}.billing.balance`
-- **Workspace field:** ⚠️ **DRIFT — no equivalent declared** (open question, §6)
-- **Deducted at:** cycle-close (NOT per-call). `recordDataFee` appends to `dataFeeEvents`; `processUsageEvents` aggregates; `chargeOverageToStripe` settles against `billing.balance` first, then Stripe.
-- **Top-up path:** balance-top-up Stripe checkout (writes USD `amountNum`)
+### What the ruling eliminated
 
-### Why two pools?
-- Credit pool: predictable, per-call, atomic. Users see "X credits remaining." Works great for chat/OCR/connector flows where each call is small + frequent.
-- Dollar pool: variable cost per call (a single ATTOM report = $6, a single First Am title = $15). Hard to map to credits cleanly when underlying API costs vary 100×. Dollar-pool model + cycle-close settlement keeps the unit math correct.
+The pre-ruling code had `billing.balance` (USD pool for cycle-close-aggregated data fees) AND `prepaidCredits` (count pool for atomic call-time deductions) as two half-wired models. Ruling resolves to single-pool-prepaid. Implications:
 
-This is the right architecture for what the platform does. The drift is in the EDGES — fields, gates, top-up routing.
+- `billing.balance` field gets repurposed: now mirrors `prepaidCredits` for backward compatibility; long-term cleanup CODEX can remove it
+- `chargeOverageToStripe` (usageProcessor.js:130+) repurposed: NOT a charge path for data fees anymore (data fees deduct atomically at event time); becomes a **reconciliation report only** for inference-credit subscription overages
+- `dataFeeEvents` collection role unchanged: append-only audit ledger for deposition (Line 3 audit-trail role preserved per [[feedback-deposition-rule-lives-in-dev-docs]]), but events now record DEDUCTIONS TAKEN, not charges TO COLLECT
+
+### Why prepaid-only
+
+- **Deposition-grade clarity** — receipts record deductions taken at event time, atomically. Three years later, "did this customer pay for this call?" is unambiguous
+- **No silent debt accumulation** — users cannot run up bills they didn't consent to. Insufficient = refuse
+- **Single source of truth for "can this run?"** — gate and meter read/write the same field; cannot diverge
+- **Auto-recharge handles UX cost** — users who don't want to think set auto-recharge and forget; prepaid livable without prepaid friction
 
 ---
 
-## §5 — Worker flows by pool
+## §5 — Worker flows under the prepaid-only canon
 
-### Inference-only workers (chat, doc gen, OCR) → Pool A
-- Chat session opens → `checkAndDeductCredits(userId, connectorId, creditCost, context)` deducts from `prepaidCredits`
+### Every external-cost call (Lines 1 + 2 + 3) gates against the same pool
+
+- Pre-call: worker calls `quoteDataFee({source, units, userBalanceCents})` → returns tier (silent <$1 / warn <$10 / confirm ≥$10 or ≥15% of balance) + minimum-balance check
+- Worker presents UX per tier with **payer-named gate prompt** per [[project-billing-ruling-prepaid-only-canonical]] point 6: *"Billing to: [payer] — $X from your $Y balance. Say 'confirm' — or 'bill personal' to switch."*
+- User confirms; worker calls external API
+- Post-call: worker calls `recordDataFee({source, userId, tenantId, units})` → atomically decrements payer pool + appends event to `dataFeeEvents` (status: `deducted: true`)
+- Failure to deduct = refuse; the call does NOT fire if the pool can't cover it
+
+### Quote-phase coverage (per ruling point 1)
+
+Even quote-phase queries (the 40¢ `attom:snapshot` calls Sean caught) must gate against balance. Free exploration ends exactly where provider fees begin. Implementation: `quoteDataFee` becomes a gating call (deducts atomically if it succeeds), not a passive estimate.
+
+### Session inference (Line 1) — same model
+
+- Worker session opens → `checkAndDeductCredits(userId, connectorId, creditCost, context)` deducts from `prepaidCredits`
 - Returns `INSUFFICIENT_CREDITS` if short
-- User tops up via credit-pack purchase
+- Same field as data fees; same auto-recharge; same gate prompt format
 
-### Data-fee workers (Site Recon, Marketing/Kling, OFAC screen, etc.) → Pool B
-- Pre-call: worker calls `quoteDataFee({source, units, userBalanceCents})` → returns tier `silent`/`warn`/`confirm`
-- Worker presents UX per tier (silent ack / inline warn / explicit confirm)
-- Call proceeds; worker calls external API
-- Post-call: worker calls `recordDataFee({source, userId, tenantId, units})` → appends to `dataFeeEvents` (billed:false)
-- Cycle-close: `processUsageEvents` aggregates → `chargeOverageToStripe` deducts from `billing.balance`, charges Stripe overage for remainder
+### Payer resolution (universal across worker flows)
 
-### Hybrid workers (most actually) → BOTH pools
-- Inference for the chat layer (Pool A) AND data fees for external pulls (Pool B)
-- Example: Site Recon's chat is `simple` credits (Pool A), the ATTOM pulls are data fees (Pool B)
-- Wallet UX needs to surface BOTH balances OR collapse them into one user-facing number
+Both gates resolve the payer pool via the same logic:
+- If `tenantId` is set AND not `"vault"` / `"personal"` / `"guest-*"` → deduct from `tenants/{tenantId}.prepaidCredits`
+- Else → deduct from `users/{uid}.billing.prepaidCredits` (with root `users/{uid}.prepaidCredits` mirror)
+- The chat-dispatch substrate (per the billing-persona ruling point 6) MUST name the payer in the gate prompt + offer a switch keyword (`bill personal` / `bill workspace`)
 
 ---
 
-## §6 — KNOWN DRIFTS + ARCHITECTURE QUESTIONS (Sean ratification needed)
+## §6 — DRIFTS RESOLVED BY THE RULING (no open questions remain)
 
 These are the field-mismatch bugs surfaced 2026-06-06 + the architectural decisions that resolve them. Per substrate-precedence rule, no unilateral fix — Sean picks.
 
@@ -158,7 +166,7 @@ These are the field-mismatch bugs surfaced 2026-06-06 + the architectural decisi
 - All workers read the single pool
 - **Largest blast radius.** Touches every worker, every gate, every top-up path. Needs deprecation window for `prepaidCredits` reads.
 
-**T1 recommendation: Option A** for the immediate P0, plus a follow-up audit (Drift 2 + a sweep) to apply the same gate-correction across all data-fee workers. Option C goes on the roadmap as a real cleanup CODEX.
+**RULING APPLIED:** Site Recon's gate is now CORRECT — it always read the enforcement field (`prepaidCredits` family). The drift was the top-up webhook writing the wrong field (`billing.balance`), not the gate reading the wrong field. Ruling point 4 mandates: top-up must credit the enforcement field. Fix surface: `creditBalanceFromCheckout` in `usageProcessor.js:274-299` writes `prepaidCredits` + `billing.prepaidCredits` (mirroring credit-pack purchase pattern at `stripeWebhook.js:780-789`).
 
 ### Drift 2 — Workspace tenants have no Pool B field
 
@@ -174,7 +182,7 @@ These are the field-mismatch bugs surfaced 2026-06-06 + the architectural decisi
 - (b) Should workspace data-fee charges fall back to the calling user's personal Pool B?
 - (c) Should workspaces only use credit-pack purchases (Pool A) and data-fee charges convert through?
 
-T1 recommendation: (a) — workspaces should have parity with users for both pools. Cleanest model, easiest to explain to creators/customers.
+**RULING APPLIED:** Workspaces use `tenants/{tenantId}.prepaidCredits` as their canonical pool — same field as `checkAndDeductCredits` already uses. The "no Pool B for workspace" framing was the wrong framing; with prepaid-only canon, there is only one pool per pool-holder (user or tenant), and workspaces already have it. Data-fee deductions at event time will hit this field via the same payer-resolution logic `checkAndDeductCredits` uses today.
 
 ### Drift 3 — Credit-pack purchase writes both legacy fields ("49.32 — write to root prepaidCredits AND legacy billing.prepaidCredits")
 
@@ -239,27 +247,53 @@ The lint check (PLAT-PRICE-01) addresses Layer 3 by detecting jurisdiction viola
 
 ---
 
-## §10 — Action items (T1 owns; Sean ratifies §6 first)
+## §10 — Implementation queue (T1 executes per BILLING RULING)
 
-### Awaiting Sean's ratification (§6)
-- [ ] Drift 1 fix path — A, B, or C? T1 recommends A.
-- [ ] Drift 2 architecture — (a), (b), or (c)? T1 recommends (a).
-- [ ] Drift 3 cleanup priority
+Sequence-locked. Each group its own commit; deploy after Group 2 + Group 4 land together so the gate matches the meter.
 
-### After §6 ratification, T1 ships in sequence
-1. Drift 1 fix per ratified option (chatIntent.js gate field change + audit other data-fee workers)
-2. Drift 2 fix per ratified option (workspace Pool B parity)
-3. `docs/QA-001-TEST-CORPUS.md` TC-069 entry (canonical, with Code's framing)
-4. `docs/CODEX-S52.41-Substrate-Precedence-Rule.md` (codifies §7)
-5. `scripts/qa-001/checks/plat-price-01-substrate-reference-lint.js` (the validator)
-6. `creators/_template/intent.md` Pricing & Billing section with `BILLING-ARCHITECTURE.md` link
-7. `/creators/journey` Step 3 Alex prompt — substrate-precedence guard
-8. SITE-RECON-001 spec v1.2 reconciliation (apply the discipline retroactively)
+### Group 1 — Top-up credits the enforcement field (P0 prereq)
+- `functions/functions/billing/usageProcessor.js:274-299` `creditBalanceFromCheckout` — write `prepaidCredits` (root) + `billing.prepaidCredits` (legacy mirror) atomically; preserve existing `billing.balance` write for auto-recharge threshold backward compatibility (housekeeping CODEX can remove later)
 
-### Already shipped
-- ✅ LAW-LANDUSE-001 spec §10 refactored to cost-basis-not-prices
-- ✅ Memory TC-069 captured with Code's sharper framing
-- ✅ This doc
+### Group 2 — Atomic deduction at recordDataFee (the missing wire)
+- `functions/functions/services/billing/dataFee.js:103` `recordDataFee` — wrap in Firestore transaction: (a) resolve payer per universal logic, (b) read balance, (c) verify ≥ cost, (d) deduct atomically, (e) append `dataFeeEvents` with status `deducted: true`
+- Failure to deduct (insufficient balance) → throw `INSUFFICIENT_BALANCE`, external API call does NOT fire
+- `quoteDataFee` callers must trap this error and surface refusal UX
+
+### Group 3 — Wallet gate alignment (already correct, just update comments)
+- `functions/functions/workers/site-recon-001/chatIntent.js` lines 31-35 — update comment block to reflect ruling-applied state; gate logic stays as-is (it was always correct per the ruling)
+
+### Group 4 — Quote-phase coverage (ruling point 1)
+- Substrate layer above `quoteDataFee` MUST atomically deduct or refuse for snapshot-tier sources (`attom:snapshot`, `apollo:org_search`-quote-phase, etc.)
+- No silent quote-phase charges — every cost-incurring call gates against balance
+
+### Group 5 — Billing-persona surface (ruling point 6)
+- Chat dispatch layer (substrate, NOT per-worker) — gate prompt becomes "Billing to: [payer] — $X from your $Y balance. Say 'confirm' — or 'bill personal' to switch ($Z available there)."
+- Switch keywords: `bill personal` / `bill workspace` / `bill <workspace-name>` — switch active payer for this transaction; persists for the session unless re-switched
+- Receipt UX (canvas metadata bar + chat completion line) surfaces "billed to [payer]" — deposition-grade clarity
+
+### Group 6 — Cycle-close repurposed (ruling point 5)
+- `functions/functions/billing/usageProcessor.js` `processUsageEvents` — no longer aggregates data-fee events into Stripe invoice; becomes monthly reconciliation report (per-source per-payer)
+- `chargeOverageToStripe` — keep for inference-credit subscription overages (Line 1 still uses Stripe overage path) + audit-trail meter overages (Line 3); data-fee path no longer routes here
+- Mark today's ~$242 of `billed: false` test events as `excluded: true, reason: "pre-ruling-test-data"` during the substrate-migration deploy
+
+### Already shipped this session
+- ✅ LAW-LANDUSE-001 spec §10 refactored to cost-basis-not-prices (pre-ruling)
+- ✅ Memory TC-069 with Code's sharper framing
+- ✅ Memory `project-billing-ruling-prepaid-only-canonical` (the ruling)
+- ✅ Memory `project-bees-in-hive-composition-architecture` (pricing as hive primitive)
+- ✅ Memory `project-test-dont-rebuild-principle-qa001-expansion`
+- ✅ This doc (v2)
+
+### Doc sweep (this turn)
+- `docs/CODEX-S52.41-Substrate-Precedence-Rule.md` — codifies §7 worker-spec discipline + billing ruling reference
+- `docs/QA-001-TEST-CORPUS.md` TC-069 entry — canonical with Code's framing
+- `~/Downloads/LAW-LANDUSE-001_Worker_Spec_v1.md` §10 — ruling-aligned API references
+
+### Future (queued, Sean ratifies before each code group ships)
+- `scripts/qa-001/checks/plat-price-01-substrate-reference-lint.js` (Layer 3 tripwire fix)
+- `creators/_template/intent.md` Pricing & Billing section
+- `/creators/journey` Step 3 Alex prompt — substrate-precedence guard
+- `SITE-RECON-001_Worker_Spec_v1.2.md` reconciliation pass
 
 ---
 

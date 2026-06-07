@@ -803,6 +803,33 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-068 — Internal contract mismatch: template/CODEX disagree with validator
+
+- **Date:** 2026-06-06 (caught in dogfood — SITE-RECON-001 Step 7 validator gate, post-S52.37 ratification)
+- **Worker:** SITE-RECON-001 creator package validator + S52.34 + `creators/_template/`
+- **Family:** 6 (Loop-participant ground-truth grounding — new LAYER: internal contract / scaffolding self-consistency)
+- **Severity:** P1 (validator-blocking; creator following template literally cannot pass)
+- **Real bug:** Code ran `npm run validate-worker -- --worker=sean-combs/site-recon-001`, hit 4 FAILs, fixed in place, achieved PASS — but ALL THREE booby traps were INTERNAL CONTRACT MISMATCHES (template/CODEX/spec contradicts validator; creator following docs WOULD NOT pass). (1) S52.34's intent.md template specified raw Round-N headers; validator requires creator-facing semantic headers ("What it does" / "Who uses it"). Code's verbatim: "your clipped Step 9 draft was closer to correct than the CODEX was" — the clipping bug accidentally truncated the wrong content before the right content. (2) Template says "don't pre-assign TC numbers"; validator requires ≥5 numbered TC-IDs. (3) Template uses unquoted JS keys in SAMPLE_CANVAS_PAYLOADS; validator regex requires quoted JSON-style keys (silent fail).
+- **Test:** (a) Lint every CODEX/template/spec doc against the validator's required section-name set; mismatches flagged at PR time. (b) Adversarial: drop a fresh creator package built from template literally; assert it passes validator without manual edits. (c) Authority order locked: validator > template > CODEX > Alex; downstream artifacts must track upstream.
+- **Mitigation that worked:** Code surfaced the booby traps + fixed them in place during the validator pass. The lesson: validator is the canonical contract; everything else must track it. T1's substrate docs must obey the same rule recursively.
+- **Fix:** Authority order locked in CODEX S52.41 (substrate-precedence rule). Template + CODEX updates + lint check enforce. Sample TC-101..TC-117 assigned by Code arrived at the validator-required range for worker-specific assertions; template now reflects.
+
+---
+
+## TC-069 — Worker spec restates substrate and drifts; partial congruence defeats spot-checking
+
+- **Date:** 2026-06-06 (caught in dogfood — LAW-LANDUSE-001 spec authoring + Site Recon test-session Alex chat)
+- **Worker:** LAW-LANDUSE-001 spec v1 §10 (invented $20/$150/$750 tiers) + SITE-RECON-001 spec v1.1 §9 (invented $4.20/parcel diverging from registry's $6) + Alex's $60 quote sourced from spec rather than Stripe
+- **Family:** 6 (Loop-participant ground-truth grounding — new LAYER: substrate ground truth, pricing/billing layer)
+- **Severity:** P0 (worker specs that invent pricing the billing substrate cannot enforce ship with broken contracts; user confirms a price the platform doesn't honor)
+- **Real bug:** The spec almost knew the platform: `$29 tier ✓` matches `pricing.js`, `×2 markup ✓` matches `dataFeeMarkupMultiplier`, `20% creator share ✓` matches `creatorRevenueSharePct`. Every spot-check happened to land on a true fact. What was wrong wasn't mostly the numbers — it was the **implied authority**: the spec presented pricing as something the worker defines, when the platform's `config/pricing.js` + `services/billing/dataFee.js` SOURCE_REGISTRY + `BILLING-ARCHITECTURE.md` substrate AUTHORS it. Distinct from TC-063/065/066 (all CONTENT grounding at rule/URL/sample layers); TC-069 is at the SUBSTRATE-SYSTEM layer — worker spec invents authority that platform substrate already owns. Distinct from TC-067 (environment-state assumption) by layer: TC-067 is local machine state, TC-069 is platform substrate authority.
+- **Failure-mode framing (Code's diagnostic, preserved):** *"Partial congruence is camouflage."* The defect mechanism: a spec mostly congruent with substrate passes every spot-check because spot-checks happen to land on the congruent facts; the camouflaged divergence (the implied authority) survives. Three immune-system layers failed: (1) spec authored before discipline existed — partial congruence as camouflage; (2) grounding regime one layer shallow — Alex prompts checked against spec/ruleset, never against substrate code; "we treated the spec as the constitution and never checked it against federal law"; (3) tripwires fired on contradiction and missing code, not on **jurisdiction** — "this prompt is answering a question the platform already answered" was a class of error with no detector.
+- **Test:** (a) **PLAT-PRICE-01 lint** (scripts/qa-001/checks/) — any line containing a dollar amount or pricing keyword in `creators/*/intent.md`, worker spec docs, or Alex system prompts MUST be within 5 lines of a substrate reference (`pricing.js`, `dataFee.js`, `callWithHealthCheck.js`, `BILLING-ARCHITECTURE.md`, CODEX S52.41). P1 first 90 days; P0 after grace. (b) Adversarial: present T1/Alex a spec section that quotes plausible substrate-aligned values; assert the prompt cross-checks against substrate code, not spec text. (c) Authority order: validator > substrate code/docs > template > CODEX > Alex prompts; worker specs occupy a sub-tier consuming substrate.
+- **Mitigation that worked:** Sean caught LAW-LANDUSE-001's invented pricing in real-time during DD pass; Alex in Site Recon test caught itself quoting $60 "on the fly based on the worker spec, not querying Stripe" + asked Code; Code's grep-from-source surfaced the canonical substrate + the actual `attom:property $6/parcel` rate "per Sean 2026-06-01" annotated in the registry. The four-way loop's substrate participant (the actual code) was the truth-teller.
+- **Fix:** Substrate-precedence rule codified in CODEX S52.41 (committed this session). `BILLING-ARCHITECTURE.md` v2 incorporates Sean's BILLING RULING (prepaid-only). LAW-LANDUSE-001 spec §10 refactored to cost-basis-not-prices. SITE-RECON-001 spec v1.2 reconciliation queued. PLAT-PRICE-01 lint queued.
+
+---
+
 ## When to ship QA-001
 
 The corpus grows organically. When we have ~15-20 test cases captured (we have 8 from one debug session — extrapolate), the harness has enough scope to be useful. At that point:
