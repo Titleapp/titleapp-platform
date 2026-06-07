@@ -77,8 +77,36 @@ Before this can ship, decide:
 3. **Cohort scope** — single tenant or multi-tenant from day one?
 4. **Anything else** — boundaries, edge cases, integration questions
 
+## Platform RAAS Invariants (INHERITS CODEX S52.43)
+
+> **Do not modify this section.** Every SOCIII Digital Worker inherits the following platform-level invariants by reference. The Creator Workspace's Alex authoring flow scaffolds this section into every new spec automatically. You write scope-of-work; the platform writes discipline.
+
+This worker inherits all Platform RAAS Invariants from **CODEX S52.43 — Platform RAAS Invariants**:
+
+- **Epistemic Honesty Gate** (EH-01 through EH-07) — *a confident wrong answer is worse than no answer.* No model-recalled citations; confidence floor before output; gap declaration required; no silent jurisdiction fallback; hyper-local gap declaration; version pin required; no comparable fabrication.
+- **CAS Color Protocol** — RED (warning) / YELLOW (caution) / BLUE (advisory action — *the missing color*) / WHITE (status) / GREEN (normal). Flag stack always ordered RED → YELLOW → BLUE → WHITE → GREEN.
+- **Active Persona Gate** (AP-01 through AP-06) — every billable action surfaces the active payer's name + balance in the cost-confirm prompt; receipts stamped with `activePersonaId`; mid-session persona switch re-fires the gate.
+- **Reagan Rule** — *trust but verify.* User-supplied data accepted graciously, tagged `source: user_supplied, verified: false`, treated as unverified until cross-referenced against an authoritative source. We never call the user a liar; we just don't act on unconfirmed data as fact.
+- **Britney Rule** (TC-070) — never add details the source didn't say; relay verbatim or ask. When corrected, stop the behavior in the next response; apologizing while repeating the pattern IS the violation, not the correction.
+- **Trump Rule** (CODEX S52.37) — *people are stupid, heavily medicated, and don't read.* Design for the audience that doesn't read. Every screen works in 3 seconds, even for the boring stuff. Color does the talking. Words are captions, not content. Each vertical has a paid-report-aesthetic visual floor that worker canvases must meet.
+
+This spec MUST NOT redefine or modify any of these invariants. Worker-specific rules (your `RULE-XX` entries) may TIGHTEN substrate policy at the worker level; they may not LOOSEN it. Worker-level enforcement of platform invariants is verified by TC-121 through TC-138 in your QA-001 assertion catalog (auto-generated when you finalize the spec).
+
+**Pricing inheritance:** This worker is FREE to use (no subscription, no seat charge, no per-worker fee). Users pay only for the data and analysis it fetches at substrate-locked cost + approved markup, deducted from the session-payer's prepaid balance per the BILLING RULING (prepaid-only). Your spec declares cost basis + tier shape only — NEVER dollar amounts. Dollar amounts live in `config/pricing.js` + `services/billing/dataFee.js` SOURCE_REGISTRY, rendered at view time via `pricingPreview(workerSlug)`.
+
+**Composition inheritance:** Your worker participates in the accepts-contract substrate. Declare `emits` and `accepts` bundle shapes in your catalog entry (e.g., `accepts: ["parcel-bundle/v1", "video-tile/v1"]` and `emits: ["your-worker-output/v1"]`). The catalog discovers downstream consumers dynamically — never hardcode handoff target lists.
+
 ## Cross-references
 
+- `docs/CODEX-S52.43-Platform-RAAS-Invariants.md` — canonical source for the invariants this template inherits
+- `docs/CODEX-S52.41-Substrate-Precedence-Rule.md` — the rule that says specs may not redefine substrate
+- `docs/CODEX-S52.37-Canvas-Worker-Parity.md` — Trump Rule + Canvas-Worker Parity sub-principles + per-vertical visual floor
+- `docs/BILLING-ARCHITECTURE.md` — prepaid-only billing canon + Active Persona Gate substrate
+- `contracts/bundle-shapes/` — declared bundle shapes for accepts-contract worker interop
 - `docs/CREATOR-WORKER-BUILD.md` — the build pattern this file follows
 - `docs/CREATOR-ONBOARDING.md` — the onboarding flow you came through
-- Existing reference workers: `creators/ruthie/nursing-education-001/` (longitudinal record pattern), and any others added since
+- Existing reference workers:
+  - `creators/ruthie/nursing-education-001/` (longitudinal record pattern; education vertical)
+  - `creators/sean-combs/site-recon-001/` (RE data substrate; first creator worker shipped)
+  - `~/Downloads/LAW-LANDUSE-001_Worker_Spec_v3.md` (legal vertical; first spec built against this template's inheritance pattern)
+  - `~/Downloads/FEASIBILITY-001_Worker_Spec_v1.md` (market research vertical; second spec under the inheritance pattern)
