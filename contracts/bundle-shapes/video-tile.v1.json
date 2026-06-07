@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/video-tile.v1.json",
+  "title": "video-tile/v1",
+  "description": "Embedded video player primitive for SOCIII canvases. Universal across workers per the bees-in-hive composition pattern + Trump Rule visual-floor discipline. Video is the most attention-magnetic primitive available; supported as a first-class canvas element.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Sean (LAW-LANDUSE-001 + W-002 cleanup session)",
+  "inheritsFrom": [
+    "CODEX S52.41 (Substrate-Precedence)",
+    "CODEX S52.43 (Platform RAAS Invariants — Reagan Rule + EH-01)",
+    "CODEX S52.37 (Canvas-Worker Parity + Trump Rule)"
+  ],
+  "type": "object",
+  "required": ["source", "sourceUrl", "attribution", "verified", "displayMode"],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": ["youtube", "vimeo", "direct_upload", "news_url", "user_supplied", "platform_archive"],
+      "description": "Origin of the video. Determines embed strategy + Reagan Rule treatment."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical URL to the video. For platform_archive: a SOCIII storage URL. For user_supplied: the upload reference. For news_url: the article page hosting the video (not the embed)."
+    },
+    "embedUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Pre-rendered embed URL (e.g., YouTube oEmbed iframe URL). Optional if displayMode = thumbnail_with_overlay and the player only loads on user click."
+    },
+    "attribution": {
+      "type": "string",
+      "description": "Human-readable attribution displayed on the tile. Examples: 'KHON2 News', 'YouTube — @PinedaleWY', 'Maui County Council Archive', 'User upload'."
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "Per Reagan Rule (CODEX S52.43 §5): true ONLY if source has been cross-referenced against an authoritative source OR is from platform_archive. user_supplied + news_url + direct_upload default to false until verified. UI displays an 'unverified' badge if false."
+    },
+    "verificationMethod": {
+      "type": "string",
+      "enum": ["platform_signed", "cross_referenced", "official_archive", "user_supplied_unverified", "ai_assisted_caveat"],
+      "description": "How the verified flag was determined. Surfaced in tooltip + receipt."
+    },
+    "retrievedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the video reference was retrieved or uploaded. Stamped on every PLAT-008 receipt that references this video."
+    },
+    "retrievedHash": {
+      "type": "string",
+      "description": "SHA-256 of the source URL + retrievedAt timestamp + (for platform_archive) the storage object hash. Pinned for Deposition Rule audit chain."
+    },
+    "displayMode": {
+      "type": "string",
+      "enum": ["thumbnail_with_overlay", "inline_player", "hero_video"],
+      "default": "thumbnail_with_overlay",
+      "description": "How the tile renders. thumbnail_with_overlay (default): static thumbnail with play overlay, expands to player on click. inline_player: embedded player visible in canvas. hero_video: full-width video above the canvas tabs (for marquee uses like marketing or webinars)."
+    },
+    "thumbnailUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Static thumbnail image URL. For YouTube/Vimeo: auto-fetched via oEmbed. For direct_upload: extracted at upload time. For news_url: scraped from og:image meta tag or supplied manually."
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Video length in seconds. Surfaced in tile chrome (e.g., '4:32')."
+    },
+    "transcript": {
+      "type": "object",
+      "description": "Optional transcript for accessibility + searchability + worker reasoning.",
+      "properties": {
+        "available": { "type": "boolean" },
+        "transcriptUrl": { "type": "string", "format": "uri" },
+        "language": { "type": "string", "examples": ["en-US", "es-MX"] },
+        "source": {
+          "type": "string",
+          "enum": ["official_captions", "ai_generated", "human_corrected", "user_supplied"]
+        }
+      }
+    },
+    "topicTags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable topic tags surfaced in the tile chrome. Examples: 'post-disaster rebuild', 'rezone hearing', 'drone tour', 'investor briefing'."
+    },
+    "relatedEntityRef": {
+      "type": "object",
+      "description": "Optional reference to the entity (parcel / matter / case / etc.) this video is contextually attached to. Used by Vault DTC logbook + cross-worker recall.",
+      "properties": {
+        "entityType": { "type": "string", "examples": ["parcel", "matter", "case", "project", "asset"] },
+        "entityId": { "type": "string" }
+      }
+    },
+    "auditAnchored": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the video reference is recorded in PLAT-008 audit anchor at the moment of canvas summoning. Default true; false only for ephemeral previews."
+    }
+  },
+  "examples": [
+    {
+      "source": "news_url",
+      "sourceUrl": "https://www.khon2.com/news/lahaina-rebuild-update-2026/",
+      "embedUrl": "https://www.khon2.com/embed/lahaina-rebuild-update-2026",
+      "attribution": "KHON2 News — Lahaina Rebuild Update",
+      "verified": true,
+      "verificationMethod": "cross_referenced",
+      "retrievedAt": "2026-06-07T09:42:00-10:00",
+      "retrievedHash": "sha256:abc123...",
+      "displayMode": "thumbnail_with_overlay",
+      "thumbnailUrl": "https://www.khon2.com/wp-content/uploads/lahaina-thumb.jpg",
+      "durationSeconds": 272,
+      "topicTags": ["post-disaster rebuild", "Lahaina recovery", "Coastal Commission"],
+      "relatedEntityRef": { "entityType": "parcel", "entityId": "HI-MAUI-4-4-011-029" },
+      "auditAnchored": true
+    },
+    {
+      "source": "user_supplied",
+      "sourceUrl": "sociii://vault/sean-combs/aerial-9708-us-191.mp4",
+      "attribution": "User upload — drone aerial",
+      "verified": false,
+      "verificationMethod": "user_supplied_unverified",
+      "retrievedAt": "2026-06-07T09:50:00-10:00",
+      "retrievedHash": "sha256:def456...",
+      "displayMode": "thumbnail_with_overlay",
+      "durationSeconds": 132,
+      "topicTags": ["drone aerial", "property tour"],
+      "relatedEntityRef": { "entityType": "parcel", "entityId": "WY-SUBLETTE-01-00-10382" },
+      "auditAnchored": true
+    },
+    {
+      "source": "youtube",
+      "sourceUrl": "https://www.youtube.com/watch?v=mauicouncilworkshop2026",
+      "embedUrl": "https://www.youtube.com/embed/mauicouncilworkshop2026",
+      "attribution": "Maui County Council — Zoning Workshop 2026 (official archive)",
+      "verified": true,
+      "verificationMethod": "official_archive",
+      "retrievedAt": "2026-06-07T09:55:00-10:00",
+      "retrievedHash": "sha256:ghi789...",
+      "displayMode": "thumbnail_with_overlay",
+      "thumbnailUrl": "https://img.youtube.com/vi/mauicouncilworkshop2026/maxresdefault.jpg",
+      "durationSeconds": 4892,
+      "topicTags": ["zoning workshop", "Maui County", "public hearing archive"],
+      "auditAnchored": true,
+      "transcript": {
+        "available": true,
+        "transcriptUrl": "https://www.youtube.com/timedtext/...",
+        "language": "en-US",
+        "source": "official_captions"
+      }
+    }
+  ],
+  "notes": {
+    "reagan_rule_application": "user_supplied + news_url + direct_upload default to verified: false. The worker may surface the video and reason FROM it, but the UI displays an 'unverified' badge until a verification method is recorded. Worker outputs that reference user-supplied videos must label conclusions as 'based on user-supplied video, not independently verified.'",
+    "britney_rule_application": "If an AI suggests a video URL, it MUST be retrieved via an external resolver (e.g., YouTube Data API, news article fetch) and the retrievedHash recorded. A model-recalled URL is never a valid sourceUrl. The PLAT-EH-01 validator check applies to videos same as to legal citations.",
+    "deposition_rule_application": "Every video summoned into a canvas is recorded in PLAT-008 audit anchor with the retrievedHash. Three years later, a forensic auditor can verify the video reference was authentic at the time of analysis. If the source URL goes dead, the audit chain survives — the hash binds the reference to its time.",
+    "accepts_contract_application": "Any worker that declares 'accepts: [\"video-tile/v1\"]' in its catalog entry gains the embed capability. Universal across workers — Site Recon embeds drone aerials, Land Use embeds council hearings, Marketing embeds Kling-generated walkthroughs, Title Abstract embeds property tour videos."
+  }
+}
