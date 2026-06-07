@@ -303,7 +303,12 @@ async function executePending(pending, sessionState, ctx) {
   };
 
   const top = parcels.slice(0, 3).map((p) => `#${p.rank} ${p.address1 || p.apn} — ${p.verdict}${p.namedBlocker ? ` (${p.namedBlocker})` : ""}`).join("; ");
-  const text = `Done — ${parcels.length} parcel${parcels.length === 1 ? "" : "s"}: ${counts.green} GREEN, ${counts.yellow} YELLOW, ${counts.red} RED. ${top}. Fee $${(canvas.billing.totalFeeUsd ?? 0).toFixed(2)}, receipt anchored. Results are on your canvas — ranked list, map, and Street View tabs.`;
+  // Honest billing language (Sean, 2026-06-06): until the prepaid-deduction
+  // wiring ships (T1), fees are LOGGED to the payer's ledger, not deducted.
+  // Never imply a deduction that didn't happen. Swap to "deducted … remaining
+  // balance $X" when T1's prepaid-only wiring lands.
+  const payerLabel = ctx.tenantId && ctx.tenantId !== "vault" && ctx.tenantId !== "personal" ? "your workspace ledger" : "your personal ledger";
+  const text = `Done — ${parcels.length} parcel${parcels.length === 1 ? "" : "s"}: ${counts.green} GREEN, ${counts.yellow} YELLOW, ${counts.red} RED. ${top}. $${(canvas.billing.totalFeeUsd ?? 0).toFixed(2)} in data fees recorded to ${payerLabel}; receipt anchored. Results are on your canvas — ranked list, map, and Street View tabs.`;
 
   return { handled: true, text, canvas };
 }
