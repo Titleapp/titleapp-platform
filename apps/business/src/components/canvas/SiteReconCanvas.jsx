@@ -109,6 +109,18 @@ export default function SiteReconCanvas({ payload, onBack }) {
         {onBack && <button style={S.backBtn} onClick={onBack}>← Creator steps</button>}
       </div>
 
+      {/* Trump Rule KPI strip — the headline numbers, card-styled */}
+      <div style={S.kpiRow}>
+        <div style={S.kpiCard}><div style={S.kpiLabel}>Parcels</div><div style={S.kpiValue}>{parcels.length}</div></div>
+        <div style={S.kpiCard}><div style={S.kpiLabel}>Feasibility</div><div style={S.kpiValue}>
+          <span style={{ color: VERDICT_COLORS.GREEN }}>{payload.counts?.green ?? 0}G</span>{" / "}
+          <span style={{ color: "#b45309" }}>{payload.counts?.yellow ?? 0}Y</span>{" / "}
+          <span style={{ color: VERDICT_COLORS.RED }}>{payload.counts?.red ?? 0}R</span>
+        </div></div>
+        <div style={S.kpiCard}><div style={S.kpiLabel}>Data cost</div><div style={S.kpiValue}>{payload.billing?.totalFeeUsd != null ? `$${Number(payload.billing.totalFeeUsd).toFixed(2)}` : "—"}</div></div>
+        <div style={S.kpiCard}><div style={S.kpiLabel}>Avg confidence</div><div style={S.kpiValue}>{parcels.length ? `${Math.round(parcels.reduce((s, p) => s + (p.confidenceScore || 0), 0) / parcels.length)}%` : "—"}</div></div>
+      </div>
+
       <div style={S.tabs}>
         {[["street", "Street View"], ["map", "Map"], ["list", "Ranked List"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ ...S.tabBtn, ...(tab === id ? S.tabActive : {}) }}>{label}</button>
@@ -119,7 +131,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
         <div style={S.tableWrap}>
           <table style={S.table}>
             <thead>
-              <tr>{["#", "Address", "APN", "Verdict", "Value", "Conf", "Blocker", ""].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              <tr>{["#", "Address", "Value", "Feasibility", "Confidence", "Blocking issue", "APN", ""].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {parcels.map((p) => {
@@ -129,8 +141,6 @@ export default function SiteReconCanvas({ payload, onBack }) {
                   <tr key={p.rank} onClick={() => { setSelectedRank(p.rank); }} style={{ ...S.tr, ...(selectedRank === p.rank ? S.trSelected : {}) }}>
                     <td style={S.td}>{p.rank}</td>
                     <td style={S.td}>{[p.address1, p.address2].filter(Boolean).join(", ") || "—"}</td>
-                    <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{p.apn || "—"}</td>
-                    <td style={S.td}><span style={{ ...S.badge, background: VERDICT_COLORS[p.verdict] || "#6b7280" }}>{p.verdict}</span></td>
                     <td style={S.td}>
                       {(() => {
                         const v = fmtValue(p);
@@ -139,8 +149,10 @@ export default function SiteReconCanvas({ payload, onBack }) {
                           : <span style={S.dim}>N/A</span>;
                       })()}
                     </td>
+                    <td style={S.td}><span style={{ ...S.badge, background: VERDICT_COLORS[p.verdict] || "#6b7280" }}>{p.verdict}</span></td>
                     <td style={S.td}>{p.confidenceScore != null ? `${p.confidenceScore}%` : "—"}</td>
                     <td style={{ ...S.td, fontSize: 12, maxWidth: 220 }}>{p.namedBlocker || "—"}</td>
+                    <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{p.apn || "—"}</td>
                     <td style={S.td}>
                       {canHandoff && !h && <button style={S.handoffBtn} onClick={(e) => { e.stopPropagation(); handoff(p); }}>Hand off → Title Abstract</button>}
                       {h?.status === "running" && <span style={S.dim}>Handing off…</span>}
@@ -241,4 +253,8 @@ const styles = {
   imgFallback: { padding: "32px 16px", textAlign: "center", fontSize: 13 },
   mapsLink: { color: "#7c3aed", textDecoration: "none", fontWeight: 600 },
   mapCtl: { background: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
+  kpiRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, margin: "4px 0 16px" },
+  kpiCard: { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 16px" },
+  kpiLabel: { fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.6 },
+  kpiValue: { fontSize: 20, fontWeight: 700, color: "#111827", marginTop: 4 },
 };

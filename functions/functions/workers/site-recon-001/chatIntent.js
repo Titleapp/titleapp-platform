@@ -15,6 +15,7 @@
  * restricted (browser-only) and is rejected by server-side Geocoding.
  */
 
+const admin = require("firebase-admin");
 const { searchByAddress } = require("./searchByAddress");
 const { searchByArea } = require("./searchByArea");
 const { attomGet } = require("./attomClient");
@@ -25,6 +26,43 @@ const ADDRESS_RE = /\b(?:on|for|at)\s+(.+?)(?:\s+with\b|\s+using\b|\s*$)/i;
 const RADIUS_RE = /([\d.]+)\s*[- ]?\s*mile/i;
 const CONFIRM_RE = /^(yes|y|yep|confirm|confirmed|run it|go|go ahead|proceed|do it)\b/i;
 const CANCEL_RE = /^(no|nope|cancel|stop|never\s?mind|abort)\b/i;
+const TOPUP_RE = /^top\s?up\b/i;
+
+// ── Wallet balance (mirrors checkAndDeductCredits' AUTHORITATIVE fields:
+// tenants/{id}.prepaidCredits for workspaces, users/{uid}.billing.prepaidCredits
+// ?? prepaidCredits for personal vault. NOTE: the Stripe top-up webhook writes
+// billing.balance — a field the gate does NOT read; drift flagged for
+// housekeeping.) Unknown balance → null → don't block in chat; the execution
+// gate still enforces.
+async function getBalanceUsd(ctx) {
+  try {
+    const db = admin.firestore();
+    const t = String(ctx.tenantId || "");
+    const isTenant = t && t !== "vault" && t !== "personal" && !t.startsWith("guest-");
+    if (isTenant) {
+      const snap = await db.doc(`tenants/${t}`).get();
+      return { balance: snap.data()?.prepaidCredits ?? 0, source: "workspace" };
+    }
+    const snap = await db.doc(`users/${ctx.userId}`).get();
+    const d = snap.data() || {};
+    return { balance: d.billing?.prepaidCredits ?? d.prepaidCredits ?? 0, source: "personal" };
+  } catch (e) {
+    console.warn("[site-recon chat] balance read failed (non-blocking):", e.message);
+    return { balance: null, source: null };
+  }
+}
+
+function balanceSuffix(bal, costUsd) {
+  if (bal.balance == null) return { text: ` Say "confirm" to run it, or "cancel".`, insufficient: false };
+  const b = Number(bal.balance);
+  if (b >= costUsd) {
+    return { text: ` Your ${bal.source === "workspace" ? "workspace " : ""}balance is $${b.toFixed(2)}. Say "confirm" to run it, or "cancel".`, insufficient: false };
+  }
+  return {
+    text: ` Your ${bal.source === "workspace" ? "workspace " : ""}balance is $${b.toFixed(2)} — you need $${(costUsd - b).toFixed(2)} more. Say "top up" to add funds, or "cancel".`,
+    insufficient: true,
+  };
+}
 
 function fakeRes() {
   const r = { statusCode: 200, body: null };
@@ -140,12 +178,27 @@ async function handleSiteReconChat({ userInput, sessionState, ctx }) {
   const input = String(userInput || "").trim();
   const pending = sessionState.pendingSiteRecon || null;
 
-  // ── Confirm / cancel a pending quote ─────────────────────────────
+  // ── Confirm / cancel / top-up a pending quote ────────────────────
   if (pending && CANCEL_RE.test(input)) {
     delete sessionState.pendingSiteRecon;
     return { handled: true, text: "Cancelled — no pull executed, nothing charged. Ask me to run Site Recon again anytime." };
   }
+  if (pending && TOPUP_RE.test(input)) {
+    const need = pending.quotedTotalFeeUsd != null ? ` You need at least $${Number(pending.quotedTotalFeeUsd).toFixed(2)} for this search.` : "";
+    return { handled: true, text: `Add Data Credits on your Billing page: https://sociii.ai/billing —${need} When you're topped up, come back and say "confirm".` };
+  }
   if (pending && CONFIRM_RE.test(input)) {
+    // Wallet gate (RULE-01's financial sibling): re-check at confirm time —
+    // the user may have topped up since the quote, or never had the funds.
+    if (pending.quotedTotalFeeUsd != null) {
+      const bal = await getBalanceUsd(ctx);
+      if (bal.balance != null && Number(bal.balance) < Number(pending.quotedTotalFeeUsd)) {
+        return {
+          handled: true,
+          text: `Balance insufficient — this search costs $${Number(pending.quotedTotalFeeUsd).toFixed(2)} and your balance is $${Number(bal.balance).toFixed(2)}. Say "top up" to add funds, or "cancel".`,
+        };
+      }
+    }
     return await executePending(pending, sessionState, ctx);
   }
 
@@ -181,9 +234,11 @@ async function handleSiteReconChat({ userInput, sessionState, ctx }) {
       area: { type: "radius", center: { lat: geo.lat, lng: geo.lng }, radiusMiles },
       quotedTotalFeeUsd: res.body.estimatedCost.totalFeeUsd,
     };
+    const balA = await getBalanceUsd(ctx);
+    const sufA = balanceSuffix(balA, res.body.estimatedCost.totalFeeUsd);
     return {
       handled: true,
-      text: `Site Recon found ${res.body.parcelCount} parcels within ${radiusMiles} mi of ${geo.formatted}. ${res.body.breakdown}. Say "confirm" to run it, or "cancel".`,
+      text: `Site Recon found ${res.body.parcelCount} parcels within ${radiusMiles} mi of ${geo.formatted}. ${res.body.breakdown}.${sufA.text}`,
     };
   }
 
@@ -193,10 +248,12 @@ async function handleSiteReconChat({ userInput, sessionState, ctx }) {
   if (res.statusCode !== 200) {
     return { handled: true, text: `Site Recon refused the search: ${res.body?.error || res.body?.message || res.body?.code}` };
   }
-  sessionState.pendingSiteRecon = { mode: "address", address };
+  sessionState.pendingSiteRecon = { mode: "address", address, quotedTotalFeeUsd: res.body.estimatedCost.totalFeeUsd };
+  const balB = await getBalanceUsd(ctx);
+  const sufB = balanceSuffix(balB, res.body.estimatedCost.totalFeeUsd);
   return {
     handled: true,
-    text: `Single-parcel pull for ${address}: $${res.body.estimatedCost.totalFeeUsd.toFixed(2)} (ATTOM data + audit anchor). Say "confirm" to run it, or "cancel".`,
+    text: `Single-parcel pull for ${address}: $${res.body.estimatedCost.totalFeeUsd.toFixed(2)} (ATTOM data + audit anchor).${sufB.text}`,
   };
 }
 
