@@ -152,7 +152,7 @@
         "monthly": 79
       },
       "status": "live",
-      "capabilitySummary": "Real estate investment analyst — deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals.",
+      "capabilitySummary": "Real estate investment analyst \u2014 deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
@@ -201,15 +201,16 @@
       "phase": 0,
       "type": "standalone",
       "pricing": {
-        "monthly": 29,
+        "monthly": 0,
         "currency": "USD",
-        "trial_days": 14,
+        "free_worker": true,
         "per_pull_data_fees": true,
+        "pricing_note": "Free to add \u2014 pay only for data: $6/parcel report (ATTOM), $0.20 area resolution, $0.05/GIS overlay evaluation. Typical 10-parcel search \u2248 $60. Creator-set 2026-06-06 (Sean Lee Combs): subscription FREE, data fees platform-registry only.",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "status": "live",
-      "capabilitySummary": "Turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict (green/yellow/red + named blocker) on each — done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later. Visual context (Street View + sun direction + YouTube neighborhood video) is rendered alongside data because location is more than a motto. 100-1000x cost compression vs traditional pursuit funds ($50K-$500K to hundreds of dollars).",
+      "capabilitySummary": "Turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict (green/yellow/red + named blocker) on each \u2014 done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later. Visual context (Street View + sun direction + YouTube neighborhood video) is rendered alongside data because location is more than a motto. 100-1000x cost compression vs traditional pursuit funds ($50K-$500K to hundreds of dollars).",
       "tags": [
         "real-estate",
         "parcel-search",
@@ -324,7 +325,7 @@
           "Detect price variance among same-floorplan units in a stack and surface view-premium caveat"
         ],
         "scope_out": [
-          "Brokerage — does not facilitate offers, negotiations, or transactions",
+          "Brokerage \u2014 does not facilitate offers, negotiations, or transactions",
           "Consumer Zillow-style property search",
           "Certified appraisal (AVM is one input, not a valuation)",
           "Zoning attorney work (v2 worker)",
@@ -333,12 +334,12 @@
           "Investment advice or buy/sell recommendations"
         ],
         "refusal_modes": [
-          "Fair Housing pattern detected → refuse search, surface regulatory note",
-          "Malformed input (fictional ZIP, bad APN, search radius >5mi) → refuse with specific error",
-          "Cost projection not confirmed → block pull, show cost modal",
-          "Pull receipt cannot be written to PLAT-008 → rollback pull, surface error",
-          "User asks for investment recommendation → strip recommendation language, surface feasibility signal only",
-          "User attempts to auto-upgrade persona via system → reject, retain current tier"
+          "Fair Housing pattern detected \u2192 refuse search, surface regulatory note",
+          "Malformed input (fictional ZIP, bad APN, search radius >5mi) \u2192 refuse with specific error",
+          "Cost projection not confirmed \u2192 block pull, show cost modal",
+          "Pull receipt cannot be written to PLAT-008 \u2192 rollback pull, surface error",
+          "User asks for investment recommendation \u2192 strip recommendation language, surface feasibility signal only",
+          "User attempts to auto-upgrade persona via system \u2192 reject, retain current tier"
         ],
         "spec_ref": "docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md"
       },
@@ -379,15 +380,15 @@
         }
       ],
       "coming_soon": [
-        "Zoning/Entitlement live integration (v2 — currently placeholder blocker)",
-        "Permit Processor live integration (v2 — currently placeholder blocker)",
+        "Zoning/Entitlement live integration (v2 \u2014 currently placeholder blocker)",
+        "Permit Processor live integration (v2 \u2014 currently placeholder blocker)",
         "Confidence score (Low/Medium/High) per parcel (v2)",
         "Engineers team integration for soils/environmental flags (v2)",
         "Parcel Atlas read-through for pre-anchored jurisdictions beyond Sublette WY",
         "Drone footage / 3D massing view (when Google Earth API tier signed)",
         "Per-condo unit-stack visual differentiation for view-premium pricing"
       ],
-      "_status_note": "Spec'd 2026-06-05 per docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md. Status: live as platform-spine worker. Co-developed by Sean Lee Combs via Claude.ai interview pattern + SOCIII authoring flow — first creator worker built end-to-end via the Substack-pattern model. 30 QA-001 assertions defined. Visual context (Street View + sun direction + YouTube) elevated to load-bearing per Sean: ATTOM price anomalies (same floorplan different floors) are only explained by visual context. ATTOM pricing tagged ESTIMATE PENDING until $500/mo tier signed."
+      "_status_note": "Spec'd 2026-06-05 per docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md. Status: live as platform-spine worker. Co-developed by Sean Lee Combs via Claude.ai interview pattern + SOCIII authoring flow \u2014 first creator worker built end-to-end via the Substack-pattern model. 30 QA-001 assertions defined. Visual context (Street View + sun direction + YouTube) elevated to load-bearing per Sean: ATTOM price anomalies (same floorplan different floors) are only explained by visual context. ATTOM pricing tagged ESTIMATE PENDING until $500/mo tier signed."
     },
     {
       "id": "W-003",
@@ -2402,7 +2403,7 @@
     },
     {
       "id": "W-048",
-      "name": "Alex — Chief of Staff",
+      "name": "Alex \u2014 Chief of Staff",
       "slug": "chief-of-staff",
       "suite": "Platform",
       "phase": 8,
