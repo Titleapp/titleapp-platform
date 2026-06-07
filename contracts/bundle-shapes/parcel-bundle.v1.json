@@ -96,6 +96,99 @@
         "verified": { "type": "boolean", "description": "Per Reagan Rule — true only if cross-referenced; false default for single-source pulls." }
       }
     },
+    "rights": {
+      "type": "object",
+      "description": "Property rights stratum. In the US, especially the Western states, surface ownership is often severed from the rights ABOVE and BELOW the surface. A title report that only covers surface is structurally blind. Each stratum is independently ownable, leaseable, and litigable. Default for any stratum: 'unknown' — gap-declare per EH-04 rather than silently assume it stays with surface.",
+      "properties": {
+        "surface": {
+          "type": "object",
+          "description": "Surface estate — the right to occupy and use the surface of the land. The default 'parcel' in most consumer mental models.",
+          "properties": {
+            "ownerOfRecord": { "type": "string" },
+            "status": { "type": "string", "enum": ["owned", "leased", "encumbered", "in_dispute", "unknown"] },
+            "source": { "type": "string", "examples": ["attom:property", "county_recorder"] },
+            "verified": { "type": "boolean" }
+          }
+        },
+        "mineral": {
+          "type": "object",
+          "description": "Subsurface mineral rights — oil / gas / coal / hardrock / sand-and-gravel. In Sublette WY, Mountain West, OK, TX, and most of the West, minerals are commonly SEVERED from surface and held by separate parties or the federal government (BLM). Severance is the rule, not the exception. Coal-bed methane (CBM), produced water, and helium are sub-strata under mineral rights with their own histories.",
+          "properties": {
+            "ownerOfRecord": { "type": "string" },
+            "severed": { "type": "boolean", "description": "True if mineral estate is held separately from surface. CRITICAL field for Western US analysis." },
+            "leaseHolder": { "type": "string", "description": "Active lessee (operator) if minerals are leased — common in oil/gas country." },
+            "status": { "type": "string", "enum": ["owned_with_surface", "severed_held_by_other", "severed_federal_blm", "leased", "in_production", "in_dispute", "unknown"] },
+            "producing": { "type": "boolean", "description": "Currently producing oil/gas/coal/etc." },
+            "source": { "type": "string", "examples": ["county_recorder:mineral_deed", "blm:lr2000", "state_mineral_records"] },
+            "verified": { "type": "boolean" }
+          }
+        },
+        "water": {
+          "type": "object",
+          "description": "Water rights. In Western prior-appropriation states (WY, CO, MT, ID, UT, NV, AZ, NM + parts of CA, OR, WA), water rights are PROPERTY independent of land — 'first in time, first in right'. A parcel can have surface rights without any water right; a water right can be severed and sold separately. In riparian-doctrine states (East / Midwest) water rights generally run with land but are not unlimited. Federal reserved rights (Winters doctrine) overlay both.",
+          "properties": {
+            "doctrine": { "type": "string", "enum": ["prior_appropriation", "riparian", "hybrid", "federal_reserved", "unknown"] },
+            "rightsOfRecord": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "rightType": { "type": "string", "examples": ["surface", "groundwater", "instream_flow", "stock_water"] },
+                  "rightHolder": { "type": "string" },
+                  "permitNumber": { "type": "string" },
+                  "priorityDate": { "type": "string", "format": "date", "description": "Critical in prior-appropriation states — earlier date = senior right." },
+                  "flowRateCfs": { "type": "number" },
+                  "volumeAcreFeet": { "type": "number" },
+                  "use": { "type": "string", "examples": ["irrigation", "domestic", "municipal", "stock", "industrial", "instream"] },
+                  "status": { "type": "string", "enum": ["adjudicated", "permitted", "claimed", "abandoned", "forfeited", "unknown"] }
+                }
+              }
+            },
+            "source": { "type": "string", "examples": ["state_engineer_database", "wyoming_seo_e-permit", "colorado_dwr"] },
+            "verified": { "type": "boolean" }
+          }
+        },
+        "air": {
+          "type": "object",
+          "description": "Air rights — the column of airspace above the parcel up to navigable airspace (FAA-defined, generally 500 ft AGL in uncongested areas, but lower under approach/departure cones). NYC Transferable Development Rights (TDR) market is the canonical commercial example; rooftop solar leases, billboard rights, helipad easements all live here. Below 500 ft AGL is parcel-owner space; above is federal airspace.",
+          "properties": {
+            "tdrAvailable": { "type": "boolean", "description": "Transferable Development Rights — sellable unused FAR. NYC, San Francisco, Chicago, Seattle, etc." },
+            "tdrSold": { "type": "boolean" },
+            "rooftopEncumbrances": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string", "examples": ["solar_lease", "billboard", "helipad_easement", "antenna_attachment"] }, "holder": { "type": "string" } } } },
+            "faaProximity": { "type": "object", "description": "Distance to nearest airport / heliport / Class B/C/D airspace. Affects build height + drone operations.", "properties": { "nearestAirportIata": { "type": "string" }, "distanceMiles": { "type": "number" }, "airspaceClass": { "type": "string" } } },
+            "source": { "type": "string", "examples": ["municipal_zoning", "faa:airspace_class", "tdr_registry"] },
+            "verified": { "type": "boolean" }
+          }
+        },
+        "spectrum": {
+          "type": "object",
+          "description": "Radio spectrum / telecom rights. Cell tower leases, microwave repeater easements, broadcast easements all create a separate rights stratum. FCC licenses are geographic-bound; a parcel that hosts a tower carries a long-term lease that affects valuation + transfer rights. Rural areas + ridgelines + tall buildings are the load-bearing examples.",
+          "properties": {
+            "towerOnSite": { "type": "boolean" },
+            "leaseHolders": { "type": "array", "items": { "type": "object", "properties": { "carrier": { "type": "string", "examples": ["Verizon", "AT&T", "T-Mobile", "DISH", "American Tower", "Crown Castle"] }, "leaseType": { "type": "string", "examples": ["macro_tower", "small_cell", "rooftop_antenna", "microwave_repeater"] }, "leaseEnd": { "type": "string", "format": "date" } } } },
+            "fccLicensesAffecting": { "type": "array", "items": { "type": "object", "properties": { "licenseId": { "type": "string" }, "licensee": { "type": "string" }, "callSign": { "type": "string" } } } },
+            "source": { "type": "string", "examples": ["fcc_uls", "lease_doc", "tower_registry"] },
+            "verified": { "type": "boolean" }
+          }
+        },
+        "digital": {
+          "type": "object",
+          "description": "Digital / data rights attached to the parcel. Emerging stratum — includes: data center colocation rights, fiber easements, IoT-sensor data ownership, geo-fenced licensed-content rights, blockchain-anchored digital twin pointers. Not yet recognized in most county recorder systems but increasingly material — a parcel hosting a Bitcoin mining operation, an EV charging hub, or a cloud data center carries digital-rights structure that affects valuation + transfer. SOCIII's own audit anchoring (PLAT-008) is a digital-rights instance attached to the parcel DTC.",
+          "properties": {
+            "fiberEasements": { "type": "array", "items": { "type": "object" } },
+            "dataCenterColocation": { "type": "boolean" },
+            "ioTSensorOwnership": { "type": "string", "description": "Who owns data emitted by sensors on the parcel (smart meters, soil monitors, surveillance, etc.)." },
+            "platformAnchors": {
+              "type": "array",
+              "description": "SOCIII-platform anchors attached to this parcel — DTC compound entries, logbook references. The parcel's own audit-chain rights stratum.",
+              "items": { "type": "object", "properties": { "platform": { "type": "string", "examples": ["sociii"] }, "anchorRef": { "type": "string" } } }
+            },
+            "source": { "type": "string", "examples": ["lease_doc", "platform_internal", "user_supplied"] },
+            "verified": { "type": "boolean" }
+          }
+        }
+      }
+    },
     "verificationStatus": {
       "type": "object",
       "description": "Audit lineage. Required for the bundle to be honored by downstream workers — without verification metadata a downstream cannot anchor its own outputs.",

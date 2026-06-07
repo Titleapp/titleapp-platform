@@ -121,9 +121,75 @@
             "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
           }
         },
+        "rights": {
+          "type": "object",
+          "description": "Section 7: above-and-below rights strata. Surface ownership alone is incomplete; mineral / water / air / spectrum / digital rights are each independently ownable and can be severed from the surface. CRITICAL for Western US analysis (severed minerals + prior-appropriation water + spectrum tower leases) and emerging-important for urban (TDRs) + tech-adjacent (data centers + Bitcoin mining colocation) deals. References parcel-bundle/v1 rights section as upstream source; the Abstract layers court / lease / production / lease-end data on top.",
+          "properties": {
+            "surface": { "type": "object", "description": "Mirror of parcelRef.sourceBundle.rights.surface + any title-pull updates." },
+            "mineral": {
+              "type": "object",
+              "properties": {
+                "severed": { "type": "boolean" },
+                "ownerOfRecord": { "type": "string" },
+                "leaseHolder": { "type": "string" },
+                "producing": { "type": "boolean" },
+                "productionHistory": { "type": "array", "items": { "type": "object" }, "description": "Royalty / production records if available." },
+                "blmCaseFile": { "type": "string", "description": "BLM LR2000 case file reference for federal minerals." },
+                "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+              }
+            },
+            "water": {
+              "type": "object",
+              "properties": {
+                "doctrine": { "type": "string", "enum": ["prior_appropriation", "riparian", "hybrid", "federal_reserved", "unknown"] },
+                "rightsSummary": { "type": "array", "items": { "type": "object", "properties": { "rightType": { "type": "string" }, "rightHolder": { "type": "string" }, "permitNumber": { "type": "string" }, "priorityDate": { "type": "string", "format": "date" }, "flowRateCfs": { "type": "number" }, "volumeAcreFeet": { "type": "number" }, "use": { "type": "string" }, "status": { "type": "string" } } } },
+                "adjudicationStatus": { "type": "string", "examples": ["adjudicated", "in_general_stream_adjudication", "not_adjudicated"] },
+                "federalReservedRightsFlag": { "type": "boolean", "description": "Winters doctrine — federal lands + tribal lands carry reserved rights that supersede later state-law appropriations." },
+                "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+              }
+            },
+            "air": {
+              "type": "object",
+              "properties": {
+                "tdrAvailable": { "type": "boolean" },
+                "tdrSold": { "type": "boolean" },
+                "tdrMarketValuePerSqFt": { "type": "number" },
+                "rooftopEncumbrances": { "type": "array", "items": { "type": "object" } },
+                "faaProximity": { "type": "object" },
+                "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+              }
+            },
+            "spectrum": {
+              "type": "object",
+              "properties": {
+                "towerOnSite": { "type": "boolean" },
+                "leaseHolders": { "type": "array", "items": { "type": "object" } },
+                "monthlyRentRollUsd": { "type": "number" },
+                "leaseEnd": { "type": "string", "format": "date" },
+                "fccLicensesAffecting": { "type": "array", "items": { "type": "object" } },
+                "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+              }
+            },
+            "digital": {
+              "type": "object",
+              "properties": {
+                "fiberEasements": { "type": "array", "items": { "type": "object" } },
+                "dataCenterColocation": { "type": "boolean" },
+                "ioTSensorOwnership": { "type": "string" },
+                "platformAnchors": { "type": "array", "items": { "type": "object" } },
+                "sourcePulls": { "type": "array", "items": { "$ref": "#/definitions/sourcePull" } }
+              }
+            },
+            "complianceFlag": {
+              "type": "string",
+              "const": "RIGHTS_STRATUM_COVERAGE_VARIES_BY_SOURCE",
+              "description": "Mandatory disclaimer: rights stratum data varies dramatically by state + county. Mineral severance may require county-recorder document review beyond ATTOM coverage. Water rights may require state engineer database lookups. Surface only ≠ complete title picture."
+            }
+          }
+        },
         "auditReceipt": {
           "type": "object",
-          "description": "Section 7: the differentiator. Every data pull that fed the Abstract surfaces here as a logbook-entry reference.",
+          "description": "Section 8: the differentiator. Every data pull that fed the Abstract surfaces here as a logbook-entry reference.",
           "properties": {
             "compoundDtcId": { "type": "string" },
             "totalDataFeeUsd": { "type": "number" },
