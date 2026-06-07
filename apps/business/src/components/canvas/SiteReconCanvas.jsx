@@ -13,6 +13,18 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const VERDICT_COLORS = { GREEN: "#22c55e", YELLOW: "#eab308", RED: "#ef4444" };
 const MARKER_COLORS = { GREEN: "green", YELLOW: "yellow", RED: "red" };
 
+// Handoff targets — HONEST states only (Sean-ratified 2026-06-06): one live
+// target today, drafts greyed. TEMPORARY hardcode: replaced by the catalog
+// "accepts" contract (T1 substrate) — targets will be discovered from
+// receiving workers' declarations, never listed here.
+const HANDOFF_TARGETS = [
+  { id: "title-abstract-001", label: "Title Abstract — full underwriting", live: true },
+  { id: "dd-001", label: "Due Diligence — pre-acquisition review", live: false },
+  { id: "para-001", label: "Paralegal — easements, HOA, CC&Rs", live: false },
+  { id: "lit-001", label: "Litigation — active case check", live: false },
+  { id: "clo-001", label: "Closing — document preparation", live: false },
+];
+
 function fmtValue(p) {
   if (p.valueUsd == null) return null;
   const amt = `$${Number(p.valueUsd).toLocaleString()}`;
@@ -62,6 +74,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
   const [tab, setTab] = useState("street");
   const [selectedRank, setSelectedRank] = useState(null);
   const [handoffs, setHandoffs] = useState({}); // apn -> { status, jobId, message }
+  const [openMenuApn, setOpenMenuApn] = useState(null); // "Send to…" dropdown state
   const [brokenImgs, setBrokenImgs] = useState({}); // url -> true (key restriction / no imagery)
   const [mapType, setMapType] = useState("hybrid"); // hybrid | roadmap
   const [zoom, setZoom] = useState(null); // null = auto-fit to markers
@@ -154,7 +167,24 @@ export default function SiteReconCanvas({ payload, onBack }) {
                     <td style={{ ...S.td, fontSize: 12, maxWidth: 220 }}>{p.namedBlocker || "—"}</td>
                     <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{p.apn || "—"}</td>
                     <td style={S.td}>
-                      {canHandoff && !h && <button style={S.handoffBtn} onClick={(e) => { e.stopPropagation(); handoff(p); }}>Hand off → Title Abstract</button>}
+                      {canHandoff && !h && (
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          <button style={S.handoffBtn} onClick={(e) => { e.stopPropagation(); setOpenMenuApn(openMenuApn === p.apn ? null : p.apn); }}>Send to… ▾</button>
+                          {openMenuApn === p.apn && (
+                            <div style={S.menu} onClick={(e) => e.stopPropagation()}>
+                              {HANDOFF_TARGETS.map((t) =>
+                                t.live ? (
+                                  <button key={t.id} style={S.menuItem} onClick={() => { setOpenMenuApn(null); handoff(p); }}>{t.label}</button>
+                                ) : (
+                                  <div key={t.id} style={S.menuItemDisabled} title="This worker isn't live yet — it appears here the day it ships.">
+                                    {t.label} <span style={S.soonTag}>coming soon</span>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {h?.status === "running" && <span style={S.dim}>Handing off…</span>}
                       {h?.status === "done" && <span style={{ color: "#16a34a", fontSize: 12 }} title={`Job ${h.jobId}`}>✓ Sent to Title Abstract — full underwriting queued</span>}
                       {h?.status === "error" && <span style={{ color: VERDICT_COLORS.RED, fontSize: 12 }}>{h.message}</span>}
@@ -253,6 +283,10 @@ const styles = {
   imgFallback: { padding: "32px 16px", textAlign: "center", fontSize: 13 },
   mapsLink: { color: "#7c3aed", textDecoration: "none", fontWeight: 600 },
   mapCtl: { background: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
+  menu: { position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 20, background: "white", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 260, padding: 6, textAlign: "left" },
+  menuItem: { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "9px 12px", fontSize: 13, color: "#111827", cursor: "pointer", borderRadius: 6 },
+  menuItemDisabled: { padding: "9px 12px", fontSize: 13, color: "#9ca3af", cursor: "default" },
+  soonTag: { fontSize: 10, fontWeight: 700, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 999, padding: "1px 7px", marginLeft: 6, textTransform: "uppercase", letterSpacing: 0.5 },
   kpiRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, margin: "4px 0 16px" },
   kpiCard: { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 16px" },
   kpiLabel: { fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.6 },
