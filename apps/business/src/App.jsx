@@ -4646,6 +4646,13 @@ function AdminShell({ onBackToHub, initialSection }) {
     function handleWorkerSelect(e) {
       const slug = e.detail?.slug;
       if (!slug) return;
+      // S52.44: if we're on a full-page /creators/* route, setting currentSection
+      // does nothing because the URL-based branch keeps rendering the creator view.
+      // Navigate to the worker's own URL to escape "creator mode".
+      if (window.location.pathname.startsWith("/creators/")) {
+        window.location.href = "/workers/" + slug;
+        return;
+      }
       // Any surface that fires ta:select-worker (Sidebar, VaultDashboard
       // My Workers cards, entitled-worker shortcuts) needs the worker
       // actually loaded into context so WorkerHomeRenderer has something
@@ -6110,6 +6117,9 @@ export default function App() {
         <AppShell currentSection="creator-journey" onNavigate={(section) => {
           if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
           if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
+          // S52.44: escape the /creators/journey URL for any other section (see dashboard note).
+          try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+          window.location.href = "/";
         }}>
           <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading creator journey…</div>}>
             <CreatorJourney embedded />
@@ -6125,6 +6135,11 @@ export default function App() {
       <AppShell currentSection="creator-dashboard" onNavigate={(section) => {
         if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
         if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
+        // S52.44: any other section must LEAVE the /creators/dashboard URL — else the
+        // URL-based branch keeps rendering the dashboard ("stuck in creator mode"). Restore
+        // the target section on the main app via ta_redirect_page.
+        try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+        window.location.href = "/";
       }}>
         <CreatorDashboard />
       </AppShell>
