@@ -118,6 +118,25 @@ export default function CreatorDashboard() {
     }
   }
 
+  // S52.44 nav fix: the Creator sidebar links route to ?tab=workers|profile|earnings
+  // but this dashboard ignored the param and had no Profile/Earnings tabs, so all
+  // three links rendered the same view ("nav links not working"). Honor the param
+  // + render a tab bar so each link lands on a distinct, labeled tab.
+  const tab = (new URLSearchParams(window.location.search).get("tab") || "workers").toLowerCase();
+  const goTab = (t) => { window.location.href = "/creators/dashboard?tab=" + t; };
+  const tabBar = (
+    <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #f1f5f9", marginBottom: 20 }}>
+      {[["workers", "My Workers"], ["profile", "Profile"], ["earnings", "Earnings"]].map(([id, label]) => (
+        <button key={id} onClick={() => goTab(id)} style={{
+          padding: "8px 16px", fontSize: 13, fontWeight: tab === id ? 600 : 500, cursor: "pointer",
+          background: "none", border: "none",
+          color: tab === id ? "#7c3aed" : "#64748b",
+          borderBottom: tab === id ? "2px solid #7c3aed" : "2px solid transparent",
+        }}>{label}</button>
+      ))}
+    </div>
+  );
+
   if (loading) {
     return (
       <div>
@@ -140,6 +159,25 @@ export default function CreatorDashboard() {
     );
   }
 
+  if (tab === "profile" || tab === "earnings") {
+    return (
+      <div>
+        <div className="pageHeader">
+          <div>
+            <h1 className="h1">Creator Dashboard</h1>
+            <p className="subtle">{tab === "profile" ? "Your public creator profile" : "Your creator earnings"}</p>
+          </div>
+        </div>
+        {tabBar}
+        <div style={{ padding: "40px 24px", background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+          {tab === "profile"
+            ? "Creator profile editing is coming soon. Your public creator page — bio, credentials, and the Digital Workers you've published — will live here."
+            : "Earnings reporting is coming soon. You earn 75% of net revenue on every worker you publish; payouts and statements will appear here."}
+        </div>
+      </div>
+    );
+  }
+
   if (workers.length === 0) {
     return (
       <div>
@@ -149,6 +187,7 @@ export default function CreatorDashboard() {
             <p className="subtle">Manage your Digital Workers</p>
           </div>
         </div>
+        {tabBar}
         <div style={{ padding: "60px 24px", textAlign: "center", background: "#fff", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
           <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
             No Digital Workers yet
@@ -175,6 +214,8 @@ export default function CreatorDashboard() {
           <p className="subtle">Manage your Digital Workers. Edit content, adjust pricing, and track performance.</p>
         </div>
       </div>
+
+      {tabBar}
 
       <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: "20px", alignItems: "start" }}>
         {/* Worker list */}

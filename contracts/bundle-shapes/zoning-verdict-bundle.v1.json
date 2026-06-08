@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/zoning-verdict-bundle.v1.json",
+  "title": "zoning-verdict-bundle/v1",
+  "description": "Consumer zoning verdict emitted by ZONING-001. Allowed/conditional/not-allowed verdict + live code-section citations + restrictions + hyper-local overlays. Consumed by FEASIBILITY-001 + W-002 (use viability) and any downstream worker. NOT legal advice — see notes.compliance.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Code (Track B-2 build scaffold)",
+  "inheritsFrom": [
+    "CODEX S52.43 (Platform RAAS Invariants)",
+    "CODEX S52.19 (ATTOM Zoning + Permits API)"
+  ],
+  "type": "object",
+  "required": ["parcelRef", "verdict", "citedSections", "auditAnchor", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelRef": {
+      "type": "object",
+      "required": ["apn", "jurisdiction"],
+      "properties": {
+        "bundleShape": { "type": "string", "const": "parcel-bundle/v1" },
+        "apn": { "type": "string" },
+        "address": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "dtcId": { "type": "string" }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["band", "plainAnswer"],
+      "properties": {
+        "band": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"], "description": "Allowed / conditional / not-allowed for the user's question." },
+        "plainAnswer": { "type": "string", "description": "7th-grade reading level (RULE-08)." },
+        "zoningClass": { "type": "string", "examples": ["R-2", "R-1", "C-1"] },
+        "allowedUses": { "type": "array", "items": { "type": "object", "properties": { "use": { "type": "string" }, "cas": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }, "status": { "type": "string" } } } },
+        "entitlementPath": { "type": "array", "items": { "type": "object", "properties": { "path": { "type": "string" }, "cas": { "type": "string" }, "timeline": { "type": "string" }, "feesRange": { "type": "string" } } } },
+        "restrictions": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "value": { "type": "string" }, "cas": { "type": "string" } } } }
+      }
+    },
+    "citedSections": {
+      "type": "array",
+      "description": "Every cited code section. EH-01: retrieved from the live resolver (Municode / General Code) — verbatim text + live URL + hash. No model-recalled citations.",
+      "items": { "$ref": "#/definitions/citation" }
+    },
+    "overlays": {
+      "type": "array",
+      "description": "Hyper-local restriction layer (EH-05). Every overlay checked is declared; unverified overlays carry a named consequence + upload affordance.",
+      "items": { "type": "object", "properties": { "type": { "type": "string", "examples": ["SMA", "FEMA_flood", "historic", "HOA_CCR", "special_tax_district"] }, "status": { "type": "string" }, "cas": { "type": "string", "enum": ["RED", "YELLOW", "BLUE", "WHITE", "GREEN"] }, "verified": { "type": "boolean" }, "consequence": { "type": "string" } } }
+    },
+    "verificationStatus": {
+      "type": "object",
+      "properties": {
+        "confidence": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+        "gapsDeclared": { "type": "array", "items": { "type": "object", "properties": { "layer": { "type": "string" }, "reason": { "type": "string" } } } }
+      }
+    },
+    "auditAnchor": {
+      "type": "object",
+      "required": ["anchorTxHash", "anchoredAt"],
+      "properties": {
+        "anchorTxHash": { "type": "string" },
+        "anchorChain": { "type": "string", "enum": ["base", "polygon"], "default": "base" },
+        "anchoredAt": { "type": "string", "format": "date-time" },
+        "logbookEntryId": { "type": "string" }
+      }
+    },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "const": "ZONING-001" },
+        "workerVersion": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string" }
+      }
+    },
+    "emittedAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "citation": {
+      "type": "object",
+      "required": ["citation", "sourceUrl", "retrievedAt"],
+      "properties": {
+        "citation": { "type": "string", "examples": ["Maui County Code §19.04.040"] },
+        "verbatimText": { "type": "string" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "versionPin": { "type": "string" },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "retrievedHash": { "type": "string" }
+      }
+    }
+  },
+  "notes": {
+    "compliance": "Consumer guidance only — NOT legal advice and NOT a binding determination. Every bundle surfaces the disclaimer + an escalation affordance to LAW-LANDUSE-001 (legal-question-bundle/v1) when stakes rise (RULE-05).",
+    "eh01_application": "citedSections MUST come from the live citationResolver. A section with no sourceUrl + retrievedHash is treated as resolver_required and MUST NOT ship in production output.",
+    "reagan_rule_application": "User-supplied overlays (e.g. uploaded HOA CC&Rs) carry verified:false until cross-referenced.",
+    "deposition_rule_application": "auditAnchor lets a homeowner prove what the code said at decision time three months later."
+  }
+}

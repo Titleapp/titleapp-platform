@@ -1,0 +1,48 @@
+{
+  "workerSlug": "title-abstract",
+  "version": "1.0.0",
+  "trumpRule": "Per CODEX S52.43 §7 + S52.37: the canvas is the spec. Marketable-status + severance read in 3 seconds before any prose. CAS Color Protocol on every status element. NOT an insured-title product — 'general info, not certified for closing' disclaimer always visible.",
+  "canvasTabs": [
+    {
+      "id": "ownership-chain",
+      "label": "Ownership chain",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Default tab. CAS instrument panel + parcel map (subject parcel + easements drawn) + optional user-upload drone aerial (video-tile/v1, unverified badge) + 3 verdict hero cards (Title chain clean/issues · Open encumbrances · Rights severance) + vertical chain-of-title newest-first (CAS-coded transfer cards: grantor→grantee, deed type, date, consideration, recording no., status) + right-rail heroes (Marketable status Yes/No · Open encumbrances · Last sale price · Lien total) + CAS flag stack. Plat map folds in here."
+    },
+    {
+      "id": "encumbrances",
+      "label": "Encumbrances",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "3 verdict hero cards (Lien stack clear/total · Open easements · Deed restrictions) + CAS-coded encumbrance detail cards (type, recording, amount, status, action link) + lien-stack-as-bars visualization (mortgage / mechanic / tax / HOA / judgment / IRS — zero-height green bars = clear at a glance)."
+    },
+    {
+      "id": "recorded-docs",
+      "label": "Recorded docs",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Recorded-instrument archive table (type, grantor→grantee, recording no., date, consideration, CAS-coded status: Verified / Verify probate / Review impact / Minerals severed, Pull-doc link per row) + filter chips (All / Deeds / Easements / Liens / Other) + search + dark stats header (total instruments / deeds / easements / liens). Tax + judgment search status surfaces here. Every instrument retrieved from county recorder (EH-01) — no recall."
+    },
+    {
+      "id": "rights-stack",
+      "label": "Rights stack",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "THE DIFFERENTIATOR. Vertical column above-land→below-land: Air · Radio/spectrum · Surface · Water · Carbon · Mineral · Oil&gas · Digital. STRATUM BANDS earth-tone by elevation (above=light-blue / surface=light-green / below=tan); CAS color ONLY on per-stratum status badge (Held/Verified=green · Severed=red · Review=yellow · Action=blue · status=white). e.g. mineral = tan band + RED 'SEVERED 1978' badge. Right rail: jurisdiction land-law context + action items + rights-stack summary."
+    },
+    {
+      "id": "plain-english",
+      "label": "Plain English",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "operator",
+      "description": "CAS-coded conversational prose. GREEN verdict hero (e.g. 'This title is clean. The chain goes back to 1978 with no gaps.') + CAS-coded sections (who-owns-it / what's-attached / what's-owed / what's-below-the-surface) + common-questions Q&A + action bar (Pull easement docs, Pull probate order, Check mineral records, Export PDF)."
+    }
+  ]
+}

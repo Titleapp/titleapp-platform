@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/feasibility-study.v1.json",
+  "title": "feasibility-study/v1",
+  "description": "Tier-R Market & Feasibility Study emitted by FEASIBILITY-001 (lender-defensible). Demand + supply + comps + demographics + lender-readiness, every input version-pinned and audit-anchored (Deposition Rule load-bearing — a lender takes this to underwriting committee). Consumed by W-002 (financial underwriting), PERMIT-001 (economic justification). NOT financial underwriting or investment advice — see notes.compliance.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Code (Track scaffold)",
+  "inheritsFrom": [
+    "CODEX S52.43 (Platform RAAS Invariants)",
+    "CODEX S52.41 (Substrate-Precedence)"
+  ],
+  "type": "object",
+  "required": ["parcelRef", "proposedProduct", "demand", "supply", "comps", "dataSources", "auditAnchor", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelRef": {
+      "type": "object",
+      "required": ["apn", "jurisdiction"],
+      "properties": {
+        "bundleShape": { "type": "string", "const": "parcel-bundle/v1" },
+        "apn": { "type": "string" },
+        "address": { "type": "string" },
+        "jurisdiction": { "type": "string" }
+      }
+    },
+    "proposedProduct": {
+      "type": "object",
+      "required": ["productType", "units"],
+      "properties": {
+        "productType": { "type": "string", "examples": ["multifamily", "for-sale", "mixed-use", "btr"] },
+        "units": { "type": "integer" },
+        "unitMix": { "type": "object" },
+        "amenityTier": { "type": "string", "examples": ["A", "B", "C"] },
+        "targetRents": { "type": "object", "description": "If user-supplied, tagged verified:false (Reagan Rule)." }
+      }
+    },
+    "demand": {
+      "type": "object",
+      "properties": {
+        "demandScore": { "type": "number" },
+        "captureProbability": { "type": "number" },
+        "captureRate": { "type": "number", "description": "proposed units / qualified demand (RULE-09 sanity gate <30%)." },
+        "demographics": { "type": "object", "properties": { "medianHouseholdIncome": { "type": "number" }, "employmentGrowthYoY": { "type": "number" }, "targetRenterBandPct": { "type": "number" } } },
+        "band": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }
+      }
+    },
+    "supply": {
+      "type": "object",
+      "properties": {
+        "pipelineUnits": { "type": "integer" },
+        "pipelineWindowMonths": { "type": "integer" },
+        "inventoryIncreasePct": { "type": "number" },
+        "competitiveSet": { "type": "array", "items": { "type": "object" } },
+        "band": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+        "coverageFlag": { "type": "string", "description": "BLUE action when local planning-dept supply data not verified (RULE-08 / EH-05)." }
+      }
+    },
+    "comps": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer" },
+        "medianRentByType": { "type": "object" },
+        "items": { "type": "array", "items": { "$ref": "#/definitions/comp" } }
+      }
+    },
+    "lenderReadiness": {
+      "type": "array",
+      "description": "Which lender programs the study qualifies for, per data-tier coverage (RULE-04).",
+      "items": { "type": "object", "properties": { "program": { "type": "string", "examples": ["bank_conventional", "fannie", "freddie", "hud_221d4", "equity"] }, "cas": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }, "note": { "type": "string" } } }
+    },
+    "dataSources": {
+      "type": "array",
+      "description": "Every source pull, version-pinned + hashed (EH-06). Deposition surface.",
+      "items": { "$ref": "#/definitions/sourcePull" }
+    },
+    "auditAnchor": {
+      "type": "object",
+      "required": ["anchorTxHash", "anchoredAt"],
+      "properties": {
+        "anchorTxHash": { "type": "string" },
+        "anchorChain": { "type": "string", "enum": ["base", "polygon"], "default": "base" },
+        "anchoredAt": { "type": "string", "format": "date-time" },
+        "compoundDtcId": { "type": "string" }
+      }
+    },
+    "exportable": { "type": "boolean", "description": "Tier-R/S emit a downloadable PDF brief." },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "const": "FEASIBILITY-001" },
+        "workerVersion": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string" }
+      }
+    },
+    "emittedAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "comp": {
+      "type": "object",
+      "required": ["source", "retrievedAt"],
+      "description": "EH-07: every comp retrieved with provenance — no fabrication.",
+      "properties": {
+        "type": { "type": "string" },
+        "beds": { "type": "string" },
+        "rent": { "type": "number" },
+        "pricePerSqft": { "type": "number" },
+        "submarket": { "type": "string" },
+        "source": { "type": "string", "examples": ["attom:rentals", "mls:listing", "costar:comps"] },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "retrievedHash": { "type": "string" },
+        "verified": { "type": "boolean", "default": true }
+      }
+    },
+    "sourcePull": {
+      "type": "object",
+      "required": ["source", "retrievedAt"],
+      "properties": {
+        "source": { "type": "string", "examples": ["census:acs", "bls:qcew", "attom:property", "mls:listing", "costar:comps"] },
+        "coverage": { "type": "string" },
+        "versionPin": { "type": "string" },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "retrievedHash": { "type": "string" },
+        "cas": { "type": "string", "enum": ["RED", "YELLOW", "BLUE", "WHITE", "GREEN"] }
+      }
+    }
+  },
+  "notes": {
+    "compliance": "Market/demand study only — NOT financial underwriting (that is W-002) and NOT lender investment advice. All projections are scenario-modeled with explicit confidence bands.",
+    "deposition_rule_application": "auditAnchor.compoundDtcId snapshots all dataSources. If the loan defaults, a forensic auditor reconstructs the study state at emit time — the worker's analysis was honest at the time.",
+    "eh07_application": "comps.items MUST each carry source + retrievedAt + retrievedHash. Model-recalled comps are blocked.",
+    "reagan_rule_application": "User-supplied rents / cap rates / forecasts carry verified:false and surface as user-provided in output."
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "workerSlug": "law-landuse",
+  "version": "1.0.0",
+  "trumpRule": "Per CODEX S52.43 §7 + S52.37: the canvas is the spec. Color + verdict read in 3 seconds before any prose. Default tab is the most visual. CAS Color Protocol (RED/YELLOW/BLUE/WHITE/GREEN) on every status element.",
+  "canvasTabs": [
+    {
+      "id": "entitlement-roadmap",
+      "label": "Entitlement Roadmap",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Default + most-visual tab. CAS instrument panel + 3 verdict hero cards (Like-for-like / Expand footprint / Skip SMA) + Google Maps satellite with risk-overlay polygons (SMA red, wildfire amber) and comparable pins + 2x2 KPI cards (approval probability, median timeline, median cost, comparable count) + CAS-colored entitlement stepper (Pre-app → SMA application → Planning review → SMA hearing → Council vote → Recordation) + CAS flag stack (RED→YELLOW→BLUE→WHITE→GREEN) + handoff action bar + video-tile/v1 slot."
+    },
+    {
+      "id": "citations",
+      "label": "Citations",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Dark authority-stats header (verified / unverified / total) + filter chips + version-pinned citation cards (color band + Allows/Required/Expedites/Unverified pill + verbatim ref + plain-text impact + Pinned rev + sha256 + Retrieved date). Every authority retrieved externally (EH-01) — no model recall. Unverified authorities surface BLUE upload action."
+    },
+    {
+      "id": "comparable-cases",
+      "label": "Comparable cases",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Outcome breakdown (approved/denied %) + denial-reason ranking + timeline distribution histogram (approved cases by months) + comparable-case rows (outcome icon + type + detail + year + duration). All comparables retrieved from verifiable sources (EH-07) — no fabrication."
+    },
+    {
+      "id": "plain-english",
+      "label": "Plain English",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "CAS-coded conversational prose. GREEN verdict hero (e.g. 'You can rebuild what burned down') + CAS-coded sections (the-one-thing-you-cannot-skip / build-the-same-thing / want-to-build-bigger / still-needs-checking) + common-questions Q&A + action bar (Send to analyst, Draft pre-app agenda, Export PDF, Upload CC&Rs)."
+    }
+  ]
+}
