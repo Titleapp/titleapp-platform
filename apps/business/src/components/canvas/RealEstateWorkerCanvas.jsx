@@ -12,20 +12,23 @@ import MapCard from "./MapCard";
 
 const c = (band) => CAS[band] || CAS.WHITE;
 
-function CasInstrumentPanel({ counts }) {
+function CasInstrumentPanel({ counts, labels }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
       {CAS_ORDER.map((k) => {
         const cc = CAS[k];
         const n = counts?.[k] ?? 0;
         const muted = n === 0;
+        // S52.47 — optional per-canvas label override (e.g. education reframes the
+        // bands as Met / Remediate / Not met instead of the raw color names).
+        const label = labels?.[k] || k.toLowerCase();
         return (
           <div key={k} style={{
             display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999,
             background: muted ? "#f8fafc" : cc.bg, border: `1px solid ${muted ? "#e2e8f0" : cc.border}`, opacity: muted ? 0.6 : 1,
           }}>
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: cc.dot }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: muted ? "#94a3b8" : cc.text, textTransform: "capitalize" }}>{k.toLowerCase()}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: muted ? "#94a3b8" : cc.text, textTransform: "capitalize" }}>{label}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: muted ? "#cbd5e1" : cc.dot, minWidth: 18, textAlign: "center", borderRadius: 999, padding: "1px 6px" }}>{n}</span>
           </div>
         );
@@ -227,7 +230,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
         </div>
       </div>
 
-      <CasInstrumentPanel counts={data.cas} />
+      <CasInstrumentPanel counts={data.cas} labels={data.casLabels} />
 
       {/* Internal tab bar */}
       <div style={{ display: "flex", gap: 2, borderBottom: "1px solid #f1f5f9", marginBottom: 16, overflowX: "auto" }}>

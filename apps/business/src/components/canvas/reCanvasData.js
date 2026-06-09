@@ -16,6 +16,7 @@
 //   prose   — CAS-coded plain-English sections
 
 import { CRE_DISTRESSED } from "./creAnalystData";
+import { buildLearningCanvas } from "./learningCanvasData";
 
 export const CAS = {
   RED:    { key: "RED",    dot: "#dc2626", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" },
@@ -620,6 +621,12 @@ if (Array.isArray(CRE_DISTRESSED) && CRE_DISTRESSED.length) {
   RE_CANVAS["cre-analyst"] = buildCreCanvas(CRE_DISTRESSED);
   _creIsReal = true;
 }
+
+// S52.47 — Student Evaluation Worker (Ruthie Clearwater, nursing). Designed
+// canvas reuses this same renderer. Data is a SAMPLE learning record (Vault owns
+// the real DTC+logbook; the worker is a vault-adjacent reader). casLabels reframes
+// the instrument panel for education (Met / Remediate / Not met).
+RE_CANVAS["student-eval-001"] = buildLearningCanvas();
 
 // S52.46 — fabrication-by-fixture disclosure. Every RE canvas except the
 // real-ATTOM-generated cre-analyst is hand-authored sample data. Mark them so
