@@ -4678,6 +4678,19 @@ function AdminShell({ onBackToHub, initialSection }) {
     };
   }, [workerCtx]);
 
+  // S52.47 — deep-link: a worker landing page (WorkerDetailPage) stashes
+  // ta_open_worker before routing through signin. When the authenticated app
+  // mounts, open that worker straight into the workspace (canvas + chat) instead
+  // of dropping the user on the generic dashboard/home. One-shot (key removed).
+  useEffect(() => {
+    let slug = null;
+    try { slug = sessionStorage.getItem("ta_open_worker"); } catch (_) {}
+    if (!slug) return;
+    try { sessionStorage.removeItem("ta_open_worker"); } catch (_) {}
+    if (workerCtx?.selectWorker) workerCtx.selectWorker(slug);
+    setCurrentSection("worker-home");
+  }, [workerCtx]);
+
   function renderSection() {
     switch (currentSection) {
       case "home":
