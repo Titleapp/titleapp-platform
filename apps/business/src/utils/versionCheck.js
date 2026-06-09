@@ -50,12 +50,17 @@ function showBanner() {
   bar.style.cssText =
     "position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.25);display:flex;align-items:center;gap:12px;font:500 13px/1.3 system-ui,-apple-system,sans-serif;";
   const msg = document.createElement("span");
-  msg.textContent = "Updating SOCIII to the latest version…";
+  msg.textContent = "A new version of SOCIII is available.";
   const btn = document.createElement("button");
-  btn.textContent = "Reload now";
+  btn.textContent = "Reload";
   btn.style.cssText = "background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-weight:600;cursor:pointer;";
   btn.onclick = doReload;
-  bar.append(msg, btn);
+  const x = document.createElement("button");
+  x.textContent = "✕";
+  x.setAttribute("aria-label", "Dismiss");
+  x.style.cssText = "background:transparent;color:#94a3b8;border:none;cursor:pointer;font-size:14px;line-height:1;";
+  x.onclick = () => { bar.remove(); bannerShown = false; };
+  bar.append(msg, btn, x);
   document.body.appendChild(bar);
 }
 
@@ -81,12 +86,13 @@ export function initVersionCheck() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      // Tab going to background is the safe moment to refresh transparently.
+      // Tab going to background is the ONLY place we auto-reload — it's invisible
+      // and safe, so a customer who tabs away returns to a fresh build without
+      // ever being yanked mid-task. (Sean's preference: notify, don't force.)
       if (updatePending) doReload();
     } else {
-      // Returning to the tab: re-check, and if an update was already pending,
-      // refresh immediately so the very first interaction is on the new build.
-      if (updatePending) { doReload(); return; }
+      // Returning to a foreground tab: re-check and SHOW THE BANNER. Never
+      // auto-reload a visible tab out from under the user — let them choose.
       check();
     }
   });
