@@ -31,6 +31,14 @@ const DEFAULT_MODEL = "fal-ai/flux/schnell";
 const MAX_IMAGES_PER_WORKER = 50;
 const GENERATION_TIMEOUT_MS = 30000;
 
+// S52.46 — image billing. It's a data fee, so the customer pays 2x our cost
+// (Sean's rule), charged in Data Credits. flux/schnell + storage ≈ $0.01/image →
+// 2x = $0.02 = 1 credit (config/pricing.js creditRate is $0.02/credit).
+const IMAGE_DATA_COST_USD = 0.01;
+const _CREDIT_RATE_USD = 0.02;
+const IMAGE_CREDIT_COST = Math.max(1, Math.ceil((2 * IMAGE_DATA_COST_USD) / _CREDIT_RATE_USD));
+const IMAGE_PRICE_USD = IMAGE_CREDIT_COST * _CREDIT_RATE_USD;
+
 // ── Style map ────────────────────────────────────────────────
 const STYLE_MAP = {
   cartoon: "cartoon style, flat colors, game art, clean lines, vibrant",
@@ -303,6 +311,33 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
     }
   }
 
+  // ── Billing gate (S52.46) — customer pays 2x the data fee, never the platform.
+  // Charge BEFORE the paid fal.ai call; refund below if generation fails.
+  // Anonymous users can't be billed — block them so they can't run up our bill.
+  const _billUser = creatorId && creatorId !== "anonymous" ? creatorId : null;
+  if (!_billUser) {
+    return {
+      error: "signin_required",
+      message: `Sign in and add Data Credits to generate images — each image costs ${IMAGE_CREDIT_COST} credit ($${IMAGE_PRICE_USD.toFixed(2)}).`,
+    };
+  }
+  let _chargedCredits = 0;
+  try {
+    const { checkAndDeductCredits } = require("../health/callWithHealthCheck");
+    const charge = await checkAndDeductCredits(_billUser, `image_gen_${workerId || "chat"}`, IMAGE_CREDIT_COST, { workerId, tenantId, parentInteractionId });
+    if (!charge.allowed) {
+      return {
+        error: "insufficient_credits",
+        message: charge.message || `Generating an image costs ${IMAGE_CREDIT_COST} Data Credit ($${IMAGE_PRICE_USD.toFixed(2)}). Top up to continue.`,
+        creditsRequired: charge.creditsRequired ?? IMAGE_CREDIT_COST,
+        creditsAvailable: charge.creditsAvailable,
+      };
+    }
+    if (charge.source) _chargedCredits = IMAGE_CREDIT_COST; // real deduction happened (not fail-open)
+  } catch (billErr) {
+    console.warn("[image:generator] billing gate error (failing open):", billErr.message);
+  }
+
   // ── Build styled prompt ────────────────────────────────────
   const styledPrompt = buildPrompt(finalPrompt, style);
 
@@ -321,6 +356,13 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   });
 
   if (!healthResult.success) {
+    // Generation failed after we charged — give the credits back.
+    if (_chargedCredits > 0) {
+      try {
+        const { refundCredits } = require("../health/callWithHealthCheck");
+        await refundCredits(_billUser, `image_gen_${workerId || "chat"}`, _chargedCredits, { workerId, tenantId });
+      } catch (rfErr) { console.warn("[image:generator] refund failed:", rfErr.message); }
+    }
     const msg = getErrorMessage("fal_ai");
     if (healthResult.error === "timeout") {
       return { error: "generation_timeout", message: "Image generation timed out. Please try again." };
@@ -346,7 +388,7 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   await storeAsset({ workerId, creatorId, imageUrl, prompt: finalPrompt, style, model: DEFAULT_MODEL, assetId });
   await logUsageEvent({ userId: creatorId, workerId, model: DEFAULT_MODEL, cost: 0.008, parentInteractionId, tenantId });
 
-  return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed };
+  return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed, chargedCredits: _chargedCredits, priceUsd: _chargedCredits > 0 ? IMAGE_PRICE_USD : 0 };
 }
 
 module.exports = { generateImage, buildPrompt, scrubPhi, scrubAviationPii, checkNsfw };

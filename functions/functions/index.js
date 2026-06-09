@@ -2922,6 +2922,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               let aiText = aiResponse.content.find(b => b.type === 'text')?.text || "";
               let workerImageUrl = null;
               let workerImgErrMsg = null; // S52.46 — guidance from a blocked/failed image gen, forwarded to the model
+              let workerImgCharge = null; // S52.46 — "charged $X" note for a successful gen
               let liveDistressed = null; // S52.44 — populated by find_distressed_cre tool
               let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
               let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
@@ -2944,6 +2945,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   });
                   workerImageUrl = imgResult.imageUrl || null;
                   if (imgResult.error) { workerImgErrMsg = imgResult.message || null; console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error); }
+                  else if (imgResult.chargedCredits) { workerImgCharge = `Charged ${imgResult.chargedCredits} Data Credit ($${(imgResult.priceUsd || 0).toFixed(2)}) for this image — briefly tell the user the cost.`; }
                 } catch (imgErr) {
                   console.warn(`[worker:${workerSlug}] image gen failed:`, imgErr.message);
                 }
@@ -2953,7 +2955,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 // instead") so the model self-corrects, and DROP tools so it can't
                 // immediately re-call generate_image and hit the same block (codex M2/M3).
                 const _imgToolResult = workerImageUrl
-                  ? `Image generated: ${workerImageUrl}`
+                  ? `Image generated: ${workerImageUrl}${workerImgCharge ? ". " + workerImgCharge : ""}`
                   : (workerImgErrMsg || "Image generation failed. Tell the user briefly.");
                 const followUpMessages = [
                   ...messages,
