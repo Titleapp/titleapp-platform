@@ -1,0 +1,103 @@
+#!/usr/bin/env node
+"use strict";
+/**
+ * pullDistressedCRE.js — S52.44 demo data builder for the CRE Analyst.
+ *
+ * Pulls REAL Bay Area commercial properties from ATTOM (snapshot), enriches
+ * each with sale + mortgage + AVM (expandedprofile), and scores a DISTRESS
+ * PROXY (ATTOM has no NOD/foreclosure flag on this key, so we approximate from
+ * real signals: peak-era acquisition, underwater AVM, loan age, mortgaged).
+ *
+ * Output: apps/business/src/components/canvas/creAnalystData.js — seeded into
+ * the CRE Analyst canvas (Map pins + Deal Screen). Real data, demo-safe.
+ *
+ * Usage: node scripts/pullDistressedCRE.js
+ * Reads ATTOM_API_KEY from functions/functions/.env (never printed).
+ */
+const fs = require("fs");
+const path = require("path");
+
+const ENV = fs.readFileSync(path.join(__dirname, "..", "functions", "functions", ".env"), "utf8");
+const KEY = (ENV.match(/^ATTOM_API_KEY=(.*)$/m) || [])[1]?.trim();
+if (!KEY) { console.error("ATTOM_API_KEY not found in functions/functions/.env"); process.exit(1); }
+
+const B = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
+const H = { apikey: KEY, accept: "application/json" };
+
+// Commercial-dense Bay Area centers (SoMa, FiDi, Oakland, Jack London).
+const CENTERS = [
+  { name: "SoMa", lat: 37.7785, lng: -122.3970 },
+  { name: "Financial District", lat: 37.7946, lng: -122.4006 },
+  { name: "Oakland CBD", lat: 37.8044, lng: -122.2712 },
+];
+
+const get = async (p) => {
+  try { const r = await fetch(`${B}${p}`, { headers: H }); return r.ok ? await r.json() : null; }
+  catch { return null; }
+};
+
+const num = (v) => (v == null || v === "" ? null : Number(v));
+const yearOf = (d) => (d && /^\d{4}/.test(d) ? Number(d.slice(0, 4)) : null);
+
+function scoreDistress(p) {
+  let score = 0; const reasons = [];
+  const saleY = yearOf(p.lastSaleDate);
+  const isOffice = /OFFICE/i.test(p.propType || "");
+  const peakEra = saleY && saleY >= 2019 && saleY <= 2021;
+  const bigTicket = p.lastSale != null && p.lastSale >= 50000000;
+  // Office is the distressed CRE class post-2022 rate shock; peak-era office at
+  // institutional scale is the textbook capital-stack opportunity.
+  if (isOffice && peakEra) { score += 55; reasons.push("Office bought at 2019–21 peak — distressed class"); }
+  else if (peakEra) { score += 35; reasons.push("Peak-era acquisition (2019–21)"); }
+  if (isOffice && bigTicket) { score += 20; reasons.push("Institutional-scale office ($50M+)"); }
+  if (p.avm != null && p.lastSale != null && p.avm < p.lastSale) {
+    const downPct = Math.round((1 - p.avm / p.lastSale) * 100);
+    if (downPct >= 5) { score += Math.min(40, downPct); reasons.push(`AVM ${downPct}% below purchase (underwater)`); }
+  }
+  if (p.mortgaged) { score += 15; reasons.push("Leveraged (mortgage on record)"); }
+  if (!peakEra && saleY && saleY <= 2017) { score += 10; reasons.push("Stale ownership (pre-2018)"); }
+  const verdict = score >= 60 ? "RED" : score >= 30 ? "YELLOW" : "GREEN"; // RED = hottest distress signal
+  return { distressScore: Math.min(100, score), distressBand: verdict, distressReasons: reasons };
+}
+
+(async () => {
+  const out = [];
+  for (const c of CENTERS) {
+    const snap = await get(`/property/snapshot?latitude=${c.lat}&longitude=${c.lng}&radius=0.6&propertytype=COMMERCIAL`);
+    const props = snap?.property || [];
+    console.log(`${c.name}: ${props.length} commercial parcels`);
+    for (const pr of props.slice(0, 6)) {
+      const id = pr?.identifier?.attomId;
+      if (!id) continue;
+      const ep = await get(`/property/expandedprofile?attomid=${id}`);
+      const e = ep?.property?.[0] || {};
+      const addr = e?.address?.oneLine || pr?.address?.oneLine || "";
+      const loc = e?.location || pr?.location || {};
+      const sale = e?.sale || {};
+      const avmAmt = num(e?.avm?.amount?.value);
+      const lastSale = num(sale?.amount?.saleAmt);
+      const rec = {
+        attomId: id,
+        address: addr,
+        submarket: c.name,
+        lat: num(loc.latitude), lng: num(loc.longitude),
+        propType: e?.summary?.propclass || e?.summary?.proptype || pr?.summary?.proptype || "Commercial",
+        lastSale, lastSaleDate: sale?.amount?.saleRecDate || sale?.saleTransDate || null,
+        avm: avmAmt,
+        mortgaged: !!(e?.mortgage && Object.keys(e.mortgage).length),
+        lender: e?.mortgage?.FirstConcurrent?.lenderLastName || e?.mortgage?.lender?.lastName || null,
+      };
+      out.push({ ...rec, ...scoreDistress(rec) });
+    }
+  }
+  // Rank: hottest distress first
+  out.sort((a, b) => b.distressScore - a.distressScore);
+  const top = out.filter((p) => p.lat && p.lng).slice(0, 12);
+  console.log(`\nScored ${out.length}, keeping top ${top.length} with geo.`);
+  console.log("Sample:", top.slice(0, 3).map((p) => `${p.address} · ${p.distressBand} ${p.distressScore} · ${p.distressReasons[0] || "—"}`).join("\n        "));
+
+  const banner = `// AUTO-GENERATED by scripts/pullDistressedCRE.js — REAL ATTOM data (SF/Oakland commercial),\n// distress-PROXY scored (no NOD flag on this ATTOM key). Regenerate to refresh.\n`;
+  const file = path.join(__dirname, "..", "apps", "business", "src", "components", "canvas", "creAnalystData.js");
+  fs.writeFileSync(file, `${banner}export const CRE_DISTRESSED = ${JSON.stringify(top, null, 2)};\n`);
+  console.log(`\nWrote ${file}`);
+})();

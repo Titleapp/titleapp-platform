@@ -48,6 +48,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     const v = parseInt(localStorage.getItem("SIDEBAR_WIDTH"));
     return v >= 180 && v <= 320 ? v : 280;
   });
+  // S52.45 — collapsible sidebar (Claude/Linear-style). Persisted. Collapsed =
+  // slid fully away for a clean workspace; a slim edge button brings it back.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("SIDEBAR_COLLAPSED") === "1");
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => { const next = !prev; localStorage.setItem("SIDEBAR_COLLAPSED", next ? "1" : "0"); return next; });
+  }, []);
 
   // CODEX 50.10-T2 — Invite member modal mount; Sidebar dispatches the open event.
   const [inviteModal, setInviteModal] = useState(null);
@@ -484,7 +490,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       )}
 
       {/* Sidebar */}
-      <div className={sidebarOpen ? "sidebar sidebarOpen" : "sidebar"} style={{ width: sidebarWidth + "px", minWidth: sidebarWidth + "px" }}>
+      <div className={`${sidebarOpen ? "sidebar sidebarOpen" : "sidebar"}${sidebarCollapsed ? " collapsed" : ""}`} style={{ width: sidebarWidth + "px", minWidth: sidebarWidth + "px" }}>
         <Sidebar
           currentSection={currentSection}
           onNavigate={guestMode ? () => {} : onNavigate}
@@ -501,7 +507,22 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         />
       </div>
 
+      {/* S52.45 — sidebar collapse / expand toggle (desktop). Slides the nav
+          fully away for a clean workspace; the slim edge button brings it back. */}
+      <button
+        className="sidebarCollapseToggle"
+        onClick={toggleSidebarCollapsed}
+        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        style={{ left: (sidebarCollapsed ? 8 : sidebarWidth - 13) + "px" }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {sidebarCollapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
+        </svg>
+      </button>
+
       {/* Sidebar resize handle */}
+      {!sidebarCollapsed && (
       <div
         className={`resizeHandle${isResizing === "sidebar" ? " active" : ""}`}
         onMouseDown={handleSidebarResizeStart}
@@ -512,6 +533,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           localStorage.setItem("PANEL_WIDTH", "40");
         }}
       />
+      )}
 
       {/* Dual-panel: chat sidebar + resize handle + main content */}
       <div className="dualPanel" ref={dualPanelRef}>

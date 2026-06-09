@@ -258,6 +258,27 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
     return { error: "content_blocked", message: nsfwCheck.reason };
   }
 
+  // ── No-fabrication gate (EH-01) — never text-to-image a real place ──
+  // A diffusion model asked for a "map / satellite / aerial view of <real
+  // address>" invents a plausible-but-fake place (the Lahaina "Candyland"
+  // incident: hallucinated streets, garbled labels). That is fabrication of
+  // real-world data. Maps/imagery of real locations must come from a real
+  // source (card:re-map → Google Maps, Static Maps, Street View), never Fal.
+  const _p = String(prompt || "");
+  const _mapVocab = /\b(satellite|aerial|bird'?s.?eye|drone|map of|aerial view|street ?view|topograph|parcel|lot ?lines?|plat ?map|site ?plan|floor ?plan|survey ?map|google ?maps?|real ?estate (photo|listing|image))\b/i;
+  // Also catch plain "photo/picture/image of the house/property at ..." and any
+  // prompt containing a street address (number + name + suffix) — depicting a
+  // real building is the same fabrication as a map (the Lahaina-class failure).
+  const _propPhoto = /\b(photo|picture|image|render(ing)?|view)\b[\s\S]{0,40}\b(house|home|property|building|lot|land|parcel|residence|address)\b/i;
+  const _streetAddr = /\b\d{1,6}\s+[\w.'-]+(\s+[\w.'-]+){0,3}\s+(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|way|ct|court|pl|place|hwy|highway|cir|circle|ter|terrace)\b/i;
+  if (_mapVocab.test(_p) || _propPhoto.test(_p) || _streetAddr.test(_p)) {
+    console.warn(`[image:generator] BLOCKED map/real-place fabrication for ${workerId}: "${String(prompt).slice(0, 80)}"`);
+    return {
+      error: "real_location_blocked",
+      message: "I can't generate a map, satellite, or aerial image — a generated image would be a fabricated location, not the real place. Show the real map instead (emit a card:re-map marker for the address), and for a real aerial use a Google Static Maps satellite tile or Street View.",
+    };
+  }
+
   // ── PHI scrub for health verticals ─────────────────────────
   let finalPrompt = prompt;
   let phiScrubbed = false;

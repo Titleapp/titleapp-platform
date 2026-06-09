@@ -212,28 +212,28 @@ const WORKER_DETAIL_CONTENT = {
     ],
   },
   "cre-analyst": {
-    headline: "Screen deals with evidence, not hunches",
-    subheadline: "Every number cited. Every assumption tracked. Every risk flagged. IC memos your committee will actually trust.",
+    headline: "Days of analyst work, in seconds — on live market data",
+    subheadline: "Find distressed commercial deals, score them, map them, and pull the real people to call — straight from live ATTOM market data. Evidence-first, audit-anchored.",
     steps: [
-      { title: "Upload your deal docs", description: "Rent roll, T-12, offering memo, pitch deck — the analyst reads everything and extracts the numbers." },
-      { title: "Get an instant deal screen", description: "Cap rate, DSCR, LTV, IRR — every metric calculated and evidence-cited back to the source document and page." },
-      { title: "Review risks and assumptions", description: "Risk summary with gating failures, missing documents, and approval conditions. Assumptions register with sensitivity ratings." },
-      { title: "Generate the IC memo", description: "One-click Investment Committee memo with deal summary, thesis, metrics, risks, and recommendation — ready for your committee." },
+      { title: "Ask for a market", description: "\"Find distressed office in San Francisco I could enter the cap stack on.\" The analyst pulls live ATTOM data for real commercial parcels — no document upload required to get a first screen." },
+      { title: "Get a ranked distress screen", description: "Every candidate scored RED / YELLOW / GREEN on acquisition timing, asset class, and leverage — pinned on an interactive map, highest-distress deal first, in seconds." },
+      { title: "Work the deal", description: "First-pass underwriting, sensitivity, and a capital-stack entry plan — mezzanine debt or preferred equity to control a distressed asset without buying it outright. Plain-English decision memo at the end." },
+      { title: "Get the people to call", description: "Ask who holds the debt or who to contact — it fetches real names, titles, and emails at the servicers, lenders, debt funds, and brokers. No \"go run a title search.\"" },
     ],
     bridge: {
       title: "The Bridge",
-      text: "The CRE Analyst doesn't just screen deals — it feeds the rest of your workflow. When a deal passes screening, the Capital Stack Optimizer (W-016) picks up the underwriting to structure financing. The Investor Relations Worker (W-019) uses the deal summary for your offering materials. One Vault, one source of truth.",
+      text: "The CRE Analyst feeds the rest of your workflow. Distressed candidates flow to the Capital Stack worker to structure the entry, and the contacts it surfaces drop straight into your outreach. One Vault, one source of truth — every pull audit-anchored.",
     },
     valueProps: [
-      { label: "Evidence-first analysis", description: "Every numeric claim cites its source — file, page, section. No unsupported numbers. Ever." },
-      { label: "Six deal screen types", description: "CRE acquisition, PE, debt acquisition, entitlement, conversion, and refinance — each with domain-specific rules." },
-      { label: "Assumptions register", description: "Every assumption tracked with source, sensitivity rating, and notes. Know exactly where your model is vulnerable." },
-      { label: "Vault-connected to financing workers", description: "Deal data flows to Capital Stack Optimizer, Construction Lending, and Investor Relations automatically." },
+      { label: "Live market data", description: "Real ATTOM commercial property, sale, mortgage, and valuation data — screened in seconds, not weeks." },
+      { label: "Distress scoring + map", description: "Every candidate banded RED / YELLOW / GREEN and mapped. Lead with the highest-distress deal in the metro." },
+      { label: "Cap-stack entry analysis", description: "Mezzanine and preferred-equity structures to control a distressed asset without taking title." },
+      { label: "Real contacts, fetched", description: "Pulls live, contactable people — servicers, lenders, debt funds, brokers — with names and emails to reach out today." },
     ],
     faq: [
-      { q: "What does evidence-first mean?", a: "Every number in your IC memo — rent, NOI, cap rate, IRR, DSCR — must cite a source. Either an uploaded document (file + page), an integration record, or explicit user input. If evidence is missing, the field is marked UNKNOWN. The analyst never guesses." },
-      { q: "What deal types can it screen?", a: "Six types: CRE acquisition (rent roll + T-12), private equity (pitch deck + financials), debt acquisition (note terms + collateral), entitlement (site plan + zoning), conversion (existing use + capex budget), and refinance (current loan + property financials)." },
-      { q: "Does this replace my analyst?", a: "It augments them. The worker handles the data extraction, metric calculation, and evidence tracking — the work that takes your analyst hours. Your team focuses on judgment, negotiation, and relationships." },
+      { q: "Where does the data come from?", a: "Live ATTOM property, sale, mortgage, and AVM data, plus Apollo for contacts. The analyst fetches it on demand — you don't upload documents to get a first screen." },
+      { q: "How is \"distress\" determined?", a: "It's a transparent proxy from real signals — peak-era acquisition (2019–21), institutional-scale office, leverage, and valuation gaps. Confirmed missed-payment / Notice-of-Default status requires a separate foreclosure feed, and the analyst says so plainly." },
+      { q: "Is this investment advice?", a: "No — it's informational analysis on live data. SOCIII is not a registered investment adviser or broker-dealer. The analyst surfaces evidence and contacts; the decision is yours." },
     ],
   },
   "investor-relations": {
@@ -4568,7 +4568,16 @@ function WorkerHomeRenderer({ onBack }) {
     (!_hrPayloadTitle && activeTabId === "schedule")
   );
 
-  if (panel?.state === "CANVAS" && panel?.canvasData) {
+  // S52.46 — THE overlay, finally killed at the render gate. A discovery signal
+  // (vertical:* / browse:*) resolves to WorkerListCanvas (the "<vertical> Workers"
+  // card). It arrives via the server's data.canvasSignal/canvasRenders → showCanvas,
+  // so it bypassed every showRecommendations guard. When we're inside a worker, a
+  // discovery card must NEVER hijack the worker's own canvas — fall through to it.
+  const _activeSig = String(panel?.canvasData?.resolved?._signal || "");
+  const _isDiscoverySig = _activeSig.startsWith("vertical:") || _activeSig.startsWith("browse:");
+  const _insideWorker = !!(workerCtx?.activeWorkerData || workerCtx?.activeWorkerId || worker);
+
+  if (panel?.state === "CANVAS" && panel?.canvasData && !(_isDiscoverySig && _insideWorker)) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {tabs.length > 0 && (
@@ -4844,16 +4853,11 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <ContentCalendar />;
       case "social-media":
         return <SocialMedia />;
-      case "financials":
-        return <SpineSection label="Financials" workerSlug="platform-accounting" />;
-      case "ap-ar":
-        return <SpineSection label="AP/AR" workerSlug="platform-accounting" />;
-      case "invoices":
-        return <SpineSection label="Invoices" workerSlug="platform-accounting" />;
-      case "chart-of-accounts":
-        return <SpineSection label="Chart of Accounts" workerSlug="platform-accounting" />;
-      case "kpi-builder":
-        return <SpineSection label="KPI Builder" workerSlug="platform-control-center-pro" />;
+      // S52.46 — removed 5 unreachable duplicate cases (financials / ap-ar /
+      // invoices / chart-of-accounts / kpi-builder). They re-declared sections
+      // already handled above (→ <Accounting/> / <CommandCenter/>); JS first-match
+      // wins so these never ran — a "fix-the-wrong-copy" trap. Live behavior
+      // unchanged.
       // ── Foundation Setup (CODEX 49.4) ──
       case "business-setup":
         return <BusinessSetup onComplete={() => setCurrentSection("dashboard")} />;

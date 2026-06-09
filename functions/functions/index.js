@@ -2884,6 +2884,31 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   required: ["prompt"],
                 },
               }];
+              // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
+              if (workerSlug === "cre-analyst") {
+                businessTools.push({
+                  name: "find_distressed_cre",
+                  description: "Search LIVE ATTOM data for distressed / underwater / default-risk commercial real estate in a metro (e.g. 'San Francisco', 'Oakland', 'Bay Area', 'Austin', 'Los Angeles'). Call this whenever the user asks to find distressed CRE, underwater office, capital-stack opportunities, or commercial property to buy at a discount in a place. Returns scored candidates that also render on the Map canvas.",
+                  input_schema: { type: "object", properties: { metro: { type: "string", description: "City or metro to screen, e.g. 'San Francisco'" } }, required: ["metro"] },
+                });
+                businessTools.push({
+                  name: "find_cre_contacts",
+                  description: "Search LIVE Apollo data for real, contactable people at firms relevant to a CRE deal — special servicers, lenders, debt funds, brokers, owners. Call this WHENEVER the user asks who to contact, who holds the debt, for a list/database of servicers, lenders, brokers, workout desks, or decision-makers they can reach out to. Do NOT tell the user to go do a title search or buy a Trepp subscription — fetch the people. Returns real names, titles, companies, and emails.",
+                  input_schema: { type: "object", properties: {
+                    firms: { type: "array", items: { type: "string" }, description: "Company names to target, e.g. ['LNR Partners','Rialto Capital','Berkadia','CBRE Capital Markets']" },
+                    titles: { type: "array", items: { type: "string" }, description: "Target roles, e.g. ['Asset Manager','Special Servicing','Managing Director','Workout','Capital Markets']" },
+                  }, required: [] },
+                });
+              }
+              // S52.45 — Site Recon can live-pull ATTOM property data + a
+              // feasibility verdict for an address (fetch, don't instruct).
+              if (workerSlug === "site-recon-001") {
+                businessTools.push({
+                  name: "site_recon_lookup",
+                  description: "Pull LIVE ATTOM property data + a feasibility verdict for a specific street address. Call this WHENEVER the user gives or asks about an address or parcel. Returns assessor/owner facts, last sale, AVM, flood/opportunity-zone flags, and a Green/Yellow/Red feasibility verdict with a named blocker. NEVER tell the user to go to the county assessor portal — fetch it yourself.",
+                  input_schema: { type: "object", properties: { address: { type: "string", description: "Full street address incl. city/state, e.g. '30 Pihaa St, Lahaina, HI 96761'" } }, required: ["address"] },
+                });
+              }
 
               workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
               let aiResponse = await anthropic.messages.create({
@@ -2896,6 +2921,10 @@ When the user asks "what have I completed?", "what's next?", or about their prog
 
               let aiText = aiResponse.content.find(b => b.type === 'text')?.text || "";
               let workerImageUrl = null;
+              let workerImgErrMsg = null; // S52.46 — guidance from a blocked/failed image gen, forwarded to the model
+              let liveDistressed = null; // S52.44 — populated by find_distressed_cre tool
+              let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
+              let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
@@ -2914,25 +2943,153 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     tenantId: reqTenantId || null,
                   });
                   workerImageUrl = imgResult.imageUrl || null;
-                  if (imgResult.error) console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error);
+                  if (imgResult.error) { workerImgErrMsg = imgResult.message || null; console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error); }
                 } catch (imgErr) {
                   console.warn(`[worker:${workerSlug}] image gen failed:`, imgErr.message);
                 }
 
                 // Continue the turn so the model produces user-facing text alongside the image.
+                // On a blocked/failed gen, forward the guidance (e.g. "emit a card:re-map
+                // instead") so the model self-corrects, and DROP tools so it can't
+                // immediately re-call generate_image and hit the same block (codex M2/M3).
+                const _imgToolResult = workerImageUrl
+                  ? `Image generated: ${workerImageUrl}`
+                  : (workerImgErrMsg || "Image generation failed. Tell the user briefly.");
                 const followUpMessages = [
                   ...messages,
                   { role: "assistant", content: aiResponse.content },
-                  { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: workerImageUrl ? `Image generated: ${workerImageUrl}` : "Image generation failed. Tell the user briefly." }] },
+                  { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _imgToolResult }] },
                 ];
                 const followUp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-5-20250929',
                   max_tokens: 512,
                   system: workerPrompt,
                   messages: followUpMessages,
-                  tools: businessTools,
                 });
                 aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here you go.";
+              }
+              // S52.44 — LIVE ATTOM distressed-CRE tool (CRE Analyst only).
+              if (toolBlock && toolBlock.name === 'find_distressed_cre') {
+                try {
+                  const { searchDistressedCRE } = require("./services/attom/distressedCRE");
+                  const res = await searchDistressedCRE({ metro: toolBlock.input.metro, limit: 12 }, process.env.ATTOM_API_KEY);
+                  liveDistressed = res;
+                  const summary = (res.candidates || []).map((p, i) => `${i + 1}. [${p.distressBand} ${p.distressScore}] ${p.address} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || '').slice(0, 7)}) · ${p.propType} · ${p.distressReasons.join('; ')}`).join("\n");
+                  const toolResultText = (res.candidates && res.candidates.length)
+                    ? `Live ATTOM screen — ${res.count} distressed commercial candidates in ${res.label} (distress-proxy scored). Present these to the user; lead with the RED ones; tell them they're now pinned on the Map. Note that confirmed missed-payment/NOD status needs ATTOM's foreclosure feed:\n${summary}`
+                    : `No commercial candidates returned for "${toolBlock.input.metro}". Ask the user to try a major metro (e.g. San Francisco, Oakland, Austin, Los Angeles).`;
+                  const followUpMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiResponse.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                  ];
+                  // S52.45: no tools on the narration step (prevents a 2nd
+                  // tool_use eating the token budget mid-sentence) + higher cap
+                  // so the answer doesn't clip ("...now staring" bug).
+                  const followUp = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                  });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the distressed candidates.";
+                } catch (creErr) {
+                  console.warn(`[worker:${workerSlug}] find_distressed_cre failed:`, creErr.message);
+                }
+              }
+              // S52.45 — LIVE Apollo contact-finder (CRE Analyst). Answers "who do
+              // I contact / who holds the debt" by FETCHING real people, not by
+              // telling the user to go do a title search.
+              if (toolBlock && toolBlock.name === 'find_cre_contacts') {
+                try {
+                  const apollo = require("./services/marketingService/apollo");
+                  const firms = Array.isArray(toolBlock.input.firms) ? toolBlock.input.firms.filter(Boolean) : [];
+                  const titles = Array.isArray(toolBlock.input.titles) && toolBlock.input.titles.length
+                    ? toolBlock.input.titles
+                    : ["Asset Manager", "Special Servicing", "Managing Director", "Workout", "Capital Markets", "Loan Officer"];
+                  const criteria = { person_titles: titles, per_page: 12 };
+                  if (firms.length) criteria.q_keywords = firms.join(" ");
+                  const { people = [] } = await apollo.searchPeople(criteria, { tenantId: reqTenantId || null, userId: authUser ? authUser.uid : null, requestedBy: "chat:cre:find_cre_contacts" });
+                  liveContacts = people.slice(0, 12).map((p) => ({
+                    name: p.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+                    title: p.title || "", company: p.organization?.name || p.organization_name || "",
+                    email: p.email || null, linkedin: p.linkedin_url || null,
+                  }));
+                  const summary = liveContacts.map((c, i) => `${i + 1}. ${c.name} — ${c.title}${c.company ? " @ " + c.company : ""}${c.email ? " · " + c.email : " · (email locked — enrich)"}`).join("\n");
+                  const toolResultText = liveContacts.length
+                    ? `Live Apollo pull — ${liveContacts.length} real contacts${firms.length ? " at " + firms.join(", ") : ""}. Present them as a callable/emailable list; offer to save them to Contacts for outreach. These are real people:\n${summary}`
+                    : `Apollo returned no matches${firms.length ? " for " + firms.join(", ") : ""}. Suggest the user name specific firms (e.g. LNR Partners, Rialto Capital, Berkadia) or broaden the titles.`;
+                  const followUpMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiResponse.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                  ];
+                  const followUp = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                  });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the contacts.";
+                } catch (apErr) {
+                  console.warn(`[worker:${workerSlug}] find_cre_contacts failed:`, apErr.message);
+                }
+              }
+              // S52.45 — LIVE ATTOM property pull for Site Recon (fetch, don't instruct).
+              if (toolBlock && toolBlock.name === 'site_recon_lookup') {
+                try {
+                  const addr = String(toolBlock.input.address || "").trim();
+                  const idx = addr.indexOf(",");
+                  if (idx < 1) {
+                    aiText = `I need the city and state too — e.g. "30 Pihaa St, Lahaina, HI 96761".`;
+                  } else {
+                    const params = { address1: addr.slice(0, idx).trim(), address2: addr.slice(idx + 1).trim() };
+                    const { pullParcelBundle } = require("./workers/site-recon-001/attomClient");
+                    const { scoreFeasibility } = require("./workers/site-recon-001/scoreFeasibility");
+                    const bundle = await pullParcelBundle(params, process.env.ATTOM_API_KEY);
+                    const prop0 = bundle?.propertyDetail?.data?.property?.[0];
+                    if (!prop0) {
+                      aiText = `I couldn't find a property record at "${addr}" in ATTOM — double-check the street, city, and state.`;
+                    } else {
+                      let overlays = {};
+                      try {
+                        const gis = require("./workers/site-recon-001/gisOverlayService");
+                        overlays = await gis.getOverlays({ lat: Number(prop0?.location?.latitude), lng: Number(prop0?.location?.longitude), state: prop0?.address?.countrySubd || null, apn: prop0?.identifier?.apn || null }, { userId: authUser ? authUser.uid : null, tenantId: reqTenantId || null }) || {};
+                      } catch (gisErr) { console.warn("[site_recon_lookup] gis failed:", gisErr.message); }
+                      const feas = scoreFeasibility(bundle, { overlays });
+                      const avmVal = bundle?.avm?.data?.property?.[0]?.avm?.amount?.value;
+                      const sale = bundle?.salesHistory?.data?.property?.[0]?.salehistory?.[0] || prop0?.sale || {};
+                      const saleAmt = sale?.amount?.saleamt || sale?.saleAmt;
+                      const facts = [
+                        `Address: ${prop0?.address?.oneLine || addr}`,
+                        `APN: ${prop0?.identifier?.apn || "—"}`,
+                        `Type: ${prop0?.summary?.propclass || prop0?.summary?.proptype || "—"} · Built: ${prop0?.summary?.yearbuilt || "—"}`,
+                        `Lot: ${prop0?.lot?.lotsize1 ? prop0.lot.lotsize1 + " ac" : "—"}`,
+                        `Last sale: ${saleAmt ? "$" + Number(saleAmt).toLocaleString() : "—"}${sale?.amount?.salerecdate ? " (" + sale.amount.salerecdate + ")" : ""}`,
+                        `AVM (est. value): ${avmVal ? "$" + Number(avmVal).toLocaleString() : "—"}`,
+                        `Flood zone: ${overlays?.floodZone || "—"} · Opportunity zone: ${overlays?.opportunityZone == null ? "—" : overlays.opportunityZone}`,
+                      ].join("\n");
+                      // S52.46 — capture the REAL pull so we can repaint the canvas
+                      // with a real map + real satellite (never a fabricated image).
+                      const srLat = Number(prop0?.location?.latitude);
+                      const srLng = Number(prop0?.location?.longitude);
+                      liveSiteRecon = {
+                        address: prop0?.address?.oneLine || addr,
+                        lat: Number.isFinite(srLat) ? srLat : null,
+                        lng: Number.isFinite(srLng) ? srLng : null,
+                        verdict: feas.verdict,
+                        namedBlocker: feas.namedBlocker || null,
+                        facts,
+                      };
+                      const toolResultText = `Live ATTOM pull for ${addr}. FEASIBILITY VERDICT: ${feas.verdict}${feas.namedBlocker ? " — named blocker: " + feas.namedBlocker : ""} (confidence ${feas.confidenceScore ?? "n/a"}). Present this plain-English, LEAD with the Green/Yellow/Red verdict and the named blocker, then the facts. Be explicit about what still needs a deeper paid pull (full title chain, liens, current servicer) — but do NOT tell the user to go research it themselves; you already pulled what's below:\n${facts}`;
+                      const followUpMessages = [
+                        ...messages,
+                        { role: "assistant", content: aiResponse.content },
+                        { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                      ];
+                      const followUp = await anthropic.messages.create({
+                        model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                      });
+                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
+                    }
+                  }
+                } catch (srErr) {
+                  console.warn(`[worker:${workerSlug}] site_recon_lookup failed:`, srErr.message);
+                }
               }
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
 
@@ -3161,6 +3318,41 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     imageUrl: workerImageUrl,
                     prompt: (toolBlock && toolBlock.input && toolBlock.input.prompt) || "",
                     title: "Generated Image",
+                  },
+                });
+              }
+
+              // S52.44 — repaint the Map with LIVE ATTOM distressed-CRE results.
+              if (liveDistressed && Array.isArray(liveDistressed.candidates) && liveDistressed.candidates.length) {
+                workerCanvasRenders.push({
+                  type: "card:re-map",
+                  payload: {
+                    title: `Distressed CRE — ${liveDistressed.label} (live ATTOM)`,
+                    region: liveDistressed.label,
+                    locations: liveDistressed.candidates.map((p) => ({
+                      address: p.address,
+                      label: `${p.distressBand} ${p.distressScore} · $${(p.lastSale / 1e6).toFixed(0)}M · ${p.distressReasons[0] || ""}`,
+                      lat: p.lat, lng: p.lng,
+                    })),
+                  },
+                });
+              }
+
+              // S52.46 — repaint the canvas with the REAL Site Recon pull: a real
+              // Google Maps pin at the queried parcel (fixes "no map" WITHOUT
+              // fabricating — the Fal generate_image map path is now blocked in the
+              // generator). MapCard renders this via the frontend's own (already
+              // public, referrer-restricted) Maps key, including satellite view —
+              // so we never leak the backend GOOGLE_MAPS_API_KEY client-side.
+              if (liveSiteRecon && liveSiteRecon.lat != null && liveSiteRecon.lng != null) {
+                const _verdictLabel = `${liveSiteRecon.verdict}${liveSiteRecon.namedBlocker ? " · " + liveSiteRecon.namedBlocker : ""}`;
+                workerCanvasRenders.push({
+                  type: "card:re-map",
+                  payload: {
+                    title: `Site Recon — ${liveSiteRecon.address} (live ATTOM)`,
+                    region: liveSiteRecon.address,
+                    mapType: "satellite",
+                    locations: [{ address: liveSiteRecon.address, label: _verdictLabel, lat: liveSiteRecon.lat, lng: liveSiteRecon.lng }],
                   },
                 });
               }
@@ -19094,11 +19286,11 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
               // CODEX 49.21 — image generation tool for all business workers
               const businessTools = [{
                 name: "generate_image",
-                description: "Generate an image, illustration, icon, logo, or visual asset when the user asks for artwork or creative visuals.",
+                description: "Generate ORIGINAL artwork — an illustration, icon, logo, diagram, or creative visual the user explicitly asks to be drawn/created. NEVER use this to depict a real place: no maps, satellite views, aerial/drone shots, street views, parcel/plat/site/floor plans, or photos of a real address or property. A generated image of a real location is a fabrication (invented streets and labels). For a map or location, emit a card:re-map marker (real Google Maps) instead; for a real aerial use a Google Static Maps satellite tile or Street View.",
                 input_schema: {
                   type: "object",
                   properties: {
-                    prompt: { type: "string", description: "Descriptive prompt for the image to generate" },
+                    prompt: { type: "string", description: "Descriptive prompt for ORIGINAL artwork only — not a real-world location, map, or property." },
                     aspect_ratio: { type: "string", enum: ["9:16", "1:1", "16:9"], description: "Aspect ratio. Default: 1:1" },
                   },
                   required: ["prompt"],

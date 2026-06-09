@@ -28,7 +28,7 @@ const db = admin.firestore();
 const APPLY = process.argv.includes("--apply");
 const SEAN_UID = "WResykI56hW16silsOtvlw1UjJK2"; // Sean (creator + SOCIII admin), per installSociiiWorkers.js
 const CATALOG = path.join(__dirname, "..", "functions", "functions", "services", "alex", "catalogs", "real-estate-development.json");
-const RE_IDS = ["TITLE-ABSTRACT-001", "LAW-LANDUSE-001", "ZONING-001", "FEASIBILITY-001"];
+const RE_IDS = ["TITLE-ABSTRACT-001", "LAW-LANDUSE-001", "ZONING-001", "FEASIBILITY-001", "SITE-RECON-001"];
 
 const catalog = JSON.parse(fs.readFileSync(CATALOG, "utf8"));
 const workers = catalog.workers.filter((w) => RE_IDS.includes(w.id));

@@ -33,6 +33,8 @@ import { useWorkerCatalog } from '../data/useWorkerCatalog';
 import SessionEndCTA from './worker/SessionEndCTA';
 import MessageFeedback from './MessageFeedback';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
+import BetaNotice from './BetaNotice.jsx';
+import ChatMarkdown from './ChatMarkdown.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
 import CanvasResolver from '../services/CanvasResolver';
 import { WORKER_CHECKLISTS, WORKER_INTELLIGENCE } from './canvas/WorkerCanvas';
@@ -287,6 +289,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (!workerCtx?.workerReady || !workerCtx?.activeWorkerData) return;
     const w = workerCtx.activeWorkerData;
     const workerId = w.workerId || w.slug;
+
+    // S52.44 — keep the chat header in sync with the active worker. It went
+    // stale (showed the previous worker's name, e.g. "Zoning 001" while inside
+    // Title Abstract) when a worker was opened via the worker context rather
+    // than the ta:select-worker event.
+    setActiveWorkerName(w.name || w.display_name || w.slug);
+    setActiveWorkerSlug(workerId);
 
     // Prevent duplicate openers for same worker
     if (openerFiredRef.current === workerId) return;
@@ -1359,8 +1368,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         }
       } catch {}
 
-      // Signal extractor — update canvas when user mentions a vertical
-      if (!activeWorkerSlug) {
+      // Signal extractor — update canvas when user mentions a vertical.
+      // S52.45 — THE overlay root cause: this fires showRecommendations (the
+      // "<vertical> Workers" panel) and was gated only on local `activeWorkerSlug`,
+      // which the code itself notes (line ~1190) goes STALE/null across navigation.
+      // Inside a worker that stale-null let the panel pop over the canvas every
+      // chat. Gate on the reliable WorkerStateContext signal instead.
+      const _inWorker = workerCtx?.activeWorkerId || workerCtx?.activeWorkerData?.workerId
+        || workerCtx?.activeWorkerData?.slug || activeWorkerSlug || activeWorkerName;
+      if (!_inWorker) {
         const signal = extractSignal(userMessage);
         if (signal && panel?.showRecommendations) {
           const searchBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
@@ -1402,8 +1418,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         }
       }
 
-      // Canvas Protocol (44.9) — resolve canvas signal from API response
-      if (data.canvasSignal && panel?.showCanvas) {
+      // Canvas Protocol (44.9) — resolve canvas signal from API response.
+      // S52.46 — drop DISCOVERY signals (vertical:* / browse:*) when inside a
+      // worker: they resolve to WorkerListCanvas ("<vertical> Workers") and would
+      // paint over the worker's own canvas. This is the source-side half of the
+      // overlay fix (the App.jsx render gate is the backstop).
+      const _isDiscovery = (s) => typeof s === 'string' && (s.startsWith('vertical:') || s.startsWith('browse:'));
+      if (data.canvasSignal && panel?.showCanvas && !(_inWorker && _isDiscovery(data.canvasSignal))) {
         CanvasResolver.resolve(data.canvasSignal, data.canvasContext || {}, panel.showCanvas);
       }
 
@@ -1420,6 +1441,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           if (typeof panel.openIfClosed === 'function') panel.openIfClosed();
           for (const render of data.canvasRenders) {
             if (!render || !render.type) continue;
+            // S52.46 — never let a discovery render hijack an open worker canvas.
+            if (_inWorker && _isDiscovery(render.type)) continue;
             let resolved = lookupSignal(render.type);
             if (!resolved) {
               console.warn('[canvas] unknown render type, using card:work-product fallback:', render.type);
@@ -1850,6 +1873,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         })()}</span>
       </div>
 
+      {/* S52.45 — explicit BETA/in-development warning in the chat surface */}
+      {currentSection !== 'creator-journey' && <BetaNotice />}
+
       {/* Language change toast */}
       {langToast && (
         <div style={{
@@ -1994,7 +2020,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           <div key={idx}>
             <div className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
               <div className="chat-bubble" style={msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' } : undefined}>
-                {displayContent}
+                {msg.role === 'assistant' && !msg.isError && typeof displayContent === 'string'
+                  ? <ChatMarkdown>{displayContent}</ChatMarkdown>
+                  : displayContent}
               </div>
               {(msg.structuredData || embeddedDoc) && (
                 <div className="chat-structured-data">

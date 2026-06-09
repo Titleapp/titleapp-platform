@@ -227,9 +227,15 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
             <WorkerIcon slug={worker.slug} size={32} color="#ffffff" />
           </div>
         </div>
-        <div style={S.badge}>{worker.suite}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+          <div style={S.badge}>{worker.suite}</div>
+          <span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>BETA</span>
+        </div>
         <h1 style={S.heroTitle}>{content.headline || worker.name}</h1>
         <p style={S.heroSub}>{content.subheadline || worker.description}</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 12, maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+          <strong>In development.</strong> This worker is free while in beta — it partly works and will be glitchy. Treat it as a test session, not a production tool.
+        </p>
       </div>
 
       {/* Tab bar — visible for subscribed users */}

@@ -1252,42 +1252,12 @@ export default function Sidebar({
     return cleaned || "SOCIII";
   })();
 
-  // Spine nav → canvas signal map (CODEX 49.5 Fix 1)
-  const SPINE_NAV_CANVAS_MAP = {
-    "financials": "pl-summary",
-    "accounting": "pl-summary",
-    "ap-ar": "invoice-list",
-    "invoices": "invoice-list",
-    "chart-of-accounts": "chart-of-accounts",
-    "employees": "employee-register",
-    "hr-people": "employee-register",
-    "contacts-all": "contacts",
-    "contacts": "contacts",
-    "client-list": "contacts",
-    "vendor-list": "contacts",
-    "follow-ups": "contacts",
-    "content-calendar": "content-calendar",
-    "campaigns": "content-calendar",
-    "social-media": "content-calendar",
-    "control-center": "control-center",
-    "hr-compliance": "employee-register",
-    "onboarding": "employee-register",
-    "kpi-builder": "control-center",
-  };
+  // S52.46 — removed SPINE_NAV_CANVAS_MAP + the ta:canvas-signal dispatch below
+  // it. Nothing in the app listened to "ta:canvas-signal" (dead trigger). Spine
+  // nav still works via onNavigate(sectionId) → the section switch in App.jsx.
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
-    // Dispatch canvas signal for Spine nav items
-    const canvasCard = SPINE_NAV_CANVAS_MAP[sectionId];
-    if (canvasCard) {
-      window.dispatchEvent(new CustomEvent("ta:canvas-signal", {
-        detail: {
-          type: canvasCard,
-          source: "nav",
-          workspaceId: localStorage.getItem("WORKSPACE_ID") || "vault",
-        }
-      }));
-    }
     if (onClose) onClose();
   }
 
