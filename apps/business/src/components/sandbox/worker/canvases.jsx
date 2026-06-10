@@ -69,6 +69,17 @@ const ghostBtn = {
   fontWeight: 500,
   cursor: "pointer",
 };
+// Green = "advance / I'm done with this step." Distinct from purple (actions).
+const successBtn = {
+  background: "#16A34A",
+  color: "#FFFFFF",
+  border: "none",
+  borderRadius: 6,
+  padding: "11px 18px",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 function CanvasShell({ title, subtitle, children }) {
   return (
@@ -76,6 +87,19 @@ function CanvasShell({ title, subtitle, children }) {
       <div style={heading}>{title}</div>
       {subtitle && <div style={sub}>{subtitle}</div>}
       {children}
+    </div>
+  );
+}
+
+// Shared "advance to next step" control. Green + an explicit prompt so it's
+// obvious this confirms the step rather than labelling its status.
+function StepComplete({ onClick, disabled, label = "Mark complete", prompt = "Are you done with this step?" }) {
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{prompt}</div>
+      <button onClick={onClick} disabled={disabled} style={{ ...successBtn, opacity: disabled ? 0.4 : 1 }}>
+        {label} →
+      </button>
     </div>
   );
 }
@@ -220,8 +244,7 @@ export function DefineCanvas({ session, onComplete }) {
         <textarea style={{ ...textarea, marginTop: 8 }} value={creatorBio} onChange={e => setCreatorBio(e.target.value)} placeholder="Your bio appears here — edit it freely. (e.g. NV-licensed broker, 18 yrs, qualified CE instructor.)" />
       </div>
 
-      <button
-        style={{ ...primaryBtn, opacity: ready() ? 1 : 0.4 }}
+      <StepComplete
         disabled={!ready()}
         onClick={() => onComplete({
           spec: {
@@ -230,9 +253,7 @@ export function DefineCanvas({ session, onComplete }) {
             creatorLinkedin: linkedinUrl.trim(), creatorHeadshotUrl: headshotUrl || null,
           },
         })}
-      >
-        Define complete
-      </button>
+      />
 
       {/* Live worker card preview */}
       <div style={{ ...card, borderLeft: `4px solid ${PURPLE}`, marginTop: 12 }}>
@@ -469,8 +490,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
         <textarea style={textarea} value={rationale} onChange={e => setRationale(e.target.value)} placeholder="One line on why this canvas fits the job" />
       </div>
 
-      <button
-        style={{ ...primaryBtn, opacity: ready ? 1 : 0.4 }}
+      <StepComplete
         disabled={!ready}
         onClick={() => onComplete({
           stepData: {
@@ -485,9 +505,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
             rationale: rationale.trim(),
           },
         })}
-      >
-        Canvas designed
-      </button>
+      />
     </CanvasShell>
   );
 }
@@ -621,15 +639,12 @@ export function KnowledgeCanvas({ session, workerId, onComplete }) {
         ))}
       </div>
 
-      <button
-        style={{ ...primaryBtn, opacity: docCount > 0 ? 1 : 0.4 }}
+      <StepComplete
         disabled={docCount === 0}
         onClick={() => onComplete({
           stepData: { documentCount: docCount, totalChars },
         })}
-      >
-        Knowledge complete
-      </button>
+      />
     </CanvasShell>
   );
 }
@@ -673,8 +688,7 @@ export function RulesCanvas({ session, onComplete }) {
         <textarea style={textarea} value={reasoning} onChange={e => setReasoning(e.target.value)} />
       </div>
 
-      <button
-        style={{ ...primaryBtn, opacity: hasContent ? 1 : 0.4 }}
+      <StepComplete
         disabled={!hasContent}
         onClick={() => onComplete({
           stepData: {
@@ -687,9 +701,7 @@ export function RulesCanvas({ session, onComplete }) {
             reasoning,
           },
         })}
-      >
-        Rules locked
-      </button>
+      />
     </CanvasShell>
   );
 }
@@ -737,12 +749,10 @@ export function ToolsCanvas({ session, onComplete }) {
         ))}
       </div>
 
-      <button
-        style={primaryBtn}
+      <StepComplete
+        prompt="Tools are optional — done here?"
         onClick={() => onComplete({ stepData: { connectedTools: tools } })}
-      >
-        Tools complete
-      </button>
+      />
     </CanvasShell>
   );
 }
@@ -884,13 +894,10 @@ export function PreflightCanvas({ session, onComplete }) {
           </label>
         ))}
       </div>
-      <button
-        style={{ ...primaryBtn, opacity: all ? 1 : 0.4 }}
+      <StepComplete
         disabled={!all}
         onClick={() => onComplete({ stepData: { gatesPassed: PREFLIGHT_GATES.length } })}
-      >
-        Preflight complete
-      </button>
+      />
     </CanvasShell>
   );
 }
@@ -991,9 +998,10 @@ export function DistributeCanvas({ session, onComplete }) {
         )}
       </div>
 
-      <button style={primaryBtn} onClick={() => onComplete({ stepData: { launchedAt: new Date().toISOString(), shareUrl: url, deckSlides: deck.length } })}>
-        First share complete
-      </button>
+      <StepComplete
+        prompt="Shared it / grabbed your kit? Mark this step done."
+        onClick={() => onComplete({ stepData: { launchedAt: new Date().toISOString(), shareUrl: url, deckSlides: deck.length } })}
+      />
     </CanvasShell>
   );
 }
@@ -1039,12 +1047,10 @@ export function GrowCanvas({ onComplete }) {
         </div>
       </div>
 
-      <button
-        style={primaryBtn}
+      <StepComplete
+        prompt="Started your launch? Mark this step done."
         onClick={() => onComplete({ stepData: { launchChecklistDone: done, launchChecklistTotal: LAUNCH_CHECKLIST.length } })}
-      >
-        I've started my launch
-      </button>
+      />
     </CanvasShell>
   );
 }
