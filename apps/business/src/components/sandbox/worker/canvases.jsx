@@ -93,11 +93,18 @@ function CanvasShell({ title, subtitle, children }) {
 
 // Shared "advance to next step" control. Green + an explicit prompt so it's
 // obvious this confirms the step rather than labelling its status.
-function StepComplete({ onClick, disabled, label = "Mark complete", prompt = "Are you done with this step?" }) {
+function StepComplete({ onClick, disabled, label = "Mark complete", prompt, disabledHint }) {
+  const text = disabled
+    ? (disabledHint || "Complete the required fields above to continue.")
+    : (prompt || "Are you done with this step?");
   return (
     <div style={{ marginTop: 4 }}>
-      <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{prompt}</div>
-      <button onClick={onClick} disabled={disabled} style={{ ...successBtn, opacity: disabled ? 0.4 : 1 }}>
+      <div style={{ fontSize: 12, color: disabled ? "#B45309" : "#64748B", marginBottom: 6 }}>{text}</div>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{ ...successBtn, opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      >
         {label} →
       </button>
     </div>
@@ -246,6 +253,12 @@ export function DefineCanvas({ session, onComplete }) {
 
       <StepComplete
         disabled={!ready()}
+        disabledHint={`Add ${[
+          !name && "a worker name",
+          !vertical && "a vertical",
+          !audience && "an audience",
+          !job && "the job it performs",
+        ].filter(Boolean).join(", ")} up top to continue. (Chatting with Alex doesn't fill these in yet — type them into the fields above.)`}
         onClick={() => onComplete({
           spec: {
             name, category: vertical, targetAudience: audience, problemSolves: job,
