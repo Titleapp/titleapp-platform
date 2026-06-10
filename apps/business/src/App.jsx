@@ -46,6 +46,8 @@ import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
 import CommandCenter from "./sections/CommandCenter";
 import VaultDTCs from "./sections/VaultDTCs";
+import LearningRecord from "./sections/LearningRecord";
+import CECourseCanvas from "./sections/CECourseCanvas";
 import VaultAssets from "./sections/VaultAssets";
 import VaultDeadlines from "./sections/VaultDeadlines";
 import REListings from "./sections/REListings";
@@ -4434,6 +4436,12 @@ function WorkerHomeRenderer({ onBack }) {
     return <NursingEducationPanel />;
   }
 
+  // re-ce-nevada-001 — Nevada Real Estate CE worker (the "what do you hate"
+  // demo). Renders its own 4-tab canvas: Readiness / Course / Reporting / Done.
+  if (worker?.slug === "re-ce-nevada-001") {
+    return <CECourseCanvas />;
+  }
+
   // Investor entitlement override — when the IR/fundraise worker is opened
   // by an entitled investor (not the founder/tenant), swap the founder canvas
   // for the investor-side surface (position + materials/deadlines render via
@@ -4797,6 +4805,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <CommandCenter />;
       case "vault-dtcs":
         return <VaultDTCs />;
+      case "vault-learning-record":
+        return <LearningRecord />;
       case "vault-assets":
         return <VaultAssets />;
       case "vault-deadlines":
