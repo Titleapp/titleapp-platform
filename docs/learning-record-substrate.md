@@ -1,215 +1,142 @@
 # Learning Record Substrate — Spec
 
-**Status:** Draft for review (2026-06-09)
-**Driver:** Ruthie Clearwater's Student Evaluation Worker (university nursing program). Generalizes to any education + professional CE use case.
-**Thesis:** This is **not a new data model.** It is the platform's existing **DTC + append-only logbook** substrate, made *typed and attested* so a worker can reason over real graded events instead of fixtures.
+**Status:** Canonical architecture (reframed 2026-06-09)
+**Driver:** Ruthie Clearwater's evaluation worker (University of Hawai‘i nursing). Generalizes to **all education + professional CE.**
+**Thesis:** The educational record is a **Vault function** (core DTC + Logbook), *not* a worker. Workers are thin **pens** (write) and **lenses** (read) over the same student-owned record.
 
 ---
 
-## 0. Where this already exists (don't reinvent)
+## 0. Why this exists — the problem
 
-The universal record model is already live across every vertical:
+Institutions hold only **coarse** records. Even *within* a single college (UH), departments often can't access or share granular course-level data: you can see that a student **registered for a course** and got a **pass/fail grade** — but not the assessments, competencies, clinical hours, or materials underneath. That granularity is siloed across LMS instances, instructor gradebooks, and preceptor sign-offs. It's never assembled, never portable, and the institution itself can't easily produce it.
 
-| Vertical | Anchor (DTC) | Logbook (append-only events) |
-|---|---|---|
-| Auto | VIN | service, mileage, title transfer |
-| Aviation | tail number | **flight hours, currency, endorsements** |
-| Academic | student record (`category:'student'`, `chatEngine.js:2723`) | today: free-text strings only |
-| Credential / CE | credential (`category:'credential'` + `expiry`, `chatEngine.js:2811`) | today: free-text strings only |
-
-DTCs live in `digitalTitleCertificates`; the logbook is the append-only event stream on the record. **The gap is depth:** the student/credential logbook entries are currently untyped strings (`{ entry, date, time }`), so there are no graded events to optimize against.
-
-The aviation **hours + currency + endorsement** model is the closest existing analog to nursing **clinical hours + competency check-offs** — reuse it, don't reinvent it.
+**The fix:** a **student-owned record in the Vault** where the granular data lives — append-only and attested — that the student carries across courses, schools, and into employment, and grants access to whoever needs it. The institution doesn't assemble it; **the record assembles itself as writers contribute.** That portability + granularity is the moat.
 
 ---
 
-## Architecture decision — Vault = system of record, worker = adjacent reader
+## 1. The architecture — three layers
 
-The learning record lives in the **Vault**, *not* inside Ruthie's worker. **Expand the Vault** to make "Learning Record" a first-class type (DTC + typed logbook); build the **Student Evaluation Worker as a vault-adjacent, stateless reader that owns no data.** These aren't either/or — it's a clean division of labor.
+```
+┌─ LAYER 1 · THE RECORD (Vault) ─────────────────────────────┐
+│  Educational Record = DTC (enrollment/credential anchor)    │
+│                     + append-only, typed Logbook            │
+│  INTAKE: KYC-1 ID check · capture student ID · upload-or-   │
+│          attest (Reagan rule)                               │
+│  Student OWNS it · grants scoped access (FERPA) · UNIVERSAL  │
+│  >>> NOT a worker. One place. All education + CE inherit. <<<│
+└─────────────────────────────────────────────────────────────┘
+      ▲ write (attested)                 │ read
+      │                                  ▼
+┌─ LAYER 2 · WRITER workers ─┐   ┌─ LAYER 3 · READER workers ──┐
+│ Teacher course-evaluation  │   │ Student-eval (Ruthie's)     │
+│ Preceptor competency check │   │ CE / license renewal        │
+│ LMS import connector       │   │ Academic advisor            │
+│ → GENERATE attested logbook│   │ Employer verification       │
+│   entries at the Vault     │   │ → READ + derive · own nothing│
+└────────────────────────────┘   └─────────────────────────────┘
+```
 
-**Why the record belongs in the Vault:**
-- **Student ownership + portability (FERPA):** the record follows the student across schools and into employment. Only works if it's Vault-owned, not locked inside one school's worker.
-- **Reuse = the marketplace thesis:** one Vault learning record → many workers read it (evaluation, CE/renewal, academic advising, employer verification). Data trapped in a worker can't be reused.
-- **Defensible IP:** the append-only record model is the moat — not the worker UI (CLAUDE.md invariant #4).
-- **Survives the worker:** workers come and go; the transcript / clinical-hours record must persist regardless.
+### Layer 1 — THE RECORD (Vault). Owns it.
+The Educational Record is an instance of the platform's universal **DTC + append-only Logbook** (same substrate as the auto VIN record and the aviation logbook).
+- **Intake — how a record is created** (this is the onboarding, and it lives here, not in a worker):
+  1. **KYC-1 ID check** (Stripe Identity) — an education record must tie to a *real, verified person* (FERPA + credential integrity). Gated via the capabilities registry (`requiredKyc: KYC-1`).
+  2. **Capture student ID / enrollment** → mints the enrollment **DTC**.
+  3. **Upload-or-attest** each record (see provenance below).
+- **Reagan rule — "trust but verify":** when the evidence isn't in hand (e.g. someone's old college transcripts), the student makes a **signed self-statement** → entered as a logbook entry with `source: student`, `confidence < 1`, flagged **"attestation pending."** The worker treats it as *claimed, not proven* and surfaces what still needs verification. A later registrar pull / LMS import / uploaded doc flips it to **verified**. This lets someone start *now* without being blocked on paperwork.
+- **FERPA grants:** the student owns the record and grants scoped access (their school, a program, an employer). Revocable, auditable.
+- **Universal:** built **once**; every education + CE vertical inherits it. No worker is required to *have* an educational record.
 
-**Why the worker stays adjacent (owns nothing):**
-- Platform invariant: *"AI agents are stateless executors."* The worker reads DTC + logbook, computes evidence-first analytics, proposes insights — it never becomes the system of record.
-- The same worker pattern is then reusable for CE, advising, employer verification, etc.
+### Layer 2 — WRITER workers. Generate entries.
+Pens. They **write attested logbook entries** to enrolled students' Vault records, under the FERPA grant the student gave their school.
+- **Teacher course-evaluation worker** (Ruthie's brokerage of this idea): evaluates students in a course → writes grades / competency check-offs to each student's record, **teacher-attested**. *This is how the granularity the institution couldn't assemble gets into the Vault.*
+- **Preceptor competency check-off**, **LMS import connector** (Canvas/Blackboard) — same pattern, different provenance.
 
-**This is mostly enrichment, not net-new infra.** The Vault already has the scaffolding — `category:'student'` DTC, `MyCertifications`, `MyLogbook`, `VaultDTCs`. "Expanding the Vault" here means enriching the existing DTC + logbook with the typed schema (Part A) + a "Learning Record" Vault view + the FERPA grant model (Part B) — not building a second store.
-
-| | **VAULT** (expand) | **WORKER** (Ruthie's — adjacent) |
-|---|---|---|
-| Owns | the record (DTC + logbook), append-only | nothing — stateless |
-| Controls | student grants, FERPA access, portability | reads granted records only |
-| Ingestion | LMS import / attestation land **here** | — |
-| Produces | the durable record | evidence-first analytics, study plans, readiness |
-| Lifespan | permanent, follows the student | swappable; one of many readers |
+### Layer 3 — READER workers. Consume + derive.
+Lenses. They **read and compute, evidence-first** — own nothing, stateless.
+- **Student-eval** (the worker already built, `student-eval-001`): mastery-by-objective, at-risk flags, clinical-hours progress, readiness estimate, study plan.
+- **CE / license renewal**, **academic advisor**, **employer verification** — all read the same record.
 
 ---
 
-## PART A — Typed logbook-entry schema
+## 2. The record schema (Layer 1 detail)
 
-### A.1 Learner DTC (the anchor)
-
-Extends the existing `student` / `credential` DTC. One DTC = one credential journey (an enrollment, a license, a CE track).
-
+### 2.1 Learner DTC (the anchor)
 ```jsonc
 {
-  "dtcId": "dtc_...",
-  "category": "learning_record",
+  "dtcId": "dtc_...", "category": "learning_record",
   "subtype": "enrollment" | "license" | "ce_track",
-  "holderUserId": "uid",                 // STUDENT owns it (their Vault)
-  "institution": { "name": "...", "id": "..." },   // school / board
-  "program":     { "name": "BSN", "id": "...", "level": "undergraduate", "cohort": "2027" },
+  "holderUserId": "uid",                              // STUDENT owns it
+  "institution": { "name": "University of Hawai‘i", "id": "..." },
+  "program": { "name": "BSN", "level": "undergraduate", "cohort": "2027" },
   "externalIds": { "studentId": "...", "lmsUserId": "...", "licenseNumber": "..." },
-  "objectiveSetId": "objset_...",        // ref to the program's objective taxonomy (A.4)
+  "objectiveSetId": "objset_...",                     // program objective taxonomy (2.3)
+  "kyc": { "level": "KYC-1", "verifiedAt": "..." },   // intake gate
   "status": "active" | "completed" | "withdrawn" | "expired",
-  "startedAt": "2025-08-25",
-  "expectedCompletion": "2027-05-15",
-  "expiry": null,                        // drives CE/license renewal when set
-  "createdAt": "...",
-  "anchor": { /* RECORD_ANCHORS: notary/escrow/chain */ }
+  "expiry": null                                       // drives CE/license renewal
 }
 ```
 
-### A.2 Logbook entry (the typed event) — **the core of this spec**
-
-Append-only. Attached to a DTC. General across verticals; rich enough for nursing.
-
+### 2.2 Logbook entry (the typed event) — the core
+Append-only. Attached to a DTC.
 ```jsonc
 {
-  "entryId": "le_...",
-  "dtcId": "dtc_...",
+  "entryId": "le_...", "dtcId": "dtc_...",
   "kind": "enrollment" | "assessment" | "clinical_hours" | "competency"
         | "ce_activity" | "remediation" | "note" | "document",
-
-  "course": { "id": "NUR320", "name": "Pharmacology", "term": "Fall 2025" },  // optional
-
-  // --- assessment (kind=assessment) ---
+  "course": { "id": "NUR320", "name": "Pharmacology", "term": "Fall 2025" },
+  // assessment
   "assessmentType": "quiz" | "exam" | "assignment" | "final" | "standardized",
-  "score": 82, "maxScore": 100, "percent": 82, "weight": 0.25,
-  "passingScore": 75, "passed": true,
-
-  // --- clinical / competency (the aviation-hours analog) ---
-  "hours": 8,                                         // kind=clinical_hours
-  "competency": { "id": "med-admin", "name": "Medication Administration", "level": "independent" },
-  "result": "met" | "not_met" | "remediate",          // kind=competency
-  "site": "Maui Memorial — Med/Surg",
-
-  // --- learning localization (enables "weak area" analysis) ---
-  "objectives": ["pharm-dosage", "pharm-interactions"],   // maps to A.4 taxonomy
-  "topics": ["pharmacology", "dosage-calculation"],
-
-  // --- provenance / trust (NO-FABRICATION, EH-01) ---
+  "score": 82, "maxScore": 100, "weight": 0.25, "passed": true,
+  // clinical / competency (aviation-hours analog)
+  "hours": 8, "competency": { "id": "med-admin", "name": "Medication Administration" },
+  "result": "met" | "not_met" | "remediate",
+  // localization (enables weak-area analysis)
+  "objectives": ["pharm-dosage"], "topics": ["pharmacology"],
+  // provenance / trust (no-fabrication, EH-01)
   "source": "lms:canvas" | "instructor" | "student" | "document_extract" | "board_feed",
-  "sourceRef": "canvas:submission:12345",
   "attestedBy": { "userId": "uid", "role": "instructor|preceptor|registrar", "at": "..." } | null,
-  "confidence": 1.0,                                  // <1 for extracted/uncertain data
-
-  // --- temporal + audit ---
-  "occurredAt": "2025-10-14",
-  "recordedAt": "2025-10-15T09:02:00Z",
+  "confidence": 1.0,                                   // <1 for student-attested / extracted
+  "verificationStatus": "verified" | "attestation_pending",
+  "occurredAt": "2025-10-14", "recordedAt": "...",
   "documents": [{ "name": "exam.pdf", "path": "...", "url": "..." }]
 }
 ```
 
-### A.3 Append-only invariant — state is COMPUTED, never stored
-
-Consistent with the platform's core invariant. The worker derives, never overwrites:
-
-- **GPA / course grade** = weighted roll-up of `assessment` entries.
-- **Clinical hours** = sum of `clinical_hours.hours` (exactly the aviation flight-hours pattern).
-- **Competencies met** = latest `competency` result per `competency.id`.
-- **CE status** = sum of `ce_activity.hours` vs. board requirement, against DTC `expiry`.
-- **NCLEX / readiness** = derived estimate (always disclosed as an estimate).
-
-### A.4 Objective taxonomy (the "optimize learning" enabler)
-
-A lightweight per-program objective set (`objectiveSetId`). Entries tag `objectives[]`. This is what lets the worker say *"weak in pharmacodynamics across 3 assessments"* instead of just *"GPA 3.1"*. For nursing, seed from the program's course objectives / NCLEX test plan categories.
-
-### A.5 Worked examples
-
-```jsonc
-// Pharmacology exam (from the LMS)
-{ "kind":"assessment", "course":{"id":"NUR320","name":"Pharmacology"},
-  "assessmentType":"exam", "score":82, "maxScore":100, "weight":0.25,
-  "objectives":["pharm-dosage"], "source":"lms:canvas", "occurredAt":"2025-10-14" }
-
-// Clinical rotation hours (preceptor-attested — the aviation-hours analog)
-{ "kind":"clinical_hours", "hours":8, "site":"Maui Memorial — Med/Surg",
-  "source":"instructor", "attestedBy":{"role":"preceptor","userId":"uid","at":"..."},
-  "occurredAt":"2025-10-16" }
-
-// Competency check-off
-{ "kind":"competency", "competency":{"id":"med-admin","name":"Medication Administration","level":"independent"},
-  "result":"met", "source":"instructor", "attestedBy":{"role":"preceptor",...} }
-
-// Professional CE activity (on a subtype:'license' DTC with expiry)
-{ "kind":"ce_activity", "course":{"name":"Sepsis Update"}, "hours":2,
-  "topics":["critical-care"], "source":"document_extract", "confidence":0.9,
-  "documents":[{"name":"ce-cert.pdf","path":"..."}] }
-```
+### 2.3 Computed state + objective taxonomy
+State is **derived**, never stored (append-only invariant): GPA/grade = weighted roll-up; clinical hours = sum; competencies met = latest per id; readiness = disclosed estimate. A per-program **objective taxonomy** (`objectiveSetId`) lets entries tag `objectives[]` — that's what turns "GPA 3.1" into "weak in pharmacodynamics across 3 assessments."
 
 ---
 
-## PART B — Ingestion + FERPA model (one-pager)
+## 3. Intake, provenance & FERPA (Layer 1 detail)
 
-### B.1 Where entries come from (provenance-first)
-
-The worker can only be evidence-first if every entry has a trustworthy source. No source → it cannot be cited → the worker won't assert it.
-
-| Path | Use | Provenance | Priority |
+### 3.1 Provenance-first ingestion
+| Path | Use | Provenance | Verification |
 |---|---|---|---|
-| **LMS import** (Canvas / Blackboard / Moodle API) | courses, assignments, quiz/exam grades | high — `source:lms:*` | **P0** — the unlock for a university program |
-| **Instructor / preceptor attestation** | clinical hours, competency check-offs (not in LMS) | high — `attestedBy` | **P0** for nursing |
-| **Student manual entry** | gaps, prior coursework | low — flag for attestation | P1 |
-| **Document upload + extract** | transcripts, CE certificates | medium — `confidence`, flag for attestation | P1 |
-| **Board / registrar feed** | license + CE verification | high | P2 (future) |
+| **LMS import** (Canvas/Blackboard) | courses, grades | high — `lms:*` | verified |
+| **Instructor / preceptor attestation** (writer worker) | clinical hours, competencies | high — `attestedBy` | verified |
+| **Document upload + extract** | transcripts, certificates, **student ID** | medium — `confidence` | pending → verified on review |
+| **Student statement (Reagan rule)** | gaps, prior coursework with no doc | low — `source: student` | **attestation_pending** |
+| **Registrar / board feed** | license + CE verification | high | verified |
 
-**Recommendation:** lead with **Canvas LMS import** (most nursing programs run Canvas or Blackboard) + **instructor attestation** for clinical/competency. That covers ~90% of a nursing program's record with real provenance.
-
-### B.2 Trust model
-
-- Graded academic events: trusted from the **LMS** or **registrar**.
-- Clinical hours / competencies: require **preceptor/instructor attestation** (`attestedBy`).
-- Student- or document-sourced entries: enter as `confidence < 1` and are **flagged for attestation** before the worker treats them as authoritative.
-
-### B.3 FERPA — the education HIPAA (first-class, and a selling point)
-
-Student education records are federally protected (FERPA), exactly as health data is under HIPAA. We already PHI-scrub for health verticals; apply the same posture here.
-
-- **Ownership:** the student owns the record (`holderUserId` = their Vault). Records are **portable** — they follow the student across schools and into employment. *This is a differentiator, not just a constraint.*
-- **Institutional access via grants:** schools/instructors read student records only through the existing **memberships** model, scoped to their program/cohort — never a global read.
-- **Consent + revocation:** the student grants school access and can export or revoke it.
-- **Audit (Deposition Rule):** every read and write is an append-only event — who saw what, when.
-- **Minimization:** the worker reasons over **structured fields**, not raw PII dumps; scrub identifiers before any model call, same as the PHI path.
-- **Retention / deletion:** append-only, but support FERPA deletion/redaction via tombstone entries rather than destructive overwrite.
-
-### B.4 The evaluation worker contract (build-on-top)
-
-Reads DTC + logbook, computes **evidence-first**:
-- Mastery heatmap by **objective** (A.4) → names weak areas with the entries that prove it.
-- At-risk flags (trend across assessments).
-- Clinical-hours progress vs. program requirement; competencies outstanding.
-- NCLEX / readiness **estimate** (disclosed as an estimate, never a guarantee).
-- Recommended study plan tied to weak objectives.
-
-**Hard rule (EH-01):** every insight cites `entryId`s. The worker **never invents a grade, hour, or competency.** If data is missing, it says so (same discipline as Site Recon / "what still needs a deeper pull").
-
-### B.5 Canvas (Trump Rule)
-
-The worker's canvas is a **mastery / competency / clinical-hours dashboard** — one glance shows: on-track or at-risk, mastery heatmap, hours progress ring, competencies remaining. Not a transcript table — a cockpit.
+### 3.2 FERPA — first-class, and a differentiator
+Education records are federally protected (apply the same posture as PHI: scrub before model calls; access via the memberships grant model).
+- **Ownership + portability:** the student owns it; it follows them across schools and into employment. *This is the thing UH can't do internally.*
+- **Grants:** institutional access only through scoped, revocable, audited grants.
+- **No-fabrication (EH-01):** every reader insight cites `entryId`s; never invent a grade/hour/competency; **attested-pending vs verified is always visible.**
 
 ---
 
-## Phased build plan
+## 4. Build order
 
-1. **Schema** — add the typed logbook-entry model + `learning_record` DTC subtype (extend the existing `student`/`credential` flows, don't fork them).
-2. **Ingestion** — Canvas LMS import connector (P0) + instructor/preceptor attestation for clinical hours & competencies (P0).
-3. **Evaluation worker** — evidence-first analytics over the logbook (mastery, at-risk, readiness, study plan).
-4. **Canvas** — the mastery/competency/hours dashboard.
-5. **CE variant** — reuse the whole stack for professional CE: `license` DTC + `ce_activity` entries + renewal-readiness vs. `expiry`.
+1. **Vault — Educational Record + intake** (Layer 1): the "Add Educational Record" flow — KYC-1 → capture student ID (mint DTC) → upload-or-attest, with the Reagan-rule statement branch and the verified/pending flag. Built once; universal.
+2. **Writer worker** (Layer 2): the **teacher course-evaluation worker** — generates attested entries into enrolled students' records (the granularity injector). This is the worker Ruthie is building.
+3. **Reader** (Layer 3): `student-eval-001` already covers the analytics lens — keep it thin (reads the record, owns nothing).
 
-**Highest-leverage first step:** the typed/attested entry schema + one real ingestion path (Canvas). Without real graded events flowing in, the worker has nothing to optimize — same lesson as Site Recon shining only on real data.
+**Highest-leverage first step:** the Vault intake (Layer 1) + one real writer path (teacher attestation and/or Canvas import). Without real entries flowing in, every reader is demoing on fixtures — the same lesson as Site Recon.
+
+---
+
+## 5. Worker examples (so the layers are concrete)
+- **Ruthie's worker** → a **reader** (and/or a teacher-side **writer** for her course): evaluates her nursing students, and references/writes their Vault records.
+- **`student-eval-001`** → a **reader**: mastery/readiness analytics over whatever record is loaded.
+- **A teacher's course-evaluation worker** → a **writer**: turns a semester of grading into attested logbook entries at the Vault level — the granular layer institutions can't currently share.
