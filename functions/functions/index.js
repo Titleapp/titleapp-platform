@@ -10063,6 +10063,36 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/creator:bio:generate — Draft a creator bio (LinkedIn-anchored)
+    if (route === "/creator:bio:generate" && method === "POST") {
+      try {
+        const { generateCreatorBio } = require("./services/creatorAssist");
+        const result = await generateCreatorBio({
+          name: body.name,
+          source: body.source,
+          linkedinUrl: body.linkedinUrl,
+          workerName: body.workerName,
+          vertical: body.vertical,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("creator:bio:generate failed:", e.message);
+        return jsonError(res, 500, "Bio generation failed");
+      }
+    }
+
+    // POST /v1/worker:deck:generate — Generate a 10-slide subscriber pitch deck
+    if (route === "/worker:deck:generate" && method === "POST") {
+      try {
+        const { generateWorkerDeck } = require("./services/creatorAssist");
+        const result = await generateWorkerDeck({ spec: body.spec || {} });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("worker:deck:generate failed:", e.message);
+        return jsonError(res, 500, "Deck generation failed");
+      }
+    }
+
     // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
 
     // Platform-level rules (Tier 0) — imported from shared schema (single source of truth)

@@ -240,6 +240,32 @@ export async function uploadFile(file) {
   });
 }
 
+// ─── Image generation (canvas mockup) ────────────────────────────────────────
+
+/**
+ * Generate a canvas mockup image via fal.ai.
+ * @param {object} args
+ * @param {string} args.workerId
+ * @param {string} args.prompt   — <=500 chars
+ * @param {"cartoon"|"realistic"|"diagram"|"minimal"} [args.style]
+ * @param {"square"|"landscape_4_3"|"portrait_3_4"} [args.size]
+ */
+export function generateWorkerImage({ workerId, prompt, style, size }) {
+  return call("POST", "/v1/image:generate", { body: { workerId, prompt, style, size } });
+}
+
+// ─── Creator assist (bio + pitch deck) ───────────────────────────────────────
+
+/** Draft a creator bio from a LinkedIn URL and/or a few words about themselves. */
+export function generateCreatorBio({ name, source, linkedinUrl, workerName, vertical }) {
+  return call("POST", "/v1/creator:bio:generate", { body: { name, source, linkedinUrl, workerName, vertical } });
+}
+
+/** Generate a 10-slide subscriber-facing pitch deck for a worker. */
+export function generateWorkerDeck(spec) {
+  return call("POST", "/v1/worker:deck:generate", { body: { spec } });
+}
+
 /**
  * Encode an array of File objects into the format expected by the chat handler.
  * Returns [{ name, data (base64 URI), type }] ready to include in the request body.
