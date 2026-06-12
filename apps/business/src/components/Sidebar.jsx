@@ -1826,14 +1826,11 @@ export default function Sidebar({
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
-          </div>
-          <div className="sidebarSection">
             <button
               onClick={() => handleNavClick("vault-learning-record")}
-              className="sidebarLabel"
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: "8px 0 0 0" }}
             >
-              <span style={{ color: "#a78bfa", display: "flex", alignItems: "center", gap: 6 }}><span aria-hidden="true">🎓</span> Learning Record</span>
+              <span style={{ color: "#a78bfa", display: "flex", alignItems: "center", gap: 6, paddingLeft: 16, fontSize: 12.5 }}><span aria-hidden="true">🎓</span> Academic Record</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <path d="M9 18l6-6-6-6" />
               </svg>

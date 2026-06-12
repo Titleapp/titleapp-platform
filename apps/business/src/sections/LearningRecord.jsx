@@ -206,6 +206,8 @@ const TABS = [
 
 export default function LearningRecord() {
   const [tab, setTab] = useState("institutions");
+  const [notice, setNotice] = useState(null);
+  const flash = (m) => { setNotice(m); setTimeout(() => setNotice(null), 2800); };
   const entries = allEntries();
   const verified = entries.filter((e) => e.v === "verified");
   const pending = entries.filter((e) => e.v === "pending");
@@ -213,6 +215,7 @@ export default function LearningRecord() {
 
   return (
     <div style={{ padding: "8px 4px", maxWidth: 860 }}>
+      {notice && <div style={{ position: "sticky", top: 8, zIndex: 5, background: "#0f172a", color: "#fff", fontSize: 12.5, fontWeight: 600, padding: "9px 14px", borderRadius: 8, marginBottom: 12 }}>✓ {notice}</div>}
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Academic Record</div>
@@ -281,8 +284,8 @@ export default function LearningRecord() {
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{e.program} · {e.detail || "Self-stated"}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ fontSize: 12, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Add evidence</button>
-                <button style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Request sign-off ✍️</button>
+                <button onClick={() => flash("Upload a transcript or certificate to verify this entry.")} style={{ fontSize: 12, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Add evidence</button>
+                <button onClick={() => flash(`Sign-off request sent — the instructor/registrar will be asked to e-sign an affidavit for "${e.title}".`)} style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Request sign-off ✍️</button>
               </div>
             </div>
           ))}
@@ -303,10 +306,10 @@ export default function LearningRecord() {
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{g.who}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{g.scope} access · granted {g.at}</div>
               </div>
-              <button style={{ fontSize: 12, fontWeight: 600, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 7, padding: "7px 14px", cursor: "pointer" }}>Revoke</button>
+              <button onClick={() => flash(`Access revoked for ${g.who}.`)} style={{ fontSize: 12, fontWeight: 600, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 7, padding: "7px 14px", cursor: "pointer" }}>Revoke</button>
             </div>
           ))}
-          <button style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>+ Authorize access</button>
+          <button onClick={() => flash("Authorize a person or organization — enter a name or email and the access scope.")} style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>+ Authorize access</button>
         </div>
       )}
 
@@ -328,8 +331,8 @@ export default function LearningRecord() {
             </div>
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <button style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 8, padding: "11px 16px", cursor: "pointer" }}>Upload a document</button>
-            <button style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "11px 16px", cursor: "pointer" }}>State it (verify later)</button>
+            <button onClick={() => flash("Opening uploader… choose your transcript or certificate.")} style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 8, padding: "11px 16px", cursor: "pointer" }}>Upload a document</button>
+            <button onClick={() => flash("Stated — added to your record as pending. Verify it later.")} style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "11px 16px", cursor: "pointer" }}>State it (verify later)</button>
           </div>
         </div>
       )}
