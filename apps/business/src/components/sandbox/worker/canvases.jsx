@@ -909,8 +909,15 @@ const PREFLIGHT_GATES = [
   "Admin review approved",
 ];
 
+const VISIBILITY_OPTIONS = [
+  { id: "public", label: "Public", desc: "Listed in the marketplace — anyone can find and subscribe." },
+  { id: "unlisted", label: "Unlisted", desc: "Hidden from the marketplace. Only people with the link can reach it." },
+  { id: "organization", label: "Organization-only", desc: "Confidential. Only members of your organization can use it — for internal SOPs and private data." },
+];
+
 export function PreflightCanvas({ session, onComplete }) {
   const [checked, setChecked] = useState(new Set());
+  const [visibility, setVisibility] = useState("public");
   function toggle(i) {
     const next = new Set(checked);
     if (next.has(i)) next.delete(i); else next.add(i);
@@ -931,9 +938,25 @@ export function PreflightCanvas({ session, onComplete }) {
           </label>
         ))}
       </div>
+
+      {/* Visibility — who can find and use this worker */}
+      <div style={card}>
+        <div style={label}>Visibility — who can find and use this worker</div>
+        <div style={sub}>Many workers are built for confidential use inside one organization. Choose how this one is shared.</div>
+        {VISIBILITY_OPTIONS.map(o => (
+          <label key={o.id} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9", cursor: "pointer", alignItems: "flex-start" }}>
+            <input type="radio" name="visibility" checked={visibility === o.id} onChange={() => setVisibility(o.id)} style={{ marginTop: 3 }} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>{o.label}</div>
+              <div style={{ fontSize: 12.5, color: "#64748B", marginTop: 1 }}>{o.desc}</div>
+            </div>
+          </label>
+        ))}
+      </div>
+
       <StepComplete
         disabled={!all}
-        onClick={() => onComplete({ stepData: { gatesPassed: PREFLIGHT_GATES.length } })}
+        onClick={() => onComplete({ stepData: { gatesPassed: PREFLIGHT_GATES.length, visibility, internal_only: visibility !== "public" } })}
       />
     </CanvasShell>
   );

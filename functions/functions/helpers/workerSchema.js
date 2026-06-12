@@ -283,7 +283,10 @@ const REGISTRY_FIELDS = {
   // Credit cost — operation tier for metering
   credit_cost:             { type: "string",  required: true  },
 
-  // Visibility — internal-only workers hidden from public marketplace
+  // Visibility — public (marketplace) | unlisted (link-only) | organization (members-only).
+  // internal_only is the derived "hidden from marketplace" flag, kept for back-compat.
+  visibility:              { type: "string",  required: false },
+  ownerTenantId:           { type: "string",  required: false },
   internal_only:           { type: "boolean", required: false },
 
   // Fork — whether this worker can be forked by other creators
@@ -947,8 +950,14 @@ function validateRegistryRecord(record, opts = {}) {
   // Credit cost
   if (record.credit_cost) sanitized.credit_cost = record.credit_cost;
 
-  // Internal-only flag
+  // Visibility — public | unlisted | organization. Derive internal_only ("hidden
+  // from marketplace") so the catalog filters honor either field.
+  if (record.visibility !== undefined && ["public", "unlisted", "organization"].includes(record.visibility)) {
+    sanitized.visibility = record.visibility;
+  }
+  if (record.ownerTenantId !== undefined) sanitized.ownerTenantId = String(record.ownerTenantId);
   if (record.internal_only !== undefined) sanitized.internal_only = !!record.internal_only;
+  else if (sanitized.visibility && sanitized.visibility !== "public") sanitized.internal_only = true;
 
   // HE Suite fields
   if (record.subject_domain) sanitized.subject_domain = record.subject_domain;

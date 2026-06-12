@@ -2370,6 +2370,28 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               const dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
 
+              // ── Organization-only visibility gate ──
+              // Confidential workers (visibility:"organization") can only be USED
+              // by members of the tenant that owns them. Public/unlisted workers
+              // and legacy workers (no ownerTenantId) are unaffected.
+              if (dw.visibility === "organization" && dw.ownerTenantId) {
+                try {
+                  const { enforceRoleGate } = require("./middleware/membershipCheck");
+                  const orgGate = await enforceRoleGate(authUser && authUser.uid, dw.ownerTenantId, "member");
+                  if (!orgGate.ok) {
+                    return res.json({
+                      ok: false,
+                      error: "ORG_ONLY_WORKER",
+                      message: "This is an organization-only worker. You must be a member of the organization that owns it to use it.",
+                    });
+                  }
+                } catch (orgErr) {
+                  // Fail-open on transient lookup errors (auth is still validated),
+                  // matching the viewer role-gate behavior below.
+                  console.warn(`[org-visibility gate] failed for ${workerSlug}:`, orgErr.message);
+                }
+              }
+
               // Tenant context for the worker chat — hoisted so it's also in
               // scope for the 50.5 usage-event write below.
               const reqTenantId =
@@ -6441,6 +6463,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const workers = [];
         snap.forEach((doc) => {
           const d = doc.data();
+          // Visibility enforcement: only PUBLIC workers appear in the marketplace
+          // catalog. Unlisted (link-only) and organization-only workers are excluded.
+          if (d.internal_only === true || (d.visibility && d.visibility !== "public")) return;
           workers.push({
             id: doc.id,
             name: d.name || "",
@@ -6912,7 +6937,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }
 
         let workers = snap.docs
-          .filter(doc => !vc.prefix || doc.id.startsWith(vc.prefix))
+          .filter(doc => {
+            const d = doc.data();
+            // Visibility: keep only PUBLIC workers in discovery. Unlisted +
+            // organization-only are excluded from the catalog.
+            if (d.internal_only === true || (d.visibility && d.visibility !== "public")) return false;
+            return !vc.prefix || doc.id.startsWith(vc.prefix);
+          })
           .slice(0, limit)
           .map(doc => {
             const d = doc.data();
