@@ -15,23 +15,31 @@ const C = {
 };
 
 // ── SAMPLE learning record (clearly badged) — shape = the real substrate ──
+// One student-owned, append-only record that survives course-to-course,
+// instructor-to-instructor, and didactic-to-clinical transitions. Ruthie's
+// nursing worker READS this; the Vault OWNS it.
 const RECORD = {
   dtc: {
     category: "learning_record", subtype: "enrollment",
     institution: "University of Hawai‘i — School of Nursing",
-    program: "BSN", cohort: "2027", holder: "Sample Student",
+    program: "BSN", cohort: "2027", holder: "Sarah Kahale",
     kyc: { level: "KYC-1", verified: true },
   },
-  // append-only typed logbook; verificationStatus drives the verified/pending split
+  // append-only typed logbook; `course` threads the longitudinal Journey view;
+  // verificationStatus (v) drives the verified/pending split.
   entries: [
-    { kind: "enrollment", title: "Enrolled — BSN, cohort 2027", source: "registrar", at: "2025-08-25", v: "verified" },
-    { kind: "document", title: "Student ID captured", detail: "Anchors the enrollment DTC", source: "document_extract", at: "2025-08-25", v: "verified" },
-    { kind: "assessment", title: "NUR 320 Pharmacology — Exam", detail: "82% · objectives: dosage, interactions", source: "lms:canvas", at: "2026-02-14", v: "verified" },
-    { kind: "assessment", title: "NUR 310 Health Assessment — Exam", detail: "91%", source: "lms:canvas", at: "2026-02-20", v: "verified" },
-    { kind: "clinical_hours", title: "Med/Surg rotation — 96 clinical hours", source: "preceptor", at: "2026-03-15", v: "verified" },
-    { kind: "competency", title: "Medication Administration — met", source: "preceptor", at: "2026-03-12", v: "verified" },
-    { kind: "competency", title: "IV Insertion — remediate", source: "preceptor", at: "2026-03-20", v: "verified" },
-    { kind: "assessment", title: "Anatomy & Physiology — A− (prior college)", detail: "Self-stated transfer credit — transcript not yet uploaded", source: "student", at: "2024-12-15", v: "pending" },
+    { kind: "enrollment", course: "Program", title: "Enrolled — BSN, cohort 2027", source: "registrar", at: "2025-08-25", v: "verified" },
+    { kind: "document", course: "Program", title: "Student ID captured", detail: "Anchors the enrollment DTC", source: "document_extract", at: "2025-08-25", v: "verified" },
+    { kind: "assessment", course: "NUR 210 — Fundamentals", title: "Foundations of Nursing Practice — Final", detail: "88% · Tanner: noticing → interpreting", source: "lms:canvas", at: "2025-12-12", v: "verified" },
+    { kind: "competency", course: "NUR 210 — Fundamentals", title: "Vital Signs & Assessment — met", source: "preceptor", at: "2025-12-05", v: "verified" },
+    { kind: "assessment", course: "NUR 220 — Health Assessment", title: "Health Assessment — Exam", detail: "91%", source: "lms:canvas", at: "2026-02-20", v: "verified" },
+    { kind: "clinical_hours", course: "NUR 220 — Health Assessment", title: "Community health rotation — 48 clinical hours", detail: "Kōkua Kalihi Valley", source: "preceptor", at: "2026-03-01", v: "verified" },
+    { kind: "assessment", course: "NUR 320 — Pharmacology", title: "Pharmacology — Exam", detail: "82% · dosage + interactions · Tanner: interpreting", source: "lms:canvas", at: "2026-02-14", v: "verified" },
+    { kind: "competency", course: "NUR 320 — Pharmacology", title: "Medication Administration — met", source: "preceptor", at: "2026-03-12", v: "verified" },
+    { kind: "clinical_hours", course: "NUR 330 — Med/Surg", title: "Med/Surg rotation — 96 clinical hours", detail: "The Queen's Medical Center", source: "preceptor", at: "2026-03-15", v: "verified" },
+    { kind: "competency", course: "NUR 330 — Med/Surg", title: "IV Insertion — remediate", detail: "Re-demo scheduled 2026-04-02 · Tanner: responding", source: "preceptor", at: "2026-03-20", v: "verified" },
+    { kind: "reflection", course: "NUR 330 — Med/Surg", title: "Clinical reflection — post-op patient", detail: "Tanner Clinical Judgment: reflecting-on-action", source: "student", at: "2026-03-21", v: "verified" },
+    { kind: "assessment", course: "Transfer", title: "Anatomy & Physiology — A− (prior college)", detail: "Self-stated transfer credit — transcript not yet uploaded", source: "student", at: "2024-12-15", v: "pending" },
   ],
   grants: [
     { who: "University of Hawai‘i — School of Nursing", scope: "read", at: "2025-08-25" },
@@ -39,7 +47,10 @@ const RECORD = {
   ],
 };
 
-const KIND_ICON = { enrollment: "🎓", assessment: "📝", clinical_hours: "🏥", competency: "✅", ce_activity: "📜", document: "📄", note: "🗒️" };
+// The course sequence in catalog order — defines the Journey timeline.
+const COURSE_ORDER = ["Program", "Transfer", "NUR 210 — Fundamentals", "NUR 220 — Health Assessment", "NUR 320 — Pharmacology", "NUR 330 — Med/Surg"];
+
+const KIND_ICON = { enrollment: "🎓", assessment: "📝", clinical_hours: "🏥", competency: "✅", reflection: "🪞", ce_activity: "📜", document: "📄", note: "🗒️" };
 
 function Badge({ v }) {
   const c = C[v] || C.pending;
@@ -64,14 +75,61 @@ function EntryRow({ e }) {
 }
 
 const TABS = [
+  { id: "journey", label: "Journey" },
   { id: "record", label: "Record" },
   { id: "verify", label: "Verify" },
   { id: "grants", label: "Grants" },
   { id: "add", label: "Add" },
 ];
 
+// Longitudinal Student Journey — one timeline across courses, didactic + clinical.
+// This is the thing a transcript can't show, and the reason the record lives in
+// the Vault (system of record) rather than inside any one course or worker.
+function JourneyView() {
+  const byCourse = COURSE_ORDER
+    .map((c) => ({ course: c, items: RECORD.entries.filter((e) => (e.course || "Program") === c) }))
+    .filter((g) => g.items.length);
+  const clinicalHrs = RECORD.entries.filter((e) => e.kind === "clinical_hours")
+    .reduce((s, e) => s + (parseInt((e.title.match(/(\d+)\s*clinical/) || [])[1], 10) || 0), 0);
+  const compsMet = RECORD.entries.filter((e) => e.kind === "competency" && /met/i.test(e.title)).length;
+  const courses = byCourse.filter((g) => g.course !== "Program" && g.course !== "Transfer").length;
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>
+        One record that follows the student <strong>across courses, instructors, and didactic → clinical</strong> — the thing a transcript can't show.
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        {[["Courses", courses], ["Clinical hours", clinicalHrs], ["Competencies met", compsMet]].map(([label, n]) => (
+          <div key={label} style={{ flex: "1 1 120px", background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.accent }}>{n}</div>
+            <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ position: "relative", paddingLeft: 18 }}>
+        <div style={{ position: "absolute", left: 5, top: 6, bottom: 6, width: 2, background: "#e9d5ff" }} />
+        {byCourse.map((g) => (
+          <div key={g.course} style={{ position: "relative", marginBottom: 18 }}>
+            <div style={{ position: "absolute", left: -17, top: 4, width: 10, height: 10, borderRadius: "50%", background: C.accent, border: "2px solid #fff" }} />
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>{g.course}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {g.items.map((e, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12.5 }}>
+                  <span style={{ fontSize: 14 }}>{KIND_ICON[e.kind] || "•"}</span>
+                  <span style={{ flex: 1 }}><span style={{ color: "#1e293b", fontWeight: 500 }}>{e.title}</span>{e.detail ? <span style={{ color: "#94a3b8" }}> — {e.detail}</span> : null}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{e.at}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LearningRecord() {
-  const [tab, setTab] = useState("record");
+  const [tab, setTab] = useState("journey");
   const verified = RECORD.entries.filter((e) => e.v === "verified");
   const pending = RECORD.entries.filter((e) => e.v === "pending");
   const d = RECORD.dtc;
@@ -119,6 +177,8 @@ export default function LearningRecord() {
       </div>
 
       {/* RECORD — the logbook timeline */}
+      {tab === "journey" && <JourneyView />}
+
       {tab === "record" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {RECORD.entries.map((e, i) => <EntryRow key={i} e={e} />)}
