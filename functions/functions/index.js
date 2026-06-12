@@ -2638,6 +2638,36 @@ INSTRUCTOR VIEW ACTIVE: The user is an instructor or program admin (Ruthie or on
                 }
               }
 
+              // Founder-side IR grounding — give the fundraise / IR worker live
+              // knowledge of the raise, the data room links, and the pipeline so
+              // Alex never claims it "can't see the data room". Slug-gated, so it
+              // cannot affect any other worker (including the sandbox).
+              if (workerPrompt && (workerSlug === "fundraise" || workerSlug === "investor-relations")) {
+                try {
+                  const dr = require("./services/fundraise/dataRoom");
+                  let frId = (body.context && body.context.fundraiseId) || body.fundraiseId || null;
+                  let fr = frId ? await dr.getFundraise(frId, reqTenantId) : null;
+                  if (!fr && reqTenantId) {
+                    const list = await dr.listFundraises(reqTenantId);
+                    fr = (list && list[0]) || null;
+                    frId = (fr && (fr.fundraiseId || fr.id)) || frId;
+                  }
+                  if (fr) {
+                    const m = fr.materials || {};
+                    let investors = [];
+                    try { investors = await dr.listInvestors(frId); } catch (_) {}
+                    workerPrompt = `LIVE RAISE — you are the founder's Investor Relations chief of staff and you KNOW this. NEVER tell the user you can't see the raise or the data room.
+- Fundraise: ${fr.name || frId} | stage: ${fr.stage || "—"} | instrument: ${fr.instrument || "—"}
+- Target: ${fr.target_raise || "—"}${fr.valuation_cap ? ` | cap: ${fr.valuation_cap}` : ""} | committed: ${fr.current_raised || 0}
+- DATA ROOM (share these links with investors): deck ${m.deckUrl || "(not set)"} · whitepaper ${m.whitepaperUrl || "(not set)"} · data room ${m.dataRoomUrl || "(not set)"}
+- Formal investors tracked: ${investors.length}. (The broader prospect pipeline lives in Contacts.)
+When asked about the data room or materials, GIVE THE LINKS ABOVE. You help the founder RUN the raise — pipeline, data room, outreach drafting.
+
+${workerPrompt}`;
+                  }
+                } catch (frErr) { console.warn("[fundraise grounding] failed:", frErr.message); }
+              }
+
               // Canvas + delivery rules (49.27) — PREPENDED so they anchor model
               // behavior before the worker-specific prompt. These override any
               // conflicting instructions from the worker prompt or prior turns.
@@ -14202,6 +14232,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             officeHoursUrl: m.officeHoursUrl || null,
           });
         }
+        // Admin bypass: tenant admins/owners see their own fundraises' materials
+        // WITHOUT an investor_portal entitlement. The ID-check/entitlement gate is
+        // for external investors (LPs) — internal admins running the raise should
+        // not be locked out of their own data room.
+        try {
+          const memSnap = await db.collection("memberships")
+            .where("userId", "==", auth.user.uid).where("status", "==", "active").get();
+          const adminTenants = [...new Set(memSnap.docs.map(d => d.data())
+            .filter(m => m.role === "admin" || m.role === "owner").map(m => m.tenantId).filter(Boolean))];
+          const seen = new Set(materials.map(m => m.fundraiseId));
+          for (const tid of adminTenants) {
+            const frs = await db.collection("fundraises").where("tenantId", "==", tid).limit(50).get();
+            for (const fd of frs.docs) {
+              if (seen.has(fd.id)) continue;
+              const fr = fd.data(); const m = fr.materials || {};
+              materials.push({
+                fundraiseId: fd.id, fundraiseName: fr.name || null,
+                deckUrl: m.deckUrl || null, whitepaperUrl: m.whitepaperUrl || null,
+                dataRoomUrl: m.dataRoomUrl || null, officeHoursUrl: m.officeHoursUrl || null,
+                viaAdmin: true,
+              });
+              seen.add(fd.id);
+            }
+          }
+        } catch (admErr) { console.warn("investor:materials admin bypass failed:", admErr.message); }
+
         return res.json({ ok: true, materials, count: materials.length });
       } catch (e) {
         console.error("investor:materials failed:", e);
@@ -14225,8 +14281,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p><strong>The thesis</strong>: every regulated profession has rules a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as governed AI workers. The audit trail is cryptographic; the workers earn for the experts who built them; the platform consolidates SaaS for the businesses that run them.</p>
 <p><strong>What's there for you right now:</strong></p>
 <ul>
-  <li>Investor data room — <a href="https://app.titleapp.ai/data-room">app.titleapp.ai/data-room</a> (memorandum, deck, SAFE, NDA, warrant, patent portfolio)</li>
-  <li>Whitepaper — <a href="https://app.titleapp.ai/whitepaper">app.titleapp.ai/whitepaper</a></li>
+  <li>Investor data room — <a href="https://sociii.ai/data-room">sociii.ai/data-room</a> (memorandum, deck, SAFE, NDA, warrant, patent portfolio)</li>
+  <li>Whitepaper — <a href="https://sociii.ai/whitepaper">sociii.ai/whitepaper</a></li>
   <li>Direct line — reply to this email or text/call (951) 4-SOC-2444</li>
 </ul>
 <p>Aiming for first close inside 30 days. If you want a 30-min call to walk through, hit reply with two windows.</p>
@@ -14244,7 +14300,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p>Quick note from Sean Combs, founder of SOCIII. We're running a pre-seed round and your name surfaced as someone who'd find the thesis interesting.</p>
 <p><strong>30-second pitch</strong>: every regulated profession (medicine, law, aviation, real estate, finance) runs on rules that a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as AI workers governed by cryptographic audit trails. The experts earn from their workers; the platform consolidates SaaS for the businesses that run them.</p>
 <p><strong>If you'd like to take a look</strong>, open your SOCIII investor workspace. You'll find the deck and whitepaper waiting; the data room (memorandum, post-money SAFE, NDA, warrant, patent portfolio) unlocks after a 90-second accreditation check:</p>
-<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your investor workspace →</a></p>
+<p><a href="${vars.magicUrl || "https://sociii.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your investor workspace →</a></p>
 <p>Patent-pending. Pre-seed open to accredited investors. Aiming for first close inside 30 days. If a 30-min call makes sense, reply with two windows.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
@@ -14617,7 +14673,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p><strong>30-second pitch</strong>: SOCIII captures the rules of regulated professions from senior experts and ships them as governed AI workers with cryptographic audit trails. The experts earn from their workers; businesses consolidate SaaS through the platform.</p>
 <p><strong>The advisor offer</strong>: 0.5–2.5% equity vesting over 24 months, milestone-tied. Specific cadence and focus tailored to where you can move the needle. HOMMIE Warrant structure (downside-protected; details in the agreement).</p>
 <p><strong>If you'd like to take a look</strong>, the next step is a quick qualification + your advisor kit. Open your SOCIII workspace to review the deck, complete a quick ID check, and sign the advisor agreement when ready:</p>
-<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your advisor workspace →</a></p>
+<p><a href="${vars.magicUrl || "https://sociii.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your advisor workspace →</a></p>
 <p>Reply with two windows if a 30-min intro call makes sense before you sign anything.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>

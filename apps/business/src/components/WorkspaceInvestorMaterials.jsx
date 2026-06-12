@@ -36,7 +36,7 @@ async function apiFetch(path, opts = {}) {
 // computes cfg[key + "Url"], so the key here = field-name minus "Url".
 const MATERIAL_DEFAULTS = {
   deck:        { title: "Pre-seed deck",          subtitle: "12-slide thesis + traction",               icon: "📊" },
-  whitepaper:  { title: "SOCIII whitepaper",      subtitle: "Architecture, patents, vertical roll-out", icon: "📄", url: "https://app.titleapp.ai/whitepaper" },
+  whitepaper:  { title: "SOCIII whitepaper",      subtitle: "Architecture, patents, vertical roll-out", icon: "📄", url: "https://sociii.ai/whitepaper" },
   dataRoom:    { title: "Data room",              subtitle: "Financials, cap table, formation docs",    icon: "🗂" },
   officeHours: { title: "Office hours with Sean", subtitle: "30 min, async OK",                         icon: "📅" },
 };
