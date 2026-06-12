@@ -1710,6 +1710,18 @@ export default function Sidebar({
             </button>
             {!creatorCollapsed && (
               <nav className="nav">
+                {/* Sandbox is the PRIMARY creator surface — always the first,
+                    most prominent way in (S52.58). */}
+                <button
+                  className="navItem"
+                  onClick={() => { window.location.href = "/sandbox/worker"; }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    fontWeight: 700, paddingLeft: 20, fontSize: 13, color: "#c4b5fd",
+                  }}
+                >
+                  ✦ Build a Worker
+                </button>
                 {creatorStatus.status === "none" ? (
                   <button
                     className="navItem"

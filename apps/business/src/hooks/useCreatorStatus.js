@@ -87,22 +87,26 @@ export default function useCreatorStatus() {
   const [state, setState] = useState(() => (_cache ? _cache : { status: "none", profile: null, loading: !_cache }));
 
   useEffect(() => {
-    if (_cache) {
-      setState({ ...(_cache), loading: false });
-      return;
-    }
-    if (!_inflight) {
-      _inflight = fetchCreatorProfile().then(result => {
-        _cache = { ...result, fetchedAt: Date.now() };
-        return _cache;
-      });
-    }
     let alive = true;
-    _inflight.then(result => {
-      if (!alive) return;
-      setState({ ...result, loading: false });
-    });
-    return () => { alive = false; };
+    const apply = (result) => { if (alive) setState({ ...result, loading: false }); };
+    const load = () => {
+      if (_cache) { apply(_cache); return; }
+      if (!_inflight) {
+        _inflight = fetchCreatorProfile().then(result => { _cache = { ...result, fetchedAt: Date.now() }; return result; });
+      }
+      _inflight.then(apply);
+    };
+    load();
+    // Fix the CREATOR-menu stale-render: the profile was sometimes fetched
+    // before Firebase auth resolved a token, locking the module cache to a
+    // premature "none" (the menu then only corrected on a nav click). Re-fetch
+    // the moment a user signs in so the menu self-corrects.
+    let unsub = null;
+    const auth = typeof window !== "undefined" ? window.__firebaseAuth : null;
+    if (auth && typeof auth.onAuthStateChanged === "function") {
+      unsub = auth.onAuthStateChanged((u) => { if (u) { _cache = null; _inflight = null; load(); } });
+    }
+    return () => { alive = false; if (unsub) unsub(); };
   }, []);
 
   return state;
