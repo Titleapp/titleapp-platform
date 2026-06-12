@@ -213,7 +213,7 @@ export default function PricingPage() {
           <div style={S.footerSocials}>
             <a href="https://x.com/sociiiai" target="_blank" rel="noopener" style={S.footerLink}>X</a>
             <a href="https://linkedin.com/company/sociii-inc/" target="_blank" rel="noopener" style={S.footerLink}>LinkedIn</a>
-            <a href="https://github.com/SOCIII-Inc" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
+            <a href="https://github.com/sociii" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
             <a href="https://www.youtube.com/@SOCIII-AI" target="_blank" rel="noopener" style={S.footerLink}>YouTube</a>
             <a href="https://www.tiktok.com/@sociii.official" target="_blank" rel="noopener" style={S.footerLink}>TikTok</a>
           </div>
