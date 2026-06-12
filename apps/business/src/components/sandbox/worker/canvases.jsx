@@ -779,6 +779,8 @@ export function TestCanvas({ session, sessionId, onComplete }) {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [lastSummary, setLastSummary] = useState(null);
+  const [lastRun, setLastRun] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -813,6 +815,8 @@ export function TestCanvas({ session, sessionId, onComplete }) {
     }
     setSubmitted(true);
     const summary = r.run?.summary || {};
+    setLastSummary(summary);
+    setLastRun(r.run || null);
     const allClean = (summary.flagged || 0) === 0 && (summary.escalated || 0) === 0 && (summary.failed || 0) === 0;
     if (allClean) {
       onComplete({ stepData: { lastSummary: summary, runs: [r.run] } });
@@ -869,6 +873,26 @@ export function TestCanvas({ session, sessionId, onComplete }) {
       >
         {submitted ? "Re-run test" : "Record test run"}
       </button>
+
+      {/* If the red team flagged issues, you're not stuck — refine + re-run, or
+          proceed and resolve before launch (so a failing test isn't a dead-end). */}
+      {(() => {
+        if (!submitted || !lastSummary) return null;
+        const fails = (lastSummary.flagged || 0) + (lastSummary.escalated || 0) + (lastSummary.failed || 0);
+        if (fails === 0) return null;
+        const parts = [
+          lastSummary.failed ? `${lastSummary.failed} failed` : null,
+          lastSummary.escalated ? `${lastSummary.escalated} escalated` : null,
+          lastSummary.flagged ? `${lastSummary.flagged} flagged` : null,
+        ].filter(Boolean).join(", ");
+        return (
+          <StepComplete
+            prompt={`Red team flagged ${parts}. Tighten your Rules / Knowledge and re-run, or proceed and resolve before launch.`}
+            label="Proceed anyway"
+            onClick={() => onComplete({ stepData: { lastSummary, runs: lastRun ? [lastRun] : [], proceededWithFailures: true } })}
+          />
+        );
+      })()}
     </CanvasShell>
   );
 }

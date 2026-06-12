@@ -547,12 +547,14 @@ export default function WorkerSandbox() {
     }]);
 
     const r = await advanceWorkerStep({
-      sessionId, stepId, action: "complete", data: payload?.stepData || {},
-      // For Define, we ALSO push the spec fields up so the backend has them
-      // for the completion message + Build Log header. Backend currently
-      // accepts spec via the same data bag and merges into workerSteps.define.data
-      // — the actual top-level spec will be wired in T3 when Define lives in
-      // its own intake flow.
+      sessionId, stepId, action: "complete",
+      // For Define, push the spec fields up in the same data bag so the backend
+      // persists them into workerSteps.define.data (name/vertical/audience/job +
+      // creator bio) for the completion message + Build Log header. Other steps
+      // send their stepData as-is.
+      data: stepId === "define"
+        ? { ...(payload?.stepData || {}), ...(payload?.spec || {}) }
+        : (payload?.stepData || {}),
     });
 
     setBusy(false);
