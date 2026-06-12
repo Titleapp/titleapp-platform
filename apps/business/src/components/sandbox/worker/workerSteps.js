@@ -32,21 +32,18 @@ export function statusToBarState(status) {
 // Build the props array StepStatusBar expects, given the workerSteps map
 // returned by the backend.
 //
-// CODEX 48.5 — Ratchet state forward. Once Define is complete, every
-// downstream step that is still "cold" (not_started) becomes "idle" —
-// silver, clickable, peekable. This mirrors the game sandbox's post-concept
-// behavior and lets creators jump to Rules / Tools / Preflight etc. to see
-// what's there without being gated linearly.
+// S52.45 (2026-06-12, demo feedback) — Pure traffic-light, no linear gate.
+// Every step is freely clickable to explore from the very start. A step is
+// RED until it has real work (not_started), YELLOW while in progress, GREEN
+// when complete. No "locked" state — creators explore the whole pipeline up
+// front and watch pills turn green as they finish each step. StepStatusBar is
+// passed peekAll so even red pills are tappable.
 export function buildBarSteps(workerStepsMap = {}) {
-  const defineDone = workerStepsMap.define?.status === "complete";
-  return WORKER_STEPS.map(s => {
-    const raw = statusToBarState(workerStepsMap[s.id]?.status);
-    // Define itself is never idle — it's the gate
-    if (s.id === "define") return { id: s.id, label: s.label, state: raw };
-    // After Define is complete, cold → idle
-    if (raw === "cold" && defineDone) return { id: s.id, label: s.label, state: "idle" };
-    return { id: s.id, label: s.label, state: raw };
-  });
+  return WORKER_STEPS.map(s => ({
+    id: s.id,
+    label: s.label,
+    state: statusToBarState(workerStepsMap[s.id]?.status), // cold(red)/warm(yellow)/hot(green)
+  }));
 }
 
 // 10 UX types for the Design step (CODEX 47.4 Part 6).

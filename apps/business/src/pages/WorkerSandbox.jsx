@@ -873,11 +873,13 @@ export default function WorkerSandbox() {
             steps={barSteps}
             activeStep={activeStepId}
             accent={PURPLE}
+            peekAll
             onStepClick={(id) => {
-              // CODEX 48.5 — idle steps are also clickable (peek ahead).
-              // Only "cold" (pre-Define) stays locked.
+              // S52.45 (demo feedback) — every step is clickable to explore,
+              // even red/not-started ones. Pills turn green as you complete
+              // them; you can roam the whole pipeline freely. No linear lock.
               const target = barSteps.find(s => s.id === id);
-              if (target && target.state !== "cold") {
+              if (target) {
                 setActiveStepId(id);
                 setCompletionContext(null);
               }
