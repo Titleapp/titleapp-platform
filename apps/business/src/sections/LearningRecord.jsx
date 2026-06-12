@@ -139,36 +139,55 @@ function JourneyView() {
 
 // Institutions overview — the OPENING view: every place this person has learned
 // (formal, technical/vocational, and continuing ed) at a glance.
-function InstitutionsView({ onOpen }) {
+function InstitutionsView() {
+  const [openId, setOpenId] = useState(null);
   const typeLabel = { academic: "Academic", professional: "Vocational / Technical" };
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>
-        Every place this person has learned — <strong>formal, technical, and continuing education</strong> — in one record they own. Click any to see its timeline.
+        Every place this person has learned — <strong>formal, technical, and continuing education</strong> — in one record they own. Click any to expand it.
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {RECORD.programs.map((p) => {
           const verified = p.entries.filter((e) => e.v === "verified").length;
           const hasCE = p.entries.some((e) => e.kind === "ce_activity");
+          const open = openId === p.id;
           return (
-            <button key={p.id} onClick={() => onOpen && onOpen()} style={{ textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 12, background: "#fff", border: "1px solid #e9d5ff", width: "100%" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
-                <span style={{ fontSize: 26 }}>{PROGRAM_ICON[p.kind] || "•"}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a" }}>{p.institution}</div>
-                  <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 1 }}>{p.program}</div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "2px 8px" }}>{typeLabel[p.kind] || p.kind}</span>
-                    {hasCE && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 999, padding: "2px 8px" }}>CE</span>}
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{p.status}</span>
+            <div key={p.id} style={{ borderRadius: 12, background: "#fff", border: `1px solid ${open ? C.accent : "#e9d5ff"}`, overflow: "hidden" }}>
+              <button onClick={() => setOpenId(open ? null : p.id)} style={{ textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", background: "none", border: "none", width: "100%" }}>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+                  <span style={{ fontSize: 26 }}>{PROGRAM_ICON[p.kind] || "•"}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a" }}>{p.institution}</div>
+                    <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 1 }}>{p.program}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "2px 8px" }}>{typeLabel[p.kind] || p.kind}</span>
+                      {hasCE && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 999, padding: "2px 8px" }}>CE</span>}
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{p.status}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: C.verified.text }}>{verified}</div>
-                <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>verified</div>
-              </div>
-            </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.verified.text }}>{verified}</div>
+                    <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>verified</div>
+                  </div>
+                  <span style={{ fontSize: 16, color: "#a78bfa", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+                </div>
+              </button>
+              {open && (
+                <div style={{ padding: "6px 16px 14px", borderTop: "1px solid #f1f5f9" }}>
+                  {p.entries.map((e, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, margin: "8px 0" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: e.v === "verified" ? C.verified.dot : C.pending.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14 }}>{KIND_ICON[e.kind] || "•"}</span>
+                      <span style={{ flex: 1 }}><span style={{ color: "#1e293b", fontWeight: 500 }}>{e.title}</span>{e.detail ? <span style={{ color: "#94a3b8" }}> — {e.detail}</span> : null}</span>
+                      <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{e.at}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -181,8 +200,8 @@ const TABS = [
   { id: "journey", label: "Journey" },
   { id: "record", label: "All entries" },
   { id: "verify", label: "Verify" },
-  { id: "grants", label: "Grants" },
-  { id: "add", label: "Add" },
+  { id: "grants", label: "Access" },
+  { id: "add", label: "ID Check" },
 ];
 
 export default function LearningRecord() {
@@ -235,7 +254,7 @@ export default function LearningRecord() {
       </div>
 
       {/* INSTITUTIONS — the opening overview (formal / technical / CE) */}
-      {tab === "institutions" && <InstitutionsView onOpen={() => setTab("journey")} />}
+      {tab === "institutions" && <InstitutionsView />}
 
       {/* JOURNEY — grouped by program */}
       {tab === "journey" && <JourneyView />}
@@ -251,17 +270,20 @@ export default function LearningRecord() {
       {tab === "verify" && (
         <div>
           <div style={{ padding: "12px 14px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, marginBottom: 14, fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
-            <strong>Trust, but verify.</strong> You can state a record now and prove it later. These were self-stated and are treated as <em>claimed, not proven</em> until you add evidence (upload a transcript/certificate, or have a registrar/instructor/agency attest).
+            <strong>Trust, but verify.</strong> You can state a record now and prove it later. These are <em>claimed, not proven</em> until you either <strong>upload evidence</strong> (a transcript/certificate) or <strong>request a sign-off</strong> — the instructor, registrar, or agency <strong>e-signs an affidavit</strong> that the course/credential was completed. (Same flow CE uses for the authorizing authority.)
           </div>
           {pending.length === 0 ? (
             <div style={{ fontSize: 13, color: "#64748b" }}>Nothing pending — every entry is verified. ✓</div>
           ) : pending.map((e, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "#fff", border: "1px solid #fde68a", marginBottom: 8 }}>
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "#fff", border: "1px solid #fde68a", marginBottom: 8, flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{e.title}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{e.program} · {e.detail || "Self-stated"}</div>
               </div>
-              <button style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 7, padding: "7px 14px", cursor: "pointer", whiteSpace: "nowrap" }}>Add evidence</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={{ fontSize: 12, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Add evidence</button>
+                <button style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: C.accent, border: "none", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Request sign-off ✍️</button>
+              </div>
             </div>
           ))}
         </div>
@@ -284,7 +306,7 @@ export default function LearningRecord() {
               <button style={{ fontSize: 12, fontWeight: 600, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 7, padding: "7px 14px", cursor: "pointer" }}>Revoke</button>
             </div>
           ))}
-          <button style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>+ Grant access</button>
+          <button style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "9px 16px", cursor: "pointer" }}>+ Authorize access</button>
         </div>
       )}
 
