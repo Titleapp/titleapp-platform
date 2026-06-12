@@ -266,6 +266,11 @@ export function generateWorkerDeck(spec) {
   return call("POST", "/v1/worker:deck:generate", { body: { spec } });
 }
 
+/** Extract the worker spec-so-far from the chat so the canvas can prefill live. */
+export function extractWorkerSpec(messages) {
+  return call("POST", "/v1/sandbox:worker:extractspec", { body: { messages } });
+}
+
 /**
  * Encode an array of File objects into the format expected by the chat handler.
  * Returns [{ name, data (base64 URI), type }] ready to include in the request body.

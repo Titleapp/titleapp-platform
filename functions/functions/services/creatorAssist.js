@@ -120,4 +120,34 @@ async function generateWorkerDeck({ spec } = {}) {
   return { slides };
 }
 
-module.exports = { generateCreatorBio, generateWorkerDeck, fetchProfileMeta };
+// Extract the worker spec-so-far from the sandbox authoring conversation, so the
+// chat can PREFILL the Define canvas as the creator talks (the chat-drives-canvas
+// bridge). Returns only fields the creator has actually stated — never invents.
+async function extractWorkerSpec({ messages } = {}) {
+  const convo = (messages || []).slice(-18)
+    .map(m => `${m.role === "user" ? "Creator" : "Alex"}: ${String(m.text || "").slice(0, 800)}`)
+    .join("\n");
+  if (!convo.trim()) return { name: "", vertical: "", audience: "", job: "", creatorBio: "" };
+  const prompt =
+    `From this worker-authoring conversation, extract the Digital Worker spec SO FAR.\n` +
+    `Return ONLY valid JSON: {"name":"","vertical":"","audience":"","job":"","creatorBio":""}\n` +
+    `Rules: fill a field ONLY if the creator clearly stated it — otherwise leave it "". Never invent. ` +
+    `"vertical" = the industry (e.g. Real Estate). "job" = the one core job/problem it solves (one sentence). ` +
+    `"creatorBio" only if they described their own background.\n\n` +
+    `Conversation:\n${convo}`;
+  const resp = await client().messages.create({
+    model: MODEL, max_tokens: 400, messages: [{ role: "user", content: prompt }],
+  });
+  try {
+    const t = textOf(resp); const m = t.match(/\{[\s\S]*\}/); const j = JSON.parse(m ? m[0] : t);
+    return {
+      name: String(j.name || "").slice(0, 120),
+      vertical: String(j.vertical || "").slice(0, 80),
+      audience: String(j.audience || "").slice(0, 200),
+      job: String(j.job || "").slice(0, 400),
+      creatorBio: String(j.creatorBio || "").slice(0, 400),
+    };
+  } catch (_) { return { name: "", vertical: "", audience: "", job: "", creatorBio: "" }; }
+}
+
+module.exports = { generateCreatorBio, generateWorkerDeck, fetchProfileMeta, extractWorkerSpec };

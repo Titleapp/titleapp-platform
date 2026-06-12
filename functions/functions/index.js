@@ -10142,6 +10142,20 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/sandbox:worker:extractspec — Prefill the canvas from the chat.
+    // Extracts the worker spec-so-far from the authoring conversation so the
+    // Define fields fill in live as the creator talks to Alex.
+    if (route === "/sandbox:worker:extractspec" && method === "POST") {
+      try {
+        const { extractWorkerSpec } = require("./services/creatorAssist");
+        const result = await extractWorkerSpec({ messages: Array.isArray(body.messages) ? body.messages : [] });
+        return res.json({ ok: true, spec: result });
+      } catch (e) {
+        console.error("sandbox:worker:extractspec failed:", e.message);
+        return jsonError(res, 500, "Spec extraction failed");
+      }
+    }
+
     // POST /v1/worker:deck:generate — Generate a 10-slide subscriber pitch deck
     if (route === "/worker:deck:generate" && method === "POST") {
       try {

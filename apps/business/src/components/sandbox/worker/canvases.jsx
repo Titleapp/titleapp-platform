@@ -207,6 +207,18 @@ export function DefineCanvas({ session, onComplete }) {
     if (u) setHeadshotUrl(u);
   }
 
+  // Chat-drives-canvas: when Alex extracts the spec from the conversation, the
+  // prefilled fields flow in via session.spec and update the form live.
+  useEffect(() => {
+    const sp = session?.spec || {};
+    if (sp.name) setName(sp.name);
+    if (sp.category) setVertical(sp.category);
+    if (sp.targetAudience) setAudience(sp.targetAudience);
+    if (sp.problemSolves) setJob(sp.problemSolves);
+    if (sp.creatorBio) setCreatorBio(sp.creatorBio);
+    if (sp.creatorName) setCreatorName(sp.creatorName);
+  }, [session?.spec?.name, session?.spec?.category, session?.spec?.targetAudience, session?.spec?.problemSolves, session?.spec?.creatorBio, session?.spec?.creatorName]);
+
   function ready() { return name && vertical && audience && job; }
 
   return (

@@ -24,6 +24,7 @@ import {
   initWorkerFlow,
   advanceWorkerStep,
   getWorkerFlowState,
+  extractWorkerSpec,
   waitForAuth,
   encodeFilesForChat,
 } from "../api/sandboxWorkerApi";
@@ -708,6 +709,28 @@ export default function WorkerSandbox() {
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         setMessages(prev => [...prev, { role: "alex", text: reply }]);
+        // ── Chat-drives-canvas bridge ──
+        // Extract the worker spec-so-far from the conversation and PREFILL the
+        // Define fields live, so the canvas fills in as Alex and the creator talk
+        // (instead of Alex narrating a build that never touches the form).
+        try {
+          const conv = [...messages, { role: "user", text }, { role: "alex", text: reply }];
+          const ex = await extractWorkerSpec(conv);
+          if (ex && ex.ok && ex.spec) {
+            const s = ex.spec;
+            setState(prev => ({
+              ...(prev || {}),
+              spec: {
+                ...(prev?.spec || {}),
+                ...(s.name ? { name: s.name } : {}),
+                ...(s.vertical ? { vertical: s.vertical, category: s.vertical } : {}),
+                ...(s.audience ? { targetAudience: s.audience } : {}),
+                ...(s.job ? { problemSolves: s.job } : {}),
+                ...(s.creatorBio ? { creatorBio: s.creatorBio } : {}),
+              },
+            }));
+          }
+        } catch { /* prefill is best-effort — never block the chat */ }
       } else {
         setMessages(prev => [...prev, { role: "alex", text: reply || "Something went wrong. Try again." }]);
       }
