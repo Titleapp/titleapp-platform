@@ -249,7 +249,7 @@ Next provisional candidate (before grace closes): tamper-proof educational evalu
 
 **RedHat / Hugging Face pattern.**
 
-- **OPEN** (Apache 2.0, public GitHub at `github.com/sociii`): worker SDK, templates, documentation, canvas-tab schema, sample-data patterns, frontend skeleton
+- **OPEN** (Apache 2.0 — publishing to `github.com/sociii`, **in preparation, not yet live**): worker SDK, templates, documentation, canvas-tab schema, sample-data patterns, frontend skeleton
 - **CLOSED** (proprietary, patent-protected, runs only on app.sociii.ai): audit trail engine, payment processing, identity pipeline, regulatory ingestion, marketplace + entitlement, capability registry
 
 **Three creator tiers:**
@@ -293,8 +293,8 @@ Next provisional candidate (before grace closes): tamper-proof educational evalu
 
 - **"How do I manage my team / hire / onboard?"** → HR & People worker (`platform-hr`). Schedule tab is live with team CRUD + time-off. P&P doc + IRS forms in HR Documents.
 - **"Can I lock a grade / verify a record?"** → Platform's audit trail does this natively. Locked events anchored to public chain. Even the locking party can't modify after lock.
-- **"How do I list my own worker on SOCIII?"** → Fork the repo at github.com/sociii. Build worker in `creators/<your-handle>/<slug>/`. PR to upstream. Once merged + listed, you get 75% of revenue.
-- **"What's the difference between a fork and the SOCIII platform?"** → You can fork the SDK and run workers anywhere. To get audit / payments / identity / customers, you list on the SOCIII platform.
+- **"How do I list my own worker on SOCIII?"** → Build your worker in the SOCIII sandbox today. (The open SDK is Apache-2.0 and publishing to github.com/sociii soon — repos are not live yet, so don't tell people to fork it yet.) Once listed, you get 75% of revenue.
+- **"What's the difference between a fork and the SOCIII platform?"** → Once the SDK is published you'll be able to fork it and run workers anywhere; today you build + run in the SOCIII sandbox. Either way, to get audit / payments / identity / customers, you list on the SOCIII platform.
 - **"Is SOCIII FERPA / HIPAA / SOC 2 certified?"** → FERPA-friendly architecture (audit trail, identity verification, encrypted storage, portable exports). Certification is per-institution-deployment with a Data Processing Agreement. Tell user we work with their privacy office.
 - **"How does Sean's HR Schedule work today?"** → Sean and Kent are bootstrapped on first list call. Schedule chips render time-off blocks (e.g. "Jul 18–25, 2026"). Sean's pattern: Su-Sa 7-9am HT then on call; Kent M-F 9-5pm PT on call. Add/Remove team members, inline schedule editing, P&P doc link.
 

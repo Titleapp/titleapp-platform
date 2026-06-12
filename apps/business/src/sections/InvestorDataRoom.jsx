@@ -246,7 +246,7 @@ export default function InvestorDataRoom() {
       const res = await apiFetch("/v1/investor:verify-identity", {
         method: "POST",
         body: JSON.stringify({
-          successUrl: window.location.origin + "/invest/room?verified=true",
+          successUrl: window.location.origin + "/invest/room",
           cancelUrl: window.location.origin + "/invest/room",
         }),
       });
@@ -435,7 +435,7 @@ export default function InvestorDataRoom() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <h1 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", margin: 0 }}>Investor Data Room</h1>
-            <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>The Title App LLC</span>
+            <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>SOCIII, Inc.</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {/* Access badges */}
@@ -1004,7 +1004,7 @@ function SubscriptionDocsSection({ docs, raiseConfig, tier2Unlocked, onDocClick,
             border: "1px solid #e2e8f0", fontSize: 13, color: "#475569", lineHeight: 1.7,
           }}>
             <p style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", margin: "0 0 10px 0" }}>Post-Money SAFE Agreement</p>
-            <p style={{ margin: "0 0 8px 0" }}>By signing below, I agree to invest <strong>{formatCurrency(intent.amount)}</strong> in The Title App LLC ("Company") under the following terms:</p>
+            <p style={{ margin: "0 0 8px 0" }}>By signing below, I agree to invest <strong>{formatCurrency(intent.amount)}</strong> in SOCIII, Inc. ("Company") under the following terms:</p>
             <ul style={{ margin: "0 0 8px 0", paddingLeft: 20 }}>
               <li>Instrument: {raiseConfig?.instrument || "Post-Money SAFE"}</li>
               <li>Valuation Cap: {formatCurrency(raiseConfig?.valuationCap)}</li>
@@ -1509,7 +1509,7 @@ function WalletSection({ gates }) {
       }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: 0, marginBottom: 12 }}>Token Details</h3>
         <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-          After investment and share conversion, your ownership will be tokenized on-chain via Polygon,
+          After investment and share conversion, your ownership will be tokenized on-chain via Base (Polygon available),
           giving you a verifiable, portable record of ownership. Token details will appear here.
         </p>
       </div>
