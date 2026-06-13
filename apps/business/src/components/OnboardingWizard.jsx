@@ -39,6 +39,12 @@ const VERTICAL_DISCLAIMERS = {
   analyst: "SOCIII provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
   investor: "SOCIII provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
   aviation: "SOCIII provides tools for aviation operations management. It does not replace FAA-mandated record keeping systems or certified maintenance tracking programs.",
+  // S52.64 — School / University accounts are governed by the standard SOCIII
+  // for Education Terms + a Data Processing & FERPA Addendum (school-official
+  // designation, student + university dual control, no model training on
+  // student data). Those school-specific terms are finalizing with counsel
+  // (Option B — held until reviewed); the generic Terms apply in the interim.
+  education: "SOCIII for Education is governed by our standard Terms of Service plus a Data Processing & FERPA Addendum — SOCIII acts as a 'school official' under FERPA, records are student- and institution-controlled (hashed, scoped, revocable), and student data is never used to train AI models. SOCIII is not a system of record and its outputs are not certified for grading, licensure, or accreditation decisions without your verification. (School-specific terms are being finalized with counsel — contact SOCIII for the current draft.)",
   _default: "SOCIII provides AI-powered workspace tools. The platform does not provide professional advice in regulated fields. Consult qualified professionals for domain-specific guidance.",
 };
 
@@ -642,6 +648,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                   { id: "real-estate", label: "Real Estate", icon: "R" },
                   { id: "analyst", label: "Investment", icon: "I" },
                   { id: "investor", label: "Investor Relations", icon: "IR" },
+                  { id: "education", label: "Education / School", icon: "E" },
                 ].map((v) => (
                   <button
                     key={v.id}
