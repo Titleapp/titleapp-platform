@@ -1718,7 +1718,7 @@ export default function Sidebar({
                     tabs. Status-independent so the menu can't flip. */}
                 <button
                   className="navItem"
-                  onClick={() => { window.location.href = "/sandbox/worker"; }}
+                  onClick={() => { window.location.href = "/showcase"; }}
                   style={{
                     width: "100%", textAlign: "left", cursor: "pointer",
                     fontWeight: 700, paddingLeft: 20, fontSize: 13, color: "#c4b5fd",

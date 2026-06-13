@@ -79,6 +79,7 @@ import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
 import WorkerSandbox from "./pages/WorkerSandbox";
+import WorkerShowcase from "./pages/WorkerShowcase";
 import WorkerBuildLog from "./pages/WorkerBuildLog";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
@@ -5026,6 +5027,12 @@ export default function App() {
   const isWorkerSandbox = /^\/sandbox\/worker\/?$/.test(window.location.pathname);
   const isWorkerBuildLog = /^\/sandbox\/worker\/buildlog\/?$/.test(window.location.pathname);
 
+  // ── /showcase route intercept (S52.64 — Worker Showcase) ───
+  // The visual "this is what a great worker looks like" front door before the
+  // sandbox form. Additive — the 9-step flow is untouched; this just shows the
+  // outcome first (Trump Rule). "Build a Worker" in the nav points here.
+  const isWorkerShowcase = /^\/showcase\/?$/.test(window.location.pathname);
+
   // ── /sandbox/video route intercept (S52.25 — VideoCard dogfood) ───
   // Renders the VideoCard component with a real YouTube URL so Sean can
   // visually confirm the embed pipe end-to-end without wiring it through
@@ -5829,6 +5836,9 @@ export default function App() {
   // ── Worker Sandbox (CODEX 47.4 Phase B reference) ─────────────
   if (isWorkerBuildLog) {
     return <WorkerBuildLog />;
+  }
+  if (isWorkerShowcase) {
+    return <WorkerShowcase />;
   }
   if (isWorkerSandbox) {
     return (
