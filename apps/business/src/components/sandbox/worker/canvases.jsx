@@ -355,28 +355,47 @@ function FloorThumb({ name }) {
 }
 
 // Visual lead for each step — we dogfood our own rule: open with a PICTURE,
-// not a form. A bold illustrated banner: a big subject image (emoji reads as a
-// real picture, renders everywhere, no asset to load) on a colored gradient,
-// with a one-line "what & why." Swap emoji for AI art later without touching
-// callers.
-const STEP_HEROES = {
-  define:     { art: "🎯", g1: "#ede9fe", g2: "#ddd6fe", fg: "#5b21b6", title: "What it does — and why anyone should care" },
-  knowledge:  { art: "🧠", g1: "#fce7f3", g2: "#fbcfe8", fg: "#9d174d", title: "Your worker's brain — everything it knows" },
-  rules:      { art: "⚖️", g1: "#fef3c7", g2: "#fde68a", fg: "#92400e", title: "The laws it follows + the guardrails it lives by" },
-  tools:      { art: "🧰", g1: "#dbeafe", g2: "#bfdbfe", fg: "#1e40af", title: "Give it abilities — data, maps, images, and more" },
-  test:       { art: "🛡️", g1: "#fee2e2", g2: "#fecaca", fg: "#991b1b", title: "Stress-test it before your subscribers do" },
-  preflight:  { art: "🚦", g1: "#dcfce7", g2: "#bbf7d0", fg: "#166534", title: "Clear the gates — you're almost ready to launch" },
-  distribute: { art: "📣", g1: "#cffafe", g2: "#a5f3fc", fg: "#155e75", title: "Get it out there — link, QR, post, email" },
-  grow:       { art: "📈", g1: "#ede9fe", g2: "#c7d2fe", fg: "#3730a3", title: "Launch & grow — your subscribers and revenue" },
+// not a form. Swiss, not Disney: a restrained white card + hairline border, a
+// custom monoline SVG mark in a muted step accent, one quiet line of "what &
+// why." (Swap the SVG for fine illustration later without touching callers.)
+const STEP_META = {
+  define:     { fg: "#4f46e5", title: "What it does — and why anyone should care" },
+  design:     { fg: "#7c3aed", title: "The picture your worker opens to" },
+  knowledge:  { fg: "#0e7490", title: "Your worker's brain — everything it knows" },
+  rules:      { fg: "#b45309", title: "The laws it follows + the guardrails it lives by" },
+  tools:      { fg: "#2563eb", title: "Give it abilities — data, maps, images, and more" },
+  test:       { fg: "#be123c", title: "Stress-test it before your subscribers do" },
+  preflight:  { fg: "#15803d", title: "Clear the gates — you're almost ready to launch" },
+  distribute: { fg: "#0891b2", title: "Get it out there — link, QR, post, email" },
+  grow:       { fg: "#4f46e5", title: "Launch & grow — your subscribers and revenue" },
 };
 
+function StepIcon({ kind, color }) {
+  const p = { fill: "none", stroke: color, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" };
+  const svg = (children) => <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
+  switch (kind) {
+    case "define": return svg(<><circle cx="12" cy="12" r="8.5" {...p} /><circle cx="12" cy="12" r="4" {...p} /><circle cx="12" cy="12" r="1.1" fill={color} stroke="none" /></>);
+    case "design": return svg(<><rect x="3.5" y="4.5" width="17" height="15" rx="2" {...p} /><line x1="3.5" y1="9" x2="20.5" y2="9" {...p} /><rect x="6" y="11.5" width="6" height="5.5" rx="1" {...p} /><line x1="14" y1="12.5" x2="18" y2="12.5" {...p} /><line x1="14" y1="15.5" x2="18" y2="15.5" {...p} /></>);
+    case "knowledge": return svg(<><path d="M12 6.4c-1.3-1.5-3.8-1.2-4.6.6-1.6.2-2.4 2.1-1.3 3.4-.9 1.2-.2 3 1.4 3.2.3 1.6 2.3 2.3 3.5 1.1" {...p} /><path d="M12 6.4c1.3-1.5 3.8-1.2 4.6.6 1.6.2 2.4 2.1 1.3 3.4.9 1.2.2 3-1.4 3.2-.3 1.6-2.3 2.3-3.5 1.1" {...p} /><line x1="12" y1="6.4" x2="12" y2="16.5" {...p} /></>);
+    case "rules": return svg(<><line x1="12" y1="4.5" x2="12" y2="19" {...p} /><line x1="6.5" y1="7" x2="17.5" y2="7" {...p} /><path d="M6.5 7l-2.3 4.6h4.6z" {...p} /><path d="M17.5 7l-2.3 4.6h4.6z" {...p} /><line x1="8.5" y1="19" x2="15.5" y2="19" {...p} /></>);
+    case "tools": return svg(<><path d="M14.6 6.6a3.4 3.4 0 0 0-4.6 4.2l-4.5 4.5a1.5 1.5 0 0 0 2.1 2.1l4.5-4.5a3.4 3.4 0 0 0 4.2-4.6l-2 2-1.7-1.7z" {...p} /></>);
+    case "test": return svg(<><path d="M12 4l6 2v5c0 3.9-2.5 6.5-6 7.9-3.5-1.4-6-4-6-7.9V6z" {...p} /><path d="M9.5 12l1.8 1.8 3.3-3.5" {...p} /></>);
+    case "preflight": return svg(<><circle cx="12" cy="12" r="8" {...p} /><path d="M8.5 12.2l2.3 2.3 4.7-4.9" {...p} /></>);
+    case "distribute": return svg(<><path d="M20 4L3.6 11l6 2 2 6z" {...p} /><line x1="20" y1="4" x2="9.6" y2="13" {...p} /></>);
+    case "grow": return svg(<><polyline points="4,17 9,12 13,14 20,6" {...p} /><polyline points="15,6 20,6 20,11" {...p} /></>);
+    default: return null;
+  }
+}
+
 function StepHero({ kind }) {
-  const h = STEP_HEROES[kind];
-  if (!h) return null;
+  const m = STEP_META[kind];
+  if (!m) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 12, marginBottom: 14, background: `linear-gradient(135deg, ${h.g1}, ${h.g2})`, border: "1px solid rgba(15,23,42,0.06)" }}>
-      <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.78)", display: "grid", placeItems: "center", fontSize: 32, flexShrink: 0, boxShadow: "0 2px 10px rgba(15,23,42,0.10)" }}>{h.art}</div>
-      <div style={{ fontSize: 15.5, fontWeight: 800, color: h.fg, lineHeight: 1.3 }}>{h.title}</div>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 12, marginBottom: 14, background: "#FFFFFF", border: "1px solid #E8ECF2" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 11, background: "#F4F6FA", border: "1px solid #E8ECF2", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <StepIcon kind={kind} color={m.fg} />
+      </div>
+      <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1e293b", lineHeight: 1.35 }}>{m.title}</div>
     </div>
   );
 }
@@ -481,6 +500,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
       title="Design the canvas"
       subtitle="People don't read — your worker opens to a picture. Design that picture now, before you build. Everything downstream renders into it."
     >
+      <StepHero kind="design" />
       {/* (a) Headline outcome */}
       <div style={card}>
         <div style={label}>The headline outcome</div>
