@@ -30,6 +30,11 @@ import {
 } from "../api/sandboxWorkerApi";
 import { WORKER_STEPS, STEP_BY_ID, buildBarSteps, PURPLE } from "../components/sandbox/worker/workerSteps";
 import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
+// S52.61 — the sandbox uses the SAME left nav as the workspace (shared
+// Sidebar) instead of its old bespoke "Creator Studio" panel, so the two
+// surfaces stop diverging. Section clicks bounce to the workspace via the
+// ta_redirect_page handshake App.jsx already honors on load.
+import Sidebar from "../components/Sidebar";
 import CompletionMoment from "../components/sandbox/worker/CompletionMoment";
 // CODEX 48.5 — Shared sandbox primitives (ported from DeveloperSandbox)
 import {
@@ -785,70 +790,24 @@ export default function WorkerSandbox() {
 
   return (
     <div style={{
-      display: "flex", flexDirection: "column", height: "100vh",
+      display: "flex", flexDirection: "row", height: "100vh",
       fontFamily: "system-ui, -apple-system, sans-serif",
       background: "#F8FAFC",
       "--accent": PURPLE,
     }}>
-      <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
+      {/* Shared workspace nav — same component as the rest of the app. Section
+          clicks bounce to the workspace via the ta_redirect_page handshake. */}
+      <Sidebar
+        currentSection="sandbox-worker"
+        onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {} window.location.href = "/"; }}
+        tenantName={localStorage.getItem("TENANT_NAME") || undefined}
+        guestMode={false}
+      />
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        {/* Nav panel — matches Creator Studio nav from game sandbox */}
-        <div style={{
-          width: 200, flexShrink: 0, background: "#0f172a", color: "#e5e7eb",
-          display: "flex", flexDirection: "column", overflowY: "auto",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-        }}>
-          {/* CODEX 48.5 — shared header swaps to user name + initials when signed in */}
-          <CreatorStudioHeader accent={PURPLE} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+        <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
 
-          <div style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Dashboard</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Workers Live</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Subscribers</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>$0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>This Month</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>&mdash;</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Trend</div>
-              </div>
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>Launch your first worker to start earning.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Workers</div>
-            {workerName ? (
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb", padding: "6px 10px", background: "rgba(107,70,193,0.2)", border: "1px solid rgba(107,70,193,0.35)", borderRadius: 6 }}>
-                {workerName}
-                <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 2 }}>Draft — Building</div>
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)" }}>No workers yet.</div>
-            )}
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Games</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)" }}>No games yet.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Audience</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", lineHeight: 1.5 }}>Your subscribers will appear here once you launch.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Vault</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", lineHeight: 1.5 }}>Your files, conversations, and versions live here.</div>
-          </div>
-        </div>
-
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Chat panel */}
         <div style={{ width: 380, flexShrink: 0 }}>
           <AlexChat
@@ -898,6 +857,7 @@ export default function WorkerSandbox() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
