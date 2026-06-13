@@ -73,7 +73,7 @@ const RECORD = {
       ],
     },
     {
-      id: "bsn", kind: "academic", mark: "UH", brand: "#024731",
+      id: "bsn", kind: "academic", mark: "UH", brand: "#024731", logo: "/logos/uh-manoa.png",
       institution: "University of Hawai‘i — School of Nursing",
       program: "BSN — Nursing (cohort 2027)",
       status: "In progress",
@@ -145,8 +145,10 @@ function allEntries() {
 // always renders — no external hotlink to break offline. Drop real logo files
 // in later by setting `logo` on the program.
 function InstitutionLogo({ p, size = 38 }) {
-  if (p.logo) {
-    return <img src={p.logo} alt={p.institution} width={size} height={size} style={{ borderRadius: 8, objectFit: "contain", background: "#fff", border: "1px solid #e2e8f0", flexShrink: 0 }} />;
+  const [failed, setFailed] = useState(false);
+  if (p.logo && !failed) {
+    // Wordmark logos aren't square — render at fixed height, natural width.
+    return <img src={p.logo} alt={p.institution} onError={() => setFailed(true)} style={{ height: size, width: "auto", maxWidth: size * 2.6, objectFit: "contain", flexShrink: 0 }} />;
   }
   const brand = p.brand || C.accent;
   return (
