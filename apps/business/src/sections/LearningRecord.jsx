@@ -45,37 +45,99 @@ const RECORD = {
         { kind: "credential", title: "EFR Instructor (Emergency First Response)", source: "padi", at: "2023-02-14", v: "pending" },
         { kind: "ce_activity", title: "PADI Member renewal — 2024 (continuing ed)", detail: "Instructor status current", source: "padi", at: "2024-01-15", v: "verified" },
       ],
+      // Course-level = the diver's LOGBOOK. Each dive is signed off by the
+      // instructor (professional-licensing attestation). A pending sign-off
+      // flows into the Verify tab as an affidavit request.
+      courses: [
+        {
+          id: "ow", code: "OW", title: "Open Water Diver Course", term: "2019", status: "Certified",
+          entries: [
+            { kind: "material", title: "Knowledge Development — 5 modules (PADI eLearning)", source: "padi:elearning", at: "2019-05-20", v: "verified" },
+            { kind: "exam", title: "Final exam", detail: "92%", source: "padi", at: "2019-06-01", v: "verified" },
+            { kind: "dive", title: "Confined-water dives 1–5", detail: "Pool · mask clear, regulator recovery, CESA", signoff: "Instructor M. Akana · PADI #271905", source: "logbook", at: "2019-06-05", v: "verified" },
+            { kind: "dive", title: "Open-water dive 1 — Skills", detail: "Hanauma Bay · 12m · 38 min", signoff: "Instructor M. Akana · PADI #271905", source: "logbook", at: "2019-06-12", v: "verified" },
+            { kind: "dive", title: "Open-water dive 2 — Navigation", detail: "Hanauma Bay · 16m · 41 min", signoff: "Instructor M. Akana · PADI #271905", source: "logbook", at: "2019-06-13", v: "verified" },
+            { kind: "dive", title: "Open-water dive 3 — Deep", detail: "Sharks Cove · 18m · 35 min", signoff: "Instructor M. Akana · PADI #271905", source: "logbook", at: "2019-06-14", v: "verified" },
+            { kind: "dive", title: "Open-water dive 4 — Independent buddy team", detail: "Sharks Cove · 17m · 44 min", signoff: "Awaiting instructor sign-off", source: "logbook", at: "2019-06-15", v: "pending" },
+          ],
+        },
+        {
+          id: "rescue", code: "RES", title: "Rescue Diver Course", term: "2020", status: "Certified",
+          entries: [
+            { kind: "material", title: "Rescue theory + EFR primary/secondary care", source: "padi:elearning", at: "2020-01-08", v: "verified" },
+            { kind: "exam", title: "Rescue scenarios assessment", detail: "Passed · 10 exercises", source: "padi", at: "2020-01-18", v: "verified" },
+            { kind: "dive", title: "Rescue scenario 1 — Tired & panicked diver", detail: "Magic Island · surface + underwater tows", signoff: "Instructor K. Lopez · PADI #318220", source: "logbook", at: "2020-01-19", v: "verified" },
+            { kind: "dive", title: "Rescue scenario 2 — Unresponsive diver", detail: "Magic Island · ascent, tow, EFR on exit", signoff: "Instructor K. Lopez · PADI #318220", source: "logbook", at: "2020-01-20", v: "verified" },
+          ],
+        },
+      ],
     },
     {
       id: "bsn", kind: "academic",
       institution: "University of Hawai‘i — School of Nursing",
       program: "BSN — Nursing (cohort 2027)",
       status: "In progress",
+      // Program-level = milestones (enrollment, clinical rotations, transfer).
+      // Course-level detail (materials, quizzes, exams, warnings, coaching,
+      // AI-assisted learning) lives one level down in `courses`.
       entries: [
         { kind: "enrollment", title: "Enrolled — BSN, cohort 2027", source: "registrar", at: "2025-08-25", v: "verified" },
-        { kind: "assessment", title: "NUR 210 Fundamentals — Final", detail: "88% · Tanner: noticing → interpreting", source: "lms:canvas", at: "2025-12-12", v: "verified" },
-        { kind: "competency", title: "Vital Signs & Assessment — met", source: "preceptor", at: "2025-12-05", v: "verified" },
-        { kind: "assessment", title: "NUR 220 Health Assessment — Exam", detail: "91%", source: "lms:canvas", at: "2026-02-20", v: "verified" },
         { kind: "clinical_hours", title: "Community health rotation — 48 clinical hours", detail: "Kōkua Kalihi Valley", source: "preceptor", at: "2026-03-01", v: "verified" },
-        { kind: "assessment", title: "NUR 320 Pharmacology — Exam", detail: "82% · dosage + interactions", source: "lms:canvas", at: "2026-02-14", v: "verified" },
-        { kind: "competency", title: "Medication Administration — met", source: "preceptor", at: "2026-03-12", v: "verified" },
         { kind: "clinical_hours", title: "Med/Surg rotation — 96 clinical hours", detail: "The Queen's Medical Center", source: "preceptor", at: "2026-03-15", v: "verified" },
         { kind: "competency", title: "IV Insertion — remediate", detail: "Re-demo 2026-04-02 · Tanner: responding", source: "preceptor", at: "2026-03-20", v: "verified" },
         { kind: "reflection", title: "Clinical reflection — post-op patient", detail: "Tanner: reflecting-on-action", source: "student", at: "2026-03-21", v: "verified" },
         { kind: "assessment", title: "Anatomy & Physiology — A− (prior college)", detail: "Self-stated transfer — transcript not yet uploaded", source: "student", at: "2024-12-15", v: "pending" },
       ],
+      courses: [
+        {
+          id: "nur210", code: "NUR 210", title: "Nursing Fundamentals", term: "Fall 2025", status: "Completed · 88%",
+          entries: [
+            { kind: "material", title: "Course materials — 8 modules + skills-lab guide", source: "lms:canvas", at: "2025-08-25", v: "verified" },
+            { kind: "quiz", title: "Quiz 3 — Infection control", detail: "94%", source: "lms:canvas", at: "2025-10-02", v: "verified" },
+            { kind: "competency", title: "Vital signs & assessment — met", source: "preceptor", at: "2025-12-05", v: "verified" },
+            { kind: "exam", title: "Final exam", detail: "88% · Tanner: noticing → interpreting", source: "lms:canvas", at: "2025-12-12", v: "verified" },
+          ],
+        },
+        {
+          id: "nur220", code: "NUR 220", title: "Health Assessment", term: "Spring 2026", status: "Completed · 91%",
+          entries: [
+            { kind: "material", title: "Course materials — head-to-toe assessment modules", source: "lms:canvas", at: "2026-01-13", v: "verified" },
+            { kind: "quiz", title: "Quiz 2 — Cardiac & respiratory landmarks", detail: "90%", source: "lms:canvas", at: "2026-02-03", v: "verified" },
+            { kind: "exam", title: "Exam — full assessment", detail: "91%", source: "lms:canvas", at: "2026-02-20", v: "verified" },
+          ],
+        },
+        {
+          id: "nur320", code: "NUR 320", title: "Pharmacology", term: "Spring 2026", status: "In progress · 82%",
+          entries: [
+            { kind: "material", title: "Course materials — 6 modules (dosage, interactions, pharmacokinetics)", source: "lms:canvas", at: "2026-01-13", v: "verified" },
+            { kind: "quiz", title: "Quiz 1 — Dosage calculation", detail: "79% · below 85% course threshold", source: "lms:canvas", at: "2026-01-27", v: "verified" },
+            { kind: "warning", title: "Early alert — dosage-calc accuracy below threshold", detail: "Issued by course instructor; coaching recommended", source: "instructor", at: "2026-01-28", v: "verified" },
+            { kind: "coaching", title: "Coaching session — med-math remediation plan", detail: "30 min with academic advisor · plan: 3 practice sets/week", source: "advisor", at: "2026-02-03", v: "verified" },
+            { kind: "ai_session", title: "AI-assisted practice — 40 dosage problems", detail: "Ruthie tutor · flagged: pediatric weight-based dosing, IV drip rates", source: "worker:ruthie", at: "2026-02-10", v: "verified" },
+            { kind: "exam", title: "Midterm exam", detail: "82% · dosage section improved", source: "lms:canvas", at: "2026-02-14", v: "verified" },
+            { kind: "competency", title: "Medication administration — met", source: "preceptor", at: "2026-03-12", v: "verified" },
+          ],
+        },
+      ],
     },
   ],
 };
 
-const KIND_ICON = { enrollment: "🎓", credential: "🏅", specialty: "🌊", assessment: "📝", clinical_hours: "🏥", competency: "✅", reflection: "🪞", ce_activity: "📜", document: "📄", note: "🗒️" };
+const KIND_ICON = { enrollment: "🎓", credential: "🏅", specialty: "🌊", assessment: "📝", clinical_hours: "🏥", competency: "✅", reflection: "🪞", ce_activity: "📜", document: "📄", note: "🗒️", material: "📚", quiz: "✏️", exam: "📝", warning: "⚠️", coaching: "🧭", ai_session: "🤖", dive: "🤿" };
 const PROGRAM_ICON = { academic: "🎓", professional: "🏅" };
 
-// All entries flattened (newest first), tagged with their program.
+// All entries flattened (newest first), tagged with their program — and, for
+// course-level entries, the course code/title too. Program milestones AND the
+// granular course entries (materials, quizzes, exams, warnings, coaching,
+// AI sessions, dive logbook) all land in one append-only logbook.
 function allEntries() {
-  return RECORD.programs
-    .flatMap((p) => p.entries.map((e) => ({ ...e, program: p.program })))
-    .sort((a, b) => (a.at < b.at ? 1 : -1));
+  const out = [];
+  for (const p of RECORD.programs) {
+    for (const e of p.entries || []) out.push({ ...e, program: p.program });
+    for (const c of p.courses || [])
+      for (const e of c.entries || []) out.push({ ...e, program: p.program, course: c.code || c.title });
+  }
+  return out.sort((a, b) => (a.at < b.at ? 1 : -1));
 }
 
 function Badge({ v }) {
@@ -94,7 +156,8 @@ function EntryRow({ e, showProgram }) {
           <Badge v={e.v} />
         </div>
         {e.detail && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{e.detail}</div>}
-        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{e.at} · source: {e.source}{showProgram ? ` · ${e.program}` : ""}</div>
+        {e.signoff && <div style={{ fontSize: 11.5, color: e.v === "verified" ? C.verified.text : C.pending.text, marginTop: 3, fontWeight: 600 }}>✍️ {e.signoff}</div>}
+        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{e.at} · source: {e.source}{showProgram ? ` · ${e.program}${e.course ? ` › ${e.course}` : ""}` : ""}</div>
       </div>
     </div>
   );
@@ -137,15 +200,71 @@ function JourneyView() {
   );
 }
 
+// One granular course entry — used inside the course drill-down. Renders the
+// typed icon, title/detail, instructor sign-off (with a Request-sign-off action
+// when pending), and a verified/pending badge.
+function CourseEntry({ e, flash }) {
+  const c = C[e.v] || C.pending;
+  return (
+    <div style={{ display: "flex", gap: 9, padding: "9px 11px", borderRadius: 9, background: "#fff", border: "1px solid #f1f5f9", borderLeft: `3px solid ${c.dot}` }}>
+      <span style={{ fontSize: 15, lineHeight: "18px" }}>{KIND_ICON[e.kind] || "•"}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "#1e293b" }}>{e.title}</span>
+          <span style={{ fontSize: 10, color: "#94a3b8", whiteSpace: "nowrap" }}>{e.at}</span>
+        </div>
+        {e.detail && <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 1.5, lineHeight: 1.4 }}>{e.detail}</div>}
+        {e.signoff && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: e.v === "verified" ? C.verified.text : C.pending.text }}>✍️ {e.signoff}</span>
+            {e.v === "pending" && (
+              <button onClick={() => flash(`Sign-off request sent — the instructor will be asked to e-sign an affidavit for "${e.title}".`)} style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", background: C.accent, border: "none", borderRadius: 6, padding: "3px 9px", cursor: "pointer" }}>Request sign-off</button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A course inside an institution — collapsible row that drills into the
+// course's granular entries (materials, quizzes, exams, warnings, coaching,
+// AI-assisted-learning sessions, dive logbook).
+function CourseBlock({ course, open, onToggle, flash }) {
+  const verified = course.entries.filter((e) => e.v === "verified").length;
+  const pending = course.entries.length - verified;
+  return (
+    <div style={{ borderRadius: 10, background: open ? "#fafaff" : "#fff", border: `1px solid ${open ? C.accent : "#e2e8f0"}`, overflow: "hidden" }}>
+      <button onClick={onToggle} style={{ textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", width: "100%" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>{course.code ? `${course.code} · ` : ""}{course.title}</div>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{course.term} · {course.status}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: "#64748b" }}>{course.entries.length} entries</span>
+          {pending > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: C.pending.text, background: C.pending.bg, border: `1px solid ${C.pending.border}`, borderRadius: 999, padding: "1px 7px" }}>{pending} pending</span>}
+          <span style={{ fontSize: 14, color: "#a78bfa", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+        </div>
+      </button>
+      {open && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 12px 12px" }}>
+          {course.entries.map((e, i) => <CourseEntry key={i} e={e} flash={flash} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Institutions overview — the OPENING view: every place this person has learned
 // (formal, technical/vocational, and continuing ed) at a glance.
-function InstitutionsView() {
+function InstitutionsView({ flash }) {
   const [openId, setOpenId] = useState(null);
+  const [openCourse, setOpenCourse] = useState(null); // `${programId}:${courseId}`
   const typeLabel = { academic: "Academic", professional: "Vocational / Technical" };
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>
-        Every place this person has learned — <strong>formal, technical, and continuing education</strong> — in one record they own. Click any to expand it.
+        Every place this person has learned — <strong>formal, technical, and continuing education</strong> — in one record they own. Click an institution to see its milestones, then drill into any <strong>course</strong> for its materials, quizzes, exams, coaching notes, and instructor sign-offs.
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {RECORD.programs.map((p) => {
@@ -163,6 +282,7 @@ function InstitutionsView() {
                     <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <span style={{ fontSize: 10.5, fontWeight: 700, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "2px 8px" }}>{typeLabel[p.kind] || p.kind}</span>
                       {hasCE && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 999, padding: "2px 8px" }}>CE</span>}
+                      {p.courses && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 999, padding: "2px 8px" }}>{p.courses.length} courses</span>}
                       <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{p.status}</span>
                     </div>
                   </div>
@@ -176,7 +296,8 @@ function InstitutionsView() {
                 </div>
               </button>
               {open && (
-                <div style={{ padding: "6px 16px 14px", borderTop: "1px solid #f1f5f9" }}>
+                <div style={{ padding: "8px 16px 14px", borderTop: "1px solid #f1f5f9" }}>
+                  {p.courses && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "2px 0 4px" }}>Milestones</div>}
                   {p.entries.map((e, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, margin: "8px 0" }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: e.v === "verified" ? C.verified.dot : C.pending.dot, flexShrink: 0 }} />
@@ -185,6 +306,27 @@ function InstitutionsView() {
                       <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{e.at}</span>
                     </div>
                   ))}
+                  {p.courses && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                        Courses <span style={{ textTransform: "none", fontWeight: 500, color: "#cbd5e1" }}>— click a course for its materials, quizzes, exams, notes & sign-offs</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {p.courses.map((course) => {
+                          const key = `${p.id}:${course.id}`;
+                          return (
+                            <CourseBlock
+                              key={key}
+                              course={course}
+                              open={openCourse === key}
+                              onToggle={() => setOpenCourse(openCourse === key ? null : key)}
+                              flash={flash}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -257,7 +399,7 @@ export default function LearningRecord() {
       </div>
 
       {/* INSTITUTIONS — the opening overview (formal / technical / CE) */}
-      {tab === "institutions" && <InstitutionsView />}
+      {tab === "institutions" && <InstitutionsView flash={flash} />}
 
       {/* JOURNEY — grouped by program */}
       {tab === "journey" && <JourneyView />}
@@ -281,7 +423,7 @@ export default function LearningRecord() {
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "#fff", border: "1px solid #fde68a", marginBottom: 8, flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{e.title}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{e.program} · {e.detail || "Self-stated"}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{e.program}{e.course ? ` › ${e.course}` : ""} · {e.detail || "Self-stated"}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => flash("Upload a transcript or certificate to verify this entry.")} style={{ fontSize: 12, fontWeight: 600, color: C.accent, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 7, padding: "7px 12px", cursor: "pointer", whiteSpace: "nowrap" }}>Add evidence</button>
