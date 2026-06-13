@@ -395,7 +395,7 @@ function StepHero({ kind }) {
     <div style={{ display: "flex", alignItems: "stretch", minHeight: 104, borderRadius: 14, marginBottom: 16, background: "#FFFFFF", border: "1px solid #E8ECF2", overflow: "hidden" }}>
       <div style={{ width: 150, flexShrink: 0, background: "#F4F6FA", borderRight: "1px solid #EEF1F6", display: "grid", placeItems: "center" }}>
         {imgOk
-          ? <img src={`/hero/${kind}.png`} alt="" onError={() => setImgOk(false)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ? <img src={`/hero/${kind}.png?v=3`} alt="" onError={() => setImgOk(false)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           : <StepIcon kind={kind} color={m.fg} />}
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", padding: "16px 20px" }}>
