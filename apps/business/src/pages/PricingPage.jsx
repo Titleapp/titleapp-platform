@@ -104,6 +104,26 @@ const TIERS = [
     accent: "#dc2626",
     featured: false,
   },
+  {
+    id: "schools",
+    name: "Schools & Universities",
+    price: "$99",
+    cadence: "/mo + $5 per student",
+    tagline: "Business in a Box for education — the student-owned record plus the workers your faculty build.",
+    workers: [
+      "Everything in the Free spine",
+      "Vault Academic Record — student-owned, hashed, FERPA dual-control",
+      "Unlimited Digital Workers your faculty build (evaluation, courses, CE)",
+      "$5 / active student / mo (or $50/yr) — includes a monthly data allowance",
+      "Heavy users carry their own student data plan — you stay predictable",
+      "Professors earn 75% revenue share on the workers they publish",
+    ],
+    note: "Above 1,000 active students, switch to a flat site license — talk to us. Governed by the SOCIII for Education Terms + FERPA Data Processing Addendum. Textbooks are dead; Digital Workers are live.",
+    cta: "Talk to Alex",
+    ctaHref: "/meet-alex?intent=schools",
+    accent: "#0E7490",
+    featured: false,
+  },
 ];
 
 export default function PricingPage() {

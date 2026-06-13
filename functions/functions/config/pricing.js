@@ -49,6 +49,22 @@ module.exports = {
   creatorSubscriptionSharePct: 0.75,
   platformSubscriptionSharePct: 0.25,
 
+  // ── SOCIII for Education — "Business in a Box for Schools" ────
+  // Three layers: (1) school base, (2) per active student seat (access +
+  // included data allowance), (3) student data plan (heavy users top up their
+  // OWN credits for overage — keeps the school's bill predictable). Professors
+  // are creators and earn the standard 75% share on workers they publish.
+  // Above the enterprise threshold, switch to a flat negotiated site license.
+  education: {
+    basePriceMonthly: 99,            // $ / month per institution workspace
+    perActiveStudentMonthly: 5,      // $ / active student / month
+    perActiveStudentAnnual: 50,      // $ / active student / year (prepaid)
+    includedCreditsPerStudent: 100,  // monthly data allowance per active student
+    enterpriseStudentThreshold: 1000,// above this → flat site license (custom)
+    creatorRevenueSharePct: 0.75,    // professor share (matches creatorSubscriptionSharePct)
+    overagePaidBy: "student",        // default: student data plan pays overage; "institution" pool optional
+  },
+
   // ── Document Control Usage Allowances (per tier, per month) ──
   documentControlAllowances: {
     free:       { signatures: 0,  blockchainRecords: 0  },
