@@ -74,9 +74,15 @@ export default function WorkspaceInvestorMaterials() {
         i.pendingObligations.some(o => o.id === "verify-identity" && o.completedAt)
       );
       const mats = Array.isArray(matData?.materials) ? matData.materials : [];
-      // Also render materials when entitlement exists (post-signing).
-      setInvestorInvite(inv || (mats.length > 0 ? { role: "investor", _viaEntitlement: true } : null));
-      setMaterialsConfig(mats[0] || null);
+      // Only count GENUINE investor access. The /investor:materials endpoint
+      // also returns a founder/admin's own fundraises via an admin bypass
+      // (tagged viaAdmin:true) so they can preview the data room — but that
+      // must NOT bolt the investor "Your access" banner onto the founder's
+      // Vault/Dashboard. Filter those out: the banner shows for a real
+      // investor invite (a) or a non-admin entitlement (b) only.
+      const investorMats = mats.filter((m) => !m.viaAdmin);
+      setInvestorInvite(inv || (investorMats.length > 0 ? { role: "investor", _viaEntitlement: true } : null));
+      setMaterialsConfig(investorMats[0] || null);
     } catch (_) {
       if (mountedRef.current) { setInvestorInvite(null); setMaterialsConfig(null); }
     } finally {

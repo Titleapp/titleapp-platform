@@ -92,7 +92,10 @@ export default function useCreatorStatus() {
     const load = () => {
       if (_cache) { apply(_cache); return; }
       if (!_inflight) {
-        _inflight = fetchCreatorProfile().then(result => { _cache = { ...result, fetchedAt: Date.now() }; return result; });
+        _inflight = fetchCreatorProfile().then(result => {
+          _cache = { ...result, fetchedAt: Date.now(), uid: window.__firebaseAuth?.currentUser?.uid || null };
+          return result;
+        });
       }
       _inflight.then(apply);
     };
@@ -101,10 +104,21 @@ export default function useCreatorStatus() {
     // before Firebase auth resolved a token, locking the module cache to a
     // premature "none" (the menu then only corrected on a nav click). Re-fetch
     // the moment a user signs in so the menu self-corrects.
+    //
+    // S52.61 — but ONLY on a genuine uid change. onAuthStateChanged fires its
+    // callback immediately on every subscribe (i.e. every Sidebar remount as
+    // the user navigates). The previous handler busted the cache + refetched
+    // each time; during the refetch window the status could resolve to "none",
+    // making the CREATOR menu flip between "Become a Creator" and the full menu
+    // ("several different versions appearing as I run through things"). Guard on
+    // uid so we only invalidate on a real sign-in, not the replay callback.
     let unsub = null;
     const auth = typeof window !== "undefined" ? window.__firebaseAuth : null;
     if (auth && typeof auth.onAuthStateChanged === "function") {
-      unsub = auth.onAuthStateChanged((u) => { if (u) { _cache = null; _inflight = null; load(); } });
+      unsub = auth.onAuthStateChanged((u) => {
+        const uid = u ? u.uid : null;
+        if (uid && (!_cache || _cache.uid !== uid)) { _cache = null; _inflight = null; load(); }
+      });
     }
     return () => { alive = false; if (unsub) unsub(); };
   }, []);

@@ -97,6 +97,41 @@ const RECORD = {
             { kind: "competency", title: "Vital signs & assessment — met", source: "preceptor", at: "2025-12-05", v: "verified" },
             { kind: "exam", title: "Final exam", detail: "88% · Tanner: noticing → interpreting", source: "lms:canvas", at: "2025-12-12", v: "verified" },
           ],
+          modules: [
+            { n: 1, title: "Foundations of Nursing Practice", items: [
+              { kind: "lab", title: "Lab — Bed-making & patient positioning", v: "verified" },
+              { kind: "quiz", title: "Quiz — Scope of practice & roles", detail: "90%", v: "verified" },
+            ] },
+            { n: 2, title: "Infection Control & Asepsis", items: [
+              { kind: "lab", title: "Lab — Hand hygiene & PPE donning/doffing", v: "verified" },
+              { kind: "quiz", title: "Quiz — Chain of infection", detail: "96%", v: "verified" },
+              { kind: "quiz", title: "Quiz — Isolation precautions", detail: "88%", v: "verified" },
+            ] },
+            { n: 3, title: "Vital Signs", items: [
+              { kind: "lab", title: "Lab — BP, HR, temperature & respiration", v: "verified" },
+              { kind: "quiz", title: "Quiz — Normal ranges & red flags", detail: "92%", v: "verified" },
+            ] },
+            { n: 4, title: "Health History & Documentation", items: [
+              { kind: "lab", title: "Lab — Charting in the EHR (simulation)", v: "verified" },
+              { kind: "quiz", title: "Quiz — SBAR & documentation standards", detail: "89%", v: "verified" },
+            ] },
+            { n: 5, title: "Safe Patient Handling & Mobility", items: [
+              { kind: "lab", title: "Lab — Transfers & gait-belt technique", v: "verified" },
+              { kind: "quiz", title: "Quiz — Body mechanics & fall prevention", detail: "94%", v: "verified" },
+            ] },
+            { n: 6, title: "Hygiene & Comfort", items: [
+              { kind: "lab", title: "Lab — Bath, oral & perineal care", v: "verified" },
+              { kind: "quiz", title: "Quiz — Skin integrity & pressure injury", detail: "90%", v: "verified" },
+            ] },
+            { n: 7, title: "Nutrition & Elimination", items: [
+              { kind: "lab", title: "Lab — Feeding assistance & intake/output", v: "verified" },
+              { kind: "quiz", title: "Quiz — Fluid & electrolyte balance", detail: "87%", v: "verified" },
+            ] },
+            { n: 8, title: "Medication Fundamentals", items: [
+              { kind: "lab", title: "Lab — Six rights med pass (simulation)", v: "verified" },
+              { kind: "quiz", title: "Quiz — Medication safety", detail: "93%", v: "verified" },
+            ] },
+          ],
         },
         {
           id: "nur220", code: "NUR 220", title: "Health Assessment", term: "Spring 2026", status: "Completed · 91%",
@@ -104,6 +139,28 @@ const RECORD = {
             { kind: "material", title: "Course materials — head-to-toe assessment modules", source: "lms:canvas", at: "2026-01-13", v: "verified" },
             { kind: "quiz", title: "Quiz 2 — Cardiac & respiratory landmarks", detail: "90%", source: "lms:canvas", at: "2026-02-03", v: "verified" },
             { kind: "exam", title: "Exam — full assessment", detail: "91%", source: "lms:canvas", at: "2026-02-20", v: "verified" },
+          ],
+          modules: [
+            { n: 1, title: "Assessment Foundations & Interviewing", items: [
+              { kind: "lab", title: "Lab — Health-history intake (standardized patient)", v: "verified" },
+              { kind: "quiz", title: "Quiz — Interviewing & cultural humility", detail: "91%", v: "verified" },
+            ] },
+            { n: 2, title: "HEENT", items: [
+              { kind: "lab", title: "Lab — Head, eyes, ears, nose & throat exam", v: "verified" },
+              { kind: "quiz", title: "Quiz — HEENT landmarks & findings", detail: "88%", v: "verified" },
+            ] },
+            { n: 3, title: "Cardiac & Respiratory", items: [
+              { kind: "lab", title: "Lab — Heart & lung auscultation", v: "verified" },
+              { kind: "quiz", title: "Quiz — Auscultation landmarks", detail: "90%", v: "verified" },
+            ] },
+            { n: 4, title: "Abdomen & Gastrointestinal", items: [
+              { kind: "lab", title: "Lab — Abdominal inspection & palpation", v: "verified" },
+              { kind: "quiz", title: "Quiz — GI assessment", detail: "89%", v: "verified" },
+            ] },
+            { n: 5, title: "Neuro & Musculoskeletal", items: [
+              { kind: "lab", title: "Lab — Cranial nerves & range-of-motion", v: "verified" },
+              { kind: "quiz", title: "Quiz — Neuro & MSK findings", detail: "92%", v: "verified" },
+            ] },
           ],
         },
         {
@@ -117,13 +174,41 @@ const RECORD = {
             { kind: "exam", title: "Midterm exam", detail: "82% · dosage section improved", source: "lms:canvas", at: "2026-02-14", v: "verified" },
             { kind: "competency", title: "Medication administration — met", source: "preceptor", at: "2026-03-12", v: "verified" },
           ],
+          modules: [
+            { n: 1, title: "Pharmacokinetics & Pharmacodynamics", items: [
+              { kind: "lab", title: "Lab — Absorption/distribution simulation", v: "verified" },
+              { kind: "quiz", title: "Quiz — PK/PD principles", detail: "84%", v: "verified" },
+            ] },
+            { n: 2, title: "Dosage Calculation", items: [
+              { kind: "lab", title: "Lab — Med-math practical", v: "verified" },
+              { kind: "quiz", title: "Quiz 1 — Dosage calculation", detail: "79% · below threshold → early alert", v: "verified" },
+              { kind: "ai_session", title: "AI-assisted practice — 40 dosage problems (Ruthie)", detail: "flagged weight-based dosing & IV drip rates", v: "verified" },
+              { kind: "quiz", title: "Quiz 1 — retake after coaching", detail: "88%", v: "verified" },
+            ] },
+            { n: 3, title: "Routes & Administration", items: [
+              { kind: "lab", title: "Lab — IV / IM / SubQ technique (simulation)", v: "verified" },
+              { kind: "quiz", title: "Quiz — Routes & administration", detail: "86%", v: "verified" },
+            ] },
+            { n: 4, title: "Drug Interactions", items: [
+              { kind: "lab", title: "Lab — Interaction case studies", v: "verified" },
+              { kind: "quiz", title: "Quiz — Major interactions", detail: "85%", v: "verified" },
+            ] },
+            { n: 5, title: "High-Alert Medications", items: [
+              { kind: "lab", title: "Lab — Insulin & anticoagulant simulation", v: "verified" },
+              { kind: "quiz", title: "Quiz — High-alert safeguards", detail: "88%", v: "verified" },
+            ] },
+            { n: 6, title: "Pediatric & Geriatric Dosing", items: [
+              { kind: "lab", title: "Lab — Weight-based dosing practical", v: "verified" },
+              { kind: "quiz", title: "Quiz — Special-population dosing", detail: "82%", v: "verified" },
+            ] },
+          ],
         },
       ],
     },
   ],
 };
 
-const KIND_ICON = { enrollment: "🎓", credential: "🏅", specialty: "🌊", assessment: "📝", clinical_hours: "🏥", competency: "✅", reflection: "🪞", ce_activity: "📜", document: "📄", note: "🗒️", material: "📚", quiz: "✏️", exam: "📝", warning: "⚠️", coaching: "🧭", ai_session: "🤖", dive: "🤿" };
+const KIND_ICON = { enrollment: "🎓", credential: "🏅", specialty: "🌊", assessment: "📝", clinical_hours: "🏥", competency: "✅", reflection: "🪞", ce_activity: "📜", document: "📄", note: "🗒️", material: "📚", quiz: "✏️", exam: "📝", warning: "⚠️", coaching: "🧭", ai_session: "🤖", dive: "🤿", lab: "🔬" };
 const PROGRAM_ICON = { academic: "🎓", professional: "🏅" };
 
 // All entries flattened (newest first), tagged with their program — and, for
@@ -248,10 +333,38 @@ function CourseEntry({ e, flash }) {
   );
 }
 
+// A module inside a course — the deepest level. Collapsible row that reveals
+// the module's lab(s) and quiz(zes). This is what makes "8 modules" real to a
+// faculty audience: each module is outlined with its own work.
+function ModuleRow({ m, open, onToggle }) {
+  return (
+    <div style={{ borderRadius: 8, background: open ? "#fafaff" : "#fff", border: `1px solid ${open ? "#ddd6fe" : "#eef2f7"}`, overflow: "hidden" }}>
+      <button onClick={onToggle} style={{ textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 11px", background: "none", border: "none", width: "100%" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#334155", minWidth: 0 }}><span style={{ fontWeight: 800, color: "#7c3aed" }}>Module {m.n}</span> · {m.title}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: "#94a3b8" }}>{m.items.length} items</span>
+          <span style={{ fontSize: 13, color: "#cbd5e1", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+        </span>
+      </button>
+      {open && (
+        <div style={{ padding: "1px 11px 9px 13px" }}>
+          {m.items.map((it, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 11.5, margin: "5px 0" }}>
+              <span style={{ fontSize: 13 }}>{KIND_ICON[it.kind] || "•"}</span>
+              <span style={{ flex: 1, color: "#1e293b" }}>{it.title}{it.detail ? <span style={{ color: "#94a3b8" }}> — {it.detail}</span> : null}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // A course inside an institution — collapsible row that drills into the
-// course's granular entries (materials, quizzes, exams, warnings, coaching,
-// AI-assisted-learning sessions, dive logbook).
+// course's modules (each with labs + quizzes) AND its course-level entries
+// (materials, exams, competencies, warnings, coaching, AI sessions, sign-offs).
 function CourseBlock({ course, open, onToggle, flash }) {
+  const [openModule, setOpenModule] = useState(null);
   const verified = course.entries.filter((e) => e.v === "verified").length;
   const pending = course.entries.length - verified;
   return (
@@ -262,6 +375,7 @@ function CourseBlock({ course, open, onToggle, flash }) {
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{course.term} · {course.status}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
+          {course.modules && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#1d4ed8" }}>{course.modules.length} modules</span>}
           <span style={{ fontSize: 10.5, fontWeight: 700, color: "#64748b" }}>{course.entries.length} entries</span>
           {pending > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: C.pending.text, background: C.pending.bg, border: `1px solid ${C.pending.border}`, borderRadius: 999, padding: "1px 7px" }}>{pending} pending</span>}
           <span style={{ fontSize: 14, color: "#a78bfa", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
@@ -269,6 +383,15 @@ function CourseBlock({ course, open, onToggle, flash }) {
       </button>
       {open && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 12px 12px" }}>
+          {course.modules && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "2px 0 1px" }}>Modules <span style={{ textTransform: "none", fontWeight: 500, color: "#cbd5e1" }}>— click to see each module's lab & quizzes</span></div>
+              {course.modules.map((m) => (
+                <ModuleRow key={m.n} m={m} open={openModule === m.n} onToggle={() => setOpenModule(openModule === m.n ? null : m.n)} />
+              ))}
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "8px 0 1px" }}>Assessments & sign-offs</div>
+            </>
+          )}
           {course.entries.map((e, i) => <CourseEntry key={i} e={e} flash={flash} />)}
         </div>
       )}
