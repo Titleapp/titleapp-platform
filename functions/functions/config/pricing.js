@@ -57,11 +57,13 @@ module.exports = {
   // credits), keeping the org's base bill predictable.
   businessInABox: {
     basePriceMonthly: 99,            // $ / month per workspace
-    perActiveSeatMonthly: 5,         // $ / active user seat / month
-    perActiveSeatAnnual: 50,         // $ / active user seat / year (prepaid)
+    includedSeats: 5,                // first 5 seats free — small teams stay at $99
+    perActiveSeatMonthly: 5,         // $ / active seat / month BEYOND the included 5
+    perActiveSeatAnnual: 50,         // $ / active seat / year (prepaid), beyond 5
     includedCreditsPerSeat: 100,     // monthly data allowance per active seat
     enterpriseSeatThreshold: 1000,   // above this → flat negotiated license
     overagePaidBy: "seat",           // the seat-holder's own credits pay overage
+    // billed seat quantity = max(0, activeSeats - includedSeats)
   },
 
   // SOCIII for Education = "Academia in a Box".
@@ -72,8 +74,9 @@ module.exports = {
   // Above the enterprise threshold, switch to a flat negotiated site license.
   education: {
     basePriceMonthly: 99,            // $ / month per institution workspace
-    perActiveStudentMonthly: 5,      // $ / active student / month
-    perActiveStudentAnnual: 50,      // $ / active student / year (prepaid)
+    includedStudents: 5,             // first 5 students free (matches the box model)
+    perActiveStudentMonthly: 5,      // $ / active student / month BEYOND the included 5
+    perActiveStudentAnnual: 50,      // $ / active student / year (prepaid), beyond 5
     includedCreditsPerStudent: 100,  // monthly data allowance per active student
     enterpriseStudentThreshold: 1000,// above this → flat site license (custom)
     creatorRevenueSharePct: 0.75,    // professor share (matches creatorSubscriptionSharePct)

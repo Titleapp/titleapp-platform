@@ -92,7 +92,8 @@ const TIERS = [
     tagline: "The full company stack. The spine plus a curated set of workers tuned to your industry.",
     workers: [
       "Everything in the Free spine",
-      "$5 / active user seat — only pay for who's actually in the box",
+      "First 5 seats included — small teams stay at $99 flat",
+      "$5 / active seat beyond 5 — only pay for who's in the box",
       "A curated set of specialist workers for your industry",
       "Onboarding from Alex — she composes the bundle",
       "Industry templates and ruleset overlays",
@@ -115,7 +116,7 @@ const TIERS = [
       "Everything in the Free spine",
       "Vault Academic Record — student-owned, hashed, FERPA dual-control",
       "Unlimited Digital Workers your faculty build (evaluation, courses, CE)",
-      "$5 / active student / mo (or $50/yr) — includes a monthly data allowance",
+      "First 5 students included; then $5 / active student / mo (or $50/yr)",
       "Heavy users carry their own student data plan — you stay predictable",
       "Professors earn 75% revenue share on the workers they publish",
     ],
