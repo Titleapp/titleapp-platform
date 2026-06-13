@@ -389,13 +389,18 @@ function StepIcon({ kind, color }) {
 
 function StepHero({ kind }) {
   const m = STEP_META[kind];
+  const [imgOk, setImgOk] = useState(true);
   if (!m) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 12, marginBottom: 14, background: "#FFFFFF", border: "1px solid #E8ECF2" }}>
-      <div style={{ width: 44, height: 44, borderRadius: 11, background: "#F4F6FA", border: "1px solid #E8ECF2", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <StepIcon kind={kind} color={m.fg} />
+    <div style={{ display: "flex", alignItems: "stretch", minHeight: 104, borderRadius: 14, marginBottom: 16, background: "#FFFFFF", border: "1px solid #E8ECF2", overflow: "hidden" }}>
+      <div style={{ width: 150, flexShrink: 0, background: "#F4F6FA", borderRight: "1px solid #EEF1F6", display: "grid", placeItems: "center" }}>
+        {imgOk
+          ? <img src={`/hero/${kind}.png`} alt="" onError={() => setImgOk(false)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          : <StepIcon kind={kind} color={m.fg} />}
       </div>
-      <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1e293b", lineHeight: 1.35 }}>{m.title}</div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", padding: "16px 20px" }}>
+        <div style={{ fontSize: 16.5, fontWeight: 700, color: "#1e293b", lineHeight: 1.35 }}>{m.title}</div>
+      </div>
     </div>
   );
 }
