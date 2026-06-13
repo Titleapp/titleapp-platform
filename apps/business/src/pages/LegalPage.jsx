@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { EDUCATION_TERMS_HTML, EDUCATION_DPA_HTML } from "../legal/educationLegal";
 
 const LEGAL_DOCS = {
