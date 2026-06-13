@@ -410,6 +410,8 @@ export default function WorkerSandbox() {
   const [sessionId, setSessionId] = useState(null);
   const [state, setState] = useState(null);
   const [activeStepId, setActiveStepId] = useState(null);
+  const [sidebarHidden, setSidebarHidden] = useState(false); // hide the nav
+  const [chatHidden, setChatHidden] = useState(false);       // collapse the chat column
   const [messages, setMessages] = useState([
     {
       role: "alex",
@@ -797,18 +799,26 @@ export default function WorkerSandbox() {
     }}>
       {/* Shared workspace nav — same component as the rest of the app. Section
           clicks bounce to the workspace via the ta_redirect_page handshake. */}
-      <Sidebar
-        currentSection="sandbox-worker"
-        onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {} window.location.href = "/"; }}
-        tenantName={localStorage.getItem("TENANT_NAME") || undefined}
-        guestMode={false}
-      />
+      {!sidebarHidden && (
+        <Sidebar
+          currentSection="sandbox-worker"
+          onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {} window.location.href = "/"; }}
+          tenantName={localStorage.getItem("TENANT_NAME") || undefined}
+          guestMode={false}
+        />
+      )}
+      {/* Hide/show the nav — slim dark edge rail (upper-left) */}
+      <div onClick={() => setSidebarHidden(h => !h)} title={sidebarHidden ? "Show menu" : "Hide menu"}
+        style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#0f172a", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+        {sidebarHidden ? "›" : "‹"}
+      </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
         <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
 
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        {/* Chat panel */}
+        {/* Chat panel — collapsible */}
+        {!chatHidden && (
         <div style={{ width: 380, flexShrink: 0 }}>
           <AlexChat
             messages={messages}
@@ -824,6 +834,12 @@ export default function WorkerSandbox() {
             onFilesClear={handleFilesClear}
             fileInputRef={fileInputRef}
           />
+        </div>
+        )}
+        {/* Expand / contract the chat column */}
+        <div onClick={() => setChatHidden(h => !h)} title={chatHidden ? "Show chat" : "Hide chat"}
+          style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#fff", borderLeft: "1px solid #E2E8F0", borderRight: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 12 }}>
+          {chatHidden ? "›" : "‹"}
         </div>
 
         {/* Canvas — step status bar + active canvas */}

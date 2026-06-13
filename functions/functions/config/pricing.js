@@ -49,7 +49,22 @@ module.exports = {
   creatorSubscriptionSharePct: 0.75,
   platformSubscriptionSharePct: 0.25,
 
-  // ── SOCIII for Education — "Business in a Box for Schools" ────
+  // ── "Box" plans — $99 base + $5 per active seat ──────────────
+  // Sean (2026-06-13): same pricing shape for both. Business in a Box = the
+  // generic company stack; Academia in a Box = the education variant (adds the
+  // FERPA / Academic Record layer and the student-data-plan overage model).
+  // Bill only ACTIVE seats; data overage paid by the seat-holder (their own
+  // credits), keeping the org's base bill predictable.
+  businessInABox: {
+    basePriceMonthly: 99,            // $ / month per workspace
+    perActiveSeatMonthly: 5,         // $ / active user seat / month
+    perActiveSeatAnnual: 50,         // $ / active user seat / year (prepaid)
+    includedCreditsPerSeat: 100,     // monthly data allowance per active seat
+    enterpriseSeatThreshold: 1000,   // above this → flat negotiated license
+    overagePaidBy: "seat",           // the seat-holder's own credits pay overage
+  },
+
+  // SOCIII for Education = "Academia in a Box".
   // Three layers: (1) school base, (2) per active student seat (access +
   // included data allowance), (3) student data plan (heavy users top up their
   // OWN credits for overage — keeps the school's bill predictable). Professors

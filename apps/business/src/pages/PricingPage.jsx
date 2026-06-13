@@ -88,10 +88,11 @@ const TIERS = [
     id: "biab",
     name: "Business in a Box",
     price: "$99",
-    cadence: "per month",
+    cadence: "/mo + $5 per seat",
     tagline: "The full company stack. The spine plus a curated set of workers tuned to your industry.",
     workers: [
       "Everything in the Free spine",
+      "$5 / active user seat — only pay for who's actually in the box",
       "A curated set of specialist workers for your industry",
       "Onboarding from Alex — she composes the bundle",
       "Industry templates and ruleset overlays",
@@ -106,7 +107,7 @@ const TIERS = [
   },
   {
     id: "schools",
-    name: "Schools & Universities",
+    name: "Academia in a Box",
     price: "$99",
     cadence: "/mo + $5 per student",
     tagline: "Business in a Box for education — the student-owned record plus the workers your faculty build.",
