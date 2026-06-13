@@ -353,6 +353,39 @@ function FloorThumb({ name }) {
   return <div style={{ ...base, alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 18 }}>🖼️</div>;
 }
 
+// Visual lead for each step — we dogfood our own rule: open with a picture,
+// not a form. A wide banner illustration at the top of each canvas.
+function StepHero({ kind }) {
+  const band = { height: 84, borderRadius: 10, overflow: "hidden", border: "1px solid #E2E8F0", padding: 10, marginBottom: 12, background: "#F8FAFC", display: "flex", alignItems: "center", gap: 8 };
+  const docTile = { width: 36, height: 48, borderRadius: 4, background: "#fff", border: "1px solid #e2e8f0", padding: 5, display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 };
+  switch (kind) {
+    case "knowledge": return <div style={band}>
+      {[0, 1, 2].map(i => <div key={i} style={{ ...docTile, transform: `rotate(${(i - 1) * 4}deg)` }}>{[100, 80, 90, 60].map((w, j) => <div key={j} style={{ height: 3, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}</div>)}
+      <div style={{ marginLeft: 8 }}><div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>Your worker's brain</div><div style={{ fontSize: 11, color: "#64748b" }}>Everything it knows, in one locker.</div></div>
+    </div>;
+    case "tools": return <div style={{ ...band, flexWrap: "wrap" }}>
+      {[["#635bff", "Stripe"], ["#1a82e2", "SendGrid"], ["#4285f4", "Calendar"], ["#0f9d58", "Sheets"]].map(([c, n], i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 8px" }}><div style={{ width: 14, height: 14, borderRadius: 4, background: c }} /><span style={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>{n}</span><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} /></div>)}
+    </div>;
+    case "test": return <div style={{ ...band, flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 6 }}>
+      <div style={{ alignSelf: "flex-start", maxWidth: "70%", fontSize: 11, background: "#fee2e2", color: "#991b1b", padding: "5px 9px", borderRadius: "10px 10px 10px 2px" }}>What if the dosage looks wrong?</div>
+      <div style={{ alignSelf: "flex-end", maxWidth: "70%", fontSize: 11, background: "#ddd6fe", color: "#4c1d95", padding: "5px 9px", borderRadius: "10px 10px 2px 10px" }}>I flag it and escalate. ✓</div>
+    </div>;
+    case "preflight": return <div style={{ ...band, gap: 6 }}>
+      {[1, 1, 1, 1, 1, 0, 0].map((g, i) => <div key={i} style={{ flex: 1, height: 36, borderRadius: 6, background: g ? "#dcfce7" : "#f1f5f9", border: `1px solid ${g ? "#86efac" : "#e2e8f0"}`, display: "grid", placeItems: "center", fontSize: 13, color: "#16a34a" }}>{g ? "✓" : ""}</div>)}
+      <div style={{ marginLeft: 4, fontSize: 14, fontWeight: 800, color: "#16a34a" }}>5/7</div>
+    </div>;
+    case "distribute": return <div style={{ ...band, justifyContent: "center", gap: 16 }}>
+      <div style={{ width: 40, height: 64, borderRadius: 8, border: "2px solid #cbd5e1", background: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}><div style={{ width: 22, height: 22, background: "repeating-linear-gradient(45deg,#1a1a2e 0 3px,#fff 3px 6px)", borderRadius: 3 }} /></div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{["🔗 Link", "🔳 QR code", "✉️ Email", "📣 Post"].map((t, i) => <div key={i} style={{ fontSize: 11, color: "#334155", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "3px 8px" }}>{t}</div>)}</div>
+    </div>;
+    case "grow": return <div style={band}>
+      <svg width="120" height="56" viewBox="0 0 120 56" style={{ flexShrink: 0 }}><polyline points="0,50 25,42 50,46 75,28 100,18 120,6" fill="none" stroke="#7c3aed" strokeWidth="3" /></svg>
+      <div style={{ display: "flex", gap: 6 }}>{[["Subs", "128"], ["MRR", "$3.2k"]].map(([l, v], i) => <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 9px", textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a2e" }}>{v}</div><div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase" }}>{l}</div></div>)}</div>
+    </div>;
+    default: return null;
+  }
+}
+
 export function DesignCanvas({ session, workerId, onComplete }) {
   const initial = session?.workerSteps?.design?.data || {};
   const spec = session?.spec || {};
@@ -669,6 +702,7 @@ export function KnowledgeCanvas({ session, workerId, onComplete }) {
       title="Knowledge — Studio Locker"
       subtitle="The most important step. Everything your worker knows lives here."
     >
+      <StepHero kind="knowledge" />
       <div style={card}>
         <div style={label}>Upload a file (PDF, DOCX, TXT, MD, CSV)</div>
         <input ref={fileRef} type="file" onChange={handleFile} accept=".pdf,.docx,.txt,.md,.csv" />
@@ -812,6 +846,7 @@ export function ToolsCanvas({ session, onComplete }) {
       title="Tools — Integrations"
       subtitle="Connect APIs your worker can act through, not just advise about."
     >
+      <StepHero kind="tools" />
       <div style={card}>
         <div style={label}>Add a tool</div>
         <input style={input} value={newTool} onChange={e => setNewTool(e.target.value)} placeholder="Tool name (e.g. Stripe, SendGrid, Google Calendar)" />
@@ -900,6 +935,7 @@ export function TestCanvas({ session, sessionId, onComplete }) {
       title="Test — Red team"
       subtitle="Alex stress tests your worker. This is the AHA moment."
     >
+      <StepHero kind="test" />
       <div style={{ ...card, background: "#F8FAFC" }}>
         <div style={{ fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
           Let me stress test this before your subscribers do. I am going to push on it hard — that is how you know it is ready.
@@ -1002,6 +1038,7 @@ export function PreflightCanvas({ session, onComplete }) {
       title="Preflight — 7 gates"
       subtitle="A lot of creators stall here. Push through the paperwork."
     >
+      <StepHero kind="preflight" />
       <div style={card}>
         {PREFLIGHT_GATES.map((g, i) => (
           <label key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < PREFLIGHT_GATES.length - 1 ? "1px solid #F1F5F9" : "none", cursor: "pointer" }}>
@@ -1072,6 +1109,7 @@ export function DistributeCanvas({ session, onComplete }) {
       title="Distribute"
       subtitle="Your worker is live. Here's a ready-to-use share kit — built from your worker, copy and go."
     >
+      <StepHero kind="distribute" />
       <div style={card}>
         <div style={label}>Share link</div>
         <div style={fieldRow}>
@@ -1162,6 +1200,7 @@ export function GrowCanvas({ onComplete }) {
       title="Grow & Update"
       subtitle="Your network trusts you more than any ad we could run. This is your launch — start here."
     >
+      <StepHero kind="grow" />
       <div style={card}>
         <div style={label}>Launch checklist · {done} of {LAUNCH_CHECKLIST.length}</div>
         {LAUNCH_CHECKLIST.map((item, i) => (
