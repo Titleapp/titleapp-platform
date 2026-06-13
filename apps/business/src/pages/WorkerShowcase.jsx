@@ -85,11 +85,16 @@ function VideoExpertCard() {
       tag="See all experts →"
       onExplore={() => go("/work")}
       visual={
-        <video
-          src="/launch-creative/of-fred-video-01.mp4"
-          autoPlay loop muted playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <video
+            src="/launch-creative/of-fred-video-01.mp4"
+            autoPlay loop muted playsInline
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+          <div style={{ position: "absolute", left: 8, right: 8, bottom: 8, background: "rgba(0,0,0,0.62)", color: "#fff", fontSize: 11.5, fontWeight: 600, padding: "6px 9px", borderRadius: 7, backdropFilter: "blur(2px)" }}>
+            📸 You can even pick your own profile pic — we won't judge.
+          </div>
+        </div>
       }
     />
   );
@@ -155,15 +160,25 @@ function ShowcaseCard({ eyebrow, title, desc, tag, visual, onExplore }) {
 
 // A little OS-window mockup so creators SEE the four-window setup before they
 // live it — Sandbox / Code / Claude / GitHub, each with its job.
-function TeamWindow({ chromeTitle, dark, role, desc, children }) {
+function TeamWindow({ chromeTitle, href, dark, role, desc, children }) {
+  const tabBg = dark ? "#0b0e14" : "#fff";
   return (
     <div>
-      <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}`, background: dark ? "#0b0e14" : "#fff", height: 148, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 9px", background: dark ? "#11161f" : "#f1f5f9", borderBottom: `1px solid ${C.border}` }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#ef4444" }} />
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b" }} />
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22c55e" }} />
-          <span style={{ marginLeft: 6, fontSize: 10, color: dark ? "#8b96a8" : "#64748b", fontWeight: 600 }}>{chromeTitle}</span>
+      <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}`, background: tabBg, height: 148, display: "flex", flexDirection: "column" }}>
+        {/* Browser chrome — a real tab with a working link */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "7px 9px 0", background: dark ? "#11161f" : "#e2e8f0" }}>
+          <div style={{ display: "flex", gap: 5, paddingBottom: 6, flexShrink: 0 }}>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#ef4444" }} />
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b" }} />
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22c55e" }} />
+          </div>
+          <a href={href} target="_blank" rel="noopener noreferrer"
+            title={`Open ${chromeTitle}`}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: tabBg, border: `1px solid ${C.border}`, borderBottom: "none", borderRadius: "8px 8px 0 0", padding: "5px 10px", fontSize: 10, color: dark ? "#cbd5e1" : "#334155", fontWeight: 600, textDecoration: "none", maxWidth: "78%", overflow: "hidden", whiteSpace: "nowrap" }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#7c3aed", flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{chromeTitle}</span>
+            <span style={{ color: C.dim, flexShrink: 0 }}>↗</span>
+          </a>
         </div>
         <div style={{ flex: 1, padding: 10, overflow: "hidden" }}>{children}</div>
       </div>
@@ -182,14 +197,14 @@ function MeetYourTeam() {
         Four windows open. Each has a job. This is what building actually looks like.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18 }}>
-        <TeamWindow chromeTitle="sociii.ai/sandbox" role="Sandbox" desc="Alex facilitates — shapes the idea, no code">
+        <TeamWindow chromeTitle="sociii.ai/sandbox" href="/sandbox/worker" role="Sandbox" desc="Alex facilitates — shapes the idea, no code">
           <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
             <div style={{ background: "#7c3aed", color: "#fff", fontSize: 9, fontWeight: 700, padding: "4px 7px", borderRadius: 5 }}>Alex · Chief of Staff</div>
             <div style={{ display: "flex", gap: 4 }}>{["#c7d2fe", "#bbf7d0", "#fde68a"].map((c, i) => <div key={i} style={{ flex: 1, height: 18, borderRadius: 4, background: c }} />)}</div>
             <div style={{ flex: 1, borderRadius: 4, background: "#eef2ff" }} />
           </div>
         </TeamWindow>
-        <TeamWindow chromeTitle="Terminal — claude" dark role="Code" desc="Does the heavy lifting — builds the worker">
+        <TeamWindow chromeTitle="Terminal — claude" href="https://claude.ai" dark role="Code" desc="Does the heavy lifting — builds the worker">
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, lineHeight: 1.7 }}>
             <div style={{ color: "#22c55e" }}>$ claude</div>
             <div style={{ color: "#8b96a8" }}>› building re-ce-hawaii…</div>
@@ -198,14 +213,14 @@ function MeetYourTeam() {
             <div style={{ color: "#8b96a8" }}>✓ canvas-tabs.json</div>
           </div>
         </TeamWindow>
-        <TeamWindow chromeTitle="claude.ai" role="Claude" desc="Your thinking partner — ask, refine, debug">
+        <TeamWindow chromeTitle="claude.ai" href="https://claude.ai" role="Claude" desc="Your thinking partner — ask, refine, debug">
           <div style={{ display: "flex", flexDirection: "column", gap: 7, justifyContent: "center", height: "100%" }}>
             <div style={{ alignSelf: "flex-start", width: "72%", height: 13, borderRadius: 8, background: "#e2e8f0" }} />
             <div style={{ alignSelf: "flex-end", width: "60%", height: 13, borderRadius: 8, background: "#ddd6fe" }} />
             <div style={{ alignSelf: "flex-start", width: "50%", height: 13, borderRadius: 8, background: "#e2e8f0" }} />
           </div>
         </TeamWindow>
-        <TeamWindow chromeTitle="github.com/sociii" role="GitHub" desc="Your holy grail — where the worker lives forever">
+        <TeamWindow chromeTitle="github.com/sociii" href="https://github.com/sociii" role="GitHub" desc="Your holy grail — where the worker lives forever">
           <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
             <div style={{ fontSize: 22, textAlign: "center" }}>🐙</div>
             <div style={{ fontSize: 9, color: "#64748b" }}>⎇ <strong>main</strong></div>
