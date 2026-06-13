@@ -226,6 +226,7 @@ export function DefineCanvas({ session, onComplete }) {
       title="Define your worker"
       subtitle="What does it do, who uses it, what job does it perform — and who are you?"
     >
+      <StepHero kind="define" />
       <div style={card}>
         <div style={label}>Worker name</div>
         <input style={input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Ruthie — Pharmacology CoPilot" />
@@ -324,7 +325,7 @@ const VISUAL_FLOORS = [
 const _frame = { borderRadius: 6, overflow: "hidden", border: "1px solid #E2E8F0" };
 
 function ShapeThumb({ id }) {
-  const base = { height: 54, padding: 6, display: "flex", flexDirection: "column", gap: 4, background: "#F8FAFC", ..._frame };
+  const base = { height: 54, padding: 6, display: "flex", flexDirection: "column", gap: 4, ..._frame, background: "#E6EBF2", border: "1px solid #B9C2CF" };
   switch (id) {
     case "dashboard": return <div style={base}>
       <div style={{ display: "flex", gap: 4, height: 15 }}>{["#c7d2fe", "#bbf7d0", "#fde68a"].map((c, i) => <div key={i} style={{ flex: 1, borderRadius: 4, background: c }} />)}</div>
@@ -353,37 +354,31 @@ function FloorThumb({ name }) {
   return <div style={{ ...base, alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 18 }}>🖼️</div>;
 }
 
-// Visual lead for each step — we dogfood our own rule: open with a picture,
-// not a form. A wide banner illustration at the top of each canvas.
+// Visual lead for each step — we dogfood our own rule: open with a PICTURE,
+// not a form. A bold illustrated banner: a big subject image (emoji reads as a
+// real picture, renders everywhere, no asset to load) on a colored gradient,
+// with a one-line "what & why." Swap emoji for AI art later without touching
+// callers.
+const STEP_HEROES = {
+  define:     { art: "🎯", g1: "#ede9fe", g2: "#ddd6fe", fg: "#5b21b6", title: "What it does — and why anyone should care" },
+  knowledge:  { art: "🧠", g1: "#fce7f3", g2: "#fbcfe8", fg: "#9d174d", title: "Your worker's brain — everything it knows" },
+  rules:      { art: "⚖️", g1: "#fef3c7", g2: "#fde68a", fg: "#92400e", title: "The laws it follows + the guardrails it lives by" },
+  tools:      { art: "🧰", g1: "#dbeafe", g2: "#bfdbfe", fg: "#1e40af", title: "Give it abilities — data, maps, images, and more" },
+  test:       { art: "🛡️", g1: "#fee2e2", g2: "#fecaca", fg: "#991b1b", title: "Stress-test it before your subscribers do" },
+  preflight:  { art: "🚦", g1: "#dcfce7", g2: "#bbf7d0", fg: "#166534", title: "Clear the gates — you're almost ready to launch" },
+  distribute: { art: "📣", g1: "#cffafe", g2: "#a5f3fc", fg: "#155e75", title: "Get it out there — link, QR, post, email" },
+  grow:       { art: "📈", g1: "#ede9fe", g2: "#c7d2fe", fg: "#3730a3", title: "Launch & grow — your subscribers and revenue" },
+};
+
 function StepHero({ kind }) {
-  const band = { height: 84, borderRadius: 10, overflow: "hidden", border: "1px solid #E2E8F0", padding: 10, marginBottom: 12, background: "#F8FAFC", display: "flex", alignItems: "center", gap: 8 };
-  const docTile = { width: 36, height: 48, borderRadius: 4, background: "#fff", border: "1px solid #e2e8f0", padding: 5, display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 };
-  switch (kind) {
-    case "knowledge": return <div style={band}>
-      {[0, 1, 2].map(i => <div key={i} style={{ ...docTile, transform: `rotate(${(i - 1) * 4}deg)` }}>{[100, 80, 90, 60].map((w, j) => <div key={j} style={{ height: 3, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}</div>)}
-      <div style={{ marginLeft: 8 }}><div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>Your worker's brain</div><div style={{ fontSize: 11, color: "#64748b" }}>Everything it knows, in one locker.</div></div>
-    </div>;
-    case "tools": return <div style={{ ...band, flexWrap: "wrap" }}>
-      {[["#635bff", "Stripe"], ["#1a82e2", "SendGrid"], ["#4285f4", "Calendar"], ["#0f9d58", "Sheets"]].map(([c, n], i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 8px" }}><div style={{ width: 14, height: 14, borderRadius: 4, background: c }} /><span style={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>{n}</span><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} /></div>)}
-    </div>;
-    case "test": return <div style={{ ...band, flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 6 }}>
-      <div style={{ alignSelf: "flex-start", maxWidth: "70%", fontSize: 11, background: "#fee2e2", color: "#991b1b", padding: "5px 9px", borderRadius: "10px 10px 10px 2px" }}>What if the dosage looks wrong?</div>
-      <div style={{ alignSelf: "flex-end", maxWidth: "70%", fontSize: 11, background: "#ddd6fe", color: "#4c1d95", padding: "5px 9px", borderRadius: "10px 10px 2px 10px" }}>I flag it and escalate. ✓</div>
-    </div>;
-    case "preflight": return <div style={{ ...band, gap: 6 }}>
-      {[1, 1, 1, 1, 1, 0, 0].map((g, i) => <div key={i} style={{ flex: 1, height: 36, borderRadius: 6, background: g ? "#dcfce7" : "#f1f5f9", border: `1px solid ${g ? "#86efac" : "#e2e8f0"}`, display: "grid", placeItems: "center", fontSize: 13, color: "#16a34a" }}>{g ? "✓" : ""}</div>)}
-      <div style={{ marginLeft: 4, fontSize: 14, fontWeight: 800, color: "#16a34a" }}>5/7</div>
-    </div>;
-    case "distribute": return <div style={{ ...band, justifyContent: "center", gap: 16 }}>
-      <div style={{ width: 40, height: 64, borderRadius: 8, border: "2px solid #cbd5e1", background: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}><div style={{ width: 22, height: 22, background: "repeating-linear-gradient(45deg,#1a1a2e 0 3px,#fff 3px 6px)", borderRadius: 3 }} /></div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{["🔗 Link", "🔳 QR code", "✉️ Email", "📣 Post"].map((t, i) => <div key={i} style={{ fontSize: 11, color: "#334155", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "3px 8px" }}>{t}</div>)}</div>
-    </div>;
-    case "grow": return <div style={band}>
-      <svg width="120" height="56" viewBox="0 0 120 56" style={{ flexShrink: 0 }}><polyline points="0,50 25,42 50,46 75,28 100,18 120,6" fill="none" stroke="#7c3aed" strokeWidth="3" /></svg>
-      <div style={{ display: "flex", gap: 6 }}>{[["Subs", "128"], ["MRR", "$3.2k"]].map(([l, v], i) => <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 9px", textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a2e" }}>{v}</div><div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase" }}>{l}</div></div>)}</div>
-    </div>;
-    default: return null;
-  }
+  const h = STEP_HEROES[kind];
+  if (!h) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 12, marginBottom: 14, background: `linear-gradient(135deg, ${h.g1}, ${h.g2})`, border: "1px solid rgba(15,23,42,0.06)" }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.78)", display: "grid", placeItems: "center", fontSize: 32, flexShrink: 0, boxShadow: "0 2px 10px rgba(15,23,42,0.10)" }}>{h.art}</div>
+      <div style={{ fontSize: 15.5, fontWeight: 800, color: h.fg, lineHeight: 1.3 }}>{h.title}</div>
+    </div>
+  );
 }
 
 export function DesignCanvas({ session, workerId, onComplete }) {
@@ -784,6 +779,7 @@ export function RulesCanvas({ session, onComplete }) {
       title="Rules — what governs your worker"
       subtitle="Layer 1 is the law of your industry. Then what your worker always does, never does, and when to escalate."
     >
+      <StepHero kind="rules" />
       <div style={{ ...card, background: "#F8FAFC", borderLeft: "4px solid #CBD5E1" }}>
         <div style={{ fontSize: 12.5, color: "#475569", lineHeight: 1.5 }}>🎙️ <strong>Tone is set for you.</strong> Your worker speaks in SOCIII's clear, trusted default voice — you don't configure it here. (Letting each worker redefine its own tone is what sends the chat off the rails.)</div>
       </div>
@@ -843,20 +839,27 @@ export function ToolsCanvas({ session, onComplete }) {
 
   return (
     <CanvasShell
-      title="Tools — Integrations"
-      subtitle="Connect APIs your worker can act through, not just advise about."
+      title="Tools — what your worker can do"
+      subtitle="Beyond chat: does it need to pull data or take action? Tell us the capability — you don't need to know the brand."
     >
       <StepHero kind="tools" />
       <div style={card}>
-        <div style={label}>Add a tool</div>
-        <input style={input} value={newTool} onChange={e => setNewTool(e.target.value)} placeholder="Tool name (e.g. Stripe, SendGrid, Google Calendar)" />
-        <input style={input} value={enables} onChange={e => setEnables(e.target.value)} placeholder="What does it enable? (optional)" />
-        <button style={ghostBtn} onClick={add}>Add tool</button>
+        <div style={label}>Need any abilities?</div>
+        <div style={sub}>Tap what your worker should be able to do — we wire the right provider behind it. Pick what fits, or describe your own.</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0" }}>
+          {["Live maps", "Property data", "Make images", "Make videos", "Send email", "Send texts", "Take payments", "Scheduling", "Web search"].map(cap => (
+            <button key={cap} type="button" onClick={() => setNewTool(cap)}
+              style={{ ...ghostBtn, padding: "5px 10px", fontSize: 12, borderColor: newTool === cap ? PURPLE : "#CBD5E1", background: newTool === cap ? "#F3F0FF" : "#FFFFFF" }}>{cap}</button>
+          ))}
+        </div>
+        <input style={input} value={newTool} onChange={e => setNewTool(e.target.value)} placeholder="Or describe an ability — e.g. pull flood-zone data, generate a PDF" />
+        <input style={input} value={enables} onChange={e => setEnables(e.target.value)} placeholder="What would it let your worker do? (optional)" />
+        <button style={ghostBtn} onClick={add}>Add ability</button>
       </div>
 
       <div style={card}>
-        <div style={label}>Connected tools · {tools.length}</div>
-        {tools.length === 0 && <div style={{ ...sub, marginTop: 8 }}>No tools yet. Workers can ship without integrations — many do.</div>}
+        <div style={label}>Abilities added · {tools.length}</div>
+        {tools.length === 0 && <div style={{ ...sub, marginTop: 8 }}>No extra abilities yet — plenty of workers ship on knowledge alone.</div>}
         {tools.map((t, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: "#16A34A" }} />
