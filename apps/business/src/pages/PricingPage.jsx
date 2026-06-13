@@ -87,6 +87,7 @@ const TIERS = [
   {
     id: "biab",
     name: "Business in a Box",
+    art: "/illustrations/business-box.png",
     price: "$99",
     cadence: "/mo + $5 per seat",
     tagline: "The full company stack. The spine plus a curated set of workers tuned to your industry.",
@@ -109,6 +110,7 @@ const TIERS = [
   {
     id: "schools",
     name: "Academia in a Box",
+    art: "/illustrations/academia-box.png",
     price: "$99",
     cadence: "/mo + $5 per student",
     tagline: "Business in a Box for education — the student-owned record plus the workers your faculty build.",
@@ -159,6 +161,13 @@ export default function PricingPage() {
               {tier.featured && <div style={S.featuredBadge}>Most popular tier</div>}
               <div style={{ ...S.tierAccent, background: tier.accent }} />
               <div style={S.tierBody}>
+                {tier.art && (
+                  <img
+                    src={`${tier.art}?v=1`}
+                    alt=""
+                    style={{ width: "100%", height: 130, objectFit: "contain", borderRadius: 10, background: "#FBF7EC", border: "1px solid #eee4d2", marginBottom: 12, display: "block" }}
+                  />
+                )}
                 <div style={S.tierName}>{tier.name}</div>
                 <div style={S.tierTagline}>{tier.tagline}</div>
                 <div style={S.tierPriceRow}>
