@@ -301,7 +301,7 @@ export function DefineCanvas({ session, onComplete }) {
 }
 
 // ─── Step 2 — Design the canvas (Round 6) ────────────────────────────────────
-// People don't read (Trump Rule). The worker opens to a PICTURE. Design that
+// People like pictures, not words — the worker opens to a PICTURE. Design that
 // picture BEFORE building it: the one headline outcome, the tabs (one cognitive
 // job each), the visual floor, and a real mockup (generated from the creator's
 // own answers, or uploaded). This is the foundational step — everything
@@ -315,6 +315,43 @@ const VISUAL_FLOORS = [
   "a Netflix tile wall",
   "a MyChart summary",
 ];
+
+// ── Picture-first pickers ───────────────────────────────────────────────────
+// People like pictures, not words — so the pickers should BE pictures. These
+// are tiny self-contained mockups (no images to load) so a creator SEES what a
+// dashboard / map / Netflix tile wall actually looks like instead of reading
+// the word for it.
+const _frame = { borderRadius: 6, overflow: "hidden", border: "1px solid #E2E8F0" };
+
+function ShapeThumb({ id }) {
+  const base = { height: 54, padding: 6, display: "flex", flexDirection: "column", gap: 4, background: "#F8FAFC", ..._frame };
+  switch (id) {
+    case "dashboard": return <div style={base}>
+      <div style={{ display: "flex", gap: 4, height: 15 }}>{["#c7d2fe", "#bbf7d0", "#fde68a"].map((c, i) => <div key={i} style={{ flex: 1, borderRadius: 4, background: c }} />)}</div>
+      <div style={{ flex: 1, borderRadius: 4, background: "#eef2ff", display: "flex", alignItems: "flex-end", gap: 3, padding: 3 }}>{[7, 12, 5, 11, 15].map((h, i) => <div key={i} style={{ flex: 1, height: h, background: "#818cf8", borderRadius: 2 }} />)}</div>
+    </div>;
+    case "checklist": return <div style={base}>{[0, 1, 2].map(i => <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}><div style={{ width: 10, height: 10, borderRadius: 3, background: i < 2 ? "#22c55e" : "#cbd5e1" }} /><div style={{ flex: 1, height: 6, borderRadius: 3, background: "#e2e8f0" }} /></div>)}</div>;
+    case "wizard": return <div style={{ ...base, justifyContent: "center", alignItems: "center" }}><div style={{ width: "70%", height: 6, borderRadius: 3, background: "#e2e8f0" }}><div style={{ width: "55%", height: 6, borderRadius: 3, background: "#7c3aed" }} /></div><div style={{ display: "flex", gap: 6, marginTop: 6 }}>{[0, 1, 2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i === 1 ? "#7c3aed" : "#cbd5e1" }} />)}</div></div>;
+    case "document": return <div style={{ ...base, background: "#fff" }}><div style={{ height: 8, width: "50%", background: "#475569", borderRadius: 2 }} />{[100, 92, 96, 78].map((w, i) => <div key={i} style={{ height: 4, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}</div>;
+    case "conversation": return <div style={{ ...base, justifyContent: "center", gap: 5 }}><div style={{ alignSelf: "flex-start", width: "60%", height: 12, borderRadius: 8, background: "#e2e8f0" }} /><div style={{ alignSelf: "flex-end", width: "55%", height: 12, borderRadius: 8, background: "#ddd6fe" }} /></div>;
+    case "map": return <div style={{ ...base, background: "linear-gradient(135deg,#dcfce7,#bfdbfe)", position: "relative" }}><span style={{ position: "absolute", top: 6, left: "28%", fontSize: 15 }}>📍</span><span style={{ position: "absolute", bottom: 4, right: "24%", fontSize: 15 }}>📍</span></div>;
+    case "calendar": return <div style={{ ...base, display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>{Array.from({ length: 14 }).map((unused, i) => <div key={i} style={{ borderRadius: 2, background: i === 8 ? "#7c3aed" : "#e2e8f0" }} />)}</div>;
+    case "course": return <div style={base}>{[70, 40, 90].map((w, i) => <div key={i} style={{ height: 9, borderRadius: 4, background: "#eef2ff", overflow: "hidden" }}><div style={{ width: `${w}%`, height: "100%", background: "#818cf8" }} /></div>)}</div>;
+    case "reference": return <div style={base}><div style={{ height: 12, borderRadius: 8, background: "#fff", border: "1px solid #e2e8f0" }} />{[0, 1].map(i => <div key={i} style={{ height: 6, borderRadius: 3, background: "#e2e8f0" }} />)}</div>;
+    default: return <div style={{ ...base, alignItems: "center", justifyContent: "center", border: "1px dashed #cbd5e1", color: "#94a3b8", fontSize: 18 }}>+</div>;
+  }
+}
+
+function FloorThumb({ name }) {
+  const base = { height: 50, padding: 6, display: "flex", flexDirection: "column", gap: 3, ..._frame, background: "#fff" };
+  if (name.includes("Bloomberg")) return <div style={{ ...base, background: "#0b0e14", justifyContent: "center", gap: 4 }}>{[["#22c55e", "70%"], ["#ef4444", "55%"], ["#22c55e", "85%"]].map(([c, w], i) => <div key={i} style={{ display: "flex", gap: 4, alignItems: "center" }}><div style={{ width: 14, height: 5, background: "#64748b", borderRadius: 2 }} /><div style={{ width: w, height: 5, background: c, borderRadius: 2 }} /></div>)}</div>;
+  if (name.includes("MLS")) return <div style={base}><div style={{ height: 22, borderRadius: 4, background: "linear-gradient(135deg,#93c5fd,#a7f3d0)" }} /><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ width: "50%", height: 5, background: "#e2e8f0", borderRadius: 2 }} /><div style={{ width: 26, height: 8, background: "#22c55e", borderRadius: 3 }} /></div></div>;
+  if (name.includes("Avvo")) return <div style={{ ...base, flexDirection: "row", alignItems: "center", gap: 6 }}><div style={{ width: 22, height: 22, borderRadius: "50%", background: "#c7d2fe", flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ color: "#f59e0b", fontSize: 9, letterSpacing: 1 }}>★★★★★</div><div style={{ height: 4, width: "80%", background: "#e2e8f0", borderRadius: 2, marginTop: 3 }} /></div></div>;
+  if (name.includes("Garmin")) return <div style={{ ...base, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>{["#22c55e", "#3b82f6", "#ef4444"].map((c, i) => <div key={i} style={{ width: 20, height: 20, borderRadius: "50%", border: `4px solid ${c}`, borderRightColor: "#e2e8f0" }} />)}</div>;
+  if (name.includes("Netflix")) return <div style={{ ...base, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 3 }}>{["#ef4444", "#f59e0b", "#8b5cf6", "#3b82f6", "#ec4899", "#10b981", "#6366f1", "#f43f5e"].map((c, i) => <div key={i} style={{ borderRadius: 3, background: c }} />)}</div>;
+  if (name.includes("MyChart")) return <div style={base}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ width: "40%", height: 5, background: "#0ea5e9", borderRadius: 2 }} /><div style={{ fontSize: 11, fontWeight: 800, color: "#0ea5e9" }}>98%</div></div>{[0, 1].map(i => <div key={i} style={{ height: 5, borderRadius: 2, background: "#e2e8f0" }} />)}</div>;
+  return <div style={{ ...base, alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 18 }}>🖼️</div>;
+}
 
 export function DesignCanvas({ session, workerId, onComplete }) {
   const initial = session?.workerSteps?.design?.data || {};
@@ -436,31 +473,49 @@ export function DesignCanvas({ session, workerId, onComplete }) {
           </div>
         ))}
         {tabs.length < 5 && <button onClick={addTab} style={ghostBtn}>+ Add tab</button>}
-      </div>
-
-      {/* (c) Visual floor — the Trump Rule */}
-      <div style={card}>
-        <div style={label}>Visual floor — the Trump Rule</div>
-        <div style={sub}>"This should look as good as ___." Set the bar before you build to it.</div>
-        <input style={input} value={visualFloor} onChange={e => setVisualFloor(e.target.value)} placeholder="as good as…" />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {VISUAL_FLOORS.map(v => (
-            <button key={v} type="button" onClick={() => setVisualFloor(v)}
-              style={{ ...ghostBtn, padding: "4px 8px", fontSize: 11, borderColor: visualFloor === v ? PURPLE : "#CBD5E1", background: visualFloor === v ? "#F3F0FF" : "#FFFFFF" }}>{v}</button>
-          ))}
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>What tabs look like:</div>
+          <div style={{ ..._frame, background: "#F8FAFC", padding: 6 }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 5 }}>
+              {["Readiness", "Coursework", "Record"].map((t, i) => (
+                <div key={i} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 999, background: i === 0 ? PURPLE : "#fff", color: i === 0 ? "#fff" : "#64748b", border: "1px solid #e2e8f0" }}>{t}</div>
+              ))}
+            </div>
+            <div style={{ height: 26, borderRadius: 4, background: "#eef2ff" }} />
+          </div>
         </div>
       </div>
 
-      {/* The shape (UX pattern) */}
+      {/* (c) Visual floor — set the bar (show the references, don't name-drop) */}
+      <div style={card}>
+        <div style={label}>Visual floor — set the bar</div>
+        <div style={sub}>People like pictures, not words. Pick what yours should look as good as — tap one to set the bar.</div>
+        <input style={input} value={visualFloor} onChange={e => setVisualFloor(e.target.value)} placeholder="as good as…" />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {VISUAL_FLOORS.map(v => {
+            const sel = visualFloor === v;
+            return (
+              <button key={v} type="button" onClick={() => setVisualFloor(v)}
+                style={{ ...card, marginBottom: 0, padding: 6, cursor: "pointer", textAlign: "center", borderColor: sel ? PURPLE : "#E2E8F0", borderWidth: sel ? 2 : 1 }}>
+                <FloorThumb name={v} />
+                <div style={{ fontSize: 10.5, color: sel ? PURPLE : "#64748B", marginTop: 5, fontWeight: sel ? 700 : 500 }}>{v.replace(/^an? /, "")}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* The shape (UX pattern) — show each layout as a picture */}
       <div style={card}>
         <div style={label}>The shape</div>
-        <div style={sub}>The overall pattern your canvas fills.</div>
+        <div style={sub}>The overall pattern your canvas fills. Each one's a little preview — pick the look that fits.</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {UX_TYPES.map(t => (
             <button key={t.id} type="button" onClick={() => setUxType(t.id)}
               style={{ ...card, marginBottom: 0, cursor: "pointer", borderColor: uxType === t.id ? PURPLE : "#E2E8F0", borderWidth: uxType === t.id ? 2 : 1, textAlign: "left" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{t.label}</div>
-              <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{t.primary}</div>
+              <ShapeThumb id={t.id} />
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", marginTop: 6 }}>{t.label}</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{t.primary}</div>
             </button>
           ))}
         </div>
@@ -692,9 +747,13 @@ export function RulesCanvas({ session, onComplete }) {
 
   return (
     <CanvasShell
-      title="Rules — RAAS Library"
-      subtitle="What your worker always does, never does, and when to escalate."
+      title="Rules — what governs your worker"
+      subtitle="Layer 1 is the law of your industry. Then what your worker always does, never does, and when to escalate."
     >
+      <div style={{ ...card, background: "#F8FAFC", borderLeft: "4px solid #CBD5E1" }}>
+        <div style={{ fontSize: 12.5, color: "#475569", lineHeight: 1.5 }}>🎙️ <strong>Tone is set for you.</strong> Your worker speaks in SOCIII's clear, trusted default voice — you don't configure it here. (Letting each worker redefine its own tone is what sends the chat off the rails.)</div>
+      </div>
+
       {RAAS_TIERS.map(t => (
         <div key={t.id} style={{ ...card, borderLeft: `4px solid ${t.color}` }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>{t.label}</div>
@@ -703,14 +762,15 @@ export function RulesCanvas({ session, onComplete }) {
             style={textarea}
             value={tiers[t.id]}
             onChange={e => update(t.id, e.target.value)}
-            placeholder="One rule per line"
+            placeholder={t.id === "tier0" ? "One law, license, or regulation per line — e.g. \"HI real estate license (HRS §467)\"" : "One rule per line"}
           />
         </div>
       ))}
 
       <div style={card}>
-        <div style={label}>Reasoning behind key decisions</div>
-        <textarea style={textarea} value={reasoning} onChange={e => setReasoning(e.target.value)} />
+        <div style={label}>Your SOP — how you personally do it</div>
+        <div style={sub}>The judgment and practices that make you the expert — what you'd add on top of the regulations above. This is your standard operating procedure.</div>
+        <textarea style={textarea} value={reasoning} onChange={e => setReasoning(e.target.value)} placeholder='e.g. "I re-check pediatric dosage math twice; I never sign off a chart without the preceptor present."' />
       </div>
 
       <StepComplete

@@ -61,9 +61,13 @@ export const UX_TYPES = [
 ];
 
 // 4 RAAS tiers for the Rules step.
+// S52.65 — Tier 0 is no longer "Style/Tone" (letting workers redefine tone
+// sends the chat off the rails — tone stays SOCIII's locked default). Tier 0 is
+// now the LAWS of the industry: RAAS Layer 1, the foundation. The expert's
+// personal SOP is captured separately below the tiers.
 export const RAAS_TIERS = [
-  { id: "tier0", label: "Tier 0 — Style",    color: "#94A3B8", description: "Tone, format, voice" },
-  { id: "tier1", label: "Tier 1 — Always",   color: "#DC2626", description: "Behaviors that must always happen" },
-  { id: "tier2", label: "Tier 2 — Never",    color: "#EAB308", description: "Behaviors that must never happen" },
-  { id: "tier3", label: "Tier 3 — Escalate", color: "#16A34A", description: "When to escalate to a human" },
+  { id: "tier0", label: "The Laws — what governs your work", color: "#7C3AED", description: "RAAS Layer 1, the foundation: licensing, statutes, and compliance you operate under. Don't know them all? List what you know — Alex can help fill the gaps." },
+  { id: "tier1", label: "Always — what must always happen",  color: "#DC2626", description: "Behaviors that must always happen" },
+  { id: "tier2", label: "Never — what must never happen",    color: "#EAB308", description: "Behaviors that must never happen" },
+  { id: "tier3", label: "Escalate — when to bring in a human", color: "#16A34A", description: "When to hand off to a person" },
 ];

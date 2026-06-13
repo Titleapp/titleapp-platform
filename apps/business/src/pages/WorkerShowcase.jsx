@@ -153,6 +153,70 @@ function ShowcaseCard({ eyebrow, title, desc, tag, visual, onExplore }) {
   );
 }
 
+// A little OS-window mockup so creators SEE the four-window setup before they
+// live it — Sandbox / Code / Claude / GitHub, each with its job.
+function TeamWindow({ chromeTitle, dark, role, desc, children }) {
+  return (
+    <div>
+      <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}`, background: dark ? "#0b0e14" : "#fff", height: 148, display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 9px", background: dark ? "#11161f" : "#f1f5f9", borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#ef4444" }} />
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#f59e0b" }} />
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22c55e" }} />
+          <span style={{ marginLeft: 6, fontSize: 10, color: dark ? "#8b96a8" : "#64748b", fontWeight: 600 }}>{chromeTitle}</span>
+        </div>
+        <div style={{ flex: 1, padding: 10, overflow: "hidden" }}>{children}</div>
+      </div>
+      <div style={{ marginTop: 8, fontSize: 12.5, color: C.dim, textAlign: "center", lineHeight: 1.4 }}>
+        <strong style={{ color: C.text }}>{role}</strong> — {desc}
+      </div>
+    </div>
+  );
+}
+
+function MeetYourTeam() {
+  return (
+    <section style={{ maxWidth: 1140, margin: "0 auto", padding: "8px 24px 28px" }}>
+      <h2 style={{ fontSize: 27, fontWeight: 800, textAlign: "center", margin: "0 0 6px" }}>Meet your team</h2>
+      <p style={{ fontSize: 15, color: C.dim, textAlign: "center", margin: "0 0 22px" }}>
+        Four windows open. Each has a job. This is what building actually looks like.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18 }}>
+        <TeamWindow chromeTitle="sociii.ai/sandbox" role="Sandbox" desc="Alex facilitates — shapes the idea, no code">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
+            <div style={{ background: "#7c3aed", color: "#fff", fontSize: 9, fontWeight: 700, padding: "4px 7px", borderRadius: 5 }}>Alex · Chief of Staff</div>
+            <div style={{ display: "flex", gap: 4 }}>{["#c7d2fe", "#bbf7d0", "#fde68a"].map((c, i) => <div key={i} style={{ flex: 1, height: 18, borderRadius: 4, background: c }} />)}</div>
+            <div style={{ flex: 1, borderRadius: 4, background: "#eef2ff" }} />
+          </div>
+        </TeamWindow>
+        <TeamWindow chromeTitle="Terminal — claude" dark role="Code" desc="Does the heavy lifting — builds the worker">
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, lineHeight: 1.7 }}>
+            <div style={{ color: "#22c55e" }}>$ claude</div>
+            <div style={{ color: "#8b96a8" }}>› building re-ce-hawaii…</div>
+            <div style={{ color: "#e5e7eb" }}><span style={{ color: "#c4b5fd" }}>const</span> worker = <span style={{ color: "#86efac" }}>"CE"</span></div>
+            <div style={{ color: "#8b96a8" }}>✓ WORKER-SPEC.md</div>
+            <div style={{ color: "#8b96a8" }}>✓ canvas-tabs.json</div>
+          </div>
+        </TeamWindow>
+        <TeamWindow chromeTitle="claude.ai" role="Claude" desc="Your thinking partner — ask, refine, debug">
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, justifyContent: "center", height: "100%" }}>
+            <div style={{ alignSelf: "flex-start", width: "72%", height: 13, borderRadius: 8, background: "#e2e8f0" }} />
+            <div style={{ alignSelf: "flex-end", width: "60%", height: 13, borderRadius: 8, background: "#ddd6fe" }} />
+            <div style={{ alignSelf: "flex-start", width: "50%", height: 13, borderRadius: 8, background: "#e2e8f0" }} />
+          </div>
+        </TeamWindow>
+        <TeamWindow chromeTitle="github.com/sociii" role="GitHub" desc="Your holy grail — where the worker lives forever">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
+            <div style={{ fontSize: 22, textAlign: "center" }}>🐙</div>
+            <div style={{ fontSize: 9, color: "#64748b" }}>⎇ <strong>main</strong></div>
+            {[0, 1, 2].map(i => <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}><div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }} /><div style={{ flex: 1, height: 5, borderRadius: 3, background: "#e2e8f0" }} /></div>)}
+          </div>
+        </TeamWindow>
+      </div>
+    </section>
+  );
+}
+
 export default function WorkerShowcase() {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, -apple-system, sans-serif", color: C.text }}>
@@ -182,6 +246,9 @@ export default function WorkerShowcase() {
         <VideoExpertCard />
         <RecordCard />
       </section>
+
+      {/* Meet your team — the four-window setup */}
+      <MeetYourTeam />
 
       {/* Footer CTA */}
       <section style={{ textAlign: "center", padding: "16px 24px 64px" }}>
