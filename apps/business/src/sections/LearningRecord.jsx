@@ -20,7 +20,7 @@ const RECORD = {
   holder: { name: "Sarah Kahale", kyc: { level: "KYC-1", verified: true } },
   programs: [
     {
-      id: "hs", kind: "academic",
+      id: "hs", kind: "academic", mark: "KS", brand: "#8A1538",
       institution: "Kamehameha Schools — Kapālama",
       program: "High School Diploma",
       status: "Completed · 2022",
@@ -30,7 +30,7 @@ const RECORD = {
       ],
     },
     {
-      id: "padi", kind: "professional",
+      id: "padi", kind: "professional", mark: "AD", brand: "#0E7490",
       institution: "Aloha Dive Center (PADI certifications)",
       program: "Scuba Diving — Instructor Track",
       status: "OWSI · active instructor",
@@ -73,7 +73,7 @@ const RECORD = {
       ],
     },
     {
-      id: "bsn", kind: "academic",
+      id: "bsn", kind: "academic", mark: "UH", brand: "#024731",
       institution: "University of Hawai‘i — School of Nursing",
       program: "BSN — Nursing (cohort 2027)",
       status: "In progress",
@@ -140,6 +140,22 @@ function allEntries() {
   return out.sort((a, b) => (a.at < b.at ? 1 : -1));
 }
 
+// Institution brand mark. Uses a real logo image when `p.logo` (a URL or
+// imported asset) is set; otherwise a self-contained branded monogram so it
+// always renders — no external hotlink to break offline. Drop real logo files
+// in later by setting `logo` on the program.
+function InstitutionLogo({ p, size = 38 }) {
+  if (p.logo) {
+    return <img src={p.logo} alt={p.institution} width={size} height={size} style={{ borderRadius: 8, objectFit: "contain", background: "#fff", border: "1px solid #e2e8f0", flexShrink: 0 }} />;
+  }
+  const brand = p.brand || C.accent;
+  return (
+    <div style={{ width: size, height: size, borderRadius: 8, background: brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(size * 0.4), fontWeight: 800, letterSpacing: 0.3, flexShrink: 0, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}>
+      {p.mark || (PROGRAM_ICON[p.kind] || "•")}
+    </div>
+  );
+}
+
 function Badge({ v }) {
   const c = C[v] || C.pending;
   return <span style={{ fontSize: 10.5, fontWeight: 700, color: c.text, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>{c.label}</span>;
@@ -175,9 +191,12 @@ function JourneyView() {
         return (
           <div key={p.id} style={{ marginBottom: 16, border: "1px solid #f1f5f9", borderRadius: 14, overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 16px", background: "linear-gradient(135deg,#faf5ff 0%,#f3e8ff 100%)", borderBottom: "1px solid #e9d5ff", flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a" }}>{PROGRAM_ICON[p.kind] || "•"} {p.program}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{p.institution}</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <InstitutionLogo p={p} size={30} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a" }}>{p.program}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{p.institution}</div>
+                </div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, background: "#fff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap" }}>{p.status}</span>
             </div>
@@ -266,6 +285,17 @@ function InstitutionsView({ flash }) {
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>
         Every place this person has learned — <strong>formal, technical, and continuing education</strong> — in one record they own. Click an institution to see its milestones, then drill into any <strong>course</strong> for its materials, quizzes, exams, coaching notes, and instructor sign-offs.
       </div>
+
+      {/* AI-assisted-learning callout — the forward-looking hook for schools */}
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "linear-gradient(135deg,#1e1b4b 0%,#4c1d95 100%)", color: "#fff", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+        <div style={{ fontSize: 26, lineHeight: "28px" }}>🤖</div>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>AI-assisted learning, on the record</div>
+          <div style={{ fontSize: 12.5, color: "#ddd6fe", marginTop: 3, lineHeight: 1.5 }}>
+            When a student works with an AI tutor — like a Digital Worker — every session is captured inside the course: <strong style={{ color: "#fff" }}>what they practiced, what it flagged, and how it moved the grade.</strong> Schools get an auditable trail of AI-assisted learning, owned by the student — not a black box. Look for the 🤖 entries inside a course.
+          </div>
+        </div>
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
         {RECORD.programs.map((p) => {
           const verified = p.entries.filter((e) => e.v === "verified").length;
@@ -275,7 +305,7 @@ function InstitutionsView({ flash }) {
             <div key={p.id} style={{ borderRadius: 12, background: "#fff", border: `1px solid ${open ? C.accent : "#e9d5ff"}`, overflow: "hidden" }}>
               <button onClick={() => setOpenId(open ? null : p.id)} style={{ textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", background: "none", border: "none", width: "100%" }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
-                  <span style={{ fontSize: 26 }}>{PROGRAM_ICON[p.kind] || "•"}</span>
+                  <InstitutionLogo p={p} size={40} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a" }}>{p.institution}</div>
                     <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 1 }}>{p.program}</div>
