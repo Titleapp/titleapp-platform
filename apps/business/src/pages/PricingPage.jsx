@@ -1,5 +1,35 @@
 import React from "react";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import { auth } from "../firebase";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+// Start a self-serve Stripe Checkout for a Box plan. Needs a signed-in admin in
+// a business workspace; otherwise route to onboarding/Alex to set one up first.
+async function startBoxCheckout(planKey) {
+  const user = auth.currentUser;
+  const tenantId = localStorage.getItem("TENANT_ID");
+  const email = (user && user.email) || localStorage.getItem("USER_EMAIL") || "";
+  if (!user || !email) { window.location.href = `/?intent=${planKey}`; return; }
+  if (!tenantId || tenantId === "vault" || tenantId === "personal") {
+    // A Box plan bills a workspace — send them to create/select one first.
+    window.location.href = `/?intent=${planKey}`;
+    return;
+  }
+  try {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=/v1/box:checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ plan: planKey, tenantId, email }),
+    });
+    const data = await res.json();
+    if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+    window.location.href = `/meet-alex?intent=${planKey}`;
+  } catch (_) {
+    window.location.href = `/meet-alex?intent=${planKey}`;
+  }
+}
 
 const TIERS = [
   {
@@ -87,6 +117,7 @@ const TIERS = [
   {
     id: "biab",
     name: "Business in a Box",
+    boxPlan: "business-in-a-box",
     art: "/illustrations/business-box.png",
     price: "$99",
     cadence: "/mo + $5 per seat",
@@ -110,6 +141,7 @@ const TIERS = [
   {
     id: "schools",
     name: "Academia in a Box",
+    boxPlan: "academia-in-a-box",
     art: "/illustrations/academia-box.png",
     price: "$99",
     cadence: "/mo + $5 per student",
@@ -182,7 +214,11 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <div style={S.tierNote}>{tier.note}</div>
-                <a href={tier.ctaHref} style={{ ...S.tierCta, background: tier.accent }}>{tier.cta}</a>
+                {tier.boxPlan ? (
+                  <button onClick={() => startBoxCheckout(tier.boxPlan)} style={{ ...S.tierCta, background: tier.accent, border: "none", cursor: "pointer", font: "inherit" }}>Get started →</button>
+                ) : (
+                  <a href={tier.ctaHref} style={{ ...S.tierCta, background: tier.accent }}>{tier.cta}</a>
+                )}
               </div>
             </div>
           ))}

@@ -7761,6 +7761,102 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/box:checkout — Stripe Checkout for a "Box" plan (Business in a
+    // Box / Academia in a Box): $99/mo base + tiered seat price (first 5 seats
+    // free, then $5). Tenant-scoped, admin-only. Seat qty = active members.
+    if (route === "/box:checkout" && method === "POST") {
+      let userId = null;
+      const ckToken = getAuthBearerToken(req);
+      if (ckToken) {
+        try { const decoded = await admin.auth().verifyIdToken(ckToken); userId = decoded.uid; }
+        catch (e) { /* fall through to 401 */ }
+      }
+      if (!userId) return jsonError(res, 401, "Authentication required");
+
+      const planKey = body.plan; // "business-in-a-box" | "academia-in-a-box"
+      let STRIPE_BOXES;
+      try { STRIPE_BOXES = require("./config/stripeBoxes"); }
+      catch (_) { return jsonError(res, 500, "Box plans are not configured yet"); }
+      const boxMap = { "business-in-a-box": STRIPE_BOXES.businessInABox, "academia-in-a-box": STRIPE_BOXES.academiaInABox };
+      const box = boxMap[planKey];
+      if (!box) return jsonError(res, 400, "Unknown plan");
+
+      const email = body.email;
+      if (!email || !email.includes("@")) return jsonError(res, 400, "Valid email required");
+
+      const tenantId = (body.tenantId && body.tenantId !== "vault" && body.tenantId !== "personal" && !String(body.tenantId).startsWith("guest-")) ? body.tenantId : null;
+      if (!tenantId) return jsonError(res, 400, "A workspace is required for a Box plan");
+
+      try {
+        // Admin-only on the workspace.
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(userId, tenantId, "admin");
+        if (!gate.ok) return jsonError(res, 403, "Only a workspace admin can subscribe to a Box plan");
+
+        const tSnap = await db.collection("tenants").doc(tenantId).get();
+        const tenantDoc = tSnap.exists ? tSnap.data() : null;
+
+        // Seat quantity = active members. Stripe's tiered price makes the first
+        // 5 free, so we pass the TOTAL active seat count, not (count - 5).
+        let seatCount = 1;
+        try {
+          const memSnap = await db.collection("memberships")
+            .where("tenantId", "==", tenantId).where("status", "==", "active").get();
+          seatCount = Math.max(1, memSnap.size);
+        } catch (_) { /* default 1 */ }
+
+        const stripe = getStripe();
+        // Fresh tenant-scoped Stripe customer (matches worker:checkout Q1 rule).
+        let customerId = tenantDoc?.stripeCustomerId || null;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email, name: tenantDoc?.name || `Workspace ${tenantId}`,
+            metadata: { tenantId, billingAdminUid: userId },
+          });
+          customerId = customer.id;
+          await db.collection("tenants").doc(tenantId).set(
+            { stripeCustomerId: customerId, billingAdminUid: userId, billingEmail: email, billingUpdatedAt: nowServerTs() },
+            { merge: true }
+          );
+        }
+
+        const planName = planKey === "academia-in-a-box" ? "Academia in a Box" : "Business in a Box";
+        const subRef = await db.collection("subscriptions").add({
+          ownerType: "tenant", ownerId: tenantId, userId,
+          plan: planKey, planName, kind: "box",
+          status: "pending_payment",
+          stripeCustomerId: customerId, email, seatCount,
+          createdAt: nowServerTs(),
+        });
+
+        const origin = req.headers.origin || "https://sociii.ai";
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [
+            { price: box.basePriceId, quantity: 1 },
+            { price: box.seatPriceId, quantity: seatCount },
+          ],
+          subscription_data: {
+            metadata: { type: "box_subscription", plan: planKey, tenantId, userId, subscriptionId: subRef.id, seatCount: String(seatCount) },
+          },
+          metadata: {
+            type: "box_subscription", plan: planKey, planName, tenantId, userId,
+            subscriptionId: subRef.id, seatCount: String(seatCount),
+          },
+          success_url: `${origin}/?box_checkout=success&plan=${encodeURIComponent(planKey)}`,
+          cancel_url: `${origin}/pricing?box_checkout=cancelled`,
+        });
+
+        await subRef.update({ stripeCheckoutSessionId: session.id });
+        console.log(`[box:checkout] tenant=${tenantId} ${planKey} seats=${seatCount} session ${session.id}`);
+        return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id, seatCount });
+      } catch (e) {
+        console.error("[box:checkout] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // GET /v1/worker:checkoutStatus — Poll for checkout completion
     if (route === "/worker:checkoutStatus" && (method === "GET" || method === "POST")) {
       const qWorkerId = req.query?.workerId || body.workerId;
