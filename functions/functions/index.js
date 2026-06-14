@@ -26845,6 +26845,26 @@ exports.sandboxDailyProcessor = onSchedule(
 );
 
 // ----------------------------
+// DAILY X MARKETING WORKER (9am PT — one first-party promo video/day)
+// ----------------------------
+// Rotates through the SOCIII Digital Worker showcase clips, posts to our own
+// @SOCIIIai account. Organic only (no paid promotion). Kill switch:
+// config/marketingWorker.xDailyEnabled = false.
+exports.dailyXMarketingPost = onSchedule(
+  {
+    schedule: "0 17 * * *", // 17:00 UTC = 9am PT / noon ET
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"],
+  },
+  async () => {
+    const { runDailyXPost } = require("./marketing/dailyXPost");
+    const result = await runDailyXPost();
+    console.log("[dailyXMarketingPost]", result);
+  }
+);
+
+// ----------------------------
 // MESSAGE QUEUE PROCESSOR (every 15 minutes — email + SMS)
 // ----------------------------
 exports.messageQueueProcessor = onSchedule(
