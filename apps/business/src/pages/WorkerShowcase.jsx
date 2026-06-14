@@ -80,20 +80,17 @@ function VideoExpertCard() {
   return (
     <ShowcaseCard
       eyebrow="OF for Smart People"
-      title="Fred — International Tax"
+      title="Katarzyna — EU Digital Product Passport"
       desc="A $500/hour expert, packaged as a $29/mo Digital Worker. Sixteen experts are live in the gallery — each one a creator earning 75%."
       tag="See all experts →"
       onExplore={() => go("/work")}
       visual={
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <video
-            src="/launch-creative/of-fred-video-01.mp4"
+            src="/launch-creative/of-katarzyna-video-01.mp4"
             autoPlay loop muted playsInline
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
-          <div style={{ position: "absolute", left: 8, right: 8, bottom: 8, background: "rgba(0,0,0,0.62)", color: "#fff", fontSize: 11.5, fontWeight: 600, padding: "6px 9px", borderRadius: 7, backdropFilter: "blur(2px)" }}>
-            📸 You can even pick your own profile pic — we won't judge.
-          </div>
         </div>
       }
     />
