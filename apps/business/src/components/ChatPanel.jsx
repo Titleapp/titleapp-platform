@@ -1352,7 +1352,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         try { window.dispatchEvent(new CustomEvent('sociii:canvas:payload', { detail: data.canvas })); } catch {}
       }
       // Intercept |||COMMAND||| blocks before storing in state
-      const { clean: cleanedAlex, commands } = interceptAlexCommands(data.response || '');
+      // S52.50 — read `message` as a fallback for `response`. Several server
+      // branches (developer/sandbox onboarding, confirm-intent) return the
+      // assistant text as `message:` instead of `response:`; without this
+      // fallback those render "No response received." even though the AI replied.
+      const { clean: cleanedAlex, commands } = interceptAlexCommands(data.response || data.message || '');
       for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
 
       // 50.28 — [[SWITCH_WORKER:<slug>]] action emit. When the LLM commits to

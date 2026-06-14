@@ -1820,6 +1820,42 @@ exports.api = onRequest(
     // Legacy chat:message requests (without sessionId) fall through to the
     // auth-gated handler below.
     // ----------------------------
+    // On-demand chat health. ?run=1 triggers a live canary pass (alerts
+    // suppressed — only the scheduled chatCanary texts/emails). Otherwise
+    // returns the last recorded status from config/chatHealth.
+    if (route === "/chat:health") {
+      try {
+        // ?testsms=1 — fire a one-time confirmation text to every configured
+        // recipient, to prove the Twilio->phone alert path end-to-end.
+        if (req.query.testsms === "1") {
+          const snap = await db.doc("config/chatHealth").get();
+          const recipients = (snap.exists && Array.isArray(snap.data().alertRecipients) && snap.data().alertRecipients.length)
+            ? snap.data().alertRecipients
+            : [{ name: "Sean", phone: "+13104300780" }];
+          const { sendSMSDirect } = require("./communications/twilioHelper");
+          const out = [];
+          for (const r of recipients) {
+            if (!r.phone) continue;
+            try {
+              const x = await sendSMSDirect(r.phone, "🟢 SOCIII chat canary — test alert. This is the number outage alerts will come to. Reply STOP to opt out.");
+              out.push({ to: r.phone, sid: x.sid || null, status: x.status || "sent" });
+            } catch (e) { out.push({ to: r.phone, error: e.message }); }
+          }
+          return res.json({ ok: true, testsms: true, sent: out });
+        }
+        const wantRun = req.query.run === "1" || (body && body.run === true);
+        if (wantRun) {
+          const { runChatCanary } = require("./monitoring/chatCanary");
+          const result = await runChatCanary({ noAlerts: true });
+          return res.json({ ok: true, ran: true, ...result });
+        }
+        const snap = await db.doc("config/chatHealth").get();
+        return res.json({ ok: true, ran: false, health: snap.exists ? snap.data() : { status: "unknown" } });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
@@ -2100,6 +2136,24 @@ exports.api = onRequest(
           hasUserId: !!sessionState?.userId,
           authUid: authUser?.uid?.slice(0, 8) || "(no-auth)",
         });
+
+        // ── S52.50 — recover sessions stuck at 'dev_discovery' ──
+        // An earlier message that matched developer keywords sets
+        // sessionState.step = 'dev_discovery' and PERSISTS it. On every later
+        // turn that sticky step routes the request into the developer-onboarding
+        // branch (line ~4513) — even a plain "hello?" typed into the workspace
+        // "Alex — Chief of Staff" chat on the dashboard. That branch also returns
+        // its text as `message:` (not `response:`), so ChatPanel renders
+        // "No response received." Root cause of Sean's recurring "chat is broken."
+        // Fix: when the request clearly comes from the workspace dashboard (not a
+        // developer/sandbox surface), clear the sticky step so it falls through to
+        // the normal authenticated Chief-of-Staff path (which returns `response:`).
+        if (sessionState.step === 'dev_discovery'
+            && surface !== 'developer' && surface !== 'sandbox'
+            && body?.context?.currentSection === 'dashboard') {
+          sessionState.step = 'idle';
+          console.log("[chat:routing] cleared sticky dev_discovery for dashboard session");
+        }
 
         // ── Creator authoring intercept (bug fix 2026-06-04, hoisted 2026-06-05) ──
         // /creators/journey middle-panel chat: short-circuit chatEngine and
@@ -26843,6 +26897,31 @@ exports.sandboxDailyProcessor = onSchedule(
     console.log("[sandboxDailyProcessor]", { abandonResult });
   }
 );
+
+// ----------------------------
+// CHAT CANARY (every 15 min — synthetic monitor for baseline AI chat)
+// ----------------------------
+// Sends synthetic messages through the live chat endpoint; on GREEN->RED it
+// TEXTS + EMAILS the recipients in config/chatHealth.alertRecipients. So we
+// hear about broken chat in ~15 min, not from a customer. Status lives in
+// config/chatHealth; history in chatHealthEvents.
+exports.chatCanary = onSchedule(
+  {
+    schedule: "*/15 * * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], // SENDGRID_API_KEY + TWILIO_PHONE_NUMBER come from .env
+  },
+  async () => {
+    const { runChatCanary } = require("./monitoring/chatCanary");
+    const result = await runChatCanary();
+    console.log("[chatCanary]", result);
+  }
+);
+
+// On-demand: GET/POST /v1/chat:health — run the canary now (admin) or read
+// the last status. Lets Sean (and Claude) check chat health anytime.
+// Handled inline in the api function; see route "/chat:health".
 
 // ----------------------------
 // DAILY X MARKETING WORKER (9am PT — one first-party promo video/day)
