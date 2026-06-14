@@ -7833,6 +7833,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           customer: customerId,
+          allow_promotion_codes: true,            // lets friends/allies enter MAHALO
+          payment_method_collection: "if_required", // 100%-off comp needs no card; paying users still asked
           line_items: [
             { price: box.basePriceId, quantity: 1 },
             { price: box.seatPriceId, quantity: seatCount },
