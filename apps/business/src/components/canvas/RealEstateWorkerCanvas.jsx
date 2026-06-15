@@ -257,10 +257,11 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const ident = `${worker?.vertical || ""} ${slug || ""}`;
   const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
 
-  async function doLookup(e) {
+  async function doLookup(e, addrOverride) {
     if (e) e.preventDefault();
-    const addr = query.trim();
+    const addr = (addrOverride || query).trim();
     if (!addr) return;
+    if (addrOverride) setQuery(addrOverride);
     setLiveBusy(true); setLiveErr(null);
     try {
       const auth = getAuth();
@@ -298,6 +299,17 @@ export default function RealEstateWorkerCanvas({ worker }) {
             <button type="button" onClick={() => { setLiveSpec(null); setQuery(""); setLiveErr(null); }} style={{ padding: "8px 12px", fontSize: 13, color: "#64748b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>✕ Clear</button>
           )}
         </form>
+      )}
+      {isRE && !liveSpec && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>Try:</span>
+          {["325 Battery St, San Francisco, CA", "1600 Pennsylvania Ave NW, Washington, DC", "658 Front St, Lahaina, HI"].map((ex) => (
+            <button key={ex} type="button" disabled={liveBusy} onClick={() => doLookup(null, ex)}
+              style={{ fontSize: 11, color: "#7c3aed", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px", cursor: "pointer" }}>
+              {ex.split(",")[0]}
+            </button>
+          ))}
+        </div>
       )}
       {liveErr && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{liveErr}</div>}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
