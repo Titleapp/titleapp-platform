@@ -5053,7 +5053,11 @@ export default function App() {
   const workersSlugMatch = window.location.pathname.match(/^\/workers\/([a-z0-9-]+)\/?$/);
   const workerSlug = workersSlugMatch ? workersSlugMatch[1] : null;
   const workerRoute = workerSlug ? workerCatalog.find((w) => w.slug === workerSlug) : null;
-  const isLiveWorker = workerRoute && workerRoute.status === "live";
+  // S52.50 (#32) — openability != marketplace visibility. A worker published from
+  // the sandbox (status beta/unlisted/org) must open by direct link, even though
+  // only "live" gets marketplace-listed. Treat any published, non-"planned"
+  // worker as openable so the Distribute "Open your worker" link resolves.
+  const isLiveWorker = workerRoute && ["live", "beta", "unlisted", "org"].includes(workerRoute.status);
   const isPlannedWorker = workerRoute && workerRoute.status === "planned";
 
   // ── Vertical landing pages ──────────────────────────────────
