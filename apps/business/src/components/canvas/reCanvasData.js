@@ -655,3 +655,46 @@ export function getRECanvas(workerSlug) {
   if (!workerSlug) return null;
   return RE_CANVAS[workerSlug] || RE_CANVAS[RE_CANVAS_ALIASES[workerSlug]] || null;
 }
+
+// ───────────────────────── DATA-DRIVEN CANVAS (S52.50, keystone task #31) ──────
+// THE canonical renderable canvas schema — the contract every worker's canvas
+// shares, whether it comes from a worker's catalog doc, a backend emit, or the
+// hardcoded seed fixtures above:
+//
+//   {
+//     title, subtitle, disclaimer?, sample?,
+//     cas: { RED, YELLOW, BLUE, WHITE, GREEN },   // instrument-panel counts
+//     casLabels?,                                 // optional relabel of CAS bands
+//     tabs: [ { id, label, blocks: [ { type, ...payload } ] } ]
+//   }
+//
+// Renderable block types (see RealEstateWorkerCanvas Block switch):
+//   heroes | kpis | flags | chain | strata | cards | table | bars | prose | map | streetview
+//
+// This replaces the old "the renderer only knows 6 hardcoded slugs" model: any
+// worker that carries a valid spec on `worker.canvasSpec` (or `worker.canvas`)
+// now renders its OWN designed canvas. The fixtures remain as a fallback/seed.
+export function isValidCanvasSpec(spec) {
+  return !!(
+    spec && typeof spec === "object" &&
+    Array.isArray(spec.tabs) && spec.tabs.length > 0 &&
+    spec.tabs.every(t => t && Array.isArray(t.blocks))
+  );
+}
+
+// Resolve the spec to render for a worker, in priority order:
+//   1. the worker's OWN spec (worker.canvasSpec | worker.canvas) — data-driven,
+//      populated by the sandbox publish (#32) or the live ATTOM backend (#34);
+//   2. the hardcoded seed fixture by slug/workerId/catalogId (original 6 RE workers);
+//   3. null — caller falls back to the generic worker canvas.
+export function resolveCanvasSpec(worker) {
+  if (!worker) return null;
+  const own = worker.canvasSpec || worker.canvas || null;
+  if (isValidCanvasSpec(own)) return own;
+  return (
+    getRECanvas(worker.workerId) ||
+    getRECanvas(worker.slug) ||
+    getRECanvas(worker.catalogId) ||
+    null
+  );
+}

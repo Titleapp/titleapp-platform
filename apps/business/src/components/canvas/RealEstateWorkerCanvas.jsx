@@ -7,7 +7,7 @@
 // workers in RightPanel so there's a single, working tab control.
 
 import React, { useState, useEffect } from "react";
-import { getRECanvas, CAS, CAS_ORDER, STRATUM_BAND } from "./reCanvasData";
+import { getRECanvas, resolveCanvasSpec, isValidCanvasSpec, CAS, CAS_ORDER, STRATUM_BAND } from "./reCanvasData";
 import MapCard from "./MapCard";
 
 const c = (band) => CAS[band] || CAS.WHITE;
@@ -237,7 +237,9 @@ function Block({ block }) {
 
 export default function RealEstateWorkerCanvas({ worker }) {
   const slug = worker?.workerId || worker?.slug;
-  const data = getRECanvas(slug);
+  // S52.50 (keystone #31) — data-driven: render the worker's OWN canvas spec
+  // (worker.canvasSpec) when present, else the hardcoded seed fixture by slug.
+  const data = resolveCanvasSpec(worker);
   const [active, setActive] = useState(0);
   useEffect(() => { setActive(0); }, [slug]);
   if (!data) return null;
@@ -272,8 +274,14 @@ export default function RealEstateWorkerCanvas({ worker }) {
   );
 }
 
+// Gate: should this worker render the spec/tab canvas (vs the generic shell)?
+// True when the worker carries its OWN valid canvas spec (data-driven — any
+// worker, including freshly-built sandbox workers) OR matches a seed fixture.
+// Name kept as isREWorker to avoid churn across call sites; it's no longer
+// RE-specific.
 export function isREWorker(worker) {
   if (!worker) return false;
+  if (isValidCanvasSpec(worker.canvasSpec || worker.canvas)) return true;
   // Match on ANY identifier — different code paths populate slug vs workerId vs
   // catalogId, and checking only one let cre-analyst slip the RE check (→ the
   // duplicate external tab bar). RE_CANVAS is keyed by slug.
