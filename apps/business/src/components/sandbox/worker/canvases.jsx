@@ -24,6 +24,7 @@ import {
   generateCreatorBio,
   generateWorkerDeck,
 } from "../../../api/sandboxWorkerApi";
+import RealEstateWorkerCanvas from "../../canvas/RealEstateWorkerCanvas";
 
 // ─── Shared styles ──────────────────────────────────────────────────────────
 
@@ -907,6 +908,47 @@ export function ToolsCanvas({ session, onComplete }) {
 
 // ─── Step 6 — Test (real red team) ──────────────────────────────────────────
 
+// ─── S52.50 (#33) — LIVE worker preview ──────────────────────────────────────
+// Renders the creator's ACTUAL worker from their in-progress build, via the
+// same data-driven RealEstateWorkerCanvas an end-user sees. Closes Sean's gap:
+// "the worker itself never renders in any of the sandbox elements." The tab
+// structure + headline are the creator's; block data is placeholder until the
+// worker pulls live data.
+function buildPreviewSpec(session) {
+  const spec = (session && (session.spec || session)) || {};
+  const design = (session && session.design) || spec || {};
+  const name = spec.name || design.name || "Your Worker";
+  const vertical = spec.category || spec.vertical || "";
+  const headline = design.headlineOutcome || spec.headlineOutcome || "";
+  const tabsIn = (design.tabs || spec.tabs || []).filter((t) => t && t.name && String(t.name).trim());
+  const tabs = (tabsIn.length ? tabsIn : [{ name: "Overview", job: "the default view" }]).map((t, i) => {
+    const blocks = [];
+    if (i === 0 && headline) {
+      blocks.push({ type: "heroes", items: [{ band: "GREEN", title: headline, detail: "The one outcome users see first" }] });
+    }
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: String(t.name).trim(), body: (t.job && String(t.job).trim() ? String(t.job).trim() : "This tab does one job.") + " — live data renders here once your worker runs." }] });
+    return { id: "t" + i, label: String(t.name).trim(), blocks };
+  });
+  return {
+    title: name,
+    subtitle: vertical ? "Preview · " + vertical : "Preview",
+    disclaimer: "Live preview of YOUR worker — the shape users will see. Data fills in once connected.",
+    cas: { RED: 0, YELLOW: 0, BLUE: tabs.length, WHITE: 0, GREEN: headline ? 1 : 0 },
+    tabs,
+  };
+}
+
+export function WorkerPreview({ session }) {
+  const spec = buildPreviewSpec(session);
+  if (!spec.tabs.length) return null;
+  return (
+    <div style={{ ...card, padding: 12, marginBottom: 12, background: "#FCFCFD" }}>
+      <div style={{ ...label, marginBottom: 8, color: PURPLE }}>▸ Live preview — this is your worker</div>
+      <RealEstateWorkerCanvas worker={{ slug: "__preview__", workerId: "__preview__", canvasSpec: spec }} />
+    </div>
+  );
+}
+
 export function TestCanvas({ session, sessionId, onComplete }) {
   const [questions, setQuestions] = useState([]);
   const [responses, setResponses] = useState({});
@@ -964,6 +1006,7 @@ export function TestCanvas({ session, sessionId, onComplete }) {
       subtitle="Alex stress tests your worker. This is the AHA moment."
     >
       <StepHero kind="test" />
+      <WorkerPreview session={session} />
       <div style={{ ...card, background: "#F8FAFC" }}>
         <div style={{ fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
           Let me stress test this before your subscribers do. I am going to push on it hard — that is how you know it is ready.
@@ -1067,6 +1110,7 @@ export function PreflightCanvas({ session, onComplete }) {
       subtitle="A lot of creators stall here. Push through the paperwork."
     >
       <StepHero kind="preflight" />
+      <WorkerPreview session={session} />
       <div style={card}>
         {PREFLIGHT_GATES.map((g, i) => (
           <label key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < PREFLIGHT_GATES.length - 1 ? "1px solid #F1F5F9" : "none", cursor: "pointer" }}>
