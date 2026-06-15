@@ -1823,6 +1823,21 @@ exports.api = onRequest(
     // On-demand chat health. ?run=1 triggers a live canary pass (alerts
     // suppressed — only the scheduled chatCanary texts/emails). Otherwise
     // returns the last recorded status from config/chatHealth.
+    // On-demand worker health. ?run=1 runs a live canary pass (alerts
+    // suppressed — only the scheduled job texts/emails). Otherwise returns the
+    // last recorded status from config/workerHealth.
+    if (route === "/worker:health") {
+      try {
+        if (req.query.run === "1" || (body && body.run === true)) {
+          const { runWorkerCanary } = require("./monitoring/workerCanary");
+          const result = await runWorkerCanary({ noAlerts: true });
+          return res.json({ ok: true, ran: true, ...result });
+        }
+        const snap = await db.doc("config/workerHealth").get();
+        return res.json({ ok: true, ran: false, health: snap.exists ? snap.data() : { status: "unknown" } });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
     if (route === "/chat:health") {
       try {
         // ?testsms=1 — fire a one-time confirmation text to every configured
@@ -26925,6 +26940,27 @@ exports.chatCanary = onSchedule(
 // On-demand: GET/POST /v1/chat:health — run the canary now (admin) or read
 // the last status. Lets Sean (and Claude) check chat health anytime.
 // Handled inline in the api function; see route "/chat:health".
+
+// ----------------------------
+// WORKER HEALTH CANARY (every 6h — rules-loaded, catalog integrity, render-ok)
+// ----------------------------
+// Catches the bug classes we keep hitting: compliance rules silently off (#42),
+// workers that render the generic shell (#37/#31), broken catalog rows. Texts +
+// emails config/workerHealth.alertRecipients on a NEW red. On-demand:
+// GET /v1/worker:health (?run=1).
+exports.workerCanary = onSchedule(
+  {
+    schedule: "0 */6 * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], // SENDGRID + TWILIO_PHONE_NUMBER from .env
+  },
+  async () => {
+    const { runWorkerCanary } = require("./monitoring/workerCanary");
+    const result = await runWorkerCanary();
+    console.log("[workerCanary]", result);
+  }
+);
 
 // ----------------------------
 // DAILY X MARKETING WORKER (9am PT — one first-party promo video/day)
