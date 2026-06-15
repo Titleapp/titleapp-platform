@@ -43,7 +43,9 @@ export function normalizeVerticalKey(rawVertical) {
   if (v.includes("auto-dealer") || v.startsWith("auto") || v === "auto" || v.startsWith("dealer")) return "auto";
   if (v.includes("real") || v.includes("estate") || v.includes("property")
       || v.startsWith("cre-") || v === "cre" || v.includes("commercial") || v.includes("tenant")
-      || v.includes("brokerage") || v.includes("title") || v.startsWith("esc-")) return "real-estate";
+      || v.includes("brokerage") || v.includes("title") || v.startsWith("esc-")
+      || v.includes("re_prof") || v.includes("re-prof") || v.includes("zoning")
+      || v.includes("feasibility") || v.includes("land")) return "real-estate";
   if (v.includes("invest") || v.includes("finance") || v.includes("capital")
       || v.startsWith("ir-") || v === "ir" || v.includes("cap-table") || v.includes("cap_table")
       || v.includes("underwriting") || v.includes("portfolio") || v.includes("fund")) return "investment";
@@ -1543,6 +1545,12 @@ export function getFixtureForTab(worker, tabId) {
   const slug = worker.slug || worker.workerId || "";
   const vertical = worker.vertical || worker.suite || "";
   const catalogId = String(worker.catalogId || "").toUpperCase();
+  // S52.50 (#37) — canonicalize the vertical. Previously this function matched
+  // RE/auto fixtures by EXACT snake_case equality ("real_estate_development"),
+  // but Firestore workers are saved as display labels ("Real Estate") — so they
+  // fell through to the generic template. Route through normalizeVerticalKey so
+  // every spelling of a vertical resolves to its real fixtures.
+  const vKey = normalizeVerticalKey(vertical);
 
   // Aviation CoPilot baseline tabs ALWAYS load fixture content, regardless of
   // demo mode. These tabs (Aircraft profile, Logbook, Currency, Duty, Training,
@@ -1562,10 +1570,10 @@ export function getFixtureForTab(worker, tabId) {
   if (tabId === "map") {
     if ((slug === "cre-analyst" || slug === "cre-deal-analyst") && CRE_ANALYST_FIXTURES.map) return { ...CRE_ANALYST_FIXTURES.map, ...DEMO };
     if (SPINE_FIXTURES[slug] && SPINE_FIXTURES[slug].map) return { ...SPINE_FIXTURES[slug].map, ...DEMO };
-    if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES.map) {
+    if (vKey === "real-estate" && RE_FIXTURES.map) {
       return { ...RE_FIXTURES.map, ...DEMO };
     }
-    if (vertical === "auto_dealer" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
+    if (vKey === "auto" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
   }
 
   // All other fixtures remain gated by demo mode.
@@ -1580,11 +1588,11 @@ export function getFixtureForTab(worker, tabId) {
     return { ...CRE_ANALYST_FIXTURES[tabId], ...DEMO };
   }
   // 3. Real estate suite
-  if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES[tabId]) {
+  if (vKey === "real-estate" && RE_FIXTURES[tabId]) {
     return { ...RE_FIXTURES[tabId], ...DEMO };
   }
   // 4. Auto dealer
-  if (vertical === "auto_dealer" && AUTO_FIXTURES[tabId]) {
+  if (vKey === "auto" && AUTO_FIXTURES[tabId]) {
     return { ...AUTO_FIXTURES[tabId], ...DEMO };
   }
   // 5. Long-tail vertical templates — only the universal three tabs apply
