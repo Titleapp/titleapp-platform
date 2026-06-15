@@ -1828,6 +1828,10 @@ exports.api = onRequest(
     // (ATTOM is a paid key). Body: { address }.
     if (route === "/re:lookup" && method === "POST") {
       try {
+        // Auth required — ATTOM is a paid key; this route sits before the
+        // handler's main auth gate, so enforce it explicitly here.
+        const reAuth = await requireFirebaseUser(req, res);
+        if (reAuth.handled) return reAuth.res;
         const { address } = body || {};
         if (!address) return jsonError(res, 400, "address required");
         const { lookupAddress } = require("./services/re/liveLookup");
