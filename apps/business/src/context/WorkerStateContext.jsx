@@ -119,6 +119,10 @@ export function WorkerStateProvider({ children }) {
           activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
           workerType: d.worker_type || "worker",
           canvasTabs: Array.isArray(d.canvasTabs) ? d.canvasTabs : [],
+          // S52.50 (keystone #31) — carry the worker's OWN renderable canvas spec
+          // through so resolveCanvasSpec() renders its designed tabs/blocks. This
+          // is the main open path; without it canvasSpec never reaches the renderer.
+          canvasSpec: d.canvasSpec || d.canvas || null,
           // catalogId is required by sampleData.getFixtureForTab to detect
           // aviation CoPilots (AV-P##) and load baseline fixtures regardless
           // of demo-mode. Without it, the regex check fails and aviation
