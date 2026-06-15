@@ -17,6 +17,7 @@
 
 import { CRE_DISTRESSED } from "./creAnalystData";
 import { buildLearningCanvas } from "./learningCanvasData";
+import { RE_WORKER_ATTOM } from "./reWorkerAttomData";
 
 export const CAS = {
   RED:    { key: "RED",    dot: "#dc2626", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" },
@@ -638,12 +639,62 @@ if (Array.isArray(CRE_DISTRESSED) && CRE_DISTRESSED.length) {
 // the instrument panel for education (Met / Remediate / Not met).
 RE_CANVAS["student-eval-001"] = buildLearningCanvas();
 
-// S52.46 — fabrication-by-fixture disclosure. Every RE canvas except the
-// real-ATTOM-generated cre-analyst is hand-authored sample data. Mark them so
-// the canvas shows an honest "SAMPLE DATA" badge instead of passing invented
-// addresses/prices off as a live pull (QC001 finding).
+// ───────────────────────── REAL ATTOM ENRICHMENT (S52.50, #34) ──────────────
+// Weave REAL ATTOM parcel data into each RE worker. The subject property — map,
+// Street View photo, a live parcel-facts panel, and the real recorded sale —
+// becomes a live ATTOM pull. The deeper title/zoning/feasibility ANALYSIS below
+// stays illustrative and is labeled as such. Honest by construction: we never
+// attach a fabricated owner/lien to a real address — only ATTOM-returned facts.
+const _money = (n) => (n == null ? null : "$" + Number(n).toLocaleString());
+
+function attomSubjectFacts(a) {
+  const items = [
+    { label: "APN", value: a.apn || "—", band: "WHITE" },
+    { label: "Property type", value: a.propType || "—", band: "WHITE" },
+  ];
+  if (a.yearBuilt) items.push({ label: "Year built", value: String(a.yearBuilt), band: "WHITE" });
+  if (a.lotSizeAcres) items.push({ label: "Lot size", value: a.lotSizeAcres + " ac", band: "WHITE" });
+  if (a.bldgSqft) items.push({ label: "Building", value: Number(a.bldgSqft).toLocaleString() + " sqft", band: "WHITE" });
+  const s0 = a.sales && a.sales[0];
+  if (s0 && s0.amount) items.push({ label: "Last recorded sale", value: _money(s0.amount) + " · " + (s0.date || ""), band: "GREEN" });
+  else if (s0 && s0.date) items.push({ label: "Last recorded sale", value: s0.date, band: "WHITE" });
+  return { type: "kpis", items };
+}
+
+function enrichWithAttom(spec, a) {
+  if (!spec || !a || !a.found) return spec;
+  const next = { ...spec, tabs: spec.tabs.map((t) => ({ ...t, blocks: [...t.blocks] })) };
+  const lead = String(spec.title || "").split("—")[0].trim();
+  next.title = (lead ? lead + " — " : "") + a.address;
+  next.subtitle = "Tier-R · APN " + a.apn + " · Live ATTOM pull";
+  next.disclaimer = "Subject property + parcel data: live ATTOM pull. Analysis below is illustrative of the worker's output.";
+  next.attomLive = true;
+  const t0 = next.tabs[0];
+  // Point the map + photo at the real subject property.
+  t0.blocks = t0.blocks.map((b) => {
+    if (b.type === "map") return { ...b, address: a.address, locations: undefined, region: undefined };
+    if (b.type === "streetview" || b.type === "image") return { ...b, address: a.address, label: a.address };
+    return b;
+  });
+  // Insert the real parcel-facts panel right after the map/photo lead.
+  let insertAt = 0;
+  for (let i = 0; i < t0.blocks.length; i++) {
+    if (["map", "streetview", "image"].includes(t0.blocks[i].type)) insertAt = i + 1;
+  }
+  t0.blocks.splice(insertAt, 0, attomSubjectFacts(a));
+  return next;
+}
+
+for (const slug of Object.keys(RE_WORKER_ATTOM)) {
+  if (RE_CANVAS[slug]) RE_CANVAS[slug] = enrichWithAttom(RE_CANVAS[slug], RE_WORKER_ATTOM[slug]);
+}
+
+// S52.46/#34 — fabrication disclosure. cre-analyst + the ATTOM-enriched workers
+// carry REAL parcel data, so they are NOT blanket-"sample" — they show the
+// honest "live parcel · illustrative analysis" disclaimer instead. Everything
+// else still shows the SAMPLE badge.
 for (const k of Object.keys(RE_CANVAS)) {
-  RE_CANVAS[k].sample = !(k === "cre-analyst" && _creIsReal);
+  RE_CANVAS[k].sample = !RE_CANVAS[k].attomLive && !(k === "cre-analyst" && _creIsReal);
 }
 
 // Slug aliases — some surfaces (CampaignPage, AddWorkspaceWizard, the catalog
