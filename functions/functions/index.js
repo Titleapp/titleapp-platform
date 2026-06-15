@@ -23951,13 +23951,16 @@ Analyze now:`;
     // ----------------------------
     // RAAS (existing handlers)
     // ----------------------------
-    if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows(req, res, ctx);
-    if (route === "/raas:workflows" && method === "POST") return handleRaasWorkflows(req, res, ctx);
+    // #40/#3.2 — handlers take a single { req, res, method, body, ctx } object;
+    // they were being called positionally (req, res, ctx), so res/method/body
+    // were undefined and every RAAS route threw. Pass the object they expect.
+    if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows({ req, res, method, body, ctx });
+    if (route === "/raas:workflows" && method === "POST") return handleRaasWorkflows({ req, res, method, body, ctx });
 
-    if (route === "/raas:catalog:upsert" && method === "POST") return handleRaasCatalogUpsert(req, res, ctx);
-    if (route === "/raas:packages:create" && method === "POST") return handleRaasPackagesCreate(req, res, ctx);
-    if (route === "/raas:packages:bindFiles" && method === "POST") return handleRaasPackagesBindFiles(req, res, ctx);
-    if (route === "/raas:packages:get" && method === "GET") return handleRaasPackagesGet(req, res, ctx);
+    if (route === "/raas:catalog:upsert" && method === "POST") return handleRaasCatalogUpsert({ req, res, method, body, ctx });
+    if (route === "/raas:packages:create" && method === "POST") return handleRaasPackagesCreate({ req, res, method, body, ctx });
+    if (route === "/raas:packages:bindFiles" && method === "POST") return handleRaasPackagesBindFiles({ req, res, method, body, ctx });
+    if (route === "/raas:packages:get" && method === "GET") return handleRaasPackagesGet({ req, res, method, body, ctx });
 
     // ----------------------------
     // TITLE / PROVENANCE (Bearer token access for frontend)
