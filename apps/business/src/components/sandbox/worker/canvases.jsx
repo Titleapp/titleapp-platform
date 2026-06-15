@@ -1147,8 +1147,10 @@ export function PreflightCanvas({ session, onComplete }) {
 
 export function DistributeCanvas({ session, onComplete }) {
   const spec = session?.spec || {};
-  const slug = (spec.name || "your-worker").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const url = `https://app.sociii.ai/preview/${slug}`;
+  // #32 — slug + URL must match the backend publish (workerBuildFlow.slugifyWorker)
+  // and point at the REAL openable route. The old /preview/<slug> route never existed.
+  const slug = (spec.name || "your-worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "your-worker";
+  const url = `https://sociii.ai/workers/${slug}`;
   const [deck, setDeck] = useState([]);
   const [deckBusy, setDeckBusy] = useState(false);
   const [deckErr, setDeckErr] = useState(null);
@@ -1188,6 +1190,11 @@ export function DistributeCanvas({ session, onComplete }) {
           <input style={{ ...input, marginBottom: 0 }} readOnly value={url} />
           <CopyButton text={url} />
         </div>
+        <a href={url} target="_blank" rel="noreferrer"
+           style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: PURPLE, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          Open your worker ↗
+        </a>
+        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>Opens the live worker in a new tab — the same page anyone you share with will see.</div>
       </div>
 
       <div style={card}>
