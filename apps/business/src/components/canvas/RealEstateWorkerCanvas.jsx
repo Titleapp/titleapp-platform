@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from "react";
 import { getRECanvas, resolveCanvasSpec, isValidCanvasSpec, CAS, CAS_ORDER, STRATUM_BAND } from "./reCanvasData";
 import MapCard from "./MapCard";
+import { getAuth } from "firebase/auth";
 
 const c = (band) => CAS[band] || CAS.WHITE;
 
@@ -239,14 +240,66 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const slug = worker?.workerId || worker?.slug;
   // S52.50 (keystone #31) — data-driven: render the worker's OWN canvas spec
   // (worker.canvasSpec) when present, else the hardcoded seed fixture by slug.
-  const data = resolveCanvasSpec(worker);
+  const baseData = resolveCanvasSpec(worker);
   const [active, setActive] = useState(0);
-  useEffect(() => { setActive(0); }, [slug]);
+  // #41 — live per-address ATTOM lookup. When set, it overrides the canvas.
+  const [liveSpec, setLiveSpec] = useState(null);
+  const [query, setQuery] = useState("");
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveErr, setLiveErr] = useState(null);
+  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); }, [slug]);
+  useEffect(() => { setActive(0); }, [liveSpec]);
+  const data = liveSpec || baseData;
   if (!data) return null;
   const tab = data.tabs[active] || data.tabs[0];
 
+  // Only show the property search on property/RE workers.
+  const ident = `${worker?.vertical || ""} ${slug || ""}`;
+  const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
+
+  async function doLookup(e) {
+    if (e) e.preventDefault();
+    const addr = query.trim();
+    if (!addr) return;
+    setLiveBusy(true); setLiveErr(null);
+    try {
+      const auth = getAuth();
+      const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/re:lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ address: addr }),
+      });
+      const j = await resp.json();
+      if (j.ok && j.canvasSpec) setLiveSpec(j.canvasSpec);
+      else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
+    } catch (err) {
+      setLiveErr("Lookup failed — try again.");
+    } finally {
+      setLiveBusy(false);
+    }
+  }
+
   return (
     <div style={{ marginBottom: 24 }}>
+      {isRE && (
+        <form onSubmit={doLookup} style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={'Look up any property — e.g. "325 Battery St, San Francisco, CA"'}
+            style={{ flex: "1 1 240px", padding: "8px 12px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8 }}
+          />
+          <button type="submit" disabled={liveBusy} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: "pointer", opacity: liveBusy ? 0.6 : 1 }}>
+            {liveBusy ? "Pulling live data…" : "Look up"}
+          </button>
+          {liveSpec && (
+            <button type="button" onClick={() => { setLiveSpec(null); setQuery(""); setLiveErr(null); }} style={{ padding: "8px 12px", fontSize: 13, color: "#64748b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>✕ Clear</button>
+          )}
+        </form>
+      )}
+      {liveErr && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{liveErr}</div>}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>{data.subtitle}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

@@ -1823,6 +1823,22 @@ exports.api = onRequest(
     // On-demand chat health. ?run=1 triggers a live canary pass (alerts
     // suppressed — only the scheduled chatCanary texts/emails). Otherwise
     // returns the last recorded status from config/chatHealth.
+    // POST /v1/re:lookup — #41: live per-address ATTOM lookup. Returns the real
+    // parcel data + a ready-to-render canvasSpec for any address. Auth-required
+    // (ATTOM is a paid key). Body: { address }.
+    if (route === "/re:lookup" && method === "POST") {
+      try {
+        const { address } = body || {};
+        if (!address) return jsonError(res, 400, "address required");
+        const { lookupAddress } = require("./services/re/liveLookup");
+        const result = await lookupAddress(address, process.env.ATTOM_API_KEY);
+        return res.json(result);
+      } catch (e) {
+        console.error("re:lookup failed:", e);
+        return jsonError(res, 500, "Lookup failed");
+      }
+    }
+
     // On-demand worker health. ?run=1 runs a live canary pass (alerts
     // suppressed — only the scheduled job texts/emails). Otherwise returns the
     // last recorded status from config/workerHealth.
