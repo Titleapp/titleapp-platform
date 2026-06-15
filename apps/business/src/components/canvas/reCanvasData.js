@@ -38,6 +38,8 @@ export const RE_CANVAS = {
     cas: { RED: 0, YELLOW: 2, BLUE: 1, WHITE: 3, GREEN: 5 },
     tabs: [
       { id: "ownership-chain", label: "Ownership chain", blocks: [
+        { type: "map", address: "9708 US Highway 191, Pinedale, WY 82941", mapType: "satellite" },
+        { type: "streetview", address: "9708 US Highway 191, Pinedale, WY 82941", label: "9708 US Highway 191, Pinedale WY" },
         { type: "heroes", items: [
           { band: "GREEN", title: "Title chain — clean", detail: "5 transfers verified · marketable" },
           { band: "YELLOW", title: "Two open easements", detail: "Utility 1987 · Road access 2003" },
@@ -122,6 +124,8 @@ export const RE_CANVAS = {
     cas: { RED: 1, YELLOW: 3, BLUE: 2, WHITE: 1, GREEN: 4 },
     tabs: [
       { id: "entitlement-roadmap", label: "Entitlement Roadmap", blocks: [
+        { type: "map", address: "Front Street, Lahaina, HI 96761", mapType: "satellite" },
+        { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "Coastal parcel · Lahaina HI 96761 (illustrative)" },
         { type: "heroes", items: [
           { band: "GREEN", title: "Like-for-like rebuild", detail: "Ministerial — cleared" },
           { band: "YELLOW", title: "Expand footprint", detail: "Contested — discretionary" },
@@ -200,6 +204,8 @@ export const RE_CANVAS = {
     cas: { RED: 1, YELLOW: 2, BLUE: 2, WHITE: 1, GREEN: 3 },
     tabs: [
       { id: "zoning-verdict", label: "Zoning verdict", blocks: [
+        { type: "map", address: "Front Street, Lahaina, HI 96761", mapType: "satellite" },
+        { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "R-2 coastal parcel · Lahaina HI (illustrative)" },
         { type: "heroes", items: [
           { band: "GREEN", title: "Single-family rebuild", detail: "By-right · ministerial" },
           { band: "YELLOW", title: "Duplex", detail: "Allowed with conditions (CUP)" },
@@ -262,6 +268,8 @@ export const RE_CANVAS = {
     cas: { RED: 0, YELLOW: 2, BLUE: 3, WHITE: 4, GREEN: 2 },
     tabs: [
       { id: "demand", label: "Demand", blocks: [
+        { type: "map", address: "Lahaina, HI 96761", mapType: "satellite" },
+        { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "Proposed 24-unit site · Lahaina HI 96761 (illustrative)" },
         { type: "heroes", items: [
           { band: "GREEN", title: "Demand", detail: "85% of capture target" },
           { band: "YELLOW", title: "Supply pipeline", detail: "312 units in 18 months" },
@@ -460,6 +468,8 @@ export const RE_CANVAS = {
     cas: { RED: 2, YELLOW: 3, BLUE: 0, WHITE: 0, GREEN: 3 },
     tabs: [
       { id: "opportunities", label: "Opportunities", blocks: [
+        { type: "map", address: "Moreno Valley, CA 92551", mapType: "satellite" },
+        { type: "streetview", address: "Moreno Valley, CA 92551", label: "Last-mile warehouse site · Riverside County CA (illustrative)" },
         { type: "heroes", items: [
           { band: "GREEN", title: "3 GREEN", detail: "Underwriteable — proceed" },
           { band: "YELLOW", title: "3 YELLOW", detail: "Review required — named blocker" },

@@ -196,6 +196,27 @@ function Prose({ hero, items }) {
   );
 }
 
+// S52.50 — Street View photo of the subject property. Sean's standing rule:
+// every RE worker should show a MAP + pictures of the subject property. Uses
+// the Google Street View Static API (same VITE_GOOGLE_MAPS_API_KEY as MapCard)
+// keyed off a real address — so it's a real photo, never fabricated. If Google
+// has no ground imagery for the address it returns a "no imagery" tile (still
+// real, never broken).
+function StreetViewCard({ address, label }) {
+  const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!API_KEY || !address) return null;
+  const src = `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${encodeURIComponent(address)}&fov=80&pitch=0&source=outdoor&key=${API_KEY}`;
+  return (
+    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.04)", marginBottom: 18 }}>
+      <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase" }}>Subject property</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 2 }}>{label || address}</div>
+      </div>
+      <img src={src} alt={`Street view of ${label || address}`} width="100%" height="360" loading="lazy" style={{ display: "block", objectFit: "cover", width: "100%", height: 360 }} />
+    </div>
+  );
+}
+
 function Block({ block }) {
   switch (block.type) {
     case "heroes": return <Heroes items={block.items} />;
@@ -207,7 +228,9 @@ function Block({ block }) {
     case "table": return <Table title={block.title} columns={block.columns} rows={block.rows} />;
     case "bars": return <Bars title={block.title} items={block.items} note={block.note} />;
     case "prose": return <Prose hero={block.hero} items={block.items} />;
-    case "map": return <div style={{ marginBottom: 18 }}><MapCard resolved={{ locations: block.locations, region: block.region }} /></div>;
+    case "map": return <div style={{ marginBottom: 18 }}><MapCard resolved={{ locations: block.locations, region: block.region, address: block.address, mapType: block.mapType }} /></div>;
+    case "streetview":
+    case "image": return <StreetViewCard address={block.address} label={block.label} />;
     default: return null;
   }
 }
