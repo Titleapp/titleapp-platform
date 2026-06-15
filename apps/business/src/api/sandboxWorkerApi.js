@@ -217,6 +217,11 @@ export function recordTestRun({ sessionId, responses }) {
   return call("POST", "/v1/sandbox:worker:test:run", { body: { sessionId, responses } });
 }
 
+// #35 — actually run the worker on one red-team question; returns its real answer.
+export function askWorker({ sessionId, questionId }) {
+  return call("POST", "/v1/sandbox:worker:test:ask", { body: { sessionId, questionId } });
+}
+
 // ─── File Upload ──────────────────────────────────────────────────────────
 
 /**

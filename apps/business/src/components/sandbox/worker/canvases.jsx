@@ -19,6 +19,7 @@ import {
   deleteDocument,
   getTestQuestions,
   recordTestRun,
+  askWorker,
   uploadFile,
   generateWorkerImage,
   generateCreatorBio,
@@ -953,6 +954,7 @@ export function TestCanvas({ session, sessionId, onComplete }) {
   const [questions, setQuestions] = useState([]);
   const [responses, setResponses] = useState({});
   const [classifications, setClassifications] = useState({});
+  const [runningQ, setRunningQ] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -973,6 +975,26 @@ export function TestCanvas({ session, sessionId, onComplete }) {
 
   function setResponse(qid, val) { setResponses(prev => ({ ...prev, [qid]: val })); }
   function setClass(qid, val)    { setClassifications(prev => ({ ...prev, [qid]: val })); }
+
+  // #35 — actually run the worker on a question and show its real answer.
+  async function runQuestion(q) {
+    setRunningQ(q.id);
+    setError(null);
+    try {
+      const r = await askWorker({ sessionId, questionId: q.id });
+      if (r && r.ok) {
+        setResponse(q.id, r.answer || "");
+        if (r.suggestedClassification) setClass(q.id, r.suggestedClassification);
+      } else {
+        setError((r && r.error) || "The worker couldn't answer — try again.");
+      }
+    } catch (e) {
+      setError("The worker couldn't answer — try again.");
+    } finally {
+      setRunningQ(null);
+    }
+  }
+  async function runAll() { for (const q of questions) { await runQuestion(q); } }
 
   const allAnswered = questions.length > 0 && questions.every(q => responses[q.id] && classifications[q.id]);
 
@@ -1015,15 +1037,33 @@ export function TestCanvas({ session, sessionId, onComplete }) {
 
       {error && <div style={{ ...card, borderColor: "#DC2626", color: "#DC2626" }}>{error}</div>}
 
+      {questions.length > 0 && (
+        <button
+          style={{ ...ghostBtn, marginBottom: 4, borderColor: PURPLE, color: PURPLE, fontWeight: 600, opacity: runningQ ? 0.5 : 1 }}
+          disabled={!!runningQ}
+          onClick={runAll}
+        >
+          {runningQ ? "Worker is answering…" : "▶ Run the worker on every question"}
+        </button>
+      )}
+
       {questions.map((q, i) => (
         <div key={q.id} style={card}>
           <div style={label}>Question {i + 1} · {q.category}</div>
           <div style={{ fontSize: 14, color: "#1a1a2e", marginTop: 6, marginBottom: 8 }}>{q.question}</div>
+          <button
+            style={{ ...ghostBtn, padding: "4px 12px", fontSize: 12, marginBottom: 8, borderColor: PURPLE, color: PURPLE }}
+            disabled={runningQ === q.id}
+            onClick={() => runQuestion(q)}
+          >
+            {runningQ === q.id ? "Worker is thinking…" : (responses[q.id] ? "↻ Run worker again" : "▶ Run worker")}
+          </button>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>Worker's answer (you can edit before grading)</div>
           <textarea
             style={textarea}
             value={responses[q.id] || ""}
             onChange={e => setResponse(q.id, e.target.value)}
-            placeholder="Worker's response"
+            placeholder="Click ▶ Run worker to see the worker's real answer."
           />
           <div style={{ display: "flex", gap: 6 }}>
             {["clean", "flagged", "escalated", "failed"].map(c => (

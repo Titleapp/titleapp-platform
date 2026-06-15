@@ -10150,6 +10150,24 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/sandbox:worker:test:ask — #35: actually RUN the worker on one
+    //   red-team question and return its real answer (built from the draft
+    //   spec's rules + knowledge). Body: { sessionId, questionId }.
+    if (route === "/sandbox:worker:test:ask" && method === "POST") {
+      try {
+        const { sessionId, questionId } = body || {};
+        if (!sessionId) return jsonError(res, 400, "sessionId required");
+        const { answerAsWorker } = require("./services/sandbox/workerTestProtocol");
+        const anthropic = getAnthropic();
+        const createMessage = (p) => anthropic.messages.create(p);
+        const result = await answerAsWorker({ userId: auth.user.uid, sessionId, questionId, createMessage });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("sandbox:worker:test:ask failed:", e);
+        return jsonError(res, 500, "Worker test run failed");
+      }
+    }
+
     // POST /v1/sandbox:worker:test:run — Record a completed test run.
     //   Body: { sessionId, responses: [...] }
     if (route === "/sandbox:worker:test:run" && method === "POST") {
