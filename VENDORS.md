@@ -11,8 +11,10 @@
 |-------|-------|
 | Primary Email | seanlcombs@gmail.com |
 | Company Legal Name | The Title App LLC |
-| DBA | TitleApp |
+| Operating Entity (Atlas C-corp) | SOCIII, Inc. (Delaware C Corporation) |
+| DBA | TitleApp / SOCIII |
 | EIN | 33-1330902 |
+| **D-U-N-S® Number** | **14-503-1310** |
 | State | Delaware |
 | Address | 1209 N Orange St, Wilmington, DE 19801 |
 
