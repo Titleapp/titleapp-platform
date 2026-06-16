@@ -8,12 +8,17 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 // catalog entry).
 export const ASSET_CLASS_OF = {
   vehicle: "Vehicles",
+  aircraft: "Vehicles",
+  vessel: "Vehicles",
   property: "Real Property",
   credential: "Credentials",
+  art: "Personal Assets",
+  watch: "Personal Assets",
+  jewelry: "Personal Assets",
+  collectible: "Personal Assets",
   // Future types (not yet registered as live):
   // commercial_property: "Real Property", land: "Real Property", lease: "Real Property",
-  // aircraft: "Vehicles", vessel: "Vehicles", commercial_fleet: "Vehicles",
-  // art: "Personal Assets", collectibles: "Personal Assets", jewelry: "Personal Assets",
+  // commercial_fleet: "Vehicles",
   // professional_license: "Credentials", certification: "Credentials",
   // entity_formation: "Business Records", operating_agreement: "Business Records",
   // inspection_report: "Compliance", audit_finding: "Compliance", permit: "Compliance",

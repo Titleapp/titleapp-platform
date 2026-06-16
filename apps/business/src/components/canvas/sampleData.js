@@ -511,16 +511,17 @@ const SPINE_FIXTURES = {
     },
     "cap-table": {
       title: "Cap table",
-      subtitle: "Sample data · SOCIII Inc.",
+      subtitle: "SOCIII, Inc. · 10,000,000 shares fully diluted",
       fields: [
-        { label: "Founder",        value: "60% (Sean Combs)" },
-        { label: "Cofounder",      value: "15% (Kent Redwine)" },
-        { label: "Advisor pool",   value: "12% (capped at 7 advisors)" },
-        { label: "Option pool",    value: "10%" },
-        { label: "Open",           value: "3%" },
+        { label: "Sean Lee Combs (Founder)",    value: "5,100,000 · 51%" },
+        { label: "Kent Redwine (RSPA)",         value: "1,500,000 · 15%" },
+        { label: "Kent Redwine (Advisor)",      value: "200,000 · 2%" },
+        { label: "Advisor pool (6 × 2%)",       value: "1,200,000 · 12%" },
+        { label: "HOM Creator Pool (warrants)", value: "2,000,000 · 20%" },
       ],
       sections: [
-        { heading: "Shareholders", body: "Sean Combs · 6,000,000 sh\nKent Redwine · 1,500,000 sh (vesting)\nRobert Rosenberg · 25,000 sh\nAdvisor pool · 1,200,000 sh reserved" },
+        { heading: "Shareholders", body: "Sean Lee Combs · 5,100,000 sh · 51% · founder, fully vested\nKent Redwine (RSPA) · 1,500,000 sh · 15% · milestone-vesting, repurchase at cost\nKent Redwine (Advisor) · 200,000 sh · 2% · time-vested\nVertical Advisor Pool · 1,200,000 sh · 12% · 200,000 each — Kimmi, Elise, Ruthie, Eric, Scott, Robert\nHOM Creator Pool · 2,000,000 sh · 20% · warrants\n———\nTotal · 10,000,000 sh · 100%" },
+        { heading: "83(b) election tracker", body: "Sean Lee Combs · FILED ✓ — delivered IRS Ogden 5/23/26\nKent Redwine (RSPA · 1.5M) · pending · deadline 7/17/26\nKent Redwine (Advisor · 200K) · pending · deadline 7/17/26\nKimmi (200K) · pending · deadline 7/17/26\nRuthie Clearwater (200K) · pending · deadline 7/17/26\nEric (200K) · pending · deadline 7/17/26\nScott (200K) · pending · deadline 7/17/26\nRobert (200K) · pending · deadline 7/17/26\nElise van del Bil (200K) · N/A — Dutch / non-US\nHOM warrants · N/A" },
       ],
     },
     "governance": {
