@@ -66,11 +66,34 @@ function xClientFromEnv() {
 }
 
 // Post one video for the given pick. Returns { tweetId, url }.
+// Both serve the same files (Firebase Hosting / Fastly); a server-to-server
+// fetch from GCP can hit a transient 503 on one edge, so we try both domains
+// across a few rounds. A single blip used to kill the whole day's post.
+const CREATIVE_BASES = [
+  "https://sociii.ai/launch-creative",
+  "https://title-app-alpha.web.app/launch-creative",
+];
+
+async function fetchVideoBuffer(slug) {
+  const urls = CREATIVE_BASES.map((b) => `${b}/of-${slug}-video-01.mp4`);
+  const delays = [0, 2000, 5000, 12000]; // ~4 rounds over ~19s
+  let lastErr = null;
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) await new Promise((r) => setTimeout(r, delays[i]));
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url);
+        if (resp.ok) return Buffer.from(await resp.arrayBuffer());
+        lastErr = new Error(`Fetch video failed (${resp.status}) for ${url}`);
+      } catch (e) { lastErr = e; }
+    }
+    console.warn(`[dailyXPost] video fetch round ${i + 1} failed: ${lastErr && lastErr.message}`);
+  }
+  throw lastErr || new Error(`Fetch video failed for ${slug}`);
+}
+
 async function postVideo(client, pick) {
-  const videoUrl = `${CREATIVE_BASE}/of-${pick.slug}-video-01.mp4`;
-  const resp = await fetch(videoUrl);
-  if (!resp.ok) throw new Error(`Fetch video failed (${resp.status}) for ${videoUrl}`);
-  const buffer = Buffer.from(await resp.arrayBuffer());
+  const buffer = await fetchVideoBuffer(pick.slug);
 
   // Chunked upload + STATUS polling handled by the lib for video/mp4.
   const mediaId = await client.v1.uploadMedia(buffer, { mimeType: "video/mp4", target: "tweet" });
