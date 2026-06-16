@@ -109,6 +109,7 @@ import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas
 import { getLiveDataForTab } from "./components/canvas/liveData";
 import { lookupSignal } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
+import { isREWorker } from "./components/canvas/RealEstateWorkerCanvas";
 import { auth } from "./firebase";
 import { signInWithCustomToken, getRedirectResult } from "firebase/auth";
 import { processLandingHandoff } from "./utils/landingHandoff";
@@ -4467,6 +4468,13 @@ function WorkerHomeRenderer({ onBack }) {
   // fixture renderer. Reset when worker changes.
   const [activeTabId, setActiveTabId] = React.useState(null);
   React.useEffect(() => { setActiveTabId(null); }, [worker?.slug]);
+  // S52.50 — clear any STALE canvas overlay when the worker changes, so a
+  // leftover card (e.g. an investor "Company updates" signal) can't block the
+  // worker's own canvas. WorkerCanvas tries this on mount, but the stale CANVAS
+  // branch renders first so WorkerCanvas never mounts — reset here instead.
+  React.useEffect(() => {
+    if (panel?.resetCanvas) panel.resetCanvas();
+  }, [worker?.slug, worker?.workerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // S51.37 — try real tenant data first, then fall back to sample fixture.
   // Real payload has no _demo flag → CanvasPanel skips the SAMPLE chip.
@@ -4589,7 +4597,7 @@ function WorkerHomeRenderer({ onBack }) {
   if (panel?.state === "CANVAS" && panel?.canvasData && !(_isDiscoverySig && _insideWorker)) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {tabs.length > 0 && (
+        {tabs.length > 0 && !isREWorker(worker) && (
           <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
@@ -4625,7 +4633,7 @@ function WorkerHomeRenderer({ onBack }) {
   if (workerCtx?.activeWorkerData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {tabs.length > 0 && (
+        {tabs.length > 0 && !isREWorker(worker) && (
           <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
