@@ -10,6 +10,7 @@
 // lives OUTSIDE the canvas (see grounding/notifications); flagged in the spec.
 
 import React, { useState } from "react";
+import MapCard from "../components/canvas/MapCard";
 
 const C = {
   green: { dot: "#16a34a", text: "#166534", bg: "#f0fdf4", border: "#bbf7d0" },
@@ -104,6 +105,10 @@ export default function CECourseCanvas() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 21, fontWeight: 800, color: "#0f172a" }}>Nevada RE License Renewal</div>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.amber.text, background: C.amber.bg, border: `1px solid ${C.amber.border}`, borderRadius: 999, padding: "3px 10px" }}>SAMPLE</span>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <MapCard resolved={{ region: "Nevada", mapType: "roadmap" }} />
       </div>
 
       <div style={{ display: "flex", gap: 2, borderBottom: "1px solid #f1f5f9", marginBottom: 16, overflowX: "auto" }}>
