@@ -65,16 +65,31 @@ function xClientFromEnv() {
   });
 }
 
-// Post one video for the given pick. Returns { tweetId, url }.
-// Both serve the same files (Firebase Hosting / Fastly); a server-to-server
-// fetch from GCP can hit a transient 503 on one edge, so we try both domains
-// across a few rounds. A single blip used to kill the whole day's post.
+// Read the video bytes for a pick. PRIMARY path is Cloud Storage, read
+// server-to-server via the Admin SDK (Cloud Run → GCS, all inside Google's
+// network) — this avoids the public Firebase Hosting / Fastly edge, whose
+// transient 503s on a GCP-origin fetch used to kill the whole day's post.
+//
+// Videos live at gs://<bucket>/launch-creative/of-<slug>-video-01.mp4
+// (uploaded from apps/business/public/launch-creative). HTTP hosting is kept
+// as a belt-and-suspenders fallback if the GCS object is ever missing.
+const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "title-app-alpha.firebasestorage.app";
+const STORAGE_PREFIX = "launch-creative";
 const CREATIVE_BASES = [
   "https://sociii.ai/launch-creative",
   "https://title-app-alpha.web.app/launch-creative",
 ];
 
-async function fetchVideoBuffer(slug) {
+async function fetchVideoFromStorage(slug) {
+  const objectPath = `${STORAGE_PREFIX}/of-${slug}-video-01.mp4`;
+  const file = admin.storage().bucket(STORAGE_BUCKET).file(objectPath);
+  const [exists] = await file.exists();
+  if (!exists) throw new Error(`Storage object missing: gs://${STORAGE_BUCKET}/${objectPath}`);
+  const [buffer] = await file.download();
+  return buffer;
+}
+
+async function fetchVideoFromHosting(slug) {
   const urls = CREATIVE_BASES.map((b) => `${b}/of-${slug}-video-01.mp4`);
   const delays = [0, 2000, 5000, 12000]; // ~4 rounds over ~19s
   let lastErr = null;
@@ -87,9 +102,21 @@ async function fetchVideoBuffer(slug) {
         lastErr = new Error(`Fetch video failed (${resp.status}) for ${url}`);
       } catch (e) { lastErr = e; }
     }
-    console.warn(`[dailyXPost] video fetch round ${i + 1} failed: ${lastErr && lastErr.message}`);
+    console.warn(`[dailyXPost] hosting fetch round ${i + 1} failed: ${lastErr && lastErr.message}`);
   }
-  throw lastErr || new Error(`Fetch video failed for ${slug}`);
+  throw lastErr || new Error(`Hosting fetch failed for ${slug}`);
+}
+
+async function fetchVideoBuffer(slug) {
+  // Primary: Cloud Storage (no public edge, no Fastly 503).
+  try {
+    const buf = await fetchVideoFromStorage(slug);
+    console.log(`[dailyXPost] video read from Storage: ${slug} (${buf.length} bytes)`);
+    return buf;
+  } catch (storageErr) {
+    console.warn(`[dailyXPost] Storage read failed for ${slug} (${storageErr.message}); falling back to hosting`);
+    return await fetchVideoFromHosting(slug);
+  }
 }
 
 async function postVideo(client, pick) {
