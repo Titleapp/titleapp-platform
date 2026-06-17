@@ -7154,6 +7154,29 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:tfr[?state=AZ] — active TFRs from tfr.faa.gov (free, public).
+    if (route === "/aviation:tfr" && method === "GET") {
+      try {
+        const { handleTfr } = require("./services/aviation/faaData");
+        return await handleTfr(req, res);
+      } catch (e) {
+        console.error("aviation:tfr failed:", e);
+        return jsonError(res, 500, "TFR lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:airspace?lat=&lon=&dist= — FAA Class Airspace polygons
+    // (GeoJSON for the map: Class B/C/D/E w/ floor+ceiling). Free, public.
+    if (route === "/aviation:airspace" && method === "GET") {
+      try {
+        const { handleAirspace } = require("./services/aviation/faaData");
+        return await handleAirspace(req, res);
+      } catch (e) {
+        console.error("aviation:airspace failed:", e);
+        return jsonError(res, 500, "Airspace lookup failed");
+      }
+    }
+
     // GET /v1/aviation:notams?locations=KJFK,KLAX  — Notamify (paid + metered).
     // Auth required (paid key + per-pull data fee); 30-min per-ICAO cache.
     if (route === "/aviation:notams" && method === "GET") {
