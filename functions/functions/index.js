@@ -7177,6 +7177,19 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:currency[?cycle=2601][&region=hawaii] — AIRAC nav-data
+    // currency. No cycle → current AIRAC cycle. With cycle → status
+    // (current | expiring ≤7 days | expired) + days remaining. Free, public.
+    if (route === "/aviation:currency" && method === "GET") {
+      try {
+        const { handleCurrency } = require("./services/aviation/airac");
+        return await handleCurrency(req, res);
+      } catch (e) {
+        console.error("aviation:currency failed:", e);
+        return jsonError(res, 500, "Currency check failed");
+      }
+    }
+
     // GET /v1/aviation:airports?lat=&lon=&dist= — FAA NASR airports (free, public).
     if (route === "/aviation:airports" && method === "GET") {
       try {
