@@ -24,6 +24,12 @@ export const ASSET_CLASS_OF = {
   prescription: "Health",
   health_visit: "Health",
   allergy: "Health",
+  // Education ("my education" pillar) — degrees, training, courses, ratings.
+  // Same learning-record substrate as the student use case (Sarah Kahele).
+  education_record: "Education",
+  degree: "Education",
+  training_record: "Education",
+  course: "Education",
   // Money ("my money" pillar) — accounts + liabilities feed the net-worth rollup.
   bank_account: "Money",
   investment_account: "Money",
@@ -43,6 +49,7 @@ export const ASSET_CLASSES = [
   "Vehicles",
   "Personal Assets",
   "Health",
+  "Education",
   "Money",
   "Credentials",
   "Business Records",

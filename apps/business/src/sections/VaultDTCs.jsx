@@ -173,6 +173,15 @@ function chainBadge(dtc) {
 
 const HEALTH_TYPES = new Set(["medical_record", "medical_certificate", "immunization", "lab_result", "prescription", "health_visit", "allergy"]);
 const MONEY_TYPES = new Set(["bank_account", "investment_account", "retirement_account", "crypto_account", "liability"]);
+const EDUCATION_TYPES = new Set(["education_record", "degree", "training_record", "course"]);
+
+// CAS palette (same language as the worker canvas) for the dashboard's
+// "needs attention" flags: RED past-due · YELLOW due-soon · BLUE upcoming.
+const CAS = {
+  RED: { dot: "#dc2626", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" },
+  YELLOW: { dot: "#d97706", bg: "#fffbeb", border: "#fde68a", text: "#b45309" },
+  BLUE: { dot: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" },
+};
 
 function fmtUsd(n) {
   if (n == null || isNaN(n)) return "—";
@@ -226,6 +235,10 @@ function metadataPreview(dtc) {
     if (m.institution) lines.push(m.institution);
     if (m.balance) lines.push(`Balance: ${m.balance}`);
     if (m.accountType || m.lender) lines.push(m.accountType || m.lender);
+  } else if (EDUCATION_TYPES.has(dtc.type)) {
+    if (m.institution) lines.push(m.institution);
+    if (m.date || m.conferred) lines.push(m.date || m.conferred);
+    if (m.summary) lines.push(m.summary);
   } else {
     // Generic: show top-level keys.
     Object.entries(m).slice(0, 3).forEach(([k, v]) => {
@@ -237,7 +250,7 @@ function metadataPreview(dtc) {
 
 export default function VaultDTCs() {
   const { dtcs, loading, error } = useDtcCatalog();
-  const [activeClass, setActiveClass] = useState("All");
+  const [activeClass, setActiveClass] = useState("Dashboard");
   const [selectedDtc, setSelectedDtc] = useState(null);
 
   const counts = useMemo(() => {
@@ -260,6 +273,42 @@ export default function VaultDTCs() {
       if (v < 0) liabilities += -v; else assets += v;
     }
     return { assets, liabilities, net: assets - liabilities, valued };
+  }, [dtcs]);
+
+  // "Needs attention" — anything with an expiry or next-due date that's near or
+  // past. Same currency idea as the AIRAC nav data + 83(b) deadlines, unified
+  // across the whole Vault.
+  const attention = useMemo(() => {
+    const today = Date.now();
+    const items = [];
+    for (const d of dtcs) {
+      const m = d.metadata || {};
+      for (const c of [{ kind: "Expires", when: m.expires }, { kind: "Due", when: m.nextDue }]) {
+        if (!c.when) continue;
+        const t = Date.parse(c.when);
+        if (isNaN(t)) continue;
+        const days = Math.ceil((t - today) / 86400000);
+        if (days > 180) continue;
+        const band = days < 0 ? "RED" : days <= 60 ? "YELLOW" : "BLUE";
+        items.push({ title: m.title || d.type, kind: c.kind, when: c.when, days, band });
+      }
+    }
+    return items.sort((a, b) => a.days - b.days);
+  }, [dtcs]);
+
+  // Per-pillar tiles for the dashboard.
+  const pillars = useMemo(() => {
+    const sum = (pred) => dtcs.reduce((acc, d) => { const v = dtcValue(d); return acc + (v != null && v > 0 && pred(d) ? v : 0); }, 0);
+    const stuff = sum(d => ["Real Property", "Vehicles", "Personal Assets"].includes(d.assetClass));
+    const liquid = sum(d => ["bank_account", "investment_account", "crypto_account"].includes(d.type));
+    const med = dtcs.find(d => d.type === "medical_certificate");
+    return {
+      stuff, liquid,
+      stuffCount: dtcs.filter(d => ["Real Property", "Vehicles", "Personal Assets"].includes(d.assetClass)).length,
+      health: dtcs.filter(d => d.assetClass === "Health").length,
+      education: dtcs.filter(d => d.assetClass === "Education").length,
+      medExpires: med?.metadata?.expires || null,
+    };
   }, [dtcs]);
 
   return (
@@ -303,11 +352,12 @@ export default function VaultDTCs() {
         </div>
       )}
 
-      {/* Asset-class filter pills */}
+      {/* Tabs — Dashboard first, then each pillar (canvas-style) */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-        {["All", ...ASSET_CLASSES].map((cls) => {
+        {["Dashboard", "All", ...ASSET_CLASSES].map((cls) => {
           const active = activeClass === cls;
           const n = counts[cls] || 0;
+          const fixed = cls === "Dashboard" || cls === "All";
           return (
             <button
               key={cls}
@@ -319,10 +369,10 @@ export default function VaultDTCs() {
                 background: active ? "#1e293b" : "#fff",
                 color: active ? "#fff" : "#1e293b",
                 cursor: "pointer", transition: "all 0.15s ease",
-                opacity: cls === "All" || n > 0 ? 1 : 0.4,
+                opacity: fixed || n > 0 ? 1 : 0.4,
               }}
             >
-              {cls}{cls !== "All" && n > 0 ? ` (${n})` : ""}
+              {cls}{!fixed && n > 0 ? ` (${n})` : ""}
             </button>
           );
         })}
@@ -338,7 +388,49 @@ export default function VaultDTCs() {
         </div>
       )}
 
-      {!loading && !error && filtered.length === 0 && (
+      {/* DASHBOARD — picture-first overview: pillar tiles + what needs attention */}
+      {!loading && !error && activeClass === "Dashboard" && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
+            {[
+              { label: "My Stuff", big: fmtUsd(pillars.stuff), sub: `${pillars.stuffCount} assets · property, vehicles, valuables` },
+              { label: "My Money · liquid", big: fmtUsd(pillars.liquid), sub: "bank + brokerage + crypto" },
+              { label: "My Health", big: pillars.medExpires ? "Current" : `${pillars.health} records`, sub: pillars.medExpires ? `FAA medical valid to ${pillars.medExpires}` : "medical records on file" },
+              { label: "My Education", big: `${pillars.education}`, sub: "degrees · ratings · training" },
+            ].map((t) => (
+              <div key={t.label} style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 12, padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 }}>{t.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{t.big}</div>
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>{t.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 14 }}>Needs attention</div>
+            {attention.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#15803d" }}>● Everything current — nothing expiring soon.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {attention.map((a, i) => {
+                  const c = CAS[a.band];
+                  const label = a.days < 0 ? `${Math.abs(a.days)} days overdue` : a.days === 0 ? "due today" : `${a.days} days`;
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: c.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", flex: 1 }}>{a.title}</span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>{a.kind} {a.when}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: c.text, minWidth: 90, textAlign: "right" }}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && activeClass !== "Dashboard" && filtered.length === 0 && (
         <div style={{
           padding: "60px 24px", textAlign: "center",
           background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9",
@@ -355,7 +447,7 @@ export default function VaultDTCs() {
 
       {selectedDtc && <LogbookModal dtc={selectedDtc} onClose={() => setSelectedDtc(null)} />}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && !error && activeClass !== "Dashboard" && filtered.length > 0 && (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
