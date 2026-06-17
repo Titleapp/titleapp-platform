@@ -30,6 +30,21 @@ const PAGE_SIZE = 1000;
 
 function bucket() { return admin.storage().bucket(STORAGE_BUCKET); }
 
+// Coordinate precision: 6 decimals ≈ 11 cm — lossless for nav display, and it
+// roughly halves the JSON before gzip. This is ROUNDING ONLY — no vertex
+// removal / geometry simplification (that would alter airspace boundaries, a
+// compliance line we don't cross).
+const round6 = (n) => (typeof n === "number" ? Math.round(n * 1e6) / 1e6 : n);
+function roundCoordArray(a) {
+  return a.map((x) => (Array.isArray(x) ? roundCoordArray(x) : round6(x)));
+}
+function roundGeometry(g) {
+  if (g && Array.isArray(g.coordinates)) {
+    return { ...g, coordinates: roundCoordArray(g.coordinates) };
+  }
+  return g;
+}
+
 // Layer specs: which FAA FeatureServer + fields + how to normalize a feature.
 const LAYERS = [
   {
@@ -39,7 +54,7 @@ const LAYERS = [
       ident: p.IDENT || null, icao: p.ICAO_ID || null, name: p.NAME || null,
       type: p.TYPE_CODE || null, elevationFt: p.ELEVATION ?? null,
       city: p.SERVCITY || null, state: p.STATE || null, operStatus: p.OPERSTATUS || null,
-      hasApproaches: p.IAPEXISTS === 1, privateUse: p.PRIVATEUSE === 1, lat: g.lat, lon: g.lon,
+      hasApproaches: p.IAPEXISTS === 1, privateUse: p.PRIVATEUSE === 1, lat: round6(g.lat), lon: round6(g.lon),
     }),
   },
   {
@@ -47,7 +62,7 @@ const LAYERS = [
     outFields: "IDENT_TXT,NAME_TXT,TYPE_CODE,CHARTSTRUCTURES_TXT",
     map: (p, g) => ({
       ident: p.IDENT_TXT || null, name: (p.NAME_TXT || "").trim() || null,
-      type: p.TYPE_CODE || null, chart: (p.CHARTSTRUCTURES_TXT || "").trim() || null, lat: g.lat, lon: g.lon,
+      type: p.TYPE_CODE || null, chart: (p.CHARTSTRUCTURES_TXT || "").trim() || null, lat: round6(g.lat), lon: round6(g.lon),
     }),
   },
   {
@@ -56,7 +71,7 @@ const LAYERS = [
     map: (p, g) => ({
       ident: p.IDENT_TXT || null, name: (p.NAME_TXT || "").trim() || null,
       frequency: p.FREQUENCY_VAL ?? null, frequencyUom: p.FREQUENCY_UOM || null,
-      elevationFt: p.ELEV_VAL ?? null, lat: g.lat, lon: g.lon,
+      elevationFt: p.ELEV_VAL ?? null, lat: round6(g.lat), lon: round6(g.lon),
     }),
   },
   {
@@ -66,7 +81,7 @@ const LAYERS = [
       name: p.NAME || null, airspaceClass: p.CLASS || null,
       floor: p.LOWER_VAL ?? null, ceiling: p.UPPER_VAL ?? null,
       floorUom: p.LOWER_UOM || null, ceilingUom: p.UPPER_UOM || null,
-      geometry: g.geometry || null,
+      geometry: roundGeometry(g.geometry) || null,
     }),
   },
 ];
