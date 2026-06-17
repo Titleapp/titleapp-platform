@@ -171,6 +171,31 @@ function chainBadge(dtc) {
   );
 }
 
+const HEALTH_TYPES = new Set(["medical_record", "medical_certificate", "immunization", "lab_result", "prescription", "health_visit", "allergy"]);
+const MONEY_TYPES = new Set(["bank_account", "investment_account", "retirement_account", "crypto_account", "liability"]);
+
+function fmtUsd(n) {
+  if (n == null || isNaN(n)) return "—";
+  const neg = n < 0;
+  return (neg ? "−$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
+}
+
+// Signed USD value of a DTC for the net-worth rollup. Prefers metadata.valueUsd
+// (number); else parses a currency string (balance/estValue/value). Liabilities
+// (type "liability" or metadata.liability) contribute negatively.
+function dtcValue(dtc) {
+  const m = dtc.metadata || {};
+  let v = null;
+  if (typeof m.valueUsd === "number") v = m.valueUsd;
+  else {
+    const raw = m.balance ?? m.estValue ?? m.value ?? m.marketValue;
+    if (raw != null) { const n = parseFloat(String(raw).replace(/[^0-9.]/g, "")); if (!isNaN(n)) v = n; }
+  }
+  if (v == null) return null;
+  const isLiability = dtc.type === "liability" || m.liability === true;
+  return isLiability ? -Math.abs(v) : Math.abs(v);
+}
+
 function metadataPreview(dtc) {
   const m = dtc.metadata || {};
   const lines = [];
@@ -187,6 +212,20 @@ function metadataPreview(dtc) {
     if (m.credentialName) lines.push(m.credentialName);
     if (m.issuer) lines.push(`Issuer: ${m.issuer}`);
     if (m.expirationDate) lines.push(`Expires: ${m.expirationDate}`);
+  } else if (HEALTH_TYPES.has(dtc.type)) {
+    if (dtc.type === "medical_certificate") {
+      if (m.class) lines.push(m.class);
+      if (m.expires) lines.push(`Expires: ${m.expires}`);
+      if (m.examiner) lines.push(m.examiner);
+    } else {
+      if (m.provider) lines.push(m.provider);
+      if (m.date || m.issued) lines.push(m.date || m.issued);
+      if (m.summary) lines.push(m.summary);
+    }
+  } else if (MONEY_TYPES.has(dtc.type)) {
+    if (m.institution) lines.push(m.institution);
+    if (m.balance) lines.push(`Balance: ${m.balance}`);
+    if (m.accountType || m.lender) lines.push(m.accountType || m.lender);
   } else {
     // Generic: show top-level keys.
     Object.entries(m).slice(0, 3).forEach(([k, v]) => {
@@ -210,9 +249,22 @@ export default function VaultDTCs() {
 
   const filtered = activeClass === "All" ? dtcs : dtcs.filter(d => d.assetClass === activeClass);
 
+  // Net-worth rollup across every valued record: property + personal property +
+  // accounts, minus liabilities. The "my money" payoff — one real-time picture.
+  const worth = useMemo(() => {
+    let assets = 0, liabilities = 0, valued = 0;
+    for (const d of dtcs) {
+      const v = dtcValue(d);
+      if (v == null) continue;
+      valued += 1;
+      if (v < 0) liabilities += -v; else assets += v;
+    }
+    return { assets, liabilities, net: assets - liabilities, valued };
+  }, [dtcs]);
+
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: "0 0 6px 0" }}>
           Vault
         </h1>
@@ -220,6 +272,36 @@ export default function VaultDTCs() {
           Tamper-evident records — Digital Title Certificates with cryptographic provenance.
         </p>
       </div>
+
+      {/* Net-worth summary — every valued record rolled into one picture. */}
+      {worth.valued > 0 && (
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 28, flexWrap: "wrap",
+          background: "#0f172a", color: "#fff", borderRadius: 14,
+          padding: "20px 24px", marginBottom: 24,
+        }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "#94a3b8", marginBottom: 4 }}>
+              Net worth
+            </div>
+            <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>{fmtUsd(worth.net)}</div>
+          </div>
+          <div style={{ display: "flex", gap: 24 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Assets</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "#4ade80" }}>{fmtUsd(worth.assets)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Liabilities</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "#f87171" }}>{worth.liabilities ? fmtUsd(-worth.liabilities) : "$0"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Records valued</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{worth.valued}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Asset-class filter pills */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
