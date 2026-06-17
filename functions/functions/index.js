@@ -7177,6 +7177,39 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:airports?lat=&lon=&dist= — FAA NASR airports (free, public).
+    if (route === "/aviation:airports" && method === "GET") {
+      try {
+        const { handleAirports } = require("./services/aviation/faaData");
+        return await handleAirports(req, res);
+      } catch (e) {
+        console.error("aviation:airports failed:", e);
+        return jsonError(res, 500, "Airports lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:waypoints?lat=&lon=&dist= — FAA NASR waypoints (free, public).
+    if (route === "/aviation:waypoints" && method === "GET") {
+      try {
+        const { handleWaypoints } = require("./services/aviation/faaData");
+        return await handleWaypoints(req, res);
+      } catch (e) {
+        console.error("aviation:waypoints failed:", e);
+        return jsonError(res, 500, "Waypoints lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:navaids?lat=&lon=&dist= — FAA NASR navaids (free, public).
+    if (route === "/aviation:navaids" && method === "GET") {
+      try {
+        const { handleNavaids } = require("./services/aviation/faaData");
+        return await handleNavaids(req, res);
+      } catch (e) {
+        console.error("aviation:navaids failed:", e);
+        return jsonError(res, 500, "Navaids lookup failed");
+      }
+    }
+
     // GET /v1/aviation:notams?locations=KJFK,KLAX  — Notamify (paid + metered).
     // Auth required (paid key + per-pull data fee); 30-min per-ICAO cache.
     if (route === "/aviation:notams" && method === "GET") {
