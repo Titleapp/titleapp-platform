@@ -7141,6 +7141,49 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:weather?ids=KJFK,KLAX[&taf=1][&sigmet=1]
+    // Live METAR/TAF/SIGMET from aviationweather.gov (FAA AWC — free, keyless).
+    // Returns flight category + wind/vis/ceiling + lat/lon for map markers.
+    if (route === "/aviation:weather" && method === "GET") {
+      try {
+        const { handleWeather } = require("./services/aviation/weather");
+        return await handleWeather(req, res);
+      } catch (e) {
+        console.error("aviation:weather failed:", e);
+        return jsonError(res, 500, "Weather lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:notams?locations=KJFK,KLAX  — Notamify (paid + metered).
+    // Auth required (paid key + per-pull data fee); 30-min per-ICAO cache.
+    if (route === "/aviation:notams" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const ctx = getCtx(req, body, nAuth.user);
+        const { handleNotams } = require("./services/aviation/notams");
+        return await handleNotams(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:notams failed:", e);
+        return jsonError(res, 500, "NOTAM lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:traffic?lat=36.08&lon=-115.15&dist=50 — ADS-B Exchange
+    // live aircraft (paid + metered). Auth required.
+    if (route === "/aviation:traffic" && method === "GET") {
+      try {
+        const tAuth = await requireFirebaseUser(req, res);
+        if (tAuth.handled) return tAuth.res;
+        const ctx = getCtx(req, body, tAuth.user);
+        const { handleTraffic } = require("./services/aviation/adsb");
+        return await handleTraffic(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:traffic failed:", e);
+        return jsonError(res, 500, "Traffic lookup failed");
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  PLATFORM INVENTORY — UNAUTHENTICATED (token-gated or admin bearer)
     //  PearX S26 Doc 1.4
