@@ -19,6 +19,7 @@
  */
 
 const admin = require("firebase-admin");
+const zlib = require("zlib");
 const { currentCycle } = require("./airac");
 const { REGIONS, getRegion } = require("./regions");
 const { FAA_FEATURESERVERS } = require("./faaData");
@@ -129,18 +130,25 @@ async function buildRegionPackage(regionKey, cyc) {
   return pkg;
 }
 
-// Build + upload one region package; returns its manifest entry.
+// Build + upload one region package (gzipped); returns its manifest entry.
+// Stored with Content-Encoding: gzip so the download is ~5-8× smaller on the
+// wire (any HTTP client auto-decompresses).
 async function packageRegion(regionKey, cyc) {
   const pkg = await buildRegionPackage(regionKey, cyc);
   const path = `${NAVDB_PREFIX}/${cyc.cycle}/${regionKey}.json`;
-  const body = Buffer.from(JSON.stringify(pkg));
-  await bucket().file(path).save(body, {
+  const raw = Buffer.from(JSON.stringify(pkg));
+  const gz = zlib.gzipSync(raw, { level: 9 });
+  // Store the gzip BLOB (we gunzip it ourselves on download — no reliance on
+  // GCS decompressive transcoding, which is finicky through the edge).
+  await bucket().file(path).save(gz, {
     contentType: "application/json",
-    metadata: { cacheControl: "public,max-age=86400" },
+    metadata: { cacheControl: "public,max-age=86400", metadata: { gzipped: "true" } },
   });
   return {
     region: regionKey, label: pkg.regionLabel, file: path,
-    sizeBytes: body.length, counts: pkg.counts,
+    sizeBytes: gz.length,        // download size (gzipped)
+    rawBytes: raw.length,        // uncompressed size
+    counts: pkg.counts,
   };
 }
 
@@ -224,15 +232,19 @@ async function handleDownload(req, res) {
     res.status(404).json({ ok: false, error: `no package for ${region} cycle ${cyc} (build pending)` });
     return;
   }
-  const [meta] = await file.getMetadata();
+  // Packages are stored as a gzip blob. Download the raw bytes, gunzip
+  // ourselves (detect the gzip magic so any legacy uncompressed object still
+  // works), and send a Buffer — binary-safe, no stream/charset mangling. We
+  // serve plain JSON; the edge (Cloudflare) compresses to the client per its
+  // Accept-Encoding. Cache-Control lets the edge cache it (origin gunzips once).
+  let [buf] = await file.download();
+  if (buf && buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+    buf = zlib.gunzipSync(buf); // stored gzip → JSON bytes
+  }
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Cache-Control", "public,max-age=86400");
   res.setHeader("X-Nav-Cycle", String(cyc));
-  if (meta.size) res.setHeader("Content-Length", String(meta.size));
-  file.createReadStream().on("error", (e) => {
-    console.error("[navPackager] download stream error:", e.message);
-    if (!res.headersSent) res.status(500).json({ ok: false, error: "download failed" });
-  }).pipe(res);
+  res.end(buf);
 }
 
 module.exports = {
