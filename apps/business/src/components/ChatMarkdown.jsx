@@ -7,13 +7,19 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 export default function ChatMarkdown({ children }) {
   if (typeof children !== "string") return children || null;
   return (
     <div className="chat-md">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        // remark-gfm: tables/strikethrough/autolinks. remark-breaks: a single
+        // newline becomes a real line break, so when Alex puts each idea or
+        // sub-point on its own line they don't collapse together into one
+        // run-on paragraph (CommonMark treats a lone \n as a space). Fenced
+        // code blocks are unaffected.
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
           // open links in a new tab, never navigate the SPA away
           a: ({ node, ...props }) => (
