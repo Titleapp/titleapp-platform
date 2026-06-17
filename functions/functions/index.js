@@ -7177,6 +7177,20 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:navdb — manifest of downloadable regional nav databases.
+    // GET /v1/aviation:navdb?region=hawaii[&cycle=2606] — stream that package.
+    // ForeFlight-model offline nav data, refreshed on the AIRAC cycle. Public.
+    if (route === "/aviation:navdb" && method === "GET") {
+      try {
+        const { handleManifest, handleDownload } = require("./services/aviation/navPackager");
+        if (req.query?.region) return await handleDownload(req, res);
+        return await handleManifest(req, res);
+      } catch (e) {
+        console.error("aviation:navdb failed:", e);
+        return jsonError(res, 500, "Nav database request failed");
+      }
+    }
+
     // GET /v1/aviation:currency[?cycle=2601][&region=hawaii] — AIRAC nav-data
     // currency. No cycle → current AIRAC cycle. With cycle → status
     // (current | expiring ≤7 days | expired) + days remaining. Free, public.
@@ -27129,6 +27143,27 @@ exports.dailyXMarketingPost = onSchedule(
     const { runDailyXPost } = require("./marketing/dailyXPost");
     const result = await runDailyXPost();
     console.log("[dailyXMarketingPost]", result);
+  }
+);
+
+// ----------------------------
+// NAV DATABASE PACKAGER (ForeFlight model — #56)
+// ----------------------------
+// Runs daily and builds any region packages missing for the current AIRAC cycle,
+// so it self-heals onto each new 28-day cycle within a day of it taking effect.
+// Idempotent (skips regions already packaged this cycle). FAA NASR → Storage.
+exports.navDataPackager = onSchedule(
+  {
+    schedule: "30 8 * * *", // 08:30 UTC daily
+    timeZone: "UTC",
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    const { runNavPackager } = require("./services/aviation/navPackager");
+    const result = await runNavPackager();
+    console.log("[navDataPackager]", JSON.stringify(result));
   }
 );
 
