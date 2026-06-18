@@ -20940,6 +20940,60 @@ Never attempt to output an entire multi-page document in a single response. For 
     }
 
     // ----------------------------
+    // NURSING EDUCATION — LIVE student records (#60). The worker writes real
+    // append-only events to each student's academic_record DTC via vaultWriter.
+    // ----------------------------
+
+    // GET /v1/nurse-edu:students[?program=clearwater-nursing] — the instructor's
+    // cohort: every academic_record DTC in the program tenant + its events.
+    if (route === "/nurse-edu:students" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const program = req.query?.program?.toString() || "clearwater-nursing";
+        const snap = await db.collection("dtcs")
+          .where("tenantId", "==", program).where("type", "==", "academic_record").get();
+        const students = [];
+        for (const d of snap.docs) {
+          const evSnap = await db.collection("logbookEntries").where("dtcId", "==", d.id).get();
+          const events = evSnap.docs.map(e => ({ id: e.id, ...e.data() }))
+            .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          students.push({ dtcId: d.id, ...(d.data().metadata || {}), eventCount: events.length, events });
+        }
+        return res.json({ ok: true, program, count: students.length, students });
+      } catch (e) {
+        console.error("nurse-edu:students failed:", e);
+        return jsonError(res, 500, "Failed to load student records");
+      }
+    }
+
+    // POST /v1/nurse-edu:append — append a real event to a student's academic
+    // record (reflection, slo.observed, grade.locked, …). Body: { dtcId,
+    // entryType, data }. vaultWriter enforces the instructor's write rights.
+    if (route === "/nurse-edu:append" && method === "POST") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const ctx = getCtx(req, body, nAuth.user);
+        const { dtcId, entryType, data } = body || {};
+        if (!dtcId || !entryType || !data) return jsonError(res, 400, "dtcId, entryType, and data required");
+        const { appendEvent } = require("./services/vault/vaultWriter");
+        const { studentRecord } = require("./services/vault/schemas");
+        const shaped = studentRecord.isValidEvent(entryType) ? studentRecord.event(entryType, data) : { entryType, data };
+        const result = await appendEvent({
+          userId: ctx.userId, dtcId, entryType: shaped.entryType, data: shaped.data,
+          worker: { slug: "nursing-education-001", vault_writes: ["academic_record"] },
+          createdByWorker: "Student Evaluation",
+        });
+        if (!result.ok) return res.status(result.code === "forbidden" ? 403 : 400).json(result);
+        return res.json(result);
+      } catch (e) {
+        console.error("nurse-edu:append failed:", e);
+        return jsonError(res, 500, "Failed to append student event");
+      }
+    }
+
+    // ----------------------------
     // CODEX 50.11 — IMPROVEMENT REQUESTS
     // ----------------------------
     if (route === "/improvementRequests:create" && method === "POST") {
