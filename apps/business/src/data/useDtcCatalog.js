@@ -9,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 export const ASSET_CLASS_OF = {
   vehicle: "Vehicles",
   aircraft: "Vehicles",
+  aircraft_logbook: "Vehicles",
   vessel: "Vehicles",
   property: "Real Property",
   credential: "Credentials",
@@ -30,6 +31,8 @@ export const ASSET_CLASS_OF = {
   degree: "Education",
   training_record: "Education",
   course: "Education",
+  academic_record: "Education",
+  pilot_currency: "Education",
   // Money ("my money" pillar) — accounts + liabilities feed the net-worth rollup.
   bank_account: "Money",
   investment_account: "Money",
