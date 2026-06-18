@@ -37,6 +37,7 @@ import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
 import Sidebar from "../components/Sidebar";
 import CompletionMoment from "../components/sandbox/worker/CompletionMoment";
 import SandboxJourneyRail from "../components/sandbox/worker/SandboxJourneyRail";
+import LiveCodePanel from "../components/sandbox/worker/LiveCodePanel";
 // CODEX 48.5 — Shared sandbox primitives (ported from DeveloperSandbox)
 import {
   renderMarkdown,
@@ -413,6 +414,7 @@ export default function WorkerSandbox() {
   const [activeStepId, setActiveStepId] = useState(null);
   const [sidebarHidden, setSidebarHidden] = useState(false); // hide the nav
   const [chatHidden, setChatHidden] = useState(false);       // collapse the chat column
+  const [codeHidden, setCodeHidden] = useState(false);       // collapse the live-code column
   const [messages, setMessages] = useState([
     {
       role: "alex",
@@ -869,16 +871,29 @@ export default function WorkerSandbox() {
               }
             }}
           />
-          <div style={{ flex: 1, overflowY: "auto", background: "#F8FAFC", opacity: busy ? 0.6 : 1 }}>
-            {Canvas ? (
-              <Canvas
-                session={state}
-                sessionId={sessionId}
-                workerId={workerId}
-                onComplete={(payload) => handleStepComplete({ stepId: activeStepId, payload })}
-              />
-            ) : (
-              <div style={{ padding: 40, color: "#64748B" }}>No canvas registered for {activeStepId}.</div>
+          {/* Canvas / Q&A on the left, LIVE CODE on the right — chat stays put */}
+          <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: "auto", background: "#F8FAFC", opacity: busy ? 0.6 : 1 }}>
+              {Canvas ? (
+                <Canvas
+                  session={state}
+                  sessionId={sessionId}
+                  workerId={workerId}
+                  onComplete={(payload) => handleStepComplete({ stepId: activeStepId, payload })}
+                />
+              ) : (
+                <div style={{ padding: 40, color: "#64748B" }}>No canvas registered for {activeStepId}.</div>
+              )}
+            </div>
+            {/* Collapse / expand the live-code column */}
+            <div onClick={() => setCodeHidden(h => !h)} title={codeHidden ? "Show live code" : "Hide live code"}
+              style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#0b1220", color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, borderLeft: "1px solid #1e293b" }}>
+              {codeHidden ? "‹" : "›"}
+            </div>
+            {!codeHidden && (
+              <div style={{ width: 380, flexShrink: 0, minHeight: 0 }}>
+                <LiveCodePanel session={state} />
+              </div>
             )}
           </div>
         </div>
