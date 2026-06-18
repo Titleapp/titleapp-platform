@@ -23,9 +23,8 @@ function LogbookModal({ dtc, onClose }) {
     async function load() {
       try {
         const token = localStorage.getItem("ID_TOKEN");
-        const tenantId = localStorage.getItem("TENANT_ID") || null;
         const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-        if (tenantId) headers["x-tenant-id"] = tenantId;
+        headers["x-tenant-id"] = "vault"; // MY VAULT is always personal, not the active persona
         const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(`/v1/logbook:list?dtcId=${dtc.id}`)}`, { headers });
         const data = await res.json();
         if (cancelled) return;

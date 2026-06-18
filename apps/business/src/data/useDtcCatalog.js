@@ -63,19 +63,17 @@ function assetClassOf(type) {
 // Fetches via the existing /v1/dtc:list endpoint (auth-required, scoped
 // to the user + active tenant). Re-fetches when TENANT_ID changes via
 // the persona switcher.
+// MY VAULT is "my stuff only" — ALWAYS the personal vault, never the active
+// business persona/workspace. The user has multiple personas (business
+// workspaces); the Vault is not one of them. So we pin tenant "vault"
+// regardless of the workspace switcher — your health/stuff/money/education are
+// always here, no matter which persona you're wearing.
+const PERSONAL_VAULT_TENANT = "vault";
+
 export function useDtcCatalog() {
   const [dtcs, setDtcs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tenantId, setTenantId] = useState(() => localStorage.getItem("TENANT_ID") || null);
-
-  useEffect(() => {
-    function onWorkspaceChange() {
-      setTenantId(localStorage.getItem("TENANT_ID") || null);
-    }
-    window.addEventListener("ta:workspace-changed", onWorkspaceChange);
-    return () => window.removeEventListener("ta:workspace-changed", onWorkspaceChange);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +83,7 @@ export function useDtcCatalog() {
       try {
         const token = localStorage.getItem("ID_TOKEN");
         const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-        if (tenantId) headers["x-tenant-id"] = tenantId;
+        headers["x-tenant-id"] = PERSONAL_VAULT_TENANT;
         const res = await fetch(`${API_BASE}/api?path=/v1/dtc:list`, { headers });
         const data = await res.json();
         if (cancelled) return;
@@ -106,7 +104,7 @@ export function useDtcCatalog() {
     }
     load();
     return () => { cancelled = true; };
-  }, [tenantId]);
+  }, []);
 
-  return { dtcs, loading, error, tenantId };
+  return { dtcs, loading, error, tenantId: PERSONAL_VAULT_TENANT };
 }
