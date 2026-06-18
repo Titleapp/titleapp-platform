@@ -70,6 +70,7 @@ import AlexPipelines from "./sections/AlexPipelines";
 import SpineSection from "./sections/SpineSection";
 import HRSchedulePanel from "./sections/HRSchedulePanel";
 import NursingEducationPanel from "./sections/NursingEducationPanel";
+import VersionBanner from "./components/VersionBanner";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
 import SocialMedia from "./sections/SocialMedia";
@@ -4915,6 +4916,7 @@ function AdminShell({ onBackToHub, initialSection }) {
   return (
     <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
       <AppErrorBoundary>
+        <VersionBanner />
         <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
         <WorkspaceInvestorDeadlines />
         <WorkspaceInvestorMaterials />
