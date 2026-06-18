@@ -1,0 +1,41 @@
+{
+  "workerSlug": "zoning",
+  "version": "1.0.0",
+  "audience": "consumer",
+  "trumpRule": "Per CODEX S52.43 §7 + S52.37: consumer floor — Zillow-grade hero + Lego-instruction-grade procedure cards. Allowed / conditional / not-allowed verdict read in 3 seconds before any prose. CAS Color Protocol on every status element. 'General info — not legal advice; get a land use attorney for a binding determination' always visible.",
+  "canvasTabs": [
+    {
+      "id": "zoning-verdict",
+      "label": "Zoning verdict",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Default tab. CAS instrument panel + 3 verdict hero cards scaled to the question (e.g. Single-family rebuild by-right GREEN · Duplex conditional YELLOW · Triplex+ rezone RED) + color-coded zoning map (subject parcel outlined + 1-mile radius by zone + SMA overlay wash) + 4 KPI cards (zoning class · max height · lot coverage · parking min). Entitlement-path stepper (ministerial ~60d $500-2K GREEN · conditional 60-90d $2-5K YELLOW · rezone 12-18mo $30-80K RED) and restriction numeric badges (SMA permit · height · coastal setback · setbacks · lot coverage · parking · FAR · min lot) fold in beneath the verdict. Each card links its live code section (EH-01)."
+    },
+    {
+      "id": "permitted-uses",
+      "label": "Permitted uses",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Icon-card grid of use types (Single family · Duplex · ADU · Home office · Short-term rental · Multi-family), each CAS-badged (by-right GREEN · conditional/ministerial · STR YELLOW · multi-family RED-rezone)."
+    },
+    {
+      "id": "overlays",
+      "label": "Overlays",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Hyper-local restriction layer (EH-05): SMA/coastal · flood · historic · HOA/CC&Rs · special tax district (Mello-Roos/CFD) overlay detection cards, each CAS-coded with named consequence + upload affordance where content is unverified (Reagan Rule)."
+    },
+    {
+      "id": "plain-english",
+      "label": "Plain English",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "CAS-coded conversational prose at 7th-grade reading level. GREEN verdict hero (e.g. 'Your parcel is zoned R-2. You can rebuild single-family by right.') + CAS-coded sections (build-the-same-house cleared / want-a-duplex need-a-permit / want-three+ rezone-required) + common-questions Q&A + action bar (Send to Land Use Attorney, Send to W-002, Export PDF, Upload HOA CC&Rs)."
+    }
+  ]
+}

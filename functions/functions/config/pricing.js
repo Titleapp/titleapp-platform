@@ -49,6 +49,40 @@ module.exports = {
   creatorSubscriptionSharePct: 0.75,
   platformSubscriptionSharePct: 0.25,
 
+  // ── "Box" plans — $99 base + $5 per active seat ──────────────
+  // Sean (2026-06-13): same pricing shape for both. Business in a Box = the
+  // generic company stack; Academia in a Box = the education variant (adds the
+  // FERPA / Academic Record layer and the student-data-plan overage model).
+  // Bill only ACTIVE seats; data overage paid by the seat-holder (their own
+  // credits), keeping the org's base bill predictable.
+  businessInABox: {
+    basePriceMonthly: 99,            // $ / month per workspace
+    includedSeats: 5,                // first 5 seats free — small teams stay at $99
+    perActiveSeatMonthly: 5,         // $ / active seat / month BEYOND the included 5
+    perActiveSeatAnnual: 50,         // $ / active seat / year (prepaid), beyond 5
+    includedCreditsPerSeat: 100,     // monthly data allowance per active seat
+    enterpriseSeatThreshold: 1000,   // above this → flat negotiated license
+    overagePaidBy: "seat",           // the seat-holder's own credits pay overage
+    // billed seat quantity = max(0, activeSeats - includedSeats)
+  },
+
+  // SOCIII for Education = "Academia in a Box".
+  // Three layers: (1) school base, (2) per active student seat (access +
+  // included data allowance), (3) student data plan (heavy users top up their
+  // OWN credits for overage — keeps the school's bill predictable). Professors
+  // are creators and earn the standard 75% share on workers they publish.
+  // Above the enterprise threshold, switch to a flat negotiated site license.
+  education: {
+    basePriceMonthly: 99,            // $ / month per institution workspace
+    includedStudents: 5,             // first 5 students free (matches the box model)
+    perActiveStudentMonthly: 5,      // $ / active student / month BEYOND the included 5
+    perActiveStudentAnnual: 50,      // $ / active student / year (prepaid), beyond 5
+    includedCreditsPerStudent: 100,  // monthly data allowance per active student
+    enterpriseStudentThreshold: 1000,// above this → flat site license (custom)
+    creatorRevenueSharePct: 0.75,    // professor share (matches creatorSubscriptionSharePct)
+    overagePaidBy: "student",        // default: student data plan pays overage; "institution" pool optional
+  },
+
   // ── Document Control Usage Allowances (per tier, per month) ──
   documentControlAllowances: {
     free:       { signatures: 0,  blockchainRecords: 0  },

@@ -87,22 +87,40 @@ export default function useCreatorStatus() {
   const [state, setState] = useState(() => (_cache ? _cache : { status: "none", profile: null, loading: !_cache }));
 
   useEffect(() => {
-    if (_cache) {
-      setState({ ...(_cache), loading: false });
-      return;
-    }
-    if (!_inflight) {
-      _inflight = fetchCreatorProfile().then(result => {
-        _cache = { ...result, fetchedAt: Date.now() };
-        return _cache;
+    let alive = true;
+    const apply = (result) => { if (alive) setState({ ...result, loading: false }); };
+    const load = () => {
+      if (_cache) { apply(_cache); return; }
+      if (!_inflight) {
+        _inflight = fetchCreatorProfile().then(result => {
+          _cache = { ...result, fetchedAt: Date.now(), uid: window.__firebaseAuth?.currentUser?.uid || null };
+          return result;
+        });
+      }
+      _inflight.then(apply);
+    };
+    load();
+    // Fix the CREATOR-menu stale-render: the profile was sometimes fetched
+    // before Firebase auth resolved a token, locking the module cache to a
+    // premature "none" (the menu then only corrected on a nav click). Re-fetch
+    // the moment a user signs in so the menu self-corrects.
+    //
+    // S52.61 — but ONLY on a genuine uid change. onAuthStateChanged fires its
+    // callback immediately on every subscribe (i.e. every Sidebar remount as
+    // the user navigates). The previous handler busted the cache + refetched
+    // each time; during the refetch window the status could resolve to "none",
+    // making the CREATOR menu flip between "Become a Creator" and the full menu
+    // ("several different versions appearing as I run through things"). Guard on
+    // uid so we only invalidate on a real sign-in, not the replay callback.
+    let unsub = null;
+    const auth = typeof window !== "undefined" ? window.__firebaseAuth : null;
+    if (auth && typeof auth.onAuthStateChanged === "function") {
+      unsub = auth.onAuthStateChanged((u) => {
+        const uid = u ? u.uid : null;
+        if (uid && (!_cache || _cache.uid !== uid)) { _cache = null; _inflight = null; load(); }
       });
     }
-    let alive = true;
-    _inflight.then(result => {
-      if (!alive) return;
-      setState({ ...result, loading: false });
-    });
-    return () => { alive = false; };
+    return () => { alive = false; if (unsub) unsub(); };
   }, []);
 
   return state;

@@ -24,12 +24,20 @@ import {
   initWorkerFlow,
   advanceWorkerStep,
   getWorkerFlowState,
+  extractWorkerSpec,
   waitForAuth,
   encodeFilesForChat,
 } from "../api/sandboxWorkerApi";
 import { WORKER_STEPS, STEP_BY_ID, buildBarSteps, PURPLE } from "../components/sandbox/worker/workerSteps";
 import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
+// S52.61 — the sandbox uses the SAME left nav as the workspace (shared
+// Sidebar) instead of its old bespoke "Creator Studio" panel, so the two
+// surfaces stop diverging. Section clicks bounce to the workspace via the
+// ta_redirect_page handshake App.jsx already honors on load.
+import Sidebar from "../components/Sidebar";
 import CompletionMoment from "../components/sandbox/worker/CompletionMoment";
+import SandboxJourneyRail from "../components/sandbox/worker/SandboxJourneyRail";
+import LiveCodePanel from "../components/sandbox/worker/LiveCodePanel";
 // CODEX 48.5 — Shared sandbox primitives (ported from DeveloperSandbox)
 import {
   renderMarkdown,
@@ -404,6 +412,9 @@ export default function WorkerSandbox() {
   const [sessionId, setSessionId] = useState(null);
   const [state, setState] = useState(null);
   const [activeStepId, setActiveStepId] = useState(null);
+  const [sidebarHidden, setSidebarHidden] = useState(true);  // build-focus: nav collapsed by default (Chat · Canvas · Code fit); one click to show
+  const [chatHidden, setChatHidden] = useState(false);       // collapse the chat column
+  const [codeHidden, setCodeHidden] = useState(false);       // collapse the live-code column
   const [messages, setMessages] = useState([
     {
       role: "alex",
@@ -547,12 +558,14 @@ export default function WorkerSandbox() {
     }]);
 
     const r = await advanceWorkerStep({
-      sessionId, stepId, action: "complete", data: payload?.stepData || {},
-      // For Define, we ALSO push the spec fields up so the backend has them
-      // for the completion message + Build Log header. Backend currently
-      // accepts spec via the same data bag and merges into workerSteps.define.data
-      // — the actual top-level spec will be wired in T3 when Define lives in
-      // its own intake flow.
+      sessionId, stepId, action: "complete",
+      // For Define, push the spec fields up in the same data bag so the backend
+      // persists them into workerSteps.define.data (name/vertical/audience/job +
+      // creator bio) for the completion message + Build Log header. Other steps
+      // send their stepData as-is.
+      data: stepId === "define"
+        ? { ...(payload?.stepData || {}), ...(payload?.spec || {}) }
+        : (payload?.stepData || {}),
     });
 
     setBusy(false);
@@ -706,6 +719,28 @@ export default function WorkerSandbox() {
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         setMessages(prev => [...prev, { role: "alex", text: reply }]);
+        // ── Chat-drives-canvas bridge ──
+        // Extract the worker spec-so-far from the conversation and PREFILL the
+        // Define fields live, so the canvas fills in as Alex and the creator talk
+        // (instead of Alex narrating a build that never touches the form).
+        try {
+          const conv = [...messages, { role: "user", text }, { role: "alex", text: reply }];
+          const ex = await extractWorkerSpec(conv);
+          if (ex && ex.ok && ex.spec) {
+            const s = ex.spec;
+            setState(prev => ({
+              ...(prev || {}),
+              spec: {
+                ...(prev?.spec || {}),
+                ...(s.name ? { name: s.name } : {}),
+                ...(s.vertical ? { vertical: s.vertical, category: s.vertical } : {}),
+                ...(s.audience ? { targetAudience: s.audience } : {}),
+                ...(s.job ? { problemSolves: s.job } : {}),
+                ...(s.creatorBio ? { creatorBio: s.creatorBio } : {}),
+              },
+            }));
+          }
+        } catch { /* prefill is best-effort — never block the chat */ }
       } else {
         setMessages(prev => [...prev, { role: "alex", text: reply || "Something went wrong. Try again." }]);
       }
@@ -760,71 +795,41 @@ export default function WorkerSandbox() {
 
   return (
     <div style={{
-      display: "flex", flexDirection: "column", height: "100vh",
+      display: "flex", flexDirection: "row", height: "100vh",
       fontFamily: "system-ui, -apple-system, sans-serif",
       background: "#F8FAFC",
       "--accent": PURPLE,
     }}>
-      <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
+      {/* Shared workspace nav — same component as the rest of the app. Section
+          clicks bounce to the workspace via the ta_redirect_page handshake. */}
+      {!sidebarHidden && (
+        <Sidebar
+          currentSection="sandbox-worker"
+          onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {} window.location.href = "/"; }}
+          tenantName={localStorage.getItem("TENANT_NAME") || undefined}
+          guestMode={false}
+        />
+      )}
+      {/* Hide/show the nav — slim dark edge rail (upper-left) */}
+      <div onClick={() => setSidebarHidden(h => !h)} title={sidebarHidden ? "Show menu" : "Hide menu"}
+        style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#0f172a", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+        {sidebarHidden ? "›" : "‹"}
+      </div>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        {/* Nav panel — matches Creator Studio nav from game sandbox */}
-        <div style={{
-          width: 200, flexShrink: 0, background: "#0f172a", color: "#e5e7eb",
-          display: "flex", flexDirection: "column", overflowY: "auto",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-        }}>
-          {/* CODEX 48.5 — shared header swaps to user name + initials when signed in */}
-          <CreatorStudioHeader accent={PURPLE} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+        <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
 
-          <div style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Dashboard</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Workers Live</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Subscribers</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>$0</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>This Month</div>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "8px 6px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>&mdash;</div>
-                <div style={{ fontSize: 10, color: "rgba(226,232,240,0.45)" }}>Trend</div>
-              </div>
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>Launch your first worker to start earning.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Workers</div>
-            {workerName ? (
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb", padding: "6px 10px", background: "rgba(107,70,193,0.2)", border: "1px solid rgba(107,70,193,0.35)", borderRadius: 6 }}>
-                {workerName}
-                <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 2 }}>Draft — Building</div>
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)" }}>No workers yet.</div>
-            )}
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Games</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)" }}>No games yet.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>My Audience</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", lineHeight: 1.5 }}>Your subscribers will appear here once you launch.</div>
-          </div>
-          <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Vault</div>
-            <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", lineHeight: 1.5 }}>Your files, conversations, and versions live here.</div>
-          </div>
-        </div>
+        {/* Journey rail — makes the build story visible: what you do, the code
+            Claude writes underneath, then the worker pops in a new tab, then
+            you move into code to refine it. */}
+        <SandboxJourneyRail
+          activeStepId={activeStepId}
+          publishedUrl={state?.publishedWorker?.url || state?.workerSteps?.distribute?.data?.shareUrl || null}
+        />
 
-        {/* Chat panel */}
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        {/* Chat panel — collapsible */}
+        {!chatHidden && (
         <div style={{ width: 380, flexShrink: 0 }}>
           <AlexChat
             messages={messages}
@@ -841,6 +846,12 @@ export default function WorkerSandbox() {
             fileInputRef={fileInputRef}
           />
         </div>
+        )}
+        {/* Expand / contract the chat column */}
+        <div onClick={() => setChatHidden(h => !h)} title={chatHidden ? "Show chat" : "Hide chat"}
+          style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#fff", borderLeft: "1px solid #E2E8F0", borderRight: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 12 }}>
+          {chatHidden ? "›" : "‹"}
+        </div>
 
         {/* Canvas — step status bar + active canvas */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -848,29 +859,45 @@ export default function WorkerSandbox() {
             steps={barSteps}
             activeStep={activeStepId}
             accent={PURPLE}
+            peekAll
             onStepClick={(id) => {
-              // CODEX 48.5 — idle steps are also clickable (peek ahead).
-              // Only "cold" (pre-Define) stays locked.
+              // S52.45 (demo feedback) — every step is clickable to explore,
+              // even red/not-started ones. Pills turn green as you complete
+              // them; you can roam the whole pipeline freely. No linear lock.
               const target = barSteps.find(s => s.id === id);
-              if (target && target.state !== "cold") {
+              if (target) {
                 setActiveStepId(id);
                 setCompletionContext(null);
               }
             }}
           />
-          <div style={{ flex: 1, overflowY: "auto", background: "#F8FAFC", opacity: busy ? 0.6 : 1 }}>
-            {Canvas ? (
-              <Canvas
-                session={state}
-                sessionId={sessionId}
-                workerId={workerId}
-                onComplete={(payload) => handleStepComplete({ stepId: activeStepId, payload })}
-              />
-            ) : (
-              <div style={{ padding: 40, color: "#64748B" }}>No canvas registered for {activeStepId}.</div>
+          {/* Canvas / Q&A on the left, LIVE CODE on the right — chat stays put */}
+          <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: "auto", background: "#F8FAFC", opacity: busy ? 0.6 : 1 }}>
+              {Canvas ? (
+                <Canvas
+                  session={state}
+                  sessionId={sessionId}
+                  workerId={workerId}
+                  onComplete={(payload) => handleStepComplete({ stepId: activeStepId, payload })}
+                />
+              ) : (
+                <div style={{ padding: 40, color: "#64748B" }}>No canvas registered for {activeStepId}.</div>
+              )}
+            </div>
+            {/* Collapse / expand the live-code column */}
+            <div onClick={() => setCodeHidden(h => !h)} title={codeHidden ? "Show live code" : "Hide live code"}
+              style={{ width: 16, flexShrink: 0, cursor: "pointer", background: "#0b1220", color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, borderLeft: "1px solid #1e293b" }}>
+              {codeHidden ? "‹" : "›"}
+            </div>
+            {!codeHidden && (
+              <div style={{ width: 380, flexShrink: 0, minHeight: 0 }}>
+                <LiveCodePanel session={state} />
+              </div>
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

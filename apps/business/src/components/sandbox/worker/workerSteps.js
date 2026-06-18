@@ -32,21 +32,18 @@ export function statusToBarState(status) {
 // Build the props array StepStatusBar expects, given the workerSteps map
 // returned by the backend.
 //
-// CODEX 48.5 — Ratchet state forward. Once Define is complete, every
-// downstream step that is still "cold" (not_started) becomes "idle" —
-// silver, clickable, peekable. This mirrors the game sandbox's post-concept
-// behavior and lets creators jump to Rules / Tools / Preflight etc. to see
-// what's there without being gated linearly.
+// S52.45 (2026-06-12, demo feedback) — Pure traffic-light, no linear gate.
+// Every step is freely clickable to explore from the very start. A step is
+// RED until it has real work (not_started), YELLOW while in progress, GREEN
+// when complete. No "locked" state — creators explore the whole pipeline up
+// front and watch pills turn green as they finish each step. StepStatusBar is
+// passed peekAll so even red pills are tappable.
 export function buildBarSteps(workerStepsMap = {}) {
-  const defineDone = workerStepsMap.define?.status === "complete";
-  return WORKER_STEPS.map(s => {
-    const raw = statusToBarState(workerStepsMap[s.id]?.status);
-    // Define itself is never idle — it's the gate
-    if (s.id === "define") return { id: s.id, label: s.label, state: raw };
-    // After Define is complete, cold → idle
-    if (raw === "cold" && defineDone) return { id: s.id, label: s.label, state: "idle" };
-    return { id: s.id, label: s.label, state: raw };
-  });
+  return WORKER_STEPS.map(s => ({
+    id: s.id,
+    label: s.label,
+    state: statusToBarState(workerStepsMap[s.id]?.status), // cold(red)/warm(yellow)/hot(green)
+  }));
 }
 
 // 10 UX types for the Design step (CODEX 47.4 Part 6).
@@ -64,9 +61,13 @@ export const UX_TYPES = [
 ];
 
 // 4 RAAS tiers for the Rules step.
+// S52.65 — Tier 0 is no longer "Style/Tone" (letting workers redefine tone
+// sends the chat off the rails — tone stays SOCIII's locked default). Tier 0 is
+// now the LAWS of the industry: RAAS Layer 1, the foundation. The expert's
+// personal SOP is captured separately below the tiers.
 export const RAAS_TIERS = [
-  { id: "tier0", label: "Tier 0 — Style",    color: "#94A3B8", description: "Tone, format, voice" },
-  { id: "tier1", label: "Tier 1 — Always",   color: "#DC2626", description: "Behaviors that must always happen" },
-  { id: "tier2", label: "Tier 2 — Never",    color: "#EAB308", description: "Behaviors that must never happen" },
-  { id: "tier3", label: "Tier 3 — Escalate", color: "#16A34A", description: "When to escalate to a human" },
+  { id: "tier0", label: "The Laws — what governs your work", color: "#7C3AED", description: "RAAS Layer 1, the foundation: licensing, statutes, and compliance you operate under. Don't know them all? List what you know — Alex can help fill the gaps." },
+  { id: "tier1", label: "Always — what must always happen",  color: "#DC2626", description: "Behaviors that must always happen" },
+  { id: "tier2", label: "Never — what must never happen",    color: "#EAB308", description: "Behaviors that must never happen" },
+  { id: "tier3", label: "Escalate — when to bring in a human", color: "#16A34A", description: "When to hand off to a person" },
 ];

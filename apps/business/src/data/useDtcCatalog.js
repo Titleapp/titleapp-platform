@@ -8,12 +8,40 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 // catalog entry).
 export const ASSET_CLASS_OF = {
   vehicle: "Vehicles",
+  aircraft: "Vehicles",
+  aircraft_logbook: "Vehicles",
+  vessel: "Vehicles",
   property: "Real Property",
   credential: "Credentials",
+  art: "Personal Assets",
+  watch: "Personal Assets",
+  jewelry: "Personal Assets",
+  collectible: "Personal Assets",
+  // Health ("my health" pillar) — medical records, same DTC + logbook substrate.
+  medical_record: "Health",
+  medical_certificate: "Health",
+  immunization: "Health",
+  lab_result: "Health",
+  prescription: "Health",
+  health_visit: "Health",
+  allergy: "Health",
+  // Education ("my education" pillar) — degrees, training, courses, ratings.
+  // Same learning-record substrate as the student use case (Sarah Kahele).
+  education_record: "Education",
+  degree: "Education",
+  training_record: "Education",
+  course: "Education",
+  academic_record: "Education",
+  pilot_currency: "Education",
+  // Money ("my money" pillar) — accounts + liabilities feed the net-worth rollup.
+  bank_account: "Money",
+  investment_account: "Money",
+  retirement_account: "Money",
+  crypto_account: "Money",
+  liability: "Money",
   // Future types (not yet registered as live):
   // commercial_property: "Real Property", land: "Real Property", lease: "Real Property",
-  // aircraft: "Vehicles", vessel: "Vehicles", commercial_fleet: "Vehicles",
-  // art: "Personal Assets", collectibles: "Personal Assets", jewelry: "Personal Assets",
+  // commercial_fleet: "Vehicles",
   // professional_license: "Credentials", certification: "Credentials",
   // entity_formation: "Business Records", operating_agreement: "Business Records",
   // inspection_report: "Compliance", audit_finding: "Compliance", permit: "Compliance",
@@ -23,6 +51,9 @@ export const ASSET_CLASSES = [
   "Real Property",
   "Vehicles",
   "Personal Assets",
+  "Health",
+  "Education",
+  "Money",
   "Credentials",
   "Business Records",
   "Compliance",
@@ -35,19 +66,17 @@ function assetClassOf(type) {
 // Fetches via the existing /v1/dtc:list endpoint (auth-required, scoped
 // to the user + active tenant). Re-fetches when TENANT_ID changes via
 // the persona switcher.
+// MY VAULT is "my stuff only" — ALWAYS the personal vault, never the active
+// business persona/workspace. The user has multiple personas (business
+// workspaces); the Vault is not one of them. So we pin tenant "vault"
+// regardless of the workspace switcher — your health/stuff/money/education are
+// always here, no matter which persona you're wearing.
+const PERSONAL_VAULT_TENANT = "vault";
+
 export function useDtcCatalog() {
   const [dtcs, setDtcs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tenantId, setTenantId] = useState(() => localStorage.getItem("TENANT_ID") || null);
-
-  useEffect(() => {
-    function onWorkspaceChange() {
-      setTenantId(localStorage.getItem("TENANT_ID") || null);
-    }
-    window.addEventListener("ta:workspace-changed", onWorkspaceChange);
-    return () => window.removeEventListener("ta:workspace-changed", onWorkspaceChange);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +86,7 @@ export function useDtcCatalog() {
       try {
         const token = localStorage.getItem("ID_TOKEN");
         const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-        if (tenantId) headers["x-tenant-id"] = tenantId;
+        headers["x-tenant-id"] = PERSONAL_VAULT_TENANT;
         const res = await fetch(`${API_BASE}/api?path=/v1/dtc:list`, { headers });
         const data = await res.json();
         if (cancelled) return;
@@ -78,7 +107,7 @@ export function useDtcCatalog() {
     }
     load();
     return () => { cancelled = true; };
-  }, [tenantId]);
+  }, []);
 
-  return { dtcs, loading, error, tenantId };
+  return { dtcs, loading, error, tenantId: PERSONAL_VAULT_TENANT };
 }

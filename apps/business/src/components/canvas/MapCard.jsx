@@ -30,8 +30,13 @@ const DEMO_REGIONS = {
   "default":                 "San Francisco, CA",
 };
 
-function buildEmbedUrl({ locations, address, region, vertical }) {
+function buildEmbedUrl({ locations, address, region, vertical, mapType }) {
   if (!API_KEY) return null;
+
+  // S52.46 — optional satellite/roadmap view (Site Recon "photos" of the real
+  // parcel). The Embed API supports maptype on place/search modes, rendered with
+  // the frontend key — so we get real aerial imagery, never a fabricated map.
+  const mt = (mapType === "satellite" || mapType === "roadmap") ? `&maptype=${mapType}` : "";
 
   // Multi-location: use Maps Embed Search mode. Construct a query from all
   // distinct addresses joined by " | " (Maps treats that as multi-result).
@@ -44,7 +49,7 @@ function buildEmbedUrl({ locations, address, region, vertical }) {
       .slice(0, 10)
       .join(" | ");
     if (q) {
-      return `https://www.google.com/maps/embed/v1/search?key=${API_KEY}&q=${encodeURIComponent(q)}`;
+      return `https://www.google.com/maps/embed/v1/search?key=${API_KEY}&q=${encodeURIComponent(q)}${mt}`;
     }
   }
 
@@ -56,7 +61,7 @@ function buildEmbedUrl({ locations, address, region, vertical }) {
     DEMO_REGIONS[vertical] ||
     DEMO_REGIONS.default;
 
-  return `https://www.google.com/maps/embed/v1/place?key=${API_KEY}&q=${encodeURIComponent(single)}`;
+  return `https://www.google.com/maps/embed/v1/place?key=${API_KEY}&q=${encodeURIComponent(single)}${mt}`;
 }
 
 export default function MapCard({ resolved = {}, context = {}, onDismiss }) {
@@ -68,11 +73,12 @@ export default function MapCard({ resolved = {}, context = {}, onDismiss }) {
   const locations = payload.locations || resolved?.locations;
   const address   = payload.address   || resolved?.address;
   const region    = payload.region    || resolved?.region;
+  const mapType   = payload.mapType   || resolved?.mapType;
   const vertical = context?.vertical || context?.worker?.vertical;
 
   const url = useMemo(
-    () => buildEmbedUrl({ locations, address, region, vertical }),
-    [locations, address, region, vertical]
+    () => buildEmbedUrl({ locations, address, region, vertical, mapType }),
+    [locations, address, region, vertical, mapType]
   );
 
   const locCount = Array.isArray(locations) ? locations.length : (address ? 1 : 0);

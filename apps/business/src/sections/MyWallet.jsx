@@ -3,7 +3,7 @@ import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 
 const WALLETS = [
-  { id: "titleapp", name: "SOCIII Wallet", desc: "Built-in wallet powered by Venly. Your records are stored on Polygon blockchain.", color: "#7c3aed", connected: true },
+  { id: "titleapp", name: "SOCIII Wallet", desc: "Built-in wallet powered by Venly. Your records are minted to the Base blockchain by default (Polygon available).", color: "#7c3aed", connected: true },
   { id: "phantom", name: "Phantom", desc: "Connect your Phantom wallet for Solana-based tokens and NFTs.", color: "#ab9ff2", connected: false },
   { id: "metamask", name: "MetaMask", desc: "Connect MetaMask for Ethereum and Polygon assets.", color: "#f6851b", connected: false },
   { id: "coinbase", name: "Coinbase Wallet", desc: "Connect Coinbase Wallet for multi-chain support.", color: "#0052ff", connected: false },

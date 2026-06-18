@@ -39,6 +39,12 @@ const VERTICAL_DISCLAIMERS = {
   analyst: "SOCIII provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
   investor: "SOCIII provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
   aviation: "SOCIII provides tools for aviation operations management. It does not replace FAA-mandated record keeping systems or certified maintenance tracking programs.",
+  // S52.64 — School / University accounts are governed by the SOCIII for
+  // Education Terms + Data Processing & FERPA Addendum (now live at
+  // /legal/education-terms and /legal/education-dpa): school-official
+  // designation, student + institution dual control, no model training on
+  // student data.
+  education: "SOCIII for Education is governed by our Terms of Service plus a Data Processing & FERPA Addendum — SOCIII acts as a 'school official' under FERPA, records are student- and institution-controlled (hashed, scoped, revocable), and student data is never used to train AI models. SOCIII is not a system of record and its outputs are not certified for grading, licensure, or accreditation decisions without your verification.",
   _default: "SOCIII provides AI-powered workspace tools. The platform does not provide professional advice in regulated fields. Consult qualified professionals for domain-specific guidance.",
 };
 
@@ -642,6 +648,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                   { id: "real-estate", label: "Real Estate", icon: "R" },
                   { id: "analyst", label: "Investment", icon: "I" },
                   { id: "investor", label: "Investor Relations", icon: "IR" },
+                  { id: "education", label: "Education / School", icon: "E" },
                 ].map((v) => (
                   <button
                     key={v.id}
@@ -684,7 +691,11 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                   style={{ width: "18px", height: "18px" }}
                 />
                 <span style={{ fontSize: "13px", color: "#6b7280" }}>
-                  By continuing you accept our <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a> and <a href="/legal/privacy-policy" target="_blank" style={{ color: "#7c3aed" }}>Privacy Policy</a>
+                  {path === "business" && vertical === "education" ? (
+                    <>By continuing you accept our <a href="/legal/education-terms" target="_blank" style={{ color: "#7c3aed" }}>SOCIII for Education Terms</a> and <a href="/legal/education-dpa" target="_blank" style={{ color: "#7c3aed" }}>Data Processing &amp; FERPA Addendum</a></>
+                  ) : (
+                    <>By continuing you accept our <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a> and <a href="/legal/privacy-policy" target="_blank" style={{ color: "#7c3aed" }}>Privacy Policy</a></>
+                  )}
                 </span>
               </label>
               <button

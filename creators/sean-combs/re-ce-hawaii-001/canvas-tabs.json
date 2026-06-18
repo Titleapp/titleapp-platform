@@ -1,0 +1,54 @@
+{
+  "workerSlug": "re-ce-hawaii-001",
+  "version": "0.1.0",
+  "canvasTabs": [
+    {
+      "id": "readiness",
+      "label": "Readiness",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Headline gauge: hours x/20, Core A/B status, days-to-deadline countdown, and the single verdict (ON TRACK / BEHIND / AT RISK / SUBMITTED / CLEAR). Never green until the Commission confirms posting."
+    },
+    {
+      "id": "coursework",
+      "label": "Coursework",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "The 20-hour plan — Core (Part A + Part B) plus electives, each with status, provider, hours, and the next action. Core-first triage as the deadline nears."
+    },
+    {
+      "id": "record",
+      "label": "Record",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Append-only attested-evidence logbook — every completion, provenance-tagged, verified/pending badge. The portable license record (reads license-record/v1)."
+    },
+    {
+      "id": "submission",
+      "label": "Submission",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "The deliver to submit to confirm tracker. Distinct states: not submitted, submitted <ts>, confirmed posted <ts>. Surfaces the submitted-vs-confirmed gap loudly."
+    },
+    {
+      "id": "audit",
+      "label": "Audit",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "admin",
+      "description": "Forensic trail — who pulled / attested / submitted what, when, at what ce-ruleset version."
+    }
+  ],
+  "_notes": {
+    "trust_moat": "The readiness verdict is NEVER 'CLEAR' until a report-confirmation for posting is received from the Commission (Rule R1).",
+    "core_gate": "20 hours without Core A AND Core B is NOT compliant — readiness shows AT RISK regardless of total hours (Rule R2).",
+    "sample_until_verified": "Until WORKER-SPEC.md section 8 VERIFY items are confirmed, every tab shows SAMPLE data and says so (Rule R5).",
+    "default_required": "readiness is the single default:true tab.",
+    "ids_are_stable": "Tab ids are referenced by service.js and sample-data.js. Don't rename after first merge."
+  }
+}

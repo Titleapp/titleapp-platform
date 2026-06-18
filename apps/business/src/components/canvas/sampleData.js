@@ -10,6 +10,8 @@
  * substitute 1:1 when the real value is null.
  */
 
+import { CRE_DISTRESSED } from "./creAnalystData";
+
 const HIDE_SAMPLES_KEY = "ta_hide_samples";
 
 export function isDemoMode() {
@@ -41,7 +43,9 @@ export function normalizeVerticalKey(rawVertical) {
   if (v.includes("auto-dealer") || v.startsWith("auto") || v === "auto" || v.startsWith("dealer")) return "auto";
   if (v.includes("real") || v.includes("estate") || v.includes("property")
       || v.startsWith("cre-") || v === "cre" || v.includes("commercial") || v.includes("tenant")
-      || v.includes("brokerage") || v.includes("title") || v.startsWith("esc-")) return "real-estate";
+      || v.includes("brokerage") || v.includes("title") || v.startsWith("esc-")
+      || v.includes("re_prof") || v.includes("re-prof") || v.includes("zoning")
+      || v.includes("feasibility") || v.includes("land")) return "real-estate";
   if (v.includes("invest") || v.includes("finance") || v.includes("capital")
       || v.startsWith("ir-") || v === "ir" || v.includes("cap-table") || v.includes("cap_table")
       || v.includes("underwriting") || v.includes("portfolio") || v.includes("fund")) return "investment";
@@ -507,16 +511,17 @@ const SPINE_FIXTURES = {
     },
     "cap-table": {
       title: "Cap table",
-      subtitle: "Sample data · SOCIII Inc.",
+      subtitle: "SOCIII, Inc. · 10,000,000 shares fully diluted",
       fields: [
-        { label: "Founder",        value: "60% (Sean Combs)" },
-        { label: "Cofounder",      value: "15% (Kent Redwine)" },
-        { label: "Advisor pool",   value: "12% (capped at 7 advisors)" },
-        { label: "Option pool",    value: "10%" },
-        { label: "Open",           value: "3%" },
+        { label: "Sean Lee Combs (Founder)",    value: "5,100,000 · 51%" },
+        { label: "Kent Redwine (RSPA)",         value: "1,500,000 · 15%" },
+        { label: "Kent Redwine (Advisor)",      value: "200,000 · 2%" },
+        { label: "Advisor pool (6 × 2%)",       value: "1,200,000 · 12%" },
+        { label: "HOM Creator Pool (warrants)", value: "2,000,000 · 20%" },
       ],
       sections: [
-        { heading: "Shareholders", body: "Sean Combs · 6,000,000 sh\nKent Redwine · 1,500,000 sh (vesting)\nRobert Rosenberg · 25,000 sh\nAdvisor pool · 1,200,000 sh reserved" },
+        { heading: "Shareholders", body: "Sean Lee Combs · 5,100,000 sh · 51% · founder, fully vested\nKent Redwine (RSPA) · 1,500,000 sh · 15% · milestone-vesting, repurchase at cost\nKent Redwine (Advisor) · 200,000 sh · 2% · time-vested\nVertical Advisor Pool · 1,200,000 sh · 12% · 200,000 each — Kimmi, Elise, Ruthie, Eric, Scott, Robert\nHOM Creator Pool · 2,000,000 sh · 20% · warrants\n———\nTotal · 10,000,000 sh · 100%" },
+        { heading: "83(b) election tracker", body: "Sean Lee Combs · FILED ✓ — delivered IRS Ogden 5/23/26\nKent Redwine (RSPA · 1.5M) · pending · deadline 7/17/26\nKent Redwine (Advisor · 200K) · pending · deadline 7/17/26\nKimmi (200K) · pending · deadline 7/17/26\nRuthie Clearwater (200K) · pending · deadline 7/17/26\nEric (200K) · pending · deadline 7/17/26\nScott (200K) · pending · deadline 7/17/26\nRobert (200K) · pending · deadline 7/17/26\nElise van del Bil (200K) · N/A — Dutch / non-US\nHOM warrants · N/A" },
       ],
     },
     "governance": {
@@ -1178,6 +1183,103 @@ const RE_FIXTURES = {
   },
 };
 
+// CRE Analyst (W-002) — REAL ATTOM data (S52.44): SF/Oakland commercial scored
+// by distress proxy. The hero demo — real distressed-CRE candidates on the map,
+// ranked on the deal screen. Regenerate via scripts/pullDistressedCRE.js.
+// S52.45 — CRE Analyst story anchors, derived from the real ATTOM screen.
+const _creReds = CRE_DISTRESSED.filter((p) => p.distressBand === "RED");
+const _creHero = _creReds[0] || CRE_DISTRESSED[0] || {};
+const _heroName = (_creHero.address || "lead candidate").split(",")[0];
+const _heroM = _creHero.lastSale ? Math.round(_creHero.lastSale / 1e6) : null;
+
+const CRE_ANALYST_FIXTURES = {
+  map: {
+    title: "Distressed CRE candidates — SF / Oakland (live ATTOM)",
+    subtitle: "Real commercial parcels · distress-proxy scored",
+    region: "San Francisco, CA",
+    locations: CRE_DISTRESSED.map((p) => ({
+      address: p.address,
+      label: `${p.distressBand} ${p.distressScore} · $${(p.lastSale / 1e6).toFixed(0)}M · ${p.distressReasons[0] || ""}`,
+      lat: p.lat, lng: p.lng,
+    })),
+  },
+  "deal-screen": {
+    title: "Deal screen — distressed CRE, ranked",
+    subtitle: `${CRE_DISTRESSED.length} real candidates · ATTOM-sourced · distress-proxy scored`,
+    items: CRE_DISTRESSED.map((p, i) => `${i + 1}. [${p.distressBand} ${p.distressScore}] ${p.address} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || "").slice(0, 7)}) · ${p.propType} · ${p.distressReasons.join("; ")}`),
+    fields: [
+      { label: "Candidates screened", value: String(CRE_DISTRESSED.length) },
+      { label: "High distress (RED)", value: String(_creReds.length) },
+      { label: "Review (YELLOW)", value: String(CRE_DISTRESSED.filter((p) => p.distressBand === "YELLOW").length) },
+      { label: "Data source", value: "ATTOM (live)" },
+    ],
+  },
+  // Underwriting — first-pass diligence on the lead candidate. ATTOM basis is
+  // real; current-value / basis-reset are illustrative (marked *) pending a
+  // full rent-roll + debt pull.
+  underwriting: {
+    title: `Underwriting — ${_heroName}`,
+    subtitle: "Lead RED candidate · ATTOM basis + illustrative first-pass model",
+    fields: [
+      { label: "Last sale (ATTOM)", value: _heroM ? `$${_heroM}M` : "—" },
+      { label: "Acquisition", value: (_creHero.lastSaleDate || "").slice(0, 7) || "—" },
+      { label: "Asset class", value: _creHero.propType || "Office" },
+      { label: "Distress band", value: `${_creHero.distressBand || "—"} ${_creHero.distressScore || ""}` },
+      { label: "Est. current value *", value: _heroM ? `~$${Math.round(_heroM * 0.6)}M` : "—" },
+      { label: "Implied basis reset *", value: "~40% below 2020 peak" },
+    ],
+    sections: [
+      { heading: "Why it screens RED", body: (_creHero.distressReasons || []).join("; ") },
+      { heading: "First-pass checklist", body: "Senior debt terms & maturity · combined LTV at current CBD comps · T-12 NOI + rent roll (occupancy, WALT, rollover) · DSCR (senior + mezz) · sponsor liquidity & track record." },
+      { heading: "Modeling note", body: "* Last sale, date, and asset class are live ATTOM. Current-value and basis figures are illustrative pending a full debt + rent-roll pull. Informational only — not investment advice." },
+    ],
+  },
+  // Sensitivity — REAL distress scores across the screen (RED→GREEN), no
+  // fabricated underwriting numbers.
+  sensitivity: {
+    title: "Distress score by candidate (ATTOM-scored)",
+    subtitle: "Higher = stronger distress signal · RED ≥60 · YELLOW ≥30",
+    chartType: "bar",
+    data: CRE_DISTRESSED.slice(0, 8).map((p) => ({
+      label: (p.address || "").split(",")[0],
+      value: p.distressScore,
+      color: p.distressBand === "RED" ? "#dc2626" : p.distressBand === "YELLOW" ? "#d97706" : "#16a34a",
+    })),
+  },
+  // Capital Stack — how to ENTER the stack without taking title (mirrors the
+  // chat thesis). Structure is illustrative (*) until the real debt is pulled.
+  "capital-stack": {
+    title: `Capital-stack entry — ${_heroName}`,
+    subtitle: "Enter the stack without taking title · illustrative structure",
+    fields: [
+      { label: "Implied senior loan *", value: _heroM ? `~$${Math.round(_heroM * 0.55)}M` : "—" },
+      { label: "Mezzanine target *", value: "10–15% IRR, subordinate to senior" },
+      { label: "Preferred equity *", value: "Fixed return + buyout rights on default" },
+      { label: "Your position", value: "Senior to common equity, junior to the loan" },
+    ],
+    sections: [
+      { heading: "Thesis", body: "Inject rescue capital via mezzanine debt or preferred equity — control the asset's fate without foreclosing or running property operations." },
+      { heading: "Note", body: "* Senior-loan size is illustrative until the actual debt stack is pulled. Sale basis is live ATTOM." },
+    ],
+  },
+  // Decision Memo — pulls the screen together into a recommendation.
+  decision: {
+    title: "Decision memo — Bay Area distressed office",
+    subtitle: `${CRE_DISTRESSED.length} screened · ${_creReds.length} RED · lead: ${_heroName}`,
+    fields: [
+      { label: "Recommendation", value: `Pursue ${_heroName} (cap-stack entry)` },
+      { label: "Entry path", value: "Mezzanine debt / preferred equity" },
+      { label: "Candidates screened", value: String(CRE_DISTRESSED.length) },
+      { label: "High distress (RED)", value: String(_creReds.length) },
+    ],
+    items: _creReds.map((p) => `${(p.address || "").split(",")[0]} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || "").slice(0, 7)}) · ${p.distressBand} ${p.distressScore}`),
+    sections: [
+      { heading: "Next steps", body: "1) Pull the full debt stack on the lead.  2) Confirm NOD / special-servicer status (ATTOM foreclosure feed).  3) Size the mezz / pref entry.  4) Comp the submarket for exit." },
+      { heading: "Compliance", body: "Informational only. Not investment advice; SOCIII is not a registered investment adviser or broker-dealer." },
+    ],
+  },
+};
+
 // Auto Dealer suite — shared fixture content.
 const AUTO_FIXTURES = {
   "overview": {
@@ -1444,6 +1546,12 @@ export function getFixtureForTab(worker, tabId) {
   const slug = worker.slug || worker.workerId || "";
   const vertical = worker.vertical || worker.suite || "";
   const catalogId = String(worker.catalogId || "").toUpperCase();
+  // S52.50 (#37) — canonicalize the vertical. Previously this function matched
+  // RE/auto fixtures by EXACT snake_case equality ("real_estate_development"),
+  // but Firestore workers are saved as display labels ("Real Estate") — so they
+  // fell through to the generic template. Route through normalizeVerticalKey so
+  // every spelling of a vertical resolves to its real fixtures.
+  const vKey = normalizeVerticalKey(vertical);
 
   // Aviation CoPilot baseline tabs ALWAYS load fixture content, regardless of
   // demo mode. These tabs (Aircraft profile, Logbook, Currency, Duty, Training,
@@ -1461,11 +1569,12 @@ export function getFixtureForTab(worker, tabId) {
   // Without a fixture the map falls back to "San Francisco, CA" which is wrong
   // for every vertical. Real chat-emitted CANVAS_RENDER markers override.
   if (tabId === "map") {
+    if ((slug === "cre-analyst" || slug === "cre-deal-analyst") && CRE_ANALYST_FIXTURES.map) return { ...CRE_ANALYST_FIXTURES.map, ...DEMO };
     if (SPINE_FIXTURES[slug] && SPINE_FIXTURES[slug].map) return { ...SPINE_FIXTURES[slug].map, ...DEMO };
-    if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES.map) {
+    if (vKey === "real-estate" && RE_FIXTURES.map) {
       return { ...RE_FIXTURES.map, ...DEMO };
     }
-    if (vertical === "auto_dealer" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
+    if (vKey === "auto" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
   }
 
   // All other fixtures remain gated by demo mode.
@@ -1475,12 +1584,16 @@ export function getFixtureForTab(worker, tabId) {
   if (SPINE_FIXTURES[slug] && SPINE_FIXTURES[slug][tabId]) {
     return { ...SPINE_FIXTURES[slug][tabId], ...DEMO };
   }
+  // 2. CRE Analyst (W-002) — real ATTOM distressed-CRE screen
+  if ((slug === "cre-analyst" || slug === "cre-deal-analyst") && CRE_ANALYST_FIXTURES[tabId]) {
+    return { ...CRE_ANALYST_FIXTURES[tabId], ...DEMO };
+  }
   // 3. Real estate suite
-  if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES[tabId]) {
+  if (vKey === "real-estate" && RE_FIXTURES[tabId]) {
     return { ...RE_FIXTURES[tabId], ...DEMO };
   }
   // 4. Auto dealer
-  if (vertical === "auto_dealer" && AUTO_FIXTURES[tabId]) {
+  if (vKey === "auto" && AUTO_FIXTURES[tabId]) {
     return { ...AUTO_FIXTURES[tabId], ...DEMO };
   }
   // 5. Long-tail vertical templates — only the universal three tabs apply

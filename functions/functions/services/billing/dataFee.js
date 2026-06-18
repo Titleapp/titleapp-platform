@@ -66,6 +66,10 @@ const SOURCE_REGISTRY = {
   // our cost is $0.25 per pull; 2× markup ⇒ pilot pays $0.50.
   "notamify:notams":     { actualCentsPerUnit: 25, markup: 2.0, label: "NOTAMIFY NOTAM pull" },
 
+  // ADS-B Exchange live traffic query — ~$0.002/query. Charge 1¢ (5× markup)
+  // to cover the call + our compute; still negligible per pull.
+  "adsb_exchange:traffic": { actualCentsPerUnit: 1, markup: 5.0, label: "ADS-B Exchange live traffic" },
+
   // Generative media — Kling video gen. Per Sean 2026-06-01 our cost is
   // ~$0.50/clip; 2× markup ⇒ creator pays $1.00. Wired so the Marketing
   // worker can charge for every render the platform produces server-side.

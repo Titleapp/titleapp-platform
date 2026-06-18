@@ -4,7 +4,6 @@ import { collection, getDocs, getFirestore, query, where, limit } from "firebase
 import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
 import { getWorkerColor } from "../utils/workerColors";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
-import useCreatorStatus from "../hooks/useCreatorStatus";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
@@ -1136,14 +1135,15 @@ export default function Sidebar({
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState({});
+  // __vault__ defaults collapsed so Academic Record tucks UNDER My Vault
+  // (expand to reveal) instead of floating as its own nav item (S52.61).
+  const [collapsedGroups, setCollapsedGroups] = useState({ __vault__: true });
   const [workersCollapsed, setWorkersCollapsed] = useState(true);
   const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
   const [gamesCollapsed, setGamesCollapsed] = useState(true);
   const workerCtx = useWorkerState();
-  // S52.28d — state-aware creator section (task #410). Hook is cached at
-  // module scope; only the first Sidebar mount triggers the network fetch.
-  const creatorStatus = useCreatorStatus();
+  // S52.61 — the CREATE nav is now status-independent (Build a Worker +
+  // Creator Dashboard), so the creatorStatus hook is no longer needed here.
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
 
@@ -1252,42 +1252,12 @@ export default function Sidebar({
     return cleaned || "SOCIII";
   })();
 
-  // Spine nav → canvas signal map (CODEX 49.5 Fix 1)
-  const SPINE_NAV_CANVAS_MAP = {
-    "financials": "pl-summary",
-    "accounting": "pl-summary",
-    "ap-ar": "invoice-list",
-    "invoices": "invoice-list",
-    "chart-of-accounts": "chart-of-accounts",
-    "employees": "employee-register",
-    "hr-people": "employee-register",
-    "contacts-all": "contacts",
-    "contacts": "contacts",
-    "client-list": "contacts",
-    "vendor-list": "contacts",
-    "follow-ups": "contacts",
-    "content-calendar": "content-calendar",
-    "campaigns": "content-calendar",
-    "social-media": "content-calendar",
-    "control-center": "control-center",
-    "hr-compliance": "employee-register",
-    "onboarding": "employee-register",
-    "kpi-builder": "control-center",
-  };
+  // S52.46 — removed SPINE_NAV_CANVAS_MAP + the ta:canvas-signal dispatch below
+  // it. Nothing in the app listened to "ta:canvas-signal" (dead trigger). Spine
+  // nav still works via onNavigate(sectionId) → the section switch in App.jsx.
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
-    // Dispatch canvas signal for Spine nav items
-    const canvasCard = SPINE_NAV_CANVAS_MAP[sectionId];
-    if (canvasCard) {
-      window.dispatchEvent(new CustomEvent("ta:canvas-signal", {
-        detail: {
-          type: canvasCard,
-          source: "nav",
-          workspaceId: localStorage.getItem("WORKSPACE_ID") || "vault",
-        }
-      }));
-    }
     if (onClose) onClose();
   }
 
@@ -1735,66 +1705,37 @@ export default function Sidebar({
                 padding: 0, margin: 0, color: "#a78bfa",
               }}
             >
-              <span>Creator</span>
+              <span>Create</span>
               <span style={{ fontSize: 10, transition: "transform 0.2s", transform: creatorCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
             </button>
             {!creatorCollapsed && (
               <nav className="nav">
-                {creatorStatus.status === "none" ? (
-                  <button
-                    className="navItem"
-                    onClick={() => { window.location.href = "/creators/journey"; }}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      fontWeight: 500, paddingLeft: 20, fontSize: 13,
-                    }}
-                  >
-                    Become a Creator
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className="navItem"
-                      onClick={() => { window.location.href = "/creators/journey"; }}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        paddingLeft: 20, fontSize: 13,
-                      }}
-                    >
-                      Journey{creatorStatus.status === "in_progress" ? " (continue)" : ""}
-                    </button>
-                    <button
-                      className="navItem"
-                      onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        paddingLeft: 20, fontSize: 13,
-                      }}
-                    >
-                      My Workers
-                    </button>
-                    <button
-                      className="navItem"
-                      onClick={() => { window.location.href = "/creators/dashboard?tab=profile"; }}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        paddingLeft: 20, fontSize: 13,
-                      }}
-                    >
-                      My Creator Profile
-                    </button>
-                    <button
-                      className="navItem"
-                      onClick={() => { window.location.href = "/creators/dashboard?tab=earnings"; }}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        paddingLeft: 20, fontSize: 13,
-                      }}
-                    >
-                      Earnings
-                    </button>
-                  </>
-                )}
+                {/* Slimmed (S52.61 canvas session): two entries only. The old
+                    Journey / My Workers / Profile / Earnings items duplicated
+                    the TABS that already live inside the Creator Dashboard, so
+                    the nav was just re-listing the page. Now: Sandbox is the
+                    primary build surface; Creator Dashboard holds the rest as
+                    tabs. Status-independent so the menu can't flip. */}
+                <button
+                  className="navItem"
+                  onClick={() => { window.location.href = "/showcase"; }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    fontWeight: 700, paddingLeft: 20, fontSize: 13, color: "#c4b5fd",
+                  }}
+                >
+                  ✦ Build a Worker
+                </button>
+                <button
+                  className="navItem"
+                  onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    paddingLeft: 20, fontSize: 13,
+                  }}
+                >
+                  Creator Dashboard
+                </button>
               </nav>
             )}
           </div>
@@ -1830,20 +1771,45 @@ export default function Sidebar({
             </button>
           </div>
           <div className="sidebarSection">
-            <button
-              onClick={() => handleNavClick("vault-dtcs")}
-              className="sidebarLabel"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", background: "none", border: "none", cursor: "pointer",
-                padding: 0, margin: 0,
-              }}
-            >
-              <span style={{ color: "#94a3b8" }}>My Vault</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
+            {(() => { const vaultCollapsed = collapsedGroups["__vault__"]; return (
+            <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+              <button
+                onClick={() => handleNavClick("vault-dtcs")}
+                className="sidebarLabel"
+                style={{
+                  display: "flex", alignItems: "center", flex: 1,
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: 0, margin: 0, textAlign: "left",
+                }}
+              >
+                <span style={{ color: "#94a3b8" }}>My Vault</span>
+              </button>
+              {/* Chevron toggles the Academic Record child so it tucks UNDER
+                  My Vault instead of floating as its own item (S52.61). */}
+              <button
+                onClick={() => setCollapsedGroups(prev => ({ ...prev, __vault__: !prev.__vault__ }))}
+                title={vaultCollapsed ? "Show records under My Vault" : "Collapse"}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", display: "flex", alignItems: "center", flexShrink: 0 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: vaultCollapsed ? "none" : "rotate(90deg)", transition: "transform .15s" }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+            {!vaultCollapsed && (
+              <button
+                onClick={() => handleNavClick("vault-learning-record")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: "8px 0 0 0" }}
+              >
+                <span style={{ color: "#a78bfa", display: "flex", alignItems: "center", gap: 6, paddingLeft: 16, fontSize: 12.5 }}><span aria-hidden="true">🎓</span> Academic Record</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            )}
+            </>
+            ); })()}
           </div>
         </>
       )}

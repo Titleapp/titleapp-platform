@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { EDUCATION_TERMS_HTML, EDUCATION_DPA_HTML } from "../legal/educationLegal";
 
 const LEGAL_DOCS = {
   "privacy-policy": { title: "Privacy Policy", updated: "March 2026" },
@@ -6,6 +6,9 @@ const LEGAL_DOCS = {
   "creator-agreement": { title: "Creator Agreement", updated: "March 2026" },
   "business-associate-agreement": { title: "Business Associate Agreement", updated: "March 2026" },
   "terms-of-service": { title: "Terms of Service", updated: "March 2026" },
+  // SOCIII for Education — rendered inline as HTML (body) instead of a PDF.
+  "education-terms": { title: "SOCIII for Education — Terms of Service", updated: "June 2026", body: EDUCATION_TERMS_HTML },
+  "education-dpa": { title: "SOCIII for Education — Data Processing & FERPA Addendum", updated: "June 2026", body: EDUCATION_DPA_HTML },
 };
 
 export default function LegalPage({ slug }) {
@@ -41,29 +44,38 @@ export default function LegalPage({ slug }) {
         <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#1a202c", marginBottom: "4px" }}>{doc.title}</h1>
         <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "24px" }}>Last updated: {doc.updated}</p>
 
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", marginBottom: "24px" }}>
-          <iframe
-            src={pdfUrl}
-            style={{ width: "100%", height: "80vh", border: "none" }}
-            title={doc.title}
+        {doc.body ? (
+          <div
+            className="legalBody"
+            style={{ fontSize: "15px", lineHeight: 1.65, color: "#334155" }}
+            dangerouslySetInnerHTML={{ __html: doc.body }}
           />
-        </div>
-
-        <div style={{ display: "flex", gap: "12px" }}>
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              padding: "10px 20px", background: "#7c3aed", color: "white",
-              borderRadius: "8px", fontSize: "14px", fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Download PDF
-          </a>
-        </div>
+        ) : (
+          <>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", marginBottom: "24px" }}>
+              <iframe
+                src={pdfUrl}
+                style={{ width: "100%", height: "80vh", border: "none" }}
+                title={doc.title}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "10px 20px", background: "#7c3aed", color: "white",
+                  borderRadius: "8px", fontSize: "14px", fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Download PDF
+              </a>
+            </div>
+          </>
+        )}
 
         {/* Other legal documents */}
         <div style={{ marginTop: "48px", paddingTop: "24px", borderTop: "1px solid #e2e8f0" }}>

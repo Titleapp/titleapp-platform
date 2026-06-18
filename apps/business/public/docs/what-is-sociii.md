@@ -2,6 +2,10 @@
 
 SOCIII is an open SDK and marketplace for **Digital Workers** — AI-governed services built by domain experts, billed by the platform, and accountable to a cryptographic audit trail.
 
+> **If you're here to *use* SOCIII:** signing up replaces a whole stack — your banking dashboard, your CRM, your books, your social-media manager, your file drive, your compliance binder — with one workspace run by rule-governed Digital Workers, for one subscription. **→ [See everything you get](/docs/the-workspace).**
+>
+> **If you're here to *build* a worker:** keep reading, then head to [Build a worker](/docs/sandbox-walkthrough).
+
 The shortest possible version: every regulated profession runs on rules that take a junior practitioner years to learn. SOCIII captures those rules from senior experts and ships them as AI workers governed by versioned constraints. The experts earn on every customer of the worker they built; the platform consolidates SaaS for the businesses that run them.
 
 ## Three things, in plain language

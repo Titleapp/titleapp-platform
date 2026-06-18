@@ -197,6 +197,114 @@ async function markStepInProgress({ userId, sessionId, stepId }) {
  *
  * Returns { step, nextStepId, allComplete, completionMessageContext }.
  */
+// ─── S52.50 (#32) — publish a real, openable worker on Distribute ────────────
+// The build flow used to only write sandboxSessions, so a finished worker had
+// no catalog entry and /workers/<slug> 404'd. On Distribute-complete we now
+// write a digitalWorkers/<slug> doc (with a canvasSpec built from the design) so
+// the worker is openable + renders its designed canvas via the data-driven path.
+function slugifyWorker(s) {
+  return String(s || "your-worker").toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 60) || "your-worker";
+}
+
+function buildCanvasSpecFromSession(data) {
+  const spec = data.spec || {};
+  const design = (data.workerSteps && data.workerSteps.design && data.workerSteps.design.data) || {};
+  const name = spec.name || "Your Worker";
+  const vertical = spec.category || spec.vertical || "";
+  const headline = design.headlineOutcome || "";
+  const tabsIn = (design.tabs || []).filter((t) => t && t.name && String(t.name).trim());
+  const tabs = (tabsIn.length ? tabsIn : [{ name: "Overview", job: "the default view" }]).map((t, i) => {
+    const blocks = [];
+    if (i === 0 && headline) blocks.push({ type: "heroes", items: [{ band: "GREEN", title: headline, detail: "The one outcome users see first" }] });
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: String(t.name).trim(), body: (t.job && String(t.job).trim() ? String(t.job).trim() : "This tab does one job.") + " — live data renders here once your worker runs." }] });
+    return { id: "t" + i, label: String(t.name).trim(), blocks };
+  });
+  return {
+    title: name,
+    subtitle: vertical ? "Preview · " + vertical : "Preview",
+    disclaimer: "Newly published — data fills in as the worker runs.",
+    cas: { RED: 0, YELLOW: 0, BLUE: tabs.length, WHITE: 0, GREEN: headline ? 1 : 0 },
+    tabs,
+  };
+}
+
+async function publishWorkerFromSession(userId, sessionId, data) {
+  const db = getDb();
+  const spec = data.spec || {};
+  const name = spec.name || "Your Worker";
+  const slug = slugifyWorker(name);
+  const pre = (data.workerSteps && data.workerSteps.preflight && data.workerSteps.preflight.data) || {};
+  const visibility = pre.visibility || "public";
+  const status = visibility === "unlisted" ? "unlisted"
+    : (visibility === "org" || visibility === "org-only") ? "org" : "beta";
+  const design = (data.workerSteps && data.workerSteps.design && data.workerSteps.design.data) || {};
+
+  // ── Carry the creator's RULES into the live worker ──
+  // The runtime chat (index.js) reads raas_tier_0..3 (arrays of strings) to build
+  // the worker's behavioral rules. Without this the published worker is an
+  // ungoverned generic LLM. The creator's 4 tiers live in the rules step.
+  const rules = (data.workerSteps && data.workerSteps.rules && data.workerSteps.rules.data) || {};
+  const toLines = (v) => Array.isArray(v)
+    ? v.filter(Boolean).map((s) => String(s).trim()).filter(Boolean)
+    : (typeof v === "string" ? v.split("\n").map((s) => s.trim()).filter(Boolean) : []);
+  const raas_tier_0 = toLines(rules.tier0);
+  const raas_tier_1 = toLines(rules.tier1);
+  const raas_tier_2 = toLines(rules.tier2);
+  const raas_tier_3 = toLines(rules.tier3);
+
+  // ── Carry the creator's KNOWLEDGE into the live worker ──
+  // Uploaded docs are parsed into the Studio Locker keyed by sessionId. Pull the
+  // extracted text (capped) and store it inline so the worker chat is grounded
+  // in the creator's documents (runtime injects dw.knowledgeBase).
+  let knowledgeBase = "";
+  try {
+    const { listDocuments } = require("./studioLocker");
+    const lockerDocs = await listDocuments({ userId, workerId: sessionId });
+    const parts = [];
+    let budget = 12000; // total char cap across docs
+    for (const d of lockerDocs) {
+      const txt = String(d.extractedText || "").trim();
+      if (!txt || budget <= 0) continue;
+      const title = d.name || d.title || "Document";
+      const slice = txt.slice(0, budget);
+      parts.push(`### ${title}\n${slice}`);
+      budget -= slice.length;
+    }
+    if (parts.length) {
+      knowledgeBase = "KNOWLEDGE BASE — the creator's uploaded source material. Ground your answers in this:\n\n" + parts.join("\n\n");
+    }
+  } catch (e) {
+    console.warn("[workerBuildFlow] knowledge load for publish failed:", e.message);
+  }
+
+  const doc = {
+    slug,
+    display_name: name,
+    name,
+    vertical: spec.category || spec.vertical || "",
+    headline: design.headlineOutcome || "",
+    short_description: spec.problemSolves || spec.targetAudience || "",
+    status,
+    worker_type: "worker",
+    canvasSpec: buildCanvasSpecFromSession(data),
+    raas_tier_0,
+    raas_tier_1,
+    raas_tier_2,
+    raas_tier_3,
+    ...(knowledgeBase ? { knowledgeBase } : {}),
+    source: "sandbox",
+    createdBy: userId,
+    sandboxSessionId: sessionId,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  await db.collection("digitalWorkers").doc(slug).set({
+    ...doc,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { slug, status, url: `https://sociii.ai/workers/${slug}` };
+}
+
 async function markStepComplete({ userId, sessionId, stepId, stepData = {} }) {
   if (!STEP_BY_ID[stepId]) throw new Error(`Unknown stepId: ${stepId}`);
 
@@ -259,6 +367,19 @@ async function markStepComplete({ userId, sessionId, stepId, stepData = {} }) {
     }
   }
 
+  // #32 — on Distribute-complete, publish the worker into the digitalWorkers
+  // catalog so it's actually openable at /workers/<slug> and renders its
+  // designed canvas. Non-fatal if it fails (the step still completes).
+  let published = null;
+  if (stepId === "distribute") {
+    try {
+      published = await publishWorkerFromSession(userId, sessionId, { ...data, workerSteps: projectedSteps });
+      await ref.update({ publishedWorker: published, publishedAt: admin.firestore.FieldValue.serverTimestamp() });
+    } catch (e) {
+      console.error("[workerBuildFlow] publishWorkerFromSession failed:", e.message);
+    }
+  }
+
   // Emit funnel event (non-blocking)
   emitCreatorEvent(userId, `worker_step_complete_${stepId}`, {
     sessionId,
@@ -271,6 +392,7 @@ async function markStepComplete({ userId, sessionId, stepId, stepData = {} }) {
     step: merged,
     nextStepId,
     allComplete,
+    published,
     completionMessageContext: buildCompletionContext(stepId, merged, {
       ...data,
       workerSteps: projectedSteps,

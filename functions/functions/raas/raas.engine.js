@@ -17,15 +17,25 @@ const rulesetCache = {};
  */
 function loadRuleset(rulesetId) {
   if (rulesetCache[rulesetId]) return rulesetCache[rulesetId];
-  try {
-    const filePath = path.join(__dirname, "rulesets", `${rulesetId}.json`);
-    const ruleset = require(filePath);
-    rulesetCache[rulesetId] = ruleset;
-    return ruleset;
-  } catch (e) {
-    console.error(`[enforcement] Failed to load ruleset "${rulesetId}":`, e.message);
-    return null;
+  // #42 — WORKER_RULESET_MAP points platform-accounting/hr/marketing/contacts at
+  // ids that exist ONLY as `<id>.deprecated.json`, so the primary require threw
+  // and those workers silently ran on generic DEFAULT_CHAT_RULES (their real
+  // compliance rules + disclaimers never loaded). Try the live `.json` first
+  // (unchanged for every working ruleset), then fall back to `.deprecated.json`.
+  // The deprecated files contain full, valid rules — this restores enforcement.
+  const candidates = [
+    path.join(__dirname, "rulesets", `${rulesetId}.json`),
+    path.join(__dirname, "rulesets", `${rulesetId}.deprecated.json`),
+  ];
+  for (const filePath of candidates) {
+    try {
+      const ruleset = require(filePath);
+      rulesetCache[rulesetId] = ruleset;
+      return ruleset;
+    } catch (e) { /* try next candidate */ }
   }
+  console.error(`[enforcement] Failed to load ruleset "${rulesetId}" (.json and .deprecated.json)`);
+  return null;
 }
 
 /**

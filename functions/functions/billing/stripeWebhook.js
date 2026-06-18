@@ -650,6 +650,33 @@ async function handleStripeWebhook(req, res) {
           break;
         }
 
+        // Box plan activation (Business in a Box / Academia in a Box)
+        if (checkoutType === "box_subscription") {
+          const boxTenantId = data.metadata?.tenantId;
+          const boxPlan = data.metadata?.plan;
+          const boxSubId = data.metadata?.subscriptionId;
+          const boxSeats = parseInt(data.metadata?.seatCount || "0", 10) || null;
+          if (boxTenantId) {
+            await db.collection("tenants").doc(boxTenantId).set({
+              boxPlan,
+              boxPlanStatus: "active",
+              boxPlanSeats: boxSeats,
+              boxPlanActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              boxPlanStripeSubscriptionId: data.subscription || null,
+            }, { merge: true });
+            if (boxSubId) {
+              await db.collection("subscriptions").doc(boxSubId).update({
+                status: "active",
+                stripeSubscriptionId: data.subscription || null,
+                stripeCheckoutSessionId: data.id,
+                activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }).catch((e) => console.warn("[webhook] box sub update failed:", e.message));
+            }
+            await logActivity("revenue", `Box plan activated: ${boxPlan} for tenant ${boxTenantId} (${boxSeats || "?"} seats)`, "success");
+          }
+          break;
+        }
+
         // Worker subscription activation (Stripe Checkout for paid workers)
         if (checkoutType === "worker_subscription" && userId) {
           const wsWorkerId = data.metadata?.workerId;

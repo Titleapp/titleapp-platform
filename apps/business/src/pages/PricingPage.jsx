@@ -1,5 +1,35 @@
 import React from "react";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import { auth } from "../firebase";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+// Start a self-serve Stripe Checkout for a Box plan. Needs a signed-in admin in
+// a business workspace; otherwise route to onboarding/Alex to set one up first.
+async function startBoxCheckout(planKey) {
+  const user = auth.currentUser;
+  const tenantId = localStorage.getItem("TENANT_ID");
+  const email = (user && user.email) || localStorage.getItem("USER_EMAIL") || "";
+  if (!user || !email) { window.location.href = `/?intent=${planKey}`; return; }
+  if (!tenantId || tenantId === "vault" || tenantId === "personal") {
+    // A Box plan bills a workspace — send them to create/select one first.
+    window.location.href = `/?intent=${planKey}`;
+    return;
+  }
+  try {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=/v1/box:checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ plan: planKey, tenantId, email }),
+    });
+    const data = await res.json();
+    if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+    window.location.href = `/meet-alex?intent=${planKey}`;
+  } catch (_) {
+    window.location.href = `/meet-alex?intent=${planKey}`;
+  }
+}
 
 const TIERS = [
   {
@@ -87,11 +117,15 @@ const TIERS = [
   {
     id: "biab",
     name: "Business in a Box",
+    boxPlan: "business-in-a-box",
+    art: "/illustrations/business-box.png",
     price: "$99",
-    cadence: "per month",
+    cadence: "/mo + $5 per seat",
     tagline: "The full company stack. The spine plus a curated set of workers tuned to your industry.",
     workers: [
       "Everything in the Free spine",
+      "First 5 seats included — small teams stay at $99 flat",
+      "$5 / active seat beyond 5 — only pay for who's in the box",
       "A curated set of specialist workers for your industry",
       "Onboarding from Alex — she composes the bundle",
       "Industry templates and ruleset overlays",
@@ -102,6 +136,28 @@ const TIERS = [
     cta: "Talk to Alex",
     ctaHref: "/meet-alex?intent=business-in-a-box",
     accent: "#dc2626",
+    featured: false,
+  },
+  {
+    id: "schools",
+    name: "Academia in a Box",
+    boxPlan: "academia-in-a-box",
+    art: "/illustrations/academia-box.png",
+    price: "$99",
+    cadence: "/mo + $5 per student",
+    tagline: "Business in a Box for education — the student-owned record plus the workers your faculty build.",
+    workers: [
+      "Everything in the Free spine",
+      "Vault Academic Record — student-owned, hashed, FERPA dual-control",
+      "Unlimited Digital Workers your faculty build (evaluation, courses, CE)",
+      "First 5 students included; then $5 / active student / mo (or $50/yr)",
+      "Heavy users carry their own student data plan — you stay predictable",
+      "Professors earn 75% revenue share on the workers they publish",
+    ],
+    note: "Above 1,000 active students, switch to a flat site license — talk to us. Governed by the SOCIII for Education Terms + FERPA Data Processing Addendum. Textbooks are dead; Digital Workers are live.",
+    cta: "Talk to Alex",
+    ctaHref: "/meet-alex?intent=schools",
+    accent: "#0E7490",
     featured: false,
   },
 ];
@@ -137,6 +193,13 @@ export default function PricingPage() {
               {tier.featured && <div style={S.featuredBadge}>Most popular tier</div>}
               <div style={{ ...S.tierAccent, background: tier.accent }} />
               <div style={S.tierBody}>
+                {tier.art && (
+                  <img
+                    src={`${tier.art}?v=1`}
+                    alt=""
+                    style={{ width: "100%", height: 130, objectFit: "contain", borderRadius: 10, background: "#FBF7EC", border: "1px solid #eee4d2", marginBottom: 12, display: "block" }}
+                  />
+                )}
                 <div style={S.tierName}>{tier.name}</div>
                 <div style={S.tierTagline}>{tier.tagline}</div>
                 <div style={S.tierPriceRow}>
@@ -151,7 +214,11 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <div style={S.tierNote}>{tier.note}</div>
-                <a href={tier.ctaHref} style={{ ...S.tierCta, background: tier.accent }}>{tier.cta}</a>
+                {tier.boxPlan ? (
+                  <button onClick={() => startBoxCheckout(tier.boxPlan)} style={{ ...S.tierCta, background: tier.accent, border: "none", cursor: "pointer", font: "inherit" }}>Get started →</button>
+                ) : (
+                  <a href={tier.ctaHref} style={{ ...S.tierCta, background: tier.accent }}>{tier.cta}</a>
+                )}
               </div>
             </div>
           ))}
@@ -202,7 +269,7 @@ export default function PricingPage() {
             <a href="/workers" style={S.footerLink}>Workers</a>
             <a href="/pricing" style={S.footerLink}>Pricing</a>
             <a href="/whitepaper" style={S.footerLink}>Whitepaper</a>
-            <a href="/docs/sdk" style={S.footerLink}>SDK</a>
+            <a href="/docs/what-is-sociii" style={S.footerLink}>SDK</a>
             <a href="/docs/api" style={S.footerLink}>API</a>
             <a href="/docs" style={S.footerLink}>Docs</a>
             <a href="/press" style={S.footerLink}>Press</a>
@@ -213,7 +280,7 @@ export default function PricingPage() {
           <div style={S.footerSocials}>
             <a href="https://x.com/sociiiai" target="_blank" rel="noopener" style={S.footerLink}>X</a>
             <a href="https://linkedin.com/company/sociii-inc/" target="_blank" rel="noopener" style={S.footerLink}>LinkedIn</a>
-            <a href="https://github.com/SOCIII-Inc" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
+            <a href="https://github.com/sociii" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
             <a href="https://www.youtube.com/@SOCIII-AI" target="_blank" rel="noopener" style={S.footerLink}>YouTube</a>
             <a href="https://www.tiktok.com/@sociii.official" target="_blank" rel="noopener" style={S.footerLink}>TikTok</a>
           </div>

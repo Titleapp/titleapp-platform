@@ -66,8 +66,35 @@ export function WorkerStateProvider({ children }) {
         },
       };
 
-      if (!snap.exists() && CREATOR_WORKER_FALLBACKS[slug]) {
-        const worker = CREATOR_WORKER_FALLBACKS[slug];
+      // S52.44 substrate fix: NEVER silently fall through on a missing
+      // digitalWorkers/{slug} doc. Before, only the one hardcoded
+      // nursing-education-001 had a fallback — every other worker whose
+      // Firestore doc wasn't synced yet (catalog-registered but workerSync
+      // hasn't propagated, or built outside the sandbox) hung with
+      // workerReady=false, so "Canvas must not mount until workerReady" left
+      // the panel blank AND the worker invisible. Now any missing doc
+      // synthesizes a minimal worker so the canvas mounts (graceful
+      // degradation with empty tabs) until the sync writes the full doc.
+      if (!snap.exists()) {
+        const worker = CREATOR_WORKER_FALLBACKS[slug] || {
+          slug,
+          workerId: slug,
+          name: slug
+            .replace(/-00\d$/, "")
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase()),
+          shortDescription: "",
+          vertical: "",
+          suite: "",
+          status: "beta",
+          workerType: "worker",
+          canvasTabs: [],
+          catalogId: slug,
+          tagline: "",
+          whatYoullHave: "",
+          quickStartPrompts: [],
+          activeSubstrateFeatures: [],
+        };
         setActiveWorkerData((prev) => prev && prev.slug === slug ? { ...worker, name: prev.name || worker.name } : worker);
         setWorkerReady(true);
         setWorkerState("arrival");
@@ -92,6 +119,10 @@ export function WorkerStateProvider({ children }) {
           activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
           workerType: d.worker_type || "worker",
           canvasTabs: Array.isArray(d.canvasTabs) ? d.canvasTabs : [],
+          // S52.50 (keystone #31) — carry the worker's OWN renderable canvas spec
+          // through so resolveCanvasSpec() renders its designed tabs/blocks. This
+          // is the main open path; without it canvasSpec never reaches the renderer.
+          canvasSpec: d.canvasSpec || d.canvas || null,
           // catalogId is required by sampleData.getFixtureForTab to detect
           // aviation CoPilots (AV-P##) and load baseline fixtures regardless
           // of demo-mode. Without it, the regex check fails and aviation

@@ -1820,6 +1820,77 @@ exports.api = onRequest(
     // Legacy chat:message requests (without sessionId) fall through to the
     // auth-gated handler below.
     // ----------------------------
+    // On-demand chat health. ?run=1 triggers a live canary pass (alerts
+    // suppressed — only the scheduled chatCanary texts/emails). Otherwise
+    // returns the last recorded status from config/chatHealth.
+    // POST /v1/re:lookup — #41: live per-address ATTOM lookup. Returns the real
+    // parcel data + a ready-to-render canvasSpec for any address. Auth-required
+    // (ATTOM is a paid key). Body: { address }.
+    if (route === "/re:lookup" && method === "POST") {
+      try {
+        // Auth required — ATTOM is a paid key; this route sits before the
+        // handler's main auth gate, so enforce it explicitly here.
+        const reAuth = await requireFirebaseUser(req, res);
+        if (reAuth.handled) return reAuth.res;
+        const { address } = body || {};
+        if (!address) return jsonError(res, 400, "address required");
+        const { lookupAddress } = require("./services/re/liveLookup");
+        const result = await lookupAddress(address, process.env.ATTOM_API_KEY);
+        return res.json(result);
+      } catch (e) {
+        console.error("re:lookup failed:", e);
+        return jsonError(res, 500, "Lookup failed");
+      }
+    }
+
+    // On-demand worker health. ?run=1 runs a live canary pass (alerts
+    // suppressed — only the scheduled job texts/emails). Otherwise returns the
+    // last recorded status from config/workerHealth.
+    if (route === "/worker:health") {
+      try {
+        if (req.query.run === "1" || (body && body.run === true)) {
+          const { runWorkerCanary } = require("./monitoring/workerCanary");
+          const result = await runWorkerCanary({ noAlerts: true });
+          return res.json({ ok: true, ran: true, ...result });
+        }
+        const snap = await db.doc("config/workerHealth").get();
+        return res.json({ ok: true, ran: false, health: snap.exists ? snap.data() : { status: "unknown" } });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    if (route === "/chat:health") {
+      try {
+        // ?testsms=1 — fire a one-time confirmation text to every configured
+        // recipient, to prove the Twilio->phone alert path end-to-end.
+        if (req.query.testsms === "1") {
+          const snap = await db.doc("config/chatHealth").get();
+          const recipients = (snap.exists && Array.isArray(snap.data().alertRecipients) && snap.data().alertRecipients.length)
+            ? snap.data().alertRecipients
+            : [{ name: "Sean", phone: "+13104300780" }];
+          const { sendSMSDirect } = require("./communications/twilioHelper");
+          const out = [];
+          for (const r of recipients) {
+            if (!r.phone) continue;
+            try {
+              const x = await sendSMSDirect(r.phone, "🟢 SOCIII chat canary — test alert. This is the number outage alerts will come to. Reply STOP to opt out.");
+              out.push({ to: r.phone, sid: x.sid || null, status: x.status || "sent" });
+            } catch (e) { out.push({ to: r.phone, error: e.message }); }
+          }
+          return res.json({ ok: true, testsms: true, sent: out });
+        }
+        const wantRun = req.query.run === "1" || (body && body.run === true);
+        if (wantRun) {
+          const { runChatCanary } = require("./monitoring/chatCanary");
+          const result = await runChatCanary({ noAlerts: true });
+          return res.json({ ok: true, ran: true, ...result });
+        }
+        const snap = await db.doc("config/chatHealth").get();
+        return res.json({ ok: true, ran: false, health: snap.exists ? snap.data() : { status: "unknown" } });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
@@ -2101,6 +2172,24 @@ exports.api = onRequest(
           authUid: authUser?.uid?.slice(0, 8) || "(no-auth)",
         });
 
+        // ── S52.50 — recover sessions stuck at 'dev_discovery' ──
+        // An earlier message that matched developer keywords sets
+        // sessionState.step = 'dev_discovery' and PERSISTS it. On every later
+        // turn that sticky step routes the request into the developer-onboarding
+        // branch (line ~4513) — even a plain "hello?" typed into the workspace
+        // "Alex — Chief of Staff" chat on the dashboard. That branch also returns
+        // its text as `message:` (not `response:`), so ChatPanel renders
+        // "No response received." Root cause of Sean's recurring "chat is broken."
+        // Fix: when the request clearly comes from the workspace dashboard (not a
+        // developer/sandbox surface), clear the sticky step so it falls through to
+        // the normal authenticated Chief-of-Staff path (which returns `response:`).
+        if (sessionState.step === 'dev_discovery'
+            && surface !== 'developer' && surface !== 'sandbox'
+            && body?.context?.currentSection === 'dashboard') {
+          sessionState.step = 'idle';
+          console.log("[chat:routing] cleared sticky dev_discovery for dashboard session");
+        }
+
         // ── Creator authoring intercept (bug fix 2026-06-04, hoisted 2026-06-05) ──
         // /creators/journey middle-panel chat: short-circuit chatEngine and
         // call the AI with an authoring system prompt. The 'authenticated'
@@ -2370,6 +2459,28 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               const dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
 
+              // ── Organization-only visibility gate ──
+              // Confidential workers (visibility:"organization") can only be USED
+              // by members of the tenant that owns them. Public/unlisted workers
+              // and legacy workers (no ownerTenantId) are unaffected.
+              if (dw.visibility === "organization" && dw.ownerTenantId) {
+                try {
+                  const { enforceRoleGate } = require("./middleware/membershipCheck");
+                  const orgGate = await enforceRoleGate(authUser && authUser.uid, dw.ownerTenantId, "member");
+                  if (!orgGate.ok) {
+                    return res.json({
+                      ok: false,
+                      error: "ORG_ONLY_WORKER",
+                      message: "This is an organization-only worker. You must be a member of the organization that owns it to use it.",
+                    });
+                  }
+                } catch (orgErr) {
+                  // Fail-open on transient lookup errors (auth is still validated),
+                  // matching the viewer role-gate behavior below.
+                  console.warn(`[org-visibility gate] failed for ${workerSlug}:`, orgErr.message);
+                }
+              }
+
               // Tenant context for the worker chat — hoisted so it's also in
               // scope for the 50.5 usage-event write below.
               const reqTenantId =
@@ -2537,6 +2648,14 @@ IDENTITY RULES:
                 }
               }
 
+              // Sandbox-published workers carry their knowledge base inline on
+              // the digitalWorkers doc (written by publishWorkerFromSession from
+              // the creator's uploaded docs). Inject it so the worker is grounded
+              // in the creator's material, not a generic LLM.
+              if (workerPrompt && dw && typeof dw.knowledgeBase === "string" && dw.knowledgeBase.trim()) {
+                workerPrompt = `${dw.knowledgeBase}\n\n${workerPrompt}`;
+              }
+
               // S51.43.11 — Per-creator-worker knowledge files (live in
               // services/alex/knowledge/<slug>-context.md). Inject for any
               // worker that has one, with optional view-mode awareness
@@ -2636,6 +2755,36 @@ INSTRUCTOR VIEW ACTIVE: The user is an instructor or program admin (Ruthie or on
                     });
                   }
                 }
+              }
+
+              // Founder-side IR grounding — give the fundraise / IR worker live
+              // knowledge of the raise, the data room links, and the pipeline so
+              // Alex never claims it "can't see the data room". Slug-gated, so it
+              // cannot affect any other worker (including the sandbox).
+              if (workerPrompt && (workerSlug === "fundraise" || workerSlug === "investor-relations")) {
+                try {
+                  const dr = require("./services/fundraise/dataRoom");
+                  let frId = (body.context && body.context.fundraiseId) || body.fundraiseId || null;
+                  let fr = frId ? await dr.getFundraise(frId, reqTenantId) : null;
+                  if (!fr && reqTenantId) {
+                    const list = await dr.listFundraises(reqTenantId);
+                    fr = (list && list[0]) || null;
+                    frId = (fr && (fr.fundraiseId || fr.id)) || frId;
+                  }
+                  if (fr) {
+                    const m = fr.materials || {};
+                    let investors = [];
+                    try { investors = await dr.listInvestors(frId); } catch (_) {}
+                    workerPrompt = `LIVE RAISE — you are the founder's Investor Relations chief of staff and you KNOW this. NEVER tell the user you can't see the raise or the data room.
+- Fundraise: ${fr.name || frId} | stage: ${fr.stage || "—"} | instrument: ${fr.instrument || "—"}
+- Target: ${fr.target_raise || "—"}${fr.valuation_cap ? ` | cap: ${fr.valuation_cap}` : ""} | committed: ${fr.current_raised || 0}
+- DATA ROOM (share these links with investors): deck ${m.deckUrl || "(not set)"} · whitepaper ${m.whitepaperUrl || "(not set)"} · data room ${m.dataRoomUrl || "(not set)"}
+- Formal investors tracked: ${investors.length}. (The broader prospect pipeline lives in Contacts.)
+When asked about the data room or materials, GIVE THE LINKS ABOVE. You help the founder RUN the raise — pipeline, data room, outreach drafting.
+
+${workerPrompt}`;
+                  }
+                } catch (frErr) { console.warn("[fundraise grounding] failed:", frErr.message); }
               }
 
               // Canvas + delivery rules (49.27) — PREPENDED so they anchor model
@@ -2884,6 +3033,31 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   required: ["prompt"],
                 },
               }];
+              // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
+              if (workerSlug === "cre-analyst") {
+                businessTools.push({
+                  name: "find_distressed_cre",
+                  description: "Search LIVE ATTOM data for distressed / underwater / default-risk commercial real estate in a metro (e.g. 'San Francisco', 'Oakland', 'Bay Area', 'Austin', 'Los Angeles'). Call this whenever the user asks to find distressed CRE, underwater office, capital-stack opportunities, or commercial property to buy at a discount in a place. Returns scored candidates that also render on the Map canvas.",
+                  input_schema: { type: "object", properties: { metro: { type: "string", description: "City or metro to screen, e.g. 'San Francisco'" } }, required: ["metro"] },
+                });
+                businessTools.push({
+                  name: "find_cre_contacts",
+                  description: "Search LIVE Apollo data for real, contactable people at firms relevant to a CRE deal — special servicers, lenders, debt funds, brokers, owners. Call this WHENEVER the user asks who to contact, who holds the debt, for a list/database of servicers, lenders, brokers, workout desks, or decision-makers they can reach out to. Do NOT tell the user to go do a title search or buy a Trepp subscription — fetch the people. Returns real names, titles, companies, and emails.",
+                  input_schema: { type: "object", properties: {
+                    firms: { type: "array", items: { type: "string" }, description: "Company names to target, e.g. ['LNR Partners','Rialto Capital','Berkadia','CBRE Capital Markets']" },
+                    titles: { type: "array", items: { type: "string" }, description: "Target roles, e.g. ['Asset Manager','Special Servicing','Managing Director','Workout','Capital Markets']" },
+                  }, required: [] },
+                });
+              }
+              // S52.45 — Site Recon can live-pull ATTOM property data + a
+              // feasibility verdict for an address (fetch, don't instruct).
+              if (workerSlug === "site-recon-001") {
+                businessTools.push({
+                  name: "site_recon_lookup",
+                  description: "Pull LIVE ATTOM property data + a feasibility verdict for a specific street address. Call this WHENEVER the user gives or asks about an address or parcel. Returns assessor/owner facts, last sale, AVM, flood/opportunity-zone flags, and a Green/Yellow/Red feasibility verdict with a named blocker. NEVER tell the user to go to the county assessor portal — fetch it yourself.",
+                  input_schema: { type: "object", properties: { address: { type: "string", description: "Full street address incl. city/state, e.g. '30 Pihaa St, Lahaina, HI 96761'" } }, required: ["address"] },
+                });
+              }
 
               workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
               let aiResponse = await anthropic.messages.create({
@@ -2896,6 +3070,11 @@ When the user asks "what have I completed?", "what's next?", or about their prog
 
               let aiText = aiResponse.content.find(b => b.type === 'text')?.text || "";
               let workerImageUrl = null;
+              let workerImgErrMsg = null; // S52.46 — guidance from a blocked/failed image gen, forwarded to the model
+              let workerImgCharge = null; // S52.46 — "charged $X" note for a successful gen
+              let liveDistressed = null; // S52.44 — populated by find_distressed_cre tool
+              let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
+              let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
@@ -2914,25 +3093,154 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     tenantId: reqTenantId || null,
                   });
                   workerImageUrl = imgResult.imageUrl || null;
-                  if (imgResult.error) console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error);
+                  if (imgResult.error) { workerImgErrMsg = imgResult.message || null; console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error); }
+                  else if (imgResult.chargedCredits) { workerImgCharge = `Charged ${imgResult.chargedCredits} Data Credit ($${(imgResult.priceUsd || 0).toFixed(2)}) for this image — briefly tell the user the cost.`; }
                 } catch (imgErr) {
                   console.warn(`[worker:${workerSlug}] image gen failed:`, imgErr.message);
                 }
 
                 // Continue the turn so the model produces user-facing text alongside the image.
+                // On a blocked/failed gen, forward the guidance (e.g. "emit a card:re-map
+                // instead") so the model self-corrects, and DROP tools so it can't
+                // immediately re-call generate_image and hit the same block (codex M2/M3).
+                const _imgToolResult = workerImageUrl
+                  ? `Image generated: ${workerImageUrl}${workerImgCharge ? ". " + workerImgCharge : ""}`
+                  : (workerImgErrMsg || "Image generation failed. Tell the user briefly.");
                 const followUpMessages = [
                   ...messages,
                   { role: "assistant", content: aiResponse.content },
-                  { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: workerImageUrl ? `Image generated: ${workerImageUrl}` : "Image generation failed. Tell the user briefly." }] },
+                  { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _imgToolResult }] },
                 ];
                 const followUp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-5-20250929',
                   max_tokens: 512,
                   system: workerPrompt,
                   messages: followUpMessages,
-                  tools: businessTools,
                 });
                 aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here you go.";
+              }
+              // S52.44 — LIVE ATTOM distressed-CRE tool (CRE Analyst only).
+              if (toolBlock && toolBlock.name === 'find_distressed_cre') {
+                try {
+                  const { searchDistressedCRE } = require("./services/attom/distressedCRE");
+                  const res = await searchDistressedCRE({ metro: toolBlock.input.metro, limit: 12 }, process.env.ATTOM_API_KEY);
+                  liveDistressed = res;
+                  const summary = (res.candidates || []).map((p, i) => `${i + 1}. [${p.distressBand} ${p.distressScore}] ${p.address} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || '').slice(0, 7)}) · ${p.propType} · ${p.distressReasons.join('; ')}`).join("\n");
+                  const toolResultText = (res.candidates && res.candidates.length)
+                    ? `Live ATTOM screen — ${res.count} distressed commercial candidates in ${res.label} (distress-proxy scored). Present these to the user; lead with the RED ones; tell them they're now pinned on the Map. Note that confirmed missed-payment/NOD status needs ATTOM's foreclosure feed:\n${summary}`
+                    : `No commercial candidates returned for "${toolBlock.input.metro}". Ask the user to try a major metro (e.g. San Francisco, Oakland, Austin, Los Angeles).`;
+                  const followUpMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiResponse.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                  ];
+                  // S52.45: no tools on the narration step (prevents a 2nd
+                  // tool_use eating the token budget mid-sentence) + higher cap
+                  // so the answer doesn't clip ("...now staring" bug).
+                  const followUp = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                  });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the distressed candidates.";
+                } catch (creErr) {
+                  console.warn(`[worker:${workerSlug}] find_distressed_cre failed:`, creErr.message);
+                }
+              }
+              // S52.45 — LIVE Apollo contact-finder (CRE Analyst). Answers "who do
+              // I contact / who holds the debt" by FETCHING real people, not by
+              // telling the user to go do a title search.
+              if (toolBlock && toolBlock.name === 'find_cre_contacts') {
+                try {
+                  const apollo = require("./services/marketingService/apollo");
+                  const firms = Array.isArray(toolBlock.input.firms) ? toolBlock.input.firms.filter(Boolean) : [];
+                  const titles = Array.isArray(toolBlock.input.titles) && toolBlock.input.titles.length
+                    ? toolBlock.input.titles
+                    : ["Asset Manager", "Special Servicing", "Managing Director", "Workout", "Capital Markets", "Loan Officer"];
+                  const criteria = { person_titles: titles, per_page: 12 };
+                  if (firms.length) criteria.q_keywords = firms.join(" ");
+                  const { people = [] } = await apollo.searchPeople(criteria, { tenantId: reqTenantId || null, userId: authUser ? authUser.uid : null, requestedBy: "chat:cre:find_cre_contacts" });
+                  liveContacts = people.slice(0, 12).map((p) => ({
+                    name: p.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+                    title: p.title || "", company: p.organization?.name || p.organization_name || "",
+                    email: p.email || null, linkedin: p.linkedin_url || null,
+                  }));
+                  const summary = liveContacts.map((c, i) => `${i + 1}. ${c.name} — ${c.title}${c.company ? " @ " + c.company : ""}${c.email ? " · " + c.email : " · (email locked — enrich)"}`).join("\n");
+                  const toolResultText = liveContacts.length
+                    ? `Live Apollo pull — ${liveContacts.length} real contacts${firms.length ? " at " + firms.join(", ") : ""}. Present them as a callable/emailable list; offer to save them to Contacts for outreach. These are real people:\n${summary}`
+                    : `Apollo returned no matches${firms.length ? " for " + firms.join(", ") : ""}. Suggest the user name specific firms (e.g. LNR Partners, Rialto Capital, Berkadia) or broaden the titles.`;
+                  const followUpMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiResponse.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                  ];
+                  const followUp = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                  });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the contacts.";
+                } catch (apErr) {
+                  console.warn(`[worker:${workerSlug}] find_cre_contacts failed:`, apErr.message);
+                }
+              }
+              // S52.45 — LIVE ATTOM property pull for Site Recon (fetch, don't instruct).
+              if (toolBlock && toolBlock.name === 'site_recon_lookup') {
+                try {
+                  const addr = String(toolBlock.input.address || "").trim();
+                  const idx = addr.indexOf(",");
+                  if (idx < 1) {
+                    aiText = `I need the city and state too — e.g. "30 Pihaa St, Lahaina, HI 96761".`;
+                  } else {
+                    const params = { address1: addr.slice(0, idx).trim(), address2: addr.slice(idx + 1).trim() };
+                    const { pullParcelBundle } = require("./workers/site-recon-001/attomClient");
+                    const { scoreFeasibility } = require("./workers/site-recon-001/scoreFeasibility");
+                    const bundle = await pullParcelBundle(params, process.env.ATTOM_API_KEY);
+                    const prop0 = bundle?.propertyDetail?.data?.property?.[0];
+                    if (!prop0) {
+                      aiText = `I couldn't find a property record at "${addr}" in ATTOM — double-check the street, city, and state.`;
+                    } else {
+                      let overlays = {};
+                      try {
+                        const gis = require("./workers/site-recon-001/gisOverlayService");
+                        overlays = await gis.getOverlays({ lat: Number(prop0?.location?.latitude), lng: Number(prop0?.location?.longitude), state: prop0?.address?.countrySubd || null, apn: prop0?.identifier?.apn || null }, { userId: authUser ? authUser.uid : null, tenantId: reqTenantId || null }) || {};
+                      } catch (gisErr) { console.warn("[site_recon_lookup] gis failed:", gisErr.message); }
+                      const feas = scoreFeasibility(bundle, { overlays });
+                      const avmVal = bundle?.avm?.data?.property?.[0]?.avm?.amount?.value;
+                      const sale = bundle?.salesHistory?.data?.property?.[0]?.salehistory?.[0] || prop0?.sale || {};
+                      const saleAmt = sale?.amount?.saleamt || sale?.saleAmt;
+                      const facts = [
+                        `Address: ${prop0?.address?.oneLine || addr}`,
+                        `APN: ${prop0?.identifier?.apn || "—"}`,
+                        `Type: ${prop0?.summary?.propclass || prop0?.summary?.proptype || "—"} · Built: ${prop0?.summary?.yearbuilt || "—"}`,
+                        `Lot: ${prop0?.lot?.lotsize1 ? prop0.lot.lotsize1 + " ac" : "—"}`,
+                        `Last sale: ${saleAmt ? "$" + Number(saleAmt).toLocaleString() : "—"}${sale?.amount?.salerecdate ? " (" + sale.amount.salerecdate + ")" : ""}`,
+                        `AVM (est. value): ${avmVal ? "$" + Number(avmVal).toLocaleString() : "—"}`,
+                        `Flood zone: ${overlays?.floodZone || "—"} · Opportunity zone: ${overlays?.opportunityZone == null ? "—" : overlays.opportunityZone}`,
+                      ].join("\n");
+                      // S52.46 — capture the REAL pull so we can repaint the canvas
+                      // with a real map + real satellite (never a fabricated image).
+                      const srLat = Number(prop0?.location?.latitude);
+                      const srLng = Number(prop0?.location?.longitude);
+                      liveSiteRecon = {
+                        address: prop0?.address?.oneLine || addr,
+                        lat: Number.isFinite(srLat) ? srLat : null,
+                        lng: Number.isFinite(srLng) ? srLng : null,
+                        verdict: feas.verdict,
+                        namedBlocker: feas.namedBlocker || null,
+                        facts,
+                      };
+                      const toolResultText = `Live ATTOM pull for ${addr}. FEASIBILITY VERDICT: ${feas.verdict}${feas.namedBlocker ? " — named blocker: " + feas.namedBlocker : ""} (confidence ${feas.confidenceScore ?? "n/a"}). Present this plain-English, LEAD with the Green/Yellow/Red verdict and the named blocker, then the facts. Be explicit about what still needs a deeper paid pull (full title chain, liens, current servicer) — but do NOT tell the user to go research it themselves; you already pulled what's below:\n${facts}`;
+                      const followUpMessages = [
+                        ...messages,
+                        { role: "assistant", content: aiResponse.content },
+                        { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
+                      ];
+                      const followUp = await anthropic.messages.create({
+                        model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                      });
+                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
+                    }
+                  }
+                } catch (srErr) {
+                  console.warn(`[worker:${workerSlug}] site_recon_lookup failed:`, srErr.message);
+                }
               }
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
 
@@ -3161,6 +3469,41 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     imageUrl: workerImageUrl,
                     prompt: (toolBlock && toolBlock.input && toolBlock.input.prompt) || "",
                     title: "Generated Image",
+                  },
+                });
+              }
+
+              // S52.44 — repaint the Map with LIVE ATTOM distressed-CRE results.
+              if (liveDistressed && Array.isArray(liveDistressed.candidates) && liveDistressed.candidates.length) {
+                workerCanvasRenders.push({
+                  type: "card:re-map",
+                  payload: {
+                    title: `Distressed CRE — ${liveDistressed.label} (live ATTOM)`,
+                    region: liveDistressed.label,
+                    locations: liveDistressed.candidates.map((p) => ({
+                      address: p.address,
+                      label: `${p.distressBand} ${p.distressScore} · $${(p.lastSale / 1e6).toFixed(0)}M · ${p.distressReasons[0] || ""}`,
+                      lat: p.lat, lng: p.lng,
+                    })),
+                  },
+                });
+              }
+
+              // S52.46 — repaint the canvas with the REAL Site Recon pull: a real
+              // Google Maps pin at the queried parcel (fixes "no map" WITHOUT
+              // fabricating — the Fal generate_image map path is now blocked in the
+              // generator). MapCard renders this via the frontend's own (already
+              // public, referrer-restricted) Maps key, including satellite view —
+              // so we never leak the backend GOOGLE_MAPS_API_KEY client-side.
+              if (liveSiteRecon && liveSiteRecon.lat != null && liveSiteRecon.lng != null) {
+                const _verdictLabel = `${liveSiteRecon.verdict}${liveSiteRecon.namedBlocker ? " · " + liveSiteRecon.namedBlocker : ""}`;
+                workerCanvasRenders.push({
+                  type: "card:re-map",
+                  payload: {
+                    title: `Site Recon — ${liveSiteRecon.address} (live ATTOM)`,
+                    region: liveSiteRecon.address,
+                    mapType: "satellite",
+                    locations: [{ address: liveSiteRecon.address, label: _verdictLabel, lat: liveSiteRecon.lat, lng: liveSiteRecon.lng }],
                   },
                 });
               }
@@ -4754,13 +5097,15 @@ You are Alex, Chief of Staff at SOCIII. You help people build and publish Digita
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
-YOUR ROLE: Guide creators through the build flow. The right panel shows a canvas for each step. Your job is conversational guidance that matches the current step. You do NOT build everything at once -- each step produces a visible result before moving to the next.
+YOUR ROLE — FACILITATOR, NOT BUILDER: You GUIDE creators through the build flow. The right panel shows a canvas for each step with its own controls. You facilitate and refine; the CANVAS captures the work; CODE (Claude Code, on the creator's machine, reading the git spec) does the heavy building. The three talk to each other through the worker's spec document. You do NOT build the worker, generate brands/logos/images, deploy, or submit to anyone inside this chat. When the spec is solid, you hand off: "Your spec is ready — from here Code builds the worker from it. I'll help you refine, but I don't build it in this chat."
+
+HONESTY (most important rule): Only claim an action happened if it actually happened. Never say you "generated," "created," "built," "designed," "deployed," or "published" something you did not. If the canvas has a button for it, say "use the button on the right" instead of pretending you did it. If you are unsure whether something rendered, ask the creator what they see — never assert it's done. A static canvas that you described as "generating" is the #1 thing that breaks trust. Describe only what you can verify.
 
 ${isGamePath ? '(For games, use the 8-step GAME PIPELINE defined above. Ignore the 9 worker steps that follow — they are for Digital Workers only.)' : ''}
 
 THE 9 WORKER STEPS (Digital Workers only — NOT for games):
 1. DEFINE — Get the idea. What is this worker? Who uses it? What does it do? This is a quick conversation (2-3 questions max). As soon as you understand the core idea, generate a [WORKER_SPEC] so the canvas fills in.
-2. DESIGN — The "aha moment." The creator sees their worker take shape visually. Generate a name, description, and branding. If they uploaded files or content, reference what you read. This step should feel instant and exciting.
+2. DESIGN — The "aha moment." The creator shapes their worker visually ON THE CANVAS (right panel): headline, tabs, visual style, and the logo/mockup generators live there as buttons. You PROPOSE in text — suggest a name, a one-line description, a visual direction — and tell them which canvas control to use ("hit Generate logo on the right" / "pick a shape under Visual"). You do NOT generate logos, mockups, brands, or images yourself in this chat — the canvas buttons do that, or Code does. Never say you generated a brand/logo/image; say what the canvas can do and let them click it. If they uploaded files, reference what you read.
 3. KNOWLEDGE — Content onboarding. The creator uploads documents, PDFs, SOPs, reference material. Help them understand what to upload. Acknowledge each file's content.
 4. RULES — Compliance rules, guardrails, what the worker must never get wrong. Ask about regulations, industry standards, SOPs.
 5. TOOLS — What capabilities does the worker need? Reports, dashboards, email, integrations, data lookups.
@@ -4800,8 +5145,8 @@ Format:
 
 You MUST include both opening and closing tags. Valid JSON. Include AFTER your conversational text.
 
-IMAGE GENERATION:
-When the creator asks for an image, artwork, illustration, icon, logo, or any visual — call the generate_image tool immediately. Do not describe the image in text. Style defaults to 'cartoon' for games and 'minimal' for workers.
+IMAGE / LOGO / MOCKUP GENERATION:
+In the worker sandbox, visuals are generated by the CANVAS buttons in the Design step (Generate logo, Generate mockup), not by you in chat. When a creator wants a logo, icon, mockup, or any visual, point them to that button: "Open Design on the right and hit Generate logo." Do NOT narrate generating an image yourself and do NOT claim an image was created — if nothing is rendering, the creator clicks the canvas button. (For games only, where a generate_image tool is wired, you may call it directly with style 'cartoon'.)
 
 AUTH HANDLING:
 You never handle authentication. Never ask for an email. If auth fails, the UI handles it silently.
@@ -6217,6 +6562,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const workers = [];
         snap.forEach((doc) => {
           const d = doc.data();
+          // Visibility enforcement: only PUBLIC workers appear in the marketplace
+          // catalog. Unlisted (link-only) and organization-only workers are excluded.
+          if (d.internal_only === true || (d.visibility && d.visibility !== "public")) return;
           workers.push({
             id: doc.id,
             name: d.name || "",
@@ -6688,7 +7036,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }
 
         let workers = snap.docs
-          .filter(doc => !vc.prefix || doc.id.startsWith(vc.prefix))
+          .filter(doc => {
+            const d = doc.data();
+            // Visibility: keep only PUBLIC workers in discovery. Unlisted +
+            // organization-only are excluded from the catalog.
+            if (d.internal_only === true || (d.visibility && d.visibility !== "public")) return false;
+            return !vc.prefix || doc.id.startsWith(vc.prefix);
+          })
           .slice(0, limit)
           .map(doc => {
             const d = doc.data();
@@ -6792,6 +7146,132 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("aviation:preferredRoutes failed:", e);
         return jsonError(res, 500, "Preferred routes lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:weather?ids=KJFK,KLAX[&taf=1][&sigmet=1]
+    // Live METAR/TAF/SIGMET from aviationweather.gov (FAA AWC — free, keyless).
+    // Returns flight category + wind/vis/ceiling + lat/lon for map markers.
+    if (route === "/aviation:weather" && method === "GET") {
+      try {
+        const { handleWeather } = require("./services/aviation/weather");
+        return await handleWeather(req, res);
+      } catch (e) {
+        console.error("aviation:weather failed:", e);
+        return jsonError(res, 500, "Weather lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:tfr[?state=AZ] — active TFRs from tfr.faa.gov (free, public).
+    if (route === "/aviation:tfr" && method === "GET") {
+      try {
+        const { handleTfr } = require("./services/aviation/faaData");
+        return await handleTfr(req, res);
+      } catch (e) {
+        console.error("aviation:tfr failed:", e);
+        return jsonError(res, 500, "TFR lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:airspace?lat=&lon=&dist= — FAA Class Airspace polygons
+    // (GeoJSON for the map: Class B/C/D/E w/ floor+ceiling). Free, public.
+    if (route === "/aviation:airspace" && method === "GET") {
+      try {
+        const { handleAirspace } = require("./services/aviation/faaData");
+        return await handleAirspace(req, res);
+      } catch (e) {
+        console.error("aviation:airspace failed:", e);
+        return jsonError(res, 500, "Airspace lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:navdb — manifest of downloadable regional nav databases.
+    // GET /v1/aviation:navdb?region=hawaii[&cycle=2606] — stream that package.
+    // ForeFlight-model offline nav data, refreshed on the AIRAC cycle. Public.
+    if (route === "/aviation:navdb" && method === "GET") {
+      try {
+        const { handleManifest, handleDownload } = require("./services/aviation/navPackager");
+        if (req.query?.region) return await handleDownload(req, res);
+        return await handleManifest(req, res);
+      } catch (e) {
+        console.error("aviation:navdb failed:", e);
+        return jsonError(res, 500, "Nav database request failed");
+      }
+    }
+
+    // GET /v1/aviation:currency[?cycle=2601][&region=hawaii] — AIRAC nav-data
+    // currency. No cycle → current AIRAC cycle. With cycle → status
+    // (current | expiring ≤7 days | expired) + days remaining. Free, public.
+    if (route === "/aviation:currency" && method === "GET") {
+      try {
+        const { handleCurrency } = require("./services/aviation/airac");
+        return await handleCurrency(req, res);
+      } catch (e) {
+        console.error("aviation:currency failed:", e);
+        return jsonError(res, 500, "Currency check failed");
+      }
+    }
+
+    // GET /v1/aviation:airports?lat=&lon=&dist= — FAA NASR airports (free, public).
+    if (route === "/aviation:airports" && method === "GET") {
+      try {
+        const { handleAirports } = require("./services/aviation/faaData");
+        return await handleAirports(req, res);
+      } catch (e) {
+        console.error("aviation:airports failed:", e);
+        return jsonError(res, 500, "Airports lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:waypoints?lat=&lon=&dist= — FAA NASR waypoints (free, public).
+    if (route === "/aviation:waypoints" && method === "GET") {
+      try {
+        const { handleWaypoints } = require("./services/aviation/faaData");
+        return await handleWaypoints(req, res);
+      } catch (e) {
+        console.error("aviation:waypoints failed:", e);
+        return jsonError(res, 500, "Waypoints lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:navaids?lat=&lon=&dist= — FAA NASR navaids (free, public).
+    if (route === "/aviation:navaids" && method === "GET") {
+      try {
+        const { handleNavaids } = require("./services/aviation/faaData");
+        return await handleNavaids(req, res);
+      } catch (e) {
+        console.error("aviation:navaids failed:", e);
+        return jsonError(res, 500, "Navaids lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:notams?locations=KJFK,KLAX  — Notamify (paid + metered).
+    // Auth required (paid key + per-pull data fee); 30-min per-ICAO cache.
+    if (route === "/aviation:notams" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const ctx = getCtx(req, body, nAuth.user);
+        const { handleNotams } = require("./services/aviation/notams");
+        return await handleNotams(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:notams failed:", e);
+        return jsonError(res, 500, "NOTAM lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:traffic?lat=36.08&lon=-115.15&dist=50 — ADS-B Exchange
+    // live aircraft (paid + metered). Auth required.
+    if (route === "/aviation:traffic" && method === "GET") {
+      try {
+        const tAuth = await requireFirebaseUser(req, res);
+        if (tAuth.handled) return tAuth.res;
+        const ctx = getCtx(req, body, tAuth.user);
+        const { handleTraffic } = require("./services/aviation/adsb");
+        return await handleTraffic(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:traffic failed:", e);
+        return jsonError(res, 500, "Traffic lookup failed");
       }
     }
 
@@ -7500,6 +7980,104 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id });
       } catch (e) {
         console.error("[worker:checkout] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/box:checkout — Stripe Checkout for a "Box" plan (Business in a
+    // Box / Academia in a Box): $99/mo base + tiered seat price (first 5 seats
+    // free, then $5). Tenant-scoped, admin-only. Seat qty = active members.
+    if (route === "/box:checkout" && method === "POST") {
+      let userId = null;
+      const ckToken = getAuthBearerToken(req);
+      if (ckToken) {
+        try { const decoded = await admin.auth().verifyIdToken(ckToken); userId = decoded.uid; }
+        catch (e) { /* fall through to 401 */ }
+      }
+      if (!userId) return jsonError(res, 401, "Authentication required");
+
+      const planKey = body.plan; // "business-in-a-box" | "academia-in-a-box"
+      let STRIPE_BOXES;
+      try { STRIPE_BOXES = require("./config/stripeBoxes"); }
+      catch (_) { return jsonError(res, 500, "Box plans are not configured yet"); }
+      const boxMap = { "business-in-a-box": STRIPE_BOXES.businessInABox, "academia-in-a-box": STRIPE_BOXES.academiaInABox };
+      const box = boxMap[planKey];
+      if (!box) return jsonError(res, 400, "Unknown plan");
+
+      const email = body.email;
+      if (!email || !email.includes("@")) return jsonError(res, 400, "Valid email required");
+
+      const tenantId = (body.tenantId && body.tenantId !== "vault" && body.tenantId !== "personal" && !String(body.tenantId).startsWith("guest-")) ? body.tenantId : null;
+      if (!tenantId) return jsonError(res, 400, "A workspace is required for a Box plan");
+
+      try {
+        // Admin-only on the workspace.
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(userId, tenantId, "admin");
+        if (!gate.ok) return jsonError(res, 403, "Only a workspace admin can subscribe to a Box plan");
+
+        const tSnap = await db.collection("tenants").doc(tenantId).get();
+        const tenantDoc = tSnap.exists ? tSnap.data() : null;
+
+        // Seat quantity = active members. Stripe's tiered price makes the first
+        // 5 free, so we pass the TOTAL active seat count, not (count - 5).
+        let seatCount = 1;
+        try {
+          const memSnap = await db.collection("memberships")
+            .where("tenantId", "==", tenantId).where("status", "==", "active").get();
+          seatCount = Math.max(1, memSnap.size);
+        } catch (_) { /* default 1 */ }
+
+        const stripe = getStripe();
+        // Fresh tenant-scoped Stripe customer (matches worker:checkout Q1 rule).
+        let customerId = tenantDoc?.stripeCustomerId || null;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email, name: tenantDoc?.name || `Workspace ${tenantId}`,
+            metadata: { tenantId, billingAdminUid: userId },
+          });
+          customerId = customer.id;
+          await db.collection("tenants").doc(tenantId).set(
+            { stripeCustomerId: customerId, billingAdminUid: userId, billingEmail: email, billingUpdatedAt: nowServerTs() },
+            { merge: true }
+          );
+        }
+
+        const planName = planKey === "academia-in-a-box" ? "Academia in a Box" : "Business in a Box";
+        const subRef = await db.collection("subscriptions").add({
+          ownerType: "tenant", ownerId: tenantId, userId,
+          plan: planKey, planName, kind: "box",
+          status: "pending_payment",
+          stripeCustomerId: customerId, email, seatCount,
+          createdAt: nowServerTs(),
+        });
+
+        const origin = req.headers.origin || "https://sociii.ai";
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          allow_promotion_codes: true,            // lets friends/allies enter MAHALO
+          payment_method_collection: "if_required", // 100%-off comp needs no card; paying users still asked
+          line_items: [
+            { price: box.basePriceId, quantity: 1 },
+            { price: box.seatPriceId, quantity: seatCount },
+          ],
+          subscription_data: {
+            metadata: { type: "box_subscription", plan: planKey, tenantId, userId, subscriptionId: subRef.id, seatCount: String(seatCount) },
+          },
+          metadata: {
+            type: "box_subscription", plan: planKey, planName, tenantId, userId,
+            subscriptionId: subRef.id, seatCount: String(seatCount),
+          },
+          success_url: `${origin}/?box_checkout=success&plan=${encodeURIComponent(planKey)}`,
+          cancel_url: `${origin}/pricing?box_checkout=cancelled`,
+        });
+
+        await subRef.update({ stripeCheckoutSessionId: session.id });
+        console.log(`[box:checkout] tenant=${tenantId} ${planKey} seats=${seatCount} session ${session.id}`);
+        return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id, seatCount });
+      } catch (e) {
+        console.error("[box:checkout] error:", e.message);
         return jsonError(res, 500, e.message);
       }
     }
@@ -9726,6 +10304,24 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/sandbox:worker:test:ask — #35: actually RUN the worker on one
+    //   red-team question and return its real answer (built from the draft
+    //   spec's rules + knowledge). Body: { sessionId, questionId }.
+    if (route === "/sandbox:worker:test:ask" && method === "POST") {
+      try {
+        const { sessionId, questionId } = body || {};
+        if (!sessionId) return jsonError(res, 400, "sessionId required");
+        const { answerAsWorker } = require("./services/sandbox/workerTestProtocol");
+        const anthropic = getAnthropic();
+        const createMessage = (p) => anthropic.messages.create(p);
+        const result = await answerAsWorker({ userId: auth.user.uid, sessionId, questionId, createMessage });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("sandbox:worker:test:ask failed:", e);
+        return jsonError(res, 500, "Worker test run failed");
+      }
+    }
+
     // POST /v1/sandbox:worker:test:run — Record a completed test run.
     //   Body: { sessionId, responses: [...] }
     if (route === "/sandbox:worker:test:run" && method === "POST") {
@@ -9866,6 +10462,50 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       } catch (e) {
         console.error("image:generate failed:", e.message);
         return jsonError(res, 500, "Image generation failed");
+      }
+    }
+
+    // POST /v1/creator:bio:generate — Draft a creator bio (LinkedIn-anchored)
+    if (route === "/creator:bio:generate" && method === "POST") {
+      try {
+        const { generateCreatorBio } = require("./services/creatorAssist");
+        const result = await generateCreatorBio({
+          name: body.name,
+          source: body.source,
+          linkedinUrl: body.linkedinUrl,
+          workerName: body.workerName,
+          vertical: body.vertical,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("creator:bio:generate failed:", e.message);
+        return jsonError(res, 500, "Bio generation failed");
+      }
+    }
+
+    // POST /v1/sandbox:worker:extractspec — Prefill the canvas from the chat.
+    // Extracts the worker spec-so-far from the authoring conversation so the
+    // Define fields fill in live as the creator talks to Alex.
+    if (route === "/sandbox:worker:extractspec" && method === "POST") {
+      try {
+        const { extractWorkerSpec } = require("./services/creatorAssist");
+        const result = await extractWorkerSpec({ messages: Array.isArray(body.messages) ? body.messages : [] });
+        return res.json({ ok: true, spec: result });
+      } catch (e) {
+        console.error("sandbox:worker:extractspec failed:", e.message);
+        return jsonError(res, 500, "Spec extraction failed");
+      }
+    }
+
+    // POST /v1/worker:deck:generate — Generate a 10-slide subscriber pitch deck
+    if (route === "/worker:deck:generate" && method === "POST") {
+      try {
+        const { generateWorkerDeck } = require("./services/creatorAssist");
+        const result = await generateWorkerDeck({ spec: body.spec || {} });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("worker:deck:generate failed:", e.message);
+        return jsonError(res, 500, "Deck generation failed");
       }
     }
 
@@ -13978,6 +14618,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             officeHoursUrl: m.officeHoursUrl || null,
           });
         }
+        // Admin bypass: tenant admins/owners see their own fundraises' materials
+        // WITHOUT an investor_portal entitlement. The ID-check/entitlement gate is
+        // for external investors (LPs) — internal admins running the raise should
+        // not be locked out of their own data room.
+        try {
+          const memSnap = await db.collection("memberships")
+            .where("userId", "==", auth.user.uid).where("status", "==", "active").get();
+          const adminTenants = [...new Set(memSnap.docs.map(d => d.data())
+            .filter(m => m.role === "admin" || m.role === "owner").map(m => m.tenantId).filter(Boolean))];
+          const seen = new Set(materials.map(m => m.fundraiseId));
+          for (const tid of adminTenants) {
+            const frs = await db.collection("fundraises").where("tenantId", "==", tid).limit(50).get();
+            for (const fd of frs.docs) {
+              if (seen.has(fd.id)) continue;
+              const fr = fd.data(); const m = fr.materials || {};
+              materials.push({
+                fundraiseId: fd.id, fundraiseName: fr.name || null,
+                deckUrl: m.deckUrl || null, whitepaperUrl: m.whitepaperUrl || null,
+                dataRoomUrl: m.dataRoomUrl || null, officeHoursUrl: m.officeHoursUrl || null,
+                viaAdmin: true,
+              });
+              seen.add(fd.id);
+            }
+          }
+        } catch (admErr) { console.warn("investor:materials admin bypass failed:", admErr.message); }
+
         return res.json({ ok: true, materials, count: materials.length });
       } catch (e) {
         console.error("investor:materials failed:", e);
@@ -14001,8 +14667,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p><strong>The thesis</strong>: every regulated profession has rules a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as governed AI workers. The audit trail is cryptographic; the workers earn for the experts who built them; the platform consolidates SaaS for the businesses that run them.</p>
 <p><strong>What's there for you right now:</strong></p>
 <ul>
-  <li>Investor data room — <a href="https://app.titleapp.ai/data-room">app.titleapp.ai/data-room</a> (memorandum, deck, SAFE, NDA, warrant, patent portfolio)</li>
-  <li>Whitepaper — <a href="https://app.titleapp.ai/whitepaper">app.titleapp.ai/whitepaper</a></li>
+  <li>Investor data room — <a href="https://sociii.ai/data-room">sociii.ai/data-room</a> (memorandum, deck, SAFE, NDA, warrant, patent portfolio)</li>
+  <li>Whitepaper — <a href="https://sociii.ai/whitepaper">sociii.ai/whitepaper</a></li>
   <li>Direct line — reply to this email or text/call (951) 4-SOC-2444</li>
 </ul>
 <p>Aiming for first close inside 30 days. If you want a 30-min call to walk through, hit reply with two windows.</p>
@@ -14020,7 +14686,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p>Quick note from Sean Combs, founder of SOCIII. We're running a pre-seed round and your name surfaced as someone who'd find the thesis interesting.</p>
 <p><strong>30-second pitch</strong>: every regulated profession (medicine, law, aviation, real estate, finance) runs on rules that a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as AI workers governed by cryptographic audit trails. The experts earn from their workers; the platform consolidates SaaS for the businesses that run them.</p>
 <p><strong>If you'd like to take a look</strong>, open your SOCIII investor workspace. You'll find the deck and whitepaper waiting; the data room (memorandum, post-money SAFE, NDA, warrant, patent portfolio) unlocks after a 90-second accreditation check:</p>
-<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your investor workspace →</a></p>
+<p><a href="${vars.magicUrl || "https://sociii.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your investor workspace →</a></p>
 <p>Patent-pending. Pre-seed open to accredited investors. Aiming for first close inside 30 days. If a 30-min call makes sense, reply with two windows.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
@@ -14393,7 +15059,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p><strong>30-second pitch</strong>: SOCIII captures the rules of regulated professions from senior experts and ships them as governed AI workers with cryptographic audit trails. The experts earn from their workers; businesses consolidate SaaS through the platform.</p>
 <p><strong>The advisor offer</strong>: 0.5–2.5% equity vesting over 24 months, milestone-tied. Specific cadence and focus tailored to where you can move the needle. HOMMIE Warrant structure (downside-protected; details in the agreement).</p>
 <p><strong>If you'd like to take a look</strong>, the next step is a quick qualification + your advisor kit. Open your SOCIII workspace to review the deck, complete a quick ID check, and sign the advisor agreement when ready:</p>
-<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your advisor workspace →</a></p>
+<p><a href="${vars.magicUrl || "https://sociii.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your advisor workspace →</a></p>
 <p>Reply with two windows if a 30-min intro call makes sense before you sign anything.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
@@ -19094,11 +19760,11 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
               // CODEX 49.21 — image generation tool for all business workers
               const businessTools = [{
                 name: "generate_image",
-                description: "Generate an image, illustration, icon, logo, or visual asset when the user asks for artwork or creative visuals.",
+                description: "Generate ORIGINAL artwork — an illustration, icon, logo, diagram, or creative visual the user explicitly asks to be drawn/created. NEVER use this to depict a real place: no maps, satellite views, aerial/drone shots, street views, parcel/plat/site/floor plans, or photos of a real address or property. A generated image of a real location is a fabrication (invented streets and labels). For a map or location, emit a card:re-map marker (real Google Maps) instead; for a real aerial use a Google Static Maps satellite tile or Street View.",
                 input_schema: {
                   type: "object",
                   properties: {
-                    prompt: { type: "string", description: "Descriptive prompt for the image to generate" },
+                    prompt: { type: "string", description: "Descriptive prompt for ORIGINAL artwork only — not a real-world location, map, or property." },
                     aspect_ratio: { type: "string", enum: ["9:16", "1:1", "16:9"], description: "Aspect ratio. Default: 1:1" },
                   },
                   required: ["prompt"],
@@ -20270,6 +20936,60 @@ Never attempt to output an entire multi-page document in a single response. For 
       } catch (e) {
         console.error("❌ logbook:append failed:", e);
         return jsonError(res, 500, "Failed to append logbook entry");
+      }
+    }
+
+    // ----------------------------
+    // NURSING EDUCATION — LIVE student records (#60). The worker writes real
+    // append-only events to each student's academic_record DTC via vaultWriter.
+    // ----------------------------
+
+    // GET /v1/nurse-edu:students[?program=clearwater-nursing] — the instructor's
+    // cohort: every academic_record DTC in the program tenant + its events.
+    if (route === "/nurse-edu:students" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const program = req.query?.program?.toString() || "clearwater-nursing";
+        const snap = await db.collection("dtcs")
+          .where("tenantId", "==", program).where("type", "==", "academic_record").get();
+        const students = [];
+        for (const d of snap.docs) {
+          const evSnap = await db.collection("logbookEntries").where("dtcId", "==", d.id).get();
+          const events = evSnap.docs.map(e => ({ id: e.id, ...e.data() }))
+            .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          students.push({ dtcId: d.id, ...(d.data().metadata || {}), eventCount: events.length, events });
+        }
+        return res.json({ ok: true, program, count: students.length, students });
+      } catch (e) {
+        console.error("nurse-edu:students failed:", e);
+        return jsonError(res, 500, "Failed to load student records");
+      }
+    }
+
+    // POST /v1/nurse-edu:append — append a real event to a student's academic
+    // record (reflection, slo.observed, grade.locked, …). Body: { dtcId,
+    // entryType, data }. vaultWriter enforces the instructor's write rights.
+    if (route === "/nurse-edu:append" && method === "POST") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const ctx = getCtx(req, body, nAuth.user);
+        const { dtcId, entryType, data } = body || {};
+        if (!dtcId || !entryType || !data) return jsonError(res, 400, "dtcId, entryType, and data required");
+        const { appendEvent } = require("./services/vault/vaultWriter");
+        const { studentRecord } = require("./services/vault/schemas");
+        const shaped = studentRecord.isValidEvent(entryType) ? studentRecord.event(entryType, data) : { entryType, data };
+        const result = await appendEvent({
+          userId: ctx.userId, dtcId, entryType: shaped.entryType, data: shaped.data,
+          worker: { slug: "nursing-education-001", vault_writes: ["academic_record"] },
+          createdByWorker: "Student Evaluation",
+        });
+        if (!result.ok) return res.status(result.code === "forbidden" ? 403 : 400).json(result);
+        return res.json(result);
+      } catch (e) {
+        console.error("nurse-edu:append failed:", e);
+        return jsonError(res, 500, "Failed to append student event");
       }
     }
 
@@ -23472,13 +24192,16 @@ Analyze now:`;
     // ----------------------------
     // RAAS (existing handlers)
     // ----------------------------
-    if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows(req, res, ctx);
-    if (route === "/raas:workflows" && method === "POST") return handleRaasWorkflows(req, res, ctx);
+    // #40/#3.2 — handlers take a single { req, res, method, body, ctx } object;
+    // they were being called positionally (req, res, ctx), so res/method/body
+    // were undefined and every RAAS route threw. Pass the object they expect.
+    if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows({ req, res, method, body, ctx });
+    if (route === "/raas:workflows" && method === "POST") return handleRaasWorkflows({ req, res, method, body, ctx });
 
-    if (route === "/raas:catalog:upsert" && method === "POST") return handleRaasCatalogUpsert(req, res, ctx);
-    if (route === "/raas:packages:create" && method === "POST") return handleRaasPackagesCreate(req, res, ctx);
-    if (route === "/raas:packages:bindFiles" && method === "POST") return handleRaasPackagesBindFiles(req, res, ctx);
-    if (route === "/raas:packages:get" && method === "GET") return handleRaasPackagesGet(req, res, ctx);
+    if (route === "/raas:catalog:upsert" && method === "POST") return handleRaasCatalogUpsert({ req, res, method, body, ctx });
+    if (route === "/raas:packages:create" && method === "POST") return handleRaasPackagesCreate({ req, res, method, body, ctx });
+    if (route === "/raas:packages:bindFiles" && method === "POST") return handleRaasPackagesBindFiles({ req, res, method, body, ctx });
+    if (route === "/raas:packages:get" && method === "GET") return handleRaasPackagesGet({ req, res, method, body, ctx });
 
     // ----------------------------
     // TITLE / PROVENANCE (Bearer token access for frontend)
@@ -26416,6 +27139,93 @@ exports.sandboxDailyProcessor = onSchedule(
     const { detectAbandonment } = require("./services/sandbox/abandonmentDetector");
     const abandonResult = await detectAbandonment();
     console.log("[sandboxDailyProcessor]", { abandonResult });
+  }
+);
+
+// ----------------------------
+// CHAT CANARY (every 15 min — synthetic monitor for baseline AI chat)
+// ----------------------------
+// Sends synthetic messages through the live chat endpoint; on GREEN->RED it
+// TEXTS + EMAILS the recipients in config/chatHealth.alertRecipients. So we
+// hear about broken chat in ~15 min, not from a customer. Status lives in
+// config/chatHealth; history in chatHealthEvents.
+exports.chatCanary = onSchedule(
+  {
+    schedule: "*/15 * * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], // SENDGRID_API_KEY + TWILIO_PHONE_NUMBER come from .env
+  },
+  async () => {
+    const { runChatCanary } = require("./monitoring/chatCanary");
+    const result = await runChatCanary();
+    console.log("[chatCanary]", result);
+  }
+);
+
+// On-demand: GET/POST /v1/chat:health — run the canary now (admin) or read
+// the last status. Lets Sean (and Claude) check chat health anytime.
+// Handled inline in the api function; see route "/chat:health".
+
+// ----------------------------
+// WORKER HEALTH CANARY (every 6h — rules-loaded, catalog integrity, render-ok)
+// ----------------------------
+// Catches the bug classes we keep hitting: compliance rules silently off (#42),
+// workers that render the generic shell (#37/#31), broken catalog rows. Texts +
+// emails config/workerHealth.alertRecipients on a NEW red. On-demand:
+// GET /v1/worker:health (?run=1).
+exports.workerCanary = onSchedule(
+  {
+    schedule: "0 */6 * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], // SENDGRID + TWILIO_PHONE_NUMBER from .env
+  },
+  async () => {
+    const { runWorkerCanary } = require("./monitoring/workerCanary");
+    const result = await runWorkerCanary();
+    console.log("[workerCanary]", result);
+  }
+);
+
+// ----------------------------
+// DAILY X MARKETING WORKER (9am PT — one first-party promo video/day)
+// ----------------------------
+// Rotates through the SOCIII Digital Worker showcase clips, posts to our own
+// @SOCIIIai account. Organic only (no paid promotion). Kill switch:
+// config/marketingWorker.xDailyEnabled = false.
+exports.dailyXMarketingPost = onSchedule(
+  {
+    schedule: "0 17 * * *", // 17:00 UTC = 9am PT / noon ET
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"],
+  },
+  async () => {
+    const { runDailyXPost } = require("./marketing/dailyXPost");
+    const result = await runDailyXPost();
+    console.log("[dailyXMarketingPost]", result);
+  }
+);
+
+// ----------------------------
+// NAV DATABASE PACKAGER (ForeFlight model — #56)
+// ----------------------------
+// Runs daily and builds any region packages missing for the current AIRAC cycle,
+// so it self-heals onto each new 28-day cycle within a day of it taking effect.
+// Idempotent (skips regions already packaged this cycle). FAA NASR → Storage.
+exports.navDataPackager = onSchedule(
+  {
+    schedule: "30 8 * * *", // 08:30 UTC daily
+    timeZone: "UTC",
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    const { runNavPackager } = require("./services/aviation/navPackager");
+    const result = await runNavPackager();
+    console.log("[navDataPackager]", JSON.stringify(result));
   }
 );
 

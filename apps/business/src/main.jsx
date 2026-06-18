@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
+import { initVersionCheck } from "./utils/versionCheck.js";
 
 // 47.9 HOTFIX: Service worker DISABLED. The register/unregister/reload cycle
 // was causing infinite page reload loops on mobile. Disabling entirely until
@@ -17,3 +18,6 @@ createRoot(document.getElementById("root")).render(
     <App />
   </StrictMode>
 );
+
+// S52.45 — detect a newer deploy in a long-lived tab → one-click reload banner.
+initVersionCheck();

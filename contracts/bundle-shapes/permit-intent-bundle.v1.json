@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/permit-intent-bundle.v1.json",
+  "title": "permit-intent-bundle/v1",
+  "description": "Next-step procedure payload emitted by ZONING-001 (\"file the permit\") and accepted by PERMIT-001-CITIZEN. Carries the parcel, the intended use, the entitlement path the consumer worker identified, and the specific permits required — so the permitting worker can open the application workflow without re-deriving the path. ZONING-001 surfaces the procedure; it does NOT file.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Code (Track scaffold)",
+  "inheritsFrom": ["CODEX S52.43 (Platform RAAS Invariants)", "CODEX S52.42 (accepts-contract substrate)"],
+  "type": "object",
+  "required": ["parcelRef", "intendedUse", "entitlementPath", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelRef": {
+      "type": "object",
+      "required": ["apn", "jurisdiction"],
+      "properties": {
+        "bundleShape": { "type": "string", "const": "parcel-bundle/v1" },
+        "apn": { "type": "string" },
+        "address": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "dtcId": { "type": "string" }
+      }
+    },
+    "intendedUse": {
+      "type": "object",
+      "required": ["use"],
+      "properties": {
+        "use": { "type": "string", "examples": ["single-family-rebuild", "adu", "duplex", "home-occupation"] },
+        "verdictBand": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] }
+      }
+    },
+    "entitlementPath": {
+      "type": "object",
+      "required": ["pathType"],
+      "properties": {
+        "pathType": { "type": "string", "enum": ["ministerial", "conditional", "legislative"] },
+        "timeline": { "type": "string" },
+        "feesRange": { "type": "string" },
+        "steps": { "type": "array", "items": { "type": "object", "properties": { "step": { "type": "string" }, "cas": { "type": "string" } } } }
+      }
+    },
+    "requiredPermits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permit", "issuingBody"],
+        "properties": {
+          "permit": { "type": "string", "examples": ["building_permit", "SMA_permit", "conditional_use_permit", "STR_permit"] },
+          "issuingBody": { "type": "string" },
+          "citation": { "type": "string", "description": "Live-resolver code section requiring the permit (EH-01)." },
+          "sourceUrl": { "type": "string", "format": "uri" },
+          "cas": { "type": "string", "enum": ["RED", "YELLOW", "BLUE", "WHITE", "GREEN"] }
+        }
+      }
+    },
+    "hardGates": {
+      "type": "array",
+      "description": "RED hard requirements that apply regardless (e.g. SMA permit). Surfaced so the permitting workflow cannot skip them.",
+      "items": { "type": "object", "properties": { "gate": { "type": "string" }, "consequence": { "type": "string" } } }
+    },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "const": "ZONING-001" },
+        "workerVersion": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string" }
+      }
+    },
+    "emittedAt": { "type": "string", "format": "date-time" }
+  },
+  "notes": {
+    "compliance": "ZONING-001 surfaces the next-step procedure and required permits; it does NOT submit applications. PERMIT-001-CITIZEN owns filing.",
+    "eh01_application": "requiredPermits[].citation MUST be a live-resolver section; resolver_required placeholders do not ship.",
+    "hard_gate_application": "hardGates (e.g. SMA permit required regardless, RULE-11) are carried forward as non-skippable so the downstream permitting workflow surfaces them before breaking ground."
+  }
+}

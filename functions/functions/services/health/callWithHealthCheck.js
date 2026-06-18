@@ -183,6 +183,46 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
 }
 
 /**
+ * Refund credits previously deducted — e.g. the downstream paid API call failed
+ * AFTER we charged, so the customer shouldn't pay for nothing. Best-effort;
+ * mirrors the pool logic in checkAndDeductCredits (tenant pool if tenantId,
+ * else the user's personal pool) and logs a credit_refund usage event.
+ */
+async function refundCredits(userId, connectorId, creditCost, context = {}) {
+  if (!userId || !creditCost || creditCost <= 0) return { refunded: false };
+  const db = getDb();
+  const tenantId = context.tenantId && context.tenantId !== "vault" && context.tenantId !== "personal" && !String(context.tenantId).startsWith("guest-")
+    ? context.tenantId : null;
+  try {
+    if (tenantId) {
+      await db.doc(`tenants/${tenantId}`).update({
+        prepaidCredits: admin.firestore.FieldValue.increment(creditCost),
+      });
+    } else {
+      await db.doc(`users/${userId}`).update({
+        "billing.prepaidCredits": admin.firestore.FieldValue.increment(creditCost),
+        prepaidCredits: admin.firestore.FieldValue.increment(creditCost),
+      });
+    }
+    await db.collection(USAGE_EVENTS_COLLECTION).add({
+      userId,
+      ownerType: tenantId ? "tenant" : "user",
+      ownerId: tenantId || userId,
+      workerId: context.workerId || null,
+      connectorId,
+      creditsUsed: -creditCost,
+      event_type: "credit_refund",
+      pass_through: true,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { refunded: true };
+  } catch (e) {
+    console.error(`[creditRefund] Failed for ${userId}/${connectorId}:`, e.message);
+    return { refunded: false };
+  }
+}
+
+/**
  * @param {string} serviceName - e.g. "aviationweather", "notamify", "realie"
  * @param {Function} fn - async function that makes the external API call
  * @param {Object} [opts]
@@ -317,4 +357,4 @@ async function getServiceHealth(serviceName) {
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-module.exports = { callWithHealthCheck, checkAndDeductCredits, getAllHealthStatuses, getServiceHealth, logAviationDataGap };
+module.exports = { callWithHealthCheck, checkAndDeductCredits, refundCredits, getAllHealthStatuses, getServiceHealth, logAviationDataGap };

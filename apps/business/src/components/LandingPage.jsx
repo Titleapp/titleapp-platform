@@ -287,7 +287,7 @@ export default function LandingPage() {
             <a href={`${appBase}/workers`} style={S.footerLink}>Workers</a>
             <a href={`${appBase}/pricing`} style={S.footerLink}>Pricing</a>
             <a href={`${appBase}/whitepaper`} style={S.footerLink}>Whitepaper</a>
-            <a href={`${appBase}/docs/sdk`} style={S.footerLink}>SDK</a>
+            <a href={`${appBase}/docs/what-is-sociii`} style={S.footerLink}>SDK</a>
             <a href={`${appBase}/docs/api`} style={S.footerLink}>API</a>
             <a href={`${appBase}/docs`} style={S.footerLink}>Docs</a>
             <a href={`${appBase}/press`} style={S.footerLink}>Press</a>
@@ -298,7 +298,7 @@ export default function LandingPage() {
           <div style={S.footerSocials}>
             <a href="https://x.com/sociiiai" target="_blank" rel="noopener" style={S.footerLink}>X</a>
             <a href="https://linkedin.com/company/sociii-inc/" target="_blank" rel="noopener" style={S.footerLink}>LinkedIn</a>
-            <a href="https://github.com/SOCIII-Inc" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
+            <a href="https://github.com/sociii" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
             <a href="https://www.youtube.com/@SOCIII-AI" target="_blank" rel="noopener" style={S.footerLink}>YouTube</a>
             <a href="https://www.tiktok.com/@sociii.official" target="_blank" rel="noopener" style={S.footerLink}>TikTok</a>
           </div>

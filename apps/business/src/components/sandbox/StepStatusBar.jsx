@@ -16,7 +16,10 @@ const COLORS = {
 };
 
 // 47.9 HOTFIX: React.memo prevents re-render when parent re-renders but steps haven't changed.
-export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick, accent = "#16A34A" }) {
+// peekAll (S52.45) — when true, EVERY step is clickable to explore, including
+// red/not-started ones. No linear lock. Used by the worker sandbox so creators
+// can roam the whole pipeline up front and watch pills go green as they finish.
+export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick, accent = "#16A34A", peekAll = false }) {
   const [hoverIdx, setHoverIdx] = useState(-1);
 
   if (!steps.length) return null;
@@ -40,8 +43,9 @@ export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick
         const c = COLORS[state] || COLORS.cold;
         const isActive = step.id === activeStep;
         // CODEX 48.5 — idle is also tappable. You can peek ahead at empty sections.
-        const isTappable = state === "warm" || state === "hot" || state === "idle";
-        const showLockTooltip = state === "cold" && hoverIdx === i;
+        // S52.45 — peekAll makes even red/cold steps tappable (free exploration).
+        const isTappable = peekAll || state === "warm" || state === "hot" || state === "idle";
+        const showLockTooltip = !peekAll && state === "cold" && hoverIdx === i;
         const prevLabel = i > 0 ? steps[i - 1].label : "the previous step";
         const lockTooltip = `Complete ${prevLabel} first.`;
         const nextState = steps[i + 1]?.state || "cold";
@@ -50,7 +54,7 @@ export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick
         return (
           <React.Fragment key={step.id}>
             <div
-              title={state === "cold" ? lockTooltip : ""}
+              title={state === "cold" && !peekAll ? lockTooltip : (state === "cold" ? "Not started — click to open" : "")}
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx(-1)}
               onClick={() => { if (isTappable && onStepClick) onStepClick(step.id); }}
@@ -70,7 +74,7 @@ export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick
                 flexShrink: 0,
                 position: "relative",
                 transition: "background 0.15s, border-color 0.15s",
-                opacity: state === "cold" ? 0.7 : 1,
+                opacity: state === "cold" && !peekAll ? 0.7 : 1,
               }}
             >
               <span

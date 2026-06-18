@@ -9,6 +9,7 @@
 import React from "react";
 import { resolveComponent } from "./CanvasComponentMap";
 import { CanvasDemoContext } from "./CanvasCardShell";
+import CanvasFallbackView from "./CanvasFallbackView";
 
 export default function CanvasPanel({ canvasData, onDismiss }) {
   if (!canvasData?.resolved) {
@@ -24,8 +25,11 @@ export default function CanvasPanel({ canvasData, onDismiss }) {
     ' payloadKeys=' + (context?.payload ? Object.keys(context.payload).slice(0, 8).join(',') : '(no payload)'));
 
   if (!Component) {
-    console.warn("CanvasPanel: no component found for", resolved.component);
-    return null;
+    // #40/#6.3 — an unregistered signal used to render null (a silently blank
+    // tab). Render the null-safe generic fallback instead, so advertised tabs
+    // show whatever content is present rather than nothing.
+    console.warn("CanvasPanel: no component found for", resolved.component, "— rendering generic fallback");
+    return <CanvasFallbackView payload={context?.payload || resolved} />;
   }
 
   // 50.10-T4 — flag this canvas as demo when the payload was populated from

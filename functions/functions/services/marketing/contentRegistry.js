@@ -196,6 +196,55 @@ const DOGFOOD_POSTS = [
     status: "draft",
     scheduledAt: null,
   },
+
+  // ── S52.45 manifesto card batch (A–E) + 265 post ──────────────────
+  {
+    contentId: "dogfood-tiktok-002",
+    campaign: "dogfood", platform: "tiktok", type: "manifesto", visualStyle: "black-card", persona: "company",
+    title: "Card A — coders guess, experts build",
+    text: "Coders guess.\nExperts build.\nsociii.ai",
+    renderNotes: "Black background. White text. SOCIII mark bottom-center. 5-sec static.",
+    status: "draft", scheduledAt: null,
+  },
+  {
+    contentId: "dogfood-tiktok-003",
+    campaign: "dogfood", platform: "tiktok", type: "manifesto", visualStyle: "black-card", persona: "company",
+    title: "Card B — leaves a receipt",
+    text: "Every AI says trust us.\nOurs leaves a receipt.\nsociii.ai",
+    renderNotes: "Black background. White text. SOCIII mark bottom-center. 5-sec static.",
+    status: "draft", scheduledAt: null,
+  },
+  {
+    contentId: "dogfood-tiktok-004",
+    campaign: "dogfood", platform: "tiktok", type: "manifesto", visualStyle: "black-card", persona: "company",
+    title: "Card C — admits what it can't do",
+    text: "An AI that admits\nwhat it can't do yet.\nsociii.ai",
+    renderNotes: "Black background. White text. SOCIII mark bottom-center. 5-sec static.",
+    status: "draft", scheduledAt: null,
+  },
+  {
+    contentId: "dogfood-tiktok-005",
+    campaign: "dogfood", platform: "tiktok", type: "manifesto", visualStyle: "black-card", persona: "company",
+    title: "Card D — built SOCIII on SOCIII",
+    text: "We built SOCIII on SOCIII.\nAnything less is a lie.\nsociii.ai",
+    renderNotes: "Black background. White text. SOCIII mark bottom-center. 5-sec static.",
+    status: "draft", scheduledAt: null,
+  },
+  {
+    contentId: "dogfood-tiktok-006",
+    campaign: "dogfood", platform: "tiktok", type: "manifesto", visualStyle: "black-card", persona: "company",
+    title: "Card E — free forever for helpers",
+    text: "265 workers.\nStill in development.\nFree for now.\nFree forever if you help us perfect them.\nsociii.ai",
+    renderNotes: "Black background. White text. SOCIII mark bottom-center. 5-sec static.",
+    status: "draft", scheduledAt: null,
+  },
+  {
+    contentId: "dogfood-x-002",
+    campaign: "dogfood", platform: "x", type: "manifesto", visualStyle: "personal-post", persona: "sean-personal",
+    title: "265 workers — free forever for helpers",
+    text: "265 workers, all in development. Free for now — and free forever for anyone who helps us perfect them. They'll even tell you when they're glitchy.\n\nsociii.ai #dogfood",
+    status: "draft", scheduledAt: null,
+  },
 ];
 
 const CAMPAIGN_META = {

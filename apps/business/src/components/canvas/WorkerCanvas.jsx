@@ -7,6 +7,7 @@ import { useRightPanel } from "../../context/RightPanelContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
 import { isDemoMode, clearDemoMode, restoreDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from "./sampleData";
 import PreviewBriefPanel from "./PreviewBriefPanel";
+import RealEstateWorkerCanvas, { isREWorker } from "./RealEstateWorkerCanvas";
 
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -889,6 +890,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const vertical = verticalLabel || w.vertical || w.suite || "Other";
   const isGame = !!w.gameConfig?.isGame;
   const workerSlug = w.workerId || w.slug;
+  const reWorker = isREWorker(w); // S52.44 — RE workers render the shared RE canvas
   const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
 
@@ -1268,8 +1270,13 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 </div>
               )}
 
+              {/* S52.44 — RE workers render the shared RE canvas (CAS panel +
+                  verdict heroes + KPI cards + flag stack) in place of the
+                  generic chips/intelligence preview. */}
+              {reWorker && <RealEstateWorkerCanvas worker={w} />}
+
               {/* Quick start chips — hidden in stage 3 for intelligence workers */}
-              {!(hasIntelligence && canvasStage === 3) && (
+              {!reWorker && !(hasIntelligence && canvasStage === 3) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                 {prompts.map((p, i) => (
                   <button
@@ -1306,7 +1313,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 <PreviewBriefPanel />
               )}
 
-              {/* Substrate badges — stage-aware (49.13) */}
+              {/* Substrate badges — stage-aware (49.13) — hidden for RE workers (shared RE canvas above) */}
+              {!reWorker && (
               <div
                 className="arrival-badges"
                 style={{
@@ -1331,6 +1339,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   />
                 )}
               </div>
+              )}
 
               <TrialBanner worker={w} />
 

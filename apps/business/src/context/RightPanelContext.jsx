@@ -15,15 +15,35 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const originRef = useRef(initialState || "STATE-1");
 
   const showRecommendations = useCallback((workerList, detectedVertical, detectedLabel) => {
-    // Lock: never revert from WORKSPACE_HOME — worker stays open until user explicitly leaves
-    if (state === "WORKSPACE_HOME") return;
+    // S52.45 — DISABLED ENTIRELY. The "<vertical> Workers" recommendation panel
+    // kept overlaying worker canvases and survived every targeted guard. Killed
+    // at the source: this never enters STATE-3. Worker discovery lives on the
+    // Workers page + home "Top 10", never as a canvas overlay.
+    return;
+    // Lock: never revert from WORKSPACE_HOME or CANVAS — a worker's canvas stays
+    // open until the user explicitly leaves. S52.44: added CANVAS so the
+    // "<vertical> Workers" recommendation panel can't hijack an open worker
+    // canvas on every chat answer (the CRE Analyst overlay bug).
+    if (state === "WORKSPACE_HOME" || state === "CANVAS") return;
+    // S52.45 — THE bulletproof overlay kill: if ANY worker workspace is open,
+    // never enter the recommendation state, regardless of `state`. activeWorkerData
+    // is set the moment a worker opens (showWorkerHome) and cleared only on
+    // leaveWorkspace — it's the reliable "inside a worker" signal. Prior guards
+    // checked WorkerStateContext.activeWorkerId, which is a DIFFERENT context and
+    // is not set in every open-worker flow, so the overlay slipped through.
+    if (activeWorkerData) return;
+    // S52.45 — belt-and-suspenders: a logged-in user is in their workspace, never
+    // the discovery funnel. The "{vertical} Workers" overlay is pure noise/bug
+    // there. Hard-off whenever a session token exists. (Reversible — the
+    // recommendation panel is for logged-OUT discovery visitors only.)
+    try { if (typeof localStorage !== "undefined" && localStorage.getItem("ID_TOKEN")) return; } catch {}
     // STATE-2 visitors: only accept workers matching their vertical (containment)
     if (state === "STATE-2" && detectedVertical && detectedVertical !== vertical) return;
     if (workerList && workerList.length > 0) setWorkers(workerList);
     if (detectedVertical) setVertical(detectedVertical);
     if (detectedLabel) setVerticalLabel(detectedLabel);
     setState("STATE-3");
-  }, [state, vertical]);
+  }, [state, vertical, activeWorkerData]);
 
   const showWorkerDetail = useCallback((worker) => {
     // Lock: never revert from WORKSPACE_HOME

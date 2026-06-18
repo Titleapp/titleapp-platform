@@ -21,6 +21,11 @@ function normalizeWorker(d) {
     commission: !!w.commission,
     creditCost: typeof w.creditCost === "number" ? w.creditCost : 1,
     headline: w.headline || "",
+    // S52.50 (keystone #31) — pass the worker's OWN canvas spec through so the
+    // data-driven renderer can show its designed tabs/blocks. Without this the
+    // renderer falls back to the generic shell for any non-fixture worker.
+    workerId: d.id,
+    canvasSpec: w.canvasSpec || w.canvas || null,
   };
 }
 

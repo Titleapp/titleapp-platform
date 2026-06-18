@@ -471,7 +471,7 @@ function PersonalSettings() {
           <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
             <div style={{ fontWeight: '600', marginBottom: '4px' }}>Blockchain Recording</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$0.99</div>
-            <div style={{ fontSize: '13px', color: '#64748b' }}>Per DTC. Permanent record on Polygon blockchain via Venly. Tamper-proof.</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Per DTC. Permanent record on the Base blockchain via Venly (Polygon available). Tamper-proof.</div>
           </div>
 
           <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
@@ -526,7 +526,7 @@ function PersonalSettings() {
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, marginBottom: "2px" }}>Enable Blockchain Record Keeping</div>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Additional fee applies. Records are stored on Polygon blockchain via VENLY.</div>
+                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Additional fee applies. Records are minted to the Base blockchain by default via VENLY (Polygon available).</div>
               </div>
             </div>
           </div>

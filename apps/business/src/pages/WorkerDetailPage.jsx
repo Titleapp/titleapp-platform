@@ -188,13 +188,20 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
 
   async function handleSubscribe() {
     if (onSubscribe) { onSubscribe(worker); return; }
+    // S52.47 — land the user INSIDE this worker's workspace, not the generic
+    // home. Stash the slug; the authenticated app consumes ta_open_worker on
+    // mount (App.jsx) and opens the worker with its canvas. Fixes the deep-link
+    // bug where "Start Free Trial" / "/login?redirect=" dumped to the landing.
+    try { sessionStorage.setItem("ta_open_worker", worker.slug || worker.id); } catch (_) {}
     setSubscribing(true);
     setSubError(null);
     try {
       const token = localStorage.getItem("ID_TOKEN");
-      if (!token) { window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname); return; }
+      // Not signed in → use the signin entry that lands in the app (meet-alex
+      // signs in then replaces to "/"), where ta_open_worker opens the worker.
+      if (!token) { window.location.href = "/meet-alex?action=signin"; return; }
 
-      // Call purchaseWorker which creates Stripe checkout session
+      // Signed in: subscribe, then go straight into the workspace.
       const res = await fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -202,9 +209,9 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
       });
       const data = await res.json();
       if (data.ok && data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        window.location.href = data.checkoutUrl; // paid worker → Stripe (returns, then opens)
       } else if (data.ok && data.subscribed) {
-        setSubscribed(true);
+        window.location.href = "/"; // free/beta worker → app opens it via ta_open_worker
       } else {
         setSubError(data.error || "Something went wrong");
       }
@@ -227,9 +234,15 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
             <WorkerIcon slug={worker.slug} size={32} color="#ffffff" />
           </div>
         </div>
-        <div style={S.badge}>{worker.suite}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+          <div style={S.badge}>{worker.suite}</div>
+          <span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>BETA</span>
+        </div>
         <h1 style={S.heroTitle}>{content.headline || worker.name}</h1>
         <p style={S.heroSub}>{content.subheadline || worker.description}</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 12, maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+          <strong>In development.</strong> This worker is free while in beta — it partly works and will be glitchy. Treat it as a test session, not a production tool.
+        </p>
       </div>
 
       {/* Tab bar — visible for subscribed users */}

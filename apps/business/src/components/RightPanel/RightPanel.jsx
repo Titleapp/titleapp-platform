@@ -8,6 +8,8 @@ import SessionEndCTA from "../worker/SessionEndCTA";
 import CanvasPanel from "../canvas/CanvasPanel";
 import CanvasTabBar from "../canvas/CanvasTabBar";
 import WorkerCanvas from "../canvas/WorkerCanvas";
+import { isREWorker } from "../canvas/RealEstateWorkerCanvas";
+import BetaNotice from "../BetaNotice";
 import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -323,6 +325,13 @@ export default function RightPanel() {
   // Listen for Alex recommendation events
   useEffect(() => {
     function onRecommendations(e) {
+      // S52.45: never overlay the "<vertical> Workers" recommendation panel on
+      // an ACTIVE worker workspace. RE-worker canvases are painted by
+      // WorkerCanvas (outside RightPanelContext state), so the CANVAS/
+      // WORKSPACE_HOME guard inside showRecommendations loses the race against a
+      // detectedVertical chat reply. Hard-block at the source whenever a worker
+      // is open — this is the recurring CRE Analyst overlay bug.
+      if (workerState?.activeWorkerId) return;
       const { vertical: v, workers: w, verticalLabel: label } = e.detail || {};
       if (v) {
         showRecommendations(w || [], v, label || null);
@@ -342,7 +351,7 @@ export default function RightPanel() {
       window.removeEventListener("ta:panel-show-recommendations", onRecommendations);
       window.removeEventListener("ta:panel-highlight-worker", onHighlight);
     };
-  }, [workers, showRecommendations, showWorkerDetail]);
+  }, [workers, showRecommendations, showWorkerDetail, workerState?.activeWorkerId]);
 
   async function loadLeaderboard(v) {
     setLoading(true);
@@ -432,6 +441,57 @@ export default function RightPanel() {
 
   const showStats = state === "STATE-1" || state === "STATE-2";
 
+  // ── S52.45: RE workers hold ONE persistent designed canvas ──────────
+  // Root cause of "the canvas flips the moment I chat": a chat signal sets
+  // canvasData + flips state→CANVAS, which (below) renders the GENERIC tab
+  // system and abandons the designed RealEstateWorkerCanvas. For any RE worker
+  // (has a RE_CANVAS entry), render the WorkerCanvas home view — which contains
+  // the designed canvas with its own internal tabs — for BOTH WORKSPACE_HOME
+  // and CANVAS states. The designed mockup persists; nothing flips; the
+  // recommendation overlay can't take over (this branch returns first).
+  const _reActive = workerState?.activeWorkerData || panel.activeWorkerData;
+
+  // S52.45 — Sean's directive: NO canvas > INCORRECT canvas. A worker explicitly
+  // flagged `canvasDesigned:false` (no designed canvas yet) shows a clean
+  // chat-only notice instead of falling back to a generic/wrong template. Opt-in
+  // per worker, so workers WITH real canvases (RE suite, CRE, spine) are untouched.
+  if ((state === "CANVAS" || state === "WORKSPACE_HOME") && _reActive && _reActive.canvasDesigned === false) {
+    const wn = _reActive.name || _reActive.display_name || "This worker";
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 32, textAlign: "center", color: "rgba(0,0,0,0.55)" }}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
+          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+        </svg>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "rgba(0,0,0,0.7)", marginBottom: 6 }}>Canvas not designed yet</div>
+        <div style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 320 }}>
+          {wn}'s visual canvas hasn't been built yet — this worker is <strong>chat-only</strong> for now. Everything works in the conversation on the left.
+        </div>
+      </div>
+    );
+  }
+
+  // S52.46 — RE workers render their static designed canvas here, EXCEPT when a
+  // live card (chat-pushed card:re-map / card:work-product / card:image, e.g. the
+  // real ATTOM Site Recon map) is present — those must reach the CanvasPanel
+  // branch below or the live map gets swallowed by the static canvas (codex H1).
+  const _liveCardSig = String(canvasData?.resolved?._signal || "");
+  const _isLiveCard = state === "CANVAS" && !!canvasData && _liveCardSig.startsWith("card:");
+  if ((state === "CANVAS" || state === "WORKSPACE_HOME") && _reActive && isREWorker(_reActive) && !_isLiveCard) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <BetaNotice />
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <WorkerCanvas
+            workerData={_reActive}
+            verticalLabel={panel.verticalLabel}
+            relatedWorkers={relatedWorkers || []}
+            onLeave={() => panel.leaveWorkspace()}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // ── CANVAS: Canvas Protocol card (44.9) + tab bar (50.10-T3) ──
   if (state === "CANVAS" && canvasData) {
     // canvasTabs may be on either context — RightPanel's activeWorkerData (set
@@ -443,6 +503,7 @@ export default function RightPanel() {
     const activeSignal = canvasData?.resolved?._signal;
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <BetaNotice />
         {tabs.length > 0 && (
           <CanvasTabBar
             tabs={tabs}
@@ -464,9 +525,13 @@ export default function RightPanel() {
     const tabs = workerState?.activeWorkerData?.canvasTabs?.length
       ? workerState.activeWorkerData.canvasTabs
       : (panel.activeWorkerData?.canvasTabs || []);
+    // S52.44 — RE workers render their own internal tab bar inside the canvas;
+    // suppress the external (signal-driven) tab bar so there's only one control.
+    const reHome = isREWorker(workerState?.activeWorkerData || panel.activeWorkerData);
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {tabs.length > 0 && (
+        <BetaNotice />
+        {!reHome && tabs.length > 0 && (
           <CanvasTabBar
             tabs={tabs}
             activeSignal={null}
@@ -545,6 +610,17 @@ export default function RightPanel() {
   }
 
   // ── STATE-2 & STATE-3: Worker Cards ─────────────────────────
+  // S52.45 HARD KILL: never render the "<vertical> Workers" recommendation
+  // panel while inside ANY active worker. Both ChatPanel (direct
+  // showRecommendations call @1372) and MeetAlex (event) flip the panel to
+  // STATE-3 on a detectedVertical chat reply, which overlays the worker canvas.
+  // This is timing-independent — regardless of how state reached STATE-2/3, if
+  // a worker is open the right pane belongs to that worker. (CANVAS /
+  // WORKSPACE_HOME already returned above, so the worker canvas is unaffected.)
+  if (state === "STATE-3" || panel.activeWorkerData || workerState?.activeWorkerId || workerState?.activeWorkerData) {
+    return null; // S52.45 — recommendation overlay permanently disabled (never renders STATE-3)
+  }
+
   return (
     <div style={S.wrap}>
       {showStats && <StatsHeader />}

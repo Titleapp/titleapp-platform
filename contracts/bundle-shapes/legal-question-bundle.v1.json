@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sociii.ai/contracts/bundle-shapes/legal-question-bundle.v1.json",
+  "title": "legal-question-bundle/v1",
+  "description": "Escalation payload emitted by ZONING-001 (consumer simplifier) when stakes rise (RULE-05) and accepted by LAW-LANDUSE-001 (lawyer-grade opinion). Carries the parcel, the question, and the consumer-side zoning context already gathered so the lawyer-grade worker does not re-pull from scratch. The escalation ladder: free consumer simplifier -> paid lawyer-grade opinion.",
+  "version": "1.0.0",
+  "ratifiedDate": "2026-06-07",
+  "ratifiedBy": "Code (Track scaffold)",
+  "inheritsFrom": ["CODEX S52.43 (Platform RAAS Invariants)", "CODEX S52.42 (accepts-contract substrate)"],
+  "type": "object",
+  "required": ["parcelRef", "question", "emittedBy", "emittedAt"],
+  "properties": {
+    "parcelRef": {
+      "type": "object",
+      "required": ["apn", "jurisdiction"],
+      "properties": {
+        "bundleShape": { "type": "string", "const": "parcel-bundle/v1" },
+        "apn": { "type": "string" },
+        "address": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "dtcId": { "type": "string" }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["rawText"],
+      "properties": {
+        "rawText": { "type": "string" },
+        "structuredIntent": { "type": "string", "examples": ["adu", "variance", "cup", "rezone", "subdivide", "coastal"] },
+        "proposedChange": { "type": "object", "properties": { "currentUse": { "type": "string" }, "proposedUse": { "type": "string" }, "scope": { "type": "string" } } }
+      }
+    },
+    "zoningContext": {
+      "type": "object",
+      "description": "What the consumer worker already established — passed forward so LAW-LANDUSE-001 starts warm. Reference, not authority: the lawyer-grade worker re-verifies anything it cites.",
+      "properties": {
+        "sourceBundle": { "type": "string", "const": "zoning-verdict-bundle/v1" },
+        "verdictBand": { "type": "string", "enum": ["GREEN", "YELLOW", "RED"] },
+        "zoningClass": { "type": "string" },
+        "citedSections": { "type": "array", "items": { "type": "object", "properties": { "citation": { "type": "string" }, "sourceUrl": { "type": "string" }, "versionPin": { "type": "string" } } } },
+        "overlays": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "escalationReason": {
+      "type": "string",
+      "examples": ["discretionary_path", "legislative_rezone", "coastal_hearing", "contested", "user_requested_lawyer"]
+    },
+    "userSupplied": {
+      "type": "array",
+      "description": "Anything the user uploaded (CC&Rs, prior approvals). Reagan Rule — carried forward with verified:false.",
+      "items": { "type": "object", "properties": { "kind": { "type": "string" }, "ref": { "type": "string" }, "verified": { "type": "boolean", "default": false } } }
+    },
+    "emittedBy": {
+      "type": "object",
+      "required": ["workerId", "workerVersion"],
+      "properties": {
+        "workerId": { "type": "string", "const": "ZONING-001" },
+        "workerVersion": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "activePersonaId": { "type": "string" }
+      }
+    },
+    "emittedAt": { "type": "string", "format": "date-time" }
+  },
+  "notes": {
+    "compliance": "This bundle is a question + context handoff, not an opinion. LAW-LANDUSE-001 produces the legal opinion; ZONING-001 never gives binding legal advice.",
+    "reagan_rule_application": "userSupplied items carry verified:false; the receiving worker re-verifies before citing.",
+    "eh01_application": "zoningContext.citedSections are reference pointers; LAW-LANDUSE-001 re-resolves any authority it relies on via its own authorityResolver (no inherited-recall)."
+  }
+}

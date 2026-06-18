@@ -1,0 +1,48 @@
+{
+  "workerSlug": "feasibility",
+  "version": "1.0.0",
+  "trumpRule": "Per CODEX S52.43 §7 + S52.37: investment-grade research aesthetic, lender-presentable, data-density without clutter. Demand/Supply/composite verdict read in 3 seconds before any prose. CAS Color Protocol on every status element. NOT financial underwriting (that is W-002) — this is the market/demand study.",
+  "canvasTabs": [
+    {
+      "id": "demand",
+      "label": "Demand",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Default + most-visual tab. CAS instrument panel + 3 verdict hero cards (Demand % of capture target · Supply pipeline units/months · Median rent) + demand-catchment map (subject site + income-zone rings). BODY = demographics dashboard (FIXED 2026-06-07): median household income big-number + employment-growth YoY chart + age-distribution bars + demand score (sub-scores: household income / employment / vacancy / population / supply pressure) + top-5 employers + rent benchmark by unit type + capture-rate analysis. CAS flag stack (data-source-quality advisories)."
+    },
+    {
+      "id": "supply",
+      "label": "Supply",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Supply-pipeline timeline (Gantt-style: competing projects under entitlement or construction over next 24 months, colored by stage proposed/approved/under-construction) + supply-pressure verdict + absorption-window analysis."
+    },
+    {
+      "id": "comps",
+      "label": "Comps",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Rent/sale comp scatter plot (X=$/sqft, Y=unit size, colored by submarket, hover reveals address + recency) + filterable comp table. Every comp retrieved with provenance (EH-07) — address, date, price/rent, source, retrievedAt. No fabricated comps."
+    },
+    {
+      "id": "demographics",
+      "label": "Demographics",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "Full demographic deep-dive: population pyramid, household formation, income distribution, tenure split, employment by industry, economic base + growth. Plain-English headers (Median income, not MHI — Trump sub-B)."
+    },
+    {
+      "id": "sources",
+      "label": "Sources",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "operator",
+      "description": "Data-provenance / deposition substrate. Every source pull listed (Census ACS version, BLS QCEW, ATTOM, MLS, CoStar) with version pin + retrievedAt + hash + lender-readiness badge (which lender programs the study qualifies for, per data-tier coverage). The Deposition-Rule surface for a study a lender takes to underwriting committee."
+    }
+  ]
+}

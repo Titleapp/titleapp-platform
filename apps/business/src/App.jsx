@@ -46,6 +46,8 @@ import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
 import CommandCenter from "./sections/CommandCenter";
 import VaultDTCs from "./sections/VaultDTCs";
+import LearningRecord from "./sections/LearningRecord";
+import CECourseCanvas from "./sections/CECourseCanvas";
 import VaultAssets from "./sections/VaultAssets";
 import VaultDeadlines from "./sections/VaultDeadlines";
 import REListings from "./sections/REListings";
@@ -68,6 +70,7 @@ import AlexPipelines from "./sections/AlexPipelines";
 import SpineSection from "./sections/SpineSection";
 import HRSchedulePanel from "./sections/HRSchedulePanel";
 import NursingEducationPanel from "./sections/NursingEducationPanel";
+import VersionBanner from "./components/VersionBanner";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
 import SocialMedia from "./sections/SocialMedia";
@@ -77,6 +80,7 @@ import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
 import WorkerSandbox from "./pages/WorkerSandbox";
+import WorkerShowcase from "./pages/WorkerShowcase";
 import WorkerBuildLog from "./pages/WorkerBuildLog";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
@@ -106,6 +110,7 @@ import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas
 import { getLiveDataForTab } from "./components/canvas/liveData";
 import { lookupSignal } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
+import { isREWorker } from "./components/canvas/RealEstateWorkerCanvas";
 import { auth } from "./firebase";
 import { signInWithCustomToken, getRedirectResult } from "firebase/auth";
 import { processLandingHandoff } from "./utils/landingHandoff";
@@ -212,28 +217,28 @@ const WORKER_DETAIL_CONTENT = {
     ],
   },
   "cre-analyst": {
-    headline: "Screen deals with evidence, not hunches",
-    subheadline: "Every number cited. Every assumption tracked. Every risk flagged. IC memos your committee will actually trust.",
+    headline: "Days of analyst work, in seconds — on live market data",
+    subheadline: "Find distressed commercial deals, score them, map them, and pull the real people to call — straight from live ATTOM market data. Evidence-first, audit-anchored.",
     steps: [
-      { title: "Upload your deal docs", description: "Rent roll, T-12, offering memo, pitch deck — the analyst reads everything and extracts the numbers." },
-      { title: "Get an instant deal screen", description: "Cap rate, DSCR, LTV, IRR — every metric calculated and evidence-cited back to the source document and page." },
-      { title: "Review risks and assumptions", description: "Risk summary with gating failures, missing documents, and approval conditions. Assumptions register with sensitivity ratings." },
-      { title: "Generate the IC memo", description: "One-click Investment Committee memo with deal summary, thesis, metrics, risks, and recommendation — ready for your committee." },
+      { title: "Ask for a market", description: "\"Find distressed office in San Francisco I could enter the cap stack on.\" The analyst pulls live ATTOM data for real commercial parcels — no document upload required to get a first screen." },
+      { title: "Get a ranked distress screen", description: "Every candidate scored RED / YELLOW / GREEN on acquisition timing, asset class, and leverage — pinned on an interactive map, highest-distress deal first, in seconds." },
+      { title: "Work the deal", description: "First-pass underwriting, sensitivity, and a capital-stack entry plan — mezzanine debt or preferred equity to control a distressed asset without buying it outright. Plain-English decision memo at the end." },
+      { title: "Get the people to call", description: "Ask who holds the debt or who to contact — it fetches real names, titles, and emails at the servicers, lenders, debt funds, and brokers. No \"go run a title search.\"" },
     ],
     bridge: {
       title: "The Bridge",
-      text: "The CRE Analyst doesn't just screen deals — it feeds the rest of your workflow. When a deal passes screening, the Capital Stack Optimizer (W-016) picks up the underwriting to structure financing. The Investor Relations Worker (W-019) uses the deal summary for your offering materials. One Vault, one source of truth.",
+      text: "The CRE Analyst feeds the rest of your workflow. Distressed candidates flow to the Capital Stack worker to structure the entry, and the contacts it surfaces drop straight into your outreach. One Vault, one source of truth — every pull audit-anchored.",
     },
     valueProps: [
-      { label: "Evidence-first analysis", description: "Every numeric claim cites its source — file, page, section. No unsupported numbers. Ever." },
-      { label: "Six deal screen types", description: "CRE acquisition, PE, debt acquisition, entitlement, conversion, and refinance — each with domain-specific rules." },
-      { label: "Assumptions register", description: "Every assumption tracked with source, sensitivity rating, and notes. Know exactly where your model is vulnerable." },
-      { label: "Vault-connected to financing workers", description: "Deal data flows to Capital Stack Optimizer, Construction Lending, and Investor Relations automatically." },
+      { label: "Live market data", description: "Real ATTOM commercial property, sale, mortgage, and valuation data — screened in seconds, not weeks." },
+      { label: "Distress scoring + map", description: "Every candidate banded RED / YELLOW / GREEN and mapped. Lead with the highest-distress deal in the metro." },
+      { label: "Cap-stack entry analysis", description: "Mezzanine and preferred-equity structures to control a distressed asset without taking title." },
+      { label: "Real contacts, fetched", description: "Pulls live, contactable people — servicers, lenders, debt funds, brokers — with names and emails to reach out today." },
     ],
     faq: [
-      { q: "What does evidence-first mean?", a: "Every number in your IC memo — rent, NOI, cap rate, IRR, DSCR — must cite a source. Either an uploaded document (file + page), an integration record, or explicit user input. If evidence is missing, the field is marked UNKNOWN. The analyst never guesses." },
-      { q: "What deal types can it screen?", a: "Six types: CRE acquisition (rent roll + T-12), private equity (pitch deck + financials), debt acquisition (note terms + collateral), entitlement (site plan + zoning), conversion (existing use + capex budget), and refinance (current loan + property financials)." },
-      { q: "Does this replace my analyst?", a: "It augments them. The worker handles the data extraction, metric calculation, and evidence tracking — the work that takes your analyst hours. Your team focuses on judgment, negotiation, and relationships." },
+      { q: "Where does the data come from?", a: "Live ATTOM property, sale, mortgage, and AVM data, plus Apollo for contacts. The analyst fetches it on demand — you don't upload documents to get a first screen." },
+      { q: "How is \"distress\" determined?", a: "It's a transparent proxy from real signals — peak-era acquisition (2019–21), institutional-scale office, leverage, and valuation gaps. Confirmed missed-payment / Notice-of-Default status requires a separate foreclosure feed, and the analyst says so plainly." },
+      { q: "Is this investment advice?", a: "No — it's informational analysis on live data. SOCIII is not a registered investment adviser or broker-dealer. The analyst surfaces evidence and contacts; the decision is yours." },
     ],
   },
   "investor-relations": {
@@ -4434,6 +4439,12 @@ function WorkerHomeRenderer({ onBack }) {
     return <NursingEducationPanel />;
   }
 
+  // re-ce-nevada-001 — Nevada Real Estate CE worker (the "what do you hate"
+  // demo). Renders its own 4-tab canvas: Readiness / Course / Reporting / Done.
+  if (worker?.slug === "re-ce-nevada-001") {
+    return <CECourseCanvas />;
+  }
+
   // Investor entitlement override — when the IR/fundraise worker is opened
   // by an entitled investor (not the founder/tenant), swap the founder canvas
   // for the investor-side surface (position + materials/deadlines render via
@@ -4458,6 +4469,13 @@ function WorkerHomeRenderer({ onBack }) {
   // fixture renderer. Reset when worker changes.
   const [activeTabId, setActiveTabId] = React.useState(null);
   React.useEffect(() => { setActiveTabId(null); }, [worker?.slug]);
+  // S52.50 — clear any STALE canvas overlay when the worker changes, so a
+  // leftover card (e.g. an investor "Company updates" signal) can't block the
+  // worker's own canvas. WorkerCanvas tries this on mount, but the stale CANVAS
+  // branch renders first so WorkerCanvas never mounts — reset here instead.
+  React.useEffect(() => {
+    if (panel?.resetCanvas) panel.resetCanvas();
+  }, [worker?.slug, worker?.workerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // S51.37 — try real tenant data first, then fall back to sample fixture.
   // Real payload has no _demo flag → CanvasPanel skips the SAMPLE chip.
@@ -4568,10 +4586,19 @@ function WorkerHomeRenderer({ onBack }) {
     (!_hrPayloadTitle && activeTabId === "schedule")
   );
 
-  if (panel?.state === "CANVAS" && panel?.canvasData) {
+  // S52.46 — THE overlay, finally killed at the render gate. A discovery signal
+  // (vertical:* / browse:*) resolves to WorkerListCanvas (the "<vertical> Workers"
+  // card). It arrives via the server's data.canvasSignal/canvasRenders → showCanvas,
+  // so it bypassed every showRecommendations guard. When we're inside a worker, a
+  // discovery card must NEVER hijack the worker's own canvas — fall through to it.
+  const _activeSig = String(panel?.canvasData?.resolved?._signal || "");
+  const _isDiscoverySig = _activeSig.startsWith("vertical:") || _activeSig.startsWith("browse:");
+  const _insideWorker = !!(workerCtx?.activeWorkerData || workerCtx?.activeWorkerId || worker);
+
+  if (panel?.state === "CANVAS" && panel?.canvasData && !(_isDiscoverySig && _insideWorker)) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {tabs.length > 0 && (
+        {tabs.length > 0 && !isREWorker(worker) && (
           <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
@@ -4607,7 +4634,7 @@ function WorkerHomeRenderer({ onBack }) {
   if (workerCtx?.activeWorkerData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {tabs.length > 0 && (
+        {tabs.length > 0 && !isREWorker(worker) && (
           <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
@@ -4646,6 +4673,13 @@ function AdminShell({ onBackToHub, initialSection }) {
     function handleWorkerSelect(e) {
       const slug = e.detail?.slug;
       if (!slug) return;
+      // S52.44: if we're on a full-page /creators/* route, setting currentSection
+      // does nothing because the URL-based branch keeps rendering the creator view.
+      // Navigate to the worker's own URL to escape "creator mode".
+      if (window.location.pathname.startsWith("/creators/")) {
+        window.location.href = "/workers/" + slug;
+        return;
+      }
       // Any surface that fires ta:select-worker (Sidebar, VaultDashboard
       // My Workers cards, entitled-worker shortcuts) needs the worker
       // actually loaded into context so WorkerHomeRenderer has something
@@ -4660,6 +4694,19 @@ function AdminShell({ onBackToHub, initialSection }) {
       window.removeEventListener("ta:navigate", handleNav);
       window.removeEventListener("ta:select-worker", handleWorkerSelect);
     };
+  }, [workerCtx]);
+
+  // S52.47 — deep-link: a worker landing page (WorkerDetailPage) stashes
+  // ta_open_worker before routing through signin. When the authenticated app
+  // mounts, open that worker straight into the workspace (canvas + chat) instead
+  // of dropping the user on the generic dashboard/home. One-shot (key removed).
+  useEffect(() => {
+    let slug = null;
+    try { slug = sessionStorage.getItem("ta_open_worker"); } catch (_) {}
+    if (!slug) return;
+    try { sessionStorage.removeItem("ta_open_worker"); } catch (_) {}
+    if (workerCtx?.selectWorker) workerCtx.selectWorker(slug);
+    setCurrentSection("worker-home");
   }, [workerCtx]);
 
   function renderSection() {
@@ -4768,6 +4815,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <CommandCenter />;
       case "vault-dtcs":
         return <VaultDTCs />;
+      case "vault-learning-record":
+        return <LearningRecord />;
       case "vault-assets":
         return <VaultAssets />;
       case "vault-deadlines":
@@ -4837,16 +4886,11 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <ContentCalendar />;
       case "social-media":
         return <SocialMedia />;
-      case "financials":
-        return <SpineSection label="Financials" workerSlug="platform-accounting" />;
-      case "ap-ar":
-        return <SpineSection label="AP/AR" workerSlug="platform-accounting" />;
-      case "invoices":
-        return <SpineSection label="Invoices" workerSlug="platform-accounting" />;
-      case "chart-of-accounts":
-        return <SpineSection label="Chart of Accounts" workerSlug="platform-accounting" />;
-      case "kpi-builder":
-        return <SpineSection label="KPI Builder" workerSlug="platform-control-center-pro" />;
+      // S52.46 — removed 5 unreachable duplicate cases (financials / ap-ar /
+      // invoices / chart-of-accounts / kpi-builder). They re-declared sections
+      // already handled above (→ <Accounting/> / <CommandCenter/>); JS first-match
+      // wins so these never ran — a "fix-the-wrong-copy" trap. Live behavior
+      // unchanged.
       // ── Foundation Setup (CODEX 49.4) ──
       case "business-setup":
         return <BusinessSetup onComplete={() => setCurrentSection("dashboard")} />;
@@ -4872,6 +4916,7 @@ function AdminShell({ onBackToHub, initialSection }) {
   return (
     <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
       <AppErrorBoundary>
+        <VersionBanner />
         <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
         <WorkspaceInvestorDeadlines />
         <WorkspaceInvestorMaterials />
@@ -4992,6 +5037,12 @@ export default function App() {
   const isWorkerSandbox = /^\/sandbox\/worker\/?$/.test(window.location.pathname);
   const isWorkerBuildLog = /^\/sandbox\/worker\/buildlog\/?$/.test(window.location.pathname);
 
+  // ── /showcase route intercept (S52.64 — Worker Showcase) ───
+  // The visual "this is what a great worker looks like" front door before the
+  // sandbox form. Additive — the 9-step flow is untouched; this just shows the
+  // outcome first (Trump Rule). "Build a Worker" in the nav points here.
+  const isWorkerShowcase = /^\/showcase\/?$/.test(window.location.pathname);
+
   // ── /sandbox/video route intercept (S52.25 — VideoCard dogfood) ───
   // Renders the VideoCard component with a real YouTube URL so Sean can
   // visually confirm the embed pipe end-to-end without wiring it through
@@ -5012,7 +5063,11 @@ export default function App() {
   const workersSlugMatch = window.location.pathname.match(/^\/workers\/([a-z0-9-]+)\/?$/);
   const workerSlug = workersSlugMatch ? workersSlugMatch[1] : null;
   const workerRoute = workerSlug ? workerCatalog.find((w) => w.slug === workerSlug) : null;
-  const isLiveWorker = workerRoute && workerRoute.status === "live";
+  // S52.50 (#32) — openability != marketplace visibility. A worker published from
+  // the sandbox (status beta/unlisted/org) must open by direct link, even though
+  // only "live" gets marketplace-listed. Treat any published, non-"planned"
+  // worker as openable so the Distribute "Open your worker" link resolves.
+  const isLiveWorker = workerRoute && ["live", "beta", "unlisted", "org"].includes(workerRoute.status);
   const isPlannedWorker = workerRoute && workerRoute.status === "planned";
 
   // ── Vertical landing pages ──────────────────────────────────
@@ -5796,6 +5851,9 @@ export default function App() {
   if (isWorkerBuildLog) {
     return <WorkerBuildLog />;
   }
+  if (isWorkerShowcase) {
+    return <WorkerShowcase />;
+  }
   if (isWorkerSandbox) {
     return (
       <SandboxErrorBoundary>
@@ -6110,6 +6168,9 @@ export default function App() {
         <AppShell currentSection="creator-journey" onNavigate={(section) => {
           if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
           if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
+          // S52.44: escape the /creators/journey URL for any other section (see dashboard note).
+          try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+          window.location.href = "/";
         }}>
           <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading creator journey…</div>}>
             <CreatorJourney embedded />
@@ -6125,6 +6186,11 @@ export default function App() {
       <AppShell currentSection="creator-dashboard" onNavigate={(section) => {
         if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
         if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
+        // S52.44: any other section must LEAVE the /creators/dashboard URL — else the
+        // URL-based branch keeps rendering the dashboard ("stuck in creator mode"). Restore
+        // the target section on the main app via ta_redirect_page.
+        try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+        window.location.href = "/";
       }}>
         <CreatorDashboard />
       </AppShell>

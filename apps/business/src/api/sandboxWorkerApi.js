@@ -217,6 +217,11 @@ export function recordTestRun({ sessionId, responses }) {
   return call("POST", "/v1/sandbox:worker:test:run", { body: { sessionId, responses } });
 }
 
+// #35 — actually run the worker on one red-team question; returns its real answer.
+export function askWorker({ sessionId, questionId }) {
+  return call("POST", "/v1/sandbox:worker:test:ask", { body: { sessionId, questionId } });
+}
+
 // ─── File Upload ──────────────────────────────────────────────────────────
 
 /**
@@ -238,6 +243,37 @@ export async function uploadFile(file) {
       type: file.type || "application/octet-stream",
     },
   });
+}
+
+// ─── Image generation (canvas mockup) ────────────────────────────────────────
+
+/**
+ * Generate a canvas mockup image via fal.ai.
+ * @param {object} args
+ * @param {string} args.workerId
+ * @param {string} args.prompt   — <=500 chars
+ * @param {"cartoon"|"realistic"|"diagram"|"minimal"} [args.style]
+ * @param {"square"|"landscape_4_3"|"portrait_3_4"} [args.size]
+ */
+export function generateWorkerImage({ workerId, prompt, style, size }) {
+  return call("POST", "/v1/image:generate", { body: { workerId, prompt, style, size } });
+}
+
+// ─── Creator assist (bio + pitch deck) ───────────────────────────────────────
+
+/** Draft a creator bio from a LinkedIn URL and/or a few words about themselves. */
+export function generateCreatorBio({ name, source, linkedinUrl, workerName, vertical }) {
+  return call("POST", "/v1/creator:bio:generate", { body: { name, source, linkedinUrl, workerName, vertical } });
+}
+
+/** Generate a 10-slide subscriber-facing pitch deck for a worker. */
+export function generateWorkerDeck(spec) {
+  return call("POST", "/v1/worker:deck:generate", { body: { spec } });
+}
+
+/** Extract the worker spec-so-far from the chat so the canvas can prefill live. */
+export function extractWorkerSpec(messages) {
+  return call("POST", "/v1/sandbox:worker:extractspec", { body: { messages } });
 }
 
 /**
