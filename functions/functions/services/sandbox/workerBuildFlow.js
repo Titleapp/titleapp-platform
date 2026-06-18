@@ -239,6 +239,45 @@ async function publishWorkerFromSession(userId, sessionId, data) {
   const status = visibility === "unlisted" ? "unlisted"
     : (visibility === "org" || visibility === "org-only") ? "org" : "beta";
   const design = (data.workerSteps && data.workerSteps.design && data.workerSteps.design.data) || {};
+
+  // ── Carry the creator's RULES into the live worker ──
+  // The runtime chat (index.js) reads raas_tier_0..3 (arrays of strings) to build
+  // the worker's behavioral rules. Without this the published worker is an
+  // ungoverned generic LLM. The creator's 4 tiers live in the rules step.
+  const rules = (data.workerSteps && data.workerSteps.rules && data.workerSteps.rules.data) || {};
+  const toLines = (v) => Array.isArray(v)
+    ? v.filter(Boolean).map((s) => String(s).trim()).filter(Boolean)
+    : (typeof v === "string" ? v.split("\n").map((s) => s.trim()).filter(Boolean) : []);
+  const raas_tier_0 = toLines(rules.tier0);
+  const raas_tier_1 = toLines(rules.tier1);
+  const raas_tier_2 = toLines(rules.tier2);
+  const raas_tier_3 = toLines(rules.tier3);
+
+  // ── Carry the creator's KNOWLEDGE into the live worker ──
+  // Uploaded docs are parsed into the Studio Locker keyed by sessionId. Pull the
+  // extracted text (capped) and store it inline so the worker chat is grounded
+  // in the creator's documents (runtime injects dw.knowledgeBase).
+  let knowledgeBase = "";
+  try {
+    const { listDocuments } = require("./studioLocker");
+    const lockerDocs = await listDocuments({ userId, workerId: sessionId });
+    const parts = [];
+    let budget = 12000; // total char cap across docs
+    for (const d of lockerDocs) {
+      const txt = String(d.extractedText || "").trim();
+      if (!txt || budget <= 0) continue;
+      const title = d.name || d.title || "Document";
+      const slice = txt.slice(0, budget);
+      parts.push(`### ${title}\n${slice}`);
+      budget -= slice.length;
+    }
+    if (parts.length) {
+      knowledgeBase = "KNOWLEDGE BASE — the creator's uploaded source material. Ground your answers in this:\n\n" + parts.join("\n\n");
+    }
+  } catch (e) {
+    console.warn("[workerBuildFlow] knowledge load for publish failed:", e.message);
+  }
+
   const doc = {
     slug,
     display_name: name,
@@ -249,6 +288,11 @@ async function publishWorkerFromSession(userId, sessionId, data) {
     status,
     worker_type: "worker",
     canvasSpec: buildCanvasSpecFromSession(data),
+    raas_tier_0,
+    raas_tier_1,
+    raas_tier_2,
+    raas_tier_3,
+    ...(knowledgeBase ? { knowledgeBase } : {}),
     source: "sandbox",
     createdBy: userId,
     sandboxSessionId: sessionId,

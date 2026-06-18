@@ -2648,6 +2648,14 @@ IDENTITY RULES:
                 }
               }
 
+              // Sandbox-published workers carry their knowledge base inline on
+              // the digitalWorkers doc (written by publishWorkerFromSession from
+              // the creator's uploaded docs). Inject it so the worker is grounded
+              // in the creator's material, not a generic LLM.
+              if (workerPrompt && dw && typeof dw.knowledgeBase === "string" && dw.knowledgeBase.trim()) {
+                workerPrompt = `${dw.knowledgeBase}\n\n${workerPrompt}`;
+              }
+
               // S51.43.11 — Per-creator-worker knowledge files (live in
               // services/alex/knowledge/<slug>-context.md). Inject for any
               // worker that has one, with optional view-mode awareness
