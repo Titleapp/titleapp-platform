@@ -36,6 +36,7 @@ import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
 // ta_redirect_page handshake App.jsx already honors on load.
 import Sidebar from "../components/Sidebar";
 import CompletionMoment from "../components/sandbox/worker/CompletionMoment";
+import SandboxJourneyRail from "../components/sandbox/worker/SandboxJourneyRail";
 // CODEX 48.5 — Shared sandbox primitives (ported from DeveloperSandbox)
 import {
   renderMarkdown,
@@ -815,6 +816,14 @@ export default function WorkerSandbox() {
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
         <TopBar workerName={workerName} onOpenBuildLog={openBuildLog} onResetSession={resetSession} />
+
+        {/* Journey rail — makes the build story visible: what you do, the code
+            Claude writes underneath, then the worker pops in a new tab, then
+            you move into code to refine it. */}
+        <SandboxJourneyRail
+          activeStepId={activeStepId}
+          publishedUrl={state?.publishedWorker?.url || state?.workerSteps?.distribute?.data?.shareUrl || null}
+        />
 
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Chat panel — collapsible */}
