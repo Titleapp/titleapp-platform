@@ -412,7 +412,7 @@ export default function WorkerSandbox() {
   const [sessionId, setSessionId] = useState(null);
   const [state, setState] = useState(null);
   const [activeStepId, setActiveStepId] = useState(null);
-  const [sidebarHidden, setSidebarHidden] = useState(false); // hide the nav
+  const [sidebarHidden, setSidebarHidden] = useState(true);  // build-focus: nav collapsed by default (Chat · Canvas · Code fit); one click to show
   const [chatHidden, setChatHidden] = useState(false);       // collapse the chat column
   const [codeHidden, setCodeHidden] = useState(false);       // collapse the live-code column
   const [messages, setMessages] = useState([
