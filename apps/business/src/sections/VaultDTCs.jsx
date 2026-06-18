@@ -286,6 +286,7 @@ export default function VaultDTCs() {
   // past. Same currency idea as the AIRAC nav data + 83(b) deadlines, unified
   // across the whole Vault.
   const attention = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- current time is intentional here
     const today = Date.now();
     const items = [];
     for (const d of dtcs) {

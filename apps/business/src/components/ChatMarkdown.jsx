@@ -22,7 +22,7 @@ export default function ChatMarkdown({ children }) {
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
           // open links in a new tab, never navigate the SPA away
-          a: ({ node, ...props }) => (
+          a: ({ node: _node, ...props }) => (
             <a {...props} target="_blank" rel="noopener noreferrer" />
           ),
         }}

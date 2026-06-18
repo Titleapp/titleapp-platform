@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 // worker write itself. It reads the same session state the form fills from
 // (no terminal yet — this surfaces the real artifacts we already derive).
 
-const TOK = { key: "#c4b5fd", str: "#86efac", com: "#64748b", punct: "#94a3b8", text: "#e2e8f0" };
+const TOK = { key: "#c4b5fd", str: "#86efac", com: "#64748b", text: "#e2e8f0" };
 
 function toLines(v) {
   if (Array.isArray(v)) return v.filter(Boolean).map((s) => String(s).trim()).filter(Boolean);
@@ -59,29 +59,31 @@ function buildFiles(session) {
 }
 
 // Cheap "syntax" coloring: comments gray, # headings purple, "quoted" green.
-function colorize(line, i) {
-  if (/^\s*\/\//.test(line) || /none yet/.test(line)) return <span style={{ color: TOK.com }}>{line || " "}</span>;
+function colorize(line) {
+  if (/^\s*\/\//.test(line) || /none yet/.test(line)) return <span style={{ color: TOK.com }}>{line || " "}</span>;
   if (/^#/.test(line)) return <span style={{ color: TOK.key, fontWeight: 700 }}>{line}</span>;
   if (/^[A-Z][A-Z ()]+:/.test(line)) return <span style={{ color: TOK.key }}>{line}</span>;
   const parts = line.split(/("[^"]*")/g);
-  return parts.map((p, j) => /^"/.test(p) ? <span key={j} style={{ color: TOK.str }}>{p}</span> : <span key={j} style={{ color: TOK.text }}>{p}</span>);
+  return parts.map((p, j) => (/^"/.test(p) ? <span key={j} style={{ color: TOK.str }}>{p}</span> : <span key={j} style={{ color: TOK.text }}>{p}</span>));
 }
 
 export default function LiveCodePanel({ session }) {
   const files = buildFiles(session);
+  const sig = files.map((f) => f.body).join("");
   const [writing, setWriting] = useState(false);
   const prev = useRef("");
 
   useEffect(() => {
-    const sig = files.map((f) => f.body).join("");
-    if (prev.current && sig !== prev.current) {
-      setWriting(true);
-      const t = setTimeout(() => setWriting(false), 1400);
-      prev.current = sig;
-      return () => clearTimeout(t);
-    }
+    if (prev.current === "") { prev.current = sig; return undefined; }
+    if (sig === prev.current) return undefined;
     prev.current = sig;
-  }); // run every render; cheap string compare
+    // Brief "writing…" pulse whenever the derived spec changes. Deliberate
+    // setState-on-change; not a cascading render (guarded by the equality check).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWriting(true);
+    const t = setTimeout(() => setWriting(false), 1400);
+    return () => clearTimeout(t);
+  }, [sig]);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#0b1220", borderLeft: "1px solid #1e293b" }}>
@@ -100,7 +102,7 @@ export default function LiveCodePanel({ session }) {
             </div>
             <pre style={{ margin: 0, padding: "8px 14px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
               {f.body.split("\n").map((ln, i) => (
-                <div key={i}>{colorize(ln, i)}</div>
+                <div key={i}>{colorize(ln)}</div>
               ))}
             </pre>
           </div>
