@@ -26246,6 +26246,47 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // YOUTUBE (Google) — connect + upload (#64). Same Google OAuth client
+    // as Calendar/Drive; tokens at users/{uid}/integrations/youtube.
+    // ----------------------------
+    if (route && route.startsWith("/youtube:")) {
+      const ytAction = route.replace("/youtube:", "");
+      try {
+        const yt = require("./services/social/youtube");
+        switch (ytAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await yt.handleYouTubeAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await yt.handleYouTubeExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await yt.handleYouTubeDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await yt.handleYouTubeStatus(req, res, { userId: auth.user.uid });
+        }
+        case "upload": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { storagePath, title, description, tags, privacyStatus, categoryId } = req.body || {};
+          if (!storagePath || !title) return jsonError(res, 400, "storagePath and title required");
+          const result = await yt.uploadVideoFromStorage(auth.user.uid, storagePath, { title, description, tags, privacyStatus, categoryId });
+          return res.json(result);
+        }
+        default:
+          return jsonError(res, 404, "Unknown youtube action: " + ytAction);
+        }
+      } catch (e) {
+        console.error("youtube action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // VAULT: GOOGLE DRIVE (34.7-T2)
     // ----------------------------
     if (route && route.startsWith("/drive:")) {

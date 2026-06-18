@@ -3,7 +3,7 @@
  * Replaces SpineSection for "social-media" nav item under platform-marketing worker.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -13,6 +13,7 @@ const SOCIAL_PLATFORMS = [
   { id: "instagram", label: "Instagram", icon: "ig", color: "#E4405F" },
   { id: "twitter",   label: "X (Twitter)", icon: "X", color: "#000000" },
   { id: "tiktok",    label: "TikTok",    icon: "tt", color: "#010101" },
+  { id: "youtube",   label: "YouTube",   icon: "YT", color: "#FF0000" },
   { id: "gbp",       label: "Google Business", icon: "G", color: "#4285F4" },
 ];
 
@@ -90,9 +91,22 @@ export default function SocialMedia() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // For now, all platforms show as "not connected" since OAuth flows are link-based
-  // This will be enhanced when connector health endpoint returns real status
-  const connectedPlatforms = [];
+  // Live connection status. YouTube has a real status endpoint (#64); other
+  // platforms light up here as each one is wired.
+  const [connectedPlatforms, setConnectedPlatforms] = useState([]);
+
+  const refreshConnections = useCallback(async () => {
+    try {
+      const yt = await apiFetch("/v1/youtube:status");
+      setConnectedPlatforms(prev => {
+        const next = prev.filter(p => p !== "youtube");
+        if (yt && yt.connected) next.push("youtube");
+        return next;
+      });
+    } catch { /* status is best-effort */ }
+  }, []);
+
+  useEffect(() => { refreshConnections(); }, [refreshConnections]);
 
   function togglePlatform(id) {
     setSelectedPlatforms(prev =>
@@ -119,11 +133,43 @@ export default function SocialMedia() {
     }
   }, [content, selectedPlatforms]);
 
-  function handleConnect(platformId) {
-    // OAuth redirect — placeholder until per-platform OAuth is wired
-    const oauthUrl = `${API_BASE}/api?path=${encodeURIComponent(`/v1/oauth:${platformId}:authUrl`)}`;
-    window.open(oauthUrl, "_blank", "width=600,height=700");
-  }
+  const handleConnect = useCallback(async (platformId) => {
+    if (platformId === "youtube") {
+      try {
+        const res = await apiFetch("/v1/youtube:authUrl");
+        if (!res.authUrl) throw new Error("Could not start YouTube connection");
+        const popup = window.open(res.authUrl, "google-youtube-auth", "width=600,height=700");
+        if (!popup) throw new Error("Popup blocked — allow popups for this site and try again.");
+        const code = await new Promise((resolve, reject) => {
+          let done = false;
+          const handler = (event) => {
+            if (!event.data || event.data.type !== "google-youtube-auth-code" || !event.data.code) return;
+            window.removeEventListener("message", handler);
+            done = true;
+            resolve(event.data.code);
+          };
+          window.addEventListener("message", handler);
+          const poll = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(poll);
+                if (!done) { window.removeEventListener("message", handler); reject(new Error("Connection cancelled.")); }
+              }
+            } catch { /* cross-origin until redirect — ignore */ }
+          }, 500);
+        });
+        const ex = await apiFetch("/v1/youtube:exchangeCode", "POST", { code });
+        setToast(ex?.channel?.title ? `Connected YouTube: ${ex.channel.title}` : "YouTube connected");
+        setTimeout(() => setToast(null), 3000);
+        refreshConnections();
+      } catch (e) {
+        setError(e.message);
+      }
+      return;
+    }
+    // Other platforms (X, TikTok, …) light up as each direct OAuth is wired (#64).
+    setError(`${platformId}: connect is coming next — YouTube is live now.`);
+  }, [refreshConnections]);
 
   return (
     <div style={S.container}>
