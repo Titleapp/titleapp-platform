@@ -287,7 +287,7 @@ export default function LandingPage() {
             <a href={`${appBase}/workers`} style={S.footerLink}>Workers</a>
             <a href={`${appBase}/pricing`} style={S.footerLink}>Pricing</a>
             <a href={`${appBase}/whitepaper`} style={S.footerLink}>Whitepaper</a>
-            <a href={`${appBase}/docs/sdk`} style={S.footerLink}>SDK</a>
+            <a href={`${appBase}/docs/what-is-sociii`} style={S.footerLink}>SDK</a>
             <a href={`${appBase}/docs/api`} style={S.footerLink}>API</a>
             <a href={`${appBase}/docs`} style={S.footerLink}>Docs</a>
             <a href={`${appBase}/press`} style={S.footerLink}>Press</a>

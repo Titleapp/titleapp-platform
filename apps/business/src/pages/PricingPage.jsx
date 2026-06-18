@@ -269,7 +269,7 @@ export default function PricingPage() {
             <a href="/workers" style={S.footerLink}>Workers</a>
             <a href="/pricing" style={S.footerLink}>Pricing</a>
             <a href="/whitepaper" style={S.footerLink}>Whitepaper</a>
-            <a href="/docs/sdk" style={S.footerLink}>SDK</a>
+            <a href="/docs/what-is-sociii" style={S.footerLink}>SDK</a>
             <a href="/docs/api" style={S.footerLink}>API</a>
             <a href="/docs" style={S.footerLink}>Docs</a>
             <a href="/press" style={S.footerLink}>Press</a>
