@@ -14,8 +14,31 @@ import { CRE_DISTRESSED } from "./creAnalystData";
 
 const HIDE_SAMPLES_KEY = "ta_hide_samples";
 
+// Sample/fixture data is a MARKETING/GUEST affordance — it helps a prospect
+// visualize an empty worker. An authenticated operator inside a REAL company
+// tenant must NOT be shown fabricated people/KPIs by default (that's how "Maya
+// Chen" and a fake "Team Size 14" leaked into Sean's real SOCIII workspace and
+// into the HR worker's chat answers). So the default is context-aware:
+//   - explicit "1"  → samples OFF (user hid them)
+//   - explicit "0"  → samples ON  (user restored them, e.g. to demo to a prospect)
+//   - unset         → OFF for an authenticated real-tenant operator, ON otherwise
+function defaultDemoForContext() {
+  try {
+    const token = localStorage.getItem("ID_TOKEN");
+    const tenant = localStorage.getItem("TENANT_ID");
+    const realTenant = !!tenant && tenant !== "vault" && tenant !== "personal";
+    if (token && realTenant) return false; // real operator → no fabricated data
+  } catch {}
+  return true; // guest / marketing / personal-vault browsing → samples help
+}
+
 export function isDemoMode() {
-  try { return localStorage.getItem(HIDE_SAMPLES_KEY) !== "1"; } catch { return true; }
+  try {
+    const v = localStorage.getItem(HIDE_SAMPLES_KEY);
+    if (v === "1") return false;          // explicitly hidden
+    if (v === "0") return true;           // explicitly restored
+    return defaultDemoForContext();        // unset → decide by context
+  } catch { return true; }
 }
 
 export function clearDemoMode() {
@@ -27,7 +50,7 @@ export function clearDemoMode() {
 
 export function restoreDemoMode() {
   try {
-    localStorage.removeItem(HIDE_SAMPLES_KEY);
+    localStorage.setItem(HIDE_SAMPLES_KEY, "0"); // explicit ON overrides context default
     window.dispatchEvent(new Event("ta:demo-mode-changed"));
   } catch {}
 }

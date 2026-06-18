@@ -2180,14 +2180,22 @@ exports.api = onRequest(
         // "Alex — Chief of Staff" chat on the dashboard. That branch also returns
         // its text as `message:` (not `response:`), so ChatPanel renders
         // "No response received." Root cause of Sean's recurring "chat is broken."
-        // Fix: when the request clearly comes from the workspace dashboard (not a
-        // developer/sandbox surface), clear the sticky step so it falls through to
-        // the normal authenticated Chief-of-Staff path (which returns `response:`).
+        // Fix (S52.50, broadened 2026-06-18): dev_discovery is the UNAUTHENTICATED
+        // developer-onboarding funnel. An authenticated workspace user — on the
+        // dashboard OR a worker canvas (e.g. the HR "Chief of Staff" chat) OR with
+        // a worker selected — must never be trapped in it. The original guard only
+        // cleared on currentSection==='dashboard', so worker-canvas chats (a
+        // different section) stayed stuck and kept returning `message:`-only
+        // payloads → "No response received." Clear whenever the request is clearly
+        // an authenticated, non-developer/sandbox surface.
         if (sessionState.step === 'dev_discovery'
             && surface !== 'developer' && surface !== 'sandbox'
-            && body?.context?.currentSection === 'dashboard') {
+            && (authUser || body?.selectedWorker || body?.context?.currentSection === 'dashboard')) {
           sessionState.step = 'idle';
-          console.log("[chat:routing] cleared sticky dev_discovery for dashboard session");
+          console.log("[chat:routing] cleared sticky dev_discovery", {
+            reason: authUser ? 'authenticated' : (body?.selectedWorker ? 'worker-selected' : 'dashboard'),
+            section: body?.context?.currentSection || '(none)',
+          });
         }
 
         // ── Creator authoring intercept (bug fix 2026-06-04, hoisted 2026-06-05) ──
