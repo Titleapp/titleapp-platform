@@ -180,7 +180,15 @@ const CAS = {
   RED: { dot: "#dc2626", bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" },
   YELLOW: { dot: "#d97706", bg: "#fffbeb", border: "#fde68a", text: "#b45309" },
   BLUE: { dot: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" },
+  GREEN: { dot: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" },
+  WHITE: { dot: "#64748b", bg: "#f8fafc", border: "#e2e8f0", text: "#475569" },
 };
+
+// Same primitives the worker canvas uses, so the Vault reads as one of our
+// canvases — not a different-looking page.
+const SectionTitle = ({ children }) => (
+  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", margin: "4px 0 10px" }}>{children}</div>
+);
 
 function fmtUsd(n) {
   if (n == null || isNaN(n)) return "—";
@@ -317,60 +325,43 @@ export default function VaultDTCs() {
           Vault
         </h1>
         <p style={{ fontSize: 15, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-          Tamper-evident records — Digital Title Certificates with cryptographic provenance.
+          Your stuff, money, health, and education — one tamper-evident record, watching the dates.
         </p>
       </div>
 
-      {/* Net-worth summary — every valued record rolled into one picture. */}
+      {/* Net worth — refined hero in the canvas card style (not a loud dark card). */}
       {worth.valued > 0 && (
-        <div style={{
-          display: "flex", alignItems: "baseline", gap: 28, flexWrap: "wrap",
-          background: "#0f172a", color: "#fff", borderRadius: 14,
-          padding: "20px 24px", marginBottom: 24,
-        }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap", padding: "16px 20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 2px rgba(0,0,0,0.04)", marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "#94a3b8", marginBottom: 4 }}>
-              Net worth
-            </div>
-            <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>{fmtUsd(worth.net)}</div>
+            <SectionTitle>Net worth</SectionTitle>
+            <div style={{ fontSize: 32, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5, lineHeight: 1 }}>{fmtUsd(worth.net)}</div>
           </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            <div>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Assets</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: "#4ade80" }}>{fmtUsd(worth.assets)}</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ background: CAS.GREEN.bg, border: `1px solid ${CAS.GREEN.border}`, borderRadius: 10, padding: "10px 14px", minWidth: 112 }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>Assets</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: CAS.GREEN.text }}>{fmtUsd(worth.assets)}</div>
             </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Liabilities</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: "#f87171" }}>{worth.liabilities ? fmtUsd(-worth.liabilities) : "$0"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Records valued</div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>{worth.valued}</div>
+            <div style={{ background: CAS.RED.bg, border: `1px solid ${CAS.RED.border}`, borderRadius: 10, padding: "10px 14px", minWidth: 112 }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>Liabilities</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: CAS.RED.text }}>{worth.liabilities ? fmtUsd(-worth.liabilities) : "$0"}</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabs — Dashboard first, then each pillar (canvas-style) */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-        {["Dashboard", "All", ...ASSET_CLASSES].map((cls) => {
+      {/* Tabs — underline style, same as the worker canvas. Only pillars with records. */}
+      <div style={{ display: "flex", gap: 2, borderBottom: "1px solid #f1f5f9", marginBottom: 18, overflowX: "auto" }}>
+        {["Dashboard", "All", ...ASSET_CLASSES.filter((cls) => (counts[cls] || 0) > 0)].map((cls) => {
           const active = activeClass === cls;
           const n = counts[cls] || 0;
           const fixed = cls === "Dashboard" || cls === "All";
           return (
-            <button
-              key={cls}
-              onClick={() => setActiveClass(cls)}
-              style={{
-                padding: "8px 16px", fontSize: 13, fontWeight: 600,
-                borderRadius: 9999,
-                border: active ? "1px solid #1e293b" : "1px solid #cbd5e1",
-                background: active ? "#1e293b" : "#fff",
-                color: active ? "#fff" : "#1e293b",
-                cursor: "pointer", transition: "all 0.15s ease",
-                opacity: fixed || n > 0 ? 1 : 0.4,
-              }}
-            >
+            <button key={cls} onClick={() => setActiveClass(cls)} style={{
+              padding: "8px 14px", fontSize: 13, fontWeight: active ? 600 : 500, cursor: "pointer",
+              background: "none", border: "none", whiteSpace: "nowrap",
+              color: active ? "#7c3aed" : "#64748b",
+              borderBottom: active ? "2px solid #7c3aed" : "2px solid transparent",
+            }}>
               {cls}{!fixed && n > 0 ? ` (${n})` : ""}
             </button>
           );
@@ -387,44 +378,66 @@ export default function VaultDTCs() {
         </div>
       )}
 
-      {/* DASHBOARD — picture-first overview: pillar tiles + what needs attention */}
+      {/* DASHBOARD — picture-first overview in the canvas vocabulary */}
       {!loading && !error && activeClass === "Dashboard" && (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
+          {/* Currency instrument panel — the through-line (current / expiring / overdue) */}
+          {(() => {
+            const overdue = attention.filter(a => a.band === "RED").length;
+            const expiring = attention.filter(a => a.band === "YELLOW").length;
+            const upcoming = attention.filter(a => a.band === "BLUE").length;
+            const pills = [
+              { band: "GREEN", label: "current", n: attention.length === 0 ? "✓" : Math.max(0, worth.valued - overdue - expiring) },
+              { band: "BLUE", label: "upcoming", n: upcoming },
+              { band: "YELLOW", label: "expiring", n: expiring },
+              { band: "RED", label: "overdue", n: overdue },
+            ];
+            return (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+                {pills.map((p) => { const cc = CAS[p.band]; const muted = !p.n || p.n === 0; return (
+                  <div key={p.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, background: muted ? "#f8fafc" : cc.bg, border: `1px solid ${muted ? "#e2e8f0" : cc.border}`, opacity: muted ? 0.6 : 1 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: cc.dot }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: muted ? "#94a3b8" : cc.text }}>{p.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: muted ? "#cbd5e1" : cc.dot, minWidth: 18, textAlign: "center", borderRadius: 999, padding: "1px 6px" }}>{p.n}</span>
+                  </div>
+                ); })}
+              </div>
+            );
+          })()}
+
+          <SectionTitle>Your four pillars</SectionTitle>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginBottom: 20 }}>
             {[
               { label: "My Stuff", big: fmtUsd(pillars.stuff), sub: `${pillars.stuffCount} assets · property, vehicles, valuables` },
               { label: "My Money · liquid", big: fmtUsd(pillars.liquid), sub: "bank + brokerage + crypto" },
               { label: "My Health", big: pillars.medExpires ? "Current" : `${pillars.health} records`, sub: pillars.medExpires ? `FAA medical valid to ${pillars.medExpires}` : "medical records on file" },
               { label: "My Education", big: `${pillars.education}`, sub: "degrees · ratings · training" },
             ].map((t) => (
-              <div key={t.label} style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 12, padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 }}>{t.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{t.big}</div>
+              <div key={t.label} style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{t.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{t.big}</div>
                 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>{t.sub}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 14 }}>Needs attention</div>
+          <SectionTitle>Needs attention</SectionTitle>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {attention.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#15803d" }}>● Everything current — nothing expiring soon.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {attention.map((a, i) => {
-                  const c = CAS[a.band];
-                  const label = a.days < 0 ? `${Math.abs(a.days)} days overdue` : a.days === 0 ? "due today" : `${a.days} days`;
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 999, background: c.dot, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", flex: 1 }}>{a.title}</span>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{a.kind} {a.when}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: c.text, minWidth: 90, textAlign: "right" }}>{label}</span>
-                    </div>
-                  );
-                })}
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: CAS.GREEN.bg, borderLeft: `3px solid ${CAS.GREEN.dot}`, fontSize: 13, fontWeight: 600, color: CAS.GREEN.text }}>
+                Everything current — nothing expiring soon.
               </div>
-            )}
+            ) : attention.map((a, i) => {
+              const cc = CAS[a.band];
+              const label = a.days < 0 ? `${Math.abs(a.days)} days overdue` : a.days === 0 ? "due today" : `${a.days} days`;
+              return (
+                <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: cc.bg, borderLeft: `3px solid ${cc.dot}`, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: cc.text, flex: 1 }}>{a.title}</span>
+                  <span style={{ fontSize: 12, color: "#475569" }}>{a.kind} {a.when}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: cc.text, minWidth: 92, textAlign: "right" }}>{label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
