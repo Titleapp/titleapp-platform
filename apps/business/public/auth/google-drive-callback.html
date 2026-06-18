@@ -65,6 +65,8 @@
           '<p>Returning to the app…</p>';
         var messageType = flow === "calendar"
           ? "google-calendar-auth-code"
+          : flow === "youtube"
+          ? "google-youtube-auth-code"
           : "google-drive-auth-code";
         try {
           if (window.opener) {
@@ -90,8 +92,10 @@
       // Decide flow.
       var flow;
       if (state.indexOf("|calendar") !== -1) flow = "calendar";
+      else if (state.indexOf("|youtube") !== -1) flow = "youtube";
       else if (state.indexOf("|drive") !== -1) flow = "drive";
       else if (scope.indexOf("calendar") !== -1) flow = "calendar";
+      else if (scope.indexOf("youtube") !== -1) flow = "youtube";
       else if (scope.indexOf("drive") !== -1) flow = "drive";
       else flow = "drive"; // default for back-compat with old state-just-userId
 
