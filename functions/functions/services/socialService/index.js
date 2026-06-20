@@ -3,23 +3,19 @@ const admin = require("firebase-admin");
 
 function getDb() { return admin.firestore(); }
 
-// Unified.to Marketing API — social posting
-const UNIFIED_API_KEY = process.env.UNIFIED_API_KEY || "";
-const UNIFIED_WORKSPACE_ID = process.env.UNIFIED_WORKSPACE_ID || "";
+// Direct per-platform posting. Unified.to was dropped (it never actually
+// posted). X/Twitter posts directly to SOCIII's own account via services/
+// social/x.js; other platforms light up as their direct integrations land.
+const X_ALIASES = new Set(["x", "twitter", "twitter/x", "x (twitter)"]);
 
 /**
- * Post content to social platforms via Unified.to Marketing API.
+ * Post content directly to each requested platform.
  * @param {string} userId
- * @param {object} opts - { content, platforms, title, scheduledAt }
+ * @param {object} opts - { content, platforms, title, mediaStoragePath, mediaUrl, scheduledAt }
  * @returns {{ ok, postId, platformResults }}
  */
-async function postViaUnified(userId, { content, platforms, title, scheduledAt }) {
-  if (!UNIFIED_API_KEY) {
-    return { ok: false, error: "Unified.to API key not configured" };
-  }
-  if (!content) {
-    return { ok: false, error: "Missing content" };
-  }
+async function postToPlatforms(userId, { content, platforms, title, mediaStoragePath, mediaUrl, scheduledAt }) {
+  if (!content) return { ok: false, error: "Missing content" };
   if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
     return { ok: false, error: "At least one platform is required" };
   }
@@ -29,30 +25,17 @@ async function postViaUnified(userId, { content, platforms, title, scheduledAt }
   const platformResults = {};
 
   for (const platform of platforms) {
+    const p = String(platform || "").toLowerCase().trim();
     try {
-      // Unified.to Marketing API — create social post
-      const resp = await fetch("https://api.unified.to/marketing/post", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${UNIFIED_API_KEY}`,
-          ...(UNIFIED_WORKSPACE_ID ? { "x-workspace-id": UNIFIED_WORKSPACE_ID } : {}),
-        },
-        body: JSON.stringify({
-          title: title || "",
-          content,
-          platform,
-          ...(scheduledAt ? { scheduled_at: scheduledAt } : {}),
-        }),
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      platformResults[platform] = {
-        ok: resp.ok,
-        status: resp.status,
-        id: data.id || null,
-        error: resp.ok ? null : (data.message || data.error || `HTTP ${resp.status}`),
-      };
+      if (X_ALIASES.has(p)) {
+        const { postToX } = require("../social/x");
+        const r = await postToX({ text: content, mediaStoragePath, mediaUrl });
+        platformResults[platform] = r.ok
+          ? { ok: true, id: r.tweetId || null, url: r.url || null }
+          : { ok: false, error: r.error };
+      } else {
+        platformResults[platform] = { ok: false, error: `${platform} is not connected yet — direct integration in progress` };
+      }
     } catch (e) {
       platformResults[platform] = { ok: false, error: e.message };
     }
@@ -64,6 +47,7 @@ async function postViaUnified(userId, { content, platforms, title, scheduledAt }
     platforms,
     content,
     title: title || null,
+    mediaStoragePath: mediaStoragePath || null,
     scheduledAt: scheduledAt || null,
     results: platformResults,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -71,6 +55,9 @@ async function postViaUnified(userId, { content, platforms, title, scheduledAt }
 
   return { ok: true, postId, platformResults };
 }
+
+// Back-compat alias — old name used by existing callers.
+const postViaUnified = postToPlatforms;
 
 /**
  * Save a marketing draft.
@@ -156,10 +143,12 @@ async function approveDraft(userId, draftId) {
 
   // If platforms specified, auto-post
   if (draft.platforms && draft.platforms.length > 0) {
-    const postResult = await postViaUnified(userId, {
+    const postResult = await postToPlatforms(userId, {
       content: draft.content,
       platforms: draft.platforms,
       title: draft.title,
+      mediaStoragePath: draft.mediaStoragePath,
+      mediaUrl: draft.mediaUrl,
     });
 
     await ref.update({
@@ -202,4 +191,4 @@ async function rejectDraft(userId, draftId, reason) {
   return { ok: true };
 }
 
-module.exports = { postViaUnified, saveDraft, listDrafts, approveDraft, rejectDraft };
+module.exports = { postToPlatforms, postViaUnified, saveDraft, listDrafts, approveDraft, rejectDraft };
