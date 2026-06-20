@@ -289,6 +289,29 @@ async function buildAccountingPayload(tabId) {
   return null;
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  CONTACTS (platform-contacts) — the Salesforce replacement
+// ──────────────────────────────────────────────────────────────────
+
+async function buildContactsPayload(_tabId) {
+  const r = await liveApiFetch("/v1/contacts:list?limit=12&stats=1");
+  const list = Array.isArray(r?.contacts) ? r.contacts : [];
+  const total = (r?.stats && typeof r.stats.total === "number") ? r.stats.total
+              : (typeof r?.total === "number" ? r.total : list.length);
+  if (!total) return null; // no real contacts → fall back to fixture
+  const newThisMonth = list.filter(c => Array.isArray(c.segments) && c.segments.includes("new-this-month")).length;
+  const recent = list.slice(0, 8).map(c => `${c.name}${c.petInfo ? ` — ${c.petInfo}` : ""}`);
+  return {
+    title: "Clients",
+    subtitle: `${total.toLocaleString()} active`,
+    fields: [
+      { label: "Active clients", value: total.toLocaleString() },
+      ...(newThisMonth ? [{ label: "New (this page)", value: String(newThisMonth) }] : []),
+    ],
+    sections: recent.length ? [{ heading: "Recent clients", body: recent.join("\n") }] : [],
+  };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
@@ -296,6 +319,7 @@ export async function getLiveDataForTab(worker, tabId) {
     if (slug === "fundraise")           return await buildFundraisePayload(tabId);
     if (slug === "platform-hr")         return await buildPlatformHrPayload(tabId);
     if (slug === "platform-accounting") return await buildAccountingPayload(tabId);
+    if (slug === "platform-contacts")   return await buildContactsPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);
   }
