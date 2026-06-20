@@ -1203,14 +1203,14 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
           }
 
           try {
-            const { postViaUnified, saveDraft } = require("./services/socialService");
+            const { postToPlatforms, saveDraft } = require("./services/socialService");
             // If model marks status=draft, save instead of posting live.
             if (d.status === "draft" || d.dryRun) {
               const r = await saveDraft(userId, { content: d.content, platforms: d.platforms || [], title: d.title, tenantId: tenantId || null });
               console.log("chatEngine side-effect: scheduleSocialPost (draft)", r.ok ? "OK" : "FAIL");
             } else {
-              const r = await postViaUnified(userId, { content: d.content, platforms: d.platforms || [], title: d.title, scheduledAt: d.scheduledAt });
-              console.log("chatEngine side-effect: scheduleSocialPost", r.ok ? "OK" : "FAIL", r.postId || r.error);
+              const r = await postToPlatforms(userId, { content: d.content, platforms: d.platforms || [], title: d.title, mediaStoragePath: d.mediaStoragePath, mediaUrl: d.mediaUrl, scheduledAt: d.scheduledAt });
+              console.log("chatEngine side-effect: scheduleSocialPost", r.ok ? "OK" : "FAIL", r.postId || (r.platformResults && JSON.stringify(r.platformResults)));
             }
             try {
               const { recordAuditEvent } = require("./services/accounting/controller");
@@ -26282,6 +26282,32 @@ Analyze now:`;
         }
       } catch (e) {
         console.error("youtube action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // SOCIAL — direct post (#64). Posts immediately, bypassing the chat
+    // marker — handy for testing + automation. Body: { text, platforms?,
+    // mediaStoragePath? }. Defaults to X (@SOCIIIai). X is live; other
+    // platforms return "not connected yet" until their integration lands.
+    // ----------------------------
+    if (route === "/social:post" && method === "POST") {
+      try {
+        const reqBody = req.body || {};
+        const msg = reqBody.text || reqBody.content;
+        if (!msg) return jsonError(res, 400, "text required");
+        const { postToPlatforms } = require("./services/socialService");
+        const result = await postToPlatforms(auth.user.uid, {
+          content: msg,
+          platforms: Array.isArray(reqBody.platforms) && reqBody.platforms.length ? reqBody.platforms : ["x"],
+          title: reqBody.title,
+          mediaStoragePath: reqBody.mediaStoragePath,
+          mediaUrl: reqBody.mediaUrl,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("social:post failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
