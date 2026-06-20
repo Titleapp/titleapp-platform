@@ -171,7 +171,7 @@ export default function LandingPage() {
           <a href={`${appBase}/work`} target="_blank" rel="noopener" style={S.headerLink}>OF for Smart People ↗</a>
           <a href={`${appBase}/investors`} style={S.headerLink}>Investors</a>
           <a href={`${appBase}/meet-alex?action=signin`} style={S.headerLink}>Sign in</a>
-          <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start free</a>
+          <a href={`${appBase}/meet-alex?action=signup`} style={S.headerCta}>Start free</a>
         </div>
       </header>
 
@@ -221,7 +221,7 @@ export default function LandingPage() {
           </div>
 
           <div style={S.subActions}>
-            <a href={`${appBase}/meet-alex`} style={S.subActionPrimary}>Start free</a>
+            <a href={`${appBase}/meet-alex?action=signup`} style={S.subActionPrimary}>Start free</a>
             <a href={`${appBase}/meet-alex?action=signin`} style={S.subActionSecondary}>I already have an account</a>
           </div>
         </div>

@@ -19,10 +19,15 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
   const [activeId, setActiveId] = useState(defaultTab?.id || null);
 
   // Sync to chat-emitted signal: if a tab matches, select it.
+  // GUARD (2026-06-19): only let a chat-emitted signal override the user's
+  // tab click when that signal identifies a UNIQUE tab. Platform workers
+  // (HR, Marketing, …) declare every tab with the same signal
+  // (card:work-product), so an unguarded find() always re-matched the FIRST
+  // such tab and snapped the underline back to it on every click.
   useEffect(() => {
     if (!activeSignal) return;
-    const match = sorted.find(t => t.signal === activeSignal);
-    if (match && match.id !== activeId) setActiveId(match.id);
+    const matches = sorted.filter(t => t.signal === activeSignal);
+    if (matches.length === 1 && matches[0].id !== activeId) setActiveId(matches[0].id);
   }, [activeSignal, sorted, activeId]);
 
   if (!sorted.length) return null;
