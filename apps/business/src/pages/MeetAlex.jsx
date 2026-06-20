@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential, signInWithPopup, signInWithRedirect } from "firebase/auth";
+import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential, signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 import { resolveCampaignFromLocation } from "../lib/campaignRouting";
@@ -36,6 +36,7 @@ export default function MeetAlex() {
   const [showSave, setShowSave] = useState(isSignIn || isSignUp);
   const [savedAccount, setSavedAccount] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
+  const [savePassword, setSavePassword] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveSending, setSaveSending] = useState(false);
   const [saveStatus, setSaveStatus] = useState(""); // "" | "check-inbox" | "otp-sent"
@@ -454,6 +455,47 @@ export default function MeetAlex() {
     setSaveSending(false);
   }
 
+  // Email + password sign-in / sign-up (covers users who aren't on Google
+  // and prefer a password — and makes the demo account loggable without an inbox).
+  async function handleEmailPasswordSave() {
+    if (!saveEmail || !saveEmail.includes("@")) { setSaveError("Enter a valid email."); return; }
+    if (!savePassword || savePassword.length < 6) { setSaveError("Password must be at least 6 characters."); return; }
+    setSaveSending(true);
+    setSaveError("");
+    const anonUid = auth.currentUser?.uid;
+    try {
+      let cred;
+      if (isSignIn) {
+        cred = await signInWithEmailAndPassword(auth, saveEmail.trim(), savePassword);
+      } else {
+        try {
+          cred = await createUserWithEmailAndPassword(auth, saveEmail.trim(), savePassword);
+        } catch (e) {
+          if (e?.code === "auth/email-already-in-use") {
+            cred = await signInWithEmailAndPassword(auth, saveEmail.trim(), savePassword);
+          } else { throw e; }
+        }
+      }
+      const idToken = await cred.user.getIdToken(true);
+      if (anonUid && anonUid !== cred.user.uid) {
+        fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ fromUid: anonUid, toUid: cred.user.uid }),
+        }).catch(() => {});
+      }
+      completeAuthUpgrade(idToken, cred.user.uid);
+    } catch (e) {
+      const msg = (e?.code === "auth/wrong-password" || e?.code === "auth/invalid-credential" || e?.code === "auth/user-not-found")
+        ? "Wrong email or password."
+        : e?.code === "auth/weak-password" ? "Password too weak (6+ characters)."
+        : e?.code === "auth/email-already-in-use" ? "That email already has an account — try signing in."
+        : "Sign-in failed. Try again.";
+      setSaveError(msg);
+      setSaveSending(false);
+    }
+  }
+
   // Resend magic link
   async function handleResendMagicLink() {
     setResendCountdown(60);
@@ -728,6 +770,16 @@ export default function MeetAlex() {
                       <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="your@email.com" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
                       <button onClick={handleMagicLinkSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#7c3aed", background: "transparent", border: "1px solid #e9d5ff", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
                         {saveSending ? "Sending..." : "Send me a sign-in link"}
+                      </button>
+                      {/* or use a password (no inbox needed) */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 8px" }}>
+                        <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>or use a password</span>
+                        <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                      </div>
+                      <input type="password" value={savePassword} onChange={e => setSavePassword(e.target.value)} placeholder="Password" autoComplete={isSignIn ? "current-password" : "new-password"} onKeyDown={e => e.key === "Enter" && handleEmailPasswordSave()} style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                      <button onClick={handleEmailPasswordSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
+                        {saveSending ? "..." : (isSignIn ? "Sign in with password" : "Create account with password")}
                       </button>
                     </>
                   ) : (
