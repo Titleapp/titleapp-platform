@@ -9,6 +9,8 @@ import CanvasPanel from "../canvas/CanvasPanel";
 import CanvasTabBar from "../canvas/CanvasTabBar";
 import WorkerCanvas from "../canvas/WorkerCanvas";
 import { isREWorker } from "../canvas/RealEstateWorkerCanvas";
+import { getLiveDataForTab } from "../canvas/liveData";
+import { getFixtureForTab } from "../canvas/sampleData";
 import BetaNotice from "../BetaNotice";
 import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog";
 
@@ -508,7 +510,16 @@ export default function RightPanel() {
           <CanvasTabBar
             tabs={tabs}
             activeSignal={activeSignal}
-            onSelectTab={(_tab, resolved) => panel.showCanvas(resolved, {})}
+            onSelectTab={async (_tab, resolved) => {
+              // Fetch a real per-tab payload (live → fixture) instead of the
+              // empty {} that guaranteed a blank "Work Product" card. Mirrors
+              // App.jsx handleTabSelect so both render paths behave the same.
+              const w = workerState?.activeWorkerData || panel.activeWorkerData;
+              let payload = null;
+              try { payload = await getLiveDataForTab(w, _tab.id); } catch (_) {}
+              if (!payload) payload = getFixtureForTab(w, _tab.id);
+              panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
+            }}
           />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
@@ -535,7 +546,16 @@ export default function RightPanel() {
           <CanvasTabBar
             tabs={tabs}
             activeSignal={null}
-            onSelectTab={(_tab, resolved) => panel.showCanvas(resolved, {})}
+            onSelectTab={async (_tab, resolved) => {
+              // Fetch a real per-tab payload (live → fixture) instead of the
+              // empty {} that guaranteed a blank "Work Product" card. Mirrors
+              // App.jsx handleTabSelect so both render paths behave the same.
+              const w = workerState?.activeWorkerData || panel.activeWorkerData;
+              let payload = null;
+              try { payload = await getLiveDataForTab(w, _tab.id); } catch (_) {}
+              if (!payload) payload = getFixtureForTab(w, _tab.id);
+              panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
+            }}
           />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
