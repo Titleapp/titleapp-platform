@@ -253,12 +253,49 @@ async function buildPlatformHrPayload(tabId) {
   return null;
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  ACCOUNTING (platform-accounting) — the QuickBooks replacement
+// ──────────────────────────────────────────────────────────────────
+
+async function buildAccountingPayload(tabId) {
+  // Overview = a real P&L from committed transactions (credits=revenue,
+  // debits=expenses) + cash on hand. Returns null when the tenant has no
+  // accounting data yet → caller falls back to the sample fixture.
+  if (tabId === "overview" || tabId === "dashboard") {
+    const r = await liveApiFetch("/v1/accounting:dashboard:summary");
+    if (!r?.ok) return null;
+    const dollars = (x) => (x && typeof x.cents === "number") ? x.cents / 100 : null;
+    const rev = dollars(r.revenueMtd);
+    const exp = dollars(r.expensesMtd);
+    const net = dollars(r.netIncomeMtd);
+    const cash = dollars(r.cashOnHand);
+    if (rev == null && exp == null && (cash == null || cash === 0)) return null; // no real data → fixture
+    return {
+      title: "Accounting overview",
+      subtitle: "Live · this month to date",
+      summary: net != null
+        ? (net >= 0
+            ? "Profitable month so far — revenue is outpacing expenses."
+            : "Spending ahead of revenue this month — watch the burn.")
+        : undefined,
+      fields: [
+        { label: "Revenue (MTD)",  value: fmtCurrency(rev) },
+        { label: "Expenses (MTD)", value: fmtCurrency(exp) },
+        { label: "Net Income",     value: fmtCurrency(net) },
+        { label: "Cash on Hand",   value: fmtCurrency(cash) },
+      ],
+    };
+  }
+  return null;
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
-    if (slug === "fundraise")    return await buildFundraisePayload(tabId);
-    if (slug === "platform-hr")  return await buildPlatformHrPayload(tabId);
+    if (slug === "fundraise")           return await buildFundraisePayload(tabId);
+    if (slug === "platform-hr")         return await buildPlatformHrPayload(tabId);
+    if (slug === "platform-accounting") return await buildAccountingPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);
   }

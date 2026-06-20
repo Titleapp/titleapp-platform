@@ -141,17 +141,41 @@ async function sumDebitsSince(tenantId, fromDate) {
   return { totalCents: total, count };
 }
 
+// Sum credit-direction (revenue) transactions in the window. Mirror of
+// sumDebitsSince; excludes internal transfers + refunds so it's real top-line.
+async function sumCreditsSince(tenantId, fromDate) {
+  const db = getDb();
+  const snap = await db.collection("transactions")
+    .where("tenantId", "==", tenantId)
+    .limit(5000)
+    .get();
+  let total = 0;
+  let count = 0;
+  snap.docs.forEach(d => {
+    const t = d.data();
+    if (!t.date || t.date < fromDate) return;
+    if (t.direction !== "credit") return;
+    if (t.classification === "internal_transfer" || t.classification === "refund") return;
+    if (t.status !== "committed") return;
+    total += Math.abs(t.amountCents || 0);
+    count += 1;
+  });
+  return { totalCents: total, count };
+}
+
 async function computeSummary({ tenantId }) {
   if (!tenantId) throw new Error("Missing tenantId");
 
   const { firstOfMonth, daysInMonth, daysElapsed } = currentMonthBounds();
-  const [snapshot, budget, connectedTotal, burn30, burn12mo, mtd] = await Promise.all([
+  const [snapshot, budget, connectedTotal, burn30, burn12mo, mtd, revMtd, rev30] = await Promise.all([
     getLatestBalanceSnapshot(tenantId),
     getLatestForwardBudget(tenantId),
     getConnectedAccountsTotalCents(tenantId),
     sumDebitsSince(tenantId, daysAgo(30)),
     sumDebitsSince(tenantId, monthsAgo(12)),
     sumDebitsSince(tenantId, firstOfMonth),
+    sumCreditsSince(tenantId, firstOfMonth),
+    sumCreditsSince(tenantId, daysAgo(30)),
   ]);
 
   // --- Cash on Hand ---
@@ -222,6 +246,12 @@ async function computeSummary({ tenantId }) {
 
   return {
     cashOnHand: { cents: cashOnHandCents, source: cashSource },
+    // Real P&L lines (this month + rolling 30d) so the canvas can show a
+    // QuickBooks-style Revenue / Expenses / Net, not just burn.
+    revenueMtd: { cents: revMtd.totalCents, transactionCount: revMtd.count },
+    expensesMtd: { cents: mtd.totalCents, transactionCount: mtd.count },
+    netIncomeMtd: { cents: revMtd.totalCents - mtd.totalCents },
+    revenue30d: { cents: rev30.totalCents, transactionCount: rev30.count },
     mrr: { cents: null, source: "stripe_not_connected" },
     burn30d: { cents: burn30dCents, transactionCount: burn30.count },
     avgMonthlyBurn: { cents: avgMonthlyBurnCents, monthsObserved: 12 },
