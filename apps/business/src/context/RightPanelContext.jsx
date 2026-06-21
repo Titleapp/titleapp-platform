@@ -87,6 +87,19 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
 
   // Canvas Protocol (44.9) — show canvas card in right panel
   const showCanvas = useCallback((resolved, context) => {
+    // Guard against the recurring "dead overlay": the WorkProductCard family is
+    // entirely payload-driven (dataSource "conversation"). When a tab produces
+    // no payload — e.g. an HR tab with no live builder, or Contacts before data
+    // loads — opening CANVAS anyway mounts a blank full-height "Work Product"
+    // card that visually blocks the worker view. If there's nothing to render,
+    // leave the current view (landing / KPI grid) intact instead.
+    if (resolved?.component === "WorkProductCard") {
+      const payload = context?.payload;
+      const hasPayload = Array.isArray(payload)
+        ? payload.length > 0
+        : (payload && typeof payload === "object" && Object.keys(payload).length > 0);
+      if (!hasPayload) return;
+    }
     if (state !== "CANVAS") prevStateRef.current = state;
     setCanvasData({ resolved, context });
     setState("CANVAS");

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TeamCard, AddTeamCard } from "../components/TeamCard";
+import { firstNameFrom } from "../utils/displayName";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -20,15 +21,10 @@ export default function TeamHome({ onSelectTeam, onAddTeam }) {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const firstName = (() => {
-    const raw =
-      localStorage.getItem("DISPLAY_NAME") ||
-      localStorage.getItem("USER_NAME") ||
-      (localStorage.getItem("USER_EMAIL") || "").split("@")[0] ||
-      "";
-    const first = raw.split(" ")[0];
-    return (first && first.length >= 2) ? first : "";
-  })();
+  const firstName = firstNameFrom(
+    localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME"),
+    localStorage.getItem("USER_EMAIL")
+  );
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 

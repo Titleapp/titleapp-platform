@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getWorkerColor } from '../utils/workerColors';
+import { firstNameFrom } from '../utils/displayName';
 
 // CODEX 48.2 Fix 7 — robust token getter for ChatPanel.
 // Previous patterns used either localStorage.ID_TOKEN (stale on expiry) or
@@ -1969,12 +1970,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           }
           const hour = new Date().getHours();
           const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-          const greetName = (() => {
-            const u = currentUser;
-            if (u?.displayName) return u.displayName.split(" ")[0];
-            if (u?.email) return u.email.split("@")[0];
-            return "";
-          })();
+          const greetName = firstNameFrom(currentUser?.displayName, currentUser?.email);
           const vLabel = { aviation: "Aviation", auto: "Auto Dealer", "real-estate": "Real Estate", investor: "Investor Relations", consumer: "Personal Vault", solar: "Solar", web3: "Web3", "property-mgmt": "Property Management", analyst: "Investment Analyst" }[localStorage.getItem("VERTICAL") || ""] || "";
           const wkrs = (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })();
           const wCount = wkrs.length;

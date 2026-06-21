@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
+import { firstNameFrom } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext";
 
 // Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
@@ -153,12 +154,7 @@ export default function WorkerHome() {
     return a.localeCompare(b);
   });
 
-  const firstName = (() => {
-    const user = auth.currentUser;
-    if (user?.displayName) return user.displayName.split(" ")[0];
-    if (user?.email) return user.email.split("@")[0];
-    return "";
-  })();
+  const firstName = firstNameFrom(auth.currentUser?.displayName, auth.currentUser?.email);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
