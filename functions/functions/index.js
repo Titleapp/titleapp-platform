@@ -500,7 +500,25 @@ function getRoute(req) {
   if (p === "/api" || p === "/") {
     const q = req.query || {};
     const qp = (q.path || q.p || q.route || "").toString();
-    if (qp) p = qp;
+    if (qp) {
+      // The frontdoor passes the intended route — sometimes WITH its own query
+      // string — inside the `path` param, e.g. path=/v1/logbook:list?dtcId=xxx.
+      // Strip the embedded query string off the route (otherwise the route is
+      // "/logbook:list?dtcId=xxx" and never matches "/logbook:list" → 404) and
+      // fold its params into req.query so downstream `req.query.<name>` works.
+      const qIdx = qp.indexOf("?");
+      if (qIdx >= 0) {
+        p = qp.slice(0, qIdx);
+        try {
+          const embedded = new URLSearchParams(qp.slice(qIdx + 1));
+          for (const [k, v] of embedded.entries()) {
+            if (req.query[k] === undefined) req.query[k] = v;
+          }
+        } catch (_) { /* malformed query — ignore, route still resolves */ }
+      } else {
+        p = qp;
+      }
+    }
   }
 
   if (p.startsWith("/v1/")) p = p.slice(3);

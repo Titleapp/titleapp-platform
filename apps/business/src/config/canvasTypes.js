@@ -280,7 +280,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: null,
+    emptyPrompt: "Nothing here yet — ask the worker in chat to pull this together.",
     _title: "Work Product",
   },
 

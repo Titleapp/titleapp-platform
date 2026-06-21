@@ -9,6 +9,7 @@
 // No animations, no complex state.
 
 import React, { useState, useEffect } from "react";
+import { firstNameFrom } from "../utils/displayName";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -16,14 +17,12 @@ function getFirstName() {
   // Read the user's actual name, not the workspace name. DISPLAY_NAME is set
   // from auth.currentUser.displayName in App.jsx on sign-in. Fall back to
   // auth email prefix. Never use COMPANY_NAME/WORKSPACE_NAME — those return
-  // "Personal Vault" or "Personal" in vault mode.
-  const raw =
-    localStorage.getItem("DISPLAY_NAME") ||
-    localStorage.getItem("USER_NAME") ||
-    (localStorage.getItem("USER_EMAIL") || "").split("@")[0] ||
-    "";
-  const first = raw.split(" ")[0];
-  return (first && first.length >= 2) ? first : null;
+  // "Personal Vault" or "Personal" in vault mode. firstNameFrom strips any
+  // honorific so "Dr. Maya Chen" greets as "Maya", not "Dr.".
+  return firstNameFrom(
+    localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME"),
+    localStorage.getItem("USER_EMAIL")
+  ) || null;
 }
 
 function getActiveWorkers() {
