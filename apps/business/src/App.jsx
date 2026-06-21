@@ -5022,6 +5022,7 @@ export default function App() {
   // ── /alex route intercept ────────────────────────────────
   // Standalone Alex Chief of Staff workspace — 3-column layout
   const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
+  const isDemo = window.location.pathname === "/demo" || window.location.pathname === "/demo/";
 
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
@@ -5801,6 +5802,12 @@ export default function App() {
     } catch (err) {
       console.error("Failed to create workspace:", err);
     }
+  }
+
+  // ── /demo: one-click "View the Demo" auto-sign-in (Dr. Chen / Meadow Creek) ──
+  if (isDemo) {
+    const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));
+    return <React.Suspense fallback={null}><DemoSignIn /></React.Suspense>;
   }
 
   // ── Alex Workspace: standalone experience ──────────────────

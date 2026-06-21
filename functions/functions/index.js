@@ -1748,6 +1748,22 @@ exports.api = onRequest(
       return jsonError(res, 410, "Use /v1/magic-link:verify instead.");
     }
 
+    // GET /v1/demo:token — public one-click demo. Mints a Firebase custom token
+    // for the FIXED demo account only (Dr. Maya Chen / Meadow Creek). No user
+    // input → cannot be abused to reach any other account. Powers the
+    // "View the Demo" link: the frontend /demo route auto-signs-in with this.
+    if ((route === "/demo:token" || route === "/demo/token") && method === "GET") {
+      try {
+        const DEMO_UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2"; // demo@sociii.ai
+        const DEMO_TENANT = "ws_1781920656122_tl9dhn";   // Meadow Creek Veterinary Clinic
+        const token = await admin.auth().createCustomToken(DEMO_UID, { demo: true });
+        return res.json({ ok: true, token, tenantId: DEMO_TENANT });
+      } catch (e) {
+        console.error("demo:token failed:", e);
+        return jsonError(res, 500, "Failed to mint demo token");
+      }
+    }
+
     // POST /v1/alex:summarizeGuestSession — generate + deliver session summary
     if (route === "/alex:summarizeGuestSession" && method === "POST") {
       try {
@@ -20998,6 +21014,63 @@ Never attempt to output an entire multi-page document in a single response. For 
       } catch (e) {
         console.error("nurse-edu:append failed:", e);
         return jsonError(res, 500, "Failed to append student event");
+      }
+    }
+
+    // ----------------------------
+    // SPINE-4 — Staff Credential & Training Worker (vet vertical / #70)
+    // ----------------------------
+    if (route === "/staff-credentials:list" && method === "GET") {
+      try {
+        const sAuth = await requireFirebaseUser(req, res);
+        if (sAuth.handled) return sAuth.res;
+        const ctx = getCtx(req, body, sAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const [credSnap, trainSnap, remSnap] = await Promise.all([
+          db.collection("staff_credentials").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("training_completions").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("credential_reminders").where("tenantId", "==", ctx.tenantId).get(),
+        ]);
+        const staff = credSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const training = trainSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => String(b.completion_date || "").localeCompare(String(a.completion_date || "")));
+        const reminders = remSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => String(b.sent_at || "").localeCompare(String(a.sent_at || "")));
+        let total = 0, overdue = 0, expiring = 0;
+        for (const s of staff) for (const c of (s.credentials || [])) {
+          if (c.status === "in_progress") continue;
+          total++;
+          if (c.status === "overdue") overdue++; else if (c.status === "expiring_soon") expiring++;
+        }
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const remindersThisMonth = reminders.filter(r => String(r.sent_at || "").startsWith(thisMonth)).length;
+        return res.json({ ok: true, staff, training, reminders,
+          summary: { staffCount: staff.length, totalCredentials: total, overdue, expiring, remindersThisMonth } });
+      } catch (e) {
+        console.error("staff-credentials:list failed:", e);
+        return jsonError(res, 500, "Failed to load staff credentials");
+      }
+    }
+
+    // POST /v1/staff-credentials:sendReminder — propose→approve: the worker
+    // proposes a renewal reminder; Dr. Chen approves the send. Logs it.
+    if (route === "/staff-credentials:sendReminder" && method === "POST") {
+      try {
+        const sAuth = await requireFirebaseUser(req, res);
+        if (sAuth.handled) return sAuth.res;
+        const ctx = getCtx(req, body, sAuth.user);
+        const { staffId, credentialType, channel } = body || {};
+        if (!staffId || !credentialType) return jsonError(res, 400, "staffId and credentialType required");
+        const ref = await db.collection("credential_reminders").add({
+          tenantId: ctx.tenantId, staff_id: staffId, credential_type: credentialType,
+          channel: channel || "email", status: "sent",
+          sent_at: new Date().toISOString().slice(0, 10),
+          createdAt: nowServerTs(), demo: true, sentByUser: ctx.userId,
+        });
+        return res.json({ ok: true, reminderId: ref.id });
+      } catch (e) {
+        console.error("staff-credentials:sendReminder failed:", e);
+        return jsonError(res, 500, "Failed to send reminder");
       }
     }
 

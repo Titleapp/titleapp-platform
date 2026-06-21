@@ -312,14 +312,68 @@ async function buildContactsPayload(_tabId) {
   };
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  SPINE-4 — Staff Credential & Training Worker (vet vertical)
+// ──────────────────────────────────────────────────────────────────
+
+async function buildStaffCredentialPayload(tabId) {
+  const r = await liveApiFetch("/v1/staff-credentials:list");
+  if (!r?.ok || !Array.isArray(r.staff)) return null;
+  const staff = r.staff;
+  const sum = r.summary || {};
+  // most-urgent credential per staff member, sorted by days remaining
+  const rows = staff.map(s => {
+    const creds = (s.credentials || []).filter(c => c.status !== "in_progress" && typeof c.days_remaining === "number");
+    creds.sort((a, b) => a.days_remaining - b.days_remaining);
+    return creds[0] ? { name: s.full_name, top: creds[0] } : null;
+  }).filter(Boolean).sort((a, b) => a.top.days_remaining - b.top.days_remaining);
+  const badge = (d) => d < 0 ? "OVERDUE" : d <= 7 ? `${d}d ⚠` : d <= 30 ? `${d}d` : `${d}d ✓`;
+
+  if (!tabId || tabId === "dashboard") {
+    return {
+      title: "Staff License Dashboard",
+      subtitle: `${sum.staffCount} staff · ${sum.totalCredentials} credentials tracked`,
+      fields: [
+        { label: "Tracked", value: String(sum.totalCredentials ?? "—") },
+        { label: "Overdue", value: String(sum.overdue ?? 0) },
+        { label: "Expiring ≤30d", value: String(sum.expiring ?? 0) },
+        { label: "Reminders this month", value: String(sum.remindersThisMonth ?? 0) },
+      ],
+      sections: [{ heading: "By urgency", body: rows.map(x => `${x.name} — ${x.top.credential_name} · ${badge(x.top.days_remaining)}`).join("\n") }],
+    };
+  }
+  if (tabId === "training") {
+    const t = (r.training || []).slice(0, 12).map(x => `${x.completion_date} · ${x.staff_id} — ${x.training_name} (${x.ce_hours || 0} CE)`);
+    return { title: "Training Log", subtitle: `${(r.training || []).length} completions`, sections: [{ heading: "Recent training", body: t.join("\n") }] };
+  }
+  if (tabId === "reminders") {
+    const rm = (r.reminders || []).slice(0, 12).map(x => `${x.sent_at} · ${x.staff_id} — ${x.credential_type} (${x.channel})`);
+    return { title: "Reminder History", subtitle: `${sum.remindersThisMonth || 0} this month`, sections: [{ heading: "Sent", body: rm.join("\n") }] };
+  }
+  if (tabId === "calendar") {
+    const up = rows.filter(x => x.top.days_remaining >= 0 && x.top.days_remaining <= 90)
+      .map(x => `${x.top.expiry_date} · ${x.name} — ${x.top.credential_name} (${x.top.days_remaining}d)`);
+    return { title: "Renewal Calendar", subtitle: "Next 90 days", sections: [{ heading: "Upcoming renewals", body: up.join("\n") || "Nothing due in 90 days" }] };
+  }
+  if (tabId === "credentials") {
+    const all = [];
+    for (const s of staff) for (const c of (s.credentials || [])) {
+      all.push(`${s.full_name} — ${c.credential_name}${c.expiry_date ? ` · exp ${c.expiry_date}` : ""}${c.status === "overdue" ? " · OVERDUE" : ""}`);
+    }
+    return { title: "Individual Credentials", subtitle: `${sum.totalCredentials || 0} credentials`, sections: [{ heading: "All credentials", body: all.slice(0, 25).join("\n") }] };
+  }
+  return null;
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
-    if (slug === "fundraise")           return await buildFundraisePayload(tabId);
-    if (slug === "platform-hr")         return await buildPlatformHrPayload(tabId);
-    if (slug === "platform-accounting") return await buildAccountingPayload(tabId);
-    if (slug === "platform-contacts")   return await buildContactsPayload(tabId);
+    if (slug === "fundraise")               return await buildFundraisePayload(tabId);
+    if (slug === "platform-hr")             return await buildPlatformHrPayload(tabId);
+    if (slug === "platform-accounting")     return await buildAccountingPayload(tabId);
+    if (slug === "platform-contacts")       return await buildContactsPayload(tabId);
+    if (slug === "spine-4-staff-credentials") return await buildStaffCredentialPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);
   }
