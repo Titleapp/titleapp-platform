@@ -21,6 +21,22 @@ it with a real founder; the connector is the reusable platform capability.
    account** (she does not have to wear the "creator" hat — same model as the 3
    vet workers we seeded for Dr. Chen).
 
+### Who builds on the Shopify substrate
+
+- **Megan / Hartbreaker** — the *pilot*: proves a real DTC brand runs its whole
+  back office on SOCIII (workers built for her).
+- **Elise van der Bel** — the *e-commerce super-user*. Her domain is advanced,
+  regulatory e-commerce: **battery passport, EU Digital Product Passport (DPP),
+  returns**. The Shopify connector is the substrate she builds premium compliance
+  workers on top of — aimed at the **more technical e-commerce companies** (EU
+  ESPR/DPP and battery-regulation compliance is a large, mandatory, rules-driven
+  market = exactly SOCIII's rules-on-commerce-data strength).
+  **Do NOT unfocus Elise** from her current battery / digital-passport / return
+  workers now — the Shopify API is a *parked unlock* that multiplies her later.
+
+This is the pattern: **one connector, many builders.** Hartbreaker proves it,
+Elise scales it into technical/regulated e-commerce.
+
 ---
 
 ## 2. The Shopify connector (platform capability)
