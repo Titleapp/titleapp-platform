@@ -274,6 +274,16 @@ export const CANVAS_TYPES = {
     _title: "Inventory Snapshot",
   },
 
+  // Marketing — visual campaign-performance board (winning creative + KPIs)
+  "card:marketing-board": {
+    component: "MarketingCampaignBoardCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Run a campaign and the winners show up here.",
+    _title: "Marketing",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",

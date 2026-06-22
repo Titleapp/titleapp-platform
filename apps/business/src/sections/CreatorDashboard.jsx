@@ -237,19 +237,36 @@ export default function CreatorDashboard() {
                 fontFamily: "inherit",
               }}
             >
-              <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b" }}>{w.name || "Untitled"}</div>
-              <span style={{
-                display: "inline-block",
-                marginTop: "4px",
-                fontSize: "11px",
-                fontWeight: 600,
-                padding: "2px 8px",
-                borderRadius: "10px",
-                background: w.published ? "#dcfce7" : "#f1f5f9",
-                color: w.published ? "#16a34a" : "#64748b",
-              }}>
-                {w.published ? "Live" : "Draft"}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {/* Each worker is a product — give it a visual identity. */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#fff", fontSize: 13, fontWeight: 800, letterSpacing: 0.3,
+                  background: ({
+                    healthcare: "linear-gradient(135deg,#34d399,#10b981)",
+                    education: "linear-gradient(135deg,#60a5fa,#3b82f6)",
+                    finance: "linear-gradient(135deg,#fbbf24,#f59e0b)",
+                    legal: "linear-gradient(135deg,#a78bfa,#8b5cf6)",
+                    marketing: "linear-gradient(135deg,#f472b6,#fb7185)",
+                    real_estate: "linear-gradient(135deg,#22d3ee,#0891b2)",
+                    consulting: "linear-gradient(135deg,#818cf8,#6366f1)",
+                  }[w.category] || "linear-gradient(135deg,#94a3b8,#64748b)"),
+                }}>
+                  {(w.name || "?").split(" ").slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b" }}>{w.name || "Untitled"}</div>
+                  <span style={{
+                    display: "inline-block", marginTop: "4px", fontSize: "11px", fontWeight: 600,
+                    padding: "2px 8px", borderRadius: "10px",
+                    background: w.published ? "#dcfce7" : "#f1f5f9",
+                    color: w.published ? "#16a34a" : "#64748b",
+                  }}>
+                    {w.published ? "Live" : "Draft"}
+                  </span>
+                </div>
+              </div>
             </button>
           ))}
         </div>
@@ -261,6 +278,11 @@ export default function CreatorDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "28px" }}>
               <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "16px", textAlign: "center" }}>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#1e293b" }}>{selectedWorker.subscriber_count || 0}</div>
+                {selectedWorker.subscriber_delta != null && (
+                  <div style={{ fontSize: "12px", fontWeight: 700, marginTop: "2px", color: selectedWorker.subscriber_delta >= 0 ? "#16a34a" : "#dc2626" }}>
+                    {selectedWorker.subscriber_delta >= 0 ? "▲" : "▼"} {Math.abs(selectedWorker.subscriber_delta)} this month
+                  </div>
+                )}
                 <div style={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>Subscribers</div>
               </div>
               <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "16px", textAlign: "center" }}>

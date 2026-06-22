@@ -493,6 +493,13 @@ export default function VaultDTCs() {
                   {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
                 </div>
 
+                {dtcValue(dtc) != null && (
+                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, marginBottom: 10,
+                    color: dtcValue(dtc) < 0 ? "#dc2626" : "#16a34a" }}>
+                    {fmtUsd(dtcValue(dtc))}
+                  </div>
+                )}
+
                 {lines.length > 0 && (
                   <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5, marginBottom: 12 }}>
                     {lines.map((l, i) => <div key={i}>{l}</div>)}
