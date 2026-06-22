@@ -294,6 +294,16 @@ export const CANVAS_TYPES = {
     _title: "Drug Dosing",
   },
 
+  // EDU-001 — CVT exam-prep cohort (instructor view)
+  "card:edu-cohort": {
+    component: "EduCohortCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Enroll students and their progress shows up here.",
+    _title: "CVT Exam Prep",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",
