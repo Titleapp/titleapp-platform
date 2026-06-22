@@ -26588,6 +26588,54 @@ Analyze now:`;
     }
 
     // GET /v1/marketing:listDrafts — List drafts for current user
+    // GET /v1/edu:cohort — EDU-001 CVT exam-prep worker (instructor view):
+    // cohort roster sorted most-at-risk-first, a featured student (Alex) with
+    // his completion records, cohort analytics, and the curriculum.
+    if (route === "/edu:cohort" && method === "GET") {
+      try {
+        const eAuth = await requireFirebaseUser(req, res);
+        if (eAuth.handled) return eAuth.res;
+        const ctx = getCtx(req, body, eAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const [enrSnap, compSnap, modSnap, anSnap] = await Promise.all([
+          db.collection("course_enrollments").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("module_completions").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("curriculum_modules").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("cohort_analytics").where("tenantId", "==", ctx.tenantId).get(),
+        ]);
+        const now = Date.now();
+        const daysSince = (iso) => iso ? Math.floor((now - Date.parse(iso)) / 86400000) : 999;
+        const students = enrSnap.docs.map(d => {
+          const s = { id: d.id, ...d.data() };
+          s.at_risk = (Number(s.overall_practice_score_pct) < 60) || daysSince(s.last_active) > 7;
+          return s;
+        }).sort((a, b) => (a.overall_practice_score_pct || 0) - (b.overall_practice_score_pct || 0));
+        const allComps = compSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const featuredEnr = students.find(s => s.student_id === "alex_torres" || /alex/i.test(s.student_name || "")) || students[0] || null;
+        let featured = null;
+        if (featuredEnr) {
+          const comps = allComps.filter(c => c.student_id === featuredEnr.student_id)
+            .sort((a, b) => String(a.completed_at).localeCompare(String(b.completed_at)));
+          featured = { ...featuredEnr, completions: comps };
+        }
+        const modules = modSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.module_number || 0) - (b.module_number || 0));
+        const analytics = anSnap.docs[0] ? anSnap.docs[0].data() : null;
+        const atRisk = students.filter(s => s.at_risk).length;
+        const avgScore = analytics?.avg_practice_score_pct ?? (students.length ? Math.round(students.reduce((t, s) => t + (s.overall_practice_score_pct || 0), 0) / students.length * 10) / 10 : 0);
+        const ceIssued = analytics?.ce_hours_issued_total ?? students.reduce((t, s) => t + (s.ce_hours_earned || 0), 0);
+        const kpis = [
+          { label: "Enrolled", value: String(students.length) },
+          { label: "Avg score", value: `${avgScore}%` },
+          { label: "At risk", value: String(atRisk) },
+          { label: "CE issued", value: `${ceIssued}h` },
+        ];
+        return res.json({ ok: true, students, featured, modules, analytics, kpis, completions: featured ? featured.completions : [] });
+      } catch (e) {
+        console.error("edu:cohort failed:", e);
+        return jsonError(res, 500, "Failed to load cohort data");
+      }
+    }
+
     // GET /v1/vet:dosing — VET-003 drug-dosing worker data: the pending
     // proposal (awaiting approval), approved order history, protocol library,
     // and headline KPIs. Reads dosing_orders + protocol_library by tenant.

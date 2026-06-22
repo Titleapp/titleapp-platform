@@ -407,11 +407,26 @@ async function buildVetDosingPayload(tabId) {
   };
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  EDU-001 (edu-001-cvt-exam-prep) — CVT exam-prep cohort worker
+// ──────────────────────────────────────────────────────────────────
+
+async function buildEduCohortPayload(tabId) {
+  const r = await liveApiFetch("/v1/edu:cohort");
+  if (!r?.ok) return null;
+  if (tabId === "records")    return { title: "Completion Records", view: "records", completions: r.completions || [] };
+  if (tabId === "cohort")     return { title: "Cohort Analytics", view: "cohort", analytics: r.analytics || null };
+  if (tabId === "curriculum") return { title: "Course Curriculum", view: "curriculum", modules: r.modules || [] };
+  // progress / dashboard (default)
+  return { title: "Cohort Dashboard", view: "dashboard", kpis: r.kpis || [], featured: r.featured || null, students: r.students || [] };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
     if (slug === "vet-003-drug-dosing")     return await buildVetDosingPayload(tabId);
+    if (slug === "edu-001-cvt-exam-prep")   return await buildEduCohortPayload(tabId);
     if (slug === "fundraise")               return await buildFundraisePayload(tabId);
     if (slug === "platform-hr")             return await buildPlatformHrPayload(tabId);
     if (slug === "platform-accounting")     return await buildAccountingPayload(tabId);
