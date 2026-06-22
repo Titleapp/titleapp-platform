@@ -284,6 +284,16 @@ export const CANVAS_TYPES = {
     _title: "Marketing",
   },
 
+  // VET-003 — drug dosing & protocol worker (propose → approve)
+  "card:vet-dosing": {
+    component: "VetDosingCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask for a weight-based dose — species, weight, drug — and I'll propose it with the source.",
+    _title: "Drug Dosing",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",

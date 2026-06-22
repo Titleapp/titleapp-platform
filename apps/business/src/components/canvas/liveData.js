@@ -386,10 +386,32 @@ async function buildMarketingPayload(tabId) {
   return { title: "Marketing", view: "overview", campaigns, kpis, winner };
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  VET-003 (vet-003-drug-dosing) — drug dosing & protocol worker
+// ──────────────────────────────────────────────────────────────────
+
+async function buildVetDosingPayload(tabId) {
+  const r = await liveApiFetch("/v1/vet:dosing");
+  if (!r?.ok) return null;
+  const orders = Array.isArray(r.orders) ? r.orders : [];
+  const protocols = Array.isArray(r.protocols) ? r.protocols : [];
+  if (tabId === "history")  return { title: "Order History", view: "history", orders };
+  if (tabId === "protocols") return { title: "Protocol Library", view: "protocols", protocols };
+  if (tabId === "schedule" || tabId === "controlled") {
+    return { title: "Controlled Substance Log", view: "controlled", orders: orders.filter(o => o.dea_schedule) };
+  }
+  // calculator (default)
+  return {
+    title: "Dosing Calculator", view: "calculator",
+    proposal: r.proposal || null, kpis: r.kpis || [], speciesBreakdown: r.speciesBreakdown || [],
+  };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
+    if (slug === "vet-003-drug-dosing")     return await buildVetDosingPayload(tabId);
     if (slug === "fundraise")               return await buildFundraisePayload(tabId);
     if (slug === "platform-hr")             return await buildPlatformHrPayload(tabId);
     if (slug === "platform-accounting")     return await buildAccountingPayload(tabId);
