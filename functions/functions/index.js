@@ -26588,6 +26588,43 @@ Analyze now:`;
     }
 
     // GET /v1/marketing:listDrafts — List drafts for current user
+    // GET /v1/vet:dosing — VET-003 drug-dosing worker data: the pending
+    // proposal (awaiting approval), approved order history, protocol library,
+    // and headline KPIs. Reads dosing_orders + protocol_library by tenant.
+    if (route === "/vet:dosing" && method === "GET") {
+      try {
+        const vAuth = await requireFirebaseUser(req, res);
+        if (vAuth.handled) return vAuth.res;
+        const ctx = getCtx(req, body, vAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const [ordSnap, protoSnap] = await Promise.all([
+          db.collection("dosing_orders").where("tenantId", "==", ctx.tenantId).get(),
+          db.collection("protocol_library").where("tenantId", "==", ctx.tenantId).get(),
+        ]);
+        const all = ordSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+        const proposal = all.find(o => o.status === "proposed") || null;
+        const orders = all.filter(o => o.status !== "proposed");
+        const protocols = protoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const deaCount = all.filter(o => o.dea_schedule).length;
+        const counts = {};
+        all.forEach(o => { counts[o.species] = (counts[o.species] || 0) + 1; });
+        const total = all.length || 1;
+        const speciesBreakdown = Object.entries(counts)
+          .map(([species, n]) => ({ species, pct: Math.round((n / total) * 100) }))
+          .sort((a, b) => b.pct - a.pct);
+        const kpis = [
+          { label: "Orders this week", value: String(all.length) },
+          { label: "DEA-scheduled", value: String(deaCount) },
+          { label: "Species", value: String(Object.keys(counts).length) },
+        ];
+        return res.json({ ok: true, proposal, orders, protocols, kpis, speciesBreakdown });
+      } catch (e) {
+        console.error("vet:dosing failed:", e);
+        return jsonError(res, 500, "Failed to load dosing data");
+      }
+    }
+
     // GET /v1/marketing:campaigns — visual campaign-performance board data.
     // Aggregates the tenant's `campaigns` into a ranked board (winner first),
     // computed CTR/ROI per campaign, and headline KPIs with momentum deltas

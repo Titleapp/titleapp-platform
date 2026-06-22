@@ -17,6 +17,7 @@ import PerformanceCard from "./PerformanceCard";
 import ContentCalendarCard from "./ContentCalendarCard";
 import EmailCampaignCard from "./EmailCampaignCard";
 import MarketingCampaignBoardCard from "./MarketingCampaignBoardCard";
+import VetDosingCard from "./VetDosingCard";
 import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
@@ -44,6 +45,7 @@ const CANVAS_COMPONENT_MAP = {
   ContentCalendarCard,
   EmailCampaignCard,
   MarketingCampaignBoardCard,
+  VetDosingCard,
   RevenueDashboardCard,
   AviationCurrencyCard,
   RealEstateClosingCard,
