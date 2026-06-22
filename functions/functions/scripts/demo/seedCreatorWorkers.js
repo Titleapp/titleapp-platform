@@ -16,6 +16,23 @@ const UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2"; // demo@sociii.ai
 //   312×$29=9,048  +  258×$45=11,610  +  246×$27=6,642  =  $27,300/mo.
 const WORKERS = [
   {
+    // The script's hero (C1 / S2-5): slug sorts first so it's selected by default.
+    slug: "vet-003-drug-dosing",
+    workerId: "VET-003",
+    name: "Drug Dosing & Protocol",
+    description: "Weight-based dosing, species-adjusted protocols, and contraindication + DEA checks — sourced from Plumb's and Carpenter's. Fast, accurate dosing in seconds, especially after-hours and for exotic species.",
+    short_description: "Weight-based dosing + protocols, sourced.",
+    category: "healthcare",
+    vertical: "Healthcare",
+    subscriber_count: 200,
+    subscriber_delta: 23,
+    price: 49,
+    rating: 4.9,
+    top_questions: ["Exotic bird sedation protocols", "Feline buprenorphine OTM dosing", "NSAID dosing in renal patients", "Reptile sedation — large constrictors"],
+    knowledge_base: ["Plumb's Veterinary Drug Handbook, 9th ed.", "Carpenter's Exotic Animal Formulary, 5th ed.", "DEA 21 CFR 1308 schedules"],
+    workflow_stages: ["Enter species + weight + drug", "Check contraindications + DEA", "Propose dose → vet approves"],
+  },
+  {
     slug: "vet-exotic-triage-001",
     workerId: "VET-EXOTIC-TRIAGE-001",
     name: "Exotic Species Triage Advisor",
@@ -91,6 +108,7 @@ const WORKERS = [
       published: true,
       subscriber_count: w.subscriber_count,
       subscriber_delta: w.subscriber_delta,
+      top_questions: w.top_questions || null,
       pricing: { model: "subscription", price: w.price, trial_days: 7 },
       rating: w.rating,
       raas: { workflow_stages: w.workflow_stages, knowledge_base: w.knowledge_base },

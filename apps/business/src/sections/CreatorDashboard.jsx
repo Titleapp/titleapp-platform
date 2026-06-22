@@ -287,9 +287,9 @@ export default function CreatorDashboard() {
               </div>
               <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "16px", textAlign: "center" }}>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#1e293b" }}>
-                  ${((selectedWorker.subscriber_count || 0) * (selectedWorker.pricing?.price || 0)).toLocaleString()}
+                  ${Math.round((selectedWorker.subscriber_count || 0) * (selectedWorker.pricing?.price || 0) * 0.6).toLocaleString()}
                 </div>
-                <div style={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>Monthly Revenue</div>
+                <div style={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>Monthly Revenue<span style={{ textTransform: "none", letterSpacing: 0, color: "#cbd5e1", fontWeight: 500 }}> · your 60%</span></div>
               </div>
               <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "16px", textAlign: "center" }}>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#1e293b" }}>
@@ -298,6 +298,21 @@ export default function CreatorDashboard() {
                 <div style={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>Rating</div>
               </div>
             </div>
+
+            {/* Top questions this week — the creator's R&D pipeline (S2-5) */}
+            {Array.isArray(selectedWorker.top_questions) && selectedWorker.top_questions.length > 0 && (
+              <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "20px", marginBottom: "20px" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Top questions this week</div>
+                {selectedWorker.top_questions.map((q, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, borderRadius: 8,
+                    background: i === 0 ? "#faf5ff" : "#f8fafc", border: `1px solid ${i === 0 ? "#ede9fe" : "#f1f5f9"}` }}>
+                    <span style={{ fontSize: 13 }}>{i === 0 ? "🔥" : "💬"}</span>
+                    <span style={{ fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: "#1e293b" }}>{q}</span>
+                    {i === 0 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "#7c3aed", whiteSpace: "nowrap" }}>most asked → R&D pipeline</span>}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Editable fields */}
             <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "20px", marginBottom: "20px" }}>
