@@ -72,12 +72,13 @@ const SPINE_TABS = {
     { id: "compliance",  label: "Compliance",  signal: "card:work-product",         order: 3 },
     { id: "notices",     label: "Notices",     signal: "card:work-product",         order: 4 },
   ],
+  // Visual campaign-performance board (Trump Rule) — see what's winning at a
+  // glance. All three tabs render MarketingCampaignBoardCard with a different
+  // view (overview / campaigns / creative), fed by buildMarketingPayload.
   "platform-marketing": [
-    { id: "kpis",             label: "KPIs",              signal: "card:work-product",                default: true, order: 0 },
-    { id: "campaigns",        label: "Campaigns",         signal: "card:marketing-email",             order: 1 },
-    { id: "creative",         label: "Creative",          signal: "card:image",                       order: 2 },
-    { id: "content-calendar", label: "Content Calendar",  signal: "card:marketing-content-calendar",  order: 3 },
-    { id: "email",            label: "Email",             signal: "card:marketing-email",             order: 4 },
+    { id: "overview",  label: "Overview",  signal: "card:marketing-board", default: true, order: 0 },
+    { id: "campaigns", label: "Campaigns", signal: "card:marketing-board", order: 1 },
+    { id: "creative",  label: "Creative",  signal: "card:marketing-board", order: 2 },
   ],
   "platform-control-center-pro": [
     { id: "revenue",     label: "Revenue Dashboard", signal: "card:control-center-revenue", default: true, order: 0 },

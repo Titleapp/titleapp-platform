@@ -365,6 +365,27 @@ async function buildStaffCredentialPayload(tabId) {
   return null;
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  MARKETING (platform-marketing) — visual campaign-performance board
+// ──────────────────────────────────────────────────────────────────
+
+async function buildMarketingPayload(tabId) {
+  const r = await liveApiFetch("/v1/marketing:campaigns");
+  const campaigns = Array.isArray(r?.campaigns) ? r.campaigns : [];
+  if (!campaigns.length) return null; // no real campaigns → fall back to fixture
+  const kpis = Array.isArray(r?.kpis) ? r.kpis : [];
+  const winner = r?.winner || campaigns.find(c => c.winning) || campaigns[0];
+
+  if (tabId === "creative") {
+    return { title: "Creative", view: "creative", campaigns };
+  }
+  if (tabId === "campaigns" || tabId === "email") {
+    return { title: tabId === "email" ? "Email" : "Campaigns", view: "campaigns", campaigns, kpis, winner };
+  }
+  // kpis (default) + anything else → the overview board
+  return { title: "Marketing", view: "overview", campaigns, kpis, winner };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
@@ -373,6 +394,7 @@ export async function getLiveDataForTab(worker, tabId) {
     if (slug === "platform-hr")             return await buildPlatformHrPayload(tabId);
     if (slug === "platform-accounting")     return await buildAccountingPayload(tabId);
     if (slug === "platform-contacts")       return await buildContactsPayload(tabId);
+    if (slug === "platform-marketing")      return await buildMarketingPayload(tabId);
     if (slug === "spine-4-staff-credentials") return await buildStaffCredentialPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);

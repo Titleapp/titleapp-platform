@@ -26588,6 +26588,55 @@ Analyze now:`;
     }
 
     // GET /v1/marketing:listDrafts — List drafts for current user
+    // GET /v1/marketing:campaigns — visual campaign-performance board data.
+    // Aggregates the tenant's `campaigns` into a ranked board (winner first),
+    // computed CTR/ROI per campaign, and headline KPIs with momentum deltas
+    // derived from the aggregate daily-leads trend. Feeds MarketingCampaignBoardCard.
+    if (route === "/marketing:campaigns" && method === "GET") {
+      try {
+        const mAuth = await requireFirebaseUser(req, res);
+        if (mAuth.handled) return mAuth.res;
+        const ctx = getCtx(req, body, mAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const snap = await db.collection("campaigns").where("tenantId", "==", ctx.tenantId).get();
+        const r1 = (n) => Math.round(n * 10) / 10;
+        let campaigns = snap.docs.map(d => {
+          const c = { id: d.id, ...d.data() };
+          const ctr = c.impressions ? (c.clicks / c.impressions) * 100 : 0;
+          const roi = c.spend ? (Number(c.revenue) || 0) / c.spend : 0;
+          return { ...c, ctr: r1(ctr), roi: r1(roi) };
+        });
+        // Performance order — leads (conversions), then CTR. Top one is the winner.
+        campaigns.sort((a, b) => (b.conversions || 0) - (a.conversions || 0) || (b.ctr - a.ctr));
+        campaigns.forEach((c, i) => { c.winning = i === 0; });
+        const sum = (k) => campaigns.reduce((t, c) => t + (Number(c[k]) || 0), 0);
+        const reach = sum("impressions"), clicks = sum("clicks"), leads = sum("conversions");
+        const spend = sum("spend"), revenue = sum("revenue");
+        const ctr = reach ? (clicks / reach) * 100 : 0;
+        const roi = spend ? revenue / spend : 0;
+        // Momentum: aggregate daily-leads trend, first third vs last third.
+        const len = Math.max(0, ...campaigns.map(c => (c.trend || []).length));
+        const daily = Array.from({ length: len }, (_, i) => campaigns.reduce((t, c) => t + ((c.trend || [])[i] || 0), 0));
+        let momentum = 0;
+        if (daily.length >= 2) {
+          const k = Math.max(1, Math.floor(daily.length / 3));
+          const early = daily.slice(0, k).reduce((a, b) => a + b, 0) / k;
+          const late = daily.slice(-k).reduce((a, b) => a + b, 0) / k;
+          if (early > 0) momentum = Math.round(((late - early) / early) * 100);
+        }
+        const kpis = [
+          { label: "Reach", value: reach >= 1000 ? `${(reach / 1000).toFixed(1)}k` : String(reach), delta: Math.round(momentum * 0.7) },
+          { label: "CTR",   value: `${r1(ctr)}%`, delta: Math.round(momentum * 0.4) },
+          { label: "Leads", value: String(leads), delta: momentum },
+          { label: "ROI",   value: `${r1(roi)}x`, delta: Math.round(momentum * 0.8) },
+        ];
+        return res.json({ ok: true, campaigns, kpis, winner: campaigns[0] || null });
+      } catch (e) {
+        console.error("marketing:campaigns failed:", e);
+        return jsonError(res, 500, "Failed to load campaigns");
+      }
+    }
+
     if (route === "/marketing:listDrafts" && method === "GET") {
       try {
         const status = (req.query || {}).status || null;
