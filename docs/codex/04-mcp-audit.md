@@ -55,9 +55,16 @@ rule verdict**, append-only and tamper-evident — and SOCIII exposes its worker
       `firestore.rules` (`create/update/delete: if false`). ⏳ `dtcs`/`logbookEntries` rule-level
       guards deferred (they're already server-only/append in code; lower priority).
 - [ ] **T5 — Close the tamper hole** (`dtc:refresh-value` mutates hashed `metadata` w/o re-hash). ⏳ remaining.
-- [ ] **T6 — Minimal real MCP server.** ⏳ remaining — Claude connects, invokes ONE worker
-      capability under the rules engine, invocation lands in `auditLedger` (T2 is ready to receive it).
-      The credibility artifact for Anthropic / acquirers (task #78 overlaps).
+- [x] **T6 — Real MCP server.** ✅ **BUILT + LIVE 2026-06-22.** `POST /v1/mcp` speaks MCP
+      Streamable-HTTP JSON-RPC (`services/mcp/mcpServer.js`): `initialize` / `tools/list` /
+      `tools/call` / `ping`. Exposes 2 governed tools — `get_worker_overlay` (read) and
+      `propose_worker_change` (governed write → pending proposal). Every call is Firebase-bearer
+      authed, membership-gated, and written to `auditLedger` with `via:"mcp"` (T2). **The governance
+      is the story:** MCP can *propose* but exposes **no approve tool** — a human must approve before
+      anything goes live; cross-tenant calls are rejected. **Verified live: `scripts/test/s4McpServer.js`
+      9/9** — initialize → tools/list → propose-via-MCP (pending, audited, not applied) → human
+      approve → live; cross-tenant → not authorized. This is the "MCP but already built" artifact.
+      ⏳ next: OAuth (vs Firebase bearer) + more read tools + registry listing (Surface 7).
 
 ## RED TEAM
 - 🔴 **RT1 — Claiming MCP/audit before it's wired = becoming the hype we mock** (P2). The one

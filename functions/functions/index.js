@@ -11401,6 +11401,24 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ── Surface 4 T6 (CODEX 2026-06-22): MCP server ──────────────────────────
+    // Model Context Protocol over Streamable-HTTP JSON-RPC. An external model
+    // (Claude) connects with a Firebase bearer token, discovers SOCIII's governed
+    // tools, and invokes them under the same membership gate + capability registry
+    // + audit ledger as every other caller. Read + propose only; approve/reject
+    // stay human-only. See services/mcp/mcpServer.js.
+    if (route === "/mcp" && method === "POST") {
+      try {
+        const { handleMcpRequest } = require("./services/mcp/mcpServer");
+        const out = await handleMcpRequest(body, { uid: auth.user && auth.user.uid, email: auth.user && auth.user.email });
+        if (out === null) return res.status(202).end(); // notification — no body
+        return res.json(out);
+      } catch (e) {
+        console.error("[mcp] error:", e.message);
+        return res.json({ jsonrpc: "2.0", id: (body && body.id) != null ? body.id : null, error: { code: -32603, message: e.message } });
+      }
+    }
+
     // POST /v1/worker:update — Post-publish edit (partial updates)
     if (route === "/worker:update" && method === "POST") {
       const { tenantId, workerId, updates } = body;
