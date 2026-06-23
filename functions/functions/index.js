@@ -2498,7 +2498,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
           try {
             const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
             if (dwSnap.exists) {
-              const dw = dwSnap.data();
+              let dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
 
               // ── Organization-only visibility gate ──
@@ -2517,9 +2517,16 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                     });
                   }
                 } catch (orgErr) {
-                  // Fail-open on transient lookup errors (auth is still validated),
-                  // matching the viewer role-gate behavior below.
-                  console.warn(`[org-visibility gate] failed for ${workerSlug}:`, orgErr.message);
+                  // Surface 1 / R2 (CODEX 2026-06-22): fail CLOSED for confidential
+                  // organization-only workers. A transient lookup error must DENY,
+                  // never leak an org-only worker to an unverified caller. (Was
+                  // fail-open — that was the isolation hole the audit flagged.)
+                  console.warn(`[org-visibility gate] failed for ${workerSlug}, denying:`, orgErr.message);
+                  return res.json({
+                    ok: false,
+                    error: "ORG_ONLY_WORKER",
+                    message: "This is an organization-only worker and access could not be verified right now. Please try again.",
+                  });
                 }
               }
 
@@ -2529,6 +2536,20 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                 (body && body.tenantId) ||
                 (body && body.context && body.context.tenantId) ||
                 (req.headers["x-tenant-id"] || null);
+
+              // ── Surface 1 / R2 (CODEX 2026-06-22): apply the tenant's worker
+              // overlay — "change MY worker, not everyone's." The runtime serves
+              // one GLOBAL base doc; a tenant's sparse overlay (rules, system
+              // prompt, behavior) is merged over it here. Protected identity/
+              // security/billing fields always come from base. No overlay → base
+              // unchanged (safe fallback). This is the seam Surface 3 writes
+              // through (Alex-dispatches-Code). ──
+              const { getWorkerOverlay, mergeOverlay } = require("./services/workerOverlay");
+              const workerOverlay = await getWorkerOverlay(reqTenantId, workerSlug);
+              if (workerOverlay) {
+                dw = mergeOverlay(dw, workerOverlay);
+                console.log(`[worker-overlay] applied for ${reqTenantId}/${workerSlug}: [${Object.keys(workerOverlay).join(", ")}]`);
+              }
 
               // ── Role gate (CODEX 50.10-T2 Decision 1) ──
               // Viewers cannot send chat in a tenant context — they're read-only.
@@ -2589,23 +2610,28 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                 }
               }
 
-              // ── System prompt: check workerSystemPrompts/{slug} first, fall back to auto-generation ──
-              let workerPrompt = null;
+              // ── System prompt: tenant overlay wins (Surface 1 / R2), then
+              // workerSystemPrompts/{slug}, then auto-generation below. ──
+              let workerPrompt = (workerOverlay && workerOverlay.systemPrompt) || null;
               try {
-                const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
-                if (promptSnap.exists && promptSnap.data().systemPrompt) {
-                  workerPrompt = promptSnap.data().systemPrompt;
-                  // Inject subscriberProfile context if available (44.1 — radar + briefing preferences)
-                  if (authUser) {
-                    try {
-                      const userSnap = await db.doc(`users/${authUser.uid}`).get();
-                      const profile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
-                      if (Object.keys(profile).length > 0) {
-                        workerPrompt += `\n\nSUBSCRIBER PROFILE (read from Firestore — do not ask for information already present):\n${JSON.stringify(profile, null, 2)}`;
-                      }
-                    } catch (profileErr) {
-                      console.warn("worker chat: failed to load subscriberProfile:", profileErr.message);
+                if (!workerPrompt) {
+                  const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
+                  if (promptSnap.exists && promptSnap.data().systemPrompt) {
+                    workerPrompt = promptSnap.data().systemPrompt;
+                  }
+                }
+                // Inject subscriberProfile context if available (44.1 — radar +
+                // briefing preferences). Applies whether the prompt came from the
+                // tenant overlay or the base doc.
+                if (workerPrompt && authUser) {
+                  try {
+                    const userSnap = await db.doc(`users/${authUser.uid}`).get();
+                    const profile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
+                    if (Object.keys(profile).length > 0) {
+                      workerPrompt += `\n\nSUBSCRIBER PROFILE (read from Firestore — do not ask for information already present):\n${JSON.stringify(profile, null, 2)}`;
                     }
+                  } catch (profileErr) {
+                    console.warn("worker chat: failed to load subscriberProfile:", profileErr.message);
                   }
                 }
               } catch (promptErr) {
@@ -8250,6 +8276,36 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
 
+    // ── Surface 1 / R2 (CODEX 2026-06-22): central tenant-membership gate ──
+    // The worker-authoring + tenant-data route family all read/write
+    // tenants/{tenantId}/workers/... with a tenantId taken from the header/body/
+    // query. Without a membership check that tenantId is spoofable — any authed
+    // user could read or mutate another org's worker tree (the R2 cross-tenant
+    // leak the audit confirmed). Enforce membership once, here, for the whole
+    // family. Personal contexts (vault/personal/guest-*) short-circuit to owner
+    // inside enforceRoleGate; a null tenantId skips the gate so each route's own
+    // null-handling still applies. Publishing writes the GLOBAL catalog doc, so
+    // it requires admin; everything else requires member.
+    const TENANT_WORKER_ROUTES = new Set([
+      "/workers:list", "/workers:test", "/worker:test:chat", "/worker:test:audit",
+      "/worker:export", "/worker:settings", "/worker:update", "/worker:version:increment",
+      "/worker1:intake", "/worker1:research", "/worker1:rules:save", "/worker1:test:complete",
+      "/worker1:prePublish", "/worker1:submit", "/connectors/activate", "/connectors/deactivate",
+      "/marketplace:publish",
+      // Per-tenant worker overlay (Surface 1 / R2 — "change MY worker, not everyone's")
+      "/worker:overlay:set", "/worker:overlay", "/worker:overlay:clear",
+    ]);
+    if (TENANT_WORKER_ROUTES.has(route)) {
+      const gateTenantId = (
+        req.headers["x-tenant-id"] || body.tenantId || (req.query && req.query.tenantId) || ""
+      ).toString().trim();
+      if (gateTenantId) {
+        const requiredRole = route === "/marketplace:publish" ? "admin" : "member";
+        const { rejectIfRoleInsufficient } = require("./middleware/membershipCheck");
+        if (await rejectIfRoleInsufficient(res, auth.user && auth.user.uid, gateTenantId, requiredRole)) return;
+      }
+    }
+
     // ── Universal OAuth (authenticated routes) ──
 
     // GET /v1/auth/:platform/connect — redirects subscriber to platform OAuth screen
@@ -11066,6 +11122,90 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[raas-review] error:", e.message);
         return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Surface 1 / R2 (CODEX 2026-06-22): per-tenant worker overlay ──────────
+    // "Change MY worker, not everyone's." These write/read/clear the sparse
+    // overlay at tenants/{tenantId}/workerOverlays/{slug} that the runtime merges
+    // over the global base (see services/workerOverlay.js + the worker-chat path).
+    // The seam Surface 3 (Alex-dispatches-Code) writes through. All three are
+    // membership-gated by the central TENANT_WORKER_ROUTES gate; identity/
+    // security/billing fields are stripped on write; every change is append-only
+    // (prior overlay snapshotted to a history subcollection) and audit-logged.
+
+    // POST /v1/worker:overlay:set — write/merge a tenant's worker overlay
+    if (route === "/worker:overlay:set" && method === "POST") {
+      const { tenantId, slug, overlay } = body;
+      if (!tenantId || !slug || !overlay || typeof overlay !== "object") {
+        return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
+      }
+      try {
+        const { sanitizeOverlayWrite } = require("./services/workerOverlay");
+        const safe = sanitizeOverlayWrite(overlay);
+        if (Object.keys(safe).length === 0) {
+          return res.json({ ok: false, error: "Overlay had no applyable fields (all were protected identity/billing fields)" });
+        }
+        const ref = db.doc(`tenants/${tenantId}/workerOverlays/${slug}`);
+        const prior = await ref.get();
+        // Append-only: snapshot the prior overlay before changing it.
+        await db.collection(`tenants/${tenantId}/workerOverlays/${slug}/history`).add({
+          overlay: prior.exists ? prior.data() : null,
+          action: "set",
+          changedFields: Object.keys(safe),
+          by: auth.user && auth.user.uid,
+          at: nowServerTs(),
+        });
+        await ref.set({ ...safe, slug, updatedAt: nowServerTs(), updatedBy: auth.user && auth.user.uid }, { merge: true });
+        await db.collection("auditTrail").add({
+          type: "worker_overlay_set", tenantId, slug,
+          changedFields: Object.keys(safe), userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:overlay:set] ${tenantId}/${slug} fields=[${Object.keys(safe).join(", ")}]`);
+        return res.json({ ok: true, slug, appliedFields: Object.keys(safe) });
+      } catch (e) {
+        console.error("[worker:overlay:set] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:overlay — read a tenant's worker overlay
+    if (route === "/worker:overlay" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || (req.query && req.query.tenantId);
+      const slug = req.query && req.query.slug;
+      if (!tenantId || !slug) return res.json({ ok: false, error: "Missing tenantId or slug" });
+      try {
+        const snap = await db.doc(`tenants/${tenantId}/workerOverlays/${slug}`).get();
+        return res.json({ ok: true, slug, overlay: snap.exists ? snap.data() : null });
+      } catch (e) {
+        console.error("[worker:overlay GET] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:overlay:clear — revert a worker to base (rollback)
+    if (route === "/worker:overlay:clear" && method === "POST") {
+      const { tenantId, slug } = body;
+      if (!tenantId || !slug) return res.json({ ok: false, error: "Missing tenantId or slug" });
+      try {
+        const ref = db.doc(`tenants/${tenantId}/workerOverlays/${slug}`);
+        const prior = await ref.get();
+        await db.collection(`tenants/${tenantId}/workerOverlays/${slug}/history`).add({
+          overlay: prior.exists ? prior.data() : null,
+          action: "clear",
+          by: auth.user && auth.user.uid,
+          at: nowServerTs(),
+        });
+        if (prior.exists) await ref.delete();
+        await db.collection("auditTrail").add({
+          type: "worker_overlay_clear", tenantId, slug,
+          userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:overlay:clear] ${tenantId}/${slug} reverted to base`);
+        return res.json({ ok: true, slug, reverted: true });
+      } catch (e) {
+        console.error("[worker:overlay:clear] error:", e.message);
+        return res.json({ ok: false, error: e.message });
       }
     }
 
