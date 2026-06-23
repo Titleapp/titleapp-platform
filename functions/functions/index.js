@@ -11153,6 +11153,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           type: "worker_overlay_set", tenantId, slug,
           changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.set_overlay_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { slug, overlay }, output: { fields: result.fields },
+        });
         console.log(`[worker:overlay:set] ${tenantId}/${slug} fields=[${result.fields.join(", ")}]`);
         return res.json({ ok: true, slug, appliedFields: result.fields });
       } catch (e) {
@@ -11226,6 +11230,11 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId,
           changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
+        // Surface 4: structured capability-invocation audit (auditLedger).
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.propose_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { slug, overlay }, output: { proposalId: r.proposalId, fields: r.fields },
+        });
         console.log(`[worker:change:propose] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
         return res.json({ ok: true, proposalId: r.proposalId, slug, status: "pending", summary: r.summary });
       } catch (e) {
@@ -11294,6 +11303,11 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId, source: "chat",
           changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
+        // Surface 4: structured capability-invocation audit — caller is the chat agent.
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.propose_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "chat", input: { slug, instruction }, output: { proposalId: r.proposalId, fields: r.fields },
+        });
         console.log(`[worker:change:fromChat] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
         return res.json({
           ok: true,
@@ -11348,6 +11362,11 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           type: "worker_change_approved", tenantId, slug: prop.slug, proposalId,
           changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
+        // Surface 4: the approval is the consequential governed action — audit it.
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.approve_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { proposalId, slug: prop.slug }, output: { fields: result.fields, applied: true },
+        });
         console.log(`[worker:change:approve] ${tenantId}/${prop.slug} proposal=${proposalId} → live`);
         return res.json({ ok: true, proposalId, slug: prop.slug, status: "approved", appliedFields: result.fields });
       } catch (e) {
@@ -11369,6 +11388,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         await db.collection("auditTrail").add({
           type: "worker_change_rejected", tenantId, slug: propSnap.data().slug, proposalId,
           userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.reject_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { proposalId }, output: { status: "rejected" },
         });
         console.log(`[worker:change:reject] ${tenantId} proposal=${proposalId} rejected`);
         return res.json({ ok: true, proposalId, status: "rejected" });

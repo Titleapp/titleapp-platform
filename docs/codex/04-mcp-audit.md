@@ -35,18 +35,29 @@ rule verdict**, append-only and tamper-evident — and SOCIII exposes its worker
 - 🟠 Append-only is convention, not rule-enforced (no immutability rule on `dtcs`/`logbookEntries`/`auditLedger`).
 
 ## Turn-on tasks
-- [ ] **T1 — Capability dispatcher reads `capabilities.json`.** One choke-point that, per
-      capability, enforces `allowedCallers/requiredKyc/requiredRoles` before execution. (Makes the
-      "source of truth" real — task #44.)
-- [ ] **T2 — Write every invocation to `auditLedger`** (production, not the test stub): actor uid,
-      tenantId, capability id+version, inputHash, outputHash, rules verdict + which rule fired, ts.
-- [ ] **T3 — Persist worker + analyst verdicts** (stop discarding `workerEnforcement`).
-- [ ] **T4 — Immutability rules** for `dtcs`/`logbookEntries`/`auditLedger` (`allow update/delete: if false`).
-- [ ] **T5 — Close the tamper hole:** re-hash on any path that mutates hashed fields, or move
-      mutable fields (e.g. value) out of the hashed set + into appended events.
-- [ ] **T6 — Minimal real MCP server.** Claude connects, reads a real Vault record, invokes ONE
-      worker capability under the rules engine, and the invocation lands in `auditLedger` (T2). Small
-      but genuine — the credibility artifact for Anthropic / acquirers (task #78 overlaps).
+- [~] **T1 — Registry consulted at runtime.** ✅ **BUILT + LIVE 2026-06-22** (shadow mode per RT2).
+      `services/capabilityAudit.js` `checkCapability()` reads `capabilities.json` (now bundled with
+      the function — `firebase.json` predeploy syncs the canonical repo-root copy into the package;
+      root stays the single source of truth) and verifies `allowedCallers`. Currently **records**
+      what it would block (e.g. a `chat` caller invoking `approve_change` → wouldBlock) without
+      enforcing yet. ⏳ flip to enforce after shadow data confirms the matrix. Added 4 worker-change
+      capabilities to the registry (now 58) — advances #44.
+- [x] **T2 — Real `auditLedger` writes.** ✅ **BUILT + LIVE 2026-06-22.** `recordInvocation()` writes
+      a production entry (`isTestAnchor:false`) per governed action: capabilityId, class, tenantId,
+      userId, callerType, **SHA-256 inputHash + outputHash**, registry verdict, enforcementMode.
+      Wired into all 5 worker-change actions (set_overlay / propose / fromChat / approve / reject).
+      **Verified live: `scripts/test/s4CapabilityAudit.js` 9/9** — real entries, hashes, registry
+      consulted, verdicts, not the stub.
+- [ ] **T3 — Persist worker + analyst rules verdicts** (stop discarding `workerEnforcement`). ⏳
+      remaining — pass the rules-engine verdict into `recordInvocation({rulesVerdict})` (the field
+      already exists on the ledger schema; just needs the chat path to populate it).
+- [~] **T4 — Immutability rules.** ✅ `auditLedger` now explicitly immutable + admin-read in
+      `firestore.rules` (`create/update/delete: if false`). ⏳ `dtcs`/`logbookEntries` rule-level
+      guards deferred (they're already server-only/append in code; lower priority).
+- [ ] **T5 — Close the tamper hole** (`dtc:refresh-value` mutates hashed `metadata` w/o re-hash). ⏳ remaining.
+- [ ] **T6 — Minimal real MCP server.** ⏳ remaining — Claude connects, invokes ONE worker
+      capability under the rules engine, invocation lands in `auditLedger` (T2 is ready to receive it).
+      The credibility artifact for Anthropic / acquirers (task #78 overlaps).
 
 ## RED TEAM
 - 🔴 **RT1 — Claiming MCP/audit before it's wired = becoming the hype we mock** (P2). The one

@@ -193,6 +193,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Audit ledger (Surface 4) — the capability-invocation moat record. Server-
+    // only writes via Admin SDK; immutable (never updated or deleted); readable
+    // only by admins/auditors. The append-only guarantee is enforced in code
+    // (writes are .add()/.set() of new docs, never .update()).
+    match /auditLedger/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

@@ -51,6 +51,9 @@
   "functions": {
     "source": "functions/functions",
     "runtime": "nodejs22",
+    "predeploy": [
+      "node -e \"const fs=require('fs');fs.mkdirSync('functions/functions/contracts',{recursive:true});fs.copyFileSync('contracts/capabilities.json','functions/functions/contracts/capabilities.json');console.log('[predeploy] synced capabilities.json into function package')\""
+    ],
     "ignore": [
       "node_modules",
       ".git",

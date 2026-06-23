@@ -129,7 +129,10 @@ function summarizeChange(effectiveWorker, proposedFields) {
   const safe = stripProtected(proposedFields);
   const summary = [];
   for (const k of Object.keys(safe)) {
-    summary.push({ field: k, from: effectiveWorker ? effectiveWorker[k] : undefined, to: safe[k] });
+    // Firestore rejects `undefined` — when the field doesn't exist on the worker
+    // yet (a brand-new field), record `from: null`, not undefined.
+    const fromVal = effectiveWorker && effectiveWorker[k] !== undefined ? effectiveWorker[k] : null;
+    summary.push({ field: k, from: fromVal, to: safe[k] });
   }
   return summary;
 }
