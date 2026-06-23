@@ -8294,6 +8294,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       "/marketplace:publish",
       // Per-tenant worker overlay (Surface 1 / R2 — "change MY worker, not everyone's")
       "/worker:overlay:set", "/worker:overlay", "/worker:overlay:clear",
+      // Alex-dispatches-Code consent gate (Surface 3 — propose → approve → live)
+      "/worker:change:propose", "/worker:changes", "/worker:change:approve", "/worker:change:reject",
     ]);
     if (TENANT_WORKER_ROUTES.has(route)) {
       const gateTenantId = (
@@ -11141,28 +11143,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
       }
       try {
-        const { sanitizeOverlayWrite } = require("./services/workerOverlay");
-        const safe = sanitizeOverlayWrite(overlay);
-        if (Object.keys(safe).length === 0) {
+        const { applyOverlay } = require("./services/workerOverlay");
+        const result = await applyOverlay({ tenantId, slug, fields: overlay, byUid: auth.user && auth.user.uid, source: "direct" });
+        if (!result.applied) {
           return res.json({ ok: false, error: "Overlay had no applyable fields (all were protected identity/billing fields)" });
         }
-        const ref = db.doc(`tenants/${tenantId}/workerOverlays/${slug}`);
-        const prior = await ref.get();
-        // Append-only: snapshot the prior overlay before changing it.
-        await db.collection(`tenants/${tenantId}/workerOverlays/${slug}/history`).add({
-          overlay: prior.exists ? prior.data() : null,
-          action: "set",
-          changedFields: Object.keys(safe),
-          by: auth.user && auth.user.uid,
-          at: nowServerTs(),
-        });
-        await ref.set({ ...safe, slug, updatedAt: nowServerTs(), updatedBy: auth.user && auth.user.uid }, { merge: true });
         await db.collection("auditTrail").add({
           type: "worker_overlay_set", tenantId, slug,
-          changedFields: Object.keys(safe), userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+          changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
-        console.log(`[worker:overlay:set] ${tenantId}/${slug} fields=[${Object.keys(safe).join(", ")}]`);
-        return res.json({ ok: true, slug, appliedFields: Object.keys(safe) });
+        console.log(`[worker:overlay:set] ${tenantId}/${slug} fields=[${result.fields.join(", ")}]`);
+        return res.json({ ok: true, slug, appliedFields: result.fields });
       } catch (e) {
         console.error("[worker:overlay:set] error:", e.message);
         return res.json({ ok: false, error: e.message });
@@ -11205,6 +11196,124 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true, slug, reverted: true });
       } catch (e) {
         console.error("[worker:overlay:clear] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ── Surface 3 (CODEX 2026-06-22): Alex-dispatches-Code consent gate ───────
+    // The fix-loop: a client tells Alex "the worker keeps doing X wrong" → Alex
+    // PROPOSES a change (it does NOT go live) → the client sees a plain-English
+    // preview and APPROVES → only then is it applied to their tenant overlay
+    // (Surface 1), append-only + audited + reversible. "Agents propose, users
+    // confirm, then it applies" (CLAUDE.md invariant). Changes are overlay
+    // data only (rules/prompt/config); protected identity/security/billing
+    // fields are stripped; all four routes are membership-gated.
+
+    // POST /v1/worker:change:propose — Alex proposes a change (pending, NOT live)
+    if (route === "/worker:change:propose" && method === "POST") {
+      const { tenantId, slug, overlay, rationale } = body;
+      if (!tenantId || !slug || !overlay || typeof overlay !== "object") {
+        return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
+      }
+      try {
+        const { sanitizeOverlayWrite, summarizeChange, getWorkerOverlay, mergeOverlay } = require("./services/workerOverlay");
+        const safe = sanitizeOverlayWrite(overlay);
+        if (Object.keys(safe).length === 0) {
+          return res.json({ ok: false, error: "Proposed change had no applyable fields (all were protected identity/billing fields)" });
+        }
+        // Build the plain-English preview against the CURRENT effective worker
+        // (base + any existing overlay) — anti approve-theater.
+        const baseSnap = await db.doc(`digitalWorkers/${slug}`).get();
+        const base = baseSnap.exists ? baseSnap.data() : {};
+        const existingOverlay = await getWorkerOverlay(tenantId, slug);
+        const effective = mergeOverlay(base, existingOverlay);
+        const summary = summarizeChange(effective, safe);
+        const proposalRef = await db.collection(`tenants/${tenantId}/workerChangeProposals`).add({
+          tenantId, slug,
+          overlay: safe,
+          summary,
+          rationale: rationale || null,
+          status: "pending",
+          proposedBy: auth.user && auth.user.uid,
+          createdAt: nowServerTs(),
+        });
+        await db.collection("auditTrail").add({
+          type: "worker_change_proposed", tenantId, slug, proposalId: proposalRef.id,
+          changedFields: Object.keys(safe), userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:change:propose] ${tenantId}/${slug} proposal=${proposalRef.id} fields=[${Object.keys(safe).join(", ")}]`);
+        return res.json({ ok: true, proposalId: proposalRef.id, slug, status: "pending", summary });
+      } catch (e) {
+        console.error("[worker:change:propose] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:changes — list change proposals (default: pending)
+    if (route === "/worker:changes" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || (req.query && req.query.tenantId);
+      const slug = req.query && req.query.slug;
+      const status = (req.query && req.query.status) || "pending";
+      if (!tenantId) return res.json({ ok: false, error: "Missing tenantId" });
+      try {
+        // Query by status only (auto-indexed); filter by slug in memory to avoid
+        // needing a composite index.
+        const snap = await db.collection(`tenants/${tenantId}/workerChangeProposals`)
+          .where("status", "==", status).limit(50).get();
+        let proposals = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (slug) proposals = proposals.filter((p) => p.slug === slug);
+        return res.json({ ok: true, proposals });
+      } catch (e) {
+        console.error("[worker:changes] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:approve — client approves → the change goes LIVE
+    if (route === "/worker:change:approve" && method === "POST") {
+      const { tenantId, proposalId } = body;
+      if (!tenantId || !proposalId) return res.json({ ok: false, error: "Missing tenantId or proposalId" });
+      try {
+        const propRef = db.doc(`tenants/${tenantId}/workerChangeProposals/${proposalId}`);
+        const propSnap = await propRef.get();
+        if (!propSnap.exists) return res.json({ ok: false, error: "Proposal not found" });
+        const prop = propSnap.data();
+        if (prop.status !== "pending") return res.json({ ok: false, error: `Proposal already ${prop.status}` });
+        // Apply via the single overlay writer-of-record (Surface 1).
+        const { applyOverlay } = require("./services/workerOverlay");
+        const result = await applyOverlay({ tenantId, slug: prop.slug, fields: prop.overlay, byUid: auth.user && auth.user.uid, source: `proposal:${proposalId}` });
+        if (!result.applied) return res.json({ ok: false, error: "Proposal had no applyable fields" });
+        await propRef.update({ status: "approved", decidedBy: auth.user && auth.user.uid, decidedAt: nowServerTs() });
+        await db.collection("auditTrail").add({
+          type: "worker_change_approved", tenantId, slug: prop.slug, proposalId,
+          changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:change:approve] ${tenantId}/${prop.slug} proposal=${proposalId} → live`);
+        return res.json({ ok: true, proposalId, slug: prop.slug, status: "approved", appliedFields: result.fields });
+      } catch (e) {
+        console.error("[worker:change:approve] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:reject — client rejects → nothing applied
+    if (route === "/worker:change:reject" && method === "POST") {
+      const { tenantId, proposalId, reason } = body;
+      if (!tenantId || !proposalId) return res.json({ ok: false, error: "Missing tenantId or proposalId" });
+      try {
+        const propRef = db.doc(`tenants/${tenantId}/workerChangeProposals/${proposalId}`);
+        const propSnap = await propRef.get();
+        if (!propSnap.exists) return res.json({ ok: false, error: "Proposal not found" });
+        if (propSnap.data().status !== "pending") return res.json({ ok: false, error: `Proposal already ${propSnap.data().status}` });
+        await propRef.update({ status: "rejected", decidedBy: auth.user && auth.user.uid, decidedAt: nowServerTs(), rejectReason: reason || null });
+        await db.collection("auditTrail").add({
+          type: "worker_change_rejected", tenantId, slug: propSnap.data().slug, proposalId,
+          userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:change:reject] ${tenantId} proposal=${proposalId} rejected`);
+        return res.json({ ok: true, proposalId, status: "rejected" });
+      } catch (e) {
+        console.error("[worker:change:reject] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

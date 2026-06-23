@@ -95,9 +95,50 @@ function stripProtected(overlay) {
   return safe;
 }
 
+/**
+ * THE single writer-of-record for a worker overlay (task #43). Sanitizes the
+ * incoming fields, snapshots the prior overlay to an append-only history
+ * subcollection, then merges the new fields. Both the direct path
+ * (worker:overlay:set) and the consent-gated path (worker:change:approve) call
+ * this, so the two can never diverge. Returns { applied, fields }.
+ */
+async function applyOverlay({ tenantId, slug, fields, byUid, source }) {
+  const safe = sanitizeOverlayWrite(fields);
+  if (Object.keys(safe).length === 0) return { applied: false, fields: [], reason: "no applyable fields (all protected)" };
+  const FV = admin.firestore.FieldValue;
+  const ref = db().doc(`tenants/${tenantId}/workerOverlays/${slug}`);
+  const prior = await ref.get();
+  await db().collection(`tenants/${tenantId}/workerOverlays/${slug}/history`).add({
+    overlay: prior.exists ? prior.data() : null,
+    action: "set",
+    source: source || "direct",
+    changedFields: Object.keys(safe),
+    by: byUid || null,
+    at: FV.serverTimestamp(),
+  });
+  await ref.set({ ...safe, slug, updatedAt: FV.serverTimestamp(), updatedBy: byUid || null }, { merge: true });
+  return { applied: true, fields: Object.keys(safe) };
+}
+
+/**
+ * Build a plain-English change preview (anti "approve-theater", red-team RT3):
+ * for each proposed field, what it changes from → to relative to the current
+ * effective worker (base merged with any existing overlay).
+ */
+function summarizeChange(effectiveWorker, proposedFields) {
+  const safe = stripProtected(proposedFields);
+  const summary = [];
+  for (const k of Object.keys(safe)) {
+    summary.push({ field: k, from: effectiveWorker ? effectiveWorker[k] : undefined, to: safe[k] });
+  }
+  return summary;
+}
+
 module.exports = {
   getWorkerOverlay,
   mergeOverlay,
   sanitizeOverlayWrite,
+  applyOverlay,
+  summarizeChange,
   PROTECTED_WORKER_FIELDS,
 };

@@ -29,15 +29,27 @@ shared-base-with-sandboxed-overlay-at-scale yet (that's Tier-2, deferred, §4 of
 the *capability* now against one tenant's worker; harden for thousands later.
 
 ## Turn-on tasks
-- [ ] **T0 — (dependency)** Surface 1 T1+T2 done: runtime reads tenant-first, writes gated.
-- [ ] **T1 — Dispatch primitive.** Alex can emit a structured "proposed change" to a worker's
-      config/rules targeting `tenants/{tid}/workers/{slug}` (NOT global).
-- [ ] **T2 — Preview.** Render the diff/result in the canvas before anything is live.
-- [ ] **T3 — Approve-home.** The change round-trips to the client's workspace as a pending item;
-      nothing deploys without explicit approval (the consent gate — CLAUDE.md invariant).
-- [ ] **T4 — Deploy + record.** On approval: write the tenant overlay + append an audit event
-      (actor, tenant, before/after, verdict) — ties to Surface 4.
-- [ ] **T5 — Rollback.** Every change is reversible (append-only → revert = new event).
+- [x] **T0 — (dependency)** Surface 1 done + live (overlay seam + gated writes). ✅
+- [x] **T1 — Dispatch primitive.** ✅ **BUILT + LIVE 2026-06-22.** `POST /worker:change:propose`
+      emits a structured proposed change targeting the tenant's overlay (NOT global), sanitized
+      (protected fields stripped), stored `pending`.
+- [x] **T2 — Preview.** ✅ propose returns a plain-English `summary` (per field: from → to)
+      computed against the current effective worker — anti "approve-theater" (RT3).
+- [x] **T3 — Approve-home.** ✅ nothing applies until `POST /worker:change:approve`;
+      `GET /worker:changes` lists pending items; `POST /worker:change:reject` discards. The
+      consent gate (CLAUDE.md "agents propose, users confirm, then it applies").
+- [x] **T4 — Apply + record.** ✅ approve applies via the single overlay writer-of-record
+      (`applyOverlay`, also consolidates #43) + append-only history snapshot + `auditTrail`
+      events (proposed/approved/rejected, actor + fields).
+- [x] **T5 — Rollback.** ✅ reject is a no-op; every overlay write snapshots the prior state to
+      history; `worker:overlay:clear` reverts to base. **Verified live: `scripts/test/s3FixLoop.js`
+      9/9** (propose→pending-not-applied · cross-tenant propose 403 · approve→live · double-approve
+      blocked · reject→no-op).
+- [ ] **T6 — Alex generates the change (chat integration).** ⏳ remaining: wire the chat so a
+      natural-language "fix the worker so it does X" makes Alex emit the `propose` call with the
+      right overlay fields. The plumbing is live; this connects the LLM to it.
+- [ ] **T7 — Frontend approve UI.** ⏳ remaining: render the pending proposal + plain-English
+      preview in the workspace with Approve/Reject buttons (the "approve — fixed?" moment).
 
 ## RED TEAM
 - 🔴 **RT1 — Ships before Surface 1 → R2 disaster.** A client "fixes" their worker and changes
