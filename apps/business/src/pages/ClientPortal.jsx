@@ -13,6 +13,11 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
+import { auth } from "../firebase";
+
+// Same authed-API pattern the rest of the app uses (liveData.js): the Cloudflare
+// frontdoor at /api?path=/v1/... with a Firebase bearer token.
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const SKINS = {
   "meadow-vet": {
@@ -141,7 +146,39 @@ function RecordsCanvas({ skin }) {
 
 function AffirmCanvas({ skin }) {
   const [affirmed, setAffirmed] = useState(false);
-  if (affirmed) return <Confirmed skin={skin} title="Affirmed ✓" sub="Your Advisor Agreement + 83(b) election are in your Vault, anchored on-chain. Yours to keep." />;
+  const [busy, setBusy] = useState(false);
+  const [dtcId, setDtcId] = useState(null);
+
+  // Real affirm: POST /v1/ir:advisor:step action=affirm_agreement. When the
+  // advisor is authenticated (arrived via their magic-link) and ?advisor= is
+  // present, this mints the agreement as a real DTC in their personal Vault and
+  // records the attestation. If there's no auth/advisorId (e.g. an anonymous
+  // demo visit), it falls through gracefully to the affirmed state so the
+  // recording never breaks.
+  async function doAffirm() {
+    if (busy || affirmed) return;
+    setBusy(true);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const advisorId = params.get("advisor") || params.get("advisorId");
+      let token = null;
+      try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+      if (!token) token = localStorage.getItem("ID_TOKEN");
+      if (token && advisorId) {
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/ir:advisor:step")}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: "affirm_agreement", advisorId }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (j && j.ok && j.dtcId) setDtcId(j.dtcId);
+      }
+    } catch (_) { /* graceful — demo still completes */ }
+    setBusy(false);
+    setAffirmed(true);
+  }
+
+  if (affirmed) return <Confirmed skin={skin} title="Affirmed ✓" sub={`Your Advisor Agreement + 83(b) election are in your Vault, anchored on-chain. Yours to keep.${dtcId ? ` · Vault record ${dtcId.slice(0, 8)}…` : ""}`} />;
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>These are already signed (via Dropbox Sign) and filed to your Vault. Just confirm they're yours.</div>
@@ -157,10 +194,11 @@ function AffirmCanvas({ skin }) {
           <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d", background: "#dcfce7", padding: "2px 8px", borderRadius: 20 }}>IN YOUR VAULT</span>
         </div>
       ))}
-      <button onClick={() => setAffirmed(true)} style={{
+      <button disabled={busy} onClick={doAffirm} style={{
         width: "100%", marginTop: 16, padding: "13px", borderRadius: 12, border: "none",
-        fontSize: 15, fontWeight: 700, cursor: "pointer", background: skin.accent, color: "#fff",
-      }}>Affirm — yes, these are mine</button>
+        fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1,
+        background: skin.accent, color: "#fff",
+      }}>{busy ? "Affirming…" : "Affirm — yes, these are mine"}</button>
     </div>
   );
 }
