@@ -14442,6 +14442,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           const result = await advisorFlow.onMagicLinkClick({ advisorId });
           return res.json(result);
         }
+        if (action === "affirm_agreement") {
+          // Surface 5: advisor affirms their already-signed agreement → minted as
+          // a DTC in their personal Vault + append-only attestation (audited).
+          const result = await advisorFlow.affirmAgreement({
+            advisorId,
+            uid: auth.user.uid,
+            userAgent: req.headers["user-agent"] || null,
+            ip: req.headers["x-forwarded-for"] || req.ip || null,
+          });
+          return res.json(result);
+        }
         if (action === "acknowledge_terms") {
           const result = await advisorFlow.acknowledgeTerms({
             advisorId,

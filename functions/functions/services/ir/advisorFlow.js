@@ -380,6 +380,92 @@ async function acknowledgeTerms({ advisorId, uid = null, userAgent = null, ip = 
   return { ok: true, advisorId, dealTerms };
 }
 
+// affirmAgreement — Surface 5 (CODEX 2026-06-23): advisors don't re-sign. Their
+// agreement was already executed (Dropbox Sign / Atlas) and a copy lives in the
+// operator vault; here the advisor AFFIRMS it (attestation). Two real effects:
+//   1. mint the agreement as a DTC in the ADVISOR'S OWN personal Vault (with a
+//      content hash → it rides the daily Bitcoin anchor like any other DTC), so
+//      "it's already in your Vault" is literally true.
+//   2. record the affirmation as an append-only attestation (logbook entry +
+//      auditTrail) and audit the capability invocation (Surface 4 ledger).
+// Idempotent: re-affirming returns the existing DTC.
+async function affirmAgreement({ advisorId, uid = null, userAgent = null, ip = null }) {
+  if (!advisorId) throw new Error("affirmAgreement: advisorId required");
+  if (!uid) throw new Error("affirmAgreement: uid required (affirmation is a personal-vault attestation)");
+  const { ref, data } = await _getAdvisor(advisorId);
+  if (!data) throw new Error(`advisor ${advisorId} not found`);
+
+  const signed = data.flowStep === "signature_complete" || data.flowStep === "closed" || data.flowStep === "affirmed" || !!data.advisorVaultDocId;
+  if (!signed) throw new Error("No signed advisor agreement to affirm yet");
+
+  // Idempotent — already affirmed + minted.
+  if (data.affirmedAt && data.personalVaultDtcId) {
+    return { ok: true, alreadyAffirmed: true, affirmedAt: data.affirmedAt, dtcId: data.personalVaultDtcId };
+  }
+
+  const db = getDb();
+  const meta = data.advisorMetadata || {};
+
+  // 1. Mint the agreement as a DTC in the advisor's personal Vault (once).
+  let dtcId = data.personalVaultDtcId || null;
+  if (!dtcId) {
+    const { contentHash } = require("../anchor/hashAnchor");
+    const createdAtIso = new Date().toISOString();
+    const dtcRecord = {
+      userId: uid,
+      tenantId: "vault",
+      type: "advisor_agreement",
+      metadata: {
+        title: `Advisor Agreement — ${meta.advisorName || data.name || "Advisor"}`,
+        documentType: "signed_contract",
+        advisorId,
+        equityPct: meta.equityPct ?? data.equityPct ?? null,
+        vestingMonths: meta.vestingMonths ?? data.vestingMonths ?? 24,
+        cliffMonths: meta.cliffMonths ?? data.cliffMonths ?? 6,
+        advisorRole: meta.advisorRole ?? data.advisorRole ?? null,
+        executedAt: meta.executedAt || null,
+        signatureRequestId: meta.signatureRequestId || null,
+        storageRef: meta.storageRef || data.advisorDocumentRef || null,
+        operatorVaultDocId: data.advisorVaultDocId || null,
+      },
+      fileIds: [],
+      version: 1,
+      createdAt: createdAtIso,
+    };
+    const ch = contentHash(dtcRecord);
+    const dtcRef = await db.collection("dtcs").add({ ...dtcRecord, contentHash: ch, source: "advisor_affirm", createdAtTs: ts() });
+    dtcId = dtcRef.id;
+    await db.collection("logbookEntries").add({
+      dtcId, userId: uid, tenantId: "vault",
+      dtcTitle: dtcRecord.metadata.title,
+      entryType: "creation",
+      data: { source: "advisor_affirm", contentHash: ch },
+      files: [], createdAt: ts(),
+    });
+  }
+
+  // 2. Append-only affirmation attestation.
+  await db.collection("logbookEntries").add({
+    dtcId, userId: uid, tenantId: "vault",
+    entryType: "affirmation",
+    data: { advisorId, statement: "Advisor affirms this agreement is theirs and accurate.", userAgent, ip },
+    files: [], createdAt: ts(),
+  });
+  await ref.set({ affirmedAt: ts(), affirmedBy: uid, personalVaultDtcId: dtcId, flowStep: "affirmed", updated_at: ts() }, { merge: true });
+  await db.collection("auditTrail").add({ type: "ir_advisor_agreement_affirmed", advisorId, uid, dtcId, userAgent, ip, at: ts() });
+
+  // 3. Surface 4 capability-invocation audit.
+  try {
+    const { recordInvocation } = require("../capabilityAudit");
+    await recordInvocation({
+      capabilityId: "ir.affirm_advisor_agreement_v1", tenantId: "vault", userId: uid,
+      callerType: "human", input: { advisorId }, output: { dtcId, affirmed: true },
+    });
+  } catch (e) { console.warn("[advisorFlow.affirm] audit failed:", e.message); }
+
+  return { ok: true, advisorId, dtcId, affirmedAt: new Date().toISOString() };
+}
+
 // Recovery path: pulls current Stripe verification session status and writes back.
 // Used as a fallback when the Stripe webhook fails to flip the advisor doc.
 async function syncKycFromStripe({ advisorId }) {
@@ -737,6 +823,7 @@ module.exports = {
   onMagicLinkClick,
   markStepComplete,
   acknowledgeTerms,
+  affirmAgreement,
   startIdentityVerification,
   syncKycFromStripe,
   startAdvisorSigning,

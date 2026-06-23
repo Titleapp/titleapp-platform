@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-06-22",
+  "lastUpdated": "2026-06-23",
   "rules": {
     "no_undeclared_endpoints": true,
     "chat_and_web_parity": true,
@@ -1062,6 +1062,22 @@
       "class": "workers",
       "summary": "Reject a pending worker change. Nothing is applied.",
       "contexts": [
+        "tenant"
+      ],
+      "allowedCallers": [
+        "human"
+      ],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "ir.affirm_advisor_agreement_v1",
+      "class": "ir",
+      "summary": "Advisor affirms their already-signed agreement; mints it as a DTC in their personal Vault + records an append-only attestation.",
+      "contexts": [
+        "civilian",
         "tenant"
       ],
       "allowedCallers": [
