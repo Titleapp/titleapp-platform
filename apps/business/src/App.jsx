@@ -5023,6 +5023,7 @@ export default function App() {
   // Standalone Alex Chief of Staff workspace — 3-column layout
   const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
   const isDemo = window.location.pathname === "/demo" || window.location.pathname === "/demo/";
+  const isPortal = window.location.pathname === "/portal" || window.location.pathname === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
@@ -5808,6 +5809,14 @@ export default function App() {
   if (isDemo) {
     const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));
     return <React.Suspense fallback={null}><DemoSignIn /></React.Suspense>;
+  }
+
+  // ── /portal: white-label customer surface (pet owner / advisor) ──
+  // Skinned by ?company= ; persona by ?persona=. Door-2 in its purest form —
+  // the customer never sees the operator cockpit. (See CODEX-CUSTOMER-PORTAL.)
+  if (isPortal) {
+    const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
+    return <React.Suspense fallback={null}><ClientPortal /></React.Suspense>;
   }
 
   // ── Alex Workspace: standalone experience ──────────────────
