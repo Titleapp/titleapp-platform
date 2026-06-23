@@ -54,7 +54,14 @@ rule verdict**, append-only and tamper-evident — and SOCIII exposes its worker
 - [~] **T4 — Immutability rules.** ✅ `auditLedger` now explicitly immutable + admin-read in
       `firestore.rules` (`create/update/delete: if false`). ⏳ `dtcs`/`logbookEntries` rule-level
       guards deferred (they're already server-only/append in code; lower priority).
-- [ ] **T5 — Close the tamper hole** (`dtc:refresh-value` mutates hashed `metadata` w/o re-hash). ⏳ remaining.
+- [x] **T5 — Tamper hole closed.** ✅ **BUILT + LIVE 2026-06-22.** `dtc:refresh-value` no longer
+      mutates the hashed `metadata` — the live valuation moves to a non-hashed `currentValue` field
+      (+ the existing `valuationHistory` events + a logbook entry). The immutable record keeps its
+      authored creation value, so `contentHash` and the Bitcoin anchor stay valid; "current value"
+      is the event-derived projection. Net-worth (`wallet:assets`) prefers `currentValue`.
+      **Verified live: `scripts/test/s4TamperHole.js` 7/7** — after refresh, metadata + contentHash
+      unchanged + re-derived hash still verifies; live value in `currentValue`; append-only logbook
+      entry; net-worth uses the live value.
 - [x] **T6 — Real MCP server.** ✅ **BUILT + LIVE 2026-06-22.** `POST /v1/mcp` speaks MCP
       Streamable-HTTP JSON-RPC (`services/mcp/mcpServer.js`): `initialize` / `tools/list` /
       `tools/call` / `ping`. Exposes 2 governed tools — `get_worker_overlay` (read) and
