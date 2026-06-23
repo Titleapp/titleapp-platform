@@ -21148,14 +21148,14 @@ Never attempt to output an entire multi-page document in a single response. For 
         // Mock valuation logic (replace with real API calls later)
         if (dtc.type === "vehicle" && dtc.metadata?.vin) {
           // Simulate vehicle depreciation (1-3% monthly)
-          const currentValue = dtc.metadata.value || 0;
+          const currentValue = (dtc.currentValue != null ? dtc.currentValue : dtc.metadata.value) || 0;
           const depreciation = 0.01 + Math.random() * 0.02; // 1-3%
           newValue = Math.round(currentValue * (1 - depreciation));
           source = "kbb_estimate";
           changePercent = -depreciation * 100;
         } else if (dtc.type === "property" && dtc.metadata?.address) {
           // Simulate property appreciation (0.5-2% monthly)
-          const currentValue = dtc.metadata.value || 0;
+          const currentValue = (dtc.currentValue != null ? dtc.currentValue : dtc.metadata.value) || 0;
           const appreciation = 0.005 + Math.random() * 0.015; // 0.5-2%
           newValue = Math.round(currentValue * (1 + appreciation));
           source = "attom_estimate";
@@ -21165,11 +21165,17 @@ Never attempt to output an entire multi-page document in a single response. For 
           return jsonError(res, 400, "Asset type does not support automatic valuation");
         }
 
-        const oldValue = dtc.metadata.value || 0;
+        const oldValue = (dtc.currentValue != null ? dtc.currentValue : dtc.metadata.value) || 0;
 
-        // Update DTC with new value
+        // Surface 4 T5 (CODEX 2026-06-22): DO NOT mutate the hashed canonical
+        // record. `metadata` is part of contentHash (and thus the Bitcoin anchor) —
+        // overwriting metadata.value silently breaks tamper-evidence. The live
+        // valuation is append-only: it lives in the non-hashed `currentValue`
+        // field + the valuationHistory event trail + a logbook entry. The
+        // immutable record keeps its authored creation value, so its contentHash
+        // and anchor stay valid; "current value" is the event-derived projection.
         await dtcDoc.ref.update({
-          "metadata.value": newValue,
+          currentValue: newValue,
           lastValuationUpdate: nowServerTs(),
           valuationSource: source,
           valuationHistory: admin.firestore.FieldValue.arrayUnion({
@@ -22186,15 +22192,18 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
         dtcsSnap.forEach(doc => {
           const dtc = doc.data();
+          // Surface 4 T5: prefer the live, event-derived currentValue; fall back
+          // to the immutable authored creation value (metadata.value).
+          const liveValue = (dtc.currentValue != null ? dtc.currentValue : dtc.metadata?.value) || 0;
           if (dtc.type === "vehicle") {
             assets.vehicles.count++;
-            assets.vehicles.value += dtc.metadata?.value || 0;
+            assets.vehicles.value += liveValue;
           } else if (dtc.type === "property") {
             assets.property.count++;
-            assets.property.value += dtc.metadata?.value || 0;
+            assets.property.value += liveValue;
           } else if (dtc.type === "credential") {
             assets.credentials.count++;
-            assets.credentials.value += dtc.metadata?.value || 0;
+            assets.credentials.value += liveValue;
           }
         });
 
