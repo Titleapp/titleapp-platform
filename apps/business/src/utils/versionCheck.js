@@ -1,16 +1,18 @@
-// versionCheck.js — S52.47 (auto-update).
+// versionCheck.js — S52.47 (auto-update) · hardened 2026-06-23.
 // Long-lived SPA tabs never re-request index.html, so they run stale code across
 // deploys no matter how good the cache headers are (index.html is already
-// no-store; /assets/** are immutable + hashed). A "click to reload" banner isn't
-// enough — a CUSTOMER won't notice or act on it, they'll just see a broken old
-// version and leave. So this AUTO-UPDATES: when a newer deploy is detected, the
-// tab silently reloads at a safe moment (when it's backgrounded, or on refocus)
-// so the user transparently lands on the latest build. A visible banner remains
-// as a fallback for a tab that stays in the foreground.
+// no-store; /assets/** are immutable + hashed). With 5-6 deploys/day a "click to
+// reload" banner that a user dismisses once and never sees again isn't enough —
+// they'll keep working in a stale build. So this:
+//   1. AUTO-UPDATES on a backgrounded/refocused tab (transparent, safe).
+//   2. Shows a PERSISTENT "new version" popup on a foreground tab that REAPPEARS
+//      after dismissal until they reload (Sean: "always appears").
 //
 // No build step: we read the hashed bundle name from the running document and
-// compare it to the one referenced by a freshly-fetched index.html.
-// Loop-safe: updatePending is only set when the hashes actually differ; after a
+// compare it to the one referenced by a freshly-fetched index.html. The fetch is
+// CACHE-BUSTED with a unique query param so an intermediary/CDN edge cache can't
+// serve a stale index.html and mask a new deploy (the most common silent failure).
+// Loop-safe: updatePending only flips when the hashes actually differ; after a
 // reload the running bundle equals the deployed one, so it can't re-trigger.
 
 let runningBundle = null;
@@ -28,7 +30,13 @@ function readRunningBundle() {
 
 async function readDeployedBundle() {
   try {
-    const html = await fetch("/index.html", { cache: "no-store" }).then((r) => r.text());
+    // Cache-bust: a unique URL bypasses any CDN/edge cache that might otherwise
+    // serve a stale index.html and hide a fresh deploy. `no-store` covers the
+    // browser cache; the query param covers everything in front of the origin.
+    const html = await fetch(`/index.html?_cb=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    }).then((r) => r.text());
     const m = html.match(/\/assets\/(index-[A-Za-z0-9_-]+\.js)/);
     return m ? m[1] : null;
   } catch {
@@ -39,7 +47,6 @@ async function readDeployedBundle() {
 function doReload() {
   if (reloading) return;
   reloading = true;
-  // replace() so the stale entry doesn't linger in history
   window.location.reload();
 }
 
@@ -47,20 +54,44 @@ function showBanner() {
   if (bannerShown) return;
   bannerShown = true;
   const bar = document.createElement("div");
+  bar.setAttribute("role", "alert");
   bar.style.cssText =
-    "position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.25);display:flex;align-items:center;gap:12px;font:500 13px/1.3 system-ui,-apple-system,sans-serif;";
+    "position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:2147483647;" +
+    "background:#0f172a;color:#fff;padding:11px 16px;border-radius:12px;" +
+    "box-shadow:0 8px 28px rgba(15,23,42,0.32);display:flex;align-items:center;gap:12px;" +
+    "font:600 13px/1.3 system-ui,-apple-system,'Segoe UI',sans-serif;max-width:92vw;" +
+    "border:1px solid rgba(255,255,255,0.08);animation:sociiiVerSlide .28s ease-out;";
+  // Monoline refresh glyph (Switzerland, not Disneyland — subtle stroked SVG).
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("width", "16"); icon.setAttribute("height", "16");
+  icon.setAttribute("viewBox", "0 0 24 24"); icon.setAttribute("fill", "none");
+  icon.setAttribute("stroke", "#a78bfa"); icon.setAttribute("stroke-width", "2");
+  icon.setAttribute("stroke-linecap", "round"); icon.setAttribute("stroke-linejoin", "round");
+  icon.innerHTML = '<path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>';
   const msg = document.createElement("span");
-  msg.textContent = "A new version of SOCIII is available.";
+  msg.textContent = "A new version of SOCIII is ready.";
   const btn = document.createElement("button");
-  btn.textContent = "Reload";
-  btn.style.cssText = "background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-weight:600;cursor:pointer;";
+  btn.textContent = "Refresh";
+  btn.style.cssText =
+    "background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:7px 15px;" +
+    "font:600 13px system-ui,sans-serif;cursor:pointer;white-space:nowrap;";
+  btn.onmouseenter = () => { btn.style.background = "#6d28d9"; };
+  btn.onmouseleave = () => { btn.style.background = "#7c3aed"; };
   btn.onclick = doReload;
   const x = document.createElement("button");
   x.textContent = "✕";
   x.setAttribute("aria-label", "Dismiss");
-  x.style.cssText = "background:transparent;color:#94a3b8;border:none;cursor:pointer;font-size:14px;line-height:1;";
+  x.style.cssText = "background:transparent;color:#94a3b8;border:none;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;";
+  // Dismiss only hides for now — the popup REAPPEARS on the next check/refocus so
+  // a stale tab can't be permanently ignored. (Sean: "always appears".)
   x.onclick = () => { bar.remove(); bannerShown = false; };
-  bar.append(msg, btn, x);
+  if (!document.getElementById("sociii-ver-kf")) {
+    const style = document.createElement("style");
+    style.id = "sociii-ver-kf";
+    style.textContent = "@keyframes sociiiVerSlide{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}";
+    document.head.appendChild(style);
+  }
+  bar.append(icon, msg, btn, x);
   document.body.appendChild(bar);
 }
 
@@ -68,16 +99,14 @@ async function check() {
   if (!runningBundle || reloading) return;
   if (!updatePending) {
     const deployed = await readDeployedBundle();
-    if (deployed && deployed !== runningBundle) {
-      updatePending = true;
-      // Foreground tab: show the banner so an actively-working user isn't yanked
-      // mid-task; if they ignore it, the visibility handlers below auto-reload.
-      if (document.visibilityState === "visible") showBanner();
-    }
+    if (deployed && deployed !== runningBundle) updatePending = true;
   }
-  // If an update is pending and the tab is hidden, refresh silently now — the
-  // user returns to a fresh build and never sees the stale one.
-  if (updatePending && document.visibilityState === "hidden") doReload();
+  if (!updatePending) return;
+  // Hidden tab → reload silently now; user returns to a fresh build.
+  if (document.visibilityState === "hidden") { doReload(); return; }
+  // Visible tab → (re)show the popup. Never yank an active user mid-task; let
+  // them choose, but keep reminding them so they don't stay stale.
+  showBanner();
 }
 
 export function initVersionCheck() {
@@ -86,17 +115,14 @@ export function initVersionCheck() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      // Tab going to background is the ONLY place we auto-reload — it's invisible
-      // and safe, so a customer who tabs away returns to a fresh build without
-      // ever being yanked mid-task. (Sean's preference: notify, don't force.)
       if (updatePending) doReload();
     } else {
-      // Returning to a foreground tab: re-check and SHOW THE BANNER. Never
-      // auto-reload a visible tab out from under the user — let them choose.
       check();
     }
   });
   window.addEventListener("focus", check);
-  setInterval(check, 2 * 60 * 1000); // poll every 2 min while open
+  window.addEventListener("online", check);
+  window.addEventListener("pageshow", check); // bfcache restore
+  setInterval(check, 60 * 1000); // poll every 60s (deploys land 5-6x/day)
   check(); // initial check on load
 }
