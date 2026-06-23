@@ -48,6 +48,22 @@ materially lowers scope and burn.
 > it actually does per-org/per-seat isolation (R2) and holds up at Tier-1 scale (50 / 350
 > seats) *before* the plan leans on it. Turn-on, then verify at scale — not assume.
 
+## 1b. CORE OPERATING PRINCIPLE — audit-and-turn-on *before* re-coding (Sean, 2026-06-22)
+
+The recurring dysfunction, named: **we keep re-coding what was foundationally built months
+ago → then prune the junk that creates → then fight random popups over the canvas and
+canvas areas that suck.** The dead-overlay and canvas bugs this whole session were *symptoms*
+of exactly this. So the rule for the 100 days:
+
+> **Before writing a line, find what already exists and turn it on.** Discovery precedes
+> construction. Re-coding a working foundation is the #1 source of junk, regressions, and
+> the canvas garbage. When something "doesn't work," the first hypothesis is *"it was built
+> and never wired,"* not *"it needs to be built."*
+
+This isn't only the multi-tenant substrate — it's **every** feature. It's also why the video
+can run *ahead* of the polished product (next section): the capability is usually *already
+there*, just unwired, so "a couple weeks ahead" is real, not vaporware.
+
 ## 2. The 3–5 core clients — and what "bulletproof" means for each
 
 | Client | Vertical | Bulletproof = | Key-person |
@@ -106,11 +122,13 @@ File **provisionals on the genuinely novel** — a few strong claims beat a spra
 
 ## 6. RED TEAM — attack the *plan* (not just the code)
 
-🔴 **P1 — demo-vs-real credibility gap (the "nano/open-claw" trap you named).** Polished
-scripted videos + a product that isn't actually bulletproof for the 3–5 = diligence finds
-the seam and the credibility collapses — the exact hype-over-substance failure you want to
-avoid. **Mitigation:** the 3–5 must be *really using it*; show real usage where possible;
-label demo-grade as demo. Substance first, video second.
+🟠 **P1 — demo-vs-real gap (softened by intent, but not gone).** The video's job is to
+**show how it works**, not hard-sell — so it's OK for it to run **a couple of weeks ahead**
+of the shipped product (the capability is usually *already built, just unwired* — see §1b).
+That's honest *if* the gap is weeks, not fantasy. The real bar is **running a whole
+university / 350 distributors — not "4 nurses in a corner."** **Mitigation:** keep the
+video's lead to ~weeks; the product must *genuinely* catch up to university scale fast; never
+let the video imply a finished thing that's actually vaporware. Show-how-it-works ≠ over-claim.
 
 🔴 **P2 — MCP claimed but hollow = you become what you're mocking.** If "MCP integration"
 is a thin wrapper, it reads as hype to the one audience (Anthropic) that can tell. **Mitigation:**
