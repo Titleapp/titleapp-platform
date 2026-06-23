@@ -8296,6 +8296,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       "/worker:overlay:set", "/worker:overlay", "/worker:overlay:clear",
       // Alex-dispatches-Code consent gate (Surface 3 — propose → approve → live)
       "/worker:change:propose", "/worker:changes", "/worker:change:approve", "/worker:change:reject",
+      "/worker:change:fromChat",
     ]);
     if (TENANT_WORKER_ROUTES.has(route)) {
       const gateTenantId = (
@@ -11216,35 +11217,94 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
       }
       try {
-        const { sanitizeOverlayWrite, summarizeChange, getWorkerOverlay, mergeOverlay } = require("./services/workerOverlay");
-        const safe = sanitizeOverlayWrite(overlay);
-        if (Object.keys(safe).length === 0) {
+        const { createChangeProposal } = require("./services/workerOverlay");
+        const r = await createChangeProposal({ tenantId, slug, fields: overlay, rationale, byUid: auth.user && auth.user.uid, source: "explicit" });
+        if (!r.created) {
           return res.json({ ok: false, error: "Proposed change had no applyable fields (all were protected identity/billing fields)" });
         }
-        // Build the plain-English preview against the CURRENT effective worker
-        // (base + any existing overlay) — anti approve-theater.
-        const baseSnap = await db.doc(`digitalWorkers/${slug}`).get();
-        const base = baseSnap.exists ? baseSnap.data() : {};
-        const existingOverlay = await getWorkerOverlay(tenantId, slug);
-        const effective = mergeOverlay(base, existingOverlay);
-        const summary = summarizeChange(effective, safe);
-        const proposalRef = await db.collection(`tenants/${tenantId}/workerChangeProposals`).add({
-          tenantId, slug,
-          overlay: safe,
-          summary,
-          rationale: rationale || null,
-          status: "pending",
-          proposedBy: auth.user && auth.user.uid,
-          createdAt: nowServerTs(),
-        });
         await db.collection("auditTrail").add({
-          type: "worker_change_proposed", tenantId, slug, proposalId: proposalRef.id,
-          changedFields: Object.keys(safe), userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+          type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId,
+          changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
         });
-        console.log(`[worker:change:propose] ${tenantId}/${slug} proposal=${proposalRef.id} fields=[${Object.keys(safe).join(", ")}]`);
-        return res.json({ ok: true, proposalId: proposalRef.id, slug, status: "pending", summary });
+        console.log(`[worker:change:propose] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
+        return res.json({ ok: true, proposalId: r.proposalId, slug, status: "pending", summary: r.summary });
       } catch (e) {
         console.error("[worker:change:propose] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:fromChat — Surface 3 T6: Alex GENERATES the change.
+    // Natural-language "make the worker do X" → Alex reads the worker's current
+    // config, drafts an overlay (rules/prompt/name/description only), and creates
+    // a PENDING proposal. Nothing goes live until the owner approves. The LLM
+    // never writes the worker directly — it only drafts a proposal that flows
+    // through the same consent gate + protected-field stripping.
+    if (route === "/worker:change:fromChat" && method === "POST") {
+      const { tenantId, slug, instruction } = body;
+      if (!tenantId || !slug || !instruction) return res.json({ ok: false, error: "Missing tenantId, slug, or instruction" });
+      try {
+        const { getEffectiveWorker, createChangeProposal } = require("./services/workerOverlay");
+        const eff = await getEffectiveWorker(tenantId, slug);
+        // Only show the model the editable fields — keep it focused + small.
+        const currentConfig = {
+          display_name: eff.display_name || eff.name || slug,
+          description: eff.description || eff.short_description || "",
+          headline: eff.headline || "",
+          systemPrompt: eff.systemPrompt || undefined,
+          raas_tier_1: eff.raas_tier_1 || [],
+          raas_tier_2: eff.raas_tier_2 || [],
+          raas_tier_3: eff.raas_tier_3 || [],
+        };
+        const sys = [
+          "You are a careful configuration assistant for a SOCIII Digital Worker.",
+          "The worker's owner wants to change how it behaves. Given the worker's CURRENT",
+          "configuration and the owner's request, output a JSON object containing ONLY the",
+          "fields that should change, with their new values.",
+          "",
+          "Editable fields: raas_tier_1, raas_tier_2, raas_tier_3 (arrays of rule strings),",
+          "systemPrompt (string), display_name, description, headline (strings).",
+          "When editing a rules array, output the COMPLETE new array (your change applied to",
+          "the existing rules), not just the delta. Do NOT include any field you are not",
+          "changing. NEVER include ownership, pricing, visibility, credit, or status fields.",
+          "If the request is unclear or is not about changing the worker, output exactly {}.",
+          "Output ONLY valid minified JSON. No prose. No markdown fences.",
+        ].join("\n");
+        const userMsg = `CURRENT CONFIG:\n${JSON.stringify(currentConfig, null, 2)}\n\nOWNER REQUEST:\n"${instruction}"`;
+        const anthropic = getAnthropic();
+        const aiResp = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 1500,
+          system: sys,
+          messages: [{ role: "user", content: userMsg }],
+        });
+        const rawText = (aiResp.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+        // Strip accidental markdown fences, then parse.
+        const jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        let proposedFields;
+        try { proposedFields = JSON.parse(jsonText); } catch (_) { proposedFields = null; }
+        if (!proposedFields || typeof proposedFields !== "object" || Object.keys(proposedFields).length === 0) {
+          return res.json({ ok: true, proposalId: null, status: "no_change", message: "I couldn't turn that into a concrete change to the worker. Can you be more specific about what behavior to change?" });
+        }
+        const r = await createChangeProposal({ tenantId, slug, fields: proposedFields, rationale: instruction, byUid: auth.user && auth.user.uid, source: "chat" });
+        if (!r.created) {
+          return res.json({ ok: true, proposalId: null, status: "no_change", message: "That request only touched fields I'm not allowed to change (like ownership or pricing), so I didn't propose anything." });
+        }
+        await db.collection("auditTrail").add({
+          type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId, source: "chat",
+          changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:change:fromChat] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
+        return res.json({
+          ok: true,
+          proposalId: r.proposalId,
+          slug,
+          status: "pending",
+          summary: r.summary,
+          message: `I've drafted a change to ${currentConfig.display_name} (${r.fields.join(", ")}). Review it and approve to make it live — it won't change anything until you do.`,
+        });
+      } catch (e) {
+        console.error("[worker:change:fromChat] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

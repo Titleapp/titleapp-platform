@@ -134,11 +134,50 @@ function summarizeChange(effectiveWorker, proposedFields) {
   return summary;
 }
 
+/**
+ * Compute the current EFFECTIVE worker (global base merged with the tenant's
+ * existing overlay) — what the tenant actually runs today.
+ */
+async function getEffectiveWorker(tenantId, slug) {
+  const baseSnap = await db().doc(`digitalWorkers/${slug}`).get();
+  const base = baseSnap.exists ? baseSnap.data() : {};
+  const existing = await getWorkerOverlay(tenantId, slug);
+  return mergeOverlay(base, existing);
+}
+
+/**
+ * THE single proposal-writer (Surface 3). Sanitizes the proposed fields, builds
+ * the from→to summary against the current effective worker, and writes a
+ * `pending` proposal. Both the explicit propose endpoint and the chat-driven
+ * (Alex-generated) path call this so they can't diverge. Returns
+ * { created, proposalId, summary, fields }.
+ */
+async function createChangeProposal({ tenantId, slug, fields, rationale, byUid, source }) {
+  const safe = sanitizeOverlayWrite(fields);
+  if (Object.keys(safe).length === 0) return { created: false, fields: [], reason: "no applyable fields (all protected)" };
+  const effective = await getEffectiveWorker(tenantId, slug);
+  const summary = summarizeChange(effective, safe);
+  const FV = admin.firestore.FieldValue;
+  const ref = await db().collection(`tenants/${tenantId}/workerChangeProposals`).add({
+    tenantId, slug,
+    overlay: safe,
+    summary,
+    rationale: rationale || null,
+    source: source || "explicit",
+    status: "pending",
+    proposedBy: byUid || null,
+    createdAt: FV.serverTimestamp(),
+  });
+  return { created: true, proposalId: ref.id, summary, fields: Object.keys(safe) };
+}
+
 module.exports = {
   getWorkerOverlay,
   mergeOverlay,
   sanitizeOverlayWrite,
   applyOverlay,
   summarizeChange,
+  getEffectiveWorker,
+  createChangeProposal,
   PROTECTED_WORKER_FIELDS,
 };

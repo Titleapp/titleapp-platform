@@ -45,11 +45,17 @@ the *capability* now against one tenant's worker; harden for thousands later.
       history; `worker:overlay:clear` reverts to base. **Verified live: `scripts/test/s3FixLoop.js`
       9/9** (propose→pending-not-applied · cross-tenant propose 403 · approve→live · double-approve
       blocked · reject→no-op).
-- [ ] **T6 — Alex generates the change (chat integration).** ⏳ remaining: wire the chat so a
-      natural-language "fix the worker so it does X" makes Alex emit the `propose` call with the
-      right overlay fields. The plumbing is live; this connects the LLM to it.
-- [ ] **T7 — Frontend approve UI.** ⏳ remaining: render the pending proposal + plain-English
-      preview in the workspace with Approve/Reject buttons (the "approve — fixed?" moment).
+- [x] **T6 — Alex generates the change (chat integration).** ✅ **BUILT + LIVE 2026-06-22.**
+      `POST /worker:change:fromChat` {tenantId, slug, instruction}: loads the current effective
+      worker, asks Claude (sonnet-4-5) for a JSON overlay of ONLY the fields to change, sanitizes
+      (protected stripped) + creates a `pending` proposal via the shared `createChangeProposal`.
+      The LLM never writes the worker — it only drafts a proposal through the same consent gate.
+      Irrelevant/unclear input → `no_change` (no proposal). **Verified live: `scripts/test/s3FromChat.js`
+      7/7** — NL instruction → pending proposal whose drafted rule reflects the request →
+      approve → live; cross-tenant 403; "weather in Maui" → no_change.
+- [ ] **T7 — Frontend approve UI.** ⏳ remaining (frontend — needs Sean's eyes): render the
+      pending proposal + plain-English from→to preview in the workspace with Approve/Reject
+      buttons (the "approve — fixed?" moment), wired to `worker:changes` + `worker:change:approve/reject`.
 
 ## RED TEAM
 - 🔴 **RT1 — Ships before Surface 1 → R2 disaster.** A client "fixes" their worker and changes
