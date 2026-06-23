@@ -11,3 +11,8 @@ node_modules/**/*.map
 node_modules/**/CHANGELOG*
 node_modules/**/LICENSE*
 tests/
+# Copilot baseline PDFs are processed offline into .md — never read at runtime.
+# The 153MB pc12 PDF alone inflated the deploy package to 147MB and broke the
+# upload. (firebase.json `ignore` listed it but .gcloudignore overrides that.)
+# Scoped to the baselines dir so runtime template PDFs elsewhere are unaffected.
+services/copilot/baselines/**/*.pdf

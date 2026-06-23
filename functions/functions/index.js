@@ -2498,7 +2498,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
           try {
             const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
             if (dwSnap.exists) {
-              const dw = dwSnap.data();
+              let dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
 
               // ── Organization-only visibility gate ──
@@ -2517,9 +2517,16 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                     });
                   }
                 } catch (orgErr) {
-                  // Fail-open on transient lookup errors (auth is still validated),
-                  // matching the viewer role-gate behavior below.
-                  console.warn(`[org-visibility gate] failed for ${workerSlug}:`, orgErr.message);
+                  // Surface 1 / R2 (CODEX 2026-06-22): fail CLOSED for confidential
+                  // organization-only workers. A transient lookup error must DENY,
+                  // never leak an org-only worker to an unverified caller. (Was
+                  // fail-open — that was the isolation hole the audit flagged.)
+                  console.warn(`[org-visibility gate] failed for ${workerSlug}, denying:`, orgErr.message);
+                  return res.json({
+                    ok: false,
+                    error: "ORG_ONLY_WORKER",
+                    message: "This is an organization-only worker and access could not be verified right now. Please try again.",
+                  });
                 }
               }
 
@@ -2529,6 +2536,20 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                 (body && body.tenantId) ||
                 (body && body.context && body.context.tenantId) ||
                 (req.headers["x-tenant-id"] || null);
+
+              // ── Surface 1 / R2 (CODEX 2026-06-22): apply the tenant's worker
+              // overlay — "change MY worker, not everyone's." The runtime serves
+              // one GLOBAL base doc; a tenant's sparse overlay (rules, system
+              // prompt, behavior) is merged over it here. Protected identity/
+              // security/billing fields always come from base. No overlay → base
+              // unchanged (safe fallback). This is the seam Surface 3 writes
+              // through (Alex-dispatches-Code). ──
+              const { getWorkerOverlay, mergeOverlay } = require("./services/workerOverlay");
+              const workerOverlay = await getWorkerOverlay(reqTenantId, workerSlug);
+              if (workerOverlay) {
+                dw = mergeOverlay(dw, workerOverlay);
+                console.log(`[worker-overlay] applied for ${reqTenantId}/${workerSlug}: [${Object.keys(workerOverlay).join(", ")}]`);
+              }
 
               // ── Role gate (CODEX 50.10-T2 Decision 1) ──
               // Viewers cannot send chat in a tenant context — they're read-only.
@@ -2589,23 +2610,28 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                 }
               }
 
-              // ── System prompt: check workerSystemPrompts/{slug} first, fall back to auto-generation ──
-              let workerPrompt = null;
+              // ── System prompt: tenant overlay wins (Surface 1 / R2), then
+              // workerSystemPrompts/{slug}, then auto-generation below. ──
+              let workerPrompt = (workerOverlay && workerOverlay.systemPrompt) || null;
               try {
-                const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
-                if (promptSnap.exists && promptSnap.data().systemPrompt) {
-                  workerPrompt = promptSnap.data().systemPrompt;
-                  // Inject subscriberProfile context if available (44.1 — radar + briefing preferences)
-                  if (authUser) {
-                    try {
-                      const userSnap = await db.doc(`users/${authUser.uid}`).get();
-                      const profile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
-                      if (Object.keys(profile).length > 0) {
-                        workerPrompt += `\n\nSUBSCRIBER PROFILE (read from Firestore — do not ask for information already present):\n${JSON.stringify(profile, null, 2)}`;
-                      }
-                    } catch (profileErr) {
-                      console.warn("worker chat: failed to load subscriberProfile:", profileErr.message);
+                if (!workerPrompt) {
+                  const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
+                  if (promptSnap.exists && promptSnap.data().systemPrompt) {
+                    workerPrompt = promptSnap.data().systemPrompt;
+                  }
+                }
+                // Inject subscriberProfile context if available (44.1 — radar +
+                // briefing preferences). Applies whether the prompt came from the
+                // tenant overlay or the base doc.
+                if (workerPrompt && authUser) {
+                  try {
+                    const userSnap = await db.doc(`users/${authUser.uid}`).get();
+                    const profile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
+                    if (Object.keys(profile).length > 0) {
+                      workerPrompt += `\n\nSUBSCRIBER PROFILE (read from Firestore — do not ask for information already present):\n${JSON.stringify(profile, null, 2)}`;
                     }
+                  } catch (profileErr) {
+                    console.warn("worker chat: failed to load subscriberProfile:", profileErr.message);
                   }
                 }
               } catch (promptErr) {
@@ -8250,6 +8276,39 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
 
+    // ── Surface 1 / R2 (CODEX 2026-06-22): central tenant-membership gate ──
+    // The worker-authoring + tenant-data route family all read/write
+    // tenants/{tenantId}/workers/... with a tenantId taken from the header/body/
+    // query. Without a membership check that tenantId is spoofable — any authed
+    // user could read or mutate another org's worker tree (the R2 cross-tenant
+    // leak the audit confirmed). Enforce membership once, here, for the whole
+    // family. Personal contexts (vault/personal/guest-*) short-circuit to owner
+    // inside enforceRoleGate; a null tenantId skips the gate so each route's own
+    // null-handling still applies. Publishing writes the GLOBAL catalog doc, so
+    // it requires admin; everything else requires member.
+    const TENANT_WORKER_ROUTES = new Set([
+      "/workers:list", "/workers:test", "/worker:test:chat", "/worker:test:audit",
+      "/worker:export", "/worker:settings", "/worker:update", "/worker:version:increment",
+      "/worker1:intake", "/worker1:research", "/worker1:rules:save", "/worker1:test:complete",
+      "/worker1:prePublish", "/worker1:submit", "/connectors/activate", "/connectors/deactivate",
+      "/marketplace:publish",
+      // Per-tenant worker overlay (Surface 1 / R2 — "change MY worker, not everyone's")
+      "/worker:overlay:set", "/worker:overlay", "/worker:overlay:clear",
+      // Alex-dispatches-Code consent gate (Surface 3 — propose → approve → live)
+      "/worker:change:propose", "/worker:changes", "/worker:change:approve", "/worker:change:reject",
+      "/worker:change:fromChat",
+    ]);
+    if (TENANT_WORKER_ROUTES.has(route)) {
+      const gateTenantId = (
+        req.headers["x-tenant-id"] || body.tenantId || (req.query && req.query.tenantId) || ""
+      ).toString().trim();
+      if (gateTenantId) {
+        const requiredRole = route === "/marketplace:publish" ? "admin" : "member";
+        const { rejectIfRoleInsufficient } = require("./middleware/membershipCheck");
+        if (await rejectIfRoleInsufficient(res, auth.user && auth.user.uid, gateTenantId, requiredRole)) return;
+      }
+    }
+
     // ── Universal OAuth (authenticated routes) ──
 
     // GET /v1/auth/:platform/connect — redirects subscriber to platform OAuth screen
@@ -11066,6 +11125,297 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[raas-review] error:", e.message);
         return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Surface 1 / R2 (CODEX 2026-06-22): per-tenant worker overlay ──────────
+    // "Change MY worker, not everyone's." These write/read/clear the sparse
+    // overlay at tenants/{tenantId}/workerOverlays/{slug} that the runtime merges
+    // over the global base (see services/workerOverlay.js + the worker-chat path).
+    // The seam Surface 3 (Alex-dispatches-Code) writes through. All three are
+    // membership-gated by the central TENANT_WORKER_ROUTES gate; identity/
+    // security/billing fields are stripped on write; every change is append-only
+    // (prior overlay snapshotted to a history subcollection) and audit-logged.
+
+    // POST /v1/worker:overlay:set — write/merge a tenant's worker overlay
+    if (route === "/worker:overlay:set" && method === "POST") {
+      const { tenantId, slug, overlay } = body;
+      if (!tenantId || !slug || !overlay || typeof overlay !== "object") {
+        return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
+      }
+      try {
+        const { applyOverlay } = require("./services/workerOverlay");
+        const result = await applyOverlay({ tenantId, slug, fields: overlay, byUid: auth.user && auth.user.uid, source: "direct" });
+        if (!result.applied) {
+          return res.json({ ok: false, error: "Overlay had no applyable fields (all were protected identity/billing fields)" });
+        }
+        await db.collection("auditTrail").add({
+          type: "worker_overlay_set", tenantId, slug,
+          changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.set_overlay_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { slug, overlay }, output: { fields: result.fields },
+        });
+        console.log(`[worker:overlay:set] ${tenantId}/${slug} fields=[${result.fields.join(", ")}]`);
+        return res.json({ ok: true, slug, appliedFields: result.fields });
+      } catch (e) {
+        console.error("[worker:overlay:set] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:overlay — read a tenant's worker overlay
+    if (route === "/worker:overlay" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || (req.query && req.query.tenantId);
+      const slug = req.query && req.query.slug;
+      if (!tenantId || !slug) return res.json({ ok: false, error: "Missing tenantId or slug" });
+      try {
+        const snap = await db.doc(`tenants/${tenantId}/workerOverlays/${slug}`).get();
+        return res.json({ ok: true, slug, overlay: snap.exists ? snap.data() : null });
+      } catch (e) {
+        console.error("[worker:overlay GET] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:overlay:clear — revert a worker to base (rollback)
+    if (route === "/worker:overlay:clear" && method === "POST") {
+      const { tenantId, slug } = body;
+      if (!tenantId || !slug) return res.json({ ok: false, error: "Missing tenantId or slug" });
+      try {
+        const ref = db.doc(`tenants/${tenantId}/workerOverlays/${slug}`);
+        const prior = await ref.get();
+        await db.collection(`tenants/${tenantId}/workerOverlays/${slug}/history`).add({
+          overlay: prior.exists ? prior.data() : null,
+          action: "clear",
+          by: auth.user && auth.user.uid,
+          at: nowServerTs(),
+        });
+        if (prior.exists) await ref.delete();
+        await db.collection("auditTrail").add({
+          type: "worker_overlay_clear", tenantId, slug,
+          userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        console.log(`[worker:overlay:clear] ${tenantId}/${slug} reverted to base`);
+        return res.json({ ok: true, slug, reverted: true });
+      } catch (e) {
+        console.error("[worker:overlay:clear] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ── Surface 3 (CODEX 2026-06-22): Alex-dispatches-Code consent gate ───────
+    // The fix-loop: a client tells Alex "the worker keeps doing X wrong" → Alex
+    // PROPOSES a change (it does NOT go live) → the client sees a plain-English
+    // preview and APPROVES → only then is it applied to their tenant overlay
+    // (Surface 1), append-only + audited + reversible. "Agents propose, users
+    // confirm, then it applies" (CLAUDE.md invariant). Changes are overlay
+    // data only (rules/prompt/config); protected identity/security/billing
+    // fields are stripped; all four routes are membership-gated.
+
+    // POST /v1/worker:change:propose — Alex proposes a change (pending, NOT live)
+    if (route === "/worker:change:propose" && method === "POST") {
+      const { tenantId, slug, overlay, rationale } = body;
+      if (!tenantId || !slug || !overlay || typeof overlay !== "object") {
+        return res.json({ ok: false, error: "Missing tenantId, slug, or overlay object" });
+      }
+      try {
+        const { createChangeProposal } = require("./services/workerOverlay");
+        const r = await createChangeProposal({ tenantId, slug, fields: overlay, rationale, byUid: auth.user && auth.user.uid, source: "explicit" });
+        if (!r.created) {
+          return res.json({ ok: false, error: "Proposed change had no applyable fields (all were protected identity/billing fields)" });
+        }
+        await db.collection("auditTrail").add({
+          type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId,
+          changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        // Surface 4: structured capability-invocation audit (auditLedger).
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.propose_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { slug, overlay }, output: { proposalId: r.proposalId, fields: r.fields },
+        });
+        console.log(`[worker:change:propose] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
+        return res.json({ ok: true, proposalId: r.proposalId, slug, status: "pending", summary: r.summary });
+      } catch (e) {
+        console.error("[worker:change:propose] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:fromChat — Surface 3 T6: Alex GENERATES the change.
+    // Natural-language "make the worker do X" → Alex reads the worker's current
+    // config, drafts an overlay (rules/prompt/name/description only), and creates
+    // a PENDING proposal. Nothing goes live until the owner approves. The LLM
+    // never writes the worker directly — it only drafts a proposal that flows
+    // through the same consent gate + protected-field stripping.
+    if (route === "/worker:change:fromChat" && method === "POST") {
+      const { tenantId, slug, instruction } = body;
+      if (!tenantId || !slug || !instruction) return res.json({ ok: false, error: "Missing tenantId, slug, or instruction" });
+      try {
+        const { getEffectiveWorker, createChangeProposal } = require("./services/workerOverlay");
+        const eff = await getEffectiveWorker(tenantId, slug);
+        // Only show the model the editable fields — keep it focused + small.
+        const currentConfig = {
+          display_name: eff.display_name || eff.name || slug,
+          description: eff.description || eff.short_description || "",
+          headline: eff.headline || "",
+          systemPrompt: eff.systemPrompt || undefined,
+          raas_tier_1: eff.raas_tier_1 || [],
+          raas_tier_2: eff.raas_tier_2 || [],
+          raas_tier_3: eff.raas_tier_3 || [],
+        };
+        const sys = [
+          "You are a careful configuration assistant for a SOCIII Digital Worker.",
+          "The worker's owner wants to change how it behaves. Given the worker's CURRENT",
+          "configuration and the owner's request, output a JSON object containing ONLY the",
+          "fields that should change, with their new values.",
+          "",
+          "Editable fields: raas_tier_1, raas_tier_2, raas_tier_3 (arrays of rule strings),",
+          "systemPrompt (string), display_name, description, headline (strings).",
+          "When editing a rules array, output the COMPLETE new array (your change applied to",
+          "the existing rules), not just the delta. Do NOT include any field you are not",
+          "changing. NEVER include ownership, pricing, visibility, credit, or status fields.",
+          "If the request is unclear or is not about changing the worker, output exactly {}.",
+          "Output ONLY valid minified JSON. No prose. No markdown fences.",
+        ].join("\n");
+        const userMsg = `CURRENT CONFIG:\n${JSON.stringify(currentConfig, null, 2)}\n\nOWNER REQUEST:\n"${instruction}"`;
+        const anthropic = getAnthropic();
+        const aiResp = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 1500,
+          system: sys,
+          messages: [{ role: "user", content: userMsg }],
+        });
+        const rawText = (aiResp.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+        // Strip accidental markdown fences, then parse.
+        const jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        let proposedFields;
+        try { proposedFields = JSON.parse(jsonText); } catch (_) { proposedFields = null; }
+        if (!proposedFields || typeof proposedFields !== "object" || Object.keys(proposedFields).length === 0) {
+          return res.json({ ok: true, proposalId: null, status: "no_change", message: "I couldn't turn that into a concrete change to the worker. Can you be more specific about what behavior to change?" });
+        }
+        const r = await createChangeProposal({ tenantId, slug, fields: proposedFields, rationale: instruction, byUid: auth.user && auth.user.uid, source: "chat" });
+        if (!r.created) {
+          return res.json({ ok: true, proposalId: null, status: "no_change", message: "That request only touched fields I'm not allowed to change (like ownership or pricing), so I didn't propose anything." });
+        }
+        await db.collection("auditTrail").add({
+          type: "worker_change_proposed", tenantId, slug, proposalId: r.proposalId, source: "chat",
+          changedFields: r.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        // Surface 4: structured capability-invocation audit — caller is the chat agent.
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.propose_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "chat", input: { slug, instruction }, output: { proposalId: r.proposalId, fields: r.fields },
+        });
+        console.log(`[worker:change:fromChat] ${tenantId}/${slug} proposal=${r.proposalId} fields=[${r.fields.join(", ")}]`);
+        return res.json({
+          ok: true,
+          proposalId: r.proposalId,
+          slug,
+          status: "pending",
+          summary: r.summary,
+          message: `I've drafted a change to ${currentConfig.display_name} (${r.fields.join(", ")}). Review it and approve to make it live — it won't change anything until you do.`,
+        });
+      } catch (e) {
+        console.error("[worker:change:fromChat] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:changes — list change proposals (default: pending)
+    if (route === "/worker:changes" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || (req.query && req.query.tenantId);
+      const slug = req.query && req.query.slug;
+      const status = (req.query && req.query.status) || "pending";
+      if (!tenantId) return res.json({ ok: false, error: "Missing tenantId" });
+      try {
+        // Query by status only (auto-indexed); filter by slug in memory to avoid
+        // needing a composite index.
+        const snap = await db.collection(`tenants/${tenantId}/workerChangeProposals`)
+          .where("status", "==", status).limit(50).get();
+        let proposals = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (slug) proposals = proposals.filter((p) => p.slug === slug);
+        return res.json({ ok: true, proposals });
+      } catch (e) {
+        console.error("[worker:changes] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:approve — client approves → the change goes LIVE
+    if (route === "/worker:change:approve" && method === "POST") {
+      const { tenantId, proposalId } = body;
+      if (!tenantId || !proposalId) return res.json({ ok: false, error: "Missing tenantId or proposalId" });
+      try {
+        const propRef = db.doc(`tenants/${tenantId}/workerChangeProposals/${proposalId}`);
+        const propSnap = await propRef.get();
+        if (!propSnap.exists) return res.json({ ok: false, error: "Proposal not found" });
+        const prop = propSnap.data();
+        if (prop.status !== "pending") return res.json({ ok: false, error: `Proposal already ${prop.status}` });
+        // Apply via the single overlay writer-of-record (Surface 1).
+        const { applyOverlay } = require("./services/workerOverlay");
+        const result = await applyOverlay({ tenantId, slug: prop.slug, fields: prop.overlay, byUid: auth.user && auth.user.uid, source: `proposal:${proposalId}` });
+        if (!result.applied) return res.json({ ok: false, error: "Proposal had no applyable fields" });
+        await propRef.update({ status: "approved", decidedBy: auth.user && auth.user.uid, decidedAt: nowServerTs() });
+        await db.collection("auditTrail").add({
+          type: "worker_change_approved", tenantId, slug: prop.slug, proposalId,
+          changedFields: result.fields, userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        // Surface 4: the approval is the consequential governed action — audit it.
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.approve_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { proposalId, slug: prop.slug }, output: { fields: result.fields, applied: true },
+        });
+        console.log(`[worker:change:approve] ${tenantId}/${prop.slug} proposal=${proposalId} → live`);
+        return res.json({ ok: true, proposalId, slug: prop.slug, status: "approved", appliedFields: result.fields });
+      } catch (e) {
+        console.error("[worker:change:approve] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:change:reject — client rejects → nothing applied
+    if (route === "/worker:change:reject" && method === "POST") {
+      const { tenantId, proposalId, reason } = body;
+      if (!tenantId || !proposalId) return res.json({ ok: false, error: "Missing tenantId or proposalId" });
+      try {
+        const propRef = db.doc(`tenants/${tenantId}/workerChangeProposals/${proposalId}`);
+        const propSnap = await propRef.get();
+        if (!propSnap.exists) return res.json({ ok: false, error: "Proposal not found" });
+        if (propSnap.data().status !== "pending") return res.json({ ok: false, error: `Proposal already ${propSnap.data().status}` });
+        await propRef.update({ status: "rejected", decidedBy: auth.user && auth.user.uid, decidedAt: nowServerTs(), rejectReason: reason || null });
+        await db.collection("auditTrail").add({
+          type: "worker_change_rejected", tenantId, slug: propSnap.data().slug, proposalId,
+          userId: auth.user && auth.user.uid, timestamp: nowServerTs(),
+        });
+        await require("./services/capabilityAudit").recordInvocation({
+          capabilityId: "workers.reject_change_v1", tenantId, userId: auth.user && auth.user.uid,
+          callerType: "human", input: { proposalId }, output: { status: "rejected" },
+        });
+        console.log(`[worker:change:reject] ${tenantId} proposal=${proposalId} rejected`);
+        return res.json({ ok: true, proposalId, status: "rejected" });
+      } catch (e) {
+        console.error("[worker:change:reject] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ── Surface 4 T6 (CODEX 2026-06-22): MCP server ──────────────────────────
+    // Model Context Protocol over Streamable-HTTP JSON-RPC. An external model
+    // (Claude) connects with a Firebase bearer token, discovers SOCIII's governed
+    // tools, and invokes them under the same membership gate + capability registry
+    // + audit ledger as every other caller. Read + propose only; approve/reject
+    // stay human-only. See services/mcp/mcpServer.js.
+    if (route === "/mcp" && method === "POST") {
+      try {
+        const { handleMcpRequest } = require("./services/mcp/mcpServer");
+        const out = await handleMcpRequest(body, { uid: auth.user && auth.user.uid, email: auth.user && auth.user.email });
+        if (out === null) return res.status(202).end(); // notification — no body
+        return res.json(out);
+      } catch (e) {
+        console.error("[mcp] error:", e.message);
+        return res.json({ jsonrpc: "2.0", id: (body && body.id) != null ? body.id : null, error: { code: -32603, message: e.message } });
       }
     }
 
