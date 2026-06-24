@@ -218,7 +218,7 @@
       "type": "platform",
       "pricing": { "monthly": 0, "currency": "USD" },
       "status": "live",
-      "capabilitySummary": "Mints every meaningful platform action as an NFT through Crossmint and ships it to the customer's wallet (Coinbase Wallet recommended). SOCIII keeps a duplicate custody copy for recovery and dispute resolution when wallets are lost. Each NFT is the cryptographic record of a DTC parent or logbook child — what happened, when, under which RAAS rules, by which verified-real identity. Records survive catastrophic infrastructure loss because the NFTs live on a public chain. Includes hack-resilient 3-2-1 backup: daily Firestore export to an isolated GCP project, weekly second-cloud archive, quarterly physical offline. Patent-pending architecture (USPTO 64/073,693 + Filing C). Free, included with the SOCIII spine. The most defensible moat on the platform.",
+      "capabilitySummary": "Mints every meaningful platform action as an NFT through Crossmint and ships it to the customer's wallet (Coinbase Wallet recommended). SOCIII keeps a duplicate custody copy for recovery and dispute resolution when wallets are lost. Each NFT is the cryptographic record of a DTC parent or logbook child — what happened, when, under which RAAS rules, by which verified-real identity. Records survive catastrophic infrastructure loss because the NFTs live on a public chain. Includes hack-resilient 3-2-1 backup: daily Firestore export to an isolated GCP project, weekly second-cloud archive, quarterly physical offline. Patent-pending architecture. Free, included with the SOCIII spine. The most defensible moat on the platform.",
       "tags": ["audit", "backup", "nft", "crossmint", "coinbase-wallet", "duplicate-custody", "tamper-evident", "disaster-recovery", "patent-pending", "moat"],
       "valueBucket": ["regulatory_defense", "disaster_recovery", "verifiable_provenance"],
       "alexRegistration": {
@@ -295,7 +295,7 @@
         { "event": "anchor_chain_disruption", "routesTo": "platform-control-center-pro" }
       ],
       "patent_refs": [
-        "USPTO 64/073,693 — Identity-Anchored Hash-Chain Audit Trail (filed 2026-05-24)",
+        "Identity-Anchored Hash-Chain Audit Trail (patent-pending)",
         "USPTO Filing C — Multi-Tier Composable Rule-Based Governance System (filed 2026-05-25)",
         "USPTO Filing B — Title and Property Assurance via Parent-Child DTC + Hash-Anchored Logbook (drafted, pending counsel)"
       ],

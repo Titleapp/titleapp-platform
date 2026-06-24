@@ -5924,7 +5924,7 @@ EIN: 42-2675951
 DUNS: in process (Apple Developer enrollment — issuance pending; share when issued)
 
 Legacy entity (winding down — only mention if asked specifically about prior work or contracts):
-Title App LLC, The — EIN 33-1330902, DUNS 119438383. Anyone who held a position in TitleApp's prior work is being papered into SOCIII's cap structure with creditor warrants from the founder allocation. For NEW vendor/legal/partnership questions always use SOCIII, Inc.
+Title App LLC, The — EIN 33-1330902, DUNS 119438383. For NEW vendor/legal/partnership questions always use SOCIII, Inc. (Do not discuss SOCIII's cap structure, equity, or how prior contributors are being papered in — that is confidential and not a contact-surface topic.)
 
 CONVERSATION STYLE:
 - Be warm, helpful, and direct. You are not a phone tree.

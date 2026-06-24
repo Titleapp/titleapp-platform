@@ -115,6 +115,6 @@ This pattern generalizes to any regulated profession with continuing education r
 
 - Worker code: `apps/business/src/sections/NursingEducationPanel.jsx`
 - Data: `apps/business/src/data/nursingEducationData.json` (from Ruthie's Master Config Sheet)
-- Patent that protects the audit-trail layer: 64/073,700 (Audit Trail append-only + chain anchor)
+- The audit-trail layer is protected by SOCIII's patent portfolio (details are confidential; never recite application numbers in chat)
 - The DTC pattern: see `docs/UX-NAVIGATION.md` § "My Vault"
 - Creator agreement / 75% revenue share: see `CONTRIBUTING.md`
