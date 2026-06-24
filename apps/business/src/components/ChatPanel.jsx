@@ -124,6 +124,63 @@ const VERTICAL_DISCLAIMERS = {
 
 // ── Component ───────────────────────────────────────────────────
 
+// V25 (Surface 3): inline "Alex fixes the worker" approve card. Renders a pending
+// worker-change proposal with Approve / Reject. Approve applies it live (the
+// consent gate, audited); reject discards. Module-scope so it keeps its own state.
+function WorkerChangeProposalCard({ proposalId, slug, tenantId, summary }) {
+  const [status, setStatus] = React.useState('pending');
+  const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+  async function act(action) {
+    setStatus('working');
+    try {
+      const u = getAuth().currentUser;
+      const token = u ? await u.getIdToken() : null;
+      const path = action === 'approve' ? '/v1/worker:change:approve' : '/v1/worker:change:reject';
+      const r = await fetch(`${apiBase}/api?path=${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Tenant-Id': tenantId || '' },
+        body: JSON.stringify({ tenantId, proposalId }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (action === 'approve' && (d.status === 'approved' || d.ok)) setStatus('approved');
+      else if (action === 'reject' && (d.status === 'rejected' || d.ok)) setStatus('rejected');
+      else setStatus('error');
+    } catch { setStatus('error'); }
+  }
+  const fields = Array.isArray(summary) ? summary : [];
+  const label = (f) => String(f || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const fmt = (v) => v == null ? '—' : (Array.isArray(v) ? v.join(' · ') : (typeof v === 'object' ? JSON.stringify(v) : String(v)));
+  return (
+    <div style={{ border: '2px solid #7c3aed30', borderRadius: 14, overflow: 'hidden', marginTop: 8 }}>
+      <div style={{ background: '#7c3aed12', padding: '10px 16px', fontWeight: 700, fontSize: 13, color: '#5b21b6', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Proposed change · pending your approval
+      </div>
+      <div style={{ padding: '12px 16px' }}>
+        {fields.length === 0 && <div style={{ fontSize: 13, color: '#64748b' }}>A change to this worker is ready to review.</div>}
+        {fields.map((f, i) => (
+          <div key={i} style={{ padding: '6px 0', borderBottom: i < fields.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label(f.field)}</div>
+            <div style={{ fontSize: 13, color: '#0f172a', marginTop: 2 }}><span style={{ color: '#94a3b8', textDecoration: 'line-through' }}>{fmt(f.from)}</span> → <span style={{ fontWeight: 600 }}>{fmt(f.to)}</span></div>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: '10px 16px', borderTop: '1px solid #f1f5f9' }}>
+        {status === 'pending' && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => act('approve')} style={{ flex: 1, background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 9, padding: '9px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Approve — make it live</button>
+            <button onClick={() => act('reject')} style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 9, padding: '9px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Reject</button>
+          </div>
+        )}
+        {status === 'working' && <div style={{ fontSize: 13, color: '#64748b' }}>Applying…</div>}
+        {status === 'approved' && <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Live on your worker — and recorded in the audit ledger.</div>}
+        {status === 'rejected' && <div style={{ fontSize: 13, color: '#94a3b8' }}>Discarded — nothing changed.</div>}
+        {status === 'error' && <div style={{ fontSize: 13, color: '#dc2626' }}>Couldn't apply that — try again.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext }) {
   const allWorkers = useWorkerCatalog();
   const visibleWorkers = useMemo(() => allWorkers.filter(w => !w.internal_only), [allWorkers]);
@@ -981,6 +1038,42 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     setIsSending(true);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
+    // ── V25 (Surface 3): Alex fix-loop. When a worker is active and the user asks
+    // to fix/change it, draft a proposal (worker:change:fromChat) and show an
+    // inline approve card — instead of normal chat. Nothing goes live until they
+    // click Approve. ──
+    const _activeSlug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
+    if (_activeSlug && _activeSlug !== 'chief-of-staff'
+        && /\b(fix|change|update|modify|adjust|tweak|edit|rewrite)\b/i.test(userMessage)
+        && /\bworker\b/i.test(userMessage)) {
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const tenantId = localStorage.getItem('TENANT_ID') || '';
+        const token = await liveUser.getIdToken();
+        const r = await fetch(`${apiBase}/api?path=/v1/worker:change:fromChat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Tenant-Id': tenantId },
+          body: JSON.stringify({ tenantId, slug: _activeSlug, instruction: userMessage }),
+        });
+        const d = await r.json().catch(() => ({}));
+        setIsSending(false);
+        if (d && d.status === 'pending' && d.proposalId) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: d.message || "I've drafted that change. Review it and approve to make it live — it won't change anything until you do.",
+            structuredData: { type: 'worker_change_proposal', proposalId: d.proposalId, slug: _activeSlug, tenantId, summary: d.summary || [] },
+          }]);
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: (d && d.message) || "I couldn't turn that into a concrete change — can you be more specific about what the worker should do differently?" }]);
+        }
+        return;
+      } catch (err) {
+        setIsSending(false);
+        setMessages(prev => [...prev, { role: 'assistant', content: "I hit an error drafting that change. Try again in a moment." }]);
+        return;
+      }
+    }
+
     // Check for local response first (worker discovery + demo-clear guidance only)
     const localResp = getLocalResponse(userMessage);
     if (localResp) {
@@ -1628,6 +1721,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   function renderStructuredData(data) {
     if (!data || typeof data !== 'object') return null;
+
+    if (data.type === 'worker_change_proposal') {
+      return <WorkerChangeProposalCard proposalId={data.proposalId} slug={data.slug} tenantId={data.tenantId} summary={data.summary} />;
+    }
 
     if (data.type === 'record_created') {
       const typeColors = { vehicle: '#7c3aed', property: '#22c55e', document: '#6366f1', certification: '#d97706', valuable: '#ec4899' };
