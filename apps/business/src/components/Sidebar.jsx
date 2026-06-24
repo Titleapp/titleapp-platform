@@ -1412,12 +1412,15 @@ export default function Sidebar({
   // ambiguity here is the same failure class as a data leak). Vault is always
   // emerald ("yours"); each business workspace gets a deterministic color.
   const PERSONA_PALETTE = [["#0ea5e9", "#2563eb"], ["#f59e0b", "#ea580c"], ["#8b5cf6", "#7c3aed"], ["#ec4899", "#db2777"], ["#14b8a6", "#0d9488"], ["#6366f1", "#4f46e5"], ["#ef4444", "#dc2626"]];
-  const personaTint = (() => {
-    if (isPersonal) return ["#10b981", "#059669"];
-    const s = String(currentWorkspaceId || brandLabel || "");
+  // Same seed → same color everywhere (header bar/avatar AND the workspace-list
+  // rows), so each persona reads as one consistent color. Vault always emerald.
+  const personaTintFor = (seed, personal) => {
+    if (personal) return ["#10b981", "#059669"];
+    const s = String(seed || "");
     let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     return PERSONA_PALETTE[h % PERSONA_PALETTE.length];
-  })();
+  };
+  const personaTint = personaTintFor(currentWorkspaceId, isPersonal);
 
   return (
     <div className="sidebar">
@@ -1547,7 +1550,7 @@ export default function Sidebar({
                 >
                   <div style={{
                     width: 28, height: 28, borderRadius: 6,
-                    background: isCurrent ? "#7c3aed" : "#1e293b",
+                    background: `linear-gradient(135deg, ${personaTintFor(ws.id, isPersonalRow)[0]} 0%, ${personaTintFor(ws.id, isPersonalRow)[1]} 100%)`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
                   }}>
@@ -1901,7 +1904,7 @@ export default function Sidebar({
                   >
                     <div style={{
                       width: 22, height: 22, borderRadius: 5,
-                      background: isCurrent ? "#7c3aed" : (isPersonalRow ? "#334155" : "#1e293b"),
+                      background: `linear-gradient(135deg, ${personaTintFor(ws.id, isPersonalRow)[0]} 0%, ${personaTintFor(ws.id, isPersonalRow)[1]} 100%)`,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       color: "white", fontWeight: 600, fontSize: 11, flexShrink: 0,
                     }}>
@@ -2045,7 +2048,7 @@ export default function Sidebar({
                       }}
                     >
                       <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <WorkerIcon slug={worker.slug} size={16} color={isSelected ? wc.light : "rgba(255,255,255,0.55)"} />
+                        <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
                         <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
                       </span>
                       <span style={{ flex: 1, color: isSelected ? wc.light : "rgba(255,255,255,0.85)", fontWeight: isSelected ? 600 : 400 }}>

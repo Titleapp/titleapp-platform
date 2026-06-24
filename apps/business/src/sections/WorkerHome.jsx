@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
+import { currentPersonaTint, gradient } from "../utils/personaColor";
 import { firstNameFrom } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext";
 
@@ -81,14 +82,19 @@ export default function WorkerHome() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const wsData = await wsResp.json();
+      // Scope to the CURRENT persona only — NEVER union across workspaces (that
+      // showed every persona the same workers). Match the active tenant.
+      let currentTenant = null;
+      try { currentTenant = localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
       const allWorkerSlugs = new Set();
       if (wsData.ok && wsData.workspaces) {
-        for (const ws of wsData.workspaces) {
-          for (const w of (ws.activeWorkers || [])) {
-            const s = typeof w === "string" ? w : w.slug || w.id;
-            // Filter out Alex duplicates — chief-of-staff is added explicitly
-            if (!ALEX_SLUGS.has(s)) allWorkerSlugs.add(s);
-          }
+        const current = wsData.workspaces.find(ws => ws.id === currentTenant)
+          || wsData.workspaces.find(ws => ws.isDefault)
+          || wsData.workspaces[0];
+        for (const w of (current?.activeWorkers || [])) {
+          const s = typeof w === "string" ? w : w.slug || w.id;
+          // Filter out Alex duplicates — chief-of-staff is added explicitly
+          if (!ALEX_SLUGS.has(s)) allWorkerSlugs.add(s);
         }
       }
 
@@ -240,7 +246,7 @@ export default function WorkerHome() {
                     >
                       <div style={{
                         width: 40, height: 40, borderRadius: 10,
-                        background: colors.gradient,
+                        background: gradient(currentPersonaTint()),
                         display: "flex", alignItems: "center", justifyContent: "center",
                         flexShrink: 0,
                       }}>
