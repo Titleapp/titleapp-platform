@@ -1,5 +1,8 @@
 import React from "react";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import ChatMarkdown from "../components/ChatMarkdown.jsx";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const PRESS_RELEASES = [
   {
@@ -794,10 +797,31 @@ export default function PressPage({ slug }) {
   const isPressRelease = slug ? !!PRESS_RELEASE_BODIES[slug] : false;
 
   const [chatQuery, setChatQuery] = React.useState("");
-  const handleChatSubmit = () => {
+  const [chatMsgs, setChatMsgs] = React.useState([]);
+  const [chatSending, setChatSending] = React.useState(false);
+  const chatSidRef = React.useRef("press_" + Math.random().toString(36).slice(2));
+  // Answer INLINE on the press page (no navigating into the meet-alex onboarding
+  // shell). Uses the same /v1/chat:message contract MeetAlex uses ({ok, message}).
+  const handleChatSubmit = async () => {
     const text = chatQuery.trim();
-    if (!text) return;
-    window.location.href = `/meet-alex?prompt=${encodeURIComponent(text)}&intent=press`;
+    if (!text || chatSending) return;
+    setChatQuery("");
+    setChatMsgs(prev => [...prev, { role: "user", content: text }]);
+    setChatSending(true);
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: chatSidRef.current, userInput: text, surface: "sales", utmSource: "press", utmMedium: "press-chat" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const reply = (data && (data.message || data.response)) || "Sorry — I couldn't answer that right now. Email press@sociii.ai and we'll get back to you.";
+      setChatMsgs(prev => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setChatMsgs(prev => [...prev, { role: "assistant", content: "Sorry — I couldn't reach Alex just now. Email press@sociii.ai." }]);
+    } finally {
+      setChatSending(false);
+    }
   };
 
   return (
@@ -857,6 +881,16 @@ export default function PressPage({ slug }) {
                 </button>
               </div>
               <div style={S.chatHint}>For journalists on deadline: Alex is the SOCIII Chief of Staff worker. She knows the platform, the patent portfolio, and the founder's bio. Sourced quotes attribute to SOCIII, Inc.</div>
+              {(chatMsgs.length > 0 || chatSending) && (
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, textAlign: "left", maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>
+                  {chatMsgs.map((m, i) => (
+                    <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", background: m.role === "user" ? "#7c3aed" : "#f1f5f9", color: m.role === "user" ? "#fff" : "#0f172a", padding: "10px 14px", borderRadius: 12, fontSize: 14, lineHeight: 1.55, maxWidth: "92%" }}>
+                      {m.role === "assistant" ? <ChatMarkdown>{m.content}</ChatMarkdown> : m.content}
+                    </div>
+                  ))}
+                  {chatSending && <div style={{ alignSelf: "flex-start", color: "#94a3b8", fontSize: 13, padding: "4px 2px" }}>Alex is typing…</div>}
+                </div>
+              )}
             </div>
           </div>
 

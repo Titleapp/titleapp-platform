@@ -3,6 +3,7 @@ import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect,
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 import { resolveCampaignFromLocation } from "../lib/campaignRouting";
+import ChatMarkdown from "../components/ChatMarkdown.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -576,9 +577,14 @@ export default function MeetAlex() {
     const msg = input;
     setInput("");
 
-    // First message = name
+    // First message = name. Extract a first name instead of storing the whole
+    // sentence (e.g. "Sean can you answer my questions?" → "Sean").
     if (!nameCollected) {
-      const name = msg.trim();
+      const raw = msg.trim();
+      const nm = raw.match(/^(?:i'?m|i am|it'?s|call me|my name is|this is|hey|hi|hello)\s+([A-Za-z][a-z'-]{1,18})/i)
+        || raw.match(/^([A-Za-z][a-z'-]{1,18})\b/);
+      const tok = (nm && nm[1]) ? nm[1] : raw.split(/\s+/)[0];
+      const name = tok ? tok.charAt(0).toUpperCase() + tok.slice(1) : raw;
       setNameCollected(true);
       sessionStorage.setItem("ta_guest_name", name);
       setMessages(prev => [
@@ -713,7 +719,7 @@ export default function MeetAlex() {
                   </svg>
                 </div>
               )}
-              <div style={S.bubble(m.role === "user")}>{m.text}</div>
+              <div style={S.bubble(m.role === "user")}>{m.role === "assistant" ? <ChatMarkdown>{m.text}</ChatMarkdown> : m.text}</div>
             </div>
             {/* Worker cards inline */}
             {m.workerCards && m.workerCards.length > 0 && (

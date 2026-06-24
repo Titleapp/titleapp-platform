@@ -45,7 +45,7 @@ const TIERS = [
       "Marketing (campaigns + brand voice)",
       "Contacts (relationships + outreach)",
       "Control Center (daily brief, deadlines)",
-      "Your Vault (documents + audit-anchored records)",
+      "Your Vault — records on-chain-anchored & permanent (yours even if SOCIII disappears)",
       "Your Drive (cross-worker file management)",
     ],
     note: "A $2 one-time identity check is required for many workers during onboarding. Data fees apply above a typical usage threshold (see below). No subscription. No credit card to start.",
