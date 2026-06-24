@@ -40,6 +40,7 @@ keystone** — it blocks the portal, the fix-loop, and the "350 distributors" pr
 6. [`06-worker-bulletproofing.md`](06-worker-bulletproofing.md) — make the 3–5 clients' workers really work
 7. [`07-answer-engine-distribution.md`](07-answer-engine-distribution.md) — parallel track (task #78)
 8. [`08-patents.md`](08-patents.md) — file as each surface ships
+9. [`09-confidentiality-firewall.md`](09-confidentiality-firewall.md) — 🟢 **shipped 2026-06-23** — data-silo sanctity: no customer Alex recites SOCIII internals; company status from real data, not hardcoded prose
 
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started
