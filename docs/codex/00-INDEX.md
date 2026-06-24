@@ -41,6 +41,7 @@ keystone** — it blocks the portal, the fix-loop, and the "350 distributors" pr
 7. [`07-answer-engine-distribution.md`](07-answer-engine-distribution.md) — parallel track (task #78)
 8. [`08-patents.md`](08-patents.md) — file as each surface ships
 9. [`09-confidentiality-firewall.md`](09-confidentiality-firewall.md) — 🟢 **shipped 2026-06-23** — data-silo sanctity: no customer Alex recites SOCIII internals; company status from real data, not hardcoded prose
+10. [`10-personas-connectors-enterprise.md`](10-personas-connectors-enterprise.md) — 🟡 **model locked 2026-06-24** — personas = bundles of connectors (multi-provider); Vault singular/personal, Drive+workers per-persona; parallel-GDrive = the bottom-up wedge; org connects once → users inherit (permission-scoped); workers portable by type, data never crosses silos
 
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started
