@@ -1407,6 +1407,18 @@ export default function Sidebar({
   const ownWorkspaces = workspaces.filter(w => w.type !== "shared");
   const sharedWorkspaces = workspaces.filter(w => w.type === "shared");
 
+  // Persona clarity (2026-06-24): every persona gets an unmistakable color so you
+  // always know which context you're in (data/Drive/workers all swap with it —
+  // ambiguity here is the same failure class as a data leak). Vault is always
+  // emerald ("yours"); each business workspace gets a deterministic color.
+  const PERSONA_PALETTE = [["#0ea5e9", "#2563eb"], ["#f59e0b", "#ea580c"], ["#8b5cf6", "#7c3aed"], ["#ec4899", "#db2777"], ["#14b8a6", "#0d9488"], ["#6366f1", "#4f46e5"], ["#ef4444", "#dc2626"]];
+  const personaTint = (() => {
+    if (isPersonal) return ["#10b981", "#059669"];
+    const s = String(currentWorkspaceId || brandLabel || "");
+    let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return PERSONA_PALETTE[h % PERSONA_PALETTE.length];
+  })();
+
   return (
     <div className="sidebar">
       {/* ═══ BRAND STRIP ═══ */}
@@ -1418,7 +1430,7 @@ export default function Sidebar({
         <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>SOCIII</span>
       </div>
       {/* ═══ WORKSPACE IDENTITY ═══ */}
-      <div className="sidebarHeader" style={{ position: "relative" }}>
+      <div className="sidebarHeader" style={{ position: "relative", borderTop: `3px solid ${personaTint[0]}` }}>
         <div
           className="brand"
           onClick={() => setShowSwitcher(!showSwitcher)}
@@ -1426,11 +1438,12 @@ export default function Sidebar({
         >
           <div style={{
             width: 32, height: 32, borderRadius: 8,
-            background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)",
+            background: `linear-gradient(135deg, ${personaTint[0]} 0%, ${personaTint[1]} 100%)`,
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
+            boxShadow: `0 0 0 2px ${personaTint[0]}33`,
           }}>
-            {(userFirstName || "S").charAt(0).toUpperCase()}
+            {(brandLabel || userFirstName || "S").charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
