@@ -24,9 +24,15 @@ const PRESS_RELEASES = [
 ];
 
 const ARTICLES = [
-  // NOTE: MCP article ("mcp-port-audit-moat") is wired in ARTICLE_BODIES but
-  // intentionally UN-LISTED until Sean's reviewed copy lands. Re-add this entry
-  // (with the finalized title/subtitle) to publish it. 2026-06-23.
+  {
+    slug: "mcp-port-audit-moat",
+    title: "MCP is the port. The audit trail is the moat.",
+    subtitle: "We turned SOCIII into a working MCP server. The surprise: Claude didn't just gain our workers — it inherited our entire audit and rules substrate. Anyone who connects does.",
+    date: "2026-06-23",
+    readingMinutes: 5,
+    tag: "Architecture",
+    accent: "#7c3aed",
+  },
   {
     slug: "raas-five-tier-rules",
     title: "RAAS: The five-tier rule hierarchy that makes AI workers safe at scale",
@@ -185,58 +191,56 @@ const ARTICLE_BODIES = {
         This week we turned SOCIII into a working MCP server. Claude can now connect to SOCIII, discover our Digital Workers as governed tools, and invoke them — live, today, not on a roadmap slide.
       </p>
       <p>
-        That sentence will make some people nod and move on. MCP — Anthropic's Model Context Protocol — is becoming the standard way to plug a model into tools and data. Everyone is racing to expose their product through it. "We added MCP support" is fast becoming table stakes.
+        But here's the part that actually matters, and that we didn't fully appreciate until we finished the integration: <strong>by connecting through MCP, Claude didn't just gain access to our workers. It gained access to our entire audit and rules infrastructure.</strong> Every call it makes is scoped, governed, recorded, and anchored. The model inherited the substrate — not just the tools.
+      </p>
+      <p>That changes what MCP means. Let us explain.</p>
+      <h2>Everyone is racing to add MCP. That's the wrong race.</h2>
+      <p>
+        MCP — Anthropic's Model Context Protocol — is becoming the standard way to plug a model into tools and data. The pitch is simple: expose your product through MCP and suddenly any AI agent can call it. "We added MCP support" is fast becoming table stakes.
       </p>
       <p>
-        So let us be precise about what is actually news here. It isn't that SOCIII speaks MCP. It's what we wrapped around it.
-      </p>
-      <h2>The protocol gives a model the power to <em>act</em></h2>
-      <p>
-        MCP's whole point is action. It lets a model not just read your data but <em>do things</em> — call functions, change state, move money, edit a record. That is exactly as powerful, and as dangerous, as it sounds.
+        And it should. MCP's whole point is action. It lets a model not just read your data but <em>do things</em> — call functions, change state, move money, edit a record. As search becomes assistants and assistants become agents, being callable by a model is going to matter the way being indexed by Google mattered.
       </p>
       <p>
-        Raw MCP has no opinion about any of that. It is a port. It carries the call. It does not know who is on the other end, whether they were allowed to make that call, what rule should have governed it, or what happened as a result. It is plumbing — excellent plumbing — and plumbing is not governance.
+        But MCP is plumbing. Excellent plumbing. It carries the call. It has no opinion about who's on the other end, whether they were allowed to make that call, what rule should have governed it, or what happened as a result. For a consumer toy, fine. For anything a business, a regulator, or an acquirer has to trust — it's a liability waiting for a lawsuit. When an AI takes an action and three years later someone asks "who authorized that, on what basis?" — "the model did it" is not an answer.
+      </p>
+      <p>So the race to add MCP is real and necessary. The race we care about is what you wrap around it.</p>
+      <h2>What Claude actually connected to</h2>
+      <p>When Claude calls a SOCIII worker through MCP, three things happen on every invocation — no exceptions:</p>
+      <p><strong>It is scoped.</strong> The caller is checked against your organization. You can't reach into a tenant you don't belong to. Full stop.</p>
+      <p><strong>It is governed.</strong> Every action runs through our rules engine at runtime. If it isn't declared, it doesn't exist. If you're not allowed, you're refused. The rules aren't in a config file someone can edit — they're in the substrate.</p>
+      <p><strong>It is recorded.</strong> Every call is written to an append-only audit ledger: who called, which action, what happened, what the rules engine decided. Those records are anchored on-chain — tamper-evident, permanent, not ours to alter.</p>
+      <p>
+        Here's the thing that surprised even us: the AI's actions produce records with the same integrity guarantees as the records it's acting on. Most MCP integrations connect a model to a tool. This one connected a model to a defensible, audited memory of everything it does. That's not a feature — that's a different category of thing.
+      </p>
+      <h2>The asymmetry we built on purpose</h2>
+      <p>There's one more constraint we care about, and we made it architectural on purpose.</p>
+      <p>
+        Through MCP, a model can <em>propose</em> a change to one of your workers. It drafts the change. It shows you in plain English exactly what would shift. It cannot make that change live.
       </p>
       <p>
-        For a consumer toy, that's fine. For anything a business, a regulator, or an acquirer would actually trust, it is a liability waiting for a lawsuit. When an AI takes an action and three years later someone asks "who authorized that, and on what basis?" — "the model did it" is not an answer.
-      </p>
-      <h2>So we exposed a substrate, not a wrapper</h2>
-      <p>
-        SOCIII's MCP surface inherits the same substrate every other caller uses. Three things happen on every single invocation, with no exceptions and no fast path around them:
-      </p>
-      <ol>
-        <li><strong>It is scoped.</strong> The caller is checked against the tenant's membership. You cannot reach into an organization you don't belong to — through MCP or anything else. We proved this with a cross-tenant test suite before we let it near real data.</li>
-        <li><strong>It is governed.</strong> The capability registry — our declared, versioned list of what actions exist and who may call them — is consulted at runtime. An action that isn't declared doesn't exist. An action you're not allowed to take is refused.</li>
-        <li><strong>It is recorded.</strong> Every invocation is written to an append-only audit ledger: who called it, which capability, a cryptographic hash of the input and the output, the rule engine's verdict. Those records are immutable, and they roll up into a daily Merkle batch anchored to Bitcoin. The record of what the AI did is as tamper-evident as the records the AI manages.</li>
-      </ol>
-      <p>And then the part we care about most.</p>
-      <h2>Propose, don't dispose</h2>
-      <p>
-        Through MCP, a model can <em>propose</em> a change to one of your workers — "make the eval worker remind students to verify patient identity before any dosing question." It drafts the change. It shows you, in plain English, exactly what would change.
+        We didn't expose an "approve" tool over MCP at all. Propose is callable. Approve is not. A human in your organization disposes.
       </p>
       <p>
-        It cannot make that change live. A human in your organization has to approve it.
+        That single asymmetry — the model can propose, a person must approve — is the difference between an agent you'd hand the keys to and one you'd never dare. And every proposal, every approval, every rejection goes into the ledger.
+      </p>
+      <h2>Why this matters beyond SOCIII</h2>
+      <p>
+        MCP itself will be everywhere within a year — that's the point of a good protocol. The model, the prompt, the dataset — those commoditize fast. The port is not the moat.
       </p>
       <p>
-        We did not expose an "approve" tool over MCP at all. The model proposes; a person disposes. That single asymmetry is the difference between an agent you can hand the keys to and one you'd never dare. Every proposal, every approval, every rejection is in the ledger.
-      </p>
-      <h2>Why this is the whole game</h2>
-      <p>
-        There's a temptation to think the moat in AI is the model, or the prompt, or the dataset. It isn't. Those commoditize on a schedule you don't control. MCP itself will be everywhere within a year — that's the point of a good protocol.
+        What's defensible is what lives underneath the port. An audited, governed, on-chain-anchored record of every action any agent takes. That's not something you bolt on. It has to be the foundation.
       </p>
       <p>
-        The protocol is the <strong>port</strong>: it makes you discoverable and callable. As search becomes assistants and assistants become agents, being callable by a model is going to matter the way being indexed by Google mattered. We want SOCIII workers to be the governed tool an AI reaches for. MCP is how we get there.
+        Today, that's real for SOCIII's own workers. Every action an agent takes through our MCP server — propose a change, read a record, run a worker — is scoped to your organization, checked by the rules engine, and written to the on-chain-anchored ledger the moment it happens. The proof isn't generated after the fact; it's a side effect of the action itself. That ships now.
       </p>
       <p>
-        But the <strong>moat</strong> is the thing underneath the port: an owned, append-only, audited record of governed actions. MCP makes SOCIII reachable. The substrate makes it <em>trustworthy</em>. One is the doorway; the other is the reason anyone walks through it.
+        And here's the promise. The substrate that governs our workers is the same substrate that can govern anyone's. As we open it, a developer who points their own agent at SOCIII through MCP inherits the governance and the audit trail by default — they get "the AI did it, and here's the timestamped, tamper-evident proof of exactly what it did and under what rule" without building a line of it themselves. The foundation is poured. Widening who gets to stand on it is the roadmap.
       </p>
       <p>
-        This is why "MCP but already built" is not a slogan. We didn't bolt a trendy protocol onto a black box. We opened a port into a substrate that was designed, from the first line, for governed, owned, append-only action. The protocol arrived; the foundation was already poured.
+        As agents become the front door to everything, the question stops being "can the AI reach your tools." Soon everything will be reachable. The question becomes: <em>when it acts, can you prove what it did, under what rule, on whose behalf?</em>
       </p>
-      <p>
-        As the model becomes the front door to everything, the question stops being "can the AI reach your tools." Soon everything will. The question becomes: <em>when it acts, can you prove what it did, under what rule, on whose behalf?</em>
-      </p>
-      <p>That's the part we built first.</p>
+      <p>That's the part we built first. MCP just made it callable.</p>
     </>
   ),
   "raas-five-tier-rules": (
