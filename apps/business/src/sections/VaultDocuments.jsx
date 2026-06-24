@@ -177,7 +177,20 @@ export default function VaultDocuments() {
   }, {});
 
   const handleDownload = async (objectId) => {
-    await downloadFile(objectId);
+    const result = await downloadFile(objectId);
+    // No silent dead button: if there's no stored blob behind the row (demo
+    // placeholders are metadata-only), say so instead of doing nothing.
+    if (!result || !result.downloadUrl) {
+      window.alert("This file can't be opened yet — it's a placeholder with no stored file behind it.");
+    }
+  };
+
+  // Hand a Drive file to the active worker's chat (the Drive → worker handoff).
+  // Fires a global event ChatPanel listens for; also used by drag-and-drop.
+  const handleSendToChat = (doc) => {
+    window.dispatchEvent(new CustomEvent("ta:drive-to-chat", {
+      detail: { objectId: doc.objectId, filename: doc.filename, mimeType: doc.mimeType, createdByWorker: doc.createdByWorker || null },
+    }));
   };
 
   const handleDelete = async (objectId, filename) => {
@@ -406,16 +419,23 @@ export default function VaultDocuments() {
             return (
               <div
                 key={doc.objectId}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("application/x-sociii-drive", JSON.stringify({ objectId: doc.objectId, filename: doc.filename, mimeType: doc.mimeType, createdByWorker: doc.createdByWorker || null }));
+                  e.dataTransfer.setData("text/plain", doc.filename);
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "minmax(260px, 1fr) 140px 120px 80px",
+                  gridTemplateColumns: "minmax(240px, 1fr) 130px 110px 130px",
                   padding: "10px 16px", borderBottom: "1px solid #f1f5f9",
                   alignItems: "center", fontSize: 13,
-                  cursor: "pointer", transition: "background 0.1s ease",
+                  cursor: "grab", transition: "background 0.1s ease",
                 }}
                 onClick={() => handleDownload(doc.objectId)}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                title="Drag into the chat, or use → Chat, to hand this file to a worker"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <div style={{
@@ -438,6 +458,13 @@ export default function VaultDocuments() {
                 <div style={{ color: "#475569" }}>{formatDate(doc.createdAt)}</div>
                 <div style={{ color: "#475569" }}>{formatSize(doc.sizeBytes)}</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleSendToChat(doc)}
+                    title="Send this file to the worker chat"
+                    style={{ padding: "4px 8px", fontSize: 11, fontWeight: 700, background: "#7c3aed", color: "#fff", border: "1px solid #7c3aed", borderRadius: 6, cursor: "pointer" }}
+                  >
+                    → Chat
+                  </button>
                   <button
                     onClick={() => handleDownload(doc.objectId)}
                     title="Open"
@@ -469,7 +496,18 @@ export default function VaultDocuments() {
             const fromLogbook = Array.isArray(doc.tags) && doc.tags.includes("source:logbook");
             const sourceLabel = fromGdrive ? "Drive" : fromChat ? "Chat" : fromLogbook ? "Logbook" : doc.createdByWorker || null;
             return (
-              <div key={doc.objectId} className="card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div
+                key={doc.objectId}
+                className="card"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("application/x-sociii-drive", JSON.stringify({ objectId: doc.objectId, filename: doc.filename, mimeType: doc.mimeType, createdByWorker: doc.createdByWorker || null }));
+                  e.dataTransfer.setData("text/plain", doc.filename);
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                title="Drag into the chat, or use → Chat, to hand this file to a worker"
+                style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px", cursor: "grab" }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <div style={{
                     width: "40px", height: "40px", borderRadius: "8px",
@@ -490,6 +528,13 @@ export default function VaultDocuments() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => handleSendToChat(doc)}
+                    title="Send this file to the worker chat"
+                    style={{ flex: 1, padding: "6px 10px", fontSize: "12px", fontWeight: 700, background: "#7c3aed", color: "#fff", border: "1px solid #7c3aed", borderRadius: "6px", cursor: "pointer" }}
+                  >
+                    → Chat
+                  </button>
                   <button
                     onClick={() => handleDownload(doc.objectId)}
                     style={{ flex: 1, padding: "6px 10px", fontSize: "12px", fontWeight: 600, background: "#f8fafc", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: "6px", cursor: "pointer" }}

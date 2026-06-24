@@ -207,6 +207,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [pendingActions, setPendingActions] = useState([]);
   const [showMobileExtras, setShowMobileExtras] = useState(false);
   const chatPanelRef = useRef(null);
+  // Kept fresh every render (below) so window-event handlers always call the
+  // latest sendMessage without stale-closure state. Used by the Drive→chat handoff.
+  const sendMessageRef = useRef(null);
   const [workerSearch, setWorkerSearch] = useState("");
   const [greetingCollapsed, setGreetingCollapsed] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("All");
@@ -1004,6 +1007,23 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
   }
 
+  // Keep the ref pointing at the current sendMessage (hoisted function decl).
+  sendMessageRef.current = sendMessage;
+
+  // Drive → worker handoff: a file dragged or "→ Chat"-ed from My Drive lands
+  // here as a real message to the active worker. (Honest: this hands the worker
+  // the file reference; true content extraction follows once files carry blobs.)
+  useEffect(() => {
+    function onDriveToChat(e) {
+      const d = e.detail || {};
+      if (!d.filename) return;
+      const text = `I'm handing you "${d.filename}" from my Drive — please take a look and help me with it.`;
+      setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch (_) {} }, 60);
+    }
+    window.addEventListener("ta:drive-to-chat", onDriveToChat);
+    return () => window.removeEventListener("ta:drive-to-chat", onDriveToChat);
+  }, []);
+
   async function sendMessage(e, overrideMessage) {
     e?.preventDefault();
     const messageToSend = (overrideMessage || input).trim();
@@ -1629,6 +1649,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
+    // In-app Drive file dragged from My Drive → hand it to the worker.
+    const driveRaw = e.dataTransfer.getData("application/x-sociii-drive");
+    if (driveRaw) {
+      try {
+        const d = JSON.parse(driveRaw);
+        if (d.filename) {
+          const text = `I'm handing you "${d.filename}" from my Drive — please take a look and help me with it.`;
+          setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch (_) {} }, 60);
+          return;
+        }
+      } catch (_) { /* fall through to OS-file path */ }
+    }
     const files = Array.from(e.dataTransfer.files || []);
     if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
   }
