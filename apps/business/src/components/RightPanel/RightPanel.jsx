@@ -11,6 +11,7 @@ import WorkerCanvas from "../canvas/WorkerCanvas";
 import { isREWorker } from "../canvas/RealEstateWorkerCanvas";
 import { getLiveDataForTab } from "../canvas/liveData";
 import { getFixtureForTab } from "../canvas/sampleData";
+import { isDiscoveryCanvas } from "../../config/canvasTypes";
 import BetaNotice from "../BetaNotice";
 import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog";
 
@@ -495,7 +496,12 @@ export default function RightPanel() {
   }
 
   // ── CANVAS: Canvas Protocol card (44.9) + tab bar (50.10-T3) ──
-  if (state === "CANVAS" && canvasData) {
+  // S52.46 / #36 — port the App.jsx discovery guard to THIS mount path too. A
+  // discovery / worker-list card ("<vertical> Workers") must NEVER hijack the
+  // worker's own canvas (THE overlay). When inside a worker, fall through to the
+  // worker-home render below instead of painting the discovery grid on top.
+  const _insideWorkerRP = !!(workerState?.activeWorkerData || panel.activeWorkerData);
+  if (state === "CANVAS" && canvasData && !(isDiscoveryCanvas(canvasData) && _insideWorkerRP)) {
     // canvasTabs may be on either context — RightPanel's activeWorkerData (set
     // via showWorkerHome from minimal sidebar data) or WorkerState's (enriched
     // from Firestore by selectWorker). Prefer the enriched copy.

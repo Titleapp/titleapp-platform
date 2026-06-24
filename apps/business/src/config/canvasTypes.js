@@ -21,6 +21,7 @@ export const CANVAS_TYPES = {
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: null,
+    isDiscovery: true,
   },
   "browse:free": {
     component: "WorkerListCanvas",
@@ -29,6 +30,7 @@ export const CANVAS_TYPES = {
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: null,
+    isDiscovery: true,
   },
 
   // Accounting cards
@@ -396,6 +398,7 @@ export function resolveVerticalSignal(signal) {
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: null,
+    isDiscovery: true,
     _signal: signal,
   };
 }
@@ -408,4 +411,18 @@ export function lookupSignal(signal) {
   if (CANVAS_TYPES[signal]) return { ...CANVAS_TYPES[signal], _signal: signal };
   if (signal.startsWith("vertical:")) return resolveVerticalSignal(signal);
   return null;
+}
+
+/**
+ * Is this resolved canvas a discovery / worker-list card (the "<vertical>
+ * Workers" recommendation grid)? Such a card must NEVER hijack a worker's own
+ * canvas. Robust to new browse/vertical signals: checks the isDiscovery flag
+ * first, then falls back to the signal-prefix + component name. (S52.46 / #36)
+ */
+export function isDiscoveryCanvas(canvasData) {
+  const r = canvasData?.resolved || canvasData || {};
+  if (r.isDiscovery) return true;
+  if (r.component === "WorkerListCanvas") return true;
+  const sig = String(r._signal || "");
+  return sig.startsWith("vertical:") || sig.startsWith("browse:");
 }

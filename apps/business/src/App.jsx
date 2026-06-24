@@ -108,7 +108,7 @@ import CanvasPanel from "./components/canvas/CanvasPanel";
 import CanvasTabBar from "./components/canvas/CanvasTabBar";
 import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas/sampleData";
 import { getLiveDataForTab } from "./components/canvas/liveData";
-import { lookupSignal } from "./config/canvasTypes";
+import { lookupSignal, isDiscoveryCanvas } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
 import { isREWorker } from "./components/canvas/RealEstateWorkerCanvas";
 import { auth } from "./firebase";
@@ -4591,8 +4591,10 @@ function WorkerHomeRenderer({ onBack }) {
   // card). It arrives via the server's data.canvasSignal/canvasRenders → showCanvas,
   // so it bypassed every showRecommendations guard. When we're inside a worker, a
   // discovery card must NEVER hijack the worker's own canvas — fall through to it.
-  const _activeSig = String(panel?.canvasData?.resolved?._signal || "");
-  const _isDiscoverySig = _activeSig.startsWith("vertical:") || _activeSig.startsWith("browse:");
+  // Robust discovery detection (isDiscovery flag → component → signal prefix),
+  // not just the brittle string-prefix test, so any new browse/vertical signal
+  // is still caught and can't paint over the worker's canvas.
+  const _isDiscoverySig = isDiscoveryCanvas(panel?.canvasData);
   const _insideWorker = !!(workerCtx?.activeWorkerData || workerCtx?.activeWorkerId || worker);
 
   if (panel?.state === "CANVAS" && panel?.canvasData && !(_isDiscoverySig && _insideWorker)) {
