@@ -252,6 +252,15 @@ export default function ClientPortal() {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas]);
 
+  // Claude-style left nav: shown on desktop only (the portal is mobile-first).
+  const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 760 : true);
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 760);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  function say(text) { setMessages(m => [...m, { from: "them", text }]); }
+
   function runChip(s) {
     setUsed(u => [...u, s.chip]);
     setMessages(m => [...m, { from: "me", text: s.chip }]);
@@ -267,8 +276,23 @@ export default function ClientPortal() {
 
   const remaining = scripts.filter(s => !used.includes(s.chip));
 
+  // Persona-relevant left-nav items (monoline icons — Switzerland, not Disneyland).
+  const I = (d) => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+  const navItems = persona === "advisor"
+    ? [
+        { label: "My agreements", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "affirm" }) },
+        { label: "My documents", icon: I(<><path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"/><path d="M3 7h18l-1.4 11A2 2 0 0 1 17.6 20H6.4A2 2 0 0 1 4.4 18z"/></>), action: () => setCanvas({ type: "documents" }) },
+        { label: "My votes", icon: I(<><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>), action: () => say("No board votes pending right now — you're all caught up. I'll surface anything that needs your vote here.") },
+      ]
+    : [
+        { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: () => endRef.current?.scrollIntoView({ behavior: "smooth" }) },
+        { label: `${person.pet || "Pet"}'s records`, icon: I(<><path d="M9 11H5a2 2 0 0 0-2 2v7h6z"/><path d="M9 7h6v13H9z"/><path d="M15 4h4a2 2 0 0 1 2 2v14h-6z"/></>), action: () => setCanvas({ type: "records" }) },
+        { label: "Appointments", icon: I(<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>), action: () => setCanvas({ type: "booking" }) },
+        { label: "Bills & account", icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>), action: () => say("Nothing due right now — your last visit was paid in full. I'll text you before anything's coming up.") },
+      ];
+
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", maxWidth: 920, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", maxWidth: isDesktop ? 1140 : 920, margin: "0 auto" }}>
       {/* Branded header — the skin of the door you came through */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: "1px solid #f1f5f9", position: "sticky", top: 0, background: "#fff", zIndex: 5 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -283,6 +307,23 @@ export default function ClientPortal() {
       </header>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* Claude-style left nav (desktop) — what this customer can do here */}
+        {isDesktop && (
+          <nav style={{ width: 212, flexShrink: 0, borderRight: "1px solid #f1f5f9", padding: "16px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+            {navItems.map((it, i) => (
+              <button key={i} onClick={it.action}
+                style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", border: "none", background: "transparent", borderRadius: 10, cursor: "pointer", fontSize: 14, color: "#334155", fontWeight: 500, textAlign: "left", width: "100%" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                <span style={{ color: skin.accent, display: "flex" }}>{it.icon}</span>{it.label}
+              </button>
+            ))}
+            <div style={{ flex: 1 }} />
+            <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, fontSize: 12.5, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
+              {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
+            </a>
+          </nav>
+        )}
         {/* Chat center */}
         <main style={{ flex: canvas ? "1 1 50%" : "1 1 100%", display: "flex", flexDirection: "column", padding: "18px 18px 0", minWidth: 0 }}>
           <div style={{ flex: 1, overflowY: "auto" }}>
