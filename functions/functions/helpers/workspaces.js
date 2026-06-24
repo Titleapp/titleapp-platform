@@ -20,6 +20,14 @@ const PERSONAL_VAULT = {
   chiefOfStaff: null,
 };
 
+// The 5 spine workers every OWNED business workspace gets (the owner's toolkit).
+// Members/customers do NOT get these — that's the "every nursing student gets the
+// department Accounting worker" lock.
+const SPINE_WORKERS = ['platform-accounting', 'platform-contacts', 'platform-hr', 'platform-marketing', 'platform-control-center-pro'];
+const slugOf = (d) => d.data().workerId || d.data().workerSlug || d.data().slug;
+const subTenantOf = (d) => d.data().tenantId || d.data().workspaceId || null;
+const isPersonalSpace = (ws) => ws.type === 'personal' || ws.id === 'vault';
+
 async function getUserWorkspaces(userId) {
   // Simple get — no composite index needed. Max 10 business workspaces per user.
   const snap = await getDb().collection('users').doc(userId)
@@ -39,28 +47,45 @@ async function getUserWorkspaces(userId) {
     }
   });
 
-  // Merge subscriptions into workspace activeWorkers
+  // Merge subscriptions into workspace activeWorkers — TENANT-SCOPED.
+  // A subscription belongs to ONE tenant (its tenantId). We never spray a user's
+  // subs across all of their workspaces (that broke persona isolation — every
+  // persona showed the same workers, and a member/customer would inherit the
+  // owner's spine). Partition:
+  //   • Personal Vault  → entitlement + subs NOT assigned to a business tenant (your personal workers).
+  //   • Business/org ws  → ONLY subs tagged to THIS tenant; never a user-global union.
+  // Untagged legacy subs are HELD as personal (show in the Vault) until they are
+  // migrated to the right tenant — nothing is destroyed.
   try {
     const subSnap = await getDb().collection('subscriptions')
       .where('userId', '==', userId)
       .get();
-
-    // Filter in memory — exclude cancelled and expired
     const activeSubs = subSnap.docs.filter(d => {
       const data = d.data();
       return isActive(data.trialStatus || normalizeLegacyStatus(data.status));
     });
 
-    const subscribedSlugs = activeSubs
-      .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
-      .filter(Boolean);
-    if (subscribedSlugs.length > 0) {
-      for (const ws of workspaces) {
-        const merged = new Set([...(ws.activeWorkers || []), ...subscribedSlugs]);
-        ws.activeWorkers = [...merged];
-        if (ws.activeWorkers.length >= 3 && !ws.chiefOfStaff) {
-          ws.chiefOfStaff = { enabled: true, name: ws.cosConfig?.name || 'Alex', unlockedAt: new Date().toISOString() };
-        }
+    for (const ws of workspaces) {
+      if (ws.type === 'shared') continue;
+      let slugs;
+      if (isPersonalSpace(ws)) {
+        slugs = activeSubs
+          .filter(d => { const t = subTenantOf(d); return !t || t === 'vault' || t === 'personal'; })
+          .map(slugOf).filter(Boolean);
+      } else {
+        slugs = activeSubs
+          .filter(d => subTenantOf(d) === ws.id)
+          .map(slugOf).filter(Boolean);
+      }
+      const merged = new Set([...(ws.activeWorkers || []), ...slugs]);
+      // Owner spine-default: an OWNED business workspace is never empty — the
+      // owner always gets their spine toolkit. Members/customers do NOT (the lock).
+      if (merged.size === 0 && !isPersonalSpace(ws) && (ws.role === 'admin' || ws.role === 'owner')) {
+        SPINE_WORKERS.forEach(s => merged.add(s));
+      }
+      ws.activeWorkers = [...merged];
+      if (ws.activeWorkers.length >= 3 && !ws.chiefOfStaff) {
+        ws.chiefOfStaff = { enabled: true, name: ws.cosConfig?.name || 'Alex', unlockedAt: new Date().toISOString() };
       }
     }
   } catch (e) {
@@ -300,7 +325,10 @@ async function getWorkspace(userId, workspaceId) {
       const subSlugs = subSnap.docs
         .filter(d => {
           const data = d.data();
-          return isActive(data.trialStatus || normalizeLegacyStatus(data.status));
+          if (!isActive(data.trialStatus || normalizeLegacyStatus(data.status))) return false;
+          // Vault = personal workers only: subs NOT assigned to a business tenant.
+          const t = data.tenantId || data.workspaceId;
+          return !t || t === 'vault' || t === 'personal';
         })
         .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
         .filter(Boolean);
