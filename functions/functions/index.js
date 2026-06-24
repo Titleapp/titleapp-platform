@@ -19661,6 +19661,23 @@ RULES YOU MUST FOLLOW:
               }
             }
 
+            // ── Workspace Brief (2026-06-23): the Chief-of-Staff brain. Inject the
+            // REAL numbers — finances + runway, filing deadlines, Vault expiries,
+            // staff credentials, net worth — so "what's my day like / how's the
+            // company doing" gets a grounded answer, not a pitch. Non-fatal;
+            // empty sections are omitted. ──
+            if (alexSystemPrompt) {
+              try {
+                const { buildWorkspaceBrief } = require("./services/alex/workspaceBrief");
+                const wb = await buildWorkspaceBrief({ uid: auth.user.uid, tenantId: ctx.tenantId });
+                if (wb) {
+                  alexSystemPrompt += `\n\nWORKSPACE BRIEF — REAL, current data from this workspace. When the user asks about their day, finances, deadlines, what needs attention, or how the company is doing, use THESE actual numbers and dates. Lead with what's urgent (overdue/soonest). Never invent figures; if something isn't here, say you don't have it yet.\n${wb}`;
+                }
+              } catch (wbErr) {
+                console.warn("Alex chat: workspace brief inject failed:", wbErr.message);
+              }
+            }
+
             // ── Worker-specific prompt: if a worker is selected, override Alex prompt ──
             if (alexSystemPrompt && body.selectedWorker && body.selectedWorker !== "chief-of-staff") {
               try {
