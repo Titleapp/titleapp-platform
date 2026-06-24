@@ -1429,6 +1429,190 @@ export default function Sidebar({
     ? (userFirstName ? `${userFirstName}'s Personal Space` : "Personal Space")
     : (companyName || "Workspace");
 
+  // ═══ PERSONA ACCORDION CONTENT (2026-06-24) ═══
+  // Sean: "expanded sections should be below the persona, not below the bottom
+  // persona" + "everything in there should be white or the persona color
+  // (purple Workers / green Games is confusing)". So the active persona's nav
+  // renders INLINE under its own switcher row, and uses exactly two inks:
+  // personaTint[0] for section/category labels, white for the items.
+  const myGames = workerList.filter(w => w.workerType === "game");
+  const ACCOUNT_NAV = [
+    { id: "billing", label: "Billing" },
+    { id: "settings", label: "Settings" },
+    { id: "suggestions", label: "Suggestions" },
+    { id: "rules", label: "Worker Rules" },
+  ];
+  const ACCOUNT_IDS = new Set(["billing", "settings", "suggestions"]);
+  const contextualItems = selectedWorker ? myWorkItems.filter(i => !ACCOUNT_IDS.has(i.id)) : [];
+  const labelStyle = { fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: personaTint[0] };
+
+  const personaNav = (
+    <div style={{
+      marginLeft: 10, marginBottom: 4,
+      borderLeft: `2px solid ${personaTint[0]}55`,
+      paddingLeft: 6,
+    }}>
+      {/* ── MY WORKERS ── */}
+      <div className="sidebarSection" style={{ paddingTop: 8 }}>
+        <button
+          onClick={() => setWorkersCollapsed(!workersCollapsed)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
+        >
+          <span style={{ ...labelStyle, display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></span>
+          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: workersCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+        </button>
+        {!workersCollapsed && (
+          <nav className="nav">
+            {/* Chief of Staff — global, tinted to the persona for consistency */}
+            {groupedWorkers.cos.map(worker => {
+              const isSelected = selectedWorker === worker.slug;
+              return (
+                <button
+                  key={worker.slug}
+                  className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                  onClick={() => handleWorkerClick(worker)}
+                  style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, background: isSelected ? `${personaTint[0]}22` : "transparent", borderRadius: 8, marginBottom: 2 }}
+                >
+                  <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
+                    <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
+                  </span>
+                  <span style={{ flex: 1, color: "#fff", fontWeight: 600 }}>{worker.name}</span>
+                  <span style={{ fontSize: 10, color: `${personaTint[0]}cc`, fontWeight: 600 }}>CoS</span>
+                </button>
+              );
+            })}
+
+            {/* Workers grouped by vertical — category labels muted, names white */}
+            {groupedWorkers.groups.map(([verticalName, workers], gi) => {
+              const isCollapsed = collapsedGroups[verticalName];
+              return (
+                <div key={verticalName}>
+                  {gi > 0 && <div style={{ height: 1, background: `${personaTint[0]}33`, margin: "4px 10px" }} />}
+                  <button
+                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
+                    style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "8px 10px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  >
+                    <span>{verticalName} ({workers.length})</span>
+                    <span style={{ fontSize: 10, transition: "transform 0.2s", transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+                  </button>
+                  {!isCollapsed && workers.map(worker => {
+                    const isSelected = selectedWorker === worker.slug;
+                    return (
+                      <div key={worker.slug}>
+                        <button
+                          className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                          onClick={() => handleWorkerClick(worker)}
+                          style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, ...(isSelected ? { background: `${personaTint[0]}20`, borderRadius: 8 } : {}) }}
+                        >
+                          <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
+                            <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
+                          </span>
+                          <span style={{ flex: 1, color: "#fff", fontWeight: isSelected ? 600 : 400 }}>{worker.name}</span>
+                        </button>
+                        <button
+                          onClick={() => { window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: { slug: worker.slug, name: worker.name } })); if (onClose) onClose(); }}
+                          title="Your worker gets better every time you update it"
+                          style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: "2px 10px 6px 38px", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}
+                          onMouseEnter={e => { e.currentTarget.style.color = personaTint[0]; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
+                        >
+                          Update &rarr;
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {workerList.length > 8 && !workersExpanded && (
+              <button onClick={() => setWorkersExpanded(true)} style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500, padding: "5px 10px" }}>
+                + {workerList.length - 8} more workers
+              </button>
+            )}
+            {workerList.length === 0 && (
+              <div style={{ padding: "8px 16px", fontSize: "12px", color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>No workers yet</div>
+            )}
+
+            {/* Browse Marketplace — persona-tinted action, not green */}
+            <button
+              className="navItem"
+              onClick={() => handleNavClick("raas-store")}
+              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 12, color: personaTint[0], fontWeight: 600, padding: "7px 10px" }}
+            >
+              + Browse Marketplace
+            </button>
+          </nav>
+        )}
+      </div>
+
+      {/* ── MY DRIVE — always-visible peer ── */}
+      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+        <button
+          className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
+          onClick={() => handleNavClick("vault-documents")}
+          style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 13, padding: "7px 10px" }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={personaTint[0]} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span style={{ flex: 1, color: "#fff", fontWeight: 600 }}>My Drive</span>
+        </button>
+      </div>
+
+      {/* ── MY GAMES ── */}
+      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+        <button
+          onClick={() => setGamesCollapsed(!gamesCollapsed)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
+        >
+          <span style={labelStyle}>My Games</span>
+          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: gamesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+        </button>
+        {!gamesCollapsed && (
+          <nav className="nav">
+            {myGames.length > 0 ? myGames.map(g => (
+              <button key={g.slug} className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`} onClick={() => handleWorkerClick(g)} style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}>
+                <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${personaTint[0]}26`, color: personaTint[0], fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{(g.name || "G")[0]}</span>
+                <span style={{ flex: 1, color: "#fff" }}>{g.name}</span>
+              </button>
+            )) : (
+              <div style={{ padding: "8px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Coming Soon</div>
+            )}
+          </nav>
+        )}
+      </div>
+
+      {/* ── ACTIVE WORKER TABS (only when a worker is open) ── */}
+      {selectedWorker && contextualItems.length > 0 && (
+        <div className="sidebarSection">
+          <div style={labelStyle}>{selectedWorkerName || "Worker"}</div>
+          <nav className="nav">
+            {contextualItems.map(item => (
+              <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* ── ACCOUNT ── */}
+      <div className="sidebarSection">
+        <div style={labelStyle}>Account</div>
+        <nav className="nav">
+          {ACCOUNT_NAV.map(item => (
+            <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+
   return (
     <div className="sidebar">
       {/* ═══ BRAND STRIP ═══ */}
@@ -1796,8 +1980,8 @@ export default function Sidebar({
                 const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
                 const canInvite = !isPersonalRow && ws.role === "admin";
                 return (
+                  <React.Fragment key={`mws-${ws.id}`}>
                   <div
-                    key={`mws-${ws.id}`}
                     onClick={() => { if (!isCurrent) onSwitchWorkspace(ws); }}
                     style={{
                       display: "flex", alignItems: "center", gap: 8,
@@ -1867,6 +2051,9 @@ export default function Sidebar({
                       </button>
                     )}
                   </div>
+                  {/* Active persona expands INLINE here, under its own row */}
+                  {isCurrent && personaNav}
+                  </React.Fragment>
                 );
               })}
 
@@ -1879,7 +2066,10 @@ export default function Sidebar({
                    Colored via personaTintFor so it reads as its own persona. */}
               {(() => {
                 const creatorTint = personaTintFor("__creator__", false);
+                const creatorActive = (currentSection || "").toLowerCase().includes("creator");
+                const creatorLabel = { fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: creatorTint[0] };
                 return (
+                  <React.Fragment>
                   <div
                     key="mws-creator"
                     onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
@@ -1909,361 +2099,26 @@ export default function Sidebar({
                       Build
                     </span>
                   </div>
+                  {creatorActive && (
+                    <div style={{ marginLeft: 10, marginBottom: 4, borderLeft: `2px solid ${creatorTint[0]}55`, paddingLeft: 6 }}>
+                      <div className="sidebarSection" style={{ paddingTop: 8 }}>
+                        <div style={creatorLabel}>Creator</div>
+                        <nav className="nav">
+                          {[["My Workers", "workers"], ["Profile", "profile"], ["Earnings", "earnings"]].map(([lbl, tab]) => (
+                            <button key={tab} className="navItem" onClick={() => { window.location.href = `/creators/dashboard?tab=${tab}`; }} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>{lbl}</button>
+                          ))}
+                          <button className="navItem" onClick={() => { window.location.href = "/creators/journey"; }} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: creatorTint[0], fontWeight: 600 }}>+ Build a Worker</button>
+                        </nav>
+                      </div>
+                    </div>
+                  )}
+                  </React.Fragment>
                 );
               })()}
             </nav>
           )}
         </div>
       )}
-      {!guestMode && (
-        <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
-      )}
-
-      {/* CODEX 48.3 Phase A — YOUR TEAMS removed. Workers are accessed via
-           MY WORKERS / MY GAMES below. Workspace switching remains available
-           via the Switch Worker button in the sidebar footer. */}
-
-      {/* ═══ PERSONA-SCOPED BLOCK (2026-06-24) ═══
-           Everything inside belongs to the CURRENT persona and is bound to its
-           color: Workers, Drive, Games, the worker's own tabs, and Account all
-           sit under one persona header with a colored left rail. Fixes "I can't
-           tell these workers/Drive/billing belong to the orange Meadow Creek
-           persona" — ambiguity here is the same failure class as a data leak. */}
-      <div style={{
-        margin: "2px 8px 0",
-        borderLeft: `3px solid ${personaTint[0]}`,
-        borderRadius: "0 10px 10px 0",
-        background: `linear-gradient(90deg, ${personaTint[0]}12 0%, transparent 55%)`,
-      }}>
-        {/* Persona header chip — names the context the whole block belongs to */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px 7px" }}>
-          <div style={{
-            width: 20, height: 20, borderRadius: 5,
-            background: `linear-gradient(135deg, ${personaTint[0]} 0%, ${personaTint[1]} 100%)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0,
-          }}>{(personaName || "S").charAt(0).toUpperCase()}</div>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: personaTint[0], overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {personaName}
-          </span>
-          {!isPersonal && workspaceRole && (
-            <span style={{
-              fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,
-              background: `${personaTint[0]}33`, color: personaTint[0],
-              textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
-            }}>
-              {workspaceRole}
-            </span>
-          )}
-        </div>
-
-      {/* ═══ SECTION 1: MY WORKERS (grouped by vertical, games excluded) ═══ */}
-      <div className="sidebarSection">
-        <button
-          className="sidebarLabel"
-          onClick={() => setWorkersCollapsed(!workersCollapsed)}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            width: "100%", background: "none", border: "none", cursor: "pointer",
-            padding: 0, margin: 0,
-          }}
-        >
-          <span style={{ display: "flex", alignItems: "center", color: "#a78bfa" }}>My Workers<DataLinkStatus /></span>
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: workersCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-        </button>
-
-        {!workersCollapsed && <nav className="nav">
-          {/* Chief of Staff — always first */}
-          {groupedWorkers.cos.map(worker => {
-            const isSelected = selectedWorker === worker.slug;
-            const wc = getWorkerColor(worker.slug);
-            return (
-              <button
-                key={worker.slug}
-                className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                onClick={() => handleWorkerClick(worker)}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 10px", fontSize: 13,
-                  background: isSelected
-                    ? `${wc.primary}28`
-                    : `linear-gradient(135deg, ${wc.primary}14 0%, ${wc.primary}0a 100%)`,
-                  borderRadius: 10, marginBottom: 2,
-                }}
-              >
-                <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <WorkerIcon slug={worker.slug} size={16} color={wc.light} />
-                  <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
-                </span>
-                <span style={{ flex: 1, color: wc.light, fontWeight: 600 }}>{worker.name}</span>
-                <span style={{ fontSize: 10, color: wc.accent, fontWeight: 600 }}>CoS</span>
-              </button>
-            );
-          })}
-
-          {/* Workers grouped by vertical (collapsible) */}
-          {groupedWorkers.groups.map(([verticalName, workers], gi) => {
-            const accent = getThemeAccent(verticalName, false);
-            const isCollapsed = collapsedGroups[verticalName];
-            return (
-            <div key={verticalName}>
-              {gi > 0 && <div style={{ height: 1, background: accent, opacity: 0.3, margin: "4px 10px" }} />}
-              <button
-                onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer",
-                  background: "none", border: "none",
-                  fontSize: 10, fontWeight: 600, color: accent,
-                  textTransform: "uppercase", letterSpacing: "0.5px",
-                  padding: "8px 10px 3px",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                }}
-              >
-                <span>{verticalName} ({workers.length})</span>
-                <span style={{ fontSize: 10, transition: "transform 0.2s", transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-              </button>
-              {!isCollapsed && workers.map(worker => {
-                const isSelected = selectedWorker === worker.slug;
-                const wc = getWorkerColor(worker.slug, verticalName);
-                return (
-                  <div key={worker.slug}>
-                    <button
-                      className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                      onClick={() => handleWorkerClick(worker)}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "7px 10px", fontSize: 13,
-                        ...(isSelected ? { background: `${wc.primary}20`, borderRadius: 8 } : {}),
-                      }}
-                    >
-                      <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
-                        <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
-                      </span>
-                      <span style={{ flex: 1, color: isSelected ? wc.light : "rgba(255,255,255,0.85)", fontWeight: isSelected ? 600 : 400 }}>
-                        {worker.name}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: { slug: worker.slug, name: worker.name } }));
-                        if (onClose) onClose();
-                      }}
-                      title="Your worker gets better every time you update it"
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        background: "none", border: "none",
-                        padding: "2px 10px 6px 38px", fontSize: 11,
-                        color: "rgba(255,255,255,0.3)", fontWeight: 500,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.color = "#7c3aed"; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
-                    >
-                      Update &rarr;
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          );
-          })}
-
-          {/* Expand/collapse for many workers */}
-          {workerList.length > 8 && !workersExpanded && (
-            <button
-              onClick={() => setWorkersExpanded(true)}
-              style={{
-                width: "100%", textAlign: "left", cursor: "pointer",
-                background: "none", border: "none",
-                fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500,
-                padding: "5px 10px",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
-            >
-              + {workerList.length - 8} more workers
-            </button>
-          )}
-
-          {/* Empty state */}
-          {workerList.length === 0 && (
-            <div style={{
-              padding: "8px 16px",
-              fontSize: "12px",
-              color: "rgba(255,255,255,0.3)",
-              fontStyle: "italic",
-            }}>
-              No workers yet
-            </div>
-          )}
-
-          {/* Browse Marketplace */}
-          <button
-            className="navItem"
-            onClick={() => handleNavClick("raas-store")}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              fontSize: 12, color: "#22c55e", fontWeight: 500,
-              padding: "7px 10px",
-            }}
-          >
-            + Browse Marketplace
-          </button>
-        </nav>}
-      </div>
-
-      {/* ═══ MY DRIVE — per-persona peer row (2026-06-24) ═══
-           Hoisted OUT of the My Workers nav so it's ALWAYS visible inside the
-           persona block (it was buried inside the collapsed Workers list — "not
-           easy and not clear it belongs to Meadow Vet"). Sits as a sibling of
-           My Workers / My Games. Same vault-documents handler, persona-scoped
-           via TENANT_ID. */}
-      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-        <button
-          className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
-          onClick={() => handleNavClick("vault-documents")}
-          style={{
-            width: "100%", textAlign: "left", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 8,
-            fontSize: 13, padding: "7px 10px",
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={personaTint[0]} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-          <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>My Drive</span>
-        </button>
-      </div>
-
-      {/* ═══ MY GAMES (always visible) ═══ */}
-      {(() => {
-        const myGames = workerList.filter(w => w.workerType === "game");
-        return (
-          <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-            <button
-              className="sidebarLabel"
-              onClick={() => setGamesCollapsed(!gamesCollapsed)}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", background: "none", border: "none", cursor: "pointer",
-                padding: 0, margin: 0,
-              }}
-            >
-              <span style={{ color: "#22c55e" }}>My Games</span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: gamesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-            </button>
-            {!gamesCollapsed && (
-              <nav className="nav">
-                {myGames.length > 0 ? myGames.map(g => (
-                  <button
-                    key={g.slug}
-                    className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`}
-                    onClick={() => handleWorkerClick(g)}
-                    style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}
-                  >
-                    <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(22,163,74,0.15)", color: "#22c55e", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-                      {(g.name || "G")[0]}
-                    </span>
-                    <span style={{ flex: 1, color: "rgba(255,255,255,0.85)" }}>{g.name}</span>
-                  </button>
-                )) : (
-                  <div style={{ padding: "8px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
-                    Coming Soon
-                  </div>
-                )}
-              </nav>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Divider */}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
-
-      {/* ═══ CONTEXTUAL NAV (CODEX 50.10-T2 Note 2)
-           Was "MY WORK" — but those items aren't user work, they're the active
-           context's nav. When a worker is selected, the section reflects that
-           worker's tabs and is labeled with the worker name. When no worker is
-           selected, it's the workspace's vertical default — labeled by vertical
-           or "Vault" for Personal context.
-           Phase 1 worker onboarding will move most of these items into proper
-           per-worker tabs; this section then collapses to a thin shell. ═══ */}
-      {(() => {
-        // Filter out account-level items so they live in their own ACCOUNT
-        // section at the bottom.
-        const ACCOUNT_IDS = new Set(["billing", "settings", "suggestions"]);
-        const contextualItems = myWorkItems.filter(i => !ACCOUNT_IDS.has(i.id));
-
-        // CODEX 50.10-T2 Note 2 — when no worker is selected, the sidebar
-        // should NOT advertise worker-internal capabilities at the top level.
-        // The right shape is MY WORKSPACES > MY WORKERS > worker tabs.
-        // Phase 1 worker onboarding moves contextual items into worker tabs.
-        if (!selectedWorker) return null;
-
-        if (contextualItems.length === 0) return null;
-        const sectionLabel = selectedWorkerName || "Worker";
-        return (
-          <div className="sidebarSection" style={{ flex: 1 }}>
-            <div className="sidebarLabel" style={{ color: "rgba(255,255,255,0.55)" }}>{sectionLabel}</div>
-            <nav className="nav">
-              {contextualItems.map(item => (
-                <button
-                  key={item.id}
-                  className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`}
-                  onClick={() => handleNavClick(item.id)}
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        );
-      })()}
-
-      {/* Divider */}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
-
-      {/* ═══ ACCOUNT (CODEX 50.10-T2 Note 2)
-           True user/account-level navigation: settings, billing, worker rules.
-           Distinct from workspace/worker context items above. ═══ */}
-      <div className="sidebarSection">
-        <div className="sidebarLabel" style={{ color: "#f59e0b" }}>Account</div>
-        <nav className="nav">
-          <button
-            className={`navItem ${currentSection === "billing" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("billing")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Billing
-          </button>
-          <button
-            className={`navItem ${currentSection === "settings" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("settings")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Settings
-          </button>
-          <button
-            className={`navItem ${currentSection === "suggestions" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("suggestions")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Suggestions
-          </button>
-          <button
-            className={`navItem ${currentSection === "rules" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("rules")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Worker Rules
-          </button>
-        </nav>
-      </div>
-      {/* ═══ /PERSONA-SCOPED BLOCK ═══ */}
-      </div>
 
       {/* Footer: Sign Out (Switch Worker removed in CODEX 50.10-T2 — redundant
           with persona switcher and MY WORKERS list). */}

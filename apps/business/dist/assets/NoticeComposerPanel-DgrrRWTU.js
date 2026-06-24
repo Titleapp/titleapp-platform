@@ -1,0 +1,1 @@
+import{t as e}from"./NoticeComposerPanel-DB6oZNQs.js";export{e as default};
