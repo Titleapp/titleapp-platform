@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connecting your Google account…</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f8fafc; color: #0f172a;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+      padding: 24px; text-align: center;
+    }
+    .box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px 32px; max-width: 420px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    h1 { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+    p { font-size: 13px; color: #475569; line-height: 1.5; margin: 4px 0; }
+    .err { color: #b91c1c; }
+    .spinner {
+      width: 28px; height: 28px; margin: 0 auto 14px;
+      border: 3px solid #e2e8f0; border-top-color: #7c3aed; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box" id="status">
+    <div class="spinner"></div>
+    <h1>Finishing up…</h1>
+    <p>You can close this window if it doesn't close automatically.</p>
+  </div>
+  <script>
+    // Generic Google OAuth callback. Used by Drive (since 34.7-T2) and Calendar
+    // (since 50.21). Distinguishes flow by the granted `scope` query parameter:
+    //   - scope contains "calendar"        → calendar flow
+    //   - scope contains "drive"           → drive flow
+    //   - state has "|calendar" suffix     → calendar flow (preferred, explicit)
+    //   - state has "|drive" suffix        → drive flow (explicit)
+    //
+    // Posts to opener as:
+    //   { type: "google-drive-auth-code", code, state }     for drive
+    //   { type: "google-calendar-auth-code", code, state }  for calendar
+    //
+    // Mirrors the message types that the relevant components listen for.
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get("code");
+      var error = params.get("error");
+      var scope = (params.get("scope") || "").toLowerCase();
+      var state = params.get("state") || "";
+
+      var statusEl = document.getElementById("status");
+
+      function fail(msg) {
+        statusEl.innerHTML =
+          '<h1 class="err">Connection failed</h1>' +
+          '<p>' + msg + '</p>' +
+          '<p style="margin-top:14px;font-size:11px;color:#94a3b8;">You can close this window.</p>';
+      }
+
+      function succeed(flow) {
+        statusEl.innerHTML =
+          '<h1>Connected.</h1>' +
+          '<p>Returning to the app…</p>';
+        var messageType = flow === "calendar"
+          ? "google-calendar-auth-code"
+          : flow === "youtube"
+          ? "google-youtube-auth-code"
+          : "google-drive-auth-code";
+        try {
+          if (window.opener) {
+            window.opener.postMessage({ type: messageType, code: code, state: state, scope: scope }, "*");
+          }
+        } catch (e) {
+          // postMessage failures are non-fatal; the opener can poll for status.
+        }
+        setTimeout(function() {
+          try { window.close(); } catch (e) {}
+        }, 600);
+      }
+
+      if (error) {
+        fail("Google returned: " + error);
+        return;
+      }
+      if (!code) {
+        fail("No authorization code returned. Please try again.");
+        return;
+      }
+
+      // Decide flow.
+      var flow;
+      if (state.indexOf("|calendar") !== -1) flow = "calendar";
+      else if (state.indexOf("|youtube") !== -1) flow = "youtube";
+      else if (state.indexOf("|drive") !== -1) flow = "drive";
+      else if (scope.indexOf("calendar") !== -1) flow = "calendar";
+      else if (scope.indexOf("youtube") !== -1) flow = "youtube";
+      else if (scope.indexOf("drive") !== -1) flow = "drive";
+      else flow = "drive"; // default for back-compat with old state-just-userId
+
+      succeed(flow);
+    })();
+  </script>
+</body>
+</html>

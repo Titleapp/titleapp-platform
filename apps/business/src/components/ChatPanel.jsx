@@ -1967,11 +1967,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           // different mode from COS Alex. Friction #3 in the RES-DATA-001
           // dogfood log.
           if (currentSection === 'creator-journey') return 'Alex / Worker authoring';
-          if (activeWorkerName) return `${activeWorkerName} -- Chief of Staff`;
+          // Disambiguate who you're talking to (Sean, 2026-06-24: "is the chat
+          // Alex the Chief of Staff or the worker?"). Inside a worker, the
+          // SPECIALIST worker is the speaker — show its name + a "Worker" tag,
+          // and the header bar is already tinted that worker's color. Only the
+          // home view is Alex, the Chief of Staff.
+          if (activeWorkerName) return `${activeWorkerName} · Worker`;
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-            return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Alex, Chief of Staff';
-          } catch { return 'Alex, Chief of Staff'; }
+            return cfg.name ? `${cfg.name} · Chief of Staff` : 'Alex · Chief of Staff';
+          } catch { return 'Alex · Chief of Staff'; }
         })()}</span>
       </div>
 

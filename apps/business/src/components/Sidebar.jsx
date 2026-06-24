@@ -1421,6 +1421,13 @@ export default function Sidebar({
     return PERSONA_PALETTE[h % PERSONA_PALETTE.length];
   };
   const personaTint = personaTintFor(currentWorkspaceId, isPersonal);
+  // Clean persona name for the per-persona block header (NOT brandLabel — that
+  // folds in the selected worker name like "Maya's Vet 003"). This is the
+  // persona/workspace itself, so the Workers/Drive/Games/Account block can be
+  // unmistakably labeled with the context it belongs to.
+  const personaName = isPersonal
+    ? (userFirstName ? `${userFirstName}'s Personal Space` : "Personal Space")
+    : (companyName || "Workspace");
 
   return (
     <div className="sidebar">
@@ -1916,6 +1923,40 @@ export default function Sidebar({
            MY WORKERS / MY GAMES below. Workspace switching remains available
            via the Switch Worker button in the sidebar footer. */}
 
+      {/* ═══ PERSONA-SCOPED BLOCK (2026-06-24) ═══
+           Everything inside belongs to the CURRENT persona and is bound to its
+           color: Workers, Drive, Games, the worker's own tabs, and Account all
+           sit under one persona header with a colored left rail. Fixes "I can't
+           tell these workers/Drive/billing belong to the orange Meadow Creek
+           persona" — ambiguity here is the same failure class as a data leak. */}
+      <div style={{
+        margin: "2px 8px 0",
+        borderLeft: `3px solid ${personaTint[0]}`,
+        borderRadius: "0 10px 10px 0",
+        background: `linear-gradient(90deg, ${personaTint[0]}12 0%, transparent 55%)`,
+      }}>
+        {/* Persona header chip — names the context the whole block belongs to */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px 7px" }}>
+          <div style={{
+            width: 20, height: 20, borderRadius: 5,
+            background: `linear-gradient(135deg, ${personaTint[0]} 0%, ${personaTint[1]} 100%)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0,
+          }}>{(personaName || "S").charAt(0).toUpperCase()}</div>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", color: personaTint[0], overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {personaName}
+          </span>
+          {!isPersonal && workspaceRole && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,
+              background: `${personaTint[0]}33`, color: personaTint[0],
+              textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
+            }}>
+              {workspaceRole}
+            </span>
+          )}
+        </div>
+
       {/* ═══ SECTION 1: MY WORKERS (grouped by vertical, games excluded) ═══ */}
       <div className="sidebarSection">
         <button
@@ -2070,26 +2111,30 @@ export default function Sidebar({
           >
             + Browse Marketplace
           </button>
-
-          {/* My Drive — per-persona destination (2026-06-24 locked IA).
-              Moved DOWN from top-level into the active persona, right after
-              "+ Browse Marketplace". Routes to the storageObjects surface via
-              the same vault-documents handler it used at top level. */}
-          <button
-            className="navItem"
-            onClick={() => handleNavClick("vault-documents")}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              fontSize: 13, padding: "7px 10px",
-            }}
-          >
-            <span style={{ color: "rgba(255,255,255,0.85)" }}>My Drive</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
         </nav>}
+      </div>
+
+      {/* ═══ MY DRIVE — per-persona peer row (2026-06-24) ═══
+           Hoisted OUT of the My Workers nav so it's ALWAYS visible inside the
+           persona block (it was buried inside the collapsed Workers list — "not
+           easy and not clear it belongs to Meadow Vet"). Sits as a sibling of
+           My Workers / My Games. Same vault-documents handler, persona-scoped
+           via TENANT_ID. */}
+      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+        <button
+          className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
+          onClick={() => handleNavClick("vault-documents")}
+          style={{
+            width: "100%", textAlign: "left", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+            fontSize: 13, padding: "7px 10px",
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={personaTint[0]} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>My Drive</span>
+        </button>
       </div>
 
       {/* ═══ MY GAMES (always visible) ═══ */}
@@ -2216,6 +2261,8 @@ export default function Sidebar({
             Worker Rules
           </button>
         </nav>
+      </div>
+      {/* ═══ /PERSONA-SCOPED BLOCK ═══ */}
       </div>
 
       {/* Footer: Sign Out (Switch Worker removed in CODEX 50.10-T2 — redundant
