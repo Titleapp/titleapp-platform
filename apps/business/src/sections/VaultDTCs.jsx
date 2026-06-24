@@ -350,9 +350,10 @@ export default function VaultDTCs() {
         </div>
       )}
 
-      {/* Tabs — underline style, same as the worker canvas. Only pillars with records. */}
+      {/* Tabs — underline style. Show ALL pillars always (even empty) so a new user
+          sees where their things go and Alex can guide/organize them (Sean 2026-06-24). */}
       <div style={{ display: "flex", gap: 2, borderBottom: "1px solid #f1f5f9", marginBottom: 18, overflowX: "auto" }}>
-        {["Dashboard", "All", ...ASSET_CLASSES.filter((cls) => (counts[cls] || 0) > 0)].map((cls) => {
+        {["Dashboard", "All", ...ASSET_CLASSES].map((cls) => {
           const active = activeClass === cls;
           const n = counts[cls] || 0;
           const fixed = cls === "Dashboard" || cls === "All";
@@ -421,6 +422,12 @@ export default function VaultDTCs() {
               </div>
             ))}
           </div>
+
+          {dtcs.length === 0 && (
+            <div style={{ padding: "14px 16px", borderRadius: 10, background: "#f5f3ff", border: "1px solid #ddd6fe", marginBottom: 16, fontSize: 13, lineHeight: 1.65, color: "#4c1d95" }}>
+              <strong>Your Vault is empty — let's fill it.</strong> The tabs above are your pillars: <strong>Real Property</strong> (home, land), <strong>Vehicles</strong>, <strong>Personal Assets</strong> (valuables, art), <strong>Health</strong> (records, certifications), <strong>Education</strong> (degrees, training), and <strong>Money</strong> (accounts). Just tell Alex — “I have a 2022 Tesla” or “add my house” — and it lands in the right pillar. Or upload a document and Alex files it for you.
+            </div>
+          )}
 
           <SectionTitle>Needs attention</SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
