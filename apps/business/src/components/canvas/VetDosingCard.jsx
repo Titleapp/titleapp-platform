@@ -112,6 +112,22 @@ export default function VetDosingCard({ resolved, context, onDismiss }) {
     <CanvasCardShell title={p.title || "Drug Dosing"} emptyPrompt={resolved?.emptyPrompt} onDismiss={onDismiss}>
       {view === "calculator" && (
         <>
+          {p.videoUrl && (
+            <div style={{ marginBottom: 18, borderRadius: 12, overflow: "hidden", border: "1px solid #ede9fe" }}>
+              <video
+                src={p.videoUrl}
+                controls
+                playsInline
+                preload="metadata"
+                style={{ width: "100%", display: "block", background: "#000" }}
+              />
+              {p.videoTitle && (
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#7c3aed", padding: "9px 12px", background: "#faf5ff", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>▶</span> {p.videoTitle}
+                </div>
+              )}
+            </div>
+          )}
           <Kpis kpis={p.kpis} />
           <ProposalHero p={p.proposal} />
           {Array.isArray(p.speciesBreakdown) && p.speciesBreakdown.length > 0 && (

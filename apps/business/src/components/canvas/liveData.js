@@ -404,6 +404,9 @@ async function buildVetDosingPayload(tabId) {
   return {
     title: "Dosing Calculator", view: "calculator",
     proposal: r.proposal || null, kpis: r.kpis || [], speciesBreakdown: r.speciesBreakdown || [],
+    // AI-generated explainer video (Fal.ai), rendered at the top of the canvas.
+    videoUrl: "https://storage.googleapis.com/title-app-alpha.firebasestorage.app/demo/vet-003-drug-dosing/dosage-explainer.mp4",
+    videoTitle: "Dosage basics — AI-generated explainer",
   };
 }
 

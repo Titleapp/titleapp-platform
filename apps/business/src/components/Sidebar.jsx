@@ -1703,89 +1703,18 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* ═══ CREATOR — top-level persona (S51.49) · collapsible (S52.1c) ═══
-           A SOCIII Creator is a distinct, first-class persona — domain
-           experts who build Digital Workers and earn 75% of net revenue.
-           Collapsed by default after first visit so it doesn't crowd
-           non-creator users. ═══ */}
-      {!guestMode && (() => {
-        const creatorCollapsed = collapsedGroups["__creator__"];
-        return (
-          <div className="sidebarSection">
-            <button
-              onClick={() => setCollapsedGroups(prev => ({ ...prev, __creator__: !prev.__creator__ }))}
-              className="sidebarLabel"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", background: "none", border: "none", cursor: "pointer",
-                padding: 0, margin: 0, color: "#a78bfa",
-              }}
-            >
-              <span>Create</span>
-              <span style={{ fontSize: 10, transition: "transform 0.2s", transform: creatorCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-            </button>
-            {!creatorCollapsed && (
-              <nav className="nav">
-                {/* Slimmed (S52.61 canvas session): two entries only. The old
-                    Journey / My Workers / Profile / Earnings items duplicated
-                    the TABS that already live inside the Creator Dashboard, so
-                    the nav was just re-listing the page. Now: Sandbox is the
-                    primary build surface; Creator Dashboard holds the rest as
-                    tabs. Status-independent so the menu can't flip. */}
-                <button
-                  className="navItem"
-                  onClick={() => { window.location.href = "/showcase"; }}
-                  style={{
-                    width: "100%", textAlign: "left", cursor: "pointer",
-                    fontWeight: 700, paddingLeft: 20, fontSize: 13, color: "#c4b5fd",
-                  }}
-                >
-                  ✦ Build a Worker
-                </button>
-                <button
-                  className="navItem"
-                  onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
-                  style={{
-                    width: "100%", textAlign: "left", cursor: "pointer",
-                    paddingLeft: 20, fontSize: 13,
-                  }}
-                >
-                  Creator Dashboard
-                </button>
-              </nav>
-            )}
-          </div>
-        );
-      })()}
+      {/* ═══ TOP-LEVEL CROSS-CUTTING NAV (2026-06-24 locked IA) ═══
+           Above the persona switcher, only two things live: Alex / Chief of
+           Staff (the always-on Chief of Staff, reachable from the switcher and
+           kept gated as-is) and My Vault. Everything else is per-persona.
 
-      {/* ═══ MY DRIVE + MY VAULT — peer top-level destinations (CODEX 50.13 Layer B) ═══
-           Drive (storageObjects) and Vault (Digital Title Certificates) are
-           distinct stores. Before 50.13 they were rendered under the same
-           "Vault" label, which was actually a Drive — DTCs were invisible.
-           My Drive routes to the storageObjects surface; My Vault routes to
-           the new VaultDTCs surface backed by /v1/dtc:list.
-
-           Visible on personal too — personal Vault holds the user's own
-           DTCs (car titles, IDs, credentials). The store is workspace-
-           scoped via TENANT_ID either way. */}
+           My Vault routes to the VaultDTCs surface backed by /v1/dtc:list and
+           holds the user's own Digital Title Certificates (car titles, IDs,
+           credentials). The store is workspace-scoped via TENANT_ID. My Drive
+           moved DOWN into the per-persona block (after "+ Browse Marketplace").
+           The Creator persona now lives as a row in MY WORKSPACES. ═══ */}
       {!guestMode && (
         <>
-          <div className="sidebarSection">
-            <button
-              onClick={() => handleNavClick("vault-documents")}
-              className="sidebarLabel"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", background: "none", border: "none", cursor: "pointer",
-                padding: 0, margin: 0,
-              }}
-            >
-              <span style={{ color: "#94a3b8" }}>My Drive</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          </div>
           <div className="sidebarSection">
             {(() => { const vaultCollapsed = collapsedGroups["__vault__"]; return (
             <>
@@ -1830,37 +1759,16 @@ export default function Sidebar({
         </>
       )}
 
-      {/* ═══ MARKETPLACE — primary nav pin (CODEX 50.10 Phase 2) ═══
-           Surfaces the marketplace at the top of the sidebar, parallel to
-           My Vault. Previously buried as a "+ Browse Marketplace" link at
-           the bottom of MY WORKERS, which felt like an action on the worker
-           list rather than a top-level destination. */}
-      {!isPersonal && !guestMode && (
-        <div className="sidebarSection">
-          <button
-            onClick={() => handleNavClick("raas-store")}
-            className="sidebarLabel"
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              width: "100%", background: "none", border: "none", cursor: "pointer",
-              padding: 0, margin: 0,
-            }}
-          >
-            <span style={{ color: "#94a3b8" }}>Marketplace</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       {/* Divider */}
       {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
 
       {/* ═══ MY WORKSPACES (CODEX 50.10-T2 Note 2) ═══
-           Parallel to MY WORKERS / MY GAMES. Lists every workspace the user
-           has membership in. Per-row hover-revealed invite icon for admins. */}
-      {!guestMode && workspaces && workspaces.length > 1 && (
+           Parallel to MY WORKERS / MY GAMES. Lists every persona the user can
+           switch into: Personal Space, every business workspace, AND the
+           Creator persona (2026-06-24). Per-row hover-revealed invite icon for
+           admins. Always rendered for signed-in users (even with a single
+           workspace) so the Creator persona is always reachable. */}
+      {!guestMode && (
         <div className="sidebarSection">
           <button
             className="sidebarLabel"
@@ -1954,11 +1862,53 @@ export default function Sidebar({
                   </div>
                 );
               })}
+
+              {/* ═══ CREATOR persona row (2026-06-24) ═══
+                   A SOCIII Creator is a first-class persona — domain experts
+                   who build Digital Workers. Folds the old top-level "Create"
+                   section (Build a Worker + Creator Dashboard) into a single
+                   persona row that navigates exactly like the former "Creator
+                   Dashboard" item did (/creators/dashboard?tab=workers).
+                   Colored via personaTintFor so it reads as its own persona. */}
+              {(() => {
+                const creatorTint = personaTintFor("__creator__", false);
+                return (
+                  <div
+                    key="mws-creator"
+                    onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "7px 10px", cursor: "pointer",
+                      borderRadius: 8, marginBottom: 2,
+                      background: "transparent",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 5,
+                      background: `linear-gradient(135deg, ${creatorTint[0]} 0%, ${creatorTint[1]} 100%)`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "white", fontWeight: 600, fontSize: 11, flexShrink: 0,
+                    }}>✦</div>
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.85)", fontWeight: 500, fontSize: 13 }}>
+                      Creator
+                    </span>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999,
+                      background: "rgba(124,58,237,0.25)", color: "#c4b5fd",
+                      textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
+                    }}>
+                      Build
+                    </span>
+                  </div>
+                );
+              })()}
             </nav>
           )}
         </div>
       )}
-      {!guestMode && workspaces && workspaces.length > 1 && (
+      {!guestMode && (
         <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
       )}
 
@@ -2119,6 +2069,25 @@ export default function Sidebar({
             }}
           >
             + Browse Marketplace
+          </button>
+
+          {/* My Drive — per-persona destination (2026-06-24 locked IA).
+              Moved DOWN from top-level into the active persona, right after
+              "+ Browse Marketplace". Routes to the storageObjects surface via
+              the same vault-documents handler it used at top level. */}
+          <button
+            className="navItem"
+            onClick={() => handleNavClick("vault-documents")}
+            style={{
+              width: "100%", textAlign: "left", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              fontSize: 13, padding: "7px 10px",
+            }}
+          >
+            <span style={{ color: "rgba(255,255,255,0.85)" }}>My Drive</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </button>
         </nav>}
       </div>

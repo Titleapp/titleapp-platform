@@ -29,6 +29,20 @@ Storage is just one connector type. So are email, calendar, and enterprise syste
 2. **ENTERPRISE-GATED** — Workday (and peers). Has APIs, but the **employer's IT must provision access**; an individual employee cannot self-connect. Data is the employer's, governed by their policy. SOCIII's per-persona **isolation + audit respecting that boundary is the enterprise selling point.**
 3. **WALLED GARDEN / HARD** — Apple iCloud Photos. Almost no clean third-party/server API. Manual-export or out-of-scope. **Do not promise it.**
 
+## Who gets which workers — by relationship (the provisioning rule)
+A persona = a tenant; your **membership role** determines how its worker stack is populated. The spine (5 spine workers + Alex) comes with a workspace you **OWN**, NOT with every relationship:
+
+| Relationship | DB shape | Worker stack | Spine? |
+|---|---|---|---|
+| **Account holder / owner** (you sign up, create a workspace) | membership role `owner`/`admin` on your tenant | you self-subscribe; auto-provisioned spine | ✅ yes (scoped to that tenant's data) |
+| **Employee** | membership role `member` on the org's tenant | org admin provisions a **role-based** stack (Workday-chiclet idea) | ❌ not automatically — only what the role needs |
+| **Customer of a business** (Meadow Vet) | membership role `customer`/`client` on the business's tenant | only the **customer-facing workers the business exposes** + a Vault link | ❌ no — you aren't running a business |
+
+Key consequences:
+- Even between two OWNED workspaces, spine instances are **separate** — your SOCIII Accounting (SOCIII's books) ≠ your Personal Accounting (your money). Same worker TYPE, different DATA, different tenant.
+- **Today's code rule "every workspace gets the 5 spine + Alex" must become relationship-aware:** fire spine auto-provision on **owned-workspace creation only**, NEVER on a customer membership. A customer membership = `role: customer` + Vault link + granted customer workers, no spine.
+- The **Vault** is the cross-cutting bridge for ALL relationships: a customer with no spine still gets a Vault so the business's workers can push records (vet records, invoices) into it with consent.
+
 ## Workers: portable by TYPE, siloed by DATA
 - The worker **type** is portable — add an Accounting (or Tax) worker to any persona.
 - Every **instance operates ONLY inside that persona's silo** (R2 isolation — hardened in Surface 1). Personal worker never sees work data; work worker never sees personal data.
