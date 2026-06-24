@@ -156,11 +156,24 @@ export default function CreatorOnboard() {
   }
 
   if (status.missing) {
+    // No token = a public visitor (the marketplace/pricing "become a creator"
+    // links land here). Show a real apply/info page, not a dead end. Creator
+    // access stays curated/invite-based per strategy.
     return (
       <div style={S.page}><Header /><main style={S.main}>
-        <div style={S.eyebrow}>Creator onboarding</div>
-        <h1 style={S.h1}>Link looks incomplete.</h1>
-        <p style={S.sub}>Open the link in your invitation email — it has the secure token attached. If the link expired, reply to that email and we'll send a fresh one.</p>
+        <div style={S.eyebrow}>Become a SOCIII creator</div>
+        <h1 style={S.h1}>Build a Digital Worker. Earn from what you know.</h1>
+        <p style={S.sub}>
+          SOCIII creators are domain experts — a title pro, a flight instructor, a nursing educator — who package their expertise as a governed Digital Worker. Publish it to the public marketplace, or keep it private to your own business. You own the worker; the SDK is its birth certificate.
+        </p>
+        <p style={S.sub}>
+          Creator access is <strong>curated</strong> — we onboard a small number of excellent builders at a time, so the marketplace stays high-signal. Tell us what you'd build and we'll send you an invite with everything you need.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+          <a href="mailto:creators@sociii.ai?subject=I%20want%20to%20build%20a%20SOCIII%20worker&body=Who%20I%20am%3A%0AThe%20worker%20I%27d%20build%3A%0AThe%20expertise%20behind%20it%3A%0A" style={{ background: "#7c3aed", color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 700, textDecoration: "none" }}>Apply to create →</a>
+          <a href="/docs" style={{ background: "#f1f5f9", color: "#0f172a", padding: "12px 20px", borderRadius: 10, fontWeight: 600, textDecoration: "none" }}>See how creators build (SDK docs)</a>
+        </div>
+        <p style={{ ...S.sub, fontSize: 13, marginTop: 18, color: "#94a3b8" }}>Already have an invite? Open the link in your invitation email — it carries your secure token.</p>
       </main></div>
     );
   }
