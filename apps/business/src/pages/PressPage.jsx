@@ -846,7 +846,7 @@ const SOCIAL_CHANNELS = [
   { label: "LinkedIn", handle: "company/sociii-inc", url: "https://linkedin.com/company/sociii-inc/", description: "Long-form business posts. Best for partners, investors, and B2B audiences." },
   { label: "YouTube", handle: "@SOCIII-AI", url: "https://www.youtube.com/@SOCIII-AI", description: "Product walkthroughs, creator interviews, founder talks." },
   { label: "TikTok", handle: "@sociii.official", url: "https://www.tiktok.com/@sociii.official", description: "Short video. Worker demos, creator spotlights, founder takes." },
-  { label: "GitHub", handle: "sociii", url: "https://github.com/sociii", description: "Open-source SDK, example workers, and the canvas/intent-spec standards." },
+  { label: "GitHub", handle: "SOCIII-Inc/sociii-sdk", url: "https://github.com/SOCIII-Inc/sociii-sdk", description: "Open-source SDK, example workers, and the canvas/intent-spec standards." },
 ];
 
 const PRESS_KIT_ITEMS = [
@@ -1131,7 +1131,7 @@ export default function PressPage({ slug }) {
           <div style={S.footerSocials}>
             <a href="https://x.com/sociiiai" target="_blank" rel="noopener" style={S.footerLink}>X</a>
             <a href="https://linkedin.com/company/sociii-inc/" target="_blank" rel="noopener" style={S.footerLink}>LinkedIn</a>
-            <a href="https://github.com/sociii" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
+            <a href="https://github.com/SOCIII-Inc/sociii-sdk" target="_blank" rel="noopener" style={S.footerLink}>GitHub</a>
             <a href="https://www.youtube.com/@SOCIII-AI" target="_blank" rel="noopener" style={S.footerLink}>YouTube</a>
             <a href="https://www.tiktok.com/@sociii.official" target="_blank" rel="noopener" style={S.footerLink}>TikTok</a>
           </div>

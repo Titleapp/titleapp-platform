@@ -217,7 +217,7 @@ function MeetYourTeam() {
             <div style={{ alignSelf: "flex-start", width: "50%", height: 13, borderRadius: 8, background: "#e2e8f0" }} />
           </div>
         </TeamWindow>
-        <TeamWindow chromeTitle="github.com/sociii" href="https://github.com/sociii" role="GitHub" desc="Your holy grail — where the worker lives forever">
+        <TeamWindow chromeTitle="github.com/SOCIII-Inc/sociii-sdk" href="https://github.com/SOCIII-Inc/sociii-sdk" role="GitHub" desc="Your holy grail — where the worker lives forever">
           <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
             <div style={{ fontSize: 22, textAlign: "center" }}>🐙</div>
             <div style={{ fontSize: 9, color: "#64748b" }}>⎇ <strong>main</strong></div>
