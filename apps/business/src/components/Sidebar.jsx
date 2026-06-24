@@ -1548,17 +1548,13 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── MY DRIVE — always-visible peer ── */}
+      {/* ── MY DRIVE — peer row, styled like the section labels (no icon) ── */}
       <div className="sidebarSection" style={{ paddingBottom: 0 }}>
         <button
-          className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
           onClick={() => handleNavClick("vault-documents")}
-          style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 13, padding: "7px 10px" }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={personaTint[0]} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-          <span style={{ flex: 1, color: "#fff", fontWeight: 600 }}>My Drive</span>
+          <span style={labelStyle}>My Drive</span>
         </button>
       </div>
 
@@ -1982,12 +1978,19 @@ export default function Sidebar({
                 return (
                   <React.Fragment key={`mws-${ws.id}`}>
                   <div
-                    onClick={() => { if (!isCurrent) onSwitchWorkspace(ws); }}
+                    onClick={() => {
+                      // If we're parked on the /creators route, switching to any
+                      // workspace persona must LEAVE that route so the canvas
+                      // resets (otherwise it stays stuck on Creator Dashboard).
+                      const onCreators = typeof window !== "undefined" && window.location.pathname.startsWith("/creators");
+                      if (!isCurrent) onSwitchWorkspace(ws);
+                      if (onCreators) { window.location.href = "/"; }
+                    }}
                     style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "7px 10px", cursor: "pointer",
                       borderRadius: 8, marginBottom: 2,
-                      background: isCurrent ? "rgba(124,58,237,0.18)" : "transparent",
+                      background: isCurrent ? `${personaTintFor(ws.id, isPersonalRow)[0]}26` : "transparent",
                       position: "relative",
                     }}
                     onMouseEnter={e => {
@@ -2066,7 +2069,10 @@ export default function Sidebar({
                    Colored via personaTintFor so it reads as its own persona. */}
               {(() => {
                 const creatorTint = personaTintFor("__creator__", false);
-                const creatorActive = (currentSection || "").toLowerCase().includes("creator");
+                // Route-based, not currentSection (which is sticky) — Creator
+                // expands ONLY when actually parked on the /creators route, so
+                // it collapses the moment you switch to another persona.
+                const creatorActive = typeof window !== "undefined" && window.location.pathname.startsWith("/creators");
                 const creatorLabel = { fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: creatorTint[0] };
                 return (
                   <React.Fragment>
