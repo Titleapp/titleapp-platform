@@ -1091,7 +1091,7 @@ const VERTICAL_LABELS = {
   aviation: "Aviation",
   investor: "Investor Relations",
   "property-mgmt": "Property Management",
-  consumer: "Personal Vault",
+  consumer: "Personal Space",
   "auto-dealer": "Auto Dealer",
   real_estate_development: "Real Estate",
   web3: "Web3",
@@ -1245,7 +1245,7 @@ export default function Sidebar({
     if (selectedWorker && selectedWorkerName) {
       return name ? `${name}'s ${selectedWorkerName}` : selectedWorkerName;
     }
-    if (isPersonal) return name ? `${name}'s Vault` : "Personal Vault";
+    if (isPersonal) return name ? `${name}'s Personal Space` : "Personal Space";
     // Strip legacy "TitleApp" prefix from migrated tenants — brand has moved to SOCIII.
     const raw = workspaceName || tenantName || "";
     const cleaned = raw.replace(/^\s*TitleApp\s+/i, "").trim();
@@ -1453,7 +1453,7 @@ export default function Sidebar({
               {brandLabel}
             </div>
             <div className="brandSub" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Workspace"))}</span>
+              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Space" : (VERTICAL_LABELS[vertical] || "Workspace"))}</span>
               {!isPersonal && workspaceRole && (
                 <span style={{
                   fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,

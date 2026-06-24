@@ -9,8 +9,8 @@ const PERSONAL_VAULT = {
   id: 'vault',
   type: 'personal',
   vertical: 'consumer',
-  name: 'Personal Vault',
-  tagline: 'Your digital life, organized',
+  name: 'Personal Space',
+  tagline: 'Your personal space — Vault, records, and personal workers',
   status: 'active',
   plan: 'free',
   monthlyPrice: 0,
@@ -23,7 +23,9 @@ const PERSONAL_VAULT = {
 // The 5 spine workers every OWNED business workspace gets (the owner's toolkit).
 // Members/customers do NOT get these — that's the "every nursing student gets the
 // department Accounting worker" lock.
-const SPINE_WORKERS = ['platform-accounting', 'platform-contacts', 'platform-hr', 'platform-marketing', 'platform-control-center-pro'];
+// Control Center Pro killed 2026-06-24 (Sean) — Alex runs the show + makes charts
+// in canvas on demand. Spine is now 4 + Alex.
+const SPINE_WORKERS = ['platform-accounting', 'platform-contacts', 'platform-hr', 'platform-marketing'];
 const slugOf = (d) => d.data().workerId || d.data().workerSlug || d.data().slug;
 const isPersonalSpace = (ws) => ws.type === 'personal' || ws.id === 'vault';
 // The tenant a subscription belongs to. New tenant-scoped subs use

@@ -84,11 +84,14 @@ export default function WorkerHome() {
       const wsData = await wsResp.json();
       // Scope to the CURRENT persona only — NEVER union across workspaces (that
       // showed every persona the same workers). Match the active tenant.
-      let currentTenant = null;
-      try { currentTenant = localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
+      // Use WORKSPACE_ID — the app's authoritative current-workspace key (AppShell).
+      // TENANT_ID can lag behind when switching into the Vault, which showed the
+      // previous business workspace's workers on the Vault dashboard.
+      let currentWs = null;
+      try { currentWs = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
       const allWorkerSlugs = new Set();
       if (wsData.ok && wsData.workspaces) {
-        const current = wsData.workspaces.find(ws => ws.id === currentTenant)
+        const current = wsData.workspaces.find(ws => ws.id === currentWs)
           || wsData.workspaces.find(ws => ws.isDefault)
           || wsData.workspaces[0];
         for (const w of (current?.activeWorkers || [])) {
