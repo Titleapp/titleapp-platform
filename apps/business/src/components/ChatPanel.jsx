@@ -2100,6 +2100,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         {messages.map((msg, idx) => {
           // Detect document JSON embedded in message content
           let displayContent = interceptAlexCommands(msg.content).clean;
+          // Defensive strip of canvas/doc markers so raw JSON never shows in chat —
+          // covers ALL chat paths + stale persisted messages (2026-06-24, Sean).
+          // Tolerant of 2-3 pipes + whitespace; handles orphaned (unclosed) blocks.
+          if (typeof displayContent === 'string') {
+            displayContent = displayContent
+              .replace(/\|{2,3}\s*CANVAS_RENDER\s*\|{2,3}[\s\S]*?\|{2,3}\s*END_CANVAS\s*\|{2,3}/g, '')
+              .replace(/\|{2,3}\s*CANVAS_RENDER\s*\|{2,3}[\s\S]*$/g, '')
+              .replace(/\|{2,3}\s*END_CANVAS\s*\|{2,3}/g, '')
+              .trim();
+          }
           let embeddedDoc = null;
           if (typeof displayContent === 'string' && displayContent.includes('"document_generated"') && displayContent.includes('"downloadUrl"')) {
             try {

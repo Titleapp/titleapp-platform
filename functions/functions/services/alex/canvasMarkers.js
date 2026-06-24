@@ -12,15 +12,17 @@
  * shape mistakes and translates them into the shape the renderer expects.
  */
 
-const MARKER_RE = /\|\|\|CANVAS_RENDER\|\|\|\s*([\s\S]*?)\s*\|\|\|END_CANVAS\|\|\|/g;
+// Tolerant of 2-3 pipes + surrounding whitespace — the model occasionally emits
+// ||CANVAS_RENDER|| (2 pipes) or stray spaces, which left raw JSON in chat (Sean 2026-06-24).
+const MARKER_RE = /\|{2,3}\s*CANVAS_RENDER\s*\|{2,3}\s*([\s\S]*?)\s*\|{2,3}\s*END_CANVAS\s*\|{2,3}/g;
 
 // Fallback: matches a CANVAS_RENDER block that opens but never closes — e.g.
 // because the model truncated mid-JSON. The leaked block would otherwise
 // render as raw marker text in chat (2026-05-12 bug — Sean caught the leak
 // in the Marketing worker). We strip the orphan from chat and best-effort
 // parse anything that looks like a complete JSON object inside it.
-const ORPHAN_OPEN_RE = /\|\|\|CANVAS_RENDER\|\|\|\s*([\s\S]*)$/;
-const ORPHAN_END_ONLY_RE = /\|\|\|END_CANVAS\|\|\|/g;
+const ORPHAN_OPEN_RE = /\|{2,3}\s*CANVAS_RENDER\s*\|{2,3}\s*([\s\S]*)$/;
+const ORPHAN_END_ONLY_RE = /\|{2,3}\s*END_CANVAS\s*\|{2,3}/g;
 
 const PLATFORM_TOKENS = ["instagram", "twitter", "linkedin", "facebook", "email", "tiktok", "youtube", "x"];
 
