@@ -69,8 +69,12 @@ async function getUserWorkspaces(userId) {
       if (ws.type === 'shared') continue;
       let slugs;
       if (isPersonalSpace(ws)) {
+        // Vault shows ONLY subs explicitly tagged personal/vault. Untagged legacy
+        // subs are HELD (shown nowhere) until migrated — they are NOT assumed
+        // personal (many are business workers, e.g. Fundraise), so they must not
+        // pollute the Vault.
         slugs = activeSubs
-          .filter(d => { const t = subTenantOf(d); return !t || t === 'vault' || t === 'personal'; })
+          .filter(d => { const t = subTenantOf(d); return t === 'vault' || t === 'personal'; })
           .map(slugOf).filter(Boolean);
       } else {
         slugs = activeSubs
@@ -326,9 +330,10 @@ async function getWorkspace(userId, workspaceId) {
         .filter(d => {
           const data = d.data();
           if (!isActive(data.trialStatus || normalizeLegacyStatus(data.status))) return false;
-          // Vault = personal workers only: subs NOT assigned to a business tenant.
+          // Vault = personal workers ONLY (explicitly tagged). Untagged legacy subs
+          // are held (shown nowhere) until migrated — they don't pollute the Vault.
           const t = data.tenantId || data.workspaceId;
-          return !t || t === 'vault' || t === 'personal';
+          return t === 'vault' || t === 'personal';
         })
         .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
         .filter(Boolean);
