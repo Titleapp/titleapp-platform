@@ -25,8 +25,25 @@ const PERSONAL_VAULT = {
 // department Accounting worker" lock.
 const SPINE_WORKERS = ['platform-accounting', 'platform-contacts', 'platform-hr', 'platform-marketing', 'platform-control-center-pro'];
 const slugOf = (d) => d.data().workerId || d.data().workerSlug || d.data().slug;
-const subTenantOf = (d) => d.data().tenantId || d.data().workspaceId || null;
 const isPersonalSpace = (ws) => ws.type === 'personal' || ws.id === 'vault';
+// The tenant a subscription belongs to. New tenant-scoped subs use
+// {ownerType:'tenant', ownerId} (worker:subscribe); some may use tenantId/workspaceId.
+// Returns null when the sub is not bound to a business tenant.
+const subOwnerTenant = (d) => {
+  const x = d.data();
+  if (x.ownerType === 'tenant' && x.ownerId) return x.ownerId;
+  return x.tenantId || x.workspaceId || null;
+};
+// A sub belongs in the Personal Vault only if it is EXPLICITLY personal:
+// ownerType 'user', or tagged vault/personal. Legacy untagged subs (no ownerType,
+// no tenantId) are HELD — shown nowhere — until migrated to the right tenant.
+const subIsPersonal = (d) => {
+  const x = d.data();
+  if (x.ownerType === 'tenant') return false;
+  const t = x.tenantId || x.workspaceId;
+  if (t && t !== 'vault' && t !== 'personal') return false;
+  return x.ownerType === 'user' || t === 'vault' || t === 'personal';
+};
 
 async function getUserWorkspaces(userId) {
   // Simple get — no composite index needed. Max 10 business workspaces per user.
@@ -69,17 +86,12 @@ async function getUserWorkspaces(userId) {
       if (ws.type === 'shared') continue;
       let slugs;
       if (isPersonalSpace(ws)) {
-        // Vault shows ONLY subs explicitly tagged personal/vault. Untagged legacy
-        // subs are HELD (shown nowhere) until migrated — they are NOT assumed
-        // personal (many are business workers, e.g. Fundraise), so they must not
-        // pollute the Vault.
-        slugs = activeSubs
-          .filter(d => { const t = subTenantOf(d); return t === 'vault' || t === 'personal'; })
-          .map(slugOf).filter(Boolean);
+        // Vault = explicitly-personal subs only. Legacy untagged subs are HELD
+        // (shown nowhere) so business workers (e.g. Fundraise) never pollute it.
+        slugs = activeSubs.filter(subIsPersonal).map(slugOf).filter(Boolean);
       } else {
-        slugs = activeSubs
-          .filter(d => subTenantOf(d) === ws.id)
-          .map(slugOf).filter(Boolean);
+        // Business/org workspace = ONLY subs owned by THIS tenant. Never a union.
+        slugs = activeSubs.filter(d => subOwnerTenant(d) === ws.id).map(slugOf).filter(Boolean);
       }
       const merged = new Set([...(ws.activeWorkers || []), ...slugs]);
       // Owner spine-default: an OWNED business workspace is never empty — the
@@ -330,10 +342,8 @@ async function getWorkspace(userId, workspaceId) {
         .filter(d => {
           const data = d.data();
           if (!isActive(data.trialStatus || normalizeLegacyStatus(data.status))) return false;
-          // Vault = personal workers ONLY (explicitly tagged). Untagged legacy subs
-          // are held (shown nowhere) until migrated — they don't pollute the Vault.
-          const t = data.tenantId || data.workspaceId;
-          return t === 'vault' || t === 'personal';
+          // Vault = explicitly-personal subs only; legacy untagged held (not shown).
+          return subIsPersonal(d);
         })
         .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
         .filter(Boolean);
