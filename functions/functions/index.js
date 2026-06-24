@@ -20098,6 +20098,16 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             // Select system prompt: Alex orchestration > personal vault > business legacy
             let selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
 
+            // Identity anchor (2026-06-24) — pin the REAL business name so Alex
+            // never invents one. Sean caught Alex calling the workspace "Bishop
+            // Vet Clinic" when it is Meadow Creek Veterinary; "Bishop" appears
+            // nowhere in the data — a pure hallucination from an un-anchored
+            // prompt. Grounding the name kills that whole fabrication class.
+            const _bizName = (workspace && workspace.name) || ctx.businessName || (context && (context.workspaceName || context.companyName)) || null;
+            if (_bizName && selectedSystemPrompt && !isPersonalVault) {
+              selectedSystemPrompt = `IMPORTANT — IDENTITY: The business/workspace you are Chief of Staff for is named exactly "${_bizName}". Always refer to it by this exact name. NEVER invent, guess, or substitute a different business, clinic, company, or person name. If you don't know a specific fact, say so plainly rather than making one up.\n\n` + selectedSystemPrompt;
+            }
+
             // 49.30 — append canvas state to whichever prompt was selected so canvas awareness reaches every code path
             if (canvasStateBlock && selectedSystemPrompt) {
               selectedSystemPrompt += canvasStateBlock;

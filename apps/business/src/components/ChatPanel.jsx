@@ -823,12 +823,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const q = query(collection(db, 'messageEvents'), ...constraints);
       const snapshot = await getDocs(q);
       const loadedMessages = [];
+      // Track the most recent generated image so it isn't lost on reload —
+      // the URL is persisted on the response event's structuredData. Sean:
+      // "if I forget to download the picture I couldn't get it back."
+      let lastImagePayload = null;
       snapshot.forEach((doc) => {
         const evt = doc.data();
         if (evt.type === 'chat:message:received') {
           loadedMessages.push({ role: 'user', content: evt.message });
         } else if (evt.type === 'chat:message:responded') {
           loadedMessages.push({ role: 'assistant', content: evt.response });
+          const url = evt.structuredData?.imageUrl;
+          if (url) lastImagePayload = { imageUrl: url, prompt: evt.structuredData?.imagePrompt || '', title: 'Generated Image' };
         }
       });
       if (platformSid && loadedMessages.length > 0) {
@@ -839,6 +845,14 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         });
       }
       setMessages(loadedMessages);
+      // Re-emit the last generated image back onto the canvas so it survives a
+      // reload/navigation (no costly regeneration to "see it again").
+      if (lastImagePayload && panel?.showCanvas) {
+        try {
+          const resolved = lookupSignal('card:image');
+          if (resolved) panel.showCanvas(resolved, { payload: lastImagePayload });
+        } catch (_) { /* non-fatal */ }
+      }
     } catch (error) {
       console.error('Failed to load conversation history:', error);
     }
