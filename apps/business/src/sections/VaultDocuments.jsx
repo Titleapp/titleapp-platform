@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import useDocuments from "../hooks/useDocuments";
+import DriveImportModal from "../components/DriveImportModal";
 
 // CODEX 50.13 Day 2 Fix #3 — mime-class taxonomy (Google Drive style).
 // Drive holds raw files; classification is by file type, not asset class.
@@ -72,6 +73,7 @@ export default function VaultDocuments() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem("DRIVE_VIEW_MODE") || "list");
+  const [showDriveConnect, setShowDriveConnect] = useState(false);
   const [sortBy, setSortBy] = useState({ field: "createdAt", dir: "desc" });
   const { listDocuments, downloadFile, deleteDocument } = useDocuments();
 
@@ -187,6 +189,14 @@ export default function VaultDocuments() {
 
   return (
     <div>
+      {showDriveConnect && (
+        <DriveImportModal
+          isOpen
+          workerId="vault"
+          onClose={() => setShowDriveConnect(false)}
+          onImportStarted={() => { setShowDriveConnect(false); window.dispatchEvent(new Event('ta:drive-updated')); }}
+        />
+      )}
       <div className="pageHeader">
         <div>
           <h1 className="h1">My Drive</h1>
@@ -205,6 +215,13 @@ export default function VaultDocuments() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            onClick={() => setShowDriveConnect(true)}
+            title="Connect your Google Drive"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, color: "#1e293b", cursor: "pointer" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Connect Google Drive
+          </button>
           {/* View toggle — list (default, GDrive style) vs grid (cards). Persisted to localStorage. */}
           <div style={{ display: "inline-flex", border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
             <button
