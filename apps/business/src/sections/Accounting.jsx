@@ -1156,7 +1156,12 @@ function TransactionsPane({ coa }) {
   const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
   const { parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction } = useAccounting();
-  const { uploadFile } = useDocuments();
+  const { uploadFile, listDocuments } = useDocuments();
+  // "Import from Drive" — pull a statement that's already in this persona's Drive
+  // straight into the parser, without re-uploading (Sean 2026-06-24, Flow A).
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [driveDocs, setDriveDocs] = useState([]);
+  const [driveLoading, setDriveLoading] = useState(false);
 
   const refreshTransactions = useCallback(async () => {
     const r = await listTransactions({ status: "all", limit: 200 });
@@ -1237,6 +1242,42 @@ function TransactionsPane({ coa }) {
       setProgress(null);
     }
   };
+
+  async function openDrivePicker() {
+    setDriveOpen(true); setDriveLoading(true); setError(null);
+    try {
+      const r = await listDocuments({ limit: 200 });
+      const docs = (r?.objects || r?.documents || r?.items || []).filter(d => {
+        const n = (d.filename || d.name || "").toLowerCase();
+        return n.endsWith(".pdf") || n.endsWith(".xlsx") || n.endsWith(".csv");
+      });
+      setDriveDocs(docs);
+    } catch (e) {
+      setError("Couldn't load your Drive: " + (e.message || e));
+    } finally { setDriveLoading(false); }
+  }
+
+  async function handleImportFromDrive(objectId, fileName) {
+    setDriveOpen(false); setParsing(true); setError(null);
+    setProgress("Reading the statement from your Drive with Claude…");
+    try {
+      const parsed = await parseStatement(objectId);
+      if (!parsed?.ok) throw new Error(parsed?.error || "Parse failed");
+      if (parsed.kind === "prebuilt") {
+        setPrebuiltStaged({ fileId: objectId, fileName, sheets: parsed.sheets || [], rollup: parsed.rollup || {} });
+        return;
+      }
+      setStaged({
+        fileId: objectId, fileName,
+        institution: parsed.institution, accountLast4: parsed.accountLast4,
+        periodStart: parsed.periodStart, periodEnd: parsed.periodEnd, truncated: parsed.truncated,
+        transactions: (parsed.transactions || []).map(t => ({ ...t, _selected: ["expense", "revenue"].includes(t.classification || "expense") })),
+        showAll: false,
+      });
+    } catch (e) {
+      setError(e.message || "Failed to process statement");
+    } finally { setParsing(false); setProgress(null); }
+  }
 
   const commitStaged = async () => {
     if (!staged) return;
@@ -1650,6 +1691,14 @@ function TransactionsPane({ coa }) {
             Reset pre-built imports
           </button>
           <button
+            onClick={openDrivePicker}
+            disabled={parsing}
+            className="iconBtn"
+            style={{ background: "white", color: "#6d28d9", border: "1px solid #ddd6fe", opacity: parsing ? 0.6 : 1 }}
+          >
+            Import from Drive
+          </button>
+          <button
             onClick={() => fileInputRef.current?.click()}
             disabled={parsing}
             className="iconBtn"
@@ -1661,6 +1710,28 @@ function TransactionsPane({ coa }) {
         <input ref={fileInputRef} type="file" accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{ display: "none" }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
       </div>
+      {driveOpen && (
+        <div onClick={() => setDriveOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: 500, maxWidth: "92vw", maxHeight: "70vh", overflow: "auto", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>Import a statement from your Drive</div>
+              <button onClick={() => setDriveOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14 }}>Pick a statement and the worker reads it, extracts every line, and categorizes it — no re-upload.</div>
+            {driveLoading ? <div style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Loading your Drive…</div>
+              : driveDocs.length === 0 ? <div style={{ padding: 24, textAlign: "center", color: "#64748b" }}>No statements (PDF/XLSX/CSV) in this Drive yet.</div>
+              : driveDocs.map(d => (
+                <div key={d.objectId || d.docId} onClick={() => handleImportFromDrive(d.objectId || d.docId, d.filename || d.name)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, cursor: "pointer", border: "1px solid #f1f5f9", marginBottom: 6 }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#faf5ff"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                  <span style={{ fontSize: 18 }}>📄</span>
+                  <span style={{ flex: 1, fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.filename || d.name}</span>
+                  <span style={{ fontSize: 12, color: "#7c3aed", fontWeight: 600 }}>Import →</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
       {progress && (
         <div className="card" style={{ padding: 12, marginBottom: 12, background: "#faf5ff", color: "#6d28d9", fontSize: 13 }}>
           {progress}
