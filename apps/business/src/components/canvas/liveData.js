@@ -295,6 +295,23 @@ async function buildPlatformHrPayload(tabId) {
     };
   }
 
+  if (tabId === "documents") {
+    // Real HR docs live in the tenant's Drive (storageObjects tagged
+    // createdByWorker="platform-hr"): Employee Handbook, OSHA plan, etc.
+    const tenantId = typeof window !== "undefined" ? localStorage.getItem("TENANT_ID") : "";
+    if (!tenantId) return null;
+    const r = await liveApiFetch(`/v1/storage:list?scope=business&orgId=${encodeURIComponent(tenantId)}&limit=100`);
+    const objs = Array.isArray(r?.objects) ? r.objects : [];
+    const hrDocs = objs.filter(o => o.createdByWorker === "platform-hr");
+    if (!hrDocs.length) return null;
+    return {
+      title: "HR documents",
+      subtitle: "Meadow Creek · from your Drive",
+      fields: [{ label: "On file", value: String(hrDocs.length) }],
+      sections: [{ heading: "Documents", body: hrDocs.map(d => `${d.filename} · ${Math.round((d.sizeBytes || 0) / 1000)} KB`).join("\n") }],
+    };
+  }
+
   if (tabId === "notices") {
     const tenantId = typeof window !== "undefined" ? localStorage.getItem("TENANT_ID") : "";
     if (!tenantId) return null;
