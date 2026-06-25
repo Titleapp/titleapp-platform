@@ -1,0 +1,1 @@
+import{t as e}from"./NoticeComposerPanel-DVAEFpEp.js";export{e as default};

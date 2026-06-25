@@ -1100,20 +1100,9 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
         transition: "opacity 150ms ease-out",
       }}
     >
-      {/* Back button */}
-      <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
-        <button
-          onClick={onLeave}
-          style={{
-            display: "flex", alignItems: "center", gap: 4, background: "none",
-            border: "none", color: "var(--worker-accent)", fontSize: 13, fontWeight: 500,
-            cursor: "pointer", padding: 0, marginBottom: 16, fontFamily: "inherit",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-          Back to {verticalLabel || "workers"}
-        </button>
-      </div>
+      {/* Back-to-<vertical> breadcrumb removed (Sean 2026-06-24): redundant with
+          the sidebar's "My Vault | Worker" breadcrumb and it leaked raw vertical
+          keys like "real_estate_development". onLeave still fires from the sidebar. */}
 
       {/* Skeleton loading state */}
       {!workerReady && showSkeleton && (
