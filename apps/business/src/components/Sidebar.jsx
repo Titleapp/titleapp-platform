@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { collection, getDocs, getFirestore, query, where, limit } from "firebase/firestore";
-import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
-import { getWorkerColor } from "../utils/workerColors";
+import WorkerIcon from "../utils/workerIcons";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
