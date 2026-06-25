@@ -218,8 +218,83 @@ async function buildFundraisePayload(tabId) {
 // ──────────────────────────────────────────────────────────────────
 
 async function buildPlatformHrPayload(tabId) {
-  // HR worker live data — V1 only handles Notices tab (composer needs it to
-  // render). Other HR tabs fall through to fixture.
+  // HR worker live data — people/onboarding/schedule/compliance now read real
+  // tenant records (staff_credentials + hrSchedules, tenant-scoped, no SOCIII
+  // advisor leak). Notices uses its own endpoint (composer attaches to it).
+  // Each returns null on empty → caller falls back to the sample fixture.
+
+  if (tabId === "people") {
+    const r = await liveApiFetch("/v1/hr:people:list");
+    const people = Array.isArray(r?.people) ? r.people : [];
+    if (!people.length) return null;
+    const s = r.summary || {};
+    return {
+      title: "Team Roster",
+      subtitle: "Meadow Creek Veterinary Clinic · humans + digital workers",
+      fields: [
+        { label: "Total",           value: String(s.total ?? people.length) },
+        { label: "Clinical staff",  value: String(s.humans ?? "") },
+        { label: "Digital workers", value: String(s.digital ?? "") },
+        { label: "Advisors",        value: String(s.advisors ?? 0) },
+      ],
+      people: people.map(p => ({ name: p.name, type: p.type, role: p.role, status: p.status })),
+    };
+  }
+
+  if (tabId === "onboarding") {
+    const r = await liveApiFetch("/v1/hr:onboarding:list");
+    const items = Array.isArray(r?.items) ? r.items : [];
+    if (!items.length) return null;
+    return {
+      title: "In-flight onboardings",
+      subtitle: "Meadow Creek · current pipeline",
+      fields: [{ label: "Open", value: String(items.length) }],
+      items: items.map(i => `${i.name} — ${i.role || i.type} · ${i.step}${i.note ? " · " + i.note : ""}`),
+    };
+  }
+
+  if (tabId === "schedule") {
+    const r = await liveApiFetch("/v1/hr:people:list");
+    const people = Array.isArray(r?.people) ? r.people : [];
+    if (!people.length) return null;
+    const humans = people.filter(p => p.type === "human");
+    const digital = people.filter(p => p.type === "digital_worker");
+    return {
+      title: "Coverage",
+      subtitle: "Meadow Creek · current roll-up",
+      fields: [
+        { label: "Clinical staff",  value: String(humans.length) },
+        { label: "Digital workers", value: `${digital.length} (24×7)` },
+        { label: "Coverage",        value: "Healthy" },
+      ],
+      sections: [
+        { heading: "Clinical team", body: humans.map(p => `${p.name} · ${p.role}`).join("\n") },
+        { heading: "Digital workers (24×7×365)", body: digital.map(p => p.name).join(" · ") },
+      ],
+    };
+  }
+
+  if (tabId === "compliance") {
+    const r = await liveApiFetch("/v1/hr:compliance:status");
+    if (!r || !Array.isArray(r.obligations)) return null;
+    const obs = r.obligations;
+    const hard = obs.filter(o => o.severity === "hard_stop").length;
+    const soft = obs.filter(o => o.severity === "soft_flag").length;
+    return {
+      title: "HR compliance",
+      subtitle: "Meadow Creek · platform_hr_compliance_v1 + credential tracking",
+      summary: obs.length
+        ? `${obs.length} open obligation${obs.length !== 1 ? "s" : ""} — ${hard} hard-stop, ${soft} soft-flag.`
+        : "All clear — no open obligations.",
+      fields: [
+        { label: "Obligations open", value: String(obs.length) },
+        { label: "Hard-stop",        value: String(hard) },
+        { label: "Soft-flag",        value: String(soft) },
+      ],
+      sections: obs.length ? [{ heading: "Open obligations", body: obs.map(o => `${o.memberName} — ${o.action}`).join("\n") }] : [],
+    };
+  }
+
   if (tabId === "notices") {
     const tenantId = typeof window !== "undefined" ? localStorage.getItem("TENANT_ID") : "";
     if (!tenantId) return null;
