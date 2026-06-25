@@ -1141,6 +1141,7 @@ export default function Sidebar({
   const [workersCollapsed, setWorkersCollapsed] = useState(true);
   const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
   const [gamesCollapsed, setGamesCollapsed] = useState(true);
+  const [accountCollapsed, setAccountCollapsed] = useState(true);
   const workerCtx = useWorkerState();
   // S52.61 — the CREATE nav is now status-independent (Build a Worker +
   // Creator Dashboard), so the creatorStatus hook is no longer needed here.
@@ -1595,16 +1596,24 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* ── ACCOUNT ── */}
+      {/* ── ACCOUNT (collapsible like the other sections) ── */}
       <div className="sidebarSection">
-        <div style={labelStyle}>Account</div>
-        <nav className="nav">
-          {ACCOUNT_NAV.map(item => (
-            <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <button
+          onClick={() => setAccountCollapsed(!accountCollapsed)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
+        >
+          <span style={labelStyle}>Account</span>
+          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: accountCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+        </button>
+        {!accountCollapsed && (
+          <nav className="nav">
+            {ACCOUNT_NAV.map(item => (
+              <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
       </div>
     </div>
   );

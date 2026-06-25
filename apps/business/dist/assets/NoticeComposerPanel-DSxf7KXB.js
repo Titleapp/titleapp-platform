@@ -1,0 +1,1 @@
+import{t as e}from"./NoticeComposerPanel-DbLoRgeI.js";export{e as default};

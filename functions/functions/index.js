@@ -20104,8 +20104,15 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             // nowhere in the data — a pure hallucination from an un-anchored
             // prompt. Grounding the name kills that whole fabrication class.
             const _bizName = (workspace && workspace.name) || ctx.businessName || (context && (context.workspaceName || context.companyName)) || null;
-            if (_bizName && selectedSystemPrompt && !isPersonalVault) {
-              selectedSystemPrompt = `IMPORTANT — IDENTITY: The business/workspace you are Chief of Staff for is named exactly "${_bizName}". Always refer to it by this exact name. NEVER invent, guess, or substitute a different business, clinic, company, or person name. If you don't know a specific fact, say so plainly rather than making one up.\n\n` + selectedSystemPrompt;
+            if (selectedSystemPrompt) {
+              if (!isPersonalVault && _bizName) {
+                selectedSystemPrompt = `IMPORTANT — IDENTITY: The business/workspace you are Chief of Staff for is named exactly "${_bizName}". Always refer to it by this exact name. NEVER invent, guess, or substitute a different business, clinic, company, or person name. If you don't know a specific fact, say so plainly rather than making one up.\n\n` + selectedSystemPrompt;
+              } else if (isPersonalVault) {
+                // Personal space has no business name to anchor — so forbid
+                // inventing one. (Sean caught Alex calling the user's clinic
+                // "Bishop Veterinary Clinic" — a pure hallucination.)
+                selectedSystemPrompt = `IMPORTANT — IDENTITY: This is the user's PERSONAL space. Do NOT invent, guess, or name the user's employer, business, or clinic. If you need to refer to their business, say "your business workspace" generically — never make up a company or clinic name. If you don't know a specific fact, say so plainly rather than fabricating it.\n\n` + selectedSystemPrompt;
+              }
             }
 
             // 49.30 — append canvas state to whichever prompt was selected so canvas awareness reaches every code path
