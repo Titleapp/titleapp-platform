@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef } from "react";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { prettyWorkerName } from "../utils/displayName";
 
 const WorkerStateContext = createContext(null);
 
@@ -79,10 +80,7 @@ export function WorkerStateProvider({ children }) {
         const worker = CREATOR_WORKER_FALLBACKS[slug] || {
           slug,
           workerId: slug,
-          name: slug
-            .replace(/-00\d$/, "")
-            .replace(/-/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase()),
+          name: prettyWorkerName(slug),
           shortDescription: "",
           vertical: "",
           suite: "",

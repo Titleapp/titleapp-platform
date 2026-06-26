@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { collection, getDocs, getFirestore, query, where, limit } from "firebase/firestore";
 import WorkerIcon from "../utils/workerIcons";
+import { prettyWorkerName } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
@@ -1216,7 +1217,7 @@ export default function Sidebar({
       if (typeof wId === "string") {
         workers.push({
           slug: wId,
-          name: WORKER_DISPLAY_NAMES[wId] || wId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+          name: WORKER_DISPLAY_NAMES[wId] || prettyWorkerName(wId),
           isChiefOfStaff: false,
           active: true,
           vertical: normalizeVertical(wId),
@@ -1225,7 +1226,7 @@ export default function Sidebar({
         const slug = wId.slug || wId.id || "unknown";
         workers.push({
           slug,
-          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[slug] || "Worker",
+          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[slug] || prettyWorkerName(slug) || "Worker",
           isChiefOfStaff: wId.isChiefOfStaff || false,
           active: true,
           vertical: normalizeVertical(slug),

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
 import { currentPersonaTint, gradient } from "../utils/personaColor";
-import { firstNameFrom } from "../utils/displayName";
+import { firstNameFrom, prettyWorkerName } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext";
 
 // Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
@@ -57,7 +57,8 @@ function normalizeVertical(slug) {
 
 function slugToName(slug) {
   if (WORKER_NAMES[slug]) return WORKER_NAMES[slug];
-  return slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  // Strip codename scaffolding so "vet-003-drug-dosing" never renders verbatim.
+  return prettyWorkerName(slug);
 }
 
 export default function WorkerHome() {

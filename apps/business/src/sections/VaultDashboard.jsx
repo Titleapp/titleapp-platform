@@ -9,7 +9,7 @@
 // No animations, no complex state.
 
 import React, { useState, useEffect } from "react";
-import { firstNameFrom } from "../utils/displayName";
+import { firstNameFrom, prettyWorkerName } from "../utils/displayName";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -116,7 +116,7 @@ export default function VaultDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
             {myWorkers.map((w, i) => {
               const slug = typeof w === "string" ? w : w?.slug || w?.id || "";
-              const name = DISPLAY_NAMES[slug] || (typeof w === "object" ? (w?.displayName || w?.name || slug) : slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+              const name = DISPLAY_NAMES[slug] || (typeof w === "object" ? (w?.displayName || w?.name || prettyWorkerName(slug)) : prettyWorkerName(slug));
               return (
                 <Card key={i} style={{ cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; }}
