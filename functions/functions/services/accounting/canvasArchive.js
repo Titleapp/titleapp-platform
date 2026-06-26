@@ -488,4 +488,4 @@ async function archiveToCanvas({ canvasRenders, tenantId, userId }) {
   return { archived };
 }
 
-module.exports = { archiveToCanvas, isArchivableAccounting, ARCHIVE_TYPES };
+module.exports = { archiveToCanvas, isArchivableAccounting, ARCHIVE_TYPES, buildBuffer, formatFor };

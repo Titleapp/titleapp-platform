@@ -63,6 +63,15 @@ function Delta({ v }) {
 function Thumb({ campaign, size = 56 }) {
   const c = ch(campaign.channel);
   const initials = (campaign.name || "?").split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  if (campaign.imageUrl) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: 10, flexShrink: 0,
+        backgroundImage: `url("${campaign.imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)",
+      }} />
+    );
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: 10, background: campaign.gradient || c.g,
@@ -153,8 +162,13 @@ export default function MarketingCampaignBoardCard({ resolved, context, onDismis
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
           {campaigns.map((c, i) => (
             <div key={i} style={{ border: "1px solid #f1f5f9", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ height: 120, background: c.gradient || ch(c.channel).g, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, textAlign: "center", lineHeight: 1.3, textShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>{c.headline || c.name}</div>
+              <div style={{
+                height: 140, position: "relative", display: "flex", alignItems: "flex-end", padding: 14,
+                ...(c.imageUrl
+                  ? { backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 55%), url("${c.imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center" }
+                  : { background: c.gradient || ch(c.channel).g, alignItems: "center", justifyContent: "center" }),
+              }}>
+                <div style={{ color: "#fff", fontSize: 15, fontWeight: 800, textAlign: c.imageUrl ? "left" : "center", lineHeight: 1.25, textShadow: "0 1px 4px rgba(0,0,0,0.45)" }}>{c.headline || c.name}</div>
               </div>
               <div style={{ padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#1e293b" }}>{c.name}{c.winning ? " 🏆" : ""}</span>

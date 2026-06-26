@@ -74,8 +74,22 @@ she works on a separate fork — that port is a separate track, staged at
 reference any file edited in this work.** No regressions. Run saved:
 `docs/qa-001-runs/2026-06-26-run.txt`.
 
-## Still open (next, not tonight)
-- Accounting **Reports** seeded from real txns (P&L/Cash Flow/Balance Sheet).
-- Marketing campaign click-through + real Fal.ai creative imagery.
+## Demo imagery + reports (2026-06-26, overnight) — 🟢 shipped
+- **Marketing real ad creatives:** `scripts/demo/seedMarketingImages.js` generates 6
+  Fal.ai ad images (pet/vet themed, no real places/PHI), stores them with stable
+  Firebase download-token URLs, and writes `imageUrl` onto each campaign doc. The
+  `/v1/marketing:campaigns` endpoint already spreads all fields, so `imageUrl` flows
+  through. `MarketingCampaignBoardCard.jsx` now renders the real image (Creative tiles +
+  row thumbnails) with a gradient scrim for headline legibility; falls back to the
+  gradient when no image.
+- **Accounting Reports from real data:** `scripts/demo/seedAccountingReports.js` computes
+  P&L / Cash Flow / Balance Sheet from the 84 committed transactions (Rev $588.6k,
+  Exp $247.6k, Net $341k for Jan–Jun 2026 — matches the dashboard's $98.1k/$41.3k/$56.8k
+  MTD) and writes them as `.xlsx` storageObjects (tags `accounting`, `reportPeriodYear`,
+  `reportFormat`) so the Reports tab populates with real, downloadable financials.
+  Exported `buildBuffer`/`formatFor` from `canvasArchive.js` to reuse its ExcelJS builders;
+  wrote the blobs + storageObjects directly (server signs the download URL).
+
+## Still open (next)
 - "Dr.'s Personal Space" name derivation; training-records structure.
 - Port chat fixes to Ruthie's fork (separate track, only if her videos use chat).
