@@ -38,19 +38,49 @@ const RED_FLAGS = [
   /Bishop Veterinary/i,
 ];
 
-// Per-surface probes. `expectDomain` = a regex the reply SHOULD satisfy
-// (in-domain grounding). Probes are intentionally generic to bait drift.
+// Per-surface probes. THREE gates per surface:
+//   expectDomain — reply is in the worker's subject area (cheap drift bait)
+//   expectData   — reply quotes THIS worker's OWN records (the real test: it
+//                  must reference the same data the canvas shows, not generic
+//                  knowledge). This is what the old harness missed — a reply
+//                  could be on-domain and fabrication-free yet know nothing
+//                  about the user's actual records, and still pass.
+//   forbid       — the "advisory wall in chat form": chat claiming it has no
+//                  data / can't access it / needs an upload, when the canvas
+//                  is literally displaying that data right now.
+// The probes are phrased to demand a SPECIFIC record so a generic answer fails.
+const FORBID_NODATA = /(don'?t|do not|cannot|can'?t|unable to) (have |get )?access|no access to|upload (your |a )?document|add your documents|unlock personalized|i don'?t have (any |that )?(data|records|information)|once you (import|connect|add)/i;
 const SURFACES = [
-  { id: "cos-business", worker: null, vertical: "chief-of-staff", msg: "what's on my plate today?", expectDomain: /vet|veterinar|clinic|meadow creek|credential|dea|osha|patient|staff/i },
-  { id: "platform-accounting", worker: "platform-accounting", msg: "give me a quick read on our finances", expectDomain: /cash|revenue|expense|burn|runway|account|statement|p&l|books/i },
-  { id: "platform-contacts", worker: "platform-contacts", msg: "summarize my contacts", expectDomain: /contact|client|owner|pet|segment|dog|cat/i },
-  { id: "platform-hr", worker: "platform-hr", msg: "how's my team doing?", expectDomain: /staff|team|credential|osha|dea|dr\.|cvt|dvm|compliance|roster/i },
-  { id: "platform-marketing", worker: "platform-marketing", msg: "how are my campaigns performing?", expectDomain: /campaign|reach|ctr|lead|wellness|dental|puppy|pet/i },
-  { id: "spine-4-staff-credentials", worker: "spine-4-staff-credentials", msg: "what needs my attention?", expectDomain: /credential|license|dea|osha|cvt|dvm|renew|expir/i },
-  { id: "vet-003-drug-dosing", worker: "vet-003-drug-dosing", msg: "what should I watch for sedating a cat?", expectDomain: /sedat|dose|dosing|mg|dexmedetomidine|ketamine|feline|cat|anesthe|protocol/i },
-  { id: "title-abstract-001", worker: "title-abstract-001", msg: "tell me about a title abstract", expectDomain: /title|deed|lien|encumbrance|parcel|ownership|chain|abstract|property/i },
-  { id: "edu-001-cvt-exam-prep", worker: "edu-001-cvt-exam-prep", msg: "how is my cohort doing?", expectDomain: /student|cohort|exam|module|cvt|curriculum|completion|score|at.risk/i },
-  { id: "cos-personal", worker: null, vertical: "consumer", tenant: "vault", msg: "what's in my vault?", expectDomain: /vault|document|record|asset|certificate|logbook|title|worker/i },
+  { id: "cos-business", worker: null, vertical: "chief-of-staff", msg: "Who on my staff has an overdue or soonest-expiring credential, and when?",
+    expectDomain: /credential|license|dea|osha|expir|overdue|renew/i,
+    expectData: /(alex torres|osha bloodborne|maya chen|jordan park|sam rivera).{0,60}(overdue|expir|2026|2027|days?)/i, forbid: FORBID_NODATA },
+  { id: "platform-accounting", worker: "platform-accounting", msg: "What's my net income so far this year, in dollars?",
+    expectDomain: /net income|revenue|expense|profit|cash/i,
+    expectData: /\$?\s?(341|340|56\.?8|98\.?1|588|247)[\d,]*/i, forbid: FORBID_NODATA },
+  { id: "platform-contacts", worker: "platform-contacts", msg: "How many contacts do I have and what are the main segments?",
+    expectDomain: /contact|client|owner|pet|segment|dog|cat|rabbit/i,
+    expectData: /\b\d+\s+(contact|client|owner|record)/i, forbid: FORBID_NODATA },
+  { id: "platform-hr", worker: "platform-hr", msg: "Whose credential is currently overdue?",
+    expectDomain: /credential|osha|dea|staff|team|expir|overdue/i,
+    expectData: /alex torres|osha bloodborne/i, forbid: FORBID_NODATA },
+  { id: "platform-marketing", worker: "platform-marketing", msg: "Which of my campaigns is performing best, with its numbers?",
+    expectDomain: /campaign|reach|ctr|lead|roi|wellness|dental|puppy|pet/i,
+    expectData: /(wellness|dental|puppy|senior|vaccin|spay|neuter|heartworm|grooming).{0,50}(\d|%|\$)/i, forbid: FORBID_NODATA },
+  { id: "spine-4-staff-credentials", worker: "spine-4-staff-credentials", msg: "Whose credential is overdue right now, and what is it?",
+    expectDomain: /credential|license|dea|osha|cvt|dvm|renew|expir|overdue/i,
+    expectData: /alex torres.{0,40}osha|osha bloodborne.{0,40}(overdue|alex)/i, forbid: FORBID_NODATA },
+  { id: "vet-003-drug-dosing", worker: "vet-003-drug-dosing", msg: "What was the most recent medication given to Bella, and the dose?",
+    expectDomain: /medication|dose|dosing|mg|drug|prescri/i,
+    expectData: /gabapentin/i, forbid: FORBID_NODATA },
+  { id: "title-abstract-001", worker: "title-abstract-001", msg: "Look up the title abstract for 30 Pihaa Street, Lahaina HI 96761.",
+    expectDomain: /title|deed|lien|parcel|ownership|chain|abstract|property|tmk/i,
+    expectData: /pihaa|lahaina|maui|96761|hawaii/i, forbid: /(don'?t|do not|cannot|can'?t|unable to) (have |get )?access|no access to|325 battery|san francisco|upload (your |a )?document|need (source )?documents/i },
+  { id: "edu-001-cvt-exam-prep", worker: "edu-001-cvt-exam-prep", msg: "Which subject is my cohort struggling with most, and the score?",
+    expectDomain: /cohort|student|subject|module|score|exam|curriculum|at.risk/i,
+    expectData: /(anesthesia|surgical nursing|pharmacology).{0,40}(\d|%)/i, forbid: FORBID_NODATA },
+  { id: "cos-personal", worker: null, vertical: "consumer", tenant: "vault", msg: "What assets and documents are in my vault?",
+    expectDomain: /vault|document|record|asset|certificate|logbook|title/i,
+    expectData: /\b\d+\s+(asset|document|record|item|certificate)|\b(home|condo|vehicle|tesla|watch|art|certificate)\b/i, forbid: FORBID_NODATA },
 ];
 
 let red = 0;
@@ -125,6 +155,10 @@ async function clearHistory() {
     for (const rx of RED_FLAGS) if (rx.test(text)) flags.push(`drift:${rx.source.slice(0, 24)}`);
     const inDomain = s.expectDomain ? s.expectDomain.test(text) : true;
     if (!inDomain) flags.push("off-domain");
+    // The real test: did chat quote THIS worker's own records?
+    if (s.expectData && !s.expectData.test(text)) flags.push("NOT-GROUNDED-IN-DATA");
+    // The "advisory wall in chat form" — claiming no data the canvas is showing.
+    if (s.forbid && s.forbid.test(text)) flags.push("CLAIMS-NO-DATA");
     const pass = flags.length === 0;
     if (!pass) red++;
     results.push({ id: s.id, pass, flags, excerpt: text.replace(/\s+/g, " ").slice(0, 160) });

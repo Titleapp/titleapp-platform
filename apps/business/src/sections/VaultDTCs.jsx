@@ -267,7 +267,20 @@ export default function VaultDTCs() {
     return c;
   }, [dtcs]);
 
-  const filtered = activeClass === "All" ? dtcs : dtcs.filter(d => d.assetClass === activeClass);
+  // "Credentials" is a CROSS-CUTTING view: licenses, certifications, registrations,
+  // memberships, and medical certs live under Health/Education pillars but a vet
+  // wants them all in one place. Match by type/expiry/name, not just assetClass
+  // (Sean, 2026-06-26 — the dedicated Credentials tab was empty otherwise).
+  const isCredential = (d) => {
+    if (d.assetClass === "Credentials") return true;
+    if (d.type === "credential" || d.type === "medical_certificate") return true;
+    const m = d.metadata || {};
+    if (m.expires) return true;
+    return /licen|certif|registrat|credential|membership|titer|\bDVM\b|\bDEA\b|OSHA|E&O|liability insurance/i.test(`${d.title || ""} ${m.title || ""} ${m.credentialName || ""}`);
+  };
+  const filtered = activeClass === "All" ? dtcs
+    : activeClass === "Credentials" ? dtcs.filter(isCredential)
+    : dtcs.filter(d => d.assetClass === activeClass);
 
   // Net-worth rollup across every valued record: property + personal property +
   // accounts, minus liabilities. The "my money" payoff — one real-time picture.

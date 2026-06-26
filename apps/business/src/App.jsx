@@ -4490,9 +4490,14 @@ function WorkerHomeRenderer({ onBack }) {
     if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
   }, [worker, panel]);
 
-  // 50.10-T4 — first-visit vs returning. First time a worker is opened, leave
-  // the landing page (KPI grid + quick actions) in place. On subsequent opens,
-  // auto-fire the default tab so users land directly on their preferred view.
+  // S52.51 — ALWAYS land on the worker's real default tab, never the generic
+  // "General guidance mode" landing. Earlier this was gated to return-visits
+  // (first visit kept the landing), but in practice that meant every worker
+  // opened on an empty-KPI advisory wall (Britney-rule violation) while its
+  // real data (roster, credentials, campaigns, records) sat one click away as
+  // a dismissable overlay. If the default tab resolves ANY payload — live
+  // tenant data OR a fixture — we render it as the worker's home. Only a tab
+  // with no signal/payload at all falls back to the landing.
   // Chat-emitted signals always win — handled by the existing CANVAS state.
   const autoFiredRef = React.useRef(null);
   React.useEffect(() => {
@@ -4500,19 +4505,29 @@ function WorkerHomeRenderer({ onBack }) {
     if (panel?.state === "CANVAS") return; // a chat signal already drove us here
     if (autoFiredRef.current === worker.slug) return;
     autoFiredRef.current = worker.slug;
-    const wasSeen = markWorkerVisitedAndCheck(worker.slug);
-    if (!wasSeen) return; // first visit — keep landing
-    const def = tabs.find(t => t.default) || tabs[0];
-    if (!def) return;
-    const resolved = lookupSignal(def.signal);
-    if (!resolved) return;
-    setActiveTabId(def.id);
+    markWorkerVisitedAndCheck(worker.slug); // keep visit bookkeeping (side effect)
+    const slug = worker.slug;
+    // Land on the first tab that actually resolves DATA. Many workers' default
+    // tab is a generic "Dashboard"/"Calculator" with no payload — it falls to
+    // the "General guidance mode" advisory wall (Britney-rule violation) while
+    // the real roster/credentials/orders/records sit in the next tab. Scan in
+    // order (default first), fire the first tab that yields live OR fixture data.
+    const ordered = [...tabs].sort((a, b) => (b.default ? 1 : 0) - (a.default ? 1 : 0));
     (async () => {
-      let payload = null;
-      try { payload = await getLiveDataForTab(worker, def.id); } catch (_) {}
-      if (!payload) payload = getFixtureForTab(worker, def.id);
-      const ctx = { worker, ...(payload ? { payload } : {}) };
-      if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
+      for (const tab of ordered) {
+        if (autoFiredRef.current !== slug) return; // worker changed mid-scan
+        const resolved = lookupSignal(tab.signal);
+        if (!resolved) continue;
+        let payload = null;
+        try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
+        if (!payload) payload = getFixtureForTab(worker, tab.id);
+        if (!payload) continue; // no data for this tab — try the next one
+        if (panel?.state === "CANVAS") return; // a chat signal won the race
+        setActiveTabId(tab.id);
+        if (panel?.showCanvas) panel.showCanvas(resolved, { worker, payload });
+        return; // landed on real data
+      }
+      // No tab yielded data — leave the onboarding landing in place.
     })();
   }, [worker?.slug, tabs, panel]);
 

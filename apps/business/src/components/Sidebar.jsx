@@ -1186,7 +1186,11 @@ export default function Sidebar({
   const userFirstName = (() => {
     if (guestMode) return "";
     const raw = localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME") || (localStorage.getItem("USER_EMAIL") || "").split("@")[0] || "";
-    const first = raw.split(" ")[0];
+    // Skip an honorific so "Dr. Maya Chen" → "Maya", not "Dr." (Sean, 2026-06-26).
+    const TITLES = /^(dr|mr|mrs|ms|miss|prof|professor|sir|rev|fr|capt|lt|sgt|hon)\.?$/i;
+    const parts = raw.split(/\s+/).filter(Boolean);
+    let first = parts[0] || "";
+    if (TITLES.test(first) && parts[1]) first = parts[1];
     return (first && first.length >= 2) ? first : "";
   })();
 
