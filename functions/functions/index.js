@@ -2968,6 +2968,23 @@ END DELIVERY RULES.
                 }
               }
 
+              // 2026-06-26 — per-worker OWN-RECORDS grounding. Sibling state only
+              // models the 5 Spine workers as KPI counts; this injects the active
+              // worker's own detailed canvas records (which credential is overdue
+              // and whose, which campaign is winning, the dosing order history, the
+              // cohort's weakest subject) so chat answers match the canvas instead
+              // of saying "I don't have access". Catalog workers (vet/edu/creds)
+              // weren't in the snapshot at all before this. Reads tenantId only.
+              if (workerPrompt) {
+                try {
+                  const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
+                  const ownData = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug });
+                  if (ownData) workerPrompt = ownData + workerPrompt;
+                } catch (ownErr) {
+                  console.warn("worker chat: own-data inject failed:", ownErr.message);
+                }
+              }
+
               // Load conversation history — strip prior assistant turns that
               // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
@@ -3840,6 +3857,19 @@ IDENTITY RULES:
 
                 console.log(`[chatEngine] Using worker-specific prompt for: ${workerSlug} (${workerName})`);
               }
+              // 2026-06-26 — same per-worker grounding as the primary worker
+              // path: this sales/landing branch builds its own worker prompt and
+              // would otherwise lose sibling + own-records context. Inject both so
+              // a worker answered here still cites its real canvas records.
+              try {
+                const wslug = body.selectedWorker;
+                const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
+                const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
+                const _own = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug: wslug });
+                const _sibW = authUser ? (await buildSiblingStatePrompt({ db, uid: authUser.uid, currentSlug: wslug, demoMode: false, tenantId: reqTenantId || null }) || "") : "";
+                if (_own) selectedSystemPrompt = _own + selectedSystemPrompt;
+                if (_sibW) selectedSystemPrompt = selectedSystemPrompt + "\n\n" + _sibW;
+              } catch (gErr) { console.warn("[chatEngine] worker grounding (sales path) failed:", gErr.message); }
             } catch (workerErr) {
               console.warn("[chatEngine] Worker prompt override failed, using sales prompt:", workerErr.message);
             }

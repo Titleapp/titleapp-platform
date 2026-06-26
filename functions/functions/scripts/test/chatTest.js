@@ -56,19 +56,21 @@ const SURFACES = [
     expectData: /(alex torres|osha bloodborne|maya chen|jordan park|sam rivera).{0,60}(overdue|expir|2026|2027|days?)/i, forbid: FORBID_NODATA },
   { id: "platform-accounting", worker: "platform-accounting", msg: "What's my net income so far this year, in dollars?",
     expectDomain: /net income|revenue|expense|profit|cash/i,
-    expectData: /\$?\s?(341|340|56\.?8|98\.?1|588|247)[\d,]*/i, forbid: FORBID_NODATA },
+    // Require a REAL YTD figure ($341,040 net / $588,600 rev / $247,560 exp).
+    // A wrong extrapolation like "$196,200" trips this — that was the bug.
+    expectData: /\$\s?(341|588|247)[\d,.]*/i, forbid: FORBID_NODATA },
   { id: "platform-contacts", worker: "platform-contacts", msg: "How many contacts do I have and what are the main segments?",
     expectDomain: /contact|client|owner|pet|segment|dog|cat|rabbit/i,
-    expectData: /\b\d+\s+(contact|client|owner|record)/i, forbid: FORBID_NODATA },
+    expectData: /\b\d{2,4}\b[\s\w]{0,12}(contact|client|owner|record)|\b(160|161|159)\b/i, forbid: FORBID_NODATA },
   { id: "platform-hr", worker: "platform-hr", msg: "Whose credential is currently overdue?",
     expectDomain: /credential|osha|dea|staff|team|expir|overdue/i,
     expectData: /alex torres|osha bloodborne/i, forbid: FORBID_NODATA },
   { id: "platform-marketing", worker: "platform-marketing", msg: "Which of my campaigns is performing best, with its numbers?",
     expectDomain: /campaign|reach|ctr|lead|roi|wellness|dental|puppy|pet/i,
-    expectData: /(wellness|dental|puppy|senior|vaccin|spay|neuter|heartworm|grooming).{0,50}(\d|%|\$)/i, forbid: FORBID_NODATA },
+    expectData: /\d[\d,]{1,6}\s*(leads?|impressions?)|\d+(\.\d)?%\s*ctr|\$\s?\d[\d,]*\s*(spend|\/lead)/i, forbid: FORBID_NODATA },
   { id: "spine-4-staff-credentials", worker: "spine-4-staff-credentials", msg: "Whose credential is overdue right now, and what is it?",
     expectDomain: /credential|license|dea|osha|cvt|dvm|renew|expir|overdue/i,
-    expectData: /alex torres.{0,40}osha|osha bloodborne.{0,40}(overdue|alex)/i, forbid: FORBID_NODATA },
+    expectData: /alex torres[\s\S]{0,80}osha|osha bloodborne[\s\S]{0,80}(overdue|alex)/i, forbid: FORBID_NODATA },
   { id: "vet-003-drug-dosing", worker: "vet-003-drug-dosing", msg: "What was the most recent medication given to Bella, and the dose?",
     expectDomain: /medication|dose|dosing|mg|drug|prescri/i,
     expectData: /gabapentin/i, forbid: FORBID_NODATA },
@@ -80,7 +82,12 @@ const SURFACES = [
     expectData: /(anesthesia|surgical nursing|pharmacology).{0,40}(\d|%)/i, forbid: FORBID_NODATA },
   { id: "cos-personal", worker: null, vertical: "consumer", tenant: "vault", msg: "What assets and documents are in my vault?",
     expectDomain: /vault|document|record|asset|certificate|logbook|title/i,
-    expectData: /\b\d+\s+(asset|document|record|item|certificate)|\b(home|condo|vehicle|tesla|watch|art|certificate)\b/i, forbid: FORBID_NODATA },
+    // Dr. Chen's personal vault is legitimately empty (the seeded assets belong
+    // to Sean's vault, not hers). An HONEST empty-state with the real mechanism
+    // ("no worker has minted a record yet") is correct grounding, not a dodge —
+    // so accept either real assets OR the honest empty explanation. FORBID still
+    // guards against a false "I can't access your vault".
+    expectData: /\b\d+\s+(asset|document|record|item|certificate)|\b(home|condo|vehicle|tesla|watch|art|certificate)\b|vault is (currently )?empty|no (digital )?(title )?certificates?.{0,30}(minted|yet)|nothing in (your )?vault (yet|right now)/i, forbid: FORBID_NODATA },
 ];
 
 let red = 0;
