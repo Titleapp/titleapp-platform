@@ -98,7 +98,22 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
       const hasPayload = Array.isArray(payload)
         ? payload.length > 0
         : (payload && typeof payload === "object" && Object.keys(payload).length > 0);
-      if (!hasPayload) return;
+      if (!hasPayload) {
+        // THE "Dashboard overlay" bug: a tab with no payload must not leave a
+        // stale discovery card (WorkerListCanvas) sitting in canvasData — that's
+        // what paints over the worker when you click the Dashboard/default tab.
+        // Clear any lingering discovery canvas and drop back to the worker's
+        // landing instead of silently no-op'ing (which kept the overlay).
+        setCanvasData((prev) => {
+          const r = prev?.resolved;
+          const isDiscovery = !!(r && (r.isDiscovery || r.component === "WorkerListCanvas"
+            || String(r._signal || "").startsWith("vertical:")
+            || String(r._signal || "").startsWith("browse:")));
+          if (isDiscovery) { setState(prevStateRef.current || originRef.current); return null; }
+          return prev;
+        });
+        return;
+      }
     }
     if (state !== "CANVAS") prevStateRef.current = state;
     setCanvasData({ resolved, context });

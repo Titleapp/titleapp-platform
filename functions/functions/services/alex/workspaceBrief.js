@@ -94,13 +94,22 @@ async function buildWorkspaceBrief({ uid, tenantId }) {
   // 4) Staff credentials needing attention (business tenant).
   if (tenantId) {
     try {
-      const snap = await db().collection("staffCredentials").where("tenantId", "==", tenantId).get();
-      const flagged = snap.docs.map((d) => d.data())
-        .filter((s) => s.status === "overdue" || s.status === "expiring")
-        .sort((a, b) => (a.status === "overdue" ? -1 : 1) - (b.status === "overdue" ? -1 : 1));
+      // Canonical collection is staff_credentials (underscore); each doc holds a
+      // credentials[] array, not a flat status. Walk the array for overdue /
+      // expiring_soon items (the same data the HR + Credentials canvases show).
+      const snap = await db().collection("staff_credentials").where("tenantId", "==", tenantId).get();
+      const flagged = [];
+      snap.docs.map((d) => d.data()).forEach((s) => {
+        (s.credentials || []).forEach((c) => {
+          if (c.status === "overdue" || c.status === "expiring_soon") {
+            flagged.push({ name: s.full_name || s.staff_id, role: s.role, cred: c.credential_name, status: c.status, days: c.days_remaining });
+          }
+        });
+      });
+      flagged.sort((a, b) => (a.status === "overdue" ? 0 : 1) - (b.status === "overdue" ? 0 : 1));
       if (flagged.length) {
         sections.push("STAFF CREDENTIALS NEEDING ATTENTION:\n" + flagged.slice(0, 6).map((s) =>
-          `- ${s.staffName}${s.role ? ` (${s.role})` : ""}: ${s.credential} — ${String(s.status).toUpperCase()}${s.expiresAt ? ` (${String(s.expiresAt).slice(0, 10)})` : ""}`).join("\n"));
+          `- ${s.name}${s.role ? ` (${s.role})` : ""}: ${s.cred} — ${String(s.status).toUpperCase().replace("_", " ")}${s.days != null ? ` (${s.days}d)` : ""}`).join("\n"));
       }
     } catch (e) { /* omit */ }
   }

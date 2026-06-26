@@ -97,7 +97,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       coaSnap, txSnap, connSnap,
       contactsSnap,
       draftsSnap, socialSnap, msgQSnap, campaignsSnap, listsSnap,
-      employeesSnap,
+      employeesSnap, staffCredsSnap,
       tenantSnap, subsSnap,
     ] = await Promise.all([
       safe(db.collection("coaAccounts").where("tenantId", "==", tenantId).get()),
@@ -109,12 +109,17 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       safe(db.collection("marketingDrafts").where("tenantId", "==", tenantId).limit(500).get()),
       safe(db.collection("socialPosts").where("tenantId", "==", tenantId).limit(500).get()),
       safe(db.collection("messageQueue").where("tenantId", "==", tenantId).limit(500).get()),
-      // emailCampaigns + emailLists are userId-scoped today, not tenant-scoped.
-      // Fall back to userId when present; otherwise skip.
-      uid ? safe(db.collection("emailCampaigns").where("userId", "==", uid).limit(200).get()) : Promise.resolve(empty),
+      // Campaigns: the Marketing canvas (and demo seed) write the tenant-scoped
+      // `campaigns` collection — chat must read the SAME source so it never says
+      // "no campaigns" while the canvas shows six (Sean, 2026-06-25).
+      safe(db.collection("campaigns").where("tenantId", "==", tenantId).limit(500).get()),
       uid ? safe(db.collection("emailLists").where("userId", "==", uid).limit(200).get()) : Promise.resolve(empty),
 
       safe(db.collection("employees").where("tenantId", "==", tenantId).limit(500).get()),
+      // staff_credentials is the canonical roster the HR + Credentials canvases
+      // read. The legacy `employees` collection is empty for real tenants, so the
+      // chat used to claim "zero employees" while the canvas showed five.
+      safe(db.collection("staff_credentials").where("tenantId", "==", tenantId).limit(500).get()),
 
       safe(db.collection("tenants").doc(tenantId).get()),
       safe(db.collection("subscriptions").where("tenantId", "==", tenantId).where("status", "==", "active").get()),
@@ -213,20 +218,40 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     const queued = msgQSnap.docs.map(d => d.data()).filter(m => m.status === "pending").length;
     const lists = listsSnap.docs.length;
     const hasAnyMarketing = drafts.length || socialPosts.length || campaigns.length || queued || lists;
+    const topCampaigns = campaigns
+      .slice(0, 6)
+      .map(c => `${c.name || c.title || "Campaign"}${c.channel ? ` (${c.channel})` : ""}${c.ctr != null ? ` · ${c.ctr}% CTR` : ""}${c.leads != null ? ` · ${c.leads} leads` : ""}`);
     live["platform-marketing"] = {
       label: "Marketing & Content",
       kpis: hasAnyMarketing ? {
+        "Active campaigns":     campaigns.length,
         "Drafts (last 7d)":     drafts7d,
         "Social posts (7d)":    social7d,
         "Email campaigns sent (30d)": sent30d,
         "Contact lists":        lists,
         "Queued messages":      queued,
       } : { "Note": "no campaigns, drafts, or contact lists yet" },
+      ...(topCampaigns.length ? { campaigns: topCampaigns } : {}),
     };
 
-    // ── HR & People ──
+    // ── HR & People ── prefer the canonical staff_credentials roster (the same
+    // source the HR + Credentials canvases use); fall back to legacy employees.
     const employees = employeesSnap.docs.map(d => d.data());
-    if (employees.length > 0) {
+    const staffCreds = staffCredsSnap.docs.map(d => d.data());
+    if (staffCreds.length > 0) {
+      const overdue = staffCreds.reduce((n, s) => n + ((s.credentials || []).filter(c => c.status === "overdue").length), 0);
+      const expiringSoon = staffCreds.reduce((n, s) => n + ((s.credentials || []).filter(c => c.status === "expiring_soon").length), 0);
+      const roster = staffCreds.slice(0, 12).map(s => `${s.full_name || s.staff_id}${s.role ? ` — ${s.role}` : ""}`);
+      live["platform-hr"] = {
+        label: "HR & People",
+        kpis: {
+          "Clinical staff":          staffCreds.length,
+          "Credentials overdue":     overdue,
+          "Credentials expiring soon": expiringSoon,
+        },
+        roster,
+      };
+    } else if (employees.length > 0) {
       const active = employees.filter(e => (e.status || "active") === "active").length;
       const openings = employees.filter(e => (e.role || "").toLowerCase().includes("open")).length;
       live["platform-hr"] = {

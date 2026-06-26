@@ -2978,8 +2978,15 @@ END DELIVERY RULES.
               // contain hallucinations (auto-dealer language in a Marketing worker, etc). Skip them
               // entirely so the model sees only the current user message + the system prompt with canvas state.
               const canvasDemoActive = !!(body && body.context && body.context.canvas && body.context.canvas.demoMode);
+              // History bleed fix (Sean, 2026-06-25): salesHistory is ONE shared
+              // array but the frontend reuses a single sessionId across every
+              // worker — so the vet worker was inheriting the title worker's
+              // "123 Maple Street" turn, and the model parroted stale answers
+              // ("zero employees", "I already told you"). Keep only THIS worker's
+              // own turns; legacy untagged turns are dropped (they're the pollution).
+              const _workerThreadHistory = sessionState.salesHistory.filter(h => (h.workerSlug || null) === workerSlug);
               const messages = canvasDemoActive ? [] : [
-                ...sessionState.salesHistory.map(h => {
+                ..._workerThreadHistory.map(h => {
                   if (h.role === 'assistant' && typeof h.content === 'string' && FORBIDDEN_PATTERNS.test(h.content)) {
                     return { role: 'assistant', content: '[Earlier reply was a deferred-work response. Ignored. Deliver now per Pattern A.]' };
                   }
@@ -3401,8 +3408,8 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               }
 
               // Update conversation history
-              sessionState.salesHistory.push({ role: 'user', content: userInput });
-              sessionState.salesHistory.push({ role: 'assistant', content: aiText });
+              sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug });
+              sessionState.salesHistory.push({ role: 'assistant', content: aiText, workerSlug });
               if (sessionState.salesHistory.length > 30) {
                 sessionState.salesHistory = sessionState.salesHistory.slice(-30);
               }
@@ -3759,6 +3766,32 @@ When the user asks "what have I completed?", "what's next?", or about their prog
 
           let selectedSystemPrompt = corePrompt + "\n\n---\n\n" + salesOverlay + catalogContext + contactCaptureInstruction;
 
+          // Authenticated Chief-of-Staff grounding (Sean, 2026-06-25): an
+          // established owner should NOT be treated like a sales prospect. The
+          // sales overlay above asks "what should I call you?" / "what business
+          // are you in?" — wrong for Dr. Chen inside her own Meadow Creek
+          // workspace. Pin her identity + workspace so Alex skips intake and
+          // uses real data. Also re-applies the sibling-state numbers so the COS
+          // can answer "what's on my plate" with actual figures.
+          if (authUser && reqTenantId) {
+            try {
+              const _ws = (await db.collection("users").doc(authUser.uid).collection("workspaces").doc(reqTenantId).get()).data();
+              if (_ws && (_ws.onboardingComplete || _ws.vertical)) {
+                const _anchor =
+                  `IMPORTANT — WHO YOU SERVE (authoritative; this user is a logged-in, fully-onboarded owner — NOT a sales prospect):\n` +
+                  `• Workspace: "${_ws.name || "their business"}"${_ws.vertical ? ` — a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION, never part of the name).` : ""}\n` +
+                  `${_ws.ownerName ? `• You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}. Use this name; never ask what to call them.\n` : ""}` +
+                  `Do NOT run any intake. Do NOT ask their name, what business/industry they're in, or what they do — you already know. Do NOT ask for contact info. Never invent data (no made-up addresses, numbers, or names); if you lack a fact, say so or ask one specific question. Answer their request directly using the workspace data below.\n\n`;
+                let _sib = "";
+                try {
+                  const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
+                  _sib = await buildSiblingStatePrompt({ db, uid: authUser.uid, currentSlug: "chief-of-staff", demoMode: false, tenantId: reqTenantId }) || "";
+                } catch (_) {}
+                selectedSystemPrompt = _anchor + selectedSystemPrompt + (_sib ? "\n\n" + _sib : "");
+              }
+            } catch (e) { console.warn("[chatEngine] COS grounding failed:", e.message); }
+          }
+
           // Worker-specific prompt: if a worker is active, override Alex prompt with RAAS rules
           if (body.selectedWorker && body.selectedWorker !== "chief-of-staff") {
             try {
@@ -3812,8 +3845,14 @@ IDENTITY RULES:
             }
           }
 
+          // Scope to the Chief-of-Staff's OWN thread (workerSlug null/cos) so the
+          // COS doesn't inherit individual workers' turns (history-bleed fix).
+          const _cosHistory = sessionState.salesHistory.filter(h => {
+            const w = h.workerSlug || null;
+            return w === null || w === "chief-of-staff";
+          });
           const messages = [
-            ...sessionState.salesHistory.map(h => ({ role: h.role, content: h.content })),
+            ..._cosHistory.map(h => ({ role: h.role, content: h.content })),
             { role: 'user', content: userInput },
           ];
 
@@ -3925,8 +3964,8 @@ IDENTITY RULES:
             }
 
             // Update conversation history
-            sessionState.salesHistory.push({ role: 'user', content: userInput });
-            sessionState.salesHistory.push({ role: 'assistant', content: aiText });
+            sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: body.selectedWorker || "chief-of-staff" });
+            sessionState.salesHistory.push({ role: 'assistant', content: aiText, workerSlug: body.selectedWorker || "chief-of-staff" });
             if (sessionState.salesHistory.length > 30) {
               sessionState.salesHistory = sessionState.salesHistory.slice(-30);
             }
@@ -4556,6 +4595,82 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
         // ── Discovery Mode: free-form AI conversation for landing visitors ──
         // Bypasses the chatEngine state machine for natural conversation.
         // Only triggers for text input (no actions) when session is new or in discovery.
+        // ── Authenticated Chief-of-Staff (no worker selected) ──
+        // An owner logged into an established business workspace must NOT fall
+        // into the website-visitor "discovery" flow below (which is scripted to
+        // ask their name and pitch signup — exactly the "what should I call you?"
+        // bug Sean hit as Dr. Chen). Answer as a grounded COS using real
+        // workspace data. (Sean, 2026-06-25.)
+        {
+          const _cosTenantId = (body && body.tenantId) || (body && body.context && body.context.tenantId) || req.headers["x-tenant-id"] || null;
+          const _isCos = !body.selectedWorker || body.selectedWorker === "chief-of-staff";
+          if (_isCos && !action && userInput && authUser && _cosTenantId && _cosTenantId !== "vault") {
+            let _ws = null;
+            try { _ws = (await db.collection("users").doc(authUser.uid).collection("workspaces").doc(_cosTenantId).get()).data() || null; } catch (_) {}
+            if (_ws && (_ws.onboardingComplete || _ws.vertical)) {
+              try {
+                if (!sessionState.salesHistory) sessionState.salesHistory = [];
+                // Real workspace data — same sources the worker chats use.
+                let _sib = "", _brief = "";
+                try {
+                  const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
+                  _sib = await buildSiblingStatePrompt({ db, uid: authUser.uid, currentSlug: "chief-of-staff", demoMode: false, tenantId: _cosTenantId }) || "";
+                } catch (_) {}
+                try {
+                  const { buildWorkspaceBrief } = require("./services/alex/workspaceBrief");
+                  const _wb = await buildWorkspaceBrief({ uid: authUser.uid, tenantId: _cosTenantId });
+                  if (_wb) _brief = `\n\nWORKSPACE BRIEF — REAL, current data. When the user asks about their day, finances, deadlines, or what needs attention, use THESE actual numbers/dates. Never invent figures.\n${_wb}`;
+                } catch (_) {}
+
+                const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
+${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}.` : ""}
+
+WHO YOU ARE: The owner's Chief of Staff. You orchestrate their Digital Workers (Accounting, Contacts, HR & People, Marketing, plus their specialist workers) and give them a real, grounded answer about their business.
+
+HARD RULES:
+1. This is a logged-in, fully-onboarded owner — NOT a sales prospect or a new visitor. NEVER ask their name, what business/industry they're in, what they do, or for contact info. You already know.
+2. Never run an intake or discovery script. Never pitch signup or mention creating an account.
+3. Use the REAL workspace data below. When you cite a number, use the figure provided verbatim. If a fact isn't in your context, say you don't have it yet or ask ONE specific question — never invent data (no made-up addresses, names, or numbers).
+4. When a request belongs to a specific worker, you can answer from the sibling data below and offer to open that worker.
+5. Keep replies under 250 words, warm and direct. Plain text — no emojis. Light markdown only if it aids clarity.${_sib ? "\n\n" + _sib : ""}${_brief}`;
+
+                const _cosHist = sessionState.salesHistory
+                  .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
+                  .slice(-12)
+                  .map(h => ({ role: h.role, content: h.content }));
+                const _msgs = [..._cosHist, { role: 'user', content: userInput }];
+
+                const anthropic = getAnthropic();
+                const _resp = await anthropic.messages.create({
+                  model: 'claude-sonnet-4-5-20250929',
+                  max_tokens: 1024,
+                  system: cosPrompt,
+                  messages: _msgs,
+                });
+                let _txt = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim()
+                  || "Let me pull that together for you.";
+
+                sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: "chief-of-staff" });
+                sessionState.salesHistory.push({ role: 'assistant', content: _txt, workerSlug: "chief-of-staff" });
+                if (sessionState.salesHistory.length > 30) sessionState.salesHistory = sessionState.salesHistory.slice(-30);
+                sessionState.step = 'cos_active';
+
+                await sessionRef.set({
+                  state: sessionState,
+                  surface: 'business',
+                  userId: authUser.uid,
+                  ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                  updatedAt: nowServerTs(),
+                }, { merge: true });
+
+                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active' });
+              } catch (cosErr) {
+                console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
+              }
+            }
+          }
+        }
+
         if (surface === 'landing' && !action && userInput &&
             (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
 
@@ -19237,6 +19352,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           userId: ctx.userId,
           type: "chat:message:received",
           message,
+          // Scope the turn to its worker thread so chat history never bleeds
+          // across workers (Sean, 2026-06-25: a vet worker was inheriting the
+          // title worker's "123 Maple Street" turn because history was loaded by
+          // user+tenant only). null = Chief of Staff thread.
+          selectedWorker: body.selectedWorker || null,
+          sessionId: sessionId || null,
           context: context || {},
           preferredModel: preferredModel || "claude",
           fileIds: validFileIds.length > 0 ? validFileIds : [],
@@ -19311,17 +19432,26 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             // Fetch conversation history (last 20 messages)
             const messages = [];
             try {
+              // Load more than we need, then keep ONLY this worker thread's turns
+              // (history bleed fix — see messageEvents.selectedWorker). Filtering
+              // in-memory avoids a new composite index. Pre-fix events (no
+              // selectedWorker field) are intentionally dropped so the polluted
+              // shared stream doesn't leak in.
+              const _thread = body.selectedWorker || null;
               const historySnapshot = await db
                 .collection("messageEvents")
                 .where("tenantId", "==", ctx.tenantId)
                 .where("userId", "==", ctx.userId)
                 .orderBy("createdAt", "desc")
-                .limit(20)
+                .limit(60)
                 .get();
 
-              const history = historySnapshot.docs.reverse();
-              for (const doc of history) {
-                const evt = doc.data();
+              const history = historySnapshot.docs
+                .map(d => d.data())
+                .filter(evt => (evt.selectedWorker || null) === _thread)
+                .reverse()
+                .slice(-20);
+              for (const evt of history) {
                 if (evt.type === "chat:message:received") {
                   messages.push({ role: "user", content: evt.message });
                 } else if (evt.type === "chat:message:responded") {
@@ -19466,6 +19596,23 @@ Active: ${rc.active ? "Yes" : "No"}`;
                     } catch (obErr) {
                       // Non-fatal — proceed without onboarding context
                     }
+                    // Keystone (2026-06-25): an established workspace already KNOWS its
+                    // vertical/owner — don't drop Alex into the new-user intake flow
+                    // ("what do you do? real estate, aviation…?") just because the
+                    // profile/onboarding doc is missing. Sean caught Alex asking Dr.
+                    // Chen who she was inside her own Meadow Creek workspace. Synthesize
+                    // onboardingStatus from the workspace so intake skips Stage 1.
+                    if ((!onboardingStatus || !onboardingStatus.vertical) &&
+                        workspace && (workspace.onboardingComplete || workspace.vertical) &&
+                        (workspace.activeWorkers || []).length > 0) {
+                      onboardingStatus = {
+                        ...(onboardingStatus || {}),
+                        vertical: (onboardingStatus && onboardingStatus.vertical) || workspace.vertical,
+                        role: (onboardingStatus && onboardingStatus.role) || workspace.ownerRole || null,
+                        isWorkContext: true,
+                        derivedFromWorkspace: true,
+                      };
+                    }
 
                     // Detect Sales Mode from campaign/UTM context
                     let chatSurface = "business";
@@ -19571,12 +19718,16 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       consumer: "Dashboard, Vehicles, Properties, Documents, Certifications, Activity Log",
                     };
                     const navItems = NAV_BY_VERTICAL[wsVertical] || "Dashboard, Documents, Reports";
-                    const userName = (body.context || {}).userName || "";
+                    // Keystone: ground identity from the workspace record, not just the
+                    // frontend context (which often arrives empty → "unknown" → Alex
+                    // asks the user who they are inside their own workspace).
+                    const userName = (body.context || {}).userName || workspace.ownerName || "";
+                    const wsName = (body.context || {}).workspaceName || workspace.name || "unknown";
                     const allTeamNames = (body.context || {}).allTeams || "";
                     // Always inject workspace context — even if no workers yet
                     alexSystemPrompt += `\n\nWORKSPACE CONTEXT (CRITICAL — FOLLOW EXACTLY):
-User name: ${userName || "unknown"}
-Active team: ${(body.context || {}).workspaceName || "unknown"} (${wsVertical || "unknown"})
+User name: ${userName || "unknown"}${workspace.ownerRole ? ` (${workspace.ownerRole})` : ""}
+Active team: ${wsName} (${wsVertical || "unknown"})${workspace.location ? ` · located in ${workspace.location} — this is the clinic's LOCATION, not part of its name; the business name is exactly "${wsName}"` : ""}
 All teams: ${allTeamNames || "unknown"}
 Subscribed workers in this team: ${wsWorkers.join(", ") || "none"}
 Available navigation tabs: ${navItems}
@@ -19629,6 +19780,14 @@ RULES YOU MUST FOLLOW:
               }
             }
 
+            // Captured separately so they SURVIVE the worker-prompt override
+            // below (curated prompts replace alexSystemPrompt wholesale, which
+            // used to wipe this real workspace data — that's why HR chat said
+            // "zero employees" while the canvas showed five). Re-applied to the
+            // final selectedSystemPrompt after the override (Sean, 2026-06-25).
+            let _siblingBlock = "";
+            let _workspaceBriefBlock = "";
+
             // 49.32 — 5.2 cross-worker attribution for Alex/COS path. Same
             // sibling state injection used in the worker-direct handler so
             // Alex on the vault home can answer "what's my revenue?" with
@@ -19651,7 +19810,7 @@ RULES YOU MUST FOLLOW:
                   // while the workspace UI correctly shows 1,597.
                   tenantId: ctx.tenantId || null,
                 });
-                if (siblingPrompt) alexSystemPrompt = siblingPrompt + alexSystemPrompt;
+                if (siblingPrompt) _siblingBlock = siblingPrompt;
               } catch (siblingErr) {
                 console.warn("Alex chat: sibling state inject failed:", siblingErr.message);
               }
@@ -19667,7 +19826,7 @@ RULES YOU MUST FOLLOW:
                 const { buildWorkspaceBrief } = require("./services/alex/workspaceBrief");
                 const wb = await buildWorkspaceBrief({ uid: auth.user.uid, tenantId: ctx.tenantId });
                 if (wb) {
-                  alexSystemPrompt += `\n\nWORKSPACE BRIEF — REAL, current data from this workspace. When the user asks about their day, finances, deadlines, what needs attention, or how the company is doing, use THESE actual numbers and dates. Lead with what's urgent (overdue/soonest). Never invent figures; if something isn't here, say you don't have it yet.\n${wb}`;
+                  _workspaceBriefBlock = `\n\nWORKSPACE BRIEF — REAL, current data from this workspace. When the user asks about their day, finances, deadlines, what needs attention, or how the company is doing, use THESE actual numbers and dates. Lead with what's urgent (overdue/soonest). Never invent figures; if something isn't here, say you don't have it yet.\n${wb}`;
                 }
               } catch (wbErr) {
                 console.warn("Alex chat: workspace brief inject failed:", wbErr.message);
@@ -20104,9 +20263,26 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             // nowhere in the data — a pure hallucination from an un-anchored
             // prompt. Grounding the name kills that whole fabrication class.
             const _bizName = (workspace && workspace.name) || ctx.businessName || (context && (context.workspaceName || context.companyName)) || null;
+            const _bizVertical = (workspace && workspace.vertical) || ctx.vertical || null;
+            const _bizOwner = (workspace && workspace.ownerName) || null;
+            const _bizOwnerRole = (workspace && workspace.ownerRole) || null;
+            const _bizLocation = (workspace && workspace.location) || null;
             if (selectedSystemPrompt) {
               if (!isPersonalVault && _bizName) {
-                selectedSystemPrompt = `IMPORTANT — IDENTITY: The business/workspace you are Chief of Staff for is named exactly "${_bizName}". Always refer to it by this exact name. NEVER invent, guess, or substitute a different business, clinic, company, or person name. If you don't know a specific fact, say so plainly rather than making one up.\n\n` + selectedSystemPrompt;
+                // Keystone grounding (2026-06-25): pin the FULL business identity so
+                // no chat path (COS, curated worker, or assembled worker) can drift
+                // to the platform's real-estate default and invent a sample property
+                // (Sean caught a vet worker answering with "123 Maple Street,
+                // Springfield IL"). Curated worker prompts replace the assembled
+                // workspace context, so this anchor is the one place that reaches
+                // every path — keep it rich.
+                selectedSystemPrompt =
+                  `IMPORTANT — WHO YOU SERVE (authoritative, overrides any default):\n` +
+                  `• Business/workspace: "${_bizName}"${_bizVertical ? ` — a ${_bizVertical} business` : ""}.${_bizLocation ? ` Located in ${_bizLocation} (this is the LOCATION, never part of the name).` : ""}\n` +
+                  `${_bizOwner ? `• The user is ${_bizOwner}${_bizOwnerRole ? `, ${_bizOwnerRole}` : ""}.\n` : ""}` +
+                  `Always refer to the business by this exact name. This is ${_bizVertical ? `a ${_bizVertical} operation` : "this specific business"} — NEVER assume real estate, property, or any other industry that isn't stated here.\n` +
+                  `ANTI-FABRICATION: Never invent example data — no made-up addresses, properties, names, dollar amounts, or records. If you lack a specific fact, ask ONE concrete question or say you don't have it yet. Do not substitute a different business, clinic, company, or person name.\n\n` +
+                  selectedSystemPrompt;
               } else if (isPersonalVault) {
                 // Personal space has no business name to anchor — so forbid
                 // inventing one. (Sean caught Alex calling the user's clinic
@@ -20118,6 +20294,16 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             // 49.30 — append canvas state to whichever prompt was selected so canvas awareness reaches every code path
             if (canvasStateBlock && selectedSystemPrompt) {
               selectedSystemPrompt += canvasStateBlock;
+            }
+
+            // Re-apply the REAL workspace data (sibling-worker state + workspace
+            // brief) AFTER the worker-prompt override so curated worker prompts —
+            // which replace the whole prompt — still get it. Without this, the HR
+            // worker chat said "zero employees" while its canvas showed five
+            // (Sean, 2026-06-25). Applied once here = every path gets it exactly once.
+            if (selectedSystemPrompt) {
+              if (_siblingBlock) selectedSystemPrompt = _siblingBlock + selectedSystemPrompt;
+              if (_workspaceBriefBlock) selectedSystemPrompt += _workspaceBriefBlock;
             }
 
             // Inject preferred language instruction (48.6)
@@ -20414,17 +20600,21 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
           try {
             const messages = [];
             try {
+              const _thread = body.selectedWorker || null;
               const historySnapshot = await db
                 .collection("messageEvents")
                 .where("tenantId", "==", ctx.tenantId)
                 .where("userId", "==", ctx.userId)
                 .orderBy("createdAt", "desc")
-                .limit(20)
+                .limit(60)
                 .get();
 
-              const history = historySnapshot.docs.reverse();
-              for (const doc of history) {
-                const evt = doc.data();
+              const history = historySnapshot.docs
+                .map(d => d.data())
+                .filter(evt => (evt.selectedWorker || null) === _thread)
+                .reverse()
+                .slice(-20);
+              for (const evt of history) {
                 if (evt.type === "chat:message:received") {
                   messages.push({ role: "user", content: evt.message });
                 } else if (evt.type === "chat:message:responded") {
@@ -20763,6 +20953,9 @@ Never attempt to output an entire multi-page document in a single response. For 
           userId: ctx.userId,
           type: "chat:message:responded",
           requestEventId: eventRef.id,
+          // Same worker-thread scoping as the received event (history bleed fix).
+          selectedWorker: body.selectedWorker || null,
+          sessionId: sessionId || null,
           preferredModel: preferredModel || "claude",
           response: aiResponse,
           structuredData,

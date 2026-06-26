@@ -17,12 +17,14 @@ function getIntakeInstructions(availableVerticals, onboardingStatus) {
     ? availableVerticals.join(", ")
     : "Real Estate Development, Aviation, Healthcare, Legal, Restaurant / Food Service, Construction, Financial Services / RIA, Property Management";
 
-  // If user already completed onboarding, skip Stage 1
+  // If user already completed onboarding, run NO intake at all. An established
+  // workspace already knows its vertical, owner, and active workers — asking
+  // "what kind of operation are you running?" inside the user's own workspace is
+  // the #1 chat failure Sean flagged (2026-06-25). Be emphatic: zero discovery.
   if (onboardingStatus && onboardingStatus.vertical) {
-    return `UNIVERSAL INTAKE FLOW:
-The user has already completed initial onboarding. Their vertical is "${onboardingStatus.vertical}"${onboardingStatus.role ? `, role: "${onboardingStatus.role}"` : ""}${onboardingStatus.operatingPart ? `, operating under ${onboardingStatus.operatingPart}` : ""}${onboardingStatus.isWorkContext ? " (work context)" : " (personal use)"}.
-Skip Stage 1 and proceed from Stage 2 if needed. Do not re-ask questions they have already answered.
-Available verticals: ${verticals}.`;
+    return `NO INTAKE — THIS USER IS FULLY ONBOARDED:
+This is an established workspace. Their vertical is "${onboardingStatus.vertical}"${onboardingStatus.role ? `, role: "${onboardingStatus.role}"` : ""}${onboardingStatus.operatingPart ? `, operating under ${onboardingStatus.operatingPart}` : ""}${onboardingStatus.isWorkContext ? " (work context)" : " (personal use)"}.
+Do NOT run any intake stage. Do NOT ask what they do, what kind of business/operation/practice they run, what industry they're in, where they're located, or what they're working on — you ALREADY know all of this from the workspace context above. Never present the list of available verticals. Just answer the user's actual request directly using their workspace data.`;
   }
 
   return `UNIVERSAL INTAKE FLOW:
