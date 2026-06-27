@@ -85,15 +85,6 @@ export async function getWorkflows(params: { vertical: string; jurisdiction: str
   });
 }
 
-export async function chatMessage(params: { vertical: string; jurisdiction: string; message: string }) {
-  // Cloudflare -> backend: /v1/chat:message
-  return httpJson("POST", "/v1/chat:message", {
-    vertical: params.vertical,
-    jurisdiction: params.jurisdiction,
-    body: { message: params.message },
-  });
-}
-
 export async function getReportStatus(params: { vertical: string; jurisdiction: string; jobId: string }) {
   // Cloudflare -> backend: /v1/report:status?jobId=...
   const p = "/v1/report:status?jobId=" + encodeURIComponent(params.jobId);
