@@ -534,11 +534,18 @@ async function buildClinicalEvalPayload(tabId) {
   return { view: "sign", title: "Sign a Clinical Evaluation" };
 }
 
+async function buildOerContentPayload() {
+  const r = await liveApiFetch("/v1/edu:content");
+  return { title: "Course Content", results: (r && r.results) || [], note: (r && r.note) || "" };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
     if (slug === "clinical-evaluation-001") return await buildClinicalEvalPayload(tabId);
+    if (slug === "student-eval-001")        return await buildClinicalEvalPayload(tabId);
+    if (slug === "nursing-education-001")   return tabId === "content" ? await buildOerContentPayload() : await buildClinicalEvalPayload(tabId);
     if (slug === "vet-003-drug-dosing")     return await buildVetDosingPayload(tabId);
     if (slug === "edu-001-cvt-exam-prep")   return await buildEduCohortPayload(tabId);
     if (slug === "fundraise")               return await buildFundraisePayload(tabId);

@@ -326,6 +326,16 @@ export const CANVAS_TYPES = {
     _title: "Clinical Evaluation",
   },
 
+  // OER course content (free, NCLEX-aligned open textbooks via /v1/edu:content)
+  "card:oer-content": {
+    component: "OerContentCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Search a nursing topic to pull free, current, NCLEX-aligned course material.",
+    _title: "Course Content",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",
