@@ -22,6 +22,26 @@ Why nursing specifically is a real wedge (don't try to rebuild Canvas):
 - Generic LMSs do nursing-specific things badly: **clinical-hour tracking, competency/skills attainment, NCLEX-readiness, ATI integration, and Board-of-Nursing / accreditation (ACEN/CCNE) reporting.**
 - A nursing-native system that does those *well*, is AI-worker-driven, and produces a **provable transcript of competency** is differentiated. U of H (via Ruthie's relationship, dean-championed) is the beachhead.
 
+### From Google microsites to a real platform — what's now possible
+
+**Read this part carefully — it's the mental-model reset.** Ruthie's work so far has been shaped by what a Google microsite can do, and Code has been scoped to that. SOCIII is a different class of thing. The point isn't "a nicer website" — it's that whole categories of capability that were *impossible* on a microsite are now just available. Don't scope to the old ceiling.
+
+| What a Google microsite can't do | What SOCIII does (available now) |
+|---|---|
+| Static pages; no real backend logic | Real backend + a **rules engine** (propose → validate → commit); AI workers with chat |
+| No per-student data of record | **Append-only, attributed, anchored records**; a per-student **Vault** they own for life |
+| No signatures / attestations | **Digital signatures** on evaluations, anchored into a tamper-evident audit trail |
+| No live data — you hand-type or embed | **Turn-on connectors** (ATI via LTI, OpenStax/Open RN content, Google Drive/Gmail, wearables later) — no keys, no plumbing (§5, §6) |
+| Pictures are clip-art you find | **Generate clinical visuals from data** — a real rhythm strip from the sim's numbers (§7) |
+| Each instructor's stuff is a separate silo | **One governed, versioned, attributed corpus** that consolidates everyone's material (§9) |
+| No identity, roles, or auth | SSO/SAML, roles, multi-tenant isolation |
+| Content rots; no version history | Versioned, provenance-tracked, exportable, portable |
+| You're stuck with what Google gives you | You (and your Code) **build new capabilities** as workers + connectors |
+
+**The dot this connects:** you are not assembling a microsite with fancier widgets — you are building on a platform where a student's signed competency, the content it was assessed against, the visual they learned from, and the proof it happened all live in **one connected, provable record**. When Code understands that the floor is "real records + signatures + connectors + generated media + AI," it will design for the real ceiling, not the microsite one.
+
+**And to be blunt about priorities: talking about this doesn't matter — doing it does.** Every section below points at something you can *make work on screen*. Build the clickable thing; the narrative follows.
+
 ---
 
 ## 2. The architecture (how it fits SOCIII)
@@ -214,3 +234,35 @@ After syncing, you'll have: the data-driven canvas renderer (the keystone that m
 - Clinical-image generation (§7): the RAAS rule layer for clinical accuracy + the disclaimer/governance posture for instructional vs. assessment use.
 - Wearables (§8): consent + data-handling model before any real device data flows in.
 - Consolidation (§9): which scattered faculty materials to ingest first, and confirming reuse rights/licensing for non-OER instructor content.
+
+---
+
+## Appendix A — Data usage & governance (ethics & security committee summary)
+
+*Plain-language summary of how student data is handled, enough for an IRB / ethics / IT-security review. Not exhaustive — the full posture is `docs/TRUST_AND_DATA_INTEGRITY.md` (esp. §14, education-sector), which counsel will pair with a FERPA addendum + DPA. Bracketed items `[CONFIRM]` are operational facts only the company/counsel can finalize before this goes to a committee.*
+
+**1. What data, and why (purpose limitation).** Student education records needed for instruction, assessment, and competency tracking: enrollment/roster, course grades, ATI/assessment scores, competency attainment, clinical hours, instructor evaluations, and (with consent) simulation/wearable physiologic data. Used **only** to deliver the educational service the institution contracts for — not for advertising, not sold, not repurposed.
+
+**2. Lawful basis (FERPA).** SOCIII acts as a **"school official" with a legitimate educational interest** (34 CFR §99.31(a)(1)), processing records **only under the institution's direction**. No re-disclosure except as the institution authorizes. A FERPA addendum to the DPA governs this. Minors/students under 18 (dual-enrollment) handled per the institution's FERPA/PPRA posture [CONFIRM].
+
+**3. Where it lives (residency & isolation).** Data is logically isolated per tenant by default; **Dedicated tier** gives a physically separate, region-pinned database with **customer-managed encryption keys (CMEK)** the institution can revoke. US data residency; AI processing region named in the subprocessor list [CONFIRM region].
+
+**4. Integrity (this is the differentiator).** Records are **append-only and hash-chained**, then periodically **anchored to an independent external register** — so history is tamper-evident and provable, including against insiders. Instructor evaluations and competency sign-offs carry **digital signatures** written into that same audit trail.
+
+**5. AI use & model training.** AI workers **propose**; a rules engine validates; a human approves consequential actions. **No model vendor trains on student data** — we operate under enterprise/zero-retention API terms that prohibit it. Model vendors (e.g., Anthropic, OpenAI) are disclosed as **subprocessors** with their data-handling terms. Generated clinical visuals (§7) are rendered *from the underlying data*, governed by rules, and provenance-tracked — not free-form fabrication.
+
+**6. Subprocessors.** A current list (name, role, region, data category) is part of the DPA, including model vendors and cloud/storage providers. [CONFIRM exhibit attached.]
+
+**7. Access controls (insider threat).** SOCIII staff have **no routine access** to tenant data. Any support access requires a ticket/authorization **plus second-person approval** (no self-grant), is least-privilege and time-boxed, and is **logged into the same tamper-evident trail** — so our own access is auditable by the institution (Enterprise tier).
+
+**8. Consent — sims & wearables.** Real wearable/physiologic data (§8) flows **only with explicit student consent**, with clear purpose and the ability to withdraw; simulation data used for instruction is synthetic/scenario data, not real patient PHI. [CONFIRM consent flow before any real-device data.]
+
+**9. Retention & deletion.** Retention is contract-configurable. Hard-delete: on **Dedicated/CMEK**, deletion is cryptographically provable (key destruction / crypto-shredding); the external anchor stores only a non-reversible hash (hashes of encrypted, salted records — no recoverable PII). Supports FERPA record correction/expungement. [CONFIRM retention windows.]
+
+**10. Accessibility.** Target **WCAG 2.1 AA**; a **VPAT** will be provided — required for public-university procurement. [CONFIRM VPAT status.]
+
+**11. Security posture (stated honestly).** Production controls as above. **No third-party security attestation yet** (SOC 2 + external penetration test are on a named roadmap); we share status and reports/bridge letters on request. Documented incident-response plan; breach notification to the institution within [CONFIRM ≤72h], before any public disclosure; security contact [CONFIRM].
+
+**12. Portability / exit.** Full record export in an **open, documented format** (events + files + verification proofs) on demand and at exit; the student's competency record is **theirs and portable** beyond enrollment. No lock-in.
+
+**One-paragraph version for a committee:** *Student data is used solely to deliver instruction and assessment under the university's direction as a FERPA school official; it is isolated (and, on the Dedicated tier, encrypted under university-held keys), stored in an append-only, tamper-evident, externally-anchored record with digitally-signed evaluations; AI assists under a rules engine with human approval and no model trains on student data; staff access is second-person-approved and itself audited; wearable/real physiologic data requires explicit consent; data is deletable (provably so on Dedicated) and exportable in an open format; accessibility targets WCAG 2.1 AA with a VPAT; the vendor is early-stage and candid that SOC 2 and an external pentest are on the roadmap rather than complete.*
