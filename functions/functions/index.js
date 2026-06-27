@@ -2985,6 +2985,23 @@ END DELIVERY RULES.
                 }
               }
 
+              // 2026-06-26 — workspace identity anchor. A worker MUST know whose
+              // business it serves; the Marketing worker was asking "is this for
+              // SOCIII or a business you're running?" inside Dr. Chen's clinic and
+              // leaking the internal "TitleApp" name. Pin the workspace + owner so
+              // every worker grounds in the customer, not the platform.
+              if (workerPrompt && authUser && reqTenantId) {
+                try {
+                  const _wsDoc = (await db.collection("users").doc(authUser.uid).collection("workspaces").doc(reqTenantId).get()).data();
+                  if (_wsDoc && (_wsDoc.name || _wsDoc.vertical)) {
+                    const _id = `WHO YOU SERVE (authoritative): You work for "${_wsDoc.name || "this business"}"${_wsDoc.vertical ? `, a ${_wsDoc.vertical} business` : ""}${_wsDoc.location ? ` in ${_wsDoc.location}` : ""}.${_wsDoc.ownerName ? ` The owner is ${_wsDoc.ownerName}${_wsDoc.ownerRole ? `, ${_wsDoc.ownerRole}` : ""}.` : ""} Never ask whether they mean SOCIII/TitleApp or "a business you're running" — you already serve this specific business. Never mention "SOCIII", "TitleApp", or the platform's internal plumbing to the user.\n\n`;
+                    workerPrompt = _id + workerPrompt;
+                  }
+                } catch (_wsErr) {
+                  console.warn("worker chat: workspace identity inject failed:", _wsErr.message);
+                }
+              }
+
               // Load conversation history — strip prior assistant turns that
               // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
@@ -3150,6 +3167,19 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   input_schema: { type: "object", properties: { address: { type: "string", description: "Full street address incl. city/state, e.g. '30 Pihaa St, Lahaina, HI 96761'" } }, required: ["address"] },
                 });
               }
+
+              // 2026-06-26 — image-tool honesty. The Marketing worker was
+              // DESCRIBING images it never generated ("I created four images and
+              // added them to your canvas") then contradicting itself — a
+              // hallucination Sean caught on camera. Pin the contract: an image
+              // exists only if generate_image was actually called.
+              workerPrompt += `
+
+IMAGE & VISUAL RULES (MANDATORY):
+- You have a generate_image tool. An image exists ONLY if you call that tool this turn. To make any picture, logo, illustration, or campaign creative, you must call generate_image.
+- NEVER say you "created", "generated", "made", "drew", or "added" an image, and never describe images as though they exist, unless you actually called generate_image this turn. Fabricating images is strictly forbidden.
+- You generate ONE image per message. If the user asks for several, generate the FIRST now by calling the tool, then offer to do the next one.
+- You CANNOT generate video. If asked, say so in one plain sentence and offer a script or storyboard instead. Never speculate that another worker or "the platform" can generate video.`;
 
               workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
               let aiResponse = await anthropic.messages.create({

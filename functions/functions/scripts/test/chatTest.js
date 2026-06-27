@@ -80,7 +80,11 @@ const SURFACES = [
     expectData: /gabapentin/i, forbid: FORBID_NODATA },
   { id: "title-abstract-001", worker: "title-abstract-001", msg: "Look up the title abstract for 30 Pihaa Street, Lahaina HI 96761.",
     expectDomain: /title|deed|lien|parcel|ownership|chain|abstract|property|tmk/i,
-    expectData: /pihaa|lahaina|maui|96761|hawaii/i, forbid: /(don'?t|do not|cannot|can'?t|unable to) (have |get )?access|no access to|325 battery|san francisco|upload (your |a )?document|need (source )?documents/i },
+    // title-abstract-001 has NO live title-lookup tool (only Site Recon pulls
+    // ATTOM). Its honest "I don't have live title access yet, here's the report
+    // shape" is CORRECT — so the forbid only catches real fabrication (the wrong
+    // SF sample address) or an upload-dodge, not the honest no-live-data note.
+    expectData: /pihaa|lahaina|maui|96761|hawaii/i, forbid: /325 battery|san francisco|upload (your |a )?document|need (source )?documents/i },
   { id: "edu-001-cvt-exam-prep", worker: "edu-001-cvt-exam-prep", msg: "Which subject is my cohort struggling with most, and the score?",
     expectDomain: /cohort|student|subject|module|score|exam|curriculum|at.risk/i,
     expectData: /(anesthesia|surgical nursing|pharmacology).{0,40}(\d|%)/i, forbid: FORBID_NODATA },
