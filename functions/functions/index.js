@@ -25541,6 +25541,47 @@ Analyze now:`;
       }
     }
 
+    // POST /v1/edu:evaluation:sign — the signed-Vault loop (§10). An instructor
+    // approves + digitally signs a clinical evaluation; it is minted as an
+    // append-only, signed, anchored record into the STUDENT'S Vault. Body:
+    // { studentId, evaluation:{competency,course,clinical_site,outcome,score,
+    //   narrative,student_name}, signer:{name,credential,email} }.
+    if (route === "/edu:evaluation:sign" && method === "POST") {
+      try {
+        const sAuth = await requireFirebaseUser(req, res);
+        if (sAuth.handled) return sAuth.res;
+        const { signAndMintEvaluation } = require("./services/education/clinicalEvaluation");
+        const b = body || {};
+        // Default the student to the signed-in user (demo: sign your own Vault),
+        // and default the signer name to the authed user if not supplied.
+        const studentId = b.studentId || sAuth.user.uid;
+        const signer = b.signer || { name: sAuth.user.name || sAuth.user.email || "Instructor", email: sAuth.user.email };
+        const out = await signAndMintEvaluation({ studentId, evaluation: b.evaluation || {}, signer });
+        if (!out.ok) return jsonError(res, 400, out.error || "Failed to sign evaluation");
+        return res.json(out);
+      } catch (e) {
+        console.error("edu:evaluation:sign failed:", e);
+        return jsonError(res, 500, "Failed to sign clinical evaluation");
+      }
+    }
+
+    // GET /v1/edu:evaluations?studentId= — list a student's signed clinical
+    // evaluations from their Vault, each with a RECOMPUTED signature-verification
+    // verdict (proof the record is untampered). Defaults to the signed-in user.
+    if (route === "/edu:evaluations" && method === "GET") {
+      try {
+        const eAuth = await requireFirebaseUser(req, res);
+        if (eAuth.handled) return eAuth.res;
+        const { listStudentEvaluations } = require("./services/education/clinicalEvaluation");
+        const studentId = (req.query && req.query.studentId) || (body && body.studentId) || eAuth.user.uid;
+        const out = await listStudentEvaluations({ db, studentId });
+        return res.json(out);
+      } catch (e) {
+        console.error("edu:evaluations failed:", e);
+        return jsonError(res, 500, "Failed to list clinical evaluations");
+      }
+    }
+
     // GET /v1/vet:dosing — VET-003 drug-dosing worker data: the pending
     // proposal (awaiting approval), approved order history, protocol library,
     // and headline KPIs. Reads dosing_orders + protocol_library by tenant.
