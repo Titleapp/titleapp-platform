@@ -51,11 +51,11 @@ const VET003_TABS = [
   { id: "schedule",   label: "Controlled Log",signal: "card:vet-dosing", order: 3 },
 ];
 const SPINE4_TABS = [
-  { id: "dashboard",   label: "Dashboard",   signal: "card:work-product", default: true, order: 0 },
-  { id: "credentials", label: "Credentials", signal: "card:work-product", order: 1 },
-  { id: "training",    label: "Training",    signal: "card:work-product", order: 2 },
-  { id: "calendar",    label: "Renewals",    signal: "card:work-product", order: 3 },
-  { id: "reminders",   label: "Reminders",   signal: "card:work-product", order: 4 },
+  { id: "dashboard",   label: "Team",        signal: "card:staff-roster", default: true, order: 0 },
+  { id: "credentials", label: "Credentials", signal: "card:staff-roster", order: 1 },
+  { id: "training",    label: "Training",    signal: "card:staff-roster", order: 2 },
+  { id: "calendar",    label: "Renewals",    signal: "card:staff-roster", order: 3 },
+  { id: "reminders",   label: "Reminders",   signal: "card:staff-roster", order: 4 },
 ];
 
 (async () => {

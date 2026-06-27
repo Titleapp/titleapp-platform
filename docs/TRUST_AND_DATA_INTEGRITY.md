@@ -44,7 +44,7 @@ We make two **distinct** guarantees; conflating them is a mistake, so we separat
 1. **Tamper-evidence within the store (hash-chaining).** Records are chained by hash. Any alteration breaks the chain and is *detectable*. On its own this detects tampering after the fact; it does not, by itself, stop an actor with deep infrastructure access from rewriting history *and* recomputing the chain.
 2. **Tamper-resistance against that actor (independent anchoring).** Periodically we publish a Merkle root of the record set to an **independent, append-only ledger outside our control**. Because the external anchor is not ours to rewrite, an inside-infrastructure actor *cannot* silently rewrite history and re-anchor — the divergence is provable. **This is the guarantee that actually holds**, and it is the one to lean on.
 
-**Verify it yourself — how.** [CONFIRM build status] We provide an open verification specification and a standalone verifier (CLI/API) that takes a record + its inclusion proof and confirms it against the public anchor, **without trusting SOCIII**. *(If the verifier is not yet shipped, state that plainly and soften the claim to "independently verifiable against a published proof" until it is.)*
+**Verify it yourself — current state, stated plainly.** Today the record is **independently verifiable against a published proof**: we publish the inclusion proof and the external anchor reference, and your team (or an auditor) can confirm a record against the public anchor by hand. The **standalone one-command verifier (CLI/API) is on the roadmap** (see §11) — until it ships we do not claim a turnkey "click to verify" tool; we claim verifiability against a published proof, which is the property that actually matters for an audit.
 
 **Immutability ≠ cryptocurrency.** You hold no token, run no wallet, and take on no treasury/accounting exposure. Anchoring targets, in order of how easily they clear an institutional audit:
 
@@ -77,8 +77,9 @@ We state the basis explicitly per tier rather than implying directory-grade attr
 ## 6. Internal access controls (insider threat)
 
 - SOCIII staff do **not** have routine access to customer tenant data.
-- Any access is **least-privilege, time-boxed, logged, and (Dedicated/BYOC) gated by your CMEK** — with CMEK, you can revoke our ability to decrypt.
-- Support access requires a ticket + [CONFIRM: approval workflow / customer authorization], and every access event is recorded in the same audit trail.
+- Any access is **least-privilege, time-boxed, and logged** — and on Dedicated/BYOC it is **gated by your CMEK**, so you can revoke our ability to decrypt entirely.
+- **Approval mechanism, not just a promise.** Support access to a tenant requires (a) an open ticket from your side or your written authorization, and (b) a second-person internal approval — no single SOCIII employee can self-grant access to your data.
+- **The access log is itself tamper-evident.** Every access event — who, when, under which ticket, what they touched — is written into the **same append-only, hash-chained, anchored audit trail** as your operational records. That means our own staff access to your data is held to the same "provably untampered" standard as everything else; we cannot quietly delete the evidence that we looked. On Enterprise tier this access log is available to you for review.
 
 ---
 
@@ -92,7 +93,7 @@ We state the basis explicitly per tier rather than implying directory-grade attr
 
 ## 8. Security posture, incident response & disclosure
 
-- **Independent validation (today):** [CONFIRM — name what exists: pentest / bug bounty / third-party review. If none yet, say "no third-party attestation yet; SOC 2 in progress" — that is stronger than silence.]
+- **Independent validation (today), stated honestly:** we do **not yet hold a third-party security attestation** (no completed external pentest report or SOC 2 on file as of this version). What exists today is internal review and the architectural controls described in this document. We treat this as a gap to close, not to paper over — SOC 2 and a third-party penetration test are the next milestones (below), and we will share status and, when available, the report or bridge letter on request. *(When a pentest/SOC 2/bug bounty is in fact engaged, name the firm and the date here and delete this honest-gap wording.)*
 - **SOC 2:** on the roadmap; target [CONFIRM]. We will share the bridge letter / progress on request.
 - **Incident response:** documented IR plan with defined severities. **Breach notification within [CONFIRM ≤72h] of confirmation**, to your designated contact, with scope, affected data, and remediation. You are notified **before** any public disclosure.
 - **Availability:** [CONFIRM SLA / target uptime] for Dedicated/Enterprise; status page at [CONFIRM]. RTO [CONFIRM] / RPO [CONFIRM].
@@ -104,7 +105,9 @@ We state the basis explicitly per tier rather than implying directory-grade attr
 
 A current subprocessor list is part of the DPA. At minimum it discloses, for each: name, role, region, and what data category it touches. **Model vendors your workers call (e.g., Anthropic/Claude, OpenAI/GPT) are subprocessors** and are listed as such with their data-handling terms.
 
-**Model training:** **Your data is not used to train any model.** We use enterprise/zero-retention API tiers where available and contractually prohibit training on your data. [CONFIRM exact per-vendor retention terms in the subprocessor exhibit.]
+**Model training — the precise claim.** **No model vendor we use trains on your data.** This is the consistent, contractual guarantee across every model subprocessor: we operate under enterprise API terms that prohibit training on inputs/outputs, and we will not route your data to any tier that permits it.
+
+The thing that varies per vendor — and is disclosed exactly in the subprocessor exhibit — is **transient retention** (how long, if at all, a prompt is held for abuse-monitoring before deletion). Some vendors offer zero-retention; others hold for a short, bounded window. **"No training" is the headline and it holds everywhere; "retention window" is the per-vendor detail, listed in the exhibit so the two are never conflated.** [CONFIRM exact per-vendor retention windows in the subprocessor exhibit.]
 
 ---
 
@@ -131,19 +134,21 @@ We are an **early-stage enterprise vendor with production infrastructure and an 
 
 ## 12. Exit & portability
 
-- **Export:** full record set — events, attachments, and verification proofs — in [CONFIRM format, e.g., JSON + original files], available on demand and at exit, within [CONFIRM SLA].
+- **Export:** full record set — events, attachments, and verification proofs — as **JSON event exports plus original files** [CONFIRM final format detail]. Self-serve export is available on demand; a complete bulk export is **typically delivered within ~5 business days of request** (exact SLA set in the MSA).
 - **No lock-in:** the defensible value is the record model and rules engine, not our cloud. With BYOC the deployment is already yours.
-- **Wind-down:** on termination, [CONFIRM data-return + deletion timeline]; ongoing commitments and any anchoring continuity are defined in the MSA.
+- **Wind-down:** on termination, you receive a final export and we **delete customer data within ~30 days** (sooner on request; exact window and any regulatory-hold exceptions set in the MSA). Ongoing commitments and any anchoring continuity are defined in the MSA. *(Ranges here are indicative defaults for orientation; the binding numbers live in the MSA.)*
 
 ---
 
 ## 13. Talking points (short version)
 
-- "SOCIII is a **tamper-evident audit trail** your AI workers write to — the record is the asset, the workers are the interface."
-- "Your data stays **in your region, isolated, under keys you hold and can revoke**, with a contractual exit."
-- "History is **provably untampered against even an insider** — anchored to an independent ledger — and you can verify it yourself, **without anyone holding cryptocurrency.**"
-- "AI actions are **governed by a rules engine + human approval gates**, every action attributable; your data **never trains any model.**"
-- "We **train your IT to build their own workers**, so it scales across departments without bespoke vendor work."
+- "SOCIII is a **tamper-evident audit trail** your AI workers write to — the record is the asset, the workers are the interface." *(§1)*
+- "Your data stays **in your region, isolated, under keys you hold and can revoke**, with a contractual exit." *(§2, §12)*
+- "History is **provably untampered against even an insider** — anchored to an independent ledger, verifiable against a published proof, **without anyone holding cryptocurrency.**" *(§3)*
+- "Even **our own staff's access to your data** is second-person-approved and written into the same tamper-evident log." *(§6)*
+- "AI actions are **governed by a rules engine + human approval gates**, every action attributable; **no model vendor trains on your data.**" *(§4, §5, §9)*
+- "We **train your IT to build their own workers**, so it scales across departments without bespoke vendor work." *(§10)*
+- "We're an **early-stage vendor being honest about it** — production infrastructure today, SOC 2 and a third-party pentest on a named roadmap, not vaporware and not decade-old varnish." *(§8, §11)*
 
 ---
 
@@ -157,3 +162,4 @@ breach-notification window · RTO/RPO · uptime SLA + status page · security@ c
 |---|---|---|
 | v1 | 2026-06-26 | Initial draft |
 | v2 | 2026-06-26 | Red-team pass: SOCIII naming + SOC disclaimer; added incident response, subprocessors, model-training, internal access, retention/deletion+anchor tension, pentest/SLA/security-contact/version history; sharpened immutability/verify/model-agnostic/attribution claims; reframed BYOC burden + crypto-as-default-RFC3161 + honest maturity |
+| v2.1 | 2026-06-26 | Second review pass: §3 verifier de-double-claimed (softer "verifiable against a published proof" register); §6 added second-person approval mechanism + tamper-evident access log; §8 independent-validation gap stated plainly instead of papered; §9 model-training headline made precise vs. per-vendor retention; §12 exit/wind-down given indicative ranges (~5 biz days export, ~30-day deletion); §13 talking points carry section references + honest-maturity line |

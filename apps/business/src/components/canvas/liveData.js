@@ -413,48 +413,53 @@ async function buildStaffCredentialPayload(tabId) {
   if (!r?.ok || !Array.isArray(r.staff)) return null;
   const staff = r.staff;
   const sum = r.summary || {};
-  // most-urgent credential per staff member, sorted by days remaining
-  const rows = staff.map(s => {
-    const creds = (s.credentials || []).filter(c => c.status !== "in_progress" && typeof c.days_remaining === "number");
-    creds.sort((a, b) => a.days_remaining - b.days_remaining);
-    return creds[0] ? { name: s.full_name, top: creds[0] } : null;
-  }).filter(Boolean).sort((a, b) => a.top.days_remaining - b.top.days_remaining);
-  const badge = (d) => d < 0 ? "OVERDUE" : d <= 7 ? `${d}d ⚠` : d <= 30 ? `${d}d` : `${d}d ✓`;
 
-  if (!tabId || tabId === "dashboard") {
-    return {
-      title: "Staff License Dashboard",
-      subtitle: `${sum.staffCount} staff · ${sum.totalCredentials} credentials tracked`,
-      fields: [
-        { label: "Tracked", value: String(sum.totalCredentials ?? "—") },
-        { label: "Overdue", value: String(sum.overdue ?? 0) },
-        { label: "Expiring ≤30d", value: String(sum.expiring ?? 0) },
-        { label: "Reminders this month", value: String(sum.remindersThisMonth ?? 0) },
-      ],
-      sections: [{ heading: "By urgency", body: rows.map(x => `${x.name} — ${x.top.credential_name} · ${badge(x.top.days_remaining)}`).join("\n") }],
-    };
+  // Per-person roster: worst-status (red/yellow/green) + most-urgent credential.
+  const roster = staff.map(s => {
+    const creds = (s.credentials || []).filter(c => c.status !== "in_progress");
+    const tracked = creds
+      .filter(c => typeof c.days_remaining === "number")
+      .sort((a, b) => a.days_remaining - b.days_remaining);
+    const hasOverdue = creds.some(c => c.status === "overdue" || (typeof c.days_remaining === "number" && c.days_remaining < 0));
+    const hasExpiring = creds.some(c => c.status === "expiring_soon" || (typeof c.days_remaining === "number" && c.days_remaining >= 0 && c.days_remaining <= 30));
+    const status = hasOverdue ? "red" : hasExpiring ? "yellow" : "green";
+    return { staff_id: s.staff_id, name: s.full_name, role: s.role, status, credentialCount: creds.length, top: tracked[0] || null };
+  }).sort((a, b) => {
+    const rank = { red: 0, yellow: 1, green: 2 };
+    if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+    return (a.top?.days_remaining ?? 99999) - (b.top?.days_remaining ?? 99999);
+  });
+
+  const kpis = [
+    { label: "Staff", value: String(sum.staffCount ?? staff.length) },
+    { label: "Credentials", value: String(sum.totalCredentials ?? "—") },
+    { label: "Overdue", value: String(sum.overdue ?? 0) },
+    { label: "Expiring ≤30d", value: String(sum.expiring ?? 0) },
+  ];
+
+  if (tabId === "credentials") {
+    return { title: "Individual Credentials", view: "credentials", staff };
   }
   if (tabId === "training") {
-    const t = (r.training || []).slice(0, 12).map(x => `${x.completion_date} · ${x.staff_id} — ${x.training_name} (${x.ce_hours || 0} CE)`);
-    return { title: "Training Log", subtitle: `${(r.training || []).length} completions`, sections: [{ heading: "Recent training", body: t.join("\n") }] };
+    return { title: "Training Log", view: "training", training: r.training || [] };
   }
   if (tabId === "reminders") {
-    const rm = (r.reminders || []).slice(0, 12).map(x => `${x.sent_at} · ${x.staff_id} — ${x.credential_type} (${x.channel})`);
-    return { title: "Reminder History", subtitle: `${sum.remindersThisMonth || 0} this month`, sections: [{ heading: "Sent", body: rm.join("\n") }] };
+    return { title: "Reminder History", view: "reminders", subtitle: `${sum.remindersThisMonth || 0} this month`, reminders: r.reminders || [] };
   }
   if (tabId === "calendar") {
-    const up = rows.filter(x => x.top.days_remaining >= 0 && x.top.days_remaining <= 90)
-      .map(x => `${x.top.expiry_date} · ${x.name} — ${x.top.credential_name} (${x.top.days_remaining}d)`);
-    return { title: "Renewal Calendar", subtitle: "Next 90 days", sections: [{ heading: "Upcoming renewals", body: up.join("\n") || "Nothing due in 90 days" }] };
+    const upcoming = roster
+      .filter(x => x.top && x.top.days_remaining >= 0 && x.top.days_remaining <= 90)
+      .map(x => ({ name: x.name, ...x.top }));
+    return { title: "Renewal Calendar", view: "calendar", upcoming };
   }
-  if (tabId === "credentials") {
-    const all = [];
-    for (const s of staff) for (const c of (s.credentials || [])) {
-      all.push(`${s.full_name} — ${c.credential_name}${c.expiry_date ? ` · exp ${c.expiry_date}` : ""}${c.status === "overdue" ? " · OVERDUE" : ""}`);
-    }
-    return { title: "Individual Credentials", subtitle: `${sum.totalCredentials || 0} credentials`, sections: [{ heading: "All credentials", body: all.slice(0, 25).join("\n") }] };
-  }
-  return null;
+  // dashboard (default) → people-first roster
+  return {
+    title: "Staff Credentials",
+    view: "roster",
+    subtitle: `${sum.staffCount} staff · ${sum.totalCredentials} credentials tracked`,
+    kpis,
+    roster,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────

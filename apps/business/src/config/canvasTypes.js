@@ -306,6 +306,16 @@ export const CANVAS_TYPES = {
     _title: "CVT Exam Prep",
   },
 
+  // SPINE-4 — Staff Credential & Training (people-first roster + R/Y/G status)
+  "card:staff-roster": {
+    component: "StaffRosterCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask me who's due for a renewal, or add a staff member's license to track.",
+    _title: "Staff Credentials",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",
