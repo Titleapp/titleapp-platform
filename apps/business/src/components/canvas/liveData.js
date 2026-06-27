@@ -14,7 +14,7 @@ import { auth } from "../../firebase";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-async function liveApiFetch(path, opts = {}) {
+export async function liveApiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
@@ -521,10 +521,24 @@ async function buildEduCohortPayload(tabId) {
   return { title: "Cohort Dashboard", view: "dashboard", kpis: r.kpis || [], featured: r.featured || null, students: r.students || [] };
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  CLINICAL-EVALUATION-001 — the signed-Vault loop (instructor view)
+// ──────────────────────────────────────────────────────────────────
+
+async function buildClinicalEvalPayload(tabId) {
+  if (tabId === "records") {
+    const r = await liveApiFetch("/v1/edu:evaluations");
+    return { view: "records", title: "Signed Evaluations", evaluations: (r && r.evaluations) || [], count: (r && r.count) || 0 };
+  }
+  // sign (default) — the form; no data dependency
+  return { view: "sign", title: "Sign a Clinical Evaluation" };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
+    if (slug === "clinical-evaluation-001") return await buildClinicalEvalPayload(tabId);
     if (slug === "vet-003-drug-dosing")     return await buildVetDosingPayload(tabId);
     if (slug === "edu-001-cvt-exam-prep")   return await buildEduCohortPayload(tabId);
     if (slug === "fundraise")               return await buildFundraisePayload(tabId);

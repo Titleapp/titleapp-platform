@@ -316,6 +316,16 @@ export const CANVAS_TYPES = {
     _title: "Staff Credentials",
   },
 
+  // CLINICAL-EVALUATION-001 — the signed-Vault loop (instructor sign + verified records)
+  "card:clinical-eval": {
+    component: "ClinicalEvalCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Fill an evaluation and Approve & Sign — it writes to the student's Vault, signed and anchored.",
+    _title: "Clinical Evaluation",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",
