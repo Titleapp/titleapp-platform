@@ -326,6 +326,16 @@ export const CANVAS_TYPES = {
     _title: "Clinical Evaluation",
   },
 
+  // TITLE-ABSTRACT-001 — real-estate title/ownership abstract (live tenant record)
+  "card:title-abstract": {
+    component: "TitleAbstractCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask me to look up a property you have on file — I'll pull the chain of title, liens, and easements.",
+    _title: "Title Abstract",
+  },
+
   // OER course content (free, NCLEX-aligned open textbooks via /v1/edu:content)
   "card:oer-content": {
     component: "OerContentCard",

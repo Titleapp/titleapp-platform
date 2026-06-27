@@ -172,8 +172,35 @@ async function contactsBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
+// ── Title abstract (real-estate title/ownership records) ──
+async function titleAbstractBlock(db, tenantId) {
+  const snap = await safe(db.collection("title_abstracts").where("tenantId", "==", tenantId).get(), null);
+  const abstracts = docs(snap);
+  if (!abstracts.length) return "";
+  const lines = [`YOUR OWN RECORDS — Title Abstracts (${abstracts.length} on file):`];
+  for (const a of abstracts) {
+    lines.push(`\nPROPERTY: ${a.property_address}${a.tmk ? ` · TMK ${a.tmk}` : ""}${a.county ? ` · ${a.county} County, ${a.state || ""}` : ""}`);
+    if (a.legal_description) lines.push(`LEGAL: ${a.legal_description}`);
+    if (a.current_owner) lines.push(`CURRENT OWNER: ${a.current_owner}${a.vesting ? ` — ${a.vesting}` : ""}`);
+    if (a.zoning || a.land_area_sqft) lines.push(`PARCEL: ${a.zoning || ""}${a.land_area_sqft ? ` · ${a.land_area_sqft.toLocaleString()} sqft` : ""}${a.assessed_value_usd ? ` · assessed $${a.assessed_value_usd.toLocaleString()}` : ""}`);
+    if (Array.isArray(a.chain_of_title) && a.chain_of_title.length) {
+      lines.push("CHAIN OF TITLE (oldest first): " + a.chain_of_title.map(c => `${c.date} ${c.grantor} → ${c.grantee} (${c.instrument}, #${c.doc_number})`).join("; "));
+    }
+    if (Array.isArray(a.liens_encumbrances) && a.liens_encumbrances.length) {
+      lines.push("LIENS/ENCUMBRANCES: " + a.liens_encumbrances.map(l => `${l.type}${l.holder ? ` — ${l.holder}` : ""}${l.amount_usd ? ` $${l.amount_usd.toLocaleString()}` : ""} [${l.status || "?"}]`).join("; "));
+    }
+    if (Array.isArray(a.easements) && a.easements.length) lines.push("EASEMENTS: " + a.easements.map(e => `${e.type} (${e.description})`).join("; "));
+    if (Array.isArray(a.exceptions) && a.exceptions.length) lines.push("STANDARD EXCEPTIONS: " + a.exceptions.join(" · "));
+    if (a.tax_status) lines.push(`TAX STATUS: ${a.tax_status}`);
+    if (a.disclaimer) lines.push(`NOTE: ${a.disclaimer}`);
+  }
+  lines.push("\nWhen asked to look up an address you HAVE on file above, give the abstract: owner + vesting, chain of title, liens/encumbrances, easements, and standard exceptions — cite the TMK and specifics. If asked about an address NOT on file, say you don't have that parcel's abstract yet (do not invent a chain of title for it).");
+  return lines.join("\n") + "\n\n";
+}
+
 const BUILDERS = {
   "platform-hr": staffCredentialsBlock,
+  "title-abstract-001": titleAbstractBlock,
   "spine-4-staff-credentials": staffCredentialsBlock,
   "vet-003-drug-dosing": vetDosingBlock,
   "edu-001-cvt-exam-prep": eduCohortBlock,

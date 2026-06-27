@@ -22,6 +22,7 @@ import EduCohortCard from "./EduCohortCard";
 import StaffRosterCard from "./StaffRosterCard";
 import ClinicalEvalCard from "./ClinicalEvalCard";
 import OerContentCard from "./OerContentCard";
+import TitleAbstractCard from "./TitleAbstractCard";
 import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
@@ -54,6 +55,7 @@ const CANVAS_COMPONENT_MAP = {
   StaffRosterCard,
   ClinicalEvalCard,
   OerContentCard,
+  TitleAbstractCard,
   RevenueDashboardCard,
   AviationCurrencyCard,
   RealEstateClosingCard,

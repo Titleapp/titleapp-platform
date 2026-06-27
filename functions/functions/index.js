@@ -25522,6 +25522,24 @@ Analyze now:`;
       }
     }
 
+    // GET /v1/title-abstract:list — title/ownership abstracts for the RE
+    // title-abstract worker (tenant-scoped). Grounds the worker's canvas the
+    // same way the chat grounds (workerOwnData.titleAbstractBlock).
+    if (route === "/title-abstract:list" && method === "GET") {
+      try {
+        const tAuth = await requireFirebaseUser(req, res);
+        if (tAuth.handled) return tAuth.res;
+        const ctx = getCtx(req, body, tAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const snap = await db.collection("title_abstracts").where("tenantId", "==", ctx.tenantId).get();
+        const abstracts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, abstracts, count: abstracts.length });
+      } catch (e) {
+        console.error("title-abstract:list failed:", e);
+        return jsonError(res, 500, "Failed to load title abstracts");
+      }
+    }
+
     // GET /v1/edu:content?q=<topic> — turn-on OER content for health_education
     // workers (the "ATTOM for nursing"): real, free, CC-BY, NCLEX-aligned
     // nursing textbooks (OpenStax O.N.E. + Open RN) with canonical links and

@@ -539,6 +539,15 @@ async function buildOerContentPayload() {
   return { title: "Course Content", results: (r && r.results) || [], note: (r && r.note) || "" };
 }
 
+async function buildTitleAbstractPayload(tabId) {
+  const r = await liveApiFetch("/v1/title-abstract:list");
+  const abstracts = (r && r.abstracts) || [];
+  if (!abstracts.length) return null;
+  const view = tabId === "chain" ? "chain" : tabId === "liens" ? "liens" : "abstract";
+  const titleMap = { abstract: "Title Abstract", chain: "Chain of Title", liens: "Liens & Encumbrances" };
+  return { view, title: titleMap[view], abstract: abstracts[0], abstracts };
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
@@ -546,6 +555,7 @@ export async function getLiveDataForTab(worker, tabId) {
     if (slug === "clinical-evaluation-001") return await buildClinicalEvalPayload(tabId);
     if (slug === "student-eval-001")        return await buildClinicalEvalPayload(tabId);
     if (slug === "nursing-education-001")   return tabId === "content" ? await buildOerContentPayload() : await buildClinicalEvalPayload(tabId);
+    if (slug === "title-abstract-001")      return await buildTitleAbstractPayload(tabId);
     if (slug === "vet-003-drug-dosing")     return await buildVetDosingPayload(tabId);
     if (slug === "edu-001-cvt-exam-prep")   return await buildEduCohortPayload(tabId);
     if (slug === "fundraise")               return await buildFundraisePayload(tabId);
