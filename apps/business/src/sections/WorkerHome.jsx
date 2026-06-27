@@ -78,27 +78,41 @@ export default function WorkerHome() {
       const token = localStorage.getItem("ID_TOKEN");
       const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-      // Load workspaces to get activeWorkers
-      const wsResp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const wsData = await wsResp.json();
-      // Scope to the CURRENT persona only — NEVER union across workspaces (that
-      // showed every persona the same workers). Match the active tenant.
-      // Use WORKSPACE_ID — the app's authoritative current-workspace key (AppShell).
-      // TENANT_ID can lag behind when switching into the Vault, which showed the
-      // previous business workspace's workers on the Vault dashboard.
-      let currentWs = null;
-      try { currentWs = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
       const allWorkerSlugs = new Set();
-      if (wsData.ok && wsData.workspaces) {
-        const current = wsData.workspaces.find(ws => ws.id === currentWs)
-          || wsData.workspaces.find(ws => ws.isDefault)
-          || wsData.workspaces[0];
-        for (const w of (current?.activeWorkers || [])) {
-          const s = typeof w === "string" ? w : w.slug || w.id;
-          // Filter out Alex duplicates — chief-of-staff is added explicitly
-          if (!ALEX_SLUGS.has(s)) allWorkerSlugs.add(s);
+
+      // Personal Space (Vault) scopes to the persona's OWN subscribed workers —
+      // the SAME ACTIVE_WORKERS list the Vault dashboard reads. The /v1/workspaces
+      // fetch below only knows BUSINESS workspaces; in the vault the lookup misses
+      // and falls back to the business workspace, which wrongly showed all 8
+      // business workers on the personal worker grid (Sean, 2026-06-26). Match
+      // VaultDashboard's source so the two views agree.
+      const isPersonal = (localStorage.getItem("VERTICAL") || "") === "consumer";
+      if (isPersonal) {
+        let active = [];
+        try { active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch (_) { /* blocked */ }
+        for (const w of active) {
+          const s = typeof w === "string" ? w : (w?.slug || w?.id);
+          if (s && !ALEX_SLUGS.has(s) && !(typeof w === "object" && w?.workerType === "game")) allWorkerSlugs.add(s);
+        }
+      } else {
+        // Business workspace: scope to the CURRENT persona only — NEVER union
+        // across workspaces. WORKSPACE_ID is the app's authoritative current-
+        // workspace key; TENANT_ID can lag when switching, so prefer the former.
+        const wsResp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const wsData = await wsResp.json();
+        let currentWs = null;
+        try { currentWs = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
+        if (wsData.ok && wsData.workspaces) {
+          const current = wsData.workspaces.find(ws => ws.id === currentWs)
+            || wsData.workspaces.find(ws => ws.isDefault)
+            || wsData.workspaces[0];
+          for (const w of (current?.activeWorkers || [])) {
+            const s = typeof w === "string" ? w : w.slug || w.id;
+            // Filter out Alex duplicates — chief-of-staff is added explicitly
+            if (!ALEX_SLUGS.has(s)) allWorkerSlugs.add(s);
+          }
         }
       }
 
