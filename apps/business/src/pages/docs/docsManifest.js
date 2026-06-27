@@ -40,6 +40,12 @@ export const DOCS_MANIFEST = [
     ],
   },
   {
+    section: "Trust & Compliance",
+    pages: [
+      { slug: "trust-and-data-integrity", title: "Trust & Data Integrity", description: "How SOCIII handles your data: append-only records, independent anchoring, FERPA, CMEK, incident response, and education-sector pricing — the full picture, no procurement theater." },
+    ],
+  },
+  {
     section: "Reference",
     pages: [
       { slug: "api",          title: "API reference",       description: "Stable HTTP surface for worker authoring + runtime." },
