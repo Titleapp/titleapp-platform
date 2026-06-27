@@ -25522,6 +25522,25 @@ Analyze now:`;
       }
     }
 
+    // GET /v1/edu:content?q=<topic> — turn-on OER content for health_education
+    // workers (the "ATTOM for nursing"): real, free, CC-BY, NCLEX-aligned
+    // nursing textbooks (OpenStax O.N.E. + Open RN) with canonical links and
+    // the attribution a CC-BY reuse requires. Proprietary ATI content is NOT
+    // here — it connects per-institution via LTI (connector id: ati_lti).
+    if (route === "/edu:content" && method === "GET") {
+      try {
+        const cAuth = await requireFirebaseUser(req, res);
+        if (cAuth.handled) return cAuth.res;
+        const { findNursingContent } = require("./services/education/oerCatalog");
+        const q = (req.query && (req.query.q || req.query.topic)) || (body && (body.q || body.topic)) || "";
+        const out = findNursingContent(q);
+        return res.json(out);
+      } catch (e) {
+        console.error("edu:content failed:", e);
+        return jsonError(res, 500, "Failed to load open nursing content");
+      }
+    }
+
     // GET /v1/vet:dosing — VET-003 drug-dosing worker data: the pending
     // proposal (awaiting approval), approved order history, protocol library,
     // and headline KPIs. Reads dosing_orders + protocol_library by tenant.

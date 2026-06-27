@@ -454,6 +454,49 @@ const CONNECTORS = {
     envKey: "LINKEDIN_CLIENT_ID",
     oauthRequired: true,
   },
+
+  // ── EDUCATION / NURSING (turn-on like ATTOM-for-real-estate) ──
+  // A nursing/education worker is only as good as the course material + testing
+  // it can reach. These are the "turn it on" data sources for health_education:
+  // free, current, NCLEX-aligned open content (OpenStax, Open RN) plus the
+  // institution's existing testing partner (ATI) via the LTI standard.
+  openstax_nursing: {
+    id: "openstax_nursing",
+    label: "OpenStax Nursing (free textbooks)",
+    description: "Pulls current, peer-reviewed nursing course content from OpenStax's 8-book O.N.E. series — aligned to the 2023 NCLEX-PN/RN test plans. Free and openly licensed (CC BY 4.0).",
+    verticals: ["health_education"],
+    costPerSession: 0.00,
+    costLabel: "Free — open educational resource (CC BY 4.0)",
+    tierRequired: "free",
+    requiresRaas: false,
+    serviceName: "openstax_nursing",
+    envKey: null,
+  },
+  openrn: {
+    id: "openrn",
+    label: "Open RN (free textbooks + VR sims)",
+    description: "Pulls Open RN nursing textbooks and 25 virtual-reality patient-care scenarios (Chippewa Valley Technical College / WTCS) — aligned to the NCLEX-RN test plan. Free and openly licensed (CC BY 4.0).",
+    verticals: ["health_education"],
+    costPerSession: 0.00,
+    costLabel: "Free — open educational resource (CC BY 4.0)",
+    tierRequired: "free",
+    requiresRaas: false,
+    serviceName: "openrn",
+    envKey: null,
+  },
+  ati_lti: {
+    id: "ati_lti",
+    label: "ATI Nursing (your institution's account)",
+    description: "Connects your school's existing ATI subscription via the LTI Advantage standard — launch ATI assessments, embed content (Deep Linking), pull scores back to your gradebook (AGS), and share rosters (NRPS). Uses your institution's ATI license; we don't resell ATI content.",
+    verticals: ["health_education"],
+    costPerSession: 0.00,
+    costLabel: "Included with your institution's ATI subscription (connected via LTI)",
+    tierRequired: "paid",
+    requiresRaas: false,
+    serviceName: "ati_lti",
+    envKey: null, // per-tenant LTI client credentials, not a platform key
+    ltiRequired: true,
+  },
 };
 
 /**
@@ -471,6 +514,10 @@ const VERTICAL_ALIASES = {
   "health-ems": "health_ems",
   "health": "health_ems",
   "healthcare": "health_ems",
+  "education": "health_education",
+  "nursing": "health_education",
+  "nursing_education": "health_education",
+  "health-education": "health_education",
 };
 
 function getConnectorsForVertical(vertical) {

@@ -87,21 +87,99 @@ Also implied by "LMS of record": **SSO/SAML** against the university IdP, scale/
 
 ---
 
-## 5. Suggested first moves for Claude Code
+## 5. The data layer — turn-on connectors (like ATTOM for real estate)
 
-Start narrow and real. In rough order:
+A vertical worker is only as good as the data it can reach. In real estate, a worker "turns on" ATTOM and can look up any property. **We built the same thing for nursing.** The platform has a **Connector Registry** (`functions/functions/config/connectors.js`) where each data source is declared once; Alex offers it; the creator says yes; the worker is connected — no API keys, no endpoints, ever visible to the creator.
 
-1. **Sync the fork** (see §6) so you're on current platform code — the data-driven canvas renderer, worker spec format, DTC/logbook, and chat grounding all landed recently.
-2. **Model the nursing learning record** as DTC/logbook entry types: `course_grade`, `competency_attainment`, `clinical_hour`, `ati_assessment_score`. Append-only, attributed, approvable. Lean on the existing substrate — don't make a new store.
-3. **Stub the LTI 1.3 Platform** (issuer, deployment, JWKS, OIDC launch) — enough to launch *one* ATI tool in a sandbox and receive one AGS score back. Prove the loop: ATI score → AGS → DTC entry → anchored.
-4. **One nursing-native surface** that a generic LMS does badly — pick **competency tracker** or **clinical-hour log** — rendered through the existing canvas spec, reading the new record types.
-5. **Accessibility pass** on whatever UI you build, every time (WCAG 2.1 AA).
+New `health_education` connectors (live in the registry now):
+- **`openstax_nursing`** — OpenStax's 8-book O.N.E. series (Fundamentals, Pharmacology, Med-Surg, Maternal-Newborn, Psych-Mental-Health, Clinical Skills, Nutrition, Population Health). **Free, CC BY 4.0, aligned to the 2023 NCLEX-PN/RN test plans.**
+- **`openrn`** — Open RN textbooks + **25 VR patient-care scenarios** (CVTC / WTCS). Free, CC BY 4.0, NCLEX-RN aligned.
+- **`ati_lti`** — the school's *existing* ATI subscription, connected via LTI (we don't resell ATI; the institution's license powers it).
 
-Keep it a **wedge**, not a Canvas clone. The win is "nursing programs get a provable competency transcript + native ATI integration," not "feature parity with Blackboard."
+Backend that powers this (real, deployed): `functions/functions/services/education/oerCatalog.js` (verified catalog + `findNursingContent(topic)`), exposed at **`GET /v1/edu:content?q=<topic>`**. Try it: ask for "cardiac rhythms" and it returns the real Med-Surg + Health-Alterations books with canonical links and the CC-BY attribution to carry.
+
+**Important reframe (this changes the strategy):** open nursing content is no longer "dated." OpenStax + Open RN are current, peer-reviewed, NCLEX-aligned, and free. So **content is largely a solved, free input.** ATI's real value is *assessment, item banks, and NCLEX-readiness analytics* — not the textbook. That tells you where to compete (the LMS + record + AI tutoring on top of free content) and where to integrate (keep ATI for testing via LTI).
+
+**For Code:** new connectors snap into the same registry as everything else. If you add another source (e.g., a state Board of Nursing feed, a sim-data provider), declare it in `config/connectors.js` with `verticals: ["health_education"]` and back it with a service module — don't hardcode it into a worker.
 
 ---
 
-## 6. Staying current with the platform (fork sync)
+## 6. Connect the campus you already have (Google Workspace + MCP)
+
+U of H runs on **Google Workspace (Drive + Gmail).** SOCIII already has **MCP connections to Google Drive and Gmail**, so a nursing worker can read/return course files, rubrics, and email *in the systems faculty already use* — no migration required. This is a low-friction wedge: "keep your Google Drive; the worker just works on top of it." (One connector per suite = email + Drive pickup; OneDrive is the fast-follow for Microsoft campuses.)
+
+For Code: when a workflow needs a document or an email, prefer the **Google Drive / Gmail MCP tools** over asking the user to upload — it meets U of H where they are.
+
+---
+
+## 7. Patient simulations → generated clinical visuals (a real opportunity)
+
+Ruthie's patient simulations today are essentially **data, not pictures** — rhythm strips, vital-sign sets, lab values, I&O, measurements. There's no *visual* of the patient or the waveform the student would actually see at the bedside. **That gap is an image-generation opportunity:** turn the sim's structured data into the visual a nurse must learn to read — an ECG/telemetry strip, a wound-progression image, a fundal-height or fetal-monitor tracing, a med label, a clinical scene.
+
+How it should work on SOCIII:
+- The sim data is the **source of truth** (typed, in the record). The image is a **rendering of that data**, generated on demand — never invented facts. (E.g., "sinus tach at 130, ST depression in II" → a strip that actually shows that.)
+- This is governed by **RAAS rules for imagery**, not free-form prompting — the differentiator is *provenance*: every generated clinical image is tied to the data it came from and attributed/anchored, so it's safe to use in instruction and assessment. (See platform work on RAAS governance for imagery + voice.)
+- Existing tooling: the chat runtime already has `generate_image`; the nursing build should call it from sim data with a clinical-accuracy rule layer, and store the result against the student/scenario record.
+
+For Code + chat + Ruthie to "understand this": a sim scenario object should carry both its **data** and a **`visualize` capability** that renders the strip/image from that data. Chat should be able to say "show me the rhythm" and produce the real strip for *this* patient's numbers.
+
+---
+
+## 8. Wearables — live and simulated physiologic data
+
+Two angles, both on-brand for the record-first model:
+1. **Simulation realism:** wearable-style streams (HR, SpO₂, ECG, BP trends) make a sim feel live and give students time-series to interpret — the same data that feeds §7's generated strips.
+2. **Real wearable data** (Apple Health, Fitbit, clinical monitors) as a future connector: physiologic data flowing into a governed, append-only record the student or clinician owns — exactly the Vault model. Treat it as another **turn-on connector** when it's time, with consent + provenance built in.
+
+Keep it framed as data → record → (optional) generated visual, so it composes with everything else rather than being a one-off.
+
+---
+
+## 9. Consolidate the scattered great ideas into one governed corpus
+
+Faculty (including Ruthie) have built lots of valuable but **scattered** material — little sites, spreadsheets, slide decks, handouts. Today that knowledge is siloed, un-versioned, and dies on someone's laptop. **SOCIII's append-only, attributed, versioned record is the natural place to unify it:** ingest the scattered artifacts into **one governed course/content corpus** where each piece keeps its author attribution, has a version history, and can be improved without losing provenance.
+
+This is a genuine wedge — it's the OER weakness (maintenance/consolidation) that the open textbooks *don't* solve, and it's something neither ATI nor a generic LMS offers. The "living, consolidated, attributed nursing curriculum" is a story faculty will feel immediately.
+
+For Code: model ingested materials as content records with `author`, `source`, `version`, `license` — reuse the worker-spec + DTC patterns; don't build a separate CMS.
+
+---
+
+## 10. The whole point — Vault records + digital signatures, working when you click
+
+This is what makes Ruthie's vision *win*: it's one thing to **describe** a connected system, and another to **click and watch the pieces work together.** The demo has to show the loop closing:
+
+- A clinical evaluation or competency sign-off the instructor completes →
+- **digitally signed** (instructor attests; SOCIII anchors the signature into the audit trail) →
+- written as an **append-only record into the student's Vault** (their durable, portable transcript of competency — see [[learning-record-substrate]] / Vault as the student's system of record) →
+- visible to the student, exportable, and **provably theirs** — not trapped in an LMS that forgets them at graduation.
+
+So the chain to make real and demoable:
+**ATI/sim score or instructor evaluation → propose → instructor approves + digitally signs → append to student Vault → anchored → student sees their verified competency record.**
+
+Make every link **clickable and visible**, not narrated. The "wow" is the student opening their Vault and seeing a signed, dated, verifiable competency that an instructor attested and the system can prove — portable for life. That is Ruthie's grand vision, and it's exactly what SOCIII is built to do; our job is to make it tangible on screen.
+
+For Code, this means the nursing record types (§ "first moves" below) must: be **append-only**, carry an **attributed digital signature**, write into the **student's Vault**, and **anchor** on completion. Wire the existing signature + anchor + Vault substrates together for one real evaluation end-to-end before adding breadth.
+
+---
+
+## 11. Suggested first moves for Claude Code
+
+Start narrow and real. In rough order:
+
+1. **Sync the fork** (see §12) so you're on current platform code — the data-driven canvas renderer, worker spec format, DTC/logbook, chat grounding, the new `health_education` connectors (§5), and the `GET /v1/edu:content` OER endpoint all landed recently.
+2. **Model the nursing learning record** as DTC/logbook entry types: `course_grade`, `competency_attainment`, `clinical_hour`, `ati_assessment_score`, `clinical_evaluation`. Append-only, attributed, **digitally signed**, approvable. Lean on the existing substrate — don't make a new store.
+3. **Close ONE loop end-to-end and make it clickable (§10 is the whole point):** instructor completes a clinical evaluation → **proposes → approves + digitally signs** → appends to the **student's Vault** → **anchors** → student opens their Vault and sees the verified, dated, signed competency. Wire the existing signature + anchor + Vault substrates together — this single visible loop is more convincing than any breadth.
+4. **Turn on the OER data layer (§5):** have the worker pull real content via `/v1/edu:content` (e.g. "show me cardiac-rhythm material") and cite it with CC-BY attribution. Content is free and solved — use it.
+5. **Sim-data → generated visual (§7):** take a sim scenario's numbers (e.g. "sinus tach 130, ST depression II") and render the actual rhythm strip via `generate_image`, stored against the scenario/student record. Make chat able to say "show me the rhythm."
+6. **One nursing-native surface** a generic LMS does badly — **competency tracker** or **clinical-hour log** — rendered through the canvas spec, reading the new record types. (The staff-credentials roster card is a good visual model.)
+7. **Accessibility pass** on every UI you build (WCAG 2.1 AA) — non-negotiable for U of H (§4).
+
+Keep it a **wedge**, not a Canvas clone. The win is "nursing programs get a provable, signed, portable competency transcript + native ATI integration + free current content," not "feature parity with Blackboard." And remember the Trump Rule: **show it working on screen — don't describe it.**
+
+---
+
+## 12. Staying current with the platform (fork sync)
 
 Your fork `ruthie-lgtm/titleapp-platform` is the **full platform fork** (you're creator #1, you stay on the full fork). As of this brief it was **~220 commits behind** upstream `Titleapp/titleapp-platform` and **0 ahead** — i.e. nothing of yours to lose, a clean fast-forward. Get current before building:
 
@@ -127,9 +205,12 @@ After syncing, you'll have: the data-driven canvas renderer (the keystone that m
 
 ---
 
-## 7. Open questions for Sean / counsel (not for Code to invent)
+## 13. Open questions for Sean / counsel (not for Code to invent)
 
 - FERPA addendum + DPA — counsel to attach.
 - VPAT / accessibility audit status.
 - Whether ATI will launch as a tool inside a new third-party LMS (Ascend Integration Specialist confirmation).
 - Scope: full nursing LMS vs. wedge-that-grows (Sean's lean: **wedge first**).
+- Clinical-image generation (§7): the RAAS rule layer for clinical accuracy + the disclaimer/governance posture for instructional vs. assessment use.
+- Wearables (§8): consent + data-handling model before any real device data flows in.
+- Consolidation (§9): which scattered faculty materials to ingest first, and confirming reuse rights/licensing for non-OER instructor content.
