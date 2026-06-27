@@ -22,6 +22,8 @@ function getCommunicationModule() { if (!_communication) _communication = requir
 function getIntakeModule() { if (!_intake) _intake = require("./prompts/intake"); return _intake; }
 function getOnboardingModule() { if (!_onboarding) _onboarding = require("./prompts/onboarding"); return _onboarding; }
 function getSurfacesModule() { if (!_surfaces) _surfaces = require("./prompts/surfaces"); return _surfaces; }
+let _capabilities;
+function getCapabilitiesModule() { if (!_capabilities) _capabilities = require("./prompts/capabilities"); return _capabilities; }
 function getRegistryContextModule() { if (!_registryContext) _registryContext = require("./buildRegistryContext"); return _registryContext; }
 
 // Rough token estimate: ~4 chars per token
@@ -68,10 +70,19 @@ async function assemblePrompt(options = {}) {
   // Core prompt is prepended to ALL surfaces — single source of truth
   const core = getCoreModule().getCore({ alexName, alexVoice });
 
+  // The capability menu — surfaces where a user is building/owning (and could
+  // build more). Sean 2026-06-27: surface "what's possible" everywhere it helps
+  // people build, and be generative about it (day zero — encourage adding more).
+  const CAPABILITY_SURFACES = new Set(["business", "chief-of-staff", "sandbox", "developer"]);
+  const capMenu = CAPABILITY_SURFACES.has(surface) ? getCapabilitiesModule().getCapabilityMenu() : null;
+
   // For non-business, non-chief-of-staff surfaces: core + surface overlay
   if (surface !== "business" && surface !== "chief-of-staff") {
     const overlay = getSurfacesModule().getSurfaceOverlay(surface, surfaceContext);
-    return overlay ? `${core}\n\n---\n\n${overlay}` : core;
+    const parts = [core];
+    if (overlay) parts.push(overlay);
+    if (capMenu) parts.push(capMenu);
+    return parts.join("\n\n---\n\n");
   }
 
   // Chief of Staff: core + overlay + full modular assembly (cross-vertical)
@@ -85,6 +96,10 @@ async function assemblePrompt(options = {}) {
 
   // 1. Static: Platform rules (identity is in core)
   sections.push(getRulesModule().getRules());
+
+  // 1b. Capability menu — what the platform can do + a generative "day zero,
+  // build more" stance (business + chief-of-staff owners are builders too).
+  if (capMenu) sections.push(capMenu);
 
   // Communication mode (concise/detailed/executive_summary) was previously stacked
   // into the prompt here. Removed 2026-05-21 — was a pure tone layer making chat
