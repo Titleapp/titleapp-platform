@@ -798,6 +798,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const detail = e.detail || {};
       setMessages([]);
       setGreetingCollapsed(false);
+      // Reset the active worker to Alex/COS on EVERY workspace switch. Otherwise
+      // the previous workspace's worker (e.g. Title Abstract) stays selected and
+      // its chat bleeds into the new context — in the Vault that put "the DMV
+      // person at your private wealth-management desk" (Sean, 2026-06-26). The
+      // Vault canvas renders by section, so only the chat side persisted.
+      setActiveWorkerName(null);
+      setActiveWorkerSlug(null);
+      try { if (workerCtx?.selectWorker) workerCtx.selectWorker(null); } catch (_) { /* no ctx */ }
+      try {
+        const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem("ta_chat_session_id", newSid);
+      } catch {}
       // Reload conversation history for the new workspace
       if (currentUser) {
         loadConversationHistory();
