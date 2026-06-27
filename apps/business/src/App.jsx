@@ -4536,10 +4536,21 @@ function WorkerHomeRenderer({ onBack }) {
   // Re-land on the default data tab when a canvas card is dismissed, so the ×
   // returns to the worker's real home instead of a blank canvas.
   React.useEffect(() => {
-    const onReland = () => { autoFiredRef.current = null; landOnFirstDataTab(); };
+    const onReland = () => {
+      autoFiredRef.current = null;
+      // panel.canvasData is still the pre-dismiss value here — dismissCanvas
+      // queued setCanvasData(null) but React hasn't flushed that batch yet.
+      // Calling showCanvas now batches with the dismiss setState, and the last
+      // setState("CANVAS") wins → canvas stays showing with no blank flash.
+      const last = panel?.canvasData;
+      if (last?.resolved && panel?.showCanvas) {
+        panel.showCanvas(last.resolved, last.context);
+      }
+      landOnFirstDataTab(); // async refresh with latest live data
+    };
     window.addEventListener("ta:reland-canvas", onReland);
     return () => window.removeEventListener("ta:reland-canvas", onReland);
-  }, [landOnFirstDataTab]);
+  }, [landOnFirstDataTab, panel]);
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
 

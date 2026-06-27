@@ -3179,7 +3179,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // property spine. Match on vertical, suite, AND slug (Sean, 2026-06-26).
               const _reHay = `${dw.vertical || ""} ${dw.suite || ""} ${workerSlug}`.toLowerCase();
               const _isReWorker = /real[_\s-]?estate|re_professional|\bparcel\b|zoning|appraisal|land[\s_-]?use|\bproperty\b|title[\s_-]?(abstract|escrow|search)|escrow|\bcre[\s_-]/.test(_reHay);
-              if (_isReWorker && workerSlug !== "site-recon-001") {
+              if (_isReWorker && workerSlug !== "site-recon-001" && workerSlug !== "title-abstract-001") {
                 businessTools.push({
                   name: "lookup_property",
                   description: "Pull LIVE property data for a street address — assessor/owner facts, APN, year built, lot size, building size, and recorded sale history (real ATTOM data). Call this WHENEVER the user gives or asks about a property address or parcel. NEVER tell the user to look it up at the county recorder/assessor or to upload documents — fetch it yourself; it renders on the canvas.",
