@@ -3173,7 +3173,12 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // PLATFORM connector: any RE worker — including ones a creator builds
               // later — inherits it. ATTOM key held by the platform, metered as
               // Data Credits. Site Recon keeps its richer feasibility tool above.
-              const _isReWorker = /real[_\s-]?estate|re_professional/i.test(String(dw.vertical || ""));
+              // RE + RE-ADJACENT: catch the real-estate verticals AND property-data
+              // workers living in other verticals (gov parcel/zoning, Big-Law RE,
+              // CRE analysts). Any worker that reasons about a parcel needs the
+              // property spine. Match on vertical, suite, AND slug (Sean, 2026-06-26).
+              const _reHay = `${dw.vertical || ""} ${dw.suite || ""} ${workerSlug}`.toLowerCase();
+              const _isReWorker = /real[_\s-]?estate|re_professional|\bparcel\b|zoning|appraisal|land[\s_-]?use|\bproperty\b|title[\s_-]?(abstract|escrow|search)|escrow|\bcre[\s_-]/.test(_reHay);
               if (_isReWorker && workerSlug !== "site-recon-001") {
                 businessTools.push({
                   name: "lookup_property",
