@@ -876,6 +876,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     const lower = message.toLowerCase();
     const workers = visibleWorkers;
 
+    // Don't hijack a question ABOUT a worker ("what is this worker for and how do
+    // I use it?") as a worker SEARCH. The "workers? for (.+)" pattern below was
+    // grabbing "...worker for and how do i use it?" and returning "No workers
+    // found matching 'and how do i use it?'" (Sean, 2026-06-26).
+    if (/\bthis worker\b|how (do|does|to) (i |you )?(use|work)|what (is|are|does|can) (this|it|you)\b/i.test(message)) return null;
+
     // "show me X workers" / "X workers" / "workers for X" / "browse X" / "find X worker"
     const patterns = [
       /show\s+me\s+(.+?)\s+workers?/i,
@@ -911,9 +917,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   function getLocalResponse(message) {
     const lower = message.toLowerCase();
 
-    // Worker discovery queries (no vertical bias — searches the full worker registry)
-    const workerResult = matchWorkerQuery(message);
-    if (workerResult) return workerResult;
+    // Worker discovery queries (no vertical bias — searches the full worker
+    // registry). ONLY when NOT inside a worker — if a worker is selected the user
+    // is talking TO it, not browsing the catalog, so discovery interception must
+    // not fire (that's what turned in-worker questions into "no workers found").
+    const _activeSlug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
+    const _inWorker = _activeSlug && _activeSlug !== "chief-of-staff";
+    if (!_inWorker) {
+      const workerResult = matchWorkerQuery(message);
+      if (workerResult) return workerResult;
+    }
 
     // Demo Mode clear-intent: point at the orange Clear button on the canvas, no backend hop needed.
     const mentionsSamples = lower.includes('sample data') || lower.includes('demo data') || (lower.includes('sample') && lower.includes('data'));
