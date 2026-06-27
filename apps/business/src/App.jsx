@@ -4500,36 +4500,46 @@ function WorkerHomeRenderer({ onBack }) {
   // with no signal/payload at all falls back to the landing.
   // Chat-emitted signals always win — handled by the existing CANVAS state.
   const autoFiredRef = React.useRef(null);
+  // Land on the first tab that actually resolves DATA. Reusable so we can also
+  // re-land when the user dismisses a canvas card (× ) — otherwise closing the
+  // overlay left the underlying canvas BLANK (Sean, 2026-06-26, seen on CVT /
+  // Drug Dosing / Staff Credentials). Scan in order (default first), fire the
+  // first tab that yields live OR fixture data.
+  const landOnFirstDataTab = React.useCallback(async () => {
+    if (!worker?.slug || tabs.length === 0) return;
+    const slug = worker.slug;
+    const ordered = [...tabs].sort((a, b) => (b.default ? 1 : 0) - (a.default ? 1 : 0));
+    for (const tab of ordered) {
+      if (worker.slug !== slug) return; // worker changed mid-scan
+      const resolved = lookupSignal(tab.signal);
+      if (!resolved) continue;
+      let payload = null;
+      try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
+      if (!payload) payload = getFixtureForTab(worker, tab.id);
+      if (!payload) continue; // no data for this tab — try the next one
+      setActiveTabId(tab.id);
+      if (panel?.showCanvas) panel.showCanvas(resolved, { worker, payload });
+      return; // landed on real data
+    }
+    // No tab yielded data — leave the onboarding landing in place.
+  }, [worker, tabs, panel]);
+
   React.useEffect(() => {
     if (!worker?.slug || tabs.length === 0) return;
     if (panel?.state === "CANVAS") return; // a chat signal already drove us here
     if (autoFiredRef.current === worker.slug) return;
     autoFiredRef.current = worker.slug;
     markWorkerVisitedAndCheck(worker.slug); // keep visit bookkeeping (side effect)
-    const slug = worker.slug;
-    // Land on the first tab that actually resolves DATA. Many workers' default
-    // tab is a generic "Dashboard"/"Calculator" with no payload — it falls to
-    // the "General guidance mode" advisory wall (Britney-rule violation) while
-    // the real roster/credentials/orders/records sit in the next tab. Scan in
-    // order (default first), fire the first tab that yields live OR fixture data.
-    const ordered = [...tabs].sort((a, b) => (b.default ? 1 : 0) - (a.default ? 1 : 0));
-    (async () => {
-      for (const tab of ordered) {
-        if (autoFiredRef.current !== slug) return; // worker changed mid-scan
-        const resolved = lookupSignal(tab.signal);
-        if (!resolved) continue;
-        let payload = null;
-        try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
-        if (!payload) payload = getFixtureForTab(worker, tab.id);
-        if (!payload) continue; // no data for this tab — try the next one
-        if (panel?.state === "CANVAS") return; // a chat signal won the race
-        setActiveTabId(tab.id);
-        if (panel?.showCanvas) panel.showCanvas(resolved, { worker, payload });
-        return; // landed on real data
-      }
-      // No tab yielded data — leave the onboarding landing in place.
-    })();
-  }, [worker?.slug, tabs, panel]);
+    landOnFirstDataTab();
+  }, [worker?.slug, tabs, panel, landOnFirstDataTab]);
+
+  // Re-land on the default data tab when a canvas card is dismissed, so the ×
+  // returns to the worker's real home instead of a blank canvas.
+  React.useEffect(() => {
+    const onReland = () => { autoFiredRef.current = null; landOnFirstDataTab(); };
+    window.addEventListener("ta:reland-canvas", onReland);
+    return () => window.removeEventListener("ta:reland-canvas", onReland);
+  }, [landOnFirstDataTab]);
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
 

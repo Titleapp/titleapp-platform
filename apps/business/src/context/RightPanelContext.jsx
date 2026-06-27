@@ -123,7 +123,14 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const dismissCanvas = useCallback(() => {
     setCanvasData(null);
     setState(prevStateRef.current || originRef.current);
-  }, []);
+    // Inside a worker, closing a canvas card must NOT leave a blank canvas —
+    // re-land on the worker's first data tab (Sean, 2026-06-26: × → blank on
+    // CVT / Drug Dosing / Staff Credentials). App.jsx listens for this and
+    // re-runs landOnFirstDataTab. Outside a worker (discovery), no-op.
+    if (activeWorkerData) {
+      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas")); } catch (_) { /* SSR/no-window */ }
+    }
+  }, [activeWorkerData]);
 
   // 49.31 — Force the canvas pane open without changing canvasData. Used when
   // ChatPanel receives canvasRenders[] and needs the panel visible immediately.
