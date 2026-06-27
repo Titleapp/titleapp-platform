@@ -42,6 +42,12 @@ const WORKER_SIGNALS = {
   "platform-control-center-pro": [
     { keywords: ["revenue", "mrr", "subscribers", "churn"], signal: "card:control-center-revenue" },
   ],
+
+  // Real-estate — Title Abstract worker (renders the abstract, not a closing).
+  // Worker-specific rules win over the vertical "card:real-estate-closing" map.
+  "title-abstract-001": [
+    { keywords: ["title abstract", "abstract", "chain of title", "title", "deed", "lien", "encumbrance", "easement", "parcel", "tmk", "ownership", "vesting"], signal: "card:title-abstract" },
+  ],
 };
 
 // ═══════════════════════════════════════════════════════════════
