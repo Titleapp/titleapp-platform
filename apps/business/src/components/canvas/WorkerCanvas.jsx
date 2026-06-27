@@ -960,8 +960,16 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
       icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
     },
   };
-  const operatingMode = "advisory";
+  // Data-aware operating mode. The old hardcoded "advisory" meant EVERY worker
+  // showed "General guidance mode — add your documents to unlock personalized
+  // insights" even when its tabs were full of real records (HR's Team Roster,
+  // Accounting's ledger) — the recurring "Britney rule" Sean kept flagging. The
+  // band now only appears for the actionable "flagged" state or the positive
+  // "pro" state (real briefing data); the misleading advisory banner is never
+  // shown, since the worker's real data is right there in its tabs.
+  const operatingMode = briefingData ? "pro" : "advisory";
   const modeInfo = MODE_CONFIG[operatingMode];
+  const showModeBand = operatingMode !== "advisory";
 
   // Arrival state machine
   const [arrivalPhase, setArrivalPhase] = useState("idle");
@@ -1228,7 +1236,11 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 </div>
               )}
 
-              {/* Operating mode band — repositioned below title (49.12) */}
+              {/* Operating mode band — repositioned below title (49.12). Only
+                  shown for the positive "pro" or actionable "flagged" states;
+                  the misleading "advisory / add your documents" banner is
+                  suppressed (Sean, 2026-06-26 — Britney rule). */}
+              {showModeBand && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "8px 12px", borderRadius: 8,
@@ -1243,6 +1255,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   {modeInfo.label}
                 </span>
               </div>
+              )}
 
               {/* Capability summary */}
               {w.capabilitySummary && (
