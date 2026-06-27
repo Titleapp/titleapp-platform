@@ -3168,6 +3168,20 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 });
               }
 
+              // 2026-06-26 — EVERY real-estate worker can pull live property data
+              // by address, not only Site Recon. The vertical's data spine is a
+              // PLATFORM connector: any RE worker — including ones a creator builds
+              // later — inherits it. ATTOM key held by the platform, metered as
+              // Data Credits. Site Recon keeps its richer feasibility tool above.
+              const _isReWorker = /real[_\s-]?estate|re_professional/i.test(String(dw.vertical || ""));
+              if (_isReWorker && workerSlug !== "site-recon-001") {
+                businessTools.push({
+                  name: "lookup_property",
+                  description: "Pull LIVE property data for a street address — assessor/owner facts, APN, year built, lot size, building size, and recorded sale history (real ATTOM data). Call this WHENEVER the user gives or asks about a property address or parcel. NEVER tell the user to look it up at the county recorder/assessor or to upload documents — fetch it yourself; it renders on the canvas.",
+                  input_schema: { type: "object", properties: { address: { type: "string", description: "Full street address incl. city + state, e.g. '564 Kaukau St, Hilo, HI 96720'" } }, required: ["address"] },
+                });
+              }
+
               // 2026-06-26 — image-tool honesty. The Marketing worker was
               // DESCRIBING images it never generated ("I created four images and
               // added them to your canvas") then contradicting itself — a
@@ -3197,6 +3211,7 @@ IMAGE & VISUAL RULES (MANDATORY):
               let liveDistressed = null; // S52.44 — populated by find_distressed_cre tool
               let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
               let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
+              let liveReLookup = null;   // 2026-06-26 — populated by lookup_property (generic RE)
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
@@ -3363,6 +3378,30 @@ IMAGE & VISUAL RULES (MANDATORY):
                 } catch (srErr) {
                   console.warn(`[worker:${workerSlug}] site_recon_lookup failed:`, srErr.message);
                 }
+              }
+              if (toolBlock && toolBlock.name === 'lookup_property') {
+                try {
+                  const addr = String(toolBlock.input.address || "").trim();
+                  const { lookupAddress } = require("./services/re/liveLookup");
+                  const r = await lookupAddress(addr, process.env.ATTOM_API_KEY);
+                  if (!r.ok) {
+                    aiText = r.error || `I couldn't pull a property record for "${addr}".`;
+                  } else {
+                    const a = r.attom;
+                    const facts = [
+                      `Address: ${a.address}`,
+                      `APN: ${a.apn || "—"}`,
+                      `Type: ${a.propType || "—"} · Built: ${a.yearBuilt || "—"}`,
+                      `Lot: ${a.lotSizeAcres ? a.lotSizeAcres + " ac" : "—"} · Building: ${a.bldgSqft ? Number(a.bldgSqft).toLocaleString() + " sqft" : "—"}`,
+                      `Recorded sales: ${(a.sales || []).filter(s => s.amount || s.date).map(s => `${s.amount ? "$" + Number(s.amount).toLocaleString() : "?"}${s.date ? " (" + s.date + ")" : ""}`).join("; ") || "none on file"}`,
+                    ].join("\n");
+                    liveReLookup = { address: a.address, lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null, facts };
+                    const toolResultText = `Live ATTOM pull for ${addr}. Present these REAL facts in plain English, framed through THIS worker's specialty (e.g. a title worker reads the ownership/lien picture from them and flags what still needs a deeper paid title search). Be specific with the numbers below; do NOT tell the user to go research it themselves — you already pulled it:\n${facts}`;
+                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
+                    aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
+                  }
+                } catch (e) { console.warn(`[worker:${workerSlug}] lookup_property failed:`, e.message); }
               }
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
 
@@ -3626,6 +3665,18 @@ IMAGE & VISUAL RULES (MANDATORY):
                     region: liveSiteRecon.address,
                     mapType: "satellite",
                     locations: [{ address: liveSiteRecon.address, label: _verdictLabel, lat: liveSiteRecon.lat, lng: liveSiteRecon.lng }],
+                  },
+                });
+              }
+              // Generic RE property lookup → live map card (any RE worker).
+              if (liveReLookup && liveReLookup.lat != null && liveReLookup.lng != null) {
+                workerCanvasRenders.push({
+                  type: "card:re-map",
+                  payload: {
+                    title: `${workerName} — ${liveReLookup.address} (live ATTOM)`,
+                    region: liveReLookup.address,
+                    mapType: "satellite",
+                    locations: [{ address: liveReLookup.address, label: liveReLookup.address, lat: liveReLookup.lat, lng: liveReLookup.lng }],
                   },
                 });
               }
