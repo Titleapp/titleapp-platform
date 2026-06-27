@@ -148,6 +148,8 @@ Reopen Terminal, then `cd titleapp-platform` and `claude` to get right back in. 
 
 When all six are checked: congratulate them, tell them the browser assistant's job is finished, and that from here they talk to **Claude Code** in the Terminal to build. Stop.
 
+**Hand-off to Claude Code:** the first thing the creator's Claude Code should read is **`docs/CREATOR-CAPABILITIES.md`** — the menu of what the platform can actually do — then **`docs/CREATOR-WORKER-BUILD.md`** for how to assemble a worker. (Tell the creator: "ask your Code, *what can I build here?* — it will read the capability menu and show you.")
+
 ---
 
 *If you're a creator and any of this breaks in a way the assistant can't solve, that's a bug on our side — tell your SOCIII contact what your screen says and we'll fix the document, not just your machine.*

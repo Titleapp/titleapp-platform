@@ -2,6 +2,8 @@
 
 This is the technical companion to `CREATOR-ONBOARDING.md`. Read that first.
 
+> **Before you build, read `CREATOR-CAPABILITIES.md` — the menu of what's actually possible** (live data connectors, real owned records + Vault, digital signatures + anchoring, generated visuals from data, reaching the user's Google Drive/Gmail, rules + approval gates). Most people under-build because they don't know these exist. This guide is *how to assemble* a worker; that one is *what you can put in it*.
+
 ## The five files every worker has
 
 Every worker in `creators/<your-handle>/<worker-slug>/` ships with these five files. They are the contract.
