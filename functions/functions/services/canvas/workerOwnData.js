@@ -158,6 +158,17 @@ async function contactsBlock(db, tenantId) {
   const top = Object.entries(segCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const lines = [`YOUR OWN RECORDS — Contacts (${contacts.length} total):`];
   if (top.length) lines.push("SEGMENTS: " + top.map(([s, n]) => `${s} (${n})`).join(", ") + ".");
+  // Include the actual roster (name + pet + segments + email) so chat can ANSWER
+  // "who are the rabbit owners" by name instead of saying it only sees counts —
+  // the canvas lists every contact, chat must be able to as well (Sean, 6/26).
+  const roster = contacts.slice(0, 250).map(c => {
+    const name = c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || "Unknown";
+    const pet = c.petInfo || (c.species ? `${c.species} owner` : "");
+    const segs = (c.segments || []).join("/");
+    return `- ${name}${pet ? ` — ${pet}` : ""}${segs ? ` [${segs}]` : ""}${c.email ? ` · ${c.email}` : ""}`;
+  });
+  lines.push(`CONTACT ROSTER (name — pet [segments] · email), ${roster.length} of ${contacts.length}:\n` + roster.join("\n"));
+  lines.push("When the user asks which contacts match a segment (e.g. rabbit-owners), list them BY NAME from the roster above — do not say you only see counts.");
   return lines.join("\n") + "\n\n";
 }
 

@@ -62,6 +62,10 @@ const SURFACES = [
   { id: "platform-contacts", worker: "platform-contacts", msg: "How many contacts do I have and what are the main segments?",
     expectDomain: /contact|client|owner|pet|segment|dog|cat|rabbit/i,
     expectData: /\b\d{2,4}\b[\s\w]{0,12}(contact|client|owner|record)|\b(160|161|159)\b/i, forbid: FORBID_NODATA },
+  { id: "platform-contacts-byname", worker: "platform-contacts", msg: "Which of my contacts are rabbit owners? List them by name.",
+    expectDomain: /rabbit|owner|contact/i,
+    // The canvas lists all 13 by name; chat must too, not "I only see counts".
+    expectData: /(ava anderson|rachel lewis|ashley harris|jessica patel|sarah mitchell|mia wright|sophia davis|megan foster|lily green)/i, forbid: FORBID_NODATA },
   { id: "platform-hr", worker: "platform-hr", msg: "Whose credential is currently overdue?",
     expectDomain: /credential|osha|dea|staff|team|expir|overdue/i,
     expectData: /alex torres|osha bloodborne/i, forbid: FORBID_NODATA },

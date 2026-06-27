@@ -2673,11 +2673,11 @@ RESPONSE BEHAVIOR -- read this before anything else:
 ${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
 
 FORMATTING RULES -- follow these strictly:
-- Never use emojis in your responses.
-- Never use markdown formatting such as asterisks, bold, italic, or headers.
-- Never use bullet points or numbered lists unless the user explicitly asks for a list.
-- Write in complete, clean sentences. Use plain text only.
-- Keep your tone warm but professional -- direct, calm, no hype.
+- No emojis. Clean and professional -- Switzerland, not Disneyland.
+- DO format for readability. Break your answer into short paragraphs with a blank line between distinct points. NEVER return one dense wall of text.
+- When you give multiple items, figures, or steps, use a bullet or numbered list -- one item per line -- not a run-on sentence.
+- Use bold sparingly to highlight a key figure, name, or label.
+- Lead with the answer. Keep tone warm but direct, calm, no hype.
 
 RESPONSE LENGTH:
 Keep ALL chat responses under 500 words. For structured deliverables (reports, statements, calendars, dashboards, etc.), render them on the canvas via CANVAS_RENDER markers — see the canvas state block below for the format and available types. Reserve GENERATE_DOCUMENT for cases where the user explicitly asks for a downloadable file.
@@ -3840,11 +3840,11 @@ ${capabilities}
 ${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
 
 FORMATTING RULES -- follow these strictly:
-- Never use emojis in your responses.
-- Never use markdown formatting such as asterisks, bold, italic, or headers.
-- Never use bullet points or numbered lists unless the user explicitly asks for a list.
-- Write in complete, clean sentences. Use plain text only.
-- Keep your tone warm but professional -- direct, calm, no hype.
+- No emojis. Clean and professional -- Switzerland, not Disneyland.
+- DO format for readability. Break your answer into short paragraphs with a blank line between distinct points. NEVER return one dense wall of text.
+- When you give multiple items, figures, or steps, use a bullet or numbered list -- one item per line -- not a run-on sentence.
+- Use bold sparingly to highlight a key figure, name, or label.
+- Lead with the answer. Keep tone warm but direct, calm, no hype.
 
 RESPONSE LENGTH:
 Keep ALL chat responses under 500 words. For structured deliverables (reports, statements, calendars, dashboards, etc.), render them on the canvas via CANVAS_RENDER markers — see the canvas state block below for the format and available types. Reserve GENERATE_DOCUMENT for cases where the user explicitly asks for a downloadable file.
