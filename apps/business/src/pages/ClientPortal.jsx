@@ -254,6 +254,10 @@ export default function ClientPortal() {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas, thinking]);
 
+  const lsKey = `portal-welcomed-${companyKey}-${persona}`;
+  const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
+  function dismissWelcome() { localStorage.setItem(lsKey, "1"); setWelcomed(true); }
+
   function portalReply(text) {
     const t = text.toLowerCase();
     if (persona === "advisor") {
@@ -359,6 +363,35 @@ export default function ClientPortal() {
         )}
         {/* Chat center */}
         <main style={{ flex: canvas ? "1 1 50%" : "1 1 100%", display: "flex", flexDirection: "column", padding: "18px 18px 0", minWidth: 0 }}>
+          {/* "Why care" welcome card — shown once, dismissed to localStorage */}
+          {!welcomed && (
+            <div style={{
+              border: `1px solid ${skin.border}`,
+              borderTop: `3px solid ${skin.accent}`,
+              background: skin.accentSoft,
+              borderRadius: 14,
+              padding: "16px 18px",
+              marginBottom: 14,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 14,
+            }}>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : "🩺"}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
+                  {persona === "advisor"
+                    ? "Your advisor papers are ready to affirm"
+                    : `${person.pet}'s health record lives here`}
+                </div>
+                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                  {persona === "advisor"
+                    ? "Advisor agreement + 83(b) election — secured in your personal Vault, owned by you, forever."
+                    : `Tamper-evident, owned by you — not the clinic. Share with any vet, boarding, or travel carrier in seconds.`}
+                </div>
+              </div>
+              <button onClick={dismissWelcome} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: "0 0 0 4px", flexShrink: 0 }}>×</button>
+            </div>
+          )}
           <div style={{ flex: 1, overflowY: "auto" }}>
             {messages.map((m, i) => (
               <div key={i}>
