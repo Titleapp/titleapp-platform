@@ -228,12 +228,26 @@ async function getRevenueSummary(uid, opts = {}) {
   const orderCount = paid.length;
   const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
 
+  // Aggregate top products by quantity sold
+  const productQty = {};
+  for (const o of paid) {
+    for (const li of o.line_items || []) {
+      const key = li.title || "Unknown";
+      productQty[key] = (productQty[key] || 0) + (li.quantity || 1);
+    }
+  }
+  const top_products = Object.entries(productQty)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([title, quantity]) => ({ title, quantity }));
+
   return {
     period_days: days,
     total_revenue: Math.round(totalRevenue * 100) / 100,
     order_count: orderCount,
     avg_order_value: Math.round(avgOrderValue * 100) / 100,
     currency: orders[0]?.currency || "USD",
+    top_products,
   };
 }
 

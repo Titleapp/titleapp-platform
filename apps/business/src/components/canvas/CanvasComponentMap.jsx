@@ -39,6 +39,7 @@ import FlightPlanningCard from "./FlightPlanningCard";
 import PatentPortfolioCard from "./PatentPortfolioCard";
 import EsignAnchorCard from "./EsignAnchorCard";
 import BundleOfferCard from "./BundleOfferCard";
+import ShopifyCommerceCard from "./ShopifyCommerceCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -75,6 +76,7 @@ const CANVAS_COMPONENT_MAP = {
   PatentPortfolioCard,
   EsignAnchorCard,
   BundleOfferCard,
+  ShopifyCommerceCard,
 };
 
 /**

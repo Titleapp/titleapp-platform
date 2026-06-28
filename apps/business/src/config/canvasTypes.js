@@ -452,6 +452,16 @@ export const CANVAS_TYPES = {
     emptyPrompt: "Drop a YouTube URL or direct video link to see it here.",
     _title: "Video",
   },
+
+  // Shopify — live commerce data (orders, revenue, top products)
+  "card:shopify-commerce": {
+    component: "ShopifyCommerceCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Connect your Shopify store in Settings to see live revenue and orders here.",
+    _title: "Shopify Store",
+  },
 };
 
 /**
