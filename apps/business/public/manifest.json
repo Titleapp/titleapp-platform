@@ -1,0 +1,27 @@
+{
+  "name": "SOCIII",
+  "short_name": "SOCIII",
+  "description": "AI-governed Digital Workers for real estate, aviation, veterinary, education, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
