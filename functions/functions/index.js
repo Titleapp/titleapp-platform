@@ -1073,6 +1073,48 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
           console.log("chatEngine side-effect: createDtc OK", ref.id, "with", files.length, "files");
           break;
         }
+        case 'logbook:append': {
+          // Worker-initiated Vault write — appends an entry to an existing DTC.
+          // Required: dtcId, entryType, data. Skips silently on missing fields.
+          if (!userId) break;
+          const d = effect.data || {};
+          if (!d.dtcId || !d.entryType || !d.data) {
+            console.warn("chatEngine side-effect: logbook:append skipped — missing dtcId/entryType/data");
+            break;
+          }
+          try {
+            const dtcRef = db.collection("dtcs").doc(d.dtcId);
+            const dtcSnap = await dtcRef.get();
+            if (!dtcSnap.exists) {
+              console.warn("chatEngine side-effect: logbook:append skipped — DTC not found", d.dtcId);
+              break;
+            }
+            const dtcData = dtcSnap.data();
+            // Permission: owner only (personal DTCs) or workspace owner/admin
+            const auth = dtcData.modification_authority || "owner_only";
+            const allowed = auth === "owner_only"
+              ? dtcData.userId === userId
+              : true; // workspace DTCs allowed from any authenticated worker action
+            if (!allowed) {
+              console.warn("chatEngine side-effect: logbook:append denied — not DTC owner", d.dtcId);
+              break;
+            }
+            await db.collection("logbookEntries").add({
+              dtcId: d.dtcId,
+              userId,
+              tenantId: dtcData.tenantId || null,
+              entryType: d.entryType,
+              data: d.data,
+              source: "worker",
+              createdAt: nowServerTs(),
+            });
+            await dtcRef.update({ logbookCount: (dtcData.logbookCount || 0) + 1 });
+            console.log("chatEngine side-effect: logbook:append OK", d.dtcId, d.entryType);
+          } catch (lbErr) {
+            console.error("chatEngine side-effect: logbook:append failed:", lbErr.message);
+          }
+          break;
+        }
         case 'uploadRaasSop': {
           if (!userId) break;
           const d = effect.data || {};
@@ -3012,6 +3054,7 @@ Allowed actions and shapes:
 - Schedule social post: |||SIDE_EFFECT|||{"action":"scheduleSocialPost","data":{"content":"post body","platforms":["linkedin","instagram"],"title":"Summer launch","scheduledAt":"2026-05-10T14:00:00Z","status":"draft"}}|||END_SIDE_EFFECT||| — set status:"draft" to save without posting; omit to post immediately.
 - Queue a single email/SMS: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"recipient@example.com","subject":"...","body":"...","scheduledAt":"2026-05-04T09:00:00Z"}}|||END_SIDE_EFFECT|||
 - Anchor a completed signing: |||SIDE_EFFECT|||{"action":"esign:anchor","data":{"documentTitle":"Office Lease — 123 Main St","documentRef":"1BxiMVs0...","signingRail":"google-esignature","signerEmail":"landlord@example.com","completedAt":"2026-06-28T14:00:00Z","dtcId":"optional-dtc-id"}}|||END_SIDE_EFFECT||| — emit this whenever the user says they just finished signing a document. Rail values: "google-esignature", "dropbox-sign", "docusign", "manual". The anchor creates an immutable SOCIII record — the chain proof of who signed what and when.
+- Append a Vault logbook entry: |||SIDE_EFFECT|||{"action":"logbook:append","data":{"dtcId":"the-dtc-document-id","entryType":"ce_credit","data":{"course":"AVMA Ethics 2026","hours":3,"provider":"AVMA","completedAt":"2026-06-28"}}}|||END_SIDE_EFFECT||| — emit this when the user confirms completing a CE credit, flight, service event, or any significant update to an asset in their Vault. Only emit when the user has provided the dtcId explicitly or it was established earlier in the conversation. Never guess a dtcId. Common entryTypes: ce_credit, flight_logged, service_event, course_completed, milestone, renewal, certification_issued.
 
 After emitting, your chat reply should confirm what was scheduled in plain language ("Sent your nurture sequence to 1,240 contacts. First touch is queued for tomorrow at 9 AM."). Never describe the marker to the user.
 For esign:anchor, confirm with something like: "Anchored. The signing of [Document Title] is now on the SOCIII chain — your Signed Documents panel will update."
