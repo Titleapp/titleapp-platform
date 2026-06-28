@@ -46,6 +46,7 @@ import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
 import CommandCenter from "./sections/CommandCenter";
 import VaultDTCs from "./sections/VaultDTCs";
+import VaultGate from "./components/VaultGate";
 import LearningRecord from "./sections/LearningRecord";
 import CECourseCanvas from "./sections/CECourseCanvas";
 import VaultAssets from "./sections/VaultAssets";
@@ -4788,7 +4789,7 @@ function AdminShell({ onBackToHub, initialSection }) {
         // Consumer/vault persona lands directly on the tabbed Vault view (pillar tabs, net worth,
         // real records). Check both VERTICAL and TENANT_ID for robustness (returning users may
         // have VERTICAL unset if they landed on vault without going through TeamHome).
-        return (v === "consumer" || isVaultTenant) ? <VaultDTCs /> : <WorkerHome />;
+        return (v === "consumer" || isVaultTenant) ? <VaultGate><VaultDTCs /></VaultGate> : <WorkerHome />;
       }
       case "analyst":
         return <Analyst />;
@@ -4861,7 +4862,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "alerts":
         return <CommandCenter />;
       case "vault-dtcs":
-        return <VaultDTCs />;
+        return <VaultGate><VaultDTCs /></VaultGate>;
       case "vault-learning-record":
         return <LearningRecord />;
       case "vault-assets":

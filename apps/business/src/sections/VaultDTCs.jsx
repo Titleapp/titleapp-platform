@@ -419,7 +419,7 @@ function metadataPreview(dtc) {
   return lines.filter(Boolean).slice(0, 3);
 }
 
-export default function VaultDTCs() {
+export default function VaultDTCs({ onLockVault }) {
   const { dtcs, loading, error } = useDtcCatalog();
   const [activeClass, setActiveClass] = useState("Dashboard");
   const [selectedDtc, setSelectedDtc] = useState(null);
@@ -501,13 +501,36 @@ export default function VaultDTCs() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: "0 0 6px 0" }}>
-          Vault
-        </h1>
-        <p style={{ fontSize: 15, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-          Your stuff, money, health, and education — one tamper-evident record, watching the dates.
-        </p>
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: "0 0 6px 0" }}>
+            Vault
+          </h1>
+          <p style={{ fontSize: 15, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+            Your stuff, money, health, and education — one tamper-evident record, watching the dates.
+          </p>
+        </div>
+        {onLockVault && (
+          <button
+            onClick={onLockVault}
+            title="Lock Vault"
+            style={{
+              flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+              padding: "6px 12px", borderRadius: 8,
+              background: "none", border: "1px solid #e2e8f0",
+              color: "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.color = "#7c3aed"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#94a3b8"; }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Lock Vault
+          </button>
+        )}
       </div>
 
       {/* Net worth — picture-first hero (Trump Rule): big number + visual asset-mix bar. */}
