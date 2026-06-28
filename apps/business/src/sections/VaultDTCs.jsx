@@ -40,6 +40,7 @@ function LogbookModal({ dtc, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("timeline");
+  const [courseFilter, setCourseFilter] = useState(null); // course code to filter timeline
 
   const isEducation = EDUCATION_TYPES.has(dtc.type);
   const m = dtc.metadata || {};
@@ -67,12 +68,19 @@ function LogbookModal({ dtc, onClose }) {
     return () => { cancelled = true; };
   }, [dtc.id]);
 
-  // Sort entries chronologically (oldest first) for the timeline
-  const sorted = [...entries].sort((a, b) => {
-    const aMs = a.createdAt?._seconds ?? 0;
-    const bMs = b.createdAt?._seconds ?? 0;
-    return aMs - bMs;
-  });
+  // Sort entries chronologically (oldest first) for the timeline, optionally
+  // filtered to a specific course code (set when user clicks a course row).
+  const sorted = [...entries]
+    .filter(e => {
+      if (!courseFilter) return true;
+      const ec = e.data?.course || e.data?.courseCode || "";
+      return ec.startsWith(courseFilter) || ec === (courses.find(c => c.code === courseFilter)?.title || courseFilter);
+    })
+    .sort((a, b) => {
+      const aMs = a.createdAt?._seconds ?? 0;
+      const bMs = b.createdAt?._seconds ?? 0;
+      return aMs - bMs;
+    });
 
   return (
     <div
@@ -158,29 +166,46 @@ function LogbookModal({ dtc, onClose }) {
             </div>
           )}
 
-          {/* Courses tab — structured course list with grades */}
+          {/* Courses tab — structured course list with grades + click-to-filter timeline */}
           {!loading && !error && tab === "courses" && courses.length > 0 && (
             <div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>Click a course to see its logbook entries</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    {["Code", "Course", "Credits", "Grade", "Term"].map(h => (
+                    {["Code", "Course", "Credits", "Grade", "Term", ""].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "6px 10px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {courses.map((c, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #f8fafc" }}>
-                      <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#64748b" }}>{c.code || "—"}</td>
-                      <td style={{ padding: "8px 10px", fontWeight: 500, color: "#1e293b" }}>{c.title}</td>
-                      <td style={{ padding: "8px 10px", textAlign: "center", color: "#475569" }}>{c.credits ?? "—"}</td>
-                      <td style={{ padding: "8px 10px", textAlign: "center" }}>
-                        <span style={{ fontWeight: 700, color: gradeColor(c.grade) }}>{c.grade || "—"}</span>
-                      </td>
-                      <td style={{ padding: "8px 10px", color: "#64748b", whiteSpace: "nowrap" }}>{c.term || "—"}</td>
-                    </tr>
-                  ))}
+                  {courses.map((c, i) => {
+                    const matchCount = entries.filter(e => {
+                      const ec = e.data?.course || e.data?.courseCode || "";
+                      return c.code && (ec.startsWith(c.code) || ec === c.title);
+                    }).length;
+                    return (
+                      <tr key={i}
+                        onClick={() => { setCourseFilter(c.code || null); setTab("timeline"); }}
+                        style={{ borderBottom: "1px solid #f8fafc", cursor: "pointer" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                        <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#64748b" }}>{c.code || "—"}</td>
+                        <td style={{ padding: "8px 10px", fontWeight: 500, color: "#1e293b" }}>{c.title}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "center", color: "#475569" }}>{c.credits ?? "—"}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                          <span style={{ fontWeight: 700, color: gradeColor(c.grade) }}>{c.grade || "—"}</span>
+                        </td>
+                        <td style={{ padding: "8px 10px", color: "#64748b", whiteSpace: "nowrap" }}>{c.term || "—"}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                          {matchCount > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 999, padding: "1px 7px" }}>{matchCount}</span>
+                          )}
+                          <span style={{ color: "#94a3b8", marginLeft: 6, fontSize: 13 }}>›</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {m.gpa && (
@@ -192,11 +217,23 @@ function LogbookModal({ dtc, onClose }) {
           )}
 
           {/* Timeline tab (or default for non-education) */}
-          {!loading && !error && tab === "timeline" && entries.length === 0 && (
+          {!loading && !error && tab === "timeline" && courseFilter && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 999, padding: "3px 10px" }}>
+                {courseFilter}
+              </span>
+              <button onClick={() => setCourseFilter(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13 }}>× clear</button>
+            </div>
+          )}
+          {!loading && !error && tab === "timeline" && sorted.length === 0 && (
             <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>No logbook entries yet</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>
+                {courseFilter ? `No entries for ${courseFilter}` : "No logbook entries yet"}
+              </div>
               <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-                Events are appended here as workers act on this record.
+                {courseFilter
+                  ? <button onClick={() => setCourseFilter(null)} style={{ background: "none", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>Show all entries</button>
+                  : "Events are appended here as workers act on this record."}
               </div>
             </div>
           )}
