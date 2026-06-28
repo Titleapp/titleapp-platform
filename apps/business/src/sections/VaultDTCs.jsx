@@ -586,14 +586,17 @@ export default function VaultDTCs() {
           <SectionTitle>Your four pillars</SectionTitle>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginBottom: 20 }}>
             {[
-              { label: "My Stuff", big: fmtUsd(pillars.stuff), sub: `${pillars.stuffCount} assets · property, vehicles, valuables` },
-              { label: "My Money · liquid", big: fmtUsd(pillars.liquid), sub: "bank + brokerage + crypto" },
-              { label: "My Health", big: pillars.medExpires ? "Current" : `${pillars.health} records`, sub: pillars.medExpires ? `FAA medical valid to ${pillars.medExpires}` : "medical records on file" },
-              { label: "My Education", big: `${pillars.education}`, sub: "degrees · ratings · training" },
+              { label: "My Stuff", icon: "🏠", color: "#7c3aed", big: fmtUsd(pillars.stuff), sub: `${pillars.stuffCount} assets · property, vehicles, valuables` },
+              { label: "My Money", icon: "💳", color: "#059669", big: fmtUsd(pillars.liquid), sub: "bank + brokerage + crypto" },
+              { label: "My Health", icon: "❤️", color: "#dc2626", big: pillars.medExpires ? "Current" : `${pillars.health} records`, sub: pillars.medExpires ? `FAA medical valid to ${pillars.medExpires}` : "medical records on file" },
+              { label: "My Education", icon: "🎓", color: "#2563eb", big: `${pillars.education}`, sub: "degrees · ratings · training" },
             ].map((t) => (
-              <div key={t.label} style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{t.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{t.big}</div>
+              <div key={t.label} style={{ background: "#fff", border: "1px solid #f1f5f9", borderTop: `3px solid ${t.color}`, borderRadius: 10, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <span style={{ fontSize: 18 }}>{t.icon}</span>
+                  <span style={{ fontSize: 11, color: t.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{t.label}</span>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{t.big}</div>
                 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>{t.sub}</div>
               </div>
             ))}
@@ -646,11 +649,23 @@ export default function VaultDTCs() {
       {!loading && !error && activeClass !== "Dashboard" && filtered.length > 0 && (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
           gap: 16,
         }}>
           {filtered.map((dtc) => {
             const lines = metadataPreview(dtc);
+            // Per-class accent color + icon (Trump Rule: scannable at a glance)
+            const ACCENTS = {
+              "Real Property":   { color: "#7c3aed", icon: "🏠" },
+              "Vehicles":        { color: "#2563eb", icon: "🚗" },
+              "Personal Assets": { color: "#0891b2", icon: "💎" },
+              "Health":          { color: "#dc2626", icon: "❤️" },
+              "Education":       { color: "#7c3aed", icon: "🎓" },
+              "Money":           { color: "#059669", icon: "💳" },
+              "Credentials":     { color: "#d97706", icon: "🏅" },
+            };
+            const acc = ACCENTS[dtc.assetClass] || { color: "#7c3aed", icon: "📄" };
+            const val = dtcValue(dtc);
             return (
               <div
                 key={dtc.id}
@@ -658,28 +673,30 @@ export default function VaultDTCs() {
                 style={{
                   background: "#fff", borderRadius: 12,
                   border: "1px solid #f1f5f9",
+                  borderTop: `3px solid ${acc.color}`,
                   boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  padding: 20, display: "flex", flexDirection: "column",
+                  padding: "16px 20px 20px", display: "flex", flexDirection: "column",
                   cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                    {dtc.assetClass}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>{acc.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: acc.color, letterSpacing: 0.5, textTransform: "uppercase" }}>{dtc.assetClass}</span>
                   </div>
                   {chainBadge(dtc)}
                 </div>
 
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: val != null ? 6 : 8 }}>
                   {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
                 </div>
 
-                {dtcValue(dtc) != null && (
-                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, marginBottom: 10,
-                    color: dtcValue(dtc) < 0 ? "#dc2626" : "#16a34a" }}>
-                    {fmtUsd(dtcValue(dtc))}
+                {val != null && (
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 8,
+                    color: val < 0 ? "#dc2626" : acc.color }}>
+                    {fmtUsd(val)}
                   </div>
                 )}
 

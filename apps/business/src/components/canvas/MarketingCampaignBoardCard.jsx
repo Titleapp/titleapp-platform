@@ -139,22 +139,44 @@ export default function MarketingCampaignBoardCard({ resolved, context, onDismis
         </div>
       )}
 
-      {/* Winning campaign spotlight */}
+      {/* Winning campaign spotlight — Trump Rule: image-first when creative exists */}
       {view === "overview" && winner && (
-        <div style={{ display: "flex", gap: 16, alignItems: "center", padding: 16, borderRadius: 14, marginBottom: 18,
-          background: "linear-gradient(135deg,#faf5ff,#eff6ff)", border: "1px solid #ede9fe" }}>
-          <Thumb campaign={winner} size={76} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.5 }}>🏆 Winning campaign</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#1e293b", margin: "2px 0" }}>{winner.name}</div>
-            {winner.headline && <div style={{ fontSize: 13, color: "#64748b" }}>{winner.headline}</div>}
+        winner.imageUrl ? (
+          // Full-width creative hero when real image is available
+          <div style={{ borderRadius: 14, overflow: "hidden", marginBottom: 18, position: "relative" }}>
+            <div style={{
+              height: 190, position: "relative",
+              backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.08) 55%), url("${winner.imageUrl}")`,
+              backgroundSize: "cover", backgroundPosition: "center",
+            }}>
+              <div style={{ position: "absolute", inset: 0, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🏆 Winning campaign</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 8, textShadow: "0 1px 6px rgba(0,0,0,0.4)" }}>{winner.headline || winner.name}</div>
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div><span style={{ fontSize: 20, fontWeight: 800, color: "#4ade80" }}>{(winner.ctr ?? 0).toFixed(1)}%</span><span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginLeft: 4, textTransform: "uppercase" }}>CTR</span></div>
+                  <div><span style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>{fmt(winner.conversions)}</span><span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginLeft: 4, textTransform: "uppercase" }}>Leads</span></div>
+                  {winner.roi != null && <div><span style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>{winner.roi}x</span><span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginLeft: 4, textTransform: "uppercase" }}>ROI</span></div>}
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 20, textAlign: "center" }}>
-            <div><div style={{ fontSize: 20, fontWeight: 800, color: "#16a34a" }}>{(winner.ctr ?? 0).toFixed(1)}%</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>CTR</div></div>
-            <div><div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{fmt(winner.conversions)}</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Leads</div></div>
-            <div><div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{winner.roi != null ? `${winner.roi}x` : "—"}</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>ROI</div></div>
+        ) : (
+          // Compact spotlight when no image
+          <div style={{ display: "flex", gap: 16, alignItems: "center", padding: 16, borderRadius: 14, marginBottom: 18,
+            background: "linear-gradient(135deg,#faf5ff,#eff6ff)", border: "1px solid #ede9fe" }}>
+            <Thumb campaign={winner} size={76} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.5 }}>🏆 Winning campaign</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#1e293b", margin: "2px 0" }}>{winner.name}</div>
+              {winner.headline && <div style={{ fontSize: 13, color: "#64748b" }}>{winner.headline}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 20, textAlign: "center" }}>
+              <div><div style={{ fontSize: 20, fontWeight: 800, color: "#16a34a" }}>{(winner.ctr ?? 0).toFixed(1)}%</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>CTR</div></div>
+              <div><div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{fmt(winner.conversions)}</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Leads</div></div>
+              <div><div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{winner.roi != null ? `${winner.roi}x` : "—"}</div><div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>ROI</div></div>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Creative gallery */}
