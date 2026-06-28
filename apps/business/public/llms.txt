@@ -1,0 +1,30 @@
+# SOCIII
+
+> SOCIII is an operating system for professionals — a platform where AI agents (called Digital Workers) run governed workflows for real estate, aviation, healthcare, education, legal, and finance verticals. Workers are rule-constrained, append-only in their audit trail, and user-approved before any action executes.
+
+SOCIII replaces the back-office SaaS stack for small businesses and professional practices. Each Digital Worker is a composable agent that reads live business data (Shopify, Google Drive, Gmail, Firestore), surfaces structured canvases (P&L, deal summaries, property abstracts, flight logs), and proposes actions that the user must approve before anything is committed.
+
+## What SOCIII offers
+
+- **Digital Workers**: AI agents with rule-based governance for verticals including real estate title, aviation (CoPilot/MX/Dispatch), veterinary practice management, education/CE tracking, HR, marketing, accounting, and legal/patent
+- **SOCIII Vault**: Immutable personal asset records (DTC — Digital Trust Certificate) for physical and digital assets — verifiable, owner-controlled, shareable with any party
+- **Spine workers**: Business-ops workers (COS, Accounting, HR, Marketing, Contacts) that read live connected data from Shopify, Google Drive, Gmail
+- **Append-only event store**: All business events are immutable; state is computed from history (never overwritten)
+- **Explicit approval gate**: Nothing executes until the user approves — agents propose, rules validate, humans decide
+
+## Key public pages
+
+- [Platform overview](https://sociii.ai): Main product landing
+- [Docs and guides](https://sociii.ai/docs/): Developer and creator documentation
+- [Whitepaper](https://sociii.ai/whitepaper): Technical architecture and trust model
+- [Worker gallery](https://sociii.ai/c/): Published Digital Workers (public access, some require auth to run)
+- [Creator guide](https://sociii.ai/docs/creator-setup): How to build and publish a Digital Worker
+
+## API / MCP
+
+SOCIII exposes a `/v1` REST API for authenticated Digital Worker invocations. An MCP (Model Context Protocol) server is in development — once live, it will allow LLMs to discover, list, and invoke SOCIII workers as governed tools with full audit trails. See `/docs/mcp` when available.
+
+## Optional
+
+- [Sitemap](https://sociii.ai/sitemap.xml)
+- [Policies](https://sociii.ai/sociii-policies.html)

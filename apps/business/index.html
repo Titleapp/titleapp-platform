@@ -42,6 +42,52 @@
       }
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "SOCIII Digital Worker Platform",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, iOS (PWA), Android (PWA)",
+      "url": "https://sociii.ai",
+      "description": "SOCIII is an AI operating system for professionals. Digital Workers are governed AI agents that run real-estate title searches, CE credit tracking, aviation flight logging, veterinary practice management, accounting, HR, and more — with append-only audit trails and explicit user approval before any action executes.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to start; pay-per-use data and premium workers available."
+      },
+      "featureList": [
+        "Rule-constrained Digital Workers for 10+ verticals",
+        "Append-only Vault (DTC — Digital Trust Certificate) for personal asset records",
+        "Shopify, Google Drive, Gmail, and aviation API integrations",
+        "MCP server for LLM-native worker discovery and invocation",
+        "White-label client portals",
+        "Multi-tenant workspace isolation"
+      ],
+      "creator": {
+        "@type": "Organization",
+        "name": "SOCIII Inc.",
+        "url": "https://sociii.ai"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "SOCIII Digital Worker Catalog",
+      "description": "Published AI-governed Digital Workers across professional verticals.",
+      "url": "https://sociii.ai/c/",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Title Abstract Worker", "url": "https://sociii.ai/c/title-abstract-worker-001", "description": "Searches property ownership history, liens, and encumbrances for real estate closings." },
+        { "@type": "ListItem", "position": 2, "name": "Nevada Real Estate CE", "url": "https://sociii.ai/c/re-ce-nevada-001", "description": "Continuing education tracking and course completion for Nevada real estate agents." },
+        { "@type": "ListItem", "position": 3, "name": "Aviation CoPilot", "url": "https://sociii.ai/c/aviation-copilot-001", "description": "Flight planning, currency tracking, NOTAM briefing, and logbook management for pilots." },
+        { "@type": "ListItem", "position": 4, "name": "Veterinary Practice Manager", "url": "https://sociii.ai/c/vet-practice-001", "description": "Patient records, dosing protocols, staff scheduling, and wellness plans for veterinary clinics." },
+        { "@type": "ListItem", "position": 5, "name": "Investor Relations Worker", "url": "https://sociii.ai/c/ir-worker-001", "description": "Cap table management, 83(b) deadline tracking, and investor pipeline for startup founders." }
+      ]
+    }
+    </script>
     <!-- 47.9 HOTFIX: removed SW unregister — it raced with main.jsx register,
          causing unregister→register→activate→SW_UPDATED→reload infinite loop on mobile -->
   </head>

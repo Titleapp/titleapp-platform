@@ -7,6 +7,7 @@ Allow: /docs/
 Allow: /whitepaper
 Allow: /c/
 Allow: /credential/
+Allow: /llms.txt
 Disallow: /admin/
 Disallow: /auth/
 Disallow: /api/
@@ -14,5 +15,30 @@ Disallow: /fundraise/admin/
 
 # LLM-friendly: docs source is also available as raw Markdown
 Allow: /docs/*.md
+
+# AI answer-engine crawlers — welcome, full access to public pages
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
 
 Sitemap: https://sociii.ai/sitemap.xml
