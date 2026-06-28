@@ -27,6 +27,7 @@ function getGoogle() {
 const SCOPES = [
   "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/drive.metadata.readonly",
+  "email",
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -111,10 +112,15 @@ async function handleDriveExchangeCode(req, res, { userId }) {
 
   // Get user's Google email for display
   oauth2Client.setCredentials(tokens);
-  const google = getGoogle();
-  const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-  const userInfo = await oauth2.userinfo.get();
-  const email = userInfo.data.email || "unknown";
+  let email = "connected";
+  try {
+    const google = getGoogle();
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    email = userInfo.data.email || "connected";
+  } catch (_) {
+    // Non-fatal — email is display-only
+  }
 
   // Encrypt refresh token
   const encryptedRefreshToken = encrypt(tokens.refresh_token);

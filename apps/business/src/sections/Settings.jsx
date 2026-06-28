@@ -3,6 +3,9 @@ import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks/useCalendar";
+import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts } from "../hooks/useGmail";
+import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive";
+import { useShopifyStatus, connectShopify, disconnectShopify } from "../hooks/useShopify";
 
 // Google Calendar connector status + connect/disconnect button.
 // Renders a single row inside the Integrations card.
@@ -44,6 +47,227 @@ function GoogleCalendarRow() {
             : status.connected
               ? `Connected as ${status.email || "Google account"}. Workers can read your schedule and propose events.`
               : "Connect so Alex and every worker can read your schedule and coordinate meetings, webinars, and deadlines."}
+        </div>
+        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "…" : "Disconnect"}
+        </button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "Connecting…" : "Connect"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Gmail connector status + connect/disconnect + sync contacts button.
+function GmailRow() {
+  const { status, refresh } = useGmailStatus();
+  const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+  const [err, setErr] = useState(null);
+  // Clear any stale error from previous sessions on mount
+  useEffect(() => { setErr(null); }, []);
+
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      await connectGmail();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Connection failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect Gmail? Workers won't be able to read email or sync contacts until you reconnect.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await disconnectGmail();
+      await refresh();
+      setSyncResult(null);
+    } catch (e) {
+      setErr(e?.message || "Disconnect failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleSync() {
+    setSyncing(true); setErr(null); setSyncResult(null);
+    try {
+      const r = await syncGmailContacts();
+      setSyncResult(r);
+    } catch (e) {
+      setErr(e?.message || "Sync failed");
+    }
+    setSyncing(false);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Gmail</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading
+              ? "Checking…"
+              : status.connected
+                ? `Connected as ${status.email || "Google account"}. Workers can read email context and send on your behalf.`
+                : "Connect so workers can sync your contacts, search email context, and send outbound from your address."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+          {syncResult && (
+            <div style={{ fontSize: "12px", color: "#166534", marginTop: 4 }}>
+              Sync complete — {syncResult.added} added, {syncResult.updated} updated ({syncResult.total} contacts found)
+            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {status.connected && (
+            <button className="iconBtn" disabled={syncing} onClick={handleSync} style={{ whiteSpace: "nowrap" }}>
+              {syncing ? "Syncing…" : "Sync contacts"}
+            </button>
+          )}
+          {status.connected ? (
+            <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap" }}>
+              {busy ? "…" : "Disconnect"}
+            </button>
+          ) : (
+            <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap" }}>
+              {busy ? "Connecting…" : "Connect"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Shopify connector — connect ecommerce store so workers can read orders, customers, revenue.
+function ShopifyRow() {
+  const { status, refresh } = useShopifyStatus();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [shopInput, setShopInput] = useState("");
+  const [showInput, setShowInput] = useState(false);
+  useEffect(() => { setErr(null); }, []);
+
+  async function handleConnect() {
+    const shop = shopInput.trim().replace(/https?:\/\//, "").replace(/\/$/, "");
+    if (!shop) { setErr("Enter your store domain (e.g. mystore.myshopify.com)"); return; }
+    setBusy(true); setErr(null);
+    try {
+      await connectShopify(shop);
+      await refresh();
+      setShowInput(false);
+      setShopInput("");
+    } catch (e) {
+      setErr(e?.message || "Connection failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect Shopify? Workers won't be able to read orders or customers until you reconnect.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await disconnectShopify();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Disconnect failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Shopify</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading
+              ? "Checking…"
+              : status.connected
+                ? `Connected to ${status.shop}. Workers can read orders, revenue, and customers.`
+                : "Connect your Shopify store so workers can surface sales data in Accounting and contacts in CRM."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {status.connected ? (
+            <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap" }}>
+              {busy ? "…" : "Disconnect"}
+            </button>
+          ) : (
+            <button className="iconBtn" disabled={busy || status.loading} onClick={() => setShowInput(s => !s)} style={{ whiteSpace: "nowrap" }}>
+              Connect
+            </button>
+          )}
+        </div>
+      </div>
+      {showInput && !status.connected && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={shopInput}
+            onChange={e => setShopInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleConnect()}
+            placeholder="mystore.myshopify.com"
+            style={{ flex: 1, padding: "8px 12px", fontSize: 13, border: "1px solid #e5e7eb", borderRadius: 8, outline: "none" }}
+          />
+          <button className="iconBtn" disabled={busy} onClick={handleConnect} style={{ whiteSpace: "nowrap" }}>
+            {busy ? "Connecting…" : "Connect store"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Google Drive connector — connect personal Drive so workers can read/import files.
+function DriveRow() {
+  const { status, refresh } = useDriveStatus();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  useEffect(() => { setErr(null); }, []);
+
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      await connectDrive();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Connection failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect Google Drive? Workers won't be able to read your files until you reconnect.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await disconnectDrive();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Disconnect failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600 }}>Google Drive</div>
+        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+          {status.loading
+            ? "Checking…"
+            : status.connected
+              ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
+              : "Connect so workers can read documents, contracts, and files from your Drive."}
         </div>
         {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
       </div>
@@ -1281,13 +1505,24 @@ function BusinessSettings() {
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <GoogleCalendarRow />
+          <GmailRow />
+          <DriveRow />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontWeight: 600 }}>Salesforce CRM</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync customer data with Salesforce</div></div>
-            <button className="iconBtn">Connect</button>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontWeight: 600 }}>QuickBooks</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync financial data and invoices</div></div>
-            <button className="iconBtn">Connect</button>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
+          </div>
+          <ShopifyRow />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontWeight: 600 }}>Microsoft OneDrive</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync files and documents from OneDrive</div></div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontWeight: 600 }}>Microsoft Outlook</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync email and calendar from Outlook</div></div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontWeight: 600 }}>Stripe Payments</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Accept online payments</div></div>

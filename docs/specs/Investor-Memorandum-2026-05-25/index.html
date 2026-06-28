@@ -521,12 +521,12 @@
 
   <div class="stat-grid">
     <div class="stat">
-      <div class="v">1,000+</div>
-      <div class="l">Workers shipped &mdash; scale test, not endpoint</div>
+      <div class="v">8+</div>
+      <div class="l">Live verticals in production</div>
     </div>
     <div class="stat green">
-      <div class="v">8</div>
-      <div class="l">Live verticals</div>
+      <div class="v">10+</div>
+      <div class="l">Integrations live &mdash; Gmail, Drive, Calendar, YouTube, MCP</div>
     </div>
     <div class="stat cyan">
       <div class="v">~50&times;</div>
@@ -538,9 +538,17 @@
     </div>
   </div>
 
+  <div class="callout" style="margin-top:0.8em">
+    <strong>The integration moat — and what it means in practice.</strong> As of June 2026, SOCIII operates as a <strong>governed integration hub</strong> with demonstrated end-to-end action: Alex reads a user&rsquo;s live Gmail inbox, surfaces the three most pressing items unprompted, drafts a reply in the user&rsquo;s voice, presents it for approval, and sends it — all in a single conversation. Alex can also run Apollo.io investor prospecting searches, write results to the Contacts worker tagged by investor tier, and queue a 25-per-day outbound email campaign with one approval. This is not a demo of what the platform will do. It shipped and was confirmed in production on June&nbsp;27, 2026. Gmail, Google Calendar, Google Drive, YouTube, and Apollo are live. Microsoft OneDrive, Outlook, Shopify, Salesforce, and QuickBooks are roadmapped. SOCIII also operates as a <strong>Model Context Protocol (MCP) server</strong>. The trajectory is toward <strong>100+ integrations</strong> by end of 2026.
+  </div>
+
+  <div class="callout green" style="margin-top:0.6em">
+    <strong>Enterprise client onboarding in progress.</strong> First institutional clients across healthcare education, medical device distribution, and real estate development are beginning onboarding in H2 2026. These are not pilots &mdash; they are production deployments at organizational scale, with per-seat isolation, real records, and the Alex-dispatches-Code improvement loop that lets clients improve workers without an implementation team.
+  </div>
+
   <h3>What we are raising</h3>
   <p>
-    An open, rolling YC-style SAFE round. <strong>Minimum viable close: $500K</strong> (clears inherited debt service and extends operating runway). <strong>Base target: $1&ndash;2M</strong> (funds the 18-month commercial launch plan in §VII.4). <strong>Upper end: open to strategic capital up to $5M+</strong> if the right partners participate. Pricing is anchored to the AI-agent-platform comp set and finalized with the lead investor; vertical-AI references (Harvey AI at ~$3B) anchor the upside framing. The founder self-funded the prior twelve months of personal runway; SOCIII is choosing this raise rather than requiring it. Any close above $500K materially advances the plan; the band scales with investor demand rather than capping it.
+    A rolling YC-style SAFE round. <strong>Target: $5M.</strong> <strong>Minimum check: $500K</strong> — anything less does not meaningfully move the needle. Valuation cap finalized with the lead investor; vertical-AI references (Harvey AI at ~$3B) anchor the upside framing. The founder self-funded the prior twelve months of personal runway; SOCIII is choosing this raise rather than requiring it. The platform is in production, the action loop is confirmed, and institutional clients are onboarding — this is a growth raise, not a survival raise.
   </p>
 
   <h3>Investment highlights</h3>
@@ -729,7 +737,23 @@
   </div>
 
   <h3>4.3 &nbsp; Production deployment</h3>
-  <p>SOCIII has been in production since 2024 across aviation Part&nbsp;135/91, real estate, auto dealer, government (DMV, recording, permitting, inspections), and title &amp; escrow. Healthcare and EMS are in development. A buyer doing a reference call to a Part&nbsp;135 operator running a SOCIII dispatch worker gets a different signal than a buyer doing a demo with a platform still in pilot.</p>
+  <p>SOCIII has been in production since 2024 across aviation Part&nbsp;135/91, real estate, auto dealer, government (DMV, recording, permitting, inspections), healthcare and education, and finance and compliance verticals. First institutional enterprise clients are onboarding in H2 2026. A buyer doing a reference call to a Part&nbsp;135 operator running a SOCIII dispatch worker &mdash; or a nursing educator using the student evaluation worker &mdash; gets a different signal than a buyer doing a demo with a platform still in pilot.</p>
+
+  <h3>4.4 &nbsp; The integration and action ecosystem</h3>
+  <p>Every connector that runs through SOCIII runs through the rules engine. Gmail connected to SOCIII is not the same as Gmail connected to a raw Zapier zap &mdash; every action Alex takes via Gmail is validated against the same rule set that governs the AI worker. As of June 2026, Google Calendar, Gmail, Google Drive, YouTube, and Apollo.io are live. Microsoft OneDrive, Outlook, Shopify, Salesforce, and QuickBooks are roadmapped. SOCIII also operates as a <strong>Model Context Protocol (MCP) server</strong>, allowing Claude and other MCP-compatible assistants to invoke workers and access the Vault under the rules engine. The integration moat compounds with each connector: more connectors &rarr; more surface area for workers &rarr; more value per worker &rarr; more creator incentive &rarr; more integrations needed. The trajectory is toward 100+ integrations by end of 2026.</p>
+
+  <h3>4.5 &nbsp; The Alex action loop — confirmed in production</h3>
+  <p>On June 27, 2026, the following sequence was executed in a single Alex conversation, without switching apps or copy-pasting:</p>
+  <ol style="margin:0.4em 0 0.8em 1.2em; padding:0; line-height:1.8">
+    <li>Alex pulled the user&rsquo;s live Gmail inbox and surfaced the three most pressing items — an expired signature document, a pending D&amp;O insurance quote, and an upcoming investor meeting — with no prompting beyond &ldquo;check my email.&rdquo;</li>
+    <li>Alex drafted an email announcing the new capability, presented an approval card, and sent it via Gmail on one click.</li>
+    <li>Alex ran two Apollo.io investor searches (enrich existing 2,000 contacts + net-new angel/VC prospecting), wrote 100+ results to the Contacts worker tagged &ldquo;Potential Investor,&rdquo; and queued a 25-per-day outbound email campaign pending one template approval.</li>
+  </ol>
+  <p>This is the platform thesis demonstrated, not described: Alex reads real systems, proposes governed actions, waits for explicit approval, and executes. The approval gate is not a UX convention &mdash; it is the moat. It is what makes SOCIII deployable in contexts where a runaway AI agent is a liability, not a feature.</p>
+
+  <div class="callout">
+    <strong>Why the integration layer is defensible.</strong> Raw integrations are commodity. A Zapier automation connecting Gmail to a spreadsheet is not auditable, not governed by professional rules, and not provable to a regulator. SOCIII&rsquo;s integrations are governed &mdash; every action is validated, every output is recorded, every record is recoverable. That is the deployability prerequisite in regulated verticals, and it is not a feature incumbent platforms can add without rearchitecting their audit layer.
+  </div>
 
   <div class="running-footer"><span>SOCIII Inc.</span><span>10</span></div>
 </section>
@@ -765,7 +789,7 @@
       </tr>
       <tr>
         <td><strong>Ruthie Clearwater, PhD</strong><br/><em style="font-size:9pt; color:var(--slate-light)">Creator community lead</em></td>
-        <td>University of Hawai'i nursing · EMS flight nurse.</td>
+        <td>Nationally ranked nursing program · EMS flight nurse.</td>
         <td>Onboarding, support, payouts, marketplace ops. The professional-community distribution model exemplified.</td>
       </tr>
       <tr>
@@ -1088,9 +1112,9 @@
   <h2>Investment Mechanics</h2>
 
   <h3>Round terms</h3>
-  <p><strong>Rolling YC-style SAFE.</strong> Minimum viable close: <strong>$500K.</strong> Base target: <strong>$1&ndash;2M.</strong> Open to strategic capital up to <strong>$5M+.</strong> Valuation cap finalized with the lead investor; comp-set anchoring described in §3.2. 30% equity pool reserved for advisors, future hires, and the creator path. Sole-manager governance through the Series A trigger ($150K MRR / ~$1.8M ARR). No discount layered on the cap. No MFN-plus terms. Designed to be readable and signable in fifteen minutes.</p>
+  <p><strong>Rolling SAFE.</strong> Target: <strong>$5M.</strong> Minimum check: <strong>$500K.</strong> Valuation cap finalized with the lead investor; comp-set anchoring described in §3.2. 30% equity pool reserved for advisors, future hires, and the creator path. Sole-manager governance through the Series A trigger ($150K MRR / ~$1.8M ARR). No discount layered on the cap. No MFN-plus terms. Designed to be readable and signable in fifteen minutes.</p>
 
-  <p><em>The round structure is deliberately flexible. SAFEs are signed and counted on a rolling basis as investors decide; the company calls the close when the cap fills or when strategic concentration is achieved. A $500K close meaningfully extends the runway. A $1&ndash;2M close funds the full 18-month plan in §VII.4. A $5M close accelerates engineering and creator-acquisition spend. Any close above the minimum is a successful raise; the band scales with investor demand, not against it.</em></p>
+  <p><em>SAFEs are signed and counted on a rolling basis as investors decide; the company calls the close when the cap fills or when strategic concentration is achieved. The $5M target funds a 24-month runway, trade-conference presence, and creator-network activation at full speed. A $500K minimum check is set because smaller checks do not materially move any of these levers. The platform is in production — this is a growth raise, not a survival raise.</em></p>
 
   <h3>Securities-law posture</h3>
   <p>Reg D 506(b). Offered to accredited investors with pre-existing relationships to the founders. Investors complete Stripe Identity verification (~3 minutes; SOCIII covers the fee) and provide accreditation representations before SAFE execution. Verification flow is integrated into the IR Worker on the SOCIII platform. Counsel has reviewed the SAFE template and the verification flow. No general solicitation; this memorandum is sent in confidence to a specific named investor.</p>

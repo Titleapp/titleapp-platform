@@ -592,6 +592,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         return;
       }
 
+      // Demo URL (?demo=1) — always start with a clean slate. Loading prior
+      // conversation history shows stale messages from the last demo session
+      // and confuses the "Good afternoon, Maya" first-impression moment.
+      if (new URL(window.location.href).searchParams.get("demo") === "1") {
+        try {
+          const freshSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+          localStorage.setItem("ta_chat_session_id", freshSid);
+        } catch {}
+        return; // start blank — no welcome bubble either; canvas handles the greeting
+      }
+
       // Usage-triggered portfolio review
       const pendingReview = localStorage.getItem("ta_alex_pending_review");
       const snoozedUntil = localStorage.getItem("ta_alex_review_snoozed");
@@ -767,6 +778,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   // Send contextual messages when onboarding step or section changes
   useEffect(() => {
+    // Demo mode (?demo=1) — never inject contextual section messages; the
+    // canvas greeting ("Good afternoon, Maya") is the entry point, not chat.
+    try { if (new URL(window.location.href).searchParams.get("demo") === "1") return; } catch {}
     const stepKey = onboardingStep || currentSection;
     const vertical = localStorage.getItem('VERTICAL') || 'auto';
     const isPersonal = vertical === 'consumer';
@@ -810,10 +824,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         localStorage.setItem("ta_chat_session_id", newSid);
       } catch {}
-      // Reload conversation history for the new workspace
-      if (currentUser) {
-        loadConversationHistory();
-      }
+      // Do NOT reload history on workspace switch — each workspace starts with
+      // a clean Alex greeting. Loading history here caused messages from the
+      // previous workspace to bleed through (Sean, 2026-06-27).
     }
     window.addEventListener("ta:workspace-changed", handleWorkspaceChange);
     return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
@@ -1320,8 +1333,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';
 
       const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      const _chatAbort = new AbortController();
+      const _chatTimeout = setTimeout(() => _chatAbort.abort(), 55000);
       const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
         method: 'POST',
+        signal: _chatAbort.signal,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -1465,6 +1481,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         }),
       });
 
+      clearTimeout(_chatTimeout);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Request failed');
 
@@ -1554,7 +1571,26 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         structuredData: data.structuredData,
         recommendationCard: data.recommendationCard || null,
         workerCards: data.workerCards || null,
+        emailDraft: data.emailDraft || null,
+        smsDraft: data.smsDraft || null,
+        telegramDraft: data.telegramDraft || null,
+        githubIssue: data.githubIssue || null,
+        apolloSearches: data.apolloSearches || null,
       }]);
+
+      // Push structured output to the right-panel artifact view so the canvas
+      // becomes a live artifact display instead of inert worker links.
+      if (panel?.showArtifact) {
+        if (data.emailDraft) {
+          panel.showArtifact({ type: "email-draft", data: data.emailDraft, title: data.emailDraft.subject || "Email Draft" });
+        } else if (data.apolloSearches?.length) {
+          panel.showArtifact({ type: "apollo-searches", data: data.apolloSearches, title: "Investor Prospecting" });
+        } else if (data.workerBundle || /business.?in.?a.?box/i.test(cleanResponse || "")) {
+          panel.showArtifact({ type: "bundle", data: data.workerBundle || null, title: "Business in a Box" });
+        } else if (cleanResponse && cleanResponse.length > 120) {
+          panel.showArtifact({ type: "text", data: cleanResponse, title: null });
+        }
+      }
 
       // 50.28 — execute pending cross-worker switch. Look up the catalog
       // entry for the target slug (need both slug + name to fire the
@@ -1623,9 +1659,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setIsTyping(false);
       if (workerCtx?.resetState) workerCtx.resetState();
       const msg = error.message || '';
-      const errorContent = (msg.includes('Forbidden') || msg.includes('403'))
-        ? 'Session expired. Please reload the page and try again.'
-        : (msg || 'Failed to send message. Please try again.');
+      const isTimeout = error.name === 'AbortError';
+      const errorContent = isTimeout
+        ? 'The request timed out — the worker is taking too long. Try again.'
+        : (msg.includes('Forbidden') || msg.includes('403'))
+          ? 'Session expired. Please reload the page and try again.'
+          : (msg || 'Failed to send message. Please try again.');
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: errorContent,
@@ -1644,6 +1683,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // Save as Draft — for platform-marketing worker (49.2)
   const [savingDraftIdx, setSavingDraftIdx] = useState(null);
   const [draftToast, setDraftToast] = useState(null);
+  const [sentEmailDrafts, setSentEmailDrafts] = useState(new Set());
+  const [dismissedSmsDrafts, setDismissedSmsDrafts] = useState(new Set());
+  const [dismissedTelegramDrafts, setDismissedTelegramDrafts] = useState(new Set());
+  const [dismissedGithubIssues, setDismissedGithubIssues] = useState(new Set());
+  const [scheduledDrafts, setScheduledDrafts] = useState(new Set());
+  const [schedulerOpen, setSchedulerOpen] = useState({});
+  const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
 
   async function handleSaveDraft(content, idx) {
     setSavingDraftIdx(idx);
@@ -2262,6 +2308,365 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <button onClick={e => { e.stopPropagation(); subscribeToWorker({ workerId: w.slug, slug: w.slug, name: w.name, price: w.price }); }} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>Get this worker</button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Apollo search approval cards */}
+            {msg.apolloSearches && msg.apolloSearches.map((search, sIdx) => {
+              const key = `${idx}-${sIdx}`;
+              const state = apolloRunState[key];
+              if (state === 'done') return (
+                <div key={key} style={{ marginTop: 8, maxWidth: 440, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#166534", fontWeight: 600 }}>
+                  Apollo search complete — contacts tagged in Contacts worker.
+                </div>
+              );
+              return (
+                <div key={key} style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                  <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#475569", letterSpacing: "0.03em" }}>APOLLO SEARCH — AWAITING APPROVAL</span>
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>{search.label || "Investor Prospecting"}</div>
+                    {search.criteria?.person_titles && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 3 }}><span style={{ fontWeight: 600, color: "#334155" }}>Titles: </span>{search.criteria.person_titles.slice(0, 4).join(", ")}{search.criteria.person_titles.length > 4 ? "…" : ""}</div>}
+                    {search.criteria?.q_organization_industries && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 3 }}><span style={{ fontWeight: 600, color: "#334155" }}>Industries: </span>{search.criteria.q_organization_industries.join(", ")}</div>}
+                    {search.tag && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 3 }}><span style={{ fontWeight: 600, color: "#334155" }}>Tag: </span>{search.tag}</div>}
+                    <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Limit: </span>{search.criteria?.per_page || 25} results</div>
+                  </div>
+                  <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
+                    <button
+                      disabled={state === 'running'}
+                      onClick={async () => {
+                        setApolloRunState(prev => ({ ...prev, [key]: 'running' }));
+                        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                        const tenantId = localStorage.getItem("TENANT_ID") || "";
+                        const token = await getChatToken();
+                        try {
+                          const r = await fetch(`${apiBase}/api?path=/v1/apollo:search`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                            body: JSON.stringify({ criteria: search.criteria || {}, write_to_contacts: search.write_to_contacts !== false, contact_tier: "investor", source_sub: "alex:investor_search" }),
+                          });
+                          const d = await r.json();
+                          setApolloRunState(prev => ({ ...prev, [key]: d.ok ? 'done' : 'error' }));
+                          setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Apollo search complete — ${d.written || 0} new contacts added, ${d.enrichedExisting || 0} existing enriched. Tagged as "${search.tag || 'Potential Investor'}". Open Contacts to review.` : `Apollo search failed — ${d.error || "please try again."}`, isSystem: true }]);
+                        } catch (_) {
+                          setApolloRunState(prev => ({ ...prev, [key]: 'error' }));
+                          setMessages(prev => [...prev, { role: "assistant", content: "Apollo search failed — check connection and try again.", isSystem: true }]);
+                        }
+                      }}
+                      style={{ flex: 1, padding: "8px 14px", background: state === 'running' ? "#94a3b8" : "#1e293b", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: state === 'running' ? "default" : "pointer" }}
+                    >{state === 'running' ? "Running…" : "Run Apollo Search"}</button>
+                    <button
+                      onClick={() => setApolloRunState(prev => ({ ...prev, [key]: 'done' }))}
+                      style={{ padding: "8px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    >Skip</button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Email draft approval card */}
+            {msg.emailDraft && !sentEmailDrafts.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#475569", letterSpacing: "0.03em" }}>EMAIL DRAFT — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>To: </span>{msg.emailDraft.to}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Subject: </span>{msg.emailDraft.subject}</div>
+                  <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.emailDraft.body}</div>
+                </div>
+                {schedulerOpen[`email-${idx}`] && (
+                  <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Send at:</span>
+                    <input
+                      type="datetime-local"
+                      defaultValue={schedulerOpen[`email-${idx}`]}
+                      id={`email-sched-${idx}`}
+                      style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", color: "#334155" }}
+                    />
+                  </div>
+                )}
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9", flexWrap: "wrap" }}>
+                  {schedulerOpen[`email-${idx}`] ? (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          const dtInput = document.getElementById(`email-sched-${idx}`);
+                          const scheduledAt = dtInput?.value ? new Date(dtInput.value).toISOString() : new Date(Date.now() + 3600000).toISOString();
+                          setSentEmailDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            await fetch(`${apiBase}/api?path=/v1/message:enqueue`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ channel: "gmail", to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: msg.emailDraft.body, scheduledAt }),
+                            });
+                            const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                            setMessages(prev => [...prev, { role: "assistant", content: `Queued — email to ${msg.emailDraft.to} will send ${readableTime}.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#1e293b", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Confirm schedule</button>
+                      <button onClick={() => setSchedulerOpen(prev => { const n = {...prev}; delete n[`email-${idx}`]; return n; })} style={{ padding: "8px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Back</button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          setSentEmailDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            const r = await fetch(`${apiBase}/api?path=/v1/gmail:send`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: msg.emailDraft.body }),
+                            });
+                            const d = await r.json();
+                            setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Sent to ${msg.emailDraft.to}.` : `Send failed — please try again.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not send — check your Gmail connection in Settings.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#1e293b", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Send now</button>
+                      <button
+                        onClick={() => {
+                          const nowPlusHour = new Date(Date.now() + 3600000);
+                          const pad = n => String(n).padStart(2, "0");
+                          const localDt = `${nowPlusHour.getFullYear()}-${pad(nowPlusHour.getMonth()+1)}-${pad(nowPlusHour.getDate())}T${pad(nowPlusHour.getHours())}:${pad(nowPlusHour.getMinutes())}`;
+                          setSchedulerOpen(prev => ({ ...prev, [`email-${idx}`]: localDt }));
+                        }}
+                        style={{ padding: "8px 12px", background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Schedule</button>
+                      <button
+                        onClick={() => setSentEmailDrafts(prev => new Set([...prev, idx]))}
+                        style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Cancel</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SMS draft approval card */}
+            {msg.smsDraft && !dismissedSmsDrafts.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#f0fdf4", borderBottom: "1px solid #d1fae5", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.62 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.53 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#16a34a", letterSpacing: "0.03em" }}>SMS DRAFT — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>To: </span>{msg.smsDraft.to}</div>
+                  <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.smsDraft.body}</div>
+                </div>
+                {schedulerOpen[`sms-${idx}`] && (
+                  <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Send at:</span>
+                    <input type="datetime-local" defaultValue={schedulerOpen[`sms-${idx}`]} id={`sms-sched-${idx}`} style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", color: "#334155" }} />
+                  </div>
+                )}
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9", flexWrap: "wrap" }}>
+                  {schedulerOpen[`sms-${idx}`] ? (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          const dtInput = document.getElementById(`sms-sched-${idx}`);
+                          const scheduledAt = dtInput?.value ? new Date(dtInput.value).toISOString() : new Date(Date.now() + 3600000).toISOString();
+                          setDismissedSmsDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            await fetch(`${apiBase}/api?path=/v1/message:enqueue`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ channel: "sms", to: msg.smsDraft.to, body: msg.smsDraft.body, scheduledAt }),
+                            });
+                            const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                            setMessages(prev => [...prev, { role: "assistant", content: `Queued — SMS to ${msg.smsDraft.to} will send ${readableTime}.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#16a34a", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Confirm schedule</button>
+                      <button onClick={() => setSchedulerOpen(prev => { const n = {...prev}; delete n[`sms-${idx}`]; return n; })} style={{ padding: "8px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Back</button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          setDismissedSmsDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            const r = await fetch(`${apiBase}/api?path=/v1/sms:send`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ to: msg.smsDraft.to, body: msg.smsDraft.body }),
+                            });
+                            const d = await r.json();
+                            setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `SMS sent to ${msg.smsDraft.to}.` : `Send failed — check Twilio config.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not send SMS — try again in a moment.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#16a34a", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Send SMS now</button>
+                      <button
+                        onClick={() => {
+                          const nowPlusHour = new Date(Date.now() + 3600000);
+                          const pad = n => String(n).padStart(2, "0");
+                          const localDt = `${nowPlusHour.getFullYear()}-${pad(nowPlusHour.getMonth()+1)}-${pad(nowPlusHour.getDate())}T${pad(nowPlusHour.getHours())}:${pad(nowPlusHour.getMinutes())}`;
+                          setSchedulerOpen(prev => ({ ...prev, [`sms-${idx}`]: localDt }));
+                        }}
+                        style={{ padding: "8px 12px", background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Schedule</button>
+                      <button onClick={() => setDismissedSmsDrafts(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Telegram draft approval card */}
+            {msg.telegramDraft && !dismissedTelegramDrafts.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#eff6ff", borderBottom: "1px solid #bfdbfe", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#2563eb", letterSpacing: "0.03em" }}>TELEGRAM DRAFT — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>To: </span>{msg.telegramDraft.destination === "advisor-group" ? "Advisor Group" : "Personal (you)"}</div>
+                  <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.telegramDraft.text}</div>
+                </div>
+                {schedulerOpen[`tg-${idx}`] && (
+                  <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Send at:</span>
+                    <input type="datetime-local" defaultValue={schedulerOpen[`tg-${idx}`]} id={`tg-sched-${idx}`} style={{ fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", color: "#334155" }} />
+                  </div>
+                )}
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9", flexWrap: "wrap" }}>
+                  {schedulerOpen[`tg-${idx}`] ? (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          const dtInput = document.getElementById(`tg-sched-${idx}`);
+                          const scheduledAt = dtInput?.value ? new Date(dtInput.value).toISOString() : new Date(Date.now() + 3600000).toISOString();
+                          setDismissedTelegramDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            await fetch(`${apiBase}/api?path=/v1/message:enqueue`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ channel: "telegram", to: msg.telegramDraft.destination || "owner", destination: msg.telegramDraft.destination, telegramDestination: msg.telegramDraft.destination, body: msg.telegramDraft.text, scheduledAt }),
+                            });
+                            const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                            setMessages(prev => [...prev, { role: "assistant", content: `Queued — Telegram message will send ${readableTime}.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#2563eb", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Confirm schedule</button>
+                      <button onClick={() => setSchedulerOpen(prev => { const n = {...prev}; delete n[`tg-${idx}`]; return n; })} style={{ padding: "8px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Back</button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const tenantId = localStorage.getItem("TENANT_ID") || "";
+                          const token = await getChatToken();
+                          setDismissedTelegramDrafts(prev => new Set([...prev, idx]));
+                          try {
+                            const r = await fetch(`${apiBase}/api?path=/v1/telegram:send`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                              body: JSON.stringify({ destination: msg.telegramDraft.destination, text: msg.telegramDraft.text }),
+                            });
+                            const d = await r.json();
+                            setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Telegram message sent.` : `Send failed — check bot config in Settings.`, isSystem: true }]);
+                          } catch (_) {
+                            setMessages(prev => [...prev, { role: "assistant", content: "Could not send Telegram message — try again in a moment.", isSystem: true }]);
+                          }
+                        }}
+                        style={{ flex: 1, padding: "8px 14px", background: "#2563eb", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Send via Telegram</button>
+                      <button
+                        onClick={() => {
+                          const nowPlusHour = new Date(Date.now() + 3600000);
+                          const pad = n => String(n).padStart(2, "0");
+                          const localDt = `${nowPlusHour.getFullYear()}-${pad(nowPlusHour.getMonth()+1)}-${pad(nowPlusHour.getDate())}T${pad(nowPlusHour.getHours())}:${pad(nowPlusHour.getMinutes())}`;
+                          setSchedulerOpen(prev => ({ ...prev, [`tg-${idx}`]: localDt }));
+                        }}
+                        style={{ padding: "8px 12px", background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >Schedule</button>
+                      <button onClick={() => setDismissedTelegramDrafts(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GitHub issue approval card */}
+            {msg.githubIssue && !dismissedGithubIssues.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#fafafa", borderBottom: "1px solid #e2e8f0", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", letterSpacing: "0.03em" }}>LOG TO CODE — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Title: </span>{msg.githubIssue.title}</div>
+                  {msg.githubIssue.labels?.length > 0 && (
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {msg.githubIssue.labels.map((l, li) => (
+                        <span key={li} style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 20, background: "#f1f5f9", color: "#475569" }}>{l}</span>
+                      ))}
+                    </div>
+                  )}
+                  {msg.githubIssue.body && (
+                    <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8, maxHeight: 100, overflow: "auto" }}>{msg.githubIssue.body}</div>
+                  )}
+                </div>
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    onClick={async () => {
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const tenantId = localStorage.getItem("TENANT_ID") || "";
+                      const token = await getChatToken();
+                      setDismissedGithubIssues(prev => new Set([...prev, idx]));
+                      try {
+                        const r = await fetch(`${apiBase}/api?path=/v1/github:createIssue`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                          body: JSON.stringify({ title: msg.githubIssue.title, body: msg.githubIssue.body, labels: msg.githubIssue.labels }),
+                        });
+                        const d = await r.json();
+                        setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Issue #${d.number} created in CODE.` : `Failed to create issue — check GitHub config.`, isSystem: true }]);
+                      } catch (_) {
+                        setMessages(prev => [...prev, { role: "assistant", content: "Could not log to CODE — try again in a moment.", isSystem: true }]);
+                      }
+                    }}
+                    style={{ flex: 1, padding: "8px 14px", background: "#1e293b", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >Log to CODE</button>
+                  <button
+                    onClick={() => setDismissedGithubIssues(prev => new Set([...prev, idx]))}
+                    style={{ padding: "8px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >Cancel</button>
+                </div>
               </div>
             )}
 

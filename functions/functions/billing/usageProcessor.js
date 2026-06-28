@@ -425,6 +425,30 @@ async function handleUpdateAutoRecharge(req, res, { userId }) {
 //  USAGE HISTORY — last 3 months
 // ═══════════════════════════════════════════════════════════════
 
+async function handleGetPaymentMethod(req, res, { userId }) {
+  const db = getDb();
+  const userSnap = await db.collection("users").doc(userId).get();
+  if (!userSnap.exists) return res.status(404).json({ ok: false, error: "User not found" });
+  const customerId = userSnap.data().stripeCustomerId;
+  if (!customerId) return res.json({ ok: true, paymentMethod: null });
+  try {
+    const stripe = getStripe();
+    const customer = await stripe.customers.retrieve(customerId, { expand: ["invoice_settings.default_payment_method"] });
+    const pm = customer.invoice_settings?.default_payment_method;
+    if (!pm || typeof pm === "string") {
+      // Try listing payment methods directly
+      const list = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 1 });
+      const card = list.data[0];
+      if (!card) return res.json({ ok: true, paymentMethod: null });
+      return res.json({ ok: true, paymentMethod: { brand: card.card.brand, last4: card.card.last4, expMonth: card.card.exp_month, expYear: card.card.exp_year } });
+    }
+    return res.json({ ok: true, paymentMethod: { brand: pm.card.brand, last4: pm.card.last4, expMonth: pm.card.exp_month, expYear: pm.card.exp_year } });
+  } catch (e) {
+    console.warn("handleGetPaymentMethod stripe error:", e.message);
+    return res.json({ ok: true, paymentMethod: null });
+  }
+}
+
 /**
  * Get usage history for the last 3 months.
  */
@@ -804,6 +828,7 @@ module.exports = {
   handleGetBillingStatus,
   handleUpdateAutoRecharge,
   handleGetUsageHistory,
+  handleGetPaymentMethod,
   checkBalanceRecharge,
   handleGetKentFlags,
   creditBalanceFromCheckout,

@@ -3,7 +3,7 @@
 **Audience:** Sophisticated investors evaluating SOCIII for a pre-seed allocation.
 **Companion documents:** The deck (90-second walkthrough), the Data Room (cap table model, financials, patent applications), and the Alex IR runtime FAQ (in-product chat answers).
 **Tone:** This document is the long-form read for an investor who wants 30 to 45 minutes of substance before a conversation with Sean or Kent. It is candid where candid is helpful and specific where specific is verifiable.
-**Last reviewed:** 2026-05-25.
+**Last reviewed:** 2026-06-27 (updated: Alex action loop confirmed in production — live Gmail read/send, Apollo investor prospecting; governed integration concrete example added; 100-day roadmap added).
 
 ---
 
@@ -40,6 +40,28 @@ Third, ownership. ChatGPT users do not own anything they build inside ChatGPT. S
 Frameworks are toolkits for developers. SOCIII is a platform for domain experts. A LangChain installation requires Python, an API key, and the willingness to wire prompts together. A SOCIII worker requires a domain expert to describe what they do and what rules govern their work. The accessibility delta is the moat. A platform that requires developers to onboard grows at the rate developers can be hired. A platform where domain experts onboard grows at the rate the profession can be recruited.
 
 The platforms that win this category in the long run will not be the ones with the cleanest abstractions for developers. They will be the ones where the people who know the work can participate without learning to code.
+
+### How does the integration ecosystem work, and why is it defensible?
+
+SOCIII is a governed integration hub. As of June 2026, Google Calendar, Gmail, Google Drive, YouTube, and Apollo.io are live. Microsoft OneDrive, Outlook, Shopify, Salesforce, and QuickBooks are on the near-term roadmap. The trajectory is toward 100+ integrations by end of 2026.
+
+The governance framing is the key investment point. A Zapier automation connecting Gmail to a spreadsheet is not auditable, not governed by professional rules, and not provable to a regulator. Every SOCIII connector runs through the same rules engine that governs the AI workers. When Alex reads a user's inbox, summarizes a thread, drafts a reply, and sends it — every one of those actions is validated, every output is recorded, every record is recoverable. In a regulated vertical, that is not a convenience feature; it is a deployability requirement.
+
+SOCIII also operates as a Model Context Protocol (MCP) server. Claude and other MCP-compatible AI assistants can connect to a user's Vault, invoke workers, and execute under the rules engine. This makes SOCIII the first governed execution layer accessible to the AI-assistant ecosystem — any user who connects Claude Desktop to SOCIII gets governed access to their entire worker catalog, not a raw API.
+
+The compounding dynamic: more connectors → more surface area for workers → more value per worker → more creator incentive to build → more integrations needed. The flywheel is now connector-led, not just worker-led.
+
+### Can you give a concrete example of what "governed integration" means in practice?
+
+On June 27, 2026, the following happened in a single Alex conversation, on production infrastructure, without switching apps:
+
+1. The user asked Alex to check their email. Alex pulled the live Gmail inbox and surfaced three pressing items: an expired signature document on a restricted stock agreement, a pending D&O insurance quote, and an upcoming investor meeting — with the sender, subject, and date of each.
+2. The user asked Alex to draft and send an email. Alex wrote it, presented an approval card, and sent it on one click.
+3. The user asked Alex to run an investor prospecting campaign. Alex proposed two Apollo.io searches — one to enrich the existing 2,000 contacts against investor profiles, one to source net-new angels and VCs — each as a separate approval card. The user clicked Run on each. Apollo executed, wrote 100+ tagged contacts to the Contacts worker, and Alex queued a 25-per-day outbound email campaign pending one template approval.
+
+Total time: one conversation. No tab switching. No copy-pasting. No implementation team.
+
+The approval gate is not a UX convention. It is what makes the platform deployable in contexts where an autonomous AI agent sending email without authorization is a liability. The explicit consent model is the moat in regulated verticals, and it is what distinguishes SOCIII from "AI that does things for you" versus "AI that proposes, you decide, then it executes."
 
 ### How is this different from Salesforce Agentforce, Microsoft Copilot, or Google Duet?
 
@@ -240,6 +262,16 @@ Twelve to eighteen months at the round size we are pricing. The wide band is mos
 
 The runway figure assumes no revenue. With realistic revenue assumptions (the platform is already generating subscription revenue at small scale, and the enterprise pipeline Kent is opening is expected to produce its first signed contracts in Q3 2026), the runway extends to eighteen to twenty-four months.
 
+### What are you building in the next 100 days?
+
+Three tracks running in parallel:
+
+**Enterprise client onboarding.** First institutional clients across healthcare education, medical device distribution, and real estate development are beginning production deployments in H2 2026. The build priority is per-seat isolation, worker reliability at organizational scale, and the Alex-dispatches-Code improvement loop — so clients can improve workers through conversation rather than through an implementation team.
+
+**Integration and MCP expansion.** MCP server is live. The connector roadmap extends through Microsoft (OneDrive, Outlook), Shopify, Salesforce, and QuickBooks. Trajectory toward 100+ integrations by end of 2026. Each new connector increases the surface area where governed AI actions can happen, which increases the value of every existing worker.
+
+**Patent continuation.** Additional provisionals on the connector governance architecture (governed integrations vs. raw API calls), MCP-governed context provision, and the persona-aware worker composition pipeline. Filing alongside each major build to maintain priority dates.
+
 ### What's the path to the next round?
 
 Two scenarios.
@@ -297,7 +329,7 @@ The workers built on the platform are sometimes used in regulated contexts. SOCI
 - **Real estate.** Workers handle disclosure language, listing materials, and title-adjacent workflows. State-specific RAAS modules encode disclosure requirements (California, Nevada, and others). The platform is not a licensed broker.
 - **Auto dealer.** Workers handle title issuance workflow, recall and lien checks, and event-sourced vehicle lifecycle records. The Illinois RAAS module encodes IL DMV title-issuance rules; equivalent modules for additional states are on the roadmap.
 - **Government.** Workers in the DMV, recording, permitting, and inspections suites surface as workflow-support for government operators. The audit trail is the platform feature most relevant to this vertical.
-- **Healthcare and EMS.** Workers in development; not yet in the public catalog. Compliance posture (HIPAA, state-specific licensure) is in design.
+- **Healthcare and Education.** Nursing student evaluation worker is live; learning record substrate (typed, attested, FERPA-aware) is in production. First institutional nursing education clients are onboarding in H2 2026. Medical device distribution compliance workers are in design.
 
 ### What about securities law for the round itself?
 
@@ -369,7 +401,7 @@ Counsel is on call for technical patent questions, structural questions on the S
 
 ### Who else is investing?
 
-Storyhouse Ventures is the friendly first read this week; their walkthrough is Thursday 2026-05-28. Beyond Storyhouse, the round opens when the cap fills; sequencing is for quality over speed. The founder self-funded the prior twelve months of personal runway, so SOCIII is choosing this raise rather than requiring it. The posture matters: we are filling a cap with investors we want to operate inside of, not closing a round to meet a payroll deadline.
+The round is open and rolling. The founder self-funded the prior twelve months of personal runway, so SOCIII is choosing this raise rather than requiring it. The posture matters: we are filling a cap with investors we want to operate inside of, not closing a round to meet a payroll deadline. Current investor conversations on request.
 
 ### What's not in this document?
 

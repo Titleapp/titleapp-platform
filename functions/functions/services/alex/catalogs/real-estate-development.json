@@ -153,7 +153,7 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: ATTOM property + comparable pulls at substrate cost + 100% markup. Typical deal analysis (1 parcel + 5 comps + market snapshot) ≈ $4–$12. Aligned to S52.43 FREE-worker product principle (2026-06-07).",
+        "pricing_note": "Free to add \u2014 pay only for data: ATTOM property + comparable pulls at substrate cost + 100% markup. Typical deal analysis (1 parcel + 5 comps + market snapshot) \u2248 $4\u2013$12. Aligned to S52.43 FREE-worker product principle (2026-06-07).",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
@@ -161,7 +161,7 @@
       "jurisdiction": "US-NATIONAL",
       "lane": "marketplace",
       "status": "live",
-      "capabilitySummary": "Real estate investment analyst — deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals. Now consumes parcel-bundle/v1 from SITE-RECON-001 + title-abstract-bundle/v1 from TITLE-ABSTRACT-001 and emits a deal-analysis-bundle/v1 with embedded Market Snapshot demographics + comparable sales (replaces standalone Market Feasibility worker per S52.43 worker-dependency-clarity insight).",
+      "capabilitySummary": "Real estate investment analyst \u2014 deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals. Now consumes parcel-bundle/v1 from SITE-RECON-001 + title-abstract-bundle/v1 from TITLE-ABSTRACT-001 and emits a deal-analysis-bundle/v1 with embedded Market Snapshot demographics + comparable sales (replaces standalone Market Feasibility worker per S52.43 worker-dependency-clarity insight).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "emits": [
@@ -278,12 +278,12 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: $6/parcel report (ATTOM), $0.20 area resolution, $0.05/GIS overlay evaluation. Typical 10-parcel search ≈ $60. Creator-set 2026-06-06 (Sean Lee Combs): subscription FREE, data fees platform-registry only.",
+        "pricing_note": "Free to add \u2014 pay only for data: $6/parcel report (ATTOM), $0.20 area resolution, $0.05/GIS overlay evaluation. Typical 10-parcel search \u2248 $60. Creator-set 2026-06-06 (Sean Lee Combs): subscription FREE, data fees platform-registry only.",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "status": "live",
-      "capabilitySummary": "Turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict (green/yellow/red + named blocker) on each — done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later. Visual context (Street View + sun direction + YouTube neighborhood video) is rendered alongside data because location is more than a motto. 100-1000x cost compression vs traditional pursuit funds ($50K-$500K to hundreds of dollars).",
+      "capabilitySummary": "Turns a real estate operator's vague hunch into a ranked list of underwriteable opportunities backed by historical title + sales + assessor data, with a feasibility verdict (green/yellow/red + named blocker) on each \u2014 done in under two minutes per parcel and chain-anchored so the analyst can defend the recommendation three years later. Visual context (Street View + sun direction + YouTube neighborhood video) is rendered alongside data because location is more than a motto. 100-1000x cost compression vs traditional pursuit funds ($50K-$500K to hundreds of dollars).",
       "tags": [
         "real-estate",
         "parcel-search",
@@ -398,7 +398,7 @@
           "Detect price variance among same-floorplan units in a stack and surface view-premium caveat"
         ],
         "scope_out": [
-          "Brokerage — does not facilitate offers, negotiations, or transactions",
+          "Brokerage \u2014 does not facilitate offers, negotiations, or transactions",
           "Consumer Zillow-style property search",
           "Certified appraisal (AVM is one input, not a valuation)",
           "Zoning attorney work (v2 worker)",
@@ -407,12 +407,12 @@
           "Investment advice or buy/sell recommendations"
         ],
         "refusal_modes": [
-          "Fair Housing pattern detected → refuse search, surface regulatory note",
-          "Malformed input (fictional ZIP, bad APN, search radius >5mi) → refuse with specific error",
-          "Cost projection not confirmed → block pull, show cost modal",
-          "Pull receipt cannot be written to PLAT-008 → rollback pull, surface error",
-          "User asks for investment recommendation → strip recommendation language, surface feasibility signal only",
-          "User attempts to auto-upgrade persona via system → reject, retain current tier"
+          "Fair Housing pattern detected \u2192 refuse search, surface regulatory note",
+          "Malformed input (fictional ZIP, bad APN, search radius >5mi) \u2192 refuse with specific error",
+          "Cost projection not confirmed \u2192 block pull, show cost modal",
+          "Pull receipt cannot be written to PLAT-008 \u2192 rollback pull, surface error",
+          "User asks for investment recommendation \u2192 strip recommendation language, surface feasibility signal only",
+          "User attempts to auto-upgrade persona via system \u2192 reject, retain current tier"
         ],
         "spec_ref": "docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md"
       },
@@ -453,15 +453,15 @@
         }
       ],
       "coming_soon": [
-        "Zoning/Entitlement live integration (v2 — currently placeholder blocker)",
-        "Permit Processor live integration (v2 — currently placeholder blocker)",
+        "Zoning/Entitlement live integration (v2 \u2014 currently placeholder blocker)",
+        "Permit Processor live integration (v2 \u2014 currently placeholder blocker)",
         "Confidence score (Low/Medium/High) per parcel (v2)",
         "Engineers team integration for soils/environmental flags (v2)",
         "Parcel Atlas read-through for pre-anchored jurisdictions beyond Sublette WY",
         "Drone footage / 3D massing view (when Google Earth API tier signed)",
         "Per-condo unit-stack visual differentiation for view-premium pricing"
       ],
-      "_status_note": "Spec'd 2026-06-05 per docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md. Status: live as platform-spine worker. Co-developed by Sean Lee Combs via Claude.ai interview pattern + SOCIII authoring flow — first creator worker built end-to-end via the Substack-pattern model. 30 QA-001 assertions defined. Visual context (Street View + sun direction + YouTube) elevated to load-bearing per Sean: ATTOM price anomalies (same floorplan different floors) are only explained by visual context. ATTOM pricing tagged ESTIMATE PENDING until $500/mo tier signed."
+      "_status_note": "Spec'd 2026-06-05 per docs/specs/SITE-RECON-001-Worker-Spec-v1.1.md. Status: live as platform-spine worker. Co-developed by Sean Lee Combs via Claude.ai interview pattern + SOCIII authoring flow \u2014 first creator worker built end-to-end via the Substack-pattern model. 30 QA-001 assertions defined. Visual context (Street View + sun direction + YouTube) elevated to load-bearing per Sean: ATTOM price anomalies (same floorplan different floors) are only explained by visual context. ATTOM pricing tagged ESTIMATE PENDING until $500/mo tier signed."
     },
     {
       "id": "TITLE-ABSTRACT-001",
@@ -475,15 +475,15 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: ATTOM property/sales/tax pulls + county-recorder instrument retrieval at substrate cost + 100% markup. Typical single-parcel Abstract ≈ $4–$8. FREE-worker principle (S52.43).",
+        "pricing_note": "Free to add \u2014 pay only for data: ATTOM property/sales/tax pulls + county-recorder instrument retrieval at substrate cost + 100% markup. Typical single-parcel Abstract \u2248 $4\u2013$8. FREE-worker principle (S52.43).",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "creator": "sean-combs",
       "jurisdiction": "US-NATIONAL",
       "lane": "marketplace",
-      "status": "beta",
-      "capabilitySummary": "Title Abstract Report — a strict superset of a title company's preliminary report. Vesting + chain of title + encumbrances + tax/liens + the full rights stratum (air/spectrum/surface/water/carbon/mineral/oil-gas/digital — what is held, severed, unverified) on any US parcel, every field source-pinned and anchored on the property DTC (Deposition Rule). NOT an insured-title product. Accepts parcel-bundle/v1 from SITE-RECON-001; emits title-abstract-bundle/v1 to LAW-LANDUSE-001 / ZONING-001 / FEASIBILITY-001 / W-002.",
+      "status": "live",
+      "capabilitySummary": "Title Abstract Report \u2014 a strict superset of a title company's preliminary report. Vesting + chain of title + encumbrances + tax/liens + the full rights stratum (air/spectrum/surface/water/carbon/mineral/oil-gas/digital \u2014 what is held, severed, unverified) on any US parcel, every field source-pinned and anchored on the property DTC (Deposition Rule). NOT an insured-title product. Accepts parcel-bundle/v1 from SITE-RECON-001; emits title-abstract-bundle/v1 to LAW-LANDUSE-001 / ZONING-001 / FEASIBILITY-001 / W-002.",
       "temporalType": "always_on",
       "emits": [
         "title-abstract-bundle/v1"
@@ -573,15 +573,15 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: authority retrieval (Municode/state feeds) + comparable-case pulls + optional ATTOM/HOA OCR at substrate cost + 100% markup. Tier-Q quick-look cheapest; Tier-R/S scale with authorities + comparables. FREE-worker principle (S52.43).",
+        "pricing_note": "Free to add \u2014 pay only for data: authority retrieval (Municode/state feeds) + comparable-case pulls + optional ATTOM/HOA OCR at substrate cost + 100% markup. Tier-Q quick-look cheapest; Tier-R/S scale with authorities + comparables. FREE-worker principle (S52.43).",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "creator": "sean-combs",
       "jurisdiction": "US-NATIONAL",
       "lane": "marketplace",
-      "status": "beta",
-      "capabilitySummary": "Land Use AI Attorney — the legal feasibility layer on Site Recon's data substrate. Given a parcel + a land-use question (trivial to major), returns what the law says, what it takes, and the realistic path — plain English with version-pinned citations a real attorney can audit, comparable cases from verifiable sources (no fabrication), a CAS-coded entitlement roadmap, and a UPL disclaimer. Anchored to PLAT-008 (Deposition Rule). Accepts parcel-bundle/v1 + title-abstract-bundle/v1; emits feasibility-roadmap/v1 + legal-opinion-bundle/v1.",
+      "status": "development",
+      "capabilitySummary": "Land Use AI Attorney \u2014 the legal feasibility layer on Site Recon's data substrate. Given a parcel + a land-use question (trivial to major), returns what the law says, what it takes, and the realistic path \u2014 plain English with version-pinned citations a real attorney can audit, comparable cases from verifiable sources (no fabrication), a CAS-coded entitlement roadmap, and a UPL disclaimer. Anchored to PLAT-008 (Deposition Rule). Accepts parcel-bundle/v1 + title-abstract-bundle/v1; emits feasibility-roadmap/v1 + legal-opinion-bundle/v1.",
       "temporalType": "always_on",
       "emits": [
         "feasibility-roadmap/v1",
@@ -672,15 +672,15 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: ATTOM zoning/permits + live county code-section retrieval + GIS overlay evaluation at substrate cost + 100% markup. Typical consumer verdict ≈ a few dollars. FREE-worker principle (S52.43).",
+        "pricing_note": "Free to add \u2014 pay only for data: ATTOM zoning/permits + live county code-section retrieval + GIS overlay evaluation at substrate cost + 100% markup. Typical consumer verdict \u2248 a few dollars. FREE-worker principle (S52.43).",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "creator": "sean-combs",
       "jurisdiction": "US-NATIONAL",
       "lane": "marketplace",
-      "status": "beta",
-      "capabilitySummary": "Zoning + Entitlement (consumer side) — answers 'what can I build on this parcel?' in plain English for a homeowner without a land use attorney. Allowed/conditional/not-allowed verdict + live code-section citations (no model recall) + next-step procedure with cost/timeline + the restrictions that actually bite + hyper-local overlays (SMA/flood/historic/HOA/special-tax). Escalates to LAW-LANDUSE-001 when stakes rise. Accepts parcel-bundle/v1 (incl. SITE-RECON ZONING_UNAVAILABLE flip); emits zoning-verdict-bundle/v1 + legal-question-bundle/v1 + permit-intent-bundle/v1.",
+      "status": "development",
+      "capabilitySummary": "Zoning + Entitlement (consumer side) \u2014 answers 'what can I build on this parcel?' in plain English for a homeowner without a land use attorney. Allowed/conditional/not-allowed verdict + live code-section citations (no model recall) + next-step procedure with cost/timeline + the restrictions that actually bite + hyper-local overlays (SMA/flood/historic/HOA/special-tax). Escalates to LAW-LANDUSE-001 when stakes rise. Accepts parcel-bundle/v1 (incl. SITE-RECON ZONING_UNAVAILABLE flip); emits zoning-verdict-bundle/v1 + legal-question-bundle/v1 + permit-intent-bundle/v1.",
       "temporalType": "always_on",
       "emits": [
         "zoning-verdict-bundle/v1",
@@ -765,15 +765,15 @@
         "currency": "USD",
         "free_worker": true,
         "per_pull_data_fees": true,
-        "pricing_note": "Free to add — pay only for data: Census ACS/BLS (free) + ATTOM/MLS comps + supply-pipeline pulls at substrate cost + 100% markup. Tier-Q snapshot cheapest; Tier-R/S scale with paid comp sources. FREE-worker principle (S52.43).",
+        "pricing_note": "Free to add \u2014 pay only for data: Census ACS/BLS (free) + ATTOM/MLS comps + supply-pipeline pulls at substrate cost + 100% markup. Tier-Q snapshot cheapest; Tier-R/S scale with paid comp sources. FREE-worker principle (S52.43).",
         "markup_percent": 100,
         "creator_share_of_markup_percent": 20
       },
       "creator": "sean-combs",
       "jurisdiction": "US-NATIONAL",
       "lane": "marketplace",
-      "status": "beta",
-      "capabilitySummary": "Market & Feasibility Study — the lender-defensible deliverable a developer takes to a lender or equity investor: demand (demographics + employment + capture rate), supply pipeline, rent/sale comps (with provenance, no fabrication), and a lender-readiness badge, every input version-pinned and audit-anchored (Deposition Rule). NOT financial underwriting (that is W-002) — produces the demand/supply/comp inputs W-002 consumes. Accepts parcel-bundle/v1 + title-abstract-bundle/v1; emits market-snapshot/v1 + feasibility-study/v1 + investment-market-study/v1.",
+      "status": "development",
+      "capabilitySummary": "Market & Feasibility Study \u2014 the lender-defensible deliverable a developer takes to a lender or equity investor: demand (demographics + employment + capture rate), supply pipeline, rent/sale comps (with provenance, no fabrication), and a lender-readiness badge, every input version-pinned and audit-anchored (Deposition Rule). NOT financial underwriting (that is W-002) \u2014 produces the demand/supply/comp inputs W-002 consumes. Accepts parcel-bundle/v1 + title-abstract-bundle/v1; emits market-snapshot/v1 + feasibility-study/v1 + investment-market-study/v1.",
       "temporalType": "always_on",
       "emits": [
         "market-snapshot/v1",
@@ -2874,7 +2874,7 @@
     },
     {
       "id": "W-048",
-      "name": "Alex — Chief of Staff",
+      "name": "Alex \u2014 Chief of Staff",
       "slug": "chief-of-staff",
       "suite": "Platform",
       "phase": 8,

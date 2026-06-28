@@ -184,12 +184,34 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
         const ms = c.createdAt?._seconds ? c.createdAt._seconds * 1000 : c.createdAt?.toMillis?.();
         return ms && ms >= new Date(monthStart).getTime();
       }).length;
+
+      // Aggregate tags across all contacts (spine_v2: personas[].tags[], legacy: tags[])
+      const tagCounts = {};
+      for (const c of contacts) {
+        const allTags = [];
+        if (Array.isArray(c.tags)) allTags.push(...c.tags);
+        if (Array.isArray(c.personas)) {
+          for (const p of c.personas) {
+            if (Array.isArray(p.tags)) allTags.push(...p.tags);
+          }
+        }
+        for (const t of allTags) {
+          if (t) tagCounts[t] = (tagCounts[t] || 0) + 1;
+        }
+      }
+      const tagSummary = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([tag, count]) => `${tag} (${count})`)
+        .join(", ");
+
       live["platform-contacts"] = {
         label: "Contacts",
         kpis: {
           "Total Contacts": contacts.length,
           "Customers":      customers || 0,
           "New This Month": newThisMonth || 0,
+          ...(tagSummary ? { "Tags": tagSummary } : {}),
+          ...(!tagSummary ? { "Tags": "none yet" } : {}),
         },
       };
     } else {

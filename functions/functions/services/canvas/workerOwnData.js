@@ -161,7 +161,7 @@ async function contactsBlock(db, tenantId) {
   // Include the actual roster (name + pet + segments + email) so chat can ANSWER
   // "who are the rabbit owners" by name instead of saying it only sees counts —
   // the canvas lists every contact, chat must be able to as well (Sean, 6/26).
-  const roster = contacts.slice(0, 250).map(c => {
+  const roster = contacts.slice(0, 60).map(c => {
     const name = c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || "Unknown";
     const pet = c.petInfo || (c.species ? `${c.species} owner` : "");
     const segs = (c.segments || []).join("/");

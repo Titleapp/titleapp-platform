@@ -26,7 +26,8 @@ const LIFECYCLE_TEMPLATE = [
 
 function validateWorkerEntry(entry) {
   const errors = [];
-  if (!entry.id || !/^[A-Z][A-Z0-9]{0,3}-[A-Z0-9]{1,4}$/.test(entry.id)) errors.push(`Invalid id: ${entry.id}`);
+  // Two-segment (SREC-001) or three-segment (SITE-RECON-001) IDs are both valid.
+  if (!entry.id || !/^[A-Z][A-Z0-9]{0,14}-(?:[A-Z][A-Z0-9]{0,7}-)?[A-Z0-9]{1,4}$/.test(entry.id)) errors.push(`Invalid id: ${entry.id}`);
   if (!entry.slug) errors.push("Missing slug");
   if (!entry.name) errors.push("Missing name");
   if (!VALID_TYPES.includes(entry.type)) errors.push(`Invalid type: ${entry.type}`);

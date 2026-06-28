@@ -10,13 +10,40 @@ function formatTimestamp(ts) {
   return new Date(ms).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-// Per-DTC logbook viewer. Each DTC owns a logbook of immutable events
-// (registration, lien added/cleared, transfer, status change, etc.)
-// scoped via /v1/logbook:list?dtcId=xxx. Append form is v1.1.
+const EDUCATION_ENTRY_COLORS = {
+  enrollment:            { dot: "#2563eb", label: "Enrollment" },
+  degree_conferred:      { dot: "#7c3aed", label: "Degree conferred" },
+  course_completed:      { dot: "#059669", label: "Course completed" },
+  milestone:             { dot: "#0891b2", label: "Milestone" },
+  ce_credit:             { dot: "#7c3aed", label: "CE credit" },
+  renewal:               { dot: "#059669", label: "Renewal" },
+  certification_issued:  { dot: "#7c3aed", label: "Certification issued" },
+  externship:            { dot: "#0891b2", label: "Externship" },
+  created:               { dot: "#94a3b8", label: "Added to Vault" },
+};
+
+function gradeColor(grade) {
+  if (!grade) return "#64748b";
+  const g = String(grade).trim().toUpperCase();
+  if (g === "A" || g === "A+") return "#059669";
+  if (g.startsWith("A")) return "#16a34a";
+  if (g === "B+" || g === "B") return "#0891b2";
+  if (g.startsWith("B")) return "#2563eb";
+  if (g === "PASS" || g === "COMPLETED") return "#7c3aed";
+  return "#64748b";
+}
+
+// Per-DTC logbook viewer. Education DTCs get a structured course+timeline view.
+// scoped via /v1/logbook:list?dtcId=xxx.
 function LogbookModal({ dtc, onClose }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [tab, setTab] = useState("timeline");
+
+  const isEducation = EDUCATION_TYPES.has(dtc.type);
+  const m = dtc.metadata || {};
+  const courses = Array.isArray(m.courses) ? m.courses : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -24,7 +51,7 @@ function LogbookModal({ dtc, onClose }) {
       try {
         const token = localStorage.getItem("ID_TOKEN");
         const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-        headers["x-tenant-id"] = "vault"; // MY VAULT is always personal, not the active persona
+        headers["x-tenant-id"] = "vault";
         const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(`/v1/logbook:list?dtcId=${dtc.id}`)}`, { headers });
         const data = await res.json();
         if (cancelled) return;
@@ -40,6 +67,13 @@ function LogbookModal({ dtc, onClose }) {
     return () => { cancelled = true; };
   }, [dtc.id]);
 
+  // Sort entries chronologically (oldest first) for the timeline
+  const sorted = [...entries].sort((a, b) => {
+    const aMs = a.createdAt?._seconds ?? 0;
+    const bMs = b.createdAt?._seconds ?? 0;
+    return aMs - bMs;
+  });
+
   return (
     <div
       onClick={onClose}
@@ -51,7 +85,8 @@ function LogbookModal({ dtc, onClose }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff", borderRadius: 16, width: "100%", maxWidth: 640,
+          background: "#fff", borderRadius: 16, width: "100%",
+          maxWidth: isEducation && courses.length > 0 ? 720 : 640,
           maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden",
           boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
         }}
@@ -59,23 +94,57 @@ function LogbookModal({ dtc, onClose }) {
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f5f9" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-            <div>
+            <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
-                {dtc.assetClass} · Logbook
+                {isEducation ? "Education" : (dtc.assetClass || "Vault")} · Logbook
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
-                {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
+                {m.title || m.name || dtc.type || "Record"}
               </div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-                <code style={{ fontSize: 11 }}>{dtc.id}</code>
-              </div>
+              {m.institution && (
+                <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>{m.institution}</div>
+              )}
+              {isEducation && (m.gpa || m.years || m.conferred || m.level || m.expires) && (
+                <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+                  {m.years && <span style={{ fontSize: 12, color: "#64748b" }}>{m.years}</span>}
+                  {m.conferred && <span style={{ fontSize: 12, color: "#64748b" }}>Conferred {m.conferred}</span>}
+                  {m.gpa && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", background: "#f0fdf4", padding: "1px 8px", borderRadius: 999 }}>
+                      GPA {m.gpa}
+                    </span>
+                  )}
+                  {m.hoursLogged != null && m.hoursRequired != null && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", padding: "1px 8px", borderRadius: 999 }}>
+                      {m.hoursLogged}/{m.hoursRequired} hrs CE
+                    </span>
+                  )}
+                  {m.expires && (
+                    <span style={{ fontSize: 12, color: "#64748b" }}>Expires {m.expires}</span>
+                  )}
+                </div>
+              )}
             </div>
             <button
               onClick={onClose}
-              style={{ background: "none", border: "none", fontSize: 24, color: "#64748b", cursor: "pointer", lineHeight: 1, padding: 4 }}
+              style={{ background: "none", border: "none", fontSize: 24, color: "#64748b", cursor: "pointer", lineHeight: 1, padding: 4, flexShrink: 0 }}
               aria-label="Close"
             >×</button>
           </div>
+          {/* Tab bar for education DTCs with courses */}
+          {isEducation && courses.length > 0 && (
+            <div style={{ display: "flex", gap: 0, marginTop: 14, borderBottom: "1px solid #f1f5f9" }}>
+              {["timeline", "courses"].map((t) => (
+                <button key={t} onClick={() => setTab(t)} style={{
+                  padding: "6px 16px", fontSize: 13, fontWeight: tab === t ? 600 : 500,
+                  cursor: "pointer", background: "none", border: "none", whiteSpace: "nowrap",
+                  color: tab === t ? "#7c3aed" : "#64748b",
+                  borderBottom: tab === t ? "2px solid #7c3aed" : "2px solid transparent",
+                }}>
+                  {t === "timeline" ? `Timeline (${entries.length})` : `Courses (${courses.length})`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Body */}
@@ -88,47 +157,95 @@ function LogbookModal({ dtc, onClose }) {
               {error}
             </div>
           )}
-          {!loading && !error && entries.length === 0 && (
+
+          {/* Courses tab — structured course list with grades */}
+          {!loading && !error && tab === "courses" && courses.length > 0 && (
+            <div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    {["Code", "Course", "Credits", "Grade", "Term"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "6px 10px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {courses.map((c, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #f8fafc" }}>
+                      <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#64748b" }}>{c.code || "—"}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 500, color: "#1e293b" }}>{c.title}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "center", color: "#475569" }}>{c.credits ?? "—"}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                        <span style={{ fontWeight: 700, color: gradeColor(c.grade) }}>{c.grade || "—"}</span>
+                      </td>
+                      <td style={{ padding: "8px 10px", color: "#64748b", whiteSpace: "nowrap" }}>{c.term || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {m.gpa && (
+                <div style={{ marginTop: 14, textAlign: "right", fontSize: 13, color: "#64748b" }}>
+                  Cumulative GPA: <strong style={{ color: "#059669" }}>{m.gpa}</strong>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Timeline tab (or default for non-education) */}
+          {!loading && !error && tab === "timeline" && entries.length === 0 && (
             <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>No logbook entries yet</div>
               <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-                Events are appended here as workers act on this record — registrations, liens,
-                transfers, inspections, status changes.
+                Events are appended here as workers act on this record.
               </div>
             </div>
           )}
-          {!loading && !error && entries.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  style={{ borderLeft: "3px solid #7c3aed", paddingLeft: 14, paddingTop: 2, paddingBottom: 2 }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", textTransform: "capitalize" }}>
-                      {(entry.entryType || "event").replace(/_/g, " ")}
-                    </span>
-                    <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatTimestamp(entry.createdAt)}</span>
+          {!loading && !error && tab === "timeline" && sorted.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "relative" }}>
+              {sorted.map((entry, idx) => {
+                const edColors = EDUCATION_ENTRY_COLORS[entry.entryType] || { dot: "#7c3aed", label: entry.entryType?.replace(/_/g, " ") || "event" };
+                const isEd = isEducation;
+                const dot = isEd ? edColors.dot : "#7c3aed";
+                const noteText = entry.data?.note || entry.note || null;
+                const dataEntries = Object.entries(entry.data || {}).filter(([k]) => k !== "note").slice(0, 4);
+                return (
+                  <div key={entry.id || idx} style={{ display: "flex", gap: 12 }}>
+                    {isEd && (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: "50%", background: dot, marginTop: 3, flexShrink: 0 }} />
+                        {idx < sorted.length - 1 && <div style={{ width: 2, flex: 1, background: "#f1f5f9", marginTop: 4 }} />}
+                      </div>
+                    )}
+                    <div style={{ flex: 1, paddingLeft: isEd ? 0 : 14, borderLeft: isEd ? "none" : `3px solid #7c3aed`, paddingTop: 0, paddingBottom: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: isEd ? dot : "#1e293b" }}>
+                          {isEd ? (edColors.label || (entry.entryType || "event").replace(/_/g, " ")) : (entry.entryType || "event").replace(/_/g, " ")}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap", marginLeft: 8 }}>{formatTimestamp(entry.createdAt)}</span>
+                      </div>
+                      {noteText && (
+                        <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5, marginBottom: dataEntries.length ? 4 : 0 }}>
+                          {noteText.length > 200 ? noteText.slice(0, 199).trimEnd() + "…" : noteText}
+                        </div>
+                      )}
+                      {dataEntries.length > 0 && (
+                        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+                          {dataEntries.map(([k, v]) => (
+                            <span key={k} style={{ marginRight: 12 }}>
+                              <span style={{ color: "#94a3b8" }}>{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {entry.data && (
-                    <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
-                      {Object.entries(entry.data).slice(0, 4).map(([k, v]) => (
-                        <div key={k}><span style={{ color: "#94a3b8" }}>{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}</div>
-                      ))}
-                    </div>
-                  )}
-                  {entry.createdByWorker && (
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                      via {entry.createdByWorker}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Footer note — append form lands in v1.1 */}
+        {/* Footer */}
         <div style={{ padding: "12px 24px", borderTop: "1px solid #f1f5f9", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>
           Logbook is append-only — entries written by workers cannot be edited or deleted.
         </div>
@@ -212,6 +329,13 @@ function dtcValue(dtc) {
   return isLiability ? -Math.abs(v) : Math.abs(v);
 }
 
+// Clip long text so a multi-sentence summary doesn't blow out the card.
+function clip(s, max = 72) {
+  if (!s) return s;
+  const t = String(s).trim().replace(/\s+/g, " ");
+  return t.length <= max ? t : t.slice(0, max - 1).trimEnd() + "…";
+}
+
 function metadataPreview(dtc) {
   const m = dtc.metadata || {};
   const lines = [];
@@ -236,7 +360,7 @@ function metadataPreview(dtc) {
     } else {
       if (m.provider) lines.push(m.provider);
       if (m.date || m.issued) lines.push(m.date || m.issued);
-      if (m.summary) lines.push(m.summary);
+      if (m.summary) lines.push(clip(m.summary));
     }
   } else if (MONEY_TYPES.has(dtc.type)) {
     if (m.institution) lines.push(m.institution);
@@ -244,15 +368,18 @@ function metadataPreview(dtc) {
     if (m.accountType || m.lender) lines.push(m.accountType || m.lender);
   } else if (EDUCATION_TYPES.has(dtc.type)) {
     if (m.institution) lines.push(m.institution);
-    if (m.date || m.conferred) lines.push(m.date || m.conferred);
-    if (m.summary) lines.push(m.summary);
+    if (m.degree || m.course || m.level || m.rating) lines.push(m.degree || m.course || m.level || m.rating);
+    if (m.conferred || m.years || m.currentCycle) lines.push(m.conferred ? `Conferred ${m.conferred}` : (m.currentCycle || m.years));
+    if (m.gpa) lines.push(`GPA ${m.gpa}`);
+    else if (m.hoursLogged != null) lines.push(`${m.hoursLogged} CE hrs logged`);
+    else if (!lines.length && m.summary) lines.push(clip(m.summary));
   } else {
     // Generic: show top-level keys.
     Object.entries(m).slice(0, 3).forEach(([k, v]) => {
-      if (typeof v !== "object") lines.push(`${k}: ${v}`);
+      if (typeof v !== "object") lines.push(clip(`${k}: ${v}`));
     });
   }
-  return lines.slice(0, 3);
+  return lines.filter(Boolean).slice(0, 3);
 }
 
 export default function VaultDTCs() {
@@ -322,9 +449,12 @@ export default function VaultDTCs() {
     const sum = (pred) => dtcs.reduce((acc, d) => { const v = dtcValue(d); return acc + (v != null && v > 0 && pred(d) ? v : 0); }, 0);
     const stuff = sum(d => ["Real Property", "Vehicles", "Personal Assets"].includes(d.assetClass));
     const liquid = sum(d => ["bank_account", "investment_account", "crypto_account"].includes(d.type));
+    const realProp = sum(d => d.assetClass === "Real Property");
+    const vehicles = sum(d => d.assetClass === "Vehicles");
+    const personal = sum(d => d.assetClass === "Personal Assets");
     const med = dtcs.find(d => d.type === "medical_certificate");
     return {
-      stuff, liquid,
+      stuff, liquid, realProp, vehicles, personal,
       stuffCount: dtcs.filter(d => ["Real Property", "Vehicles", "Personal Assets"].includes(d.assetClass)).length,
       health: dtcs.filter(d => d.assetClass === "Health").length,
       education: dtcs.filter(d => d.assetClass === "Education").length,
@@ -343,25 +473,58 @@ export default function VaultDTCs() {
         </p>
       </div>
 
-      {/* Net worth — refined hero in the canvas card style (not a loud dark card). */}
-      {worth.valued > 0 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap", padding: "16px 20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 2px rgba(0,0,0,0.04)", marginBottom: 16 }}>
-          <div>
-            <SectionTitle>Net worth</SectionTitle>
-            <div style={{ fontSize: 32, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5, lineHeight: 1 }}>{fmtUsd(worth.net)}</div>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ background: CAS.GREEN.bg, border: `1px solid ${CAS.GREEN.border}`, borderRadius: 10, padding: "10px 14px", minWidth: 112 }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>Assets</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: CAS.GREEN.text }}>{fmtUsd(worth.assets)}</div>
+      {/* Net worth — picture-first hero (Trump Rule): big number + visual asset-mix bar. */}
+      {worth.valued > 0 && (() => {
+        const mixSlices = [
+          { label: "Real Property", value: pillars.realProp, color: "#7c3aed" },
+          { label: "Vehicles",      value: pillars.vehicles,  color: "#2563eb" },
+          { label: "Personal Assets", value: pillars.personal, color: "#0891b2" },
+          { label: "Liquid",        value: pillars.liquid,    color: "#059669" },
+        ].filter(s => s.value > 0);
+        const totalMix = mixSlices.reduce((a, s) => a + s.value, 0);
+        return (
+          <div style={{ padding: "16px 20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 2px rgba(0,0,0,0.04)", marginBottom: 16 }}>
+            {/* Row 1: headline */}
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
+              <div>
+                <SectionTitle>Net worth</SectionTitle>
+                <div style={{ fontSize: 36, fontWeight: 700, color: "#0f172a", letterSpacing: -1, lineHeight: 1 }}>{fmtUsd(worth.net)}</div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ background: CAS.GREEN.bg, border: `1px solid ${CAS.GREEN.border}`, borderRadius: 8, padding: "8px 12px", minWidth: 96, textAlign: "right" }}>
+                  <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 }}>Assets</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: CAS.GREEN.text }}>{fmtUsd(worth.assets)}</div>
+                </div>
+                {worth.liabilities > 0 && (
+                  <div style={{ background: CAS.RED.bg, border: `1px solid ${CAS.RED.border}`, borderRadius: 8, padding: "8px 12px", minWidth: 96, textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 }}>Liabilities</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: CAS.RED.text }}>{fmtUsd(-worth.liabilities)}</div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ background: CAS.RED.bg, border: `1px solid ${CAS.RED.border}`, borderRadius: 10, padding: "10px 14px", minWidth: 112 }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>Liabilities</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: CAS.RED.text }}>{worth.liabilities ? fmtUsd(-worth.liabilities) : "$0"}</div>
-            </div>
+            {/* Row 2: visual asset-mix bar — where the wealth lives */}
+            {mixSlices.length > 0 && (
+              <div>
+                <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", gap: 2, marginBottom: 10 }}>
+                  {mixSlices.map(s => (
+                    <div key={s.label} style={{ flex: s.value / totalMix, background: s.color, minWidth: 4, borderRadius: 2 }} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                  {mixSlices.map(s => (
+                    <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{s.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#374151" }}>{fmtUsd(s.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabs — underline style. Show ALL pillars always (even empty) so a new user
           sees where their things go and Alex can guide/organize them (Sean 2026-06-24). */}

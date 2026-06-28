@@ -58,6 +58,31 @@ async function processMessageQueue() {
           htmlBody: msg.body || undefined,
           textBody: msg.textBody || undefined,
         });
+      } else if (msg.channel === "gmail" && msg.userId) {
+        // Personal Gmail send — uses the sender's own OAuth token.
+        // Falls back to SendGrid if the user has no Gmail token.
+        const gmail = require("../services/social/gmail");
+        const tokenSnap = await getDb().doc(`users/${msg.userId}/integrations/gmail`).get();
+        if (tokenSnap.exists && tokenSnap.data().accessToken) {
+          await gmail.sendEmail(msg.userId, {
+            to: msg.to,
+            subject: msg.subject || "(no subject)",
+            body: msg.body || "",
+          });
+        } else {
+          // Fallback: transactional email via SendGrid
+          const { sendViaSendGrid } = require("../services/marketingService/emailNotify");
+          await sendViaSendGrid({
+            to: msg.to,
+            subject: msg.subject || "(no subject)",
+            htmlBody: msg.body || undefined,
+          });
+        }
+      } else if (msg.channel === "telegram") {
+        // Telegram send via the bot. Uses owner or advisor-group destination.
+        const tg = require("../services/telegram/telegram");
+        const dest = msg.telegramDestination || msg.to || "owner";
+        await tg.sendToDestination(dest, msg.body || "");
       } else if (msg.channel === "sms") {
         const { sendSMSDirect } = require("../communications/twilioHelper");
         await sendSMSDirect(msg.to, msg.body || "");

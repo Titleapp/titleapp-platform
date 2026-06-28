@@ -6,6 +6,7 @@ import { prettyWorkerName } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import useCreatorStatus from "../hooks/useCreatorStatus";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -1143,10 +1144,9 @@ export default function Sidebar({
   const [gamesCollapsed, setGamesCollapsed] = useState(true);
   const [accountCollapsed, setAccountCollapsed] = useState(true);
   const workerCtx = useWorkerState();
-  // S52.61 — the CREATE nav is now status-independent (Build a Worker +
-  // Creator Dashboard), so the creatorStatus hook is no longer needed here.
+  const { status: creatorStatus } = useCreatorStatus();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
-  const isPersonal = vertical === "consumer";
+  const isPersonal = vertical === "consumer" || (!guestMode && localStorage.getItem("TENANT_ID") === "vault");
 
   const rawWsName = guestMode ? "" : (localStorage.getItem("WORKSPACE_NAME") || "");
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
@@ -1191,7 +1191,9 @@ export default function Sidebar({
     const TITLES = /^(dr|mr|mrs|ms|miss|prof|professor|sir|rev|fr|capt|lt|sgt|hon)\.?$/i;
     const parts = raw.split(/\s+/).filter(Boolean);
     let first = parts[0] || "";
-    if (TITLES.test(first) && parts[1]) first = parts[1];
+    // If the first token is an honorific, use the next token. If there is no
+    // next token (display name is just "Dr."), fall through to email fallback.
+    if (TITLES.test(first)) first = parts[1] || "";
     return (first && first.length >= 2) ? first : "";
   })();
 
@@ -1246,7 +1248,14 @@ export default function Sidebar({
   // Dynamic header: changes based on selected worker
   const brandLabel = (() => {
     if (guestMode) return tenantName || "SOCIII";
-    const name = userFirstName || companyName.split(" ")[0] || "";
+    const TITLES_B = /^(dr|mr|mrs|ms|miss|prof|professor|sir|rev|fr|capt|lt|sgt|hon)\.?$/i;
+    const companyFirst = (() => {
+      const pts = companyName.split(/\s+/).filter(Boolean);
+      let f = pts[0] || "";
+      if (TITLES_B.test(f)) f = pts[1] || "";
+      return f && f.length >= 2 ? f : "";
+    })();
+    const name = userFirstName || companyFirst || "";
     if (selectedWorker && selectedWorkerName) {
       return name ? `${name}'s ${selectedWorkerName}` : selectedWorkerName;
     }
@@ -2080,7 +2089,7 @@ export default function Sidebar({
                    persona row that navigates exactly like the former "Creator
                    Dashboard" item did (/creators/dashboard?tab=workers).
                    Colored via personaTintFor so it reads as its own persona. */}
-              {(() => {
+              {creatorStatus !== "none" && (() => {
                 const creatorTint = personaTintFor("__creator__", false);
                 // Route-based, not currentSection (which is sticky) — Creator
                 // expands ONLY when actually parked on the /creators route, so

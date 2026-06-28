@@ -364,8 +364,8 @@ function Chat({ character, alexOpening, subject }) {
           <div style={{ color: COLORS.textDim, fontSize: 13, marginBottom: 14, lineHeight: 1.5 }}>
             Sign in so I can save what we build. No card needed yet — just need somewhere to put the work.
           </div>
-          <button style={primaryButton}>Continue with Google</button>
-          <button style={ghostButton}>Use email instead</button>
+          <button style={primaryButton} onClick={() => window.location.href = "/meet-alex?action=signup"}>Continue with Google</button>
+          <button style={ghostButton} onClick={() => window.location.href = "/meet-alex?action=signup&mode=email"}>Use email instead</button>
         </div>
       ) : (
         <form onSubmit={handleSend} style={chatInputForm}>
@@ -614,7 +614,7 @@ function MobileChat({ character, alexOpening, subject }) {
           <div style={{ color: COLORS.textDim, fontSize: 12.5, marginBottom: 12 }}>
             Sign in so I can keep working on {character} for you.
           </div>
-          <button style={primaryButton}>Continue with Google</button>
+          <button style={primaryButton} onClick={() => window.location.href = "/meet-alex?action=signup"}>Continue with Google</button>
         </div>
       ) : (
         <form onSubmit={handleSend} style={{ ...chatInputForm, padding: "10px 12px env(safe-area-inset-bottom) 12px" }}>

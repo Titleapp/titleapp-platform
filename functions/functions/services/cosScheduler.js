@@ -851,4 +851,146 @@ async function runCosEvening() {
   return runCosWorkers("evening");
 }
 
-module.exports = { runCosMorning, runCosEvening };
+// ═══════════════════════════════════════════════════════════════
+//  WEEKLY ADVISOR TELEGRAM DRAFT (Mondays)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Build a concise weekly advisor update for the Telegram group.
+ * Tone: founder update, not a data dump. Plain sentences, < 1500 chars.
+ */
+function buildWeeklyAdvisorText(cc, today) {
+  const weekDate = today;
+  const rev = cc.rev || {};
+  const mtd = (rev.mtd || 0).toLocaleString();
+  const target = (cc.monthlyTarget || 0).toLocaleString();
+  const pct = cc.monthlyTarget > 0 ? Math.round(((rev.mtd || 0) / cc.monthlyTarget) * 100) : 0;
+
+  const lines = [];
+  lines.push(`<b>SOCIII — Weekly Advisor Update</b>`);
+  lines.push(`${weekDate}`);
+  lines.push(``);
+
+  // Revenue
+  lines.push(`<b>Revenue</b>`);
+  lines.push(`$${mtd} MTD — ${pct}% to $${target} target`);
+  lines.push(``);
+
+  // Pipeline
+  if (cc.deals && cc.deals.length > 0) {
+    lines.push(`<b>Pipeline</b>`);
+    const topDeal = cc.deals[0];
+    lines.push(`${cc.deals.length} active deals · $${(cc.totalPipeline / 1000).toFixed(0)}K potential ARR`);
+    if (topDeal) {
+      lines.push(`Top: ${topDeal.company || topDeal.contactName || "Prospect"} — ${topDeal.stage || "Discovery"}`);
+    }
+    if (cc.stalledDeals && cc.stalledDeals.length > 0) {
+      lines.push(`${cc.stalledDeals.length} deal${cc.stalledDeals.length > 1 ? "s" : ""} need follow-up`);
+    }
+    lines.push(``);
+  }
+
+  // Platform
+  lines.push(`<b>Platform</b>`);
+  const workers = cc.analytics.workersPublished || 0;
+  const signups = cc.analytics.signupsToday || 0;
+  const subscribers = cc.analytics.activeSubscribers || 0;
+  lines.push(`${subscribers} active subscribers · ${workers} workers published`);
+  if (signups > 0) lines.push(`${signups} new signups this week`);
+  lines.push(``);
+
+  // Priority / what's next
+  if (cc.stalledDeals && cc.stalledDeals.length > 0) {
+    lines.push(`<b>Focus this week:</b> Follow up on stalled deals`);
+  } else if (pct < 70 && cc.dayOfMonth > 15) {
+    lines.push(`<b>Focus this week:</b> Revenue acceleration — ${pct}% to goal`);
+  } else {
+    lines.push(`<b>Focus this week:</b> All systems green — stay on offense`);
+  }
+  lines.push(``);
+  lines.push(`More detail: sociii.ai`);
+
+  return lines.join("\n");
+}
+
+/**
+ * Save a pending Telegram draft to Firestore for the approval-gate flow.
+ * Alex reads this on next conversation start and surfaces the approval card.
+ */
+async function saveAdvisorTelegramDraft(text, date) {
+  const db = getDb();
+  await db.collection("pendingTelegramDrafts").add({
+    date,
+    destination: "advisor-group",
+    text,
+    status: "pending",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+/**
+ * Generate and store the weekly advisor Telegram draft.
+ * Called on Monday mornings. Approval-gated — never auto-sends.
+ */
+async function runWeeklyAdvisorTelegram() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Only run on Mondays (0 = Sunday, 1 = Monday in UTC; adjust for PT)
+  const nowPT = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  if (nowPT.getDay() !== 1) {
+    console.log("[cosScheduler:weeklyAdvisor] Not Monday PT — skipping");
+    return { ok: true, skipped: true };
+  }
+
+  // Gather metrics for the SOCIII owner account (uses the same CC data path)
+  const ownerUid = process.env.SOCIII_OWNER_UID;
+  let cc = { rev: {}, deals: [], stalledDeals: [], analytics: {}, monthlyTarget: 10000, dayOfMonth: nowPT.getDate(), totalPipeline: 0 };
+  if (ownerUid) {
+    try {
+      cc = await gatherControlCenterData(ownerUid);
+    } catch (err) {
+      console.warn("[cosScheduler:weeklyAdvisor] gatherControlCenterData failed:", err.message);
+    }
+  }
+
+  const text = buildWeeklyAdvisorText(cc, today);
+
+  try {
+    await saveAdvisorTelegramDraft(text, today);
+    console.log(`[cosScheduler:weeklyAdvisor] Draft saved for ${today}`);
+  } catch (err) {
+    console.error("[cosScheduler:weeklyAdvisor] Failed to save draft:", err.message);
+    return { ok: false, error: err.message };
+  }
+
+  return { ok: true, date: today, textLength: text.length };
+}
+
+/**
+ * Get pending (unsent) Telegram drafts for surfacing in Alex's context.
+ */
+async function getPendingTelegramDrafts() {
+  const db = getDb();
+  const snap = await db.collection("pendingTelegramDrafts")
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "desc")
+    .limit(3)
+    .get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Mark a pending Telegram draft as sent.
+ */
+async function markTelegramDraftSent(draftId) {
+  const db = getDb();
+  await db.collection("pendingTelegramDrafts").doc(draftId).update({ status: "sent" });
+}
+
+module.exports = {
+  runCosMorning,
+  runCosEvening,
+  runWeeklyAdvisorTelegram,
+  getPendingTelegramDrafts,
+  markTelegramDraftSent,
+};

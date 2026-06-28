@@ -49,7 +49,7 @@
         "monthly": 79
       },
       "status": "live",
-      "capabilitySummary": "The Escrow Locker — manages the full lifecycle of an escrow transaction from offer acceptance through disbursement and recording. Enforces identity verification, wire security, condition satisfaction, and audit retention across all parties and stages.",
+      "capabilitySummary": "The Escrow Locker \u2014 manages the full lifecycle of an escrow transaction from offer acceptance through disbursement and recording. Enforces identity verification, wire security, condition satisfaction, and audit retention across all parties and stages.",
       "tags": [
         "title-escrow"
       ],
@@ -74,7 +74,7 @@
         "monthly": 79
       },
       "status": "live",
-      "capabilitySummary": "Wire Fraud Prevention — validates wire instructions, detects domain mismatches, enforces callback verification, and flags suspicious patterns before any funds are disbursed.",
+      "capabilitySummary": "Wire Fraud Prevention \u2014 validates wire instructions, detects domain mismatches, enforces callback verification, and flags suspicious patterns before any funds are disbursed.",
       "tags": [
         "title-escrow"
       ],
@@ -99,7 +99,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Title Search and Commitment — processes title searches, classifies exceptions in Schedule B, identifies deal-killer defects, tracks curative actions, and produces commitment documents for underwriting.",
+      "capabilitySummary": "Title Search and Commitment \u2014 processes title searches, classifies exceptions in Schedule B, identifies deal-killer defects, tracks curative actions, and produces commitment documents for underwriting.",
       "tags": [
         "title-escrow"
       ],
@@ -124,7 +124,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Lien Clearance — tracks existing liens on the property, coordinates payoff demands, monitors release recordings, and blocks DTC transfer and closing until all liens are satisfied and released.",
+      "capabilitySummary": "Lien Clearance \u2014 tracks existing liens on the property, coordinates payoff demands, monitors release recordings, and blocks DTC transfer and closing until all liens are satisfied and released.",
       "tags": [
         "title-escrow"
       ],
@@ -149,7 +149,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Disclosure Package — manages state-specific disclosure requirements, tracks delivery confirmation, handles HOA document collection, and blocks closing when mandatory disclosures are missing.",
+      "capabilitySummary": "Disclosure Package \u2014 manages state-specific disclosure requirements, tracks delivery confirmation, handles HOA document collection, and blocks closing when mandatory disclosures are missing.",
       "tags": [
         "title-escrow"
       ],
@@ -174,7 +174,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Closing Disclosure — generates and validates Closing Disclosure (CD) and HUD-1 settlement statements, enforces TRID tolerance checks, verifies proration accuracy, and blocks signing and disbursement when discrepancies exist.",
+      "capabilitySummary": "Closing Disclosure \u2014 generates and validates Closing Disclosure (CD) and HUD-1 settlement statements, enforces TRID tolerance checks, verifies proration accuracy, and blocks signing and disbursement when discrepancies exist.",
       "tags": [
         "title-escrow"
       ],
@@ -199,7 +199,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "FIRPTA and 1031 Exchange — enforces FIRPTA withholding requirements for foreign sellers, manages IRC Section 1031 exchange timelines and identification rules, tracks qualified intermediary coordination, and blocks closing or exchange completion when compliance gaps exist.",
+      "capabilitySummary": "FIRPTA and 1031 Exchange \u2014 enforces FIRPTA withholding requirements for foreign sellers, manages IRC Section 1031 exchange timelines and identification rules, tracks qualified intermediary coordination, and blocks closing or exchange completion when compliance gaps exist.",
       "tags": [
         "title-escrow"
       ],
@@ -224,7 +224,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Commission Reconciliation — reconciles agent commissions, broker splits, referral fees, and transaction coordinator fees against the settlement statement. Blocks disbursement when totals do not balance or trust accounts are unverified.",
+      "capabilitySummary": "Commission Reconciliation \u2014 reconciles agent commissions, broker splits, referral fees, and transaction coordinator fees against the settlement statement. Blocks disbursement when totals do not balance or trust accounts are unverified.",
       "tags": [
         "title-escrow"
       ],
@@ -249,7 +249,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "HOA Estoppel — requests and processes HOA estoppel certificates, tracks unpaid dues and special assessments, monitors transfer fees, and blocks closing when outstanding HOA obligations or pending litigation exist.",
+      "capabilitySummary": "HOA Estoppel \u2014 requests and processes HOA estoppel certificates, tracks unpaid dues and special assessments, monitors transfer fees, and blocks closing when outstanding HOA obligations or pending litigation exist.",
       "tags": [
         "title-escrow"
       ],
@@ -274,7 +274,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Status Portal — provides real-time transaction status to authorized parties, enforces access control, masks PII in status views, and notifies parties of condition changes, stage advances, and approaching deadlines.",
+      "capabilitySummary": "Status Portal \u2014 provides real-time transaction status to authorized parties, enforces access control, masks PII in status views, and notifies parties of condition changes, stage advances, and approaching deadlines.",
       "tags": [
         "title-escrow"
       ],
@@ -299,7 +299,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "Recording Monitor — tracks document recording with county recorder offices, monitors e-recording submissions, confirms recording numbers, and blocks DTC transfer until recording is confirmed. Handles recording rejections and document corrections.",
+      "capabilitySummary": "Recording Monitor \u2014 tracks document recording with county recorder offices, monitors e-recording submissions, confirms recording numbers, and blocks DTC transfer until recording is confirmed. Handles recording rejections and document corrections.",
       "tags": [
         "title-escrow"
       ],
@@ -324,7 +324,7 @@
         "monthly": 0
       },
       "status": "live",
-      "capabilitySummary": "Alex Chief of Staff for Title and Escrow — monitors all active Escrow Lockers, surfaces anomalies and stalled transactions, escalates unresolved wire fraud alerts, provides daily briefings, and tracks stage breakdowns across the portfolio.",
+      "capabilitySummary": "Alex Chief of Staff for Title and Escrow \u2014 monitors all active Escrow Lockers, surfaces anomalies and stalled transactions, escalates unresolved wire fraud alerts, provides daily briefings, and tracks stage breakdowns across the portfolio.",
       "tags": [
         "title-escrow"
       ],
@@ -344,14 +344,22 @@
       "slug": "re-salesperson",
       "suite": "Sales",
       "phase": 3,
-      "type": "individual",
+      "type": "standalone",
       "pricing": {
         "monthly": 79
       },
       "status": "live",
       "capabilitySummary": "Manages buyer and listing pipelines end-to-end. Tracks DOM and recommends price moves; matches MLS to buyer criteria; drafts offers from CMA data; enforces contingency deadlines; runs the post-close cadence.",
-      "tags": ["sales", "buyer-pipeline", "listing-pipeline", "transaction-management"],
-      "valueBucket": ["make_money", "win_more_deals"],
+      "tags": [
+        "sales",
+        "buyer-pipeline",
+        "listing-pipeline",
+        "transaction-management"
+      ],
+      "valueBucket": [
+        "make_money",
+        "win_more_deals"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,

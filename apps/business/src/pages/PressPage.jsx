@@ -25,6 +25,15 @@ const PRESS_RELEASES = [
 
 const ARTICLES = [
   {
+    slug: "alex-action-loop-june-2026",
+    title: "Alex reads your inbox, drafts the email, and waits for you to say go.",
+    subtitle: "The Chief of Staff action loop is live: real Gmail context, structured approval cards, actual sends. The total platform cost for this capability is $0/month if you build it on SOCIII.",
+    date: "2026-06-27",
+    readingMinutes: 4,
+    tag: "Product",
+    accent: "#16a34a",
+  },
+  {
     slug: "mcp-port-audit-moat",
     title: "MCP is the port. The audit trail is the moat.",
     subtitle: "We turned SOCIII into a working MCP server. The surprise: Claude didn't just gain our workers — it inherited our entire audit and rules substrate. Anyone who connects does.",
@@ -185,6 +194,47 @@ const PRESS_RELEASE_BODIES = {
 };
 
 const ARTICLE_BODIES = {
+  "alex-action-loop-june-2026": (
+    <>
+      <p>
+        On June 27, 2026, Alex — SOCIII's AI Chief of Staff — read a live Gmail inbox, identified three pressing items from that morning's messages, drafted a follow-up email for each one with full context, and sent two of them after a single approval click. The whole sequence took about three minutes.
+      </p>
+      <p>
+        That is not a demo script. That is what happened in a real workspace with a real inbox. We did not clean up the messages first. We did not pre-select the three items. Alex pulled the inbox, decided what mattered, and acted.
+      </p>
+      <h2>The loop</h2>
+      <p>
+        The design is deliberately simple:
+      </p>
+      <ol>
+        <li>Alex reads the live inbox on every relevant chat turn — eight messages, real data, no cache.</li>
+        <li>Alex references specific senders, subjects, and threads by name when surfacing priorities.</li>
+        <li>When a response is needed, Alex proposes a draft using a structured marker: <code>[EMAIL_DRAFT]&#123;"to":"...","subject":"...","body":"..."&#125;[/EMAIL_DRAFT]</code></li>
+        <li>The platform strips the marker and renders an approval card. The user sees To, Subject, and full Body before anything is sent.</li>
+        <li>The user clicks "Send via Gmail." The platform calls Gmail's API. Done.</li>
+      </ol>
+      <p>
+        Alex does not say "I'm sending this now" or "I'll get back to you when it's done." Those phrases are explicitly prohibited in Alex's rules. The approval card is the execution gate — nothing moves without a human click.
+      </p>
+      <h2>Why this matters for investors</h2>
+      <p>
+        The cost to build this loop on SOCIII — for a business that subscribes and connects Gmail — is $0 per month. The compute is charged at cost. There is no "email AI" upsell, no enterprise tier, no integration fee. It ships as part of Alex.
+      </p>
+      <p>
+        The same session that confirmed the email loop also ran live Apollo investor searches — Alex proposed two searches, the user approved both, and the results wrote 100 enriched contacts into the Contacts worker. Same loop, different action type, same approval gate.
+      </p>
+      <p>
+        This is what "governed integration" looks like in practice. Not "Alex can connect to tools." Alex connects to tools, acts under human approval, and writes an immutable audit record of every action it took. The substrate that makes this trustworthy is the moat. The email loop is just the first place you see it.
+      </p>
+      <h2>What's next</h2>
+      <p>
+        The same approval-card pattern extends to any integration we wire: Google Calendar (meeting scheduling), Google Drive (file saves), Stripe (payment triggers), Twilio (SMS sends). The architecture is already in place. We are connecting actions to it one integration at a time.
+      </p>
+      <p>
+        If you want to see Alex work on your inbox, connect at <a href="https://app.sociii.ai">app.sociii.ai</a>. Gmail connection takes about 90 seconds.
+      </p>
+    </>
+  ),
   "mcp-port-audit-moat": (
     <>
       <p>

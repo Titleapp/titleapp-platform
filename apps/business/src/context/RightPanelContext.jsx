@@ -11,8 +11,12 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const [activeWorkerData, setActiveWorkerData] = useState(null);
   const [relatedWorkers, setRelatedWorkers] = useState([]);
   const [canvasData, setCanvasData] = useState(null); // { resolved, context }
+  const [artifactData, setArtifactData] = useState(null); // { type, data, title? }
   const prevStateRef = useRef(null); // for canvas dismiss → return to previous
   const originRef = useRef(initialState || "STATE-1");
+  // Ref mirrors canvasData so dismissCanvas can pass the pre-clear value via
+  // the ta:reland-canvas event even after React flushes state synchronously.
+  const canvasDataRef = useRef(null);
 
   const showRecommendations = useCallback((workerList, detectedVertical, detectedLabel) => {
     // S52.45 — DISABLED ENTIRELY. The "<vertical> Workers" recommendation panel
@@ -116,11 +120,17 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
       }
     }
     if (state !== "CANVAS") prevStateRef.current = state;
+    canvasDataRef.current = { resolved, context };
     setCanvasData({ resolved, context });
     setState("CANVAS");
   }, [state]);
 
   const dismissCanvas = useCallback(() => {
+    // Capture before clearing — React may flush the setState below before
+    // the synchronous ta:reland-canvas listener runs, making panel.canvasData
+    // null by then. Passing savedCanvas in the event detail avoids the race.
+    const savedCanvas = canvasDataRef.current;
+    canvasDataRef.current = null;
     setCanvasData(null);
     setState(prevStateRef.current || originRef.current);
     // Inside a worker, closing a canvas card must NOT leave a blank canvas —
@@ -128,9 +138,17 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     // CVT / Drug Dosing / Staff Credentials). App.jsx listens for this and
     // re-runs landOnFirstDataTab. Outside a worker (discovery), no-op.
     if (activeWorkerData) {
-      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas")); } catch (_) { /* SSR/no-window */ }
+      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas", { detail: { savedCanvas } })); } catch (_) { /* SSR/no-window */ }
     }
   }, [activeWorkerData]);
+
+  const showArtifact = useCallback((artifact) => {
+    setArtifactData(artifact);
+  }, []);
+
+  const clearArtifact = useCallback(() => {
+    setArtifactData(null);
+  }, []);
 
   // 49.31 — Force the canvas pane open without changing canvasData. Used when
   // ChatPanel receives canvasRenders[] and needs the panel visible immediately.
@@ -151,9 +169,10 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
 
   return (
     <RightPanelContext.Provider value={{
-      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, relatedWorkers, canvasData,
+      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, relatedWorkers, canvasData, artifactData,
       showRecommendations, showWorkerDetail, showWorkerHome, goBack, dismiss, clearVerticalFilter, leaveWorkspace,
       showCanvas, dismissCanvas, openIfClosed, resetCanvas,
+      showArtifact, clearArtifact,
       setWorkers,
     }}>
       {children}

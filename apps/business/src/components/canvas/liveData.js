@@ -466,21 +466,42 @@ async function buildStaffCredentialPayload(tabId) {
 //  MARKETING (platform-marketing) — visual campaign-performance board
 // ──────────────────────────────────────────────────────────────────
 
+const DEMO_CAMPAIGNS = [
+  { id: "spring-email", name: "Spring Launch · Email", channel: "email", impressions: 6800, clicks: 462, conversions: 87, spend: 420, revenue: 5100, ctr: 6.8, roi: 12.1, winning: true,
+    trend: [12, 18, 24, 31, 28, 35, 40, 38, 44, 52, 48, 60, 55, 58],
+    gradient: "linear-gradient(135deg,#6366f1,#8b5cf6)" },
+  { id: "q2-linkedin", name: "Q2 Prospecting · LinkedIn", channel: "linkedin", impressions: 18200, clicks: 760, conversions: 34, spend: 1100, revenue: 8200, ctr: 4.2, roi: 7.5, winning: false,
+    trend: [5, 8, 7, 11, 13, 10, 14, 16, 18, 15, 19, 22, 20, 24],
+    gradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)" },
+  { id: "ig-brand", name: "Brand Awareness · Instagram", channel: "instagram", impressions: 42000, clicks: 1890, conversions: 22, spend: 800, revenue: 3400, ctr: 4.5, roi: 4.3, winning: false,
+    trend: [8, 10, 9, 13, 15, 14, 18, 20, 17, 22, 25, 23, 28, 30],
+    gradient: "linear-gradient(135deg,#f472b6,#fb7185)" },
+];
+const DEMO_KPIS = [
+  { label: "Reach", value: "67k", delta: 12 },
+  { label: "CTR", value: "5.4%", delta: 8 },
+  { label: "Leads", value: "143", delta: 21 },
+  { label: "ROI", value: "7.8x", delta: 14 },
+];
+
 async function buildMarketingPayload(tabId) {
   const r = await liveApiFetch("/v1/marketing:campaigns");
-  const campaigns = Array.isArray(r?.campaigns) ? r.campaigns : [];
-  if (!campaigns.length) return null; // no real campaigns → fall back to fixture
-  const kpis = Array.isArray(r?.kpis) ? r.kpis : [];
+  let campaigns = Array.isArray(r?.campaigns) ? r.campaigns : [];
+  let kpis = Array.isArray(r?.kpis) ? r.kpis : [];
+  // No real campaigns yet — use demo data so the visual board always renders.
+  // The _demo flag tells CanvasPanel to show the SAMPLE chip.
+  const isDemo = campaigns.length === 0;
+  if (isDemo) { campaigns = DEMO_CAMPAIGNS; kpis = DEMO_KPIS; }
   const winner = r?.winner || campaigns.find(c => c.winning) || campaigns[0];
 
   if (tabId === "creative") {
-    return { title: "Creative", view: "creative", campaigns };
+    return { _demo: isDemo, title: "Creative", view: "creative", campaigns };
   }
   if (tabId === "campaigns" || tabId === "email") {
-    return { title: tabId === "email" ? "Email" : "Campaigns", view: "campaigns", campaigns, kpis, winner };
+    return { _demo: isDemo, title: tabId === "email" ? "Email" : "Campaigns", view: "campaigns", campaigns, kpis, winner };
   }
-  // kpis (default) + anything else → the overview board
-  return { title: "Marketing", view: "overview", campaigns, kpis, winner };
+  // overview (default tab)
+  return { _demo: isDemo, title: "Marketing", view: "overview", campaigns, kpis, winner };
 }
 
 // ──────────────────────────────────────────────────────────────────

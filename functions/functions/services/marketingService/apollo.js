@@ -119,7 +119,10 @@ async function logUsage(event) {
  * @returns {Promise<{ people: [], pagination: {} }>}
  */
 async function searchPeople(criteria, ctx = {}) {
-  const body = { per_page: 25, ...criteria };
+  const raw = { per_page: 25, ...criteria };
+  // Apollo caps per_page at 100 on all tiers — clamp to avoid API error
+  if (raw.per_page > 100) raw.per_page = 100;
+  const body = raw;
   const json = await call("/mixed_people/api_search", body, { ...ctx, op: "searchPeople" });
   return {
     people: json.people || [],

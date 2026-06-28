@@ -66,6 +66,14 @@ function workerSlugFromTags(tags) {
   return tag ? tag.substring("worker:".length) : null;
 }
 
+const DEMO_FILES = [
+  { objectId: "_demo_1", filename: "Home Inspection Report — 4521 Maple St.pdf", mimeType: "application/pdf", sizeBytes: 2840000, tags: ["worker:platform-real-estate-ca"], createdAt: { _seconds: Math.floor(Date.now()/1000) - 86400 * 14 }, _demo: true },
+  { objectId: "_demo_2", filename: "Tesla Model S — Title & Registration.pdf", mimeType: "application/pdf", sizeBytes: 312000, tags: ["worker:platform-real-estate-ca"], createdAt: { _seconds: Math.floor(Date.now()/1000) - 86400 * 30 }, _demo: true },
+  { objectId: "_demo_3", filename: "Q1 2026 Financial Statement.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", sizeBytes: 88000, tags: ["worker:platform-accounting"], createdAt: { _seconds: Math.floor(Date.now()/1000) - 86400 * 7 }, _demo: true },
+  { objectId: "_demo_4", filename: "Employee Handbook v2.3.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 540000, tags: ["worker:platform-hr"], createdAt: { _seconds: Math.floor(Date.now()/1000) - 86400 * 21 }, _demo: true },
+  { objectId: "_demo_5", filename: "Board Pitch Deck — June 2026.pptx", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", sizeBytes: 4200000, tags: [], createdAt: { _seconds: Math.floor(Date.now()/1000) - 86400 * 3 }, _demo: true },
+];
+
 export default function VaultDocuments() {
   const [filter, setFilter] = useState("all");
   const [workerFilter, setWorkerFilter] = useState(null); // null = show worker folders
@@ -86,20 +94,25 @@ export default function VaultDocuments() {
     setSortBy((s) => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
   }
 
+  const [isDemo, setIsDemo] = useState(false);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
       const result = await listDocuments({ limit: 200 });
-      if (result?.ok && Array.isArray(result.objects)) {
+      if (result?.ok && Array.isArray(result.objects) && result.objects.length > 0) {
         setDocs(result.objects);
+        setIsDemo(false);
       } else {
-        setDocs([]);
+        setDocs(DEMO_FILES);
+        setIsDemo(true);
         if (result?.error) setLoadError(result.error);
       }
     } catch (e) {
       setLoadError(e.message || "Failed to load documents");
-      setDocs([]);
+      setDocs(DEMO_FILES);
+      setIsDemo(true);
     } finally {
       setLoading(false);
     }
@@ -177,9 +190,11 @@ export default function VaultDocuments() {
   }, {});
 
   const handleDownload = async (objectId) => {
+    if (String(objectId).startsWith("_demo_")) {
+      window.alert("This is a sample file. Upload a real document or connect Google Drive to access your files.");
+      return;
+    }
     const result = await downloadFile(objectId);
-    // No silent dead button: if there's no stored blob behind the row (demo
-    // placeholders are metadata-only), say so instead of doing nothing.
     if (!result || !result.downloadUrl) {
       window.alert("This file can't be opened yet — it's a placeholder with no stored file behind it.");
     }
@@ -194,6 +209,7 @@ export default function VaultDocuments() {
   };
 
   const handleDelete = async (objectId, filename) => {
+    if (String(objectId).startsWith("_demo_")) return;
     if (!window.confirm(`Delete "${filename}"? This cannot be undone.`)) return;
     const result = await deleteDocument(objectId);
     if (result?.ok) refresh();
@@ -212,7 +228,14 @@ export default function VaultDocuments() {
       )}
       <div className="pageHeader">
         <div>
-          <h1 className="h1">My Drive</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 className="h1">My Drive</h1>
+            {isDemo && (
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, padding: "2px 8px", borderRadius: 999, background: "#f59e0b22", color: "#d97706", textTransform: "uppercase", border: "1px solid #fcd34d" }}>
+                SAMPLE
+              </span>
+            )}
+          </div>
           <p className="subtle">
             {workerFilter
               ? <>
@@ -224,7 +247,9 @@ export default function VaultDocuments() {
                   <strong>{workerFilter === "_unassigned" ? "Unassigned" : workerFilter}</strong>
                   {" — "}{filtered.length} document{filtered.length === 1 ? "" : "s"}
                 </>
-              : `${docs.length} document${docs.length === 1 ? "" : "s"} across ${workerFolders.length} folder${workerFolders.length === 1 ? "" : "s"}`}
+              : isDemo
+                ? "Sample files — upload your first document or connect Google Drive to see your real files"
+                : `${docs.length} document${docs.length === 1 ? "" : "s"} across ${workerFolders.length} folder${workerFolders.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -359,25 +384,16 @@ export default function VaultDocuments() {
         </div>
       )}
 
-      {!loading && !loadError && filtered.length === 0 && docs.length === 0 && (
-        <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>
-          <div style={{ width: "64px", height: "64px", borderRadius: "16px", background: "#f3e8ff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="12" y1="18" x2="12" y2="12"></line>
-              <line x1="9" y1="15" x2="15" y2="15"></line>
-            </svg>
-          </div>
-          <div style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", marginBottom: "8px" }}>No documents yet</div>
-          <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "400px", margin: "0 auto", lineHeight: 1.6, marginBottom: "20px" }}>
-            Upload your first document or tell the AI about something you want to track. Photos, PDFs, or just describe it in chat.
+      {isDemo && !loading && (
+        <div style={{ marginBottom: 20, padding: "14px 18px", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, color: "#92400e" }}>
+            <strong>Sample files</strong> — showing example documents. Connect Google Drive or upload a file to see your real Drive.
           </div>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Help me add my first document to the vault" } }))}
-            style={{ padding: "10px 20px", fontSize: "14px", fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", cursor: "pointer" }}
+            onClick={() => setShowDriveConnect(true)}
+            style={{ padding: "8px 16px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
           >
-            Get Started
+            Connect Google Drive
           </button>
         </div>
       )}

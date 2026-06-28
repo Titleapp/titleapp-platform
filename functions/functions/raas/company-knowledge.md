@@ -86,21 +86,25 @@ Each vertical has its own Digital Worker catalog, ruleset, system prompts, and d
 
 ## The Team
 
-Sean Lee Combs (CEO): Product vision, platform architecture, go-to-market strategy. Sean designed the Digital Worker platform concept and leads product development. Has raised over $1.5B in capital across his career. Holds patents in blockchain record-keeping and is filing additional patents around the RAAS framework and the intersection of blockchain provenance with AI governance. Airline and medevac pilot -- brings firsthand understanding of regulated, safety-critical operations to the platform design.
+8 humans set strategy. Workers run the company.
 
-Kent Redwine (CFO): Finance, operations, fundraise execution. Over $20B in M&A experience. 19 years in Climate Tech. Kent manages the company's financial model, runway planning, and investor relations.
+Sean Lee Combs (Founder/CEO): Product vision, platform architecture, go-to-market. Active medevac and airline pilot (Part 135/91) -- built the compliance tools to solve his own operational problem. Has raised over $1.5B in capital across his career. Holds patents in blockchain record-keeping; filing additional applications around the RAAS framework and AI governance.
 
-Kim Ellen Bennett (GovTech & Real Estate Lead): Public sector strategy, government technology partnerships, and real estate vertical development. Kim leads SOCIII's approach to state DMV integrations, municipal record systems, and regulatory compliance in government contexts.
+Kent Redwine (Cofounder): Capital formation and investor relations. Bank of America, Thomas Weisel -- capital markets background. 15% milestone-vested equity + 5% success fee on capital sourced. Operates the IR worker, cap table, and data room.
 
-Vishal Kumar (Frontend Engineer): 8 years experience. React architecture, UI/UX implementation, component library development. Built the admin dashboard, onboarding wizard, and chat interface.
+Scott Eschelman (Advisor -- Development & Security): Large US-based commercial real estate developer. Claude Code development workers + security scanning. ~$5K/mo replaces what would cost a 25-person dev shop.
 
-Manpreet Kaur (Backend Engineer): 8 years experience. Cloud infrastructure, AI integration, API development. Built the Firebase Functions backend, rules engine, and multi-model AI routing.
+Ruthie Clearwater, PhD (Creator Community Lead): Nationally ranked nursing program faculty + EMS flight nurse. The professional-community distribution model exemplified. Authoring nursing education workers.
 
-AI Development: Built on Claude (Anthropic), OpenAI GPT, and Google Gemini -- model-agnostic by design.
+Elise van der Bel (Advisor -- Sandbox): eCommerce and direct-to-patient fulfillment for a technical manufacturer. EU Digital Product Passport expertise. Sandbox no-code worker authoring.
 
-Advisors:
-- Scott Eschelman: BUILD SF, over $500M in real estate capital deployed, Stanford.
-- Peggy Liu: World Economic Forum, TIME Magazine Hero of the Environment, MIT.
+Eric Altshuler (Advisor -- Terminal & Open Source): Naval aviator, FedEx 777 Captain. Engineers pair-programming with AI; open source contributions.
+
+Kim Bennett (Advisor -- Patent & IP): PropertyRadar, RE data pioneer. Provisional drafting, prior art search, claim management.
+
+Robert Rosenberg (Advisor -- Legal & Compliance): Oracle, infra, legal, compliance background.
+
+AI as lead developer: Anthropic Claude is the primary development executor. The platform is built by the platform.
 
 ---
 
@@ -152,19 +156,19 @@ SOCIII generates revenue through four streams:
 
 ---
 
-## Use of Funds
+## Current Raise
 
-$2.5M raise, Post-Money SAFE, $15M valuation cap, 20% discount. Private placement -- terms available to qualified investors. Net proceeds approximately $2.3M (~8% fees).
+$5M seed round, Post-Money SAFE. Minimum check: $500K. Valuation cap and discount finalized with lead investor. Rolling close -- SAFEs signed as investors decide. Sole-manager governance through Series A trigger ($150K MRR). 30% equity pool reserved for advisors, future hires, and creator-path warrants.
 
-- Product & Engineering (40%, $920K): Complete vertical build-out, Digital Worker marketplace, Vault architecture, Public API expansion.
-- GTM & Sales (25%, $575K): Targeted outreach to early revenue verticals (Real Estate/CRE, Finance & Accounting, Auto Dealer), content marketing, partnership development.
-- Operations (20%, $460K): Cloud infrastructure, AI API costs, legal and compliance, accounting.
-- Vertical Expansion (10%, $230K): Auto, Health/EMS, Mortgage, Property Management vertical launches.
-- Reserve (5%, $115K): Working capital buffer.
+Use of proceeds:
+- $250K: Debt service (clears inherited TitleApp LLC obligations)
+- $1M: Trade conferences and industry presence (NurseCon, NBAA, NADA -- domain experts in the rooms where professionals gather)
+- $1.5M: Professional network activation (200+ domain expert creators across 8 verticals)
+- $2.25M: Product, engineering, and 24-month runway ($25K/mo overhead; balance covers legal, accounting, cap table restructuring)
 
-Monthly burn: $38,000. Runway at zero revenue: 60 months. Cash flow positive target: Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch).
+The platform builds the platform. SOCIII runs on its own workers -- Alex, Marketing, Accounting, HR, Contacts, Control Center. Lead developer: Anthropic Claude. All-in engineering burn ~$5K/month, replacing what would cost ~$25K/week in a traditional dev shop.
 
-Investor inquiries: sean@sociii.ai.
+Investor inquiries: sean@sociii.ai. Schedule: calendly.com/sean-sociii.
 
 ---
 
@@ -180,6 +184,10 @@ Alex can reference these documents and offer to share them when relevant. The ex
 ---
 
 ## Platform Capabilities (Live)
+
+Gmail Action Loop (confirmed June 27, 2026): Alex reads the user's live Gmail inbox, surfaces priority items, drafts emails with full context, and presents an approval card ("Send via Gmail"). User approves; email sends. No hallucinated "I'll ping you" -- the approval card is the execution gate. This is the most significant product milestone in the past 30 days: a real AI Chief of Staff that reads and acts on real email under human approval.
+
+Apollo Investor Prospecting (live): Alex proposes Apollo.io searches (people + companies) as structured approval cards. User approves; Alex runs the search, writes enriched contacts to the Contacts worker with source tagging and dedup. Used internally for SOCIII's own investor outreach -- the platform prospecting for its own round is the demo.
 
 Document Engine: Any Digital Worker can generate PDF, DOCX, XLSX, and PPTX documents using 8 base templates (report, memo, agreement, deck, cashflow model, proforma, one-pager, letter). All generated documents carry an AI disclosure footer. Branding is tenant-configurable.
 

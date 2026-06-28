@@ -249,8 +249,41 @@ export default function ClientPortal() {
   const [messages, setMessages] = useState([{ from: "them", text: greeting }]);
   const [canvas, setCanvas] = useState(null);
   const [used, setUsed] = useState([]);
+  const [inputVal, setInputVal] = useState("");
+  const [thinking, setThinking] = useState(false);
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas, thinking]);
+
+  function portalReply(text) {
+    const t = text.toLowerCase();
+    if (persona === "advisor") {
+      if (/affirm|sign|agree|document/.test(t)) return "Your agreement and 83(b) are ready. Tap **Affirm my advisor agreement** above to review and confirm — takes about 30 seconds.";
+      if (/equity|share|percent|vesting/.test(t)) return "You're receiving 0.5% equity, vesting over 12 months from the grant date (2026-06-18). The 83(b) election was filed to lock in the low tax basis — your copy is in your Vault.";
+      if (/vault|record|document|file/.test(t)) return "Your signed documents (Advisor Agreement + 83(b) copy + W-9) are in your personal SOCIII Vault — owned by you, not SOCIII, for life.";
+      if (/pay|compensat|earn/.test(t)) return "Advisors earn on equity value appreciation. No cash comp in the advisor program — the upside is your stake in SOCIII growing with the platform.";
+      return "I can help with your advisor paperwork, equity details, and Vault documents. What would you like to know?";
+    }
+    // petowner persona
+    if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
+    if (/chocolate|toxic|poison|dangerous|eat|ingested/.test(t)) return "Rabbits should never eat chocolate — it contains theobromine they can't metabolize. Even a small amount can cause a racing heart, tremors, or seizures.\n\n**Right now:** Take away any remaining chocolate. Note how much and when. Watch for drooling, fast breathing, or restlessness.\n\n**Come in immediately** if Clover shows any of those signs or ate more than a nibble — don't wait.";
+    if (/vaccine|shot|vacc|immuniz/.test(t)) return "Clover is current on Rabies (expires 2027-03-01) and RHDV2 (expires 2026-11-10). Annual wellness is due — I'd recommend booking before November to stay on schedule.";
+    if (/record|history|file|medical/.test(t)) return "Clover's full record is in your Vault — tamper-evident, owned by you. Tap **Clover's records** above to review. You can share it with any vet, boarding, or travel carrier.";
+    if (/hay|food|diet|feed|eat/.test(t)) return "For a Holland Lop like Clover, 80% of the diet should be Timothy hay — unlimited. Supplement with leafy greens (romaine, cilantro, parsley) and a small amount of plain pellets. Avoid sugary treats and starchy vegetables.";
+    if (/cost|price|fee|bill|charge/.test(t)) return "Exam visits are $65. Specialist consultations and procedures are priced transparently upfront — no surprise bills. You'll see the total before confirming any treatment.";
+    return "I'm here for Clover 24/7. Ask me about care questions, records, or booking a visit.";
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim() || thinking) return;
+    const t = text.trim();
+    setInputVal("");
+    setMessages(m => [...m, { from: "me", text: t }]);
+    setThinking(true);
+    // Simulate a brief thinking delay, then reply locally
+    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+    setMessages(m => [...m, { from: "them", text: portalReply(t) }]);
+    setThinking(false);
+  }
 
   // Claude-style left nav: shown on desktop only (the portal is mobile-first).
   const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 760 : true);
@@ -346,9 +379,26 @@ export default function ClientPortal() {
               }}>{s.chip}</button>
             ))}
           </div>
+          {thinking && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, paddingLeft: 4 }}>
+              <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: skin.accent, opacity: 0.5, animation: "pulse 1s infinite" }} />
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>Thinking…</span>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, padding: "0 0 14px" }}>
-            <input placeholder={`Message ${skin.short}…`} style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", outline: "none" }} />
-            <button style={{ background: skin.accent, color: "#fff", border: "none", borderRadius: 12, padding: "0 18px", fontSize: 16, cursor: "pointer" }}>↑</button>
+            <input
+              value={inputVal}
+              onChange={e => setInputVal(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(inputVal); } }}
+              placeholder={`Message ${skin.short}…`}
+              disabled={thinking}
+              style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", outline: "none", opacity: thinking ? 0.6 : 1 }}
+            />
+            <button
+              onClick={() => sendMessage(inputVal)}
+              disabled={thinking || !inputVal.trim()}
+              style={{ background: inputVal.trim() && !thinking ? skin.accent : "#e2e8f0", color: "#fff", border: "none", borderRadius: 12, padding: "0 18px", fontSize: 16, cursor: inputVal.trim() && !thinking ? "pointer" : "default" }}
+            >↑</button>
           </div>
         </main>
 

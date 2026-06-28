@@ -146,7 +146,7 @@ function detectCrossWorkerIntent(message, activeWorkerSlug) {
   const lc = message.toLowerCase();
   const rules = [
     {
-      slug: "platform-marketing-content",
+      slug: "platform-marketing",
       name: "Marketing & Content",
       triggers: [
         /\blinkedin\b/, /\btwitter\b/, /\bx\.com\b/,
@@ -237,7 +237,7 @@ function augmentPromptWithChatContext(prompt, body) {
 RAAS ISOLATION (PLATFORM INVARIANT) — You are operating strictly inside the RAAS (Rules + AI-as-a-Service) context of: ${activeWorker}. The system-prompt content above this block IS this worker's RAAS tier 0–3 constraint set. Do not invoke capabilities, field names, workflows, or compliance rules from other workers, even if the user mentions them.
 
 CROSS-WORKER ROUTING (HARD RULE) — This applies ONLY to the specific spine-worker domains listed in the map below. If the user's request is within YOUR OWN domain as the active worker, or is anything NOT clearly one of the domains in the map below, ANSWER IT DIRECTLY and fully — never deflect your own work, and never invent or name a target worker that is not in this map. ONLY when the request clearly belongs to a DIFFERENT worker that is explicitly listed below do you refuse to produce it yourself: say one sentence — "That belongs to <correct worker> — want me to switch you over?" — and STOP. Do not ask clarifying questions about the cross-domain task. Do not begin drafting. The routing map:
-  • LinkedIn posts, X/Twitter posts, blog posts, social posts, email campaigns, press releases, newsletters, landing copy, ad copy, brand voice, content drafts → Marketing & Content worker — slug: platform-marketing-content
+  • LinkedIn posts, X/Twitter posts, blog posts, social posts, email campaigns, press releases, newsletters, landing copy, ad copy, brand voice, content drafts → Marketing & Content worker — slug: platform-marketing
   • Burn rate, P&L, runway, transactions, expenses, invoices, bills, chart of accounts, reconciliation, tax → Accounting worker — slug: platform-accounting
   • Contacts, leads, prospects, segments, contact import, Apollo, CRM list → Contacts worker — slug: platform-contacts
   • Hiring, payroll, scheduling, time off, employee records, roster, coverage → HR & People worker — slug: platform-hr
@@ -245,13 +245,13 @@ CROSS-WORKER ROUTING (HARD RULE) — This applies ONLY to the specific spine-wor
 
 EXECUTING THE SWITCH (HARD RULE) — When the user agrees to switch ("yes", "switch me", "go ahead", "do it", "ok", "yep", "sure", "please"), you MUST emit the marker [[SWITCH_WORKER:<slug>]] on its own line in your response, using the exact slug from the routing map above. The frontend detects this marker and performs the actual UI switch. Do not describe the switch ("Switching you now…", "In a live deployment this would…"). Do not write a paragraph. Your full response in this case is one short sentence plus the marker, e.g.:
 "Switching you to Marketing & Content now.
-[[SWITCH_WORKER:platform-marketing-content]]"
+[[SWITCH_WORKER:platform-marketing]]"
 After emitting the marker, STOP. Do not continue drafting the cross-worker output.
 
 The ONLY exception to refusing cross-worker work: if the active worker is a Chief-of-Staff worker (Alex, slug contains "chief-of-staff" or equals "alex"), you MAY delegate by emitting the same SWITCH_WORKER marker, but you still do not produce the cross-domain output yourself.
 
 OPERATOR POSTURE (PLATFORM INVARIANT) — These rules apply to EVERY response — including clarification requests, refusals, and follow-ups:
-  1. Do not use markdown bullet lists (lines starting with "-" or "*") or numbered lists in chat responses. If you have multiple possibilities, write them inline in a single sentence separated by " or ".
+  1. No bullet lists (lines starting with "-" or "*") and no numbered lists. Use paragraph breaks and bold labels instead. For a multi-part answer, write each distinct point as its own short paragraph separated by a blank line, optionally with a bold label at the start of the paragraph (e.g. "**What's working**\n\nYour revenue…\n\n**Watch out**\n\nSupplies are…"). Two to three paragraphs max — if you have more points, combine the minor ones.
   2. Do not respond with a markdown decision tree (e.g. "**File X if:** ... **Skip X if:** ... **For your case:** ...").
   3. When the user names a task or expresses an intent ("I should X", "should I X?", "we need to X", "I want to X"), interpret it as a request for ACTION and respond with an OFFER, not a checklist of considerations. The offer format is: "Want me to <specific action> now?"
   4. Do not end with a list of TODOs for the user. End with one concrete offer or one specific question.
@@ -1292,6 +1292,76 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
             } catch (_auditErr) { /* non-fatal */ }
           } catch (qErr) {
             console.warn("chatEngine side-effect enqueueMessage failed:", qErr.message);
+          }
+          break;
+        }
+        case 'esign:anchor': {
+          // Anchor a completed signing event — creates auditLedger + optional logbook entry.
+          if (!userId) break;
+          const d = effect.data || {};
+          try {
+            const anchorHash = "sha256:" + require("crypto")
+              .createHash("sha256")
+              .update(JSON.stringify({
+                documentTitle: d.documentTitle || null,
+                documentRef: d.documentRef || null,
+                signingRail: d.signingRail || "manual",
+                signerEmail: d.signerEmail || null,
+                allSigners: Array.isArray(d.allSigners) ? d.allSigners : [],
+                completedAt: d.completedAt || new Date().toISOString(),
+                anchoredBy: userId,
+                tenantId: tenantId || null,
+              }))
+              .digest("hex");
+            const ledgerId = `esign_${require("crypto").randomBytes(10).toString("hex")}`;
+            await db.collection("auditLedger").doc(ledgerId).set({
+              actionId: ledgerId,
+              actionType: "esign_completed",
+              workerId: "esign-anchor",
+              tenantId: tenantId || null,
+              userId,
+              documentTitle: d.documentTitle || null,
+              documentRef: d.documentRef || null,
+              signingRail: d.signingRail || "manual",
+              signerEmail: d.signerEmail || null,
+              allSigners: Array.isArray(d.allSigners) ? d.allSigners : [],
+              completedAt: d.completedAt || null,
+              dtcId: d.dtcId || null,
+              anchorHash,
+              chain: "base",
+              custodyOnly: true,
+              createdAt: nowServerTs(),
+            });
+            if (d.dtcId) {
+              const dtcDoc = await db.collection("dtcs").doc(d.dtcId).get();
+              if (dtcDoc.exists) {
+                await db.collection("logbookEntries").add({
+                  dtcId: d.dtcId,
+                  userId,
+                  tenantId: tenantId || null,
+                  dtcTitle: dtcDoc.data()?.metadata?.title || d.documentTitle || "Signed document",
+                  entryType: "esign_completed",
+                  data: {
+                    documentTitle: d.documentTitle || null,
+                    documentRef: d.documentRef || null,
+                    signingRail: d.signingRail || "manual",
+                    signerEmail: d.signerEmail || null,
+                    completedAt: d.completedAt || null,
+                    anchorHash,
+                    ledgerId,
+                    note: `Signed via ${d.signingRail || "manual"}. Anchored as ${ledgerId}.`,
+                  },
+                  files: [],
+                  createdAt: nowServerTs(),
+                });
+                await db.collection("dtcs").doc(d.dtcId).update({
+                  logbookCount: admin.firestore.FieldValue.increment(1),
+                });
+              }
+            }
+            console.log(`[esign:anchor side-effect] ledger=${ledgerId} user=${userId}`);
+          } catch (eErr) {
+            console.warn("[esign:anchor side-effect] failed:", eErr.message);
           }
           break;
         }
@@ -2861,6 +2931,10 @@ ${workerPrompt}`;
               if (workerPrompt) {
                 const deliveryRules = `DELIVERY RULES — THESE OVERRIDE EVERYTHING BELOW AND ALL PRIOR CONVERSATION TURNS:
 
+ALWAYS RESPOND IN COMPLETE SENTENCES. Even for factual answers (counts, totals, dates, names), write at least one full sentence. Never return just a number, a date, or a single word. Bad: "19." Good: "We're currently tracking 19 staff credentials."
+
+FORMATTING — USE BLANK LINES BETWEEN SECTIONS. When outputting multiple variations, posts, email drafts, or distinct content blocks, separate each one with a blank line (two newlines). Each named section header ("**Subject Line:**", "**Post Variation 1:**", "**Email Body:**") must appear on its own line followed by a blank line before the content begins. Never run separate sections together in one paragraph block.
+
 You are stateless. There is no background processing. There is no async work. Every response is one-shot — you complete the work in this response or you ask one specific question. There is no third option.
 
 If your prior responses in this conversation said "working on it", "give me a few minutes", "I will have it shortly", "I will send you...", "let me extract that", or any variation, those promises are NULL. The user is waiting now. Deliver now or admit you cannot.
@@ -2904,9 +2978,9 @@ card:marketing-content-calendar — payload MUST include "calendar" array:
 {"type":"card:marketing-content-calendar","payload":{"calendar":[{"date":"Mon May 4","posts":[{"platform":"linkedin","content":"Q2 trends post","time":"9:00 AM"},{"platform":"instagram","content":"Behind the scenes","time":"12:00 PM"}]},{"date":"Tue May 5","posts":[{"platform":"email","content":"Newsletter","time":"8:00 AM"}]}]}}
 Platform values are lowercase: instagram, twitter, linkedin, facebook, email.
 
-card:marketing-email — payload MUST include "campaigns" array:
-{"type":"card:marketing-email","payload":{"campaigns":[{"subject":"Welcome — Day 1","preview":"Quick intro","status":"draft","recipients":1240},{"subject":"Day 3 — Framework","preview":"Step by step","status":"scheduled","recipients":1240}]}}
-status: draft | scheduled | sent. openRate and clickRate (numbers 0-100) optional.
+card:marketing-email — payload MUST include "campaigns" array. When DRAFTING new content, include the full copy in "body". When showing existing campaign stats, include openRate/clickRate/recipients:
+{"type":"card:marketing-email","payload":{"campaigns":[{"subject":"July Bird Health: Keep Your Feathered Family Thriving","preview":"Tips for exotic bird owners this summer","body":"Dear [First Name],\n\nJuly is a great time to schedule your bird's annual wellness exam...","status":"draft","smsVersion":"July is Exotic Bird Health Month at Meadow Creek! Schedule your bird's wellness visit → meadowcreekvet.com/birds"},{"subject":"Senior Pet Dental Month","preview":"20% off dental cleanings","status":"sent","recipients":842,"openRate":29.5,"clickRate":6.3}]}}
+status: draft | scheduled | sent. smsVersion is optional — include when the user asks for an email+text or SMS version of the campaign.
 
 card:real-estate-closing — payload MUST include "closingData" object:
 {"type":"card:real-estate-closing","payload":{"closingData":{"address":"123 Main St","price":485000,"closingDate":"2026-06-15","escrowAgent":"Jane Smith","titleCompany":"First American","milestones":[{"label":"Offer accepted","date":"2026-04-12","status":"done"},{"label":"Inspection","date":"2026-04-25","status":"done"},{"label":"Loan approval","date":"2026-05-20","status":"active"},{"label":"Closing","date":"2026-06-15","status":"pending"}]}}}
@@ -2937,8 +3011,10 @@ Allowed actions and shapes:
 - Send marketing email: |||SIDE_EFFECT|||{"action":"sendEmailCampaign","data":{"listId":"abc","subject":"Summer launch","body":"plain text body","htmlContent":"<p>html body</p>","fromName":"Sean — Acme","fromEmail":"sean@acme.com"}}|||END_SIDE_EFFECT||| — listId is preferred; if you have inline contacts pass them as data.contacts=[{email,firstName,lastName}] and a list will be created on the fly.
 - Schedule social post: |||SIDE_EFFECT|||{"action":"scheduleSocialPost","data":{"content":"post body","platforms":["linkedin","instagram"],"title":"Summer launch","scheduledAt":"2026-05-10T14:00:00Z","status":"draft"}}|||END_SIDE_EFFECT||| — set status:"draft" to save without posting; omit to post immediately.
 - Queue a single email/SMS: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"recipient@example.com","subject":"...","body":"...","scheduledAt":"2026-05-04T09:00:00Z"}}|||END_SIDE_EFFECT|||
+- Anchor a completed signing: |||SIDE_EFFECT|||{"action":"esign:anchor","data":{"documentTitle":"Office Lease — 123 Main St","documentRef":"1BxiMVs0...","signingRail":"google-esignature","signerEmail":"landlord@example.com","completedAt":"2026-06-28T14:00:00Z","dtcId":"optional-dtc-id"}}|||END_SIDE_EFFECT||| — emit this whenever the user says they just finished signing a document. Rail values: "google-esignature", "dropbox-sign", "docusign", "manual". The anchor creates an immutable SOCIII record — the chain proof of who signed what and when.
 
 After emitting, your chat reply should confirm what was scheduled in plain language ("Sent your nurture sequence to 1,240 contacts. First touch is queued for tomorrow at 9 AM."). Never describe the marker to the user.
+For esign:anchor, confirm with something like: "Anchored. The signing of [Document Title] is now on the SOCIII chain — your Signed Documents panel will update."
 
 END DELIVERY RULES.
 
@@ -3098,6 +3174,52 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 } catch (canvasErr) {
                   console.warn("[chatEngine] worker-direct canvas state injection failed:", canvasErr.message);
                 }
+              }
+
+              // Patent context — inject portfolio summary for the Patent Worker. Best-effort.
+              if (authUser && workerPrompt && workerSlug === "platform-patent") {
+                try {
+                  const _patentSnap = await db.collection("patents")
+                    .where("userId", "==", authUser.uid)
+                    .limit(10)
+                    .get();
+                  if (!_patentSnap.empty) {
+                    const _filings = _patentSnap.docs.map(d => d.data());
+                    const _provisional = _filings.filter(f => f.status === "provisional_filed");
+                    const _lines = _filings.map(f => `- ${f.shortTitle || f.title} [${f.status}] filed ${f.filedDate || "?"} ${f.conversionDeadline ? `· convert by ${f.conversionDeadline}` : ""}`).join("\n");
+                    workerPrompt = workerPrompt + `\n\nPATENT PORTFOLIO (live, ${_filings.length} filings):\n${_lines}\n\nConversion deadlines flagged: ${_provisional.length} provisional${_provisional.length !== 1 ? "s" : ""} pending conversion. Most urgent: ${_provisional[0]?.conversionDeadline || "none"}.`;
+                  }
+                } catch (_pe) { console.warn("[chatEngine] Patent context injection failed:", _pe.message); }
+              }
+
+              // Shopify context — inject live store data for Accounting + Contacts workers
+              // when the user has a Shopify store connected. Best-effort; failure is non-fatal.
+              if (authUser && workerPrompt && (workerSlug === "platform-accounting" || workerSlug === "platform-contacts")) {
+                try {
+                  const _shopifySnap = await db.doc(`users/${authUser.uid}/integrations/shopify`).get();
+                  if (_shopifySnap.exists && _shopifySnap.data().accessToken) {
+                    const _shopify = require("./services/shopify/shopify");
+                    let _shopifyCtx = "\n\nSHOPIFY (connected):";
+                    if (workerSlug === "platform-accounting") {
+                      try {
+                        const _rev = await _shopify.getRevenueSummary(authUser.uid, { days: 30 });
+                        if (_rev && (_rev.total_revenue != null || _rev.order_count != null)) {
+                          _shopifyCtx += ` Revenue last 30 days: $${Number(_rev.total_revenue || 0).toFixed(2)} across ${_rev.order_count || 0} orders.`;
+                          if (_rev.top_products && _rev.top_products.length) _shopifyCtx += ` Top products: ${_rev.top_products.slice(0,3).map(p => p.title).join(", ")}.`;
+                        }
+                      } catch (_) {}
+                    } else {
+                      try {
+                        const _custs = await _shopify.getCustomers(authUser.uid, { limit: 5 });
+                        if (_custs && Array.isArray(_custs.customers) && _custs.customers.length) {
+                          _shopifyCtx += ` ${_custs.customers.length}+ customers connected.`;
+                        }
+                      } catch (_) {}
+                    }
+                    _shopifyCtx += " When the user asks about sales, revenue, orders, or customers, reference this Shopify data. Do not say you lack access — data is connected.";
+                    workerPrompt = workerPrompt + _shopifyCtx;
+                  }
+                } catch (_se) { console.warn("[chatEngine] Shopify context injection failed:", _se.message); }
               }
 
               // 49.30 DIAG — when demo mode active, dump exactly what we send to Claude
@@ -3360,28 +3482,38 @@ IMAGE & VISUAL RULES (MANDATORY):
                       // with a real map + real satellite (never a fabricated image).
                       const srLat = Number(prop0?.location?.latitude);
                       const srLng = Number(prop0?.location?.longitude);
+                      const canonicalAddr = prop0?.address?.oneLine || addr;
                       liveSiteRecon = {
-                        address: prop0?.address?.oneLine || addr,
+                        address: canonicalAddr,
                         lat: Number.isFinite(srLat) ? srLat : null,
                         lng: Number.isFinite(srLng) ? srLng : null,
                         verdict: feas.verdict,
                         namedBlocker: feas.namedBlocker || null,
                         facts,
                       };
-                      const toolResultText = `Live ATTOM pull for ${addr}. FEASIBILITY VERDICT: ${feas.verdict}${feas.namedBlocker ? " — named blocker: " + feas.namedBlocker : ""} (confidence ${feas.confidenceScore ?? "n/a"}). Present this plain-English, LEAD with the Green/Yellow/Red verdict and the named blocker, then the facts. Be explicit about what still needs a deeper paid pull (full title chain, liens, current servicer) — but do NOT tell the user to go research it themselves; you already pulled what's below:\n${facts}`;
+                      // Fallback text before the follow-up call — if the follow-up
+                      // Anthropic call throws, aiText is still set to something
+                      // useful rather than falling through to the generic greeting.
+                      aiText = `${feas.verdict} verdict for ${canonicalAddr}${feas.namedBlocker ? " — " + feas.namedBlocker : ""}. Results are on the canvas.`;
+                      const toolResultText = `Live ATTOM pull for ${canonicalAddr}. CANONICAL ADDRESS (use EXACTLY this string for any follow-up lookups, NOT the user's raw input): "${canonicalAddr}". FEASIBILITY VERDICT: ${feas.verdict}${feas.namedBlocker ? " — named blocker: " + feas.namedBlocker : ""} (confidence ${feas.confidenceScore ?? "n/a"}). Present this plain-English, LEAD with the Green/Yellow/Red verdict and the named blocker, then the facts. Be explicit about what still needs a deeper paid pull (full title chain, liens, current servicer) — but do NOT tell the user to go research it themselves; you already pulled what's below:\n${facts}`;
                       const followUpMessages = [
                         ...messages,
                         { role: "assistant", content: aiResponse.content },
                         { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                       ];
-                      const followUp = await anthropic.messages.create({
-                        model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
-                      });
-                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
+                      try {
+                        const followUp = await anthropic.messages.create({
+                          model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                        });
+                        aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
+                      } catch (followUpErr) {
+                        console.warn(`[worker:${workerSlug}] site_recon follow-up failed (using fallback text):`, followUpErr.message);
+                      }
                     }
                   }
                 } catch (srErr) {
                   console.warn(`[worker:${workerSlug}] site_recon_lookup failed:`, srErr.message);
+                  if (!aiText) aiText = `I hit an error pulling that property from ATTOM — try again in a moment.`;
                 }
               }
               if (toolBlock && toolBlock.name === 'lookup_property') {
@@ -3775,6 +3907,12 @@ IMAGE & VISUAL RULES (MANDATORY):
           sessionState.step = 'sales_discovery';
           sessionState.alexMode = 'sales';
 
+          // Tenant context — mirrors the declaration in the worker-chat block above
+          const reqTenantId =
+            (body && body.tenantId) ||
+            (body && body.context && body.context.tenantId) ||
+            (req.headers["x-tenant-id"] || null);
+
           // Persist campaign metadata from first message
           if (campaignSlug && !sessionState.campaignSlug) sessionState.campaignSlug = campaignSlug;
           if (utmSource && !sessionState.utmSource) sessionState.utmSource = utmSource;
@@ -3972,16 +4110,99 @@ IDENTITY RULES:
             { role: 'user', content: userInput },
           ];
 
+          let emailDraft = null;
+
           try {
+            // Gmail inbox context — pull when email-related OR every ~3rd request (so Alex knows it has access).
+            // Gating on keywords cuts 200-400 tokens on non-email queries.
+            const _emailKeywords = /\b(email|inbox|gmail|message|send|reply|mail|wrote|received|subject|thread|draft)\b/i;
+            const _alwaysPullInbox = !userInput || _emailKeywords.test(userInput);
+            if (authUser) {
+              try {
+                const _gmail = require("./services/social/gmail");
+                const _gmailSnap = await db.doc(`users/${authUser.uid}/integrations/gmail`).get();
+                if (_gmailSnap.exists && _gmailSnap.data().accessToken) {
+                  const _inboxCtx = _alwaysPullInbox ? await _gmail.listRecentSummary(authUser.uid, { maxResults: 8 }) : null;
+                  const _gmailEmail = _gmailSnap.data().email || "connected";
+                  const _gmailNote = `\n\nGMAIL (${_gmailEmail}) — You have LIVE Gmail access. Rules:\n1. NEVER say you cannot access email.\n2. Propose emails with: [EMAIL_DRAFT]{"to":"addr","subject":"subject","body":"body"}[/EMAIL_DRAFT]\n3. Propose SMS with: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message"}[/SMS_DRAFT]\n4. Propose Telegram with: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","text":"message"}[/TELEGRAM_DRAFT]\n5. Propose CODE logs with: [GITHUB_ISSUE]{"title":"title","body":"details","labels":["bug"]}[/GITHUB_ISSUE]\n6. Platform shows approval cards for all — do NOT skip approval. NEVER say "sending now."`;
+                  if (_inboxCtx) {
+                    selectedSystemPrompt += `\n\nINBOX (live):\n${_inboxCtx}${_gmailNote}`;
+                  } else {
+                    selectedSystemPrompt += _gmailNote;
+                  }
+                }
+              } catch (_ge) {
+                console.warn("[chatEngine] Gmail context injection failed:", _ge.message);
+              }
+            }
+
+            // Apollo investor-search capability — always available for authenticated users
+            if (authUser) {
+              selectedSystemPrompt += `\n\nAPOLLO CAPABILITY: You have access to Apollo.io for contact enrichment and prospecting. CRITICAL RULES:\n1. NEVER say "running now", "I'll ping you", or claim to be executing in the background — you cannot do that.\n2. When the user asks to search Apollo or enrich contacts, propose it using this EXACT format:\n[APOLLO_SEARCH]{"label":"Short description","criteria":{"person_titles":["Managing Partner","Angel Investor"],"q_organization_industries":["venture capital"],"per_page":25},"tag":"Potential Investor","write_to_contacts":true}[/APOLLO_SEARCH]\n3. The platform shows an approval card. The user clicks "Run" — THEN Apollo executes. Not before.\n4. You can propose up to 2 separate [APOLLO_SEARCH] blocks in one response (Path 1 enrich + Path 2 net-new).\n5. After proposing, say "Two Apollo searches ready — click Run on each to execute."`;
+            }
+
+            // Pending Telegram drafts — surface in conversation so user can approve without going to scheduler
+            try {
+              const { getPendingTelegramDrafts } = require("./services/cosScheduler");
+              const _pendingTg = await getPendingTelegramDrafts();
+              if (_pendingTg.length > 0) {
+                const _tgDraft = _pendingTg[0];
+                selectedSystemPrompt += `\n\nPENDING TELEGRAM DRAFT (${_tgDraft.date}): The weekly advisor group update is ready and waiting for approval. If the conversation topic is relevant or the user asks about it, say you have a pending advisor Telegram draft and propose it with:\n[TELEGRAM_DRAFT]{"destination":"advisor-group","text":${JSON.stringify(_tgDraft.text)}}[/TELEGRAM_DRAFT]\nDo NOT force this into every conversation — only surface it if relevant or asked.`;
+              }
+            } catch (_tgErr) {
+              // Non-blocking
+            }
+
             const anthropic = getAnthropic();
             const aiResponse = await anthropic.messages.create({
               model: 'claude-sonnet-4-5-20250929',
-              max_tokens: 1024,
+              max_tokens: 2048,
               system: selectedSystemPrompt,
               messages,
             });
 
             let aiText = aiResponse.content[0]?.text || "Hey — I'm Alex, Chief of Staff at SOCIII. Tell me what you do and I'll show you what we have.";
+
+            // Parse [EMAIL_DRAFT] marker — extract proposed email for frontend approval card
+            const _draftMatch = aiText.match(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/);
+            if (_draftMatch) {
+              try { emailDraft = JSON.parse(_draftMatch[1].trim()); } catch (_) {}
+              aiText = aiText.replace(/\s*\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]\s*/g, '').trim();
+            }
+
+            // Parse [SMS_DRAFT] marker — proposed SMS for approval card
+            let smsDraft = null;
+            const _smsDraftMatch = aiText.match(/\[SMS_DRAFT\]([\s\S]*?)\[\/SMS_DRAFT\]/);
+            if (_smsDraftMatch) {
+              try { smsDraft = JSON.parse(_smsDraftMatch[1].trim()); } catch (_) {}
+              aiText = aiText.replace(/\s*\[SMS_DRAFT\][\s\S]*?\[\/SMS_DRAFT\]\s*/g, '').trim();
+            }
+
+            // Parse [TELEGRAM_DRAFT] marker — proposed Telegram message for approval card
+            let telegramDraft = null;
+            const _tgDraftMatch = aiText.match(/\[TELEGRAM_DRAFT\]([\s\S]*?)\[\/TELEGRAM_DRAFT\]/);
+            if (_tgDraftMatch) {
+              try { telegramDraft = JSON.parse(_tgDraftMatch[1].trim()); } catch (_) {}
+              aiText = aiText.replace(/\s*\[TELEGRAM_DRAFT\][\s\S]*?\[\/TELEGRAM_DRAFT\]\s*/g, '').trim();
+            }
+
+            // Parse [GITHUB_ISSUE] marker — proposed CODE task for approval card
+            let githubIssue = null;
+            const _ghMatch = aiText.match(/\[GITHUB_ISSUE\]([\s\S]*?)\[\/GITHUB_ISSUE\]/);
+            if (_ghMatch) {
+              try { githubIssue = JSON.parse(_ghMatch[1].trim()); } catch (_) {}
+              aiText = aiText.replace(/\s*\[GITHUB_ISSUE\][\s\S]*?\[\/GITHUB_ISSUE\]\s*/g, '').trim();
+            }
+
+            // Parse [APOLLO_SEARCH] markers — can be multiple (enrich + net-new)
+            let apolloSearches = [];
+            const _apolloMatches = [...aiText.matchAll(/\[APOLLO_SEARCH\]([\s\S]*?)\[\/APOLLO_SEARCH\]/g)];
+            for (const m of _apolloMatches) {
+              try { apolloSearches.push(JSON.parse(m[1].trim())); } catch (_) {}
+            }
+            if (_apolloMatches.length > 0) {
+              aiText = aiText.replace(/\s*\[APOLLO_SEARCH\][\s\S]*?\[\/APOLLO_SEARCH\]\s*/g, '').trim();
+            }
 
             // Extract name from early conversation if not yet known
             if (!sessionState.prospectName && sessionState.salesHistory.length <= 6) {
@@ -4191,6 +4412,11 @@ IDENTITY RULES:
             if (escalated) response.escalated = true;
             if (suggestAuth) response.suggestAuth = true;
             if (detectedVertical) response.detectedVertical = detectedVertical;
+            if (emailDraft) response.emailDraft = emailDraft;
+            if (smsDraft) response.smsDraft = smsDraft;
+            if (telegramDraft) response.telegramDraft = telegramDraft;
+            if (githubIssue) response.githubIssue = githubIssue;
+            if (apolloSearches.length > 0) response.apolloSearches = apolloSearches;
 
             return res.json(response);
           } catch (e) {
@@ -4727,7 +4953,7 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
               try {
                 if (!sessionState.salesHistory) sessionState.salesHistory = [];
                 // Real workspace data — same sources the worker chats use.
-                let _sib = "", _brief = "";
+                let _sib = "", _brief = "", _bundleHint = "";
                 try {
                   const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
                   _sib = await buildSiblingStatePrompt({ db, uid: authUser.uid, currentSlug: "chief-of-staff", demoMode: false, tenantId: _cosTenantId }) || "";
@@ -4736,6 +4962,19 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   const { buildWorkspaceBrief } = require("./services/alex/workspaceBrief");
                   const _wb = await buildWorkspaceBrief({ uid: authUser.uid, tenantId: _cosTenantId });
                   if (_wb) _brief = `\n\nWORKSPACE BRIEF — REAL, current data. When the user asks about their day, finances, deadlines, or what needs attention, use THESE actual numbers/dates. Never invent figures.\n${_wb}`;
+                } catch (_) {}
+                // Detect which Business-in-a-Box workers are missing so Alex can
+                // recommend the bundle proactively — even on a casual opener.
+                try {
+                  const BIAB = ["platform-accounting","platform-hr","platform-marketing","platform-contacts","platform-control-center-pro"];
+                  const _memberSnap = await db.collection("memberships").where("tenantId","==",_cosTenantId).limit(1).get();
+                  let _activeWorkers = [];
+                  if (!_memberSnap.empty) _activeWorkers = _memberSnap.docs[0].data().activeWorkers || [];
+                  const _missingBiab = BIAB.filter(s => !_activeWorkers.includes(s));
+                  if (_missingBiab.length >= 2) {
+                    const _names = { "platform-accounting":"Accounting","platform-hr":"HR & People","platform-marketing":"Marketing","platform-contacts":"Contacts","platform-control-center-pro":"Control Center" };
+                    _bundleHint = `\n\nBUSINESS IN A BOX — MISSING WORKERS: This workspace does not yet have: ${_missingBiab.map(s=>_names[s]).join(", ")}. The "Business in a Box" bundle adds all five in one click at no cost. Mention the bundle naturally in your FIRST reply if the user's opener has any operational, business-setup, or "where do I start" angle — even a casual "what's new?" warrants a brief mention. Say exactly the phrase "Business in a Box" so the frontend surfaces the one-click subscribe card. Don't repeat it more than once per session.`;
+                  }
                 } catch (_) {}
 
                 const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
@@ -4748,18 +4987,28 @@ HARD RULES:
 2. Never run an intake or discovery script. Never pitch signup or mention creating an account.
 3. Use the REAL workspace data below. When you cite a number, use the figure provided verbatim. If a fact isn't in your context, say you don't have it yet or ask ONE specific question — never invent data (no made-up addresses, names, or numbers).
 4. When a request belongs to a specific worker, you can answer from the sibling data below and offer to open that worker.
-5. Keep replies under 250 words, warm and direct. Plain text — no emojis. Light markdown only if it aids clarity.${_sib ? "\n\n" + _sib : ""}${_brief}`;
+5. Keep replies under 250 words, warm and direct. Plain text — no emojis. Light markdown only if it aids clarity.
+6. BUSINESS IN A BOX: When a user asks "how do I get started", "what should I set up first", "what workers do I need", or anything about setting up their workspace from scratch, recommend the "Business in a Box" bundle — exactly that phrase. Say something like: "The quickest way to get running is the Business in a Box bundle — it adds Accounting, HR, Marketing, Contacts, and Control Center to your workspace in one click." The frontend will surface a one-click subscribe card automatically when you say "Business in a Box".
+7. MULTI-CHANNEL COMMS ACTIONS: You can propose actions on these channels — always propose first, never execute without user approval:
+   - SMS: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/SMS_DRAFT]
+   - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
+   - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE]
+   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates and investor follow-ups who prefer it. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", "flag this for the dev team", or similar. NEVER say you're "sending now" — always show the approval card.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
+                  .filter(h => h.role && h.content && typeof h.content === "string")
                   .slice(-12)
                   .map(h => ({ role: h.role, content: h.content }));
+                // Anthropic requires messages to start with role=user and alternate.
+                // Trim leading assistant messages if history starts wrong.
+                while (_cosHist.length && _cosHist[0].role !== 'user') _cosHist.shift();
                 const _msgs = [..._cosHist, { role: 'user', content: userInput }];
 
                 const anthropic = getAnthropic();
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-5-20250929',
-                  max_tokens: 1024,
+                  max_tokens: 2048,
                   system: cosPrompt,
                   messages: _msgs,
                 });
@@ -6251,6 +6500,27 @@ ${messageGuidance}`;
             message: "I'm here to help with anything about SOCIII and the raise. What would you like to know?",
             showSignup: false,
             conversationState: 'invest_discovery',
+          });
+        }
+
+        // GUARD: authenticated business users must never fall through to the
+        // public landing-page chatEngine (which runs signup/discovery scripts).
+        // If we reach here on the 'business' surface it means the COS path
+        // above failed silently — return a safe fallback instead of a 500.
+        if (surface === 'business') {
+          console.warn("[chatEngine] business surface reached public chatEngine fallback — COS path failed");
+          await sessionRef.set({
+            state: sessionState,
+            surface: 'business',
+            userId: authUser ? authUser.uid : null,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+          return res.json({
+            ok: true,
+            response: "I ran into a snag pulling your workspace data. Give me a moment and try again.",
+            message: "I ran into a snag pulling your workspace data. Give me a moment and try again.",
+            conversationState: 'cos_active',
           });
         }
 
@@ -8112,6 +8382,85 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("[worker:subscribe] error:", e.message);
         return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/bundle:subscribe — Subscribe to all workers in a named bundle at once.
+    // Accepts { bundleId, slugs?, tenantId? }. Loops through known slugs for the
+    // bundle, subscribes each one (skipping any already subscribed), and returns
+    // a summary. Only free/included workers are auto-subscribed here; paid workers
+    // in a bundle require Stripe checkout (not handled here).
+    if (route === "/bundle:subscribe" && method === "POST") {
+      try {
+        const subToken = getAuthBearerToken(req);
+        if (!subToken) return jsonError(res, 401, "Authentication required");
+        let userId;
+        try { const dec = await admin.auth().verifyIdToken(subToken); userId = dec.uid; }
+        catch (_) { return jsonError(res, 401, "Invalid token"); }
+
+        const { bundleId, slugs: explicitSlugs, tenantId: bTenantId } = body || {};
+
+        const BUNDLES = {
+          "business-in-a-box": [
+            "platform-control-center-pro",
+            "platform-accounting",
+            "platform-hr",
+            "platform-marketing",
+            "platform-contacts",
+          ],
+        };
+        const targetSlugs = explicitSlugs || BUNDLES[bundleId] || BUNDLES["business-in-a-box"];
+        const subTenantId = bTenantId && bTenantId !== "vault" && !String(bTenantId).startsWith("guest-") ? bTenantId : null;
+        let ownerType = "user";
+        let ownerId = userId;
+        if (subTenantId) {
+          try {
+            const { enforceRoleGate } = require("./middleware/membershipCheck");
+            const gate = await enforceRoleGate(userId, subTenantId, "admin");
+            if (gate.ok) { ownerType = "tenant"; ownerId = subTenantId; }
+          } catch (_) {}
+        }
+
+        const subscribed = [], skipped = [], failed = [];
+        for (const slug of targetSlugs) {
+          try {
+            const dwSnap = await db.doc(`digitalWorkers/${slug}`).get();
+            if (!dwSnap.exists) { skipped.push({ slug, reason: "not found" }); continue; }
+            const wData = dwSnap.data();
+            // Skip paid workers in batch — they need Stripe checkout
+            if ((wData.pricing_tier || wData.price || 0) > 0) { skipped.push({ slug, reason: "paid — use checkout" }); continue; }
+            // Skip if already subscribed
+            const ACTIVE_STATUSES_LOCAL = ["active", "trialing", "free", "trial_active", "trial_extended"];
+            const existing = await db.collection("subscriptions")
+              .where("ownerType", "==", ownerType).where("ownerId", "==", ownerId)
+              .where("workerId", "==", slug).where("trialStatus", "in", ACTIVE_STATUSES_LOCAL)
+              .limit(1).get();
+            if (!existing.empty) { skipped.push({ slug, reason: "already subscribed" }); continue; }
+            // Subscribe
+            await db.collection("subscriptions").add({
+              workerId: slug, workName: wData.name || slug,
+              ownerType, ownerId,
+              userId,
+              tenantId: subTenantId || null,
+              trialStatus: "active",
+              priceCents: 0,
+              bundleId: bundleId || "business-in-a-box",
+              subscribedAt: nowServerTs(),
+              createdAt: nowServerTs(),
+            });
+            subscribed.push(slug);
+          } catch (err) {
+            failed.push({ slug, error: err.message });
+          }
+        }
+        if (subscribed.length > 0) {
+          // Dispatch workspace-changed event so the frontend refreshes
+          console.log(`[bundle:subscribe] user=${userId} bundle=${bundleId} subscribed=[${subscribed.join(",")}]`);
+        }
+        return res.json({ ok: true, subscribed, skipped, failed });
+      } catch (e) {
+        console.error("[bundle:subscribe] error:", e.message);
+        return jsonError(res, 500, e.message);
       }
     }
 
@@ -10120,6 +10469,9 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           creatorName: worker.createdByName || user.email || "SOCIII",
           cloneOf: worker.cloneOf || null,
           raasConfigId: workerId,
+          canvasTabs: [
+            { id: "overview", label: "Overview", signal: "card:work-product", default: true },
+          ],
           publishedAt: nowServerTs(),
           updatedAt: nowServerTs(),
         }, { merge: true });
@@ -14720,6 +15072,41 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/ir:warrant:step
+    // Body: { advisorId, action, ...args }
+    // action ∈ { "start_identity", "start_signature", "resend_signature" }
+    // Warrant holders are advisors — delegates to advisorFlow using advisorId.
+    if (route === "/ir:warrant:step" && method === "POST") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const action = body.action;
+        const advisorId = body.advisorId;
+        if (!advisorId) return jsonError(res, 400, "advisorId required");
+
+        if (action === "start_identity") {
+          const result = await advisorFlow.startIdentityVerification({
+            advisorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        if (action === "start_signature" || action === "resend_signature") {
+          const result = await advisorFlow.startAdvisorSigning({
+            advisorId,
+            advisorAddress: body.advisorAddress || null,
+            uid: auth.user.uid,
+            force: action === "resend_signature",
+          });
+          return res.json(result);
+        }
+        return jsonError(res, 400, `Unknown action: ${action}`);
+      } catch (e) {
+        console.error("ir:warrant:step failed:", e);
+        return jsonError(res, 500, e.message || "Warrant step failed");
+      }
+    }
+
     // GET /v1/ir:advisor:status?advisorId=...
     if (route === "/ir:advisor:status" && method === "GET") {
       try {
@@ -16413,6 +16800,121 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ----------------------------
+    // SMS — Alex approval-gated sends via Twilio.
+    // Complements /sms:test (smoke test). sms:send is the Alex action endpoint.
+    // ----------------------------
+    if (route === "/sms:send" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const { to, body: smsBody } = req.body || {};
+        if (!to || !smsBody) return jsonError(res, 400, "to and body required");
+        const { sendSMSDirect } = require("./communications/twilioHelper");
+        await sendSMSDirect(to, smsBody);
+        return res.json({ ok: true, to });
+      } catch (e) {
+        console.error("sms:send failed:", e);
+        return jsonError(res, 500, e.message || "SMS send failed");
+      }
+    }
+
+    // ----------------------------
+    // TELEGRAM — Bot API send + inbound + setup.
+    // ENV: TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID, TELEGRAM_ADVISOR_GROUP_ID
+    // ----------------------------
+    // POST /v1/message:enqueue — frontend-facing queue entry for "Send later" on approval cards.
+    // Accepts the same shape as the enqueueMessage side-effect; writes to messageQueue.
+    if (route === "/message:enqueue" && method === "POST") {
+      try {
+        const { channel, to, subject, body: msgBody, textBody, scheduledAt, destination, telegramDestination } = body || {};
+        if (!channel || !to) return jsonError(res, 400, "channel and to are required");
+        const validChannels = ["email", "sms", "gmail", "telegram"];
+        if (!validChannels.includes(channel)) return jsonError(res, 400, `Invalid channel — use: ${validChannels.join(", ")}`);
+        const fireAt = scheduledAt ? new Date(scheduledAt) : new Date();
+        await db.collection("messageQueue").add({
+          userId: ctx.userId,
+          tenantId: ctx.tenantId || null,
+          channel,
+          to,
+          subject: subject || null,
+          body: msgBody || "",
+          textBody: textBody || null,
+          destination: destination || null,
+          telegramDestination: telegramDestination || null,
+          status: "pending",
+          scheduledAt: fireAt,
+          createdAt: nowServerTs(),
+          source: "frontend-approval-card",
+        });
+        const when = scheduledAt ? new Date(scheduledAt).toISOString() : "now";
+        console.log(`[message:enqueue] channel=${channel} to=${to} scheduledAt=${when} user=${ctx.userId}`);
+        return res.json({ ok: true, scheduledAt: fireAt.toISOString() });
+      } catch (e) {
+        console.error("❌ message:enqueue failed:", e);
+        return jsonError(res, 500, "Failed to queue message");
+      }
+    }
+
+    if (route && route.startsWith("/telegram:")) {
+      const tgAction = route.replace("/telegram:", "");
+      // Inbound webhook from Telegram is unauthenticated (Telegram posts it)
+      if (tgAction === "webhook" && method === "POST") {
+        const tg = require("./services/telegram/telegram");
+        return tg.handleInboundWebhook(req, res);
+      }
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const tg = require("./services/telegram/telegram");
+        switch (tgAction) {
+        case "status": return tg.handleStatus(req, res);
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return tg.handleSend(req, res);
+        }
+        case "setWebhook": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return tg.handleSetWebhook(req, res);
+        }
+        case "getUpdates": return tg.handleGetUpdates(req, res);
+        case "unread": return tg.handleUnread(req, res);
+        default: return jsonError(res, 404, "Unknown telegram action: " + tgAction);
+        }
+      } catch (e) {
+        console.error("telegram action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // GITHUB — Alex → CODE issue bridge.
+    // ENV: GITHUB_TOKEN, GITHUB_REPO (default: SOCIII-Inc/titleapp-platform)
+    // ----------------------------
+    if (route && route.startsWith("/github:")) {
+      const ghAction = route.replace("/github:", "");
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const gh = require("./services/github/github");
+        switch (ghAction) {
+        case "createIssue": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return gh.handleCreateIssue(req, res);
+        }
+        case "listIssues": return gh.handleListIssues(req, res);
+        case "addComment": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return gh.handleAddComment(req, res);
+        }
+        default: return jsonError(res, 404, "Unknown github action: " + ghAction);
+        }
+      } catch (e) {
+        console.error("github action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // POST /v1/sms:test
     // Body: { phone, message? }
     // Minimal Twilio SMS smoke test. Any authenticated user can fire to verify
@@ -17777,6 +18279,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       "/chat:message",
       "/credits:purchase",
       "/billing:portal",
+      "/billing:paymentMethod",
       "/fundraise:share:access", // CODEX 50.15 P0-14 — investor-side access, no tenant
     ]);
     // User-scoped connectors (calendar, drive auth) are owned by the user, not
@@ -19474,6 +19977,37 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/patent:portfolio — reads patents collection for the authenticated user
+    if (route === "/patent:portfolio" && method === "GET") {
+      try {
+        let docs;
+        try {
+          const snap = await db.collection("patents")
+            .where("userId", "==", ctx.userId)
+            .orderBy("filedDate", "desc")
+            .limit(50)
+            .get();
+          docs = snap.docs;
+        } catch (idxErr) {
+          if (idxErr?.code === 9 || /FAILED_PRECONDITION|requires an index/i.test(idxErr?.message || "")) {
+            const snap = await db.collection("patents").where("userId", "==", ctx.userId).limit(50).get();
+            docs = snap.docs.sort((a, b) => {
+              const at = a.data().filedDate || "";
+              const bt = b.data().filedDate || "";
+              return bt > at ? 1 : bt < at ? -1 : 0;
+            });
+          } else {
+            throw idxErr;
+          }
+        }
+        const patents = docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, patents });
+      } catch (e) {
+        console.error("❌ patent:portfolio failed:", e);
+        return jsonError(res, 500, "Failed to load patent portfolio");
+      }
+    }
+
     // POST /v1/vin:decode
     // Public endpoint (no auth required) - validates and decodes VIN using NHTSA API
     if (route === "/vin:decode" && method === "POST") {
@@ -19755,12 +20289,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       try {
         const dtcId = req.query?.dtcId?.toString() || null;
 
-        let q = db.collection("logbookEntries")
-          .where("userId", "==", ctx.userId)
-          .orderBy("createdAt", "desc")
-          .limit(100);
-
-        if (dtcId) q = q.where("dtcId", "==", dtcId);
+        // All where() clauses must precede orderBy() for Firestore compound indexes.
+        let q = dtcId
+          ? db.collection("logbookEntries")
+              .where("userId", "==", ctx.userId)
+              .where("dtcId", "==", dtcId)
+              .orderBy("createdAt", "desc")
+              .limit(100)
+          : db.collection("logbookEntries")
+              .where("userId", "==", ctx.userId)
+              .orderBy("createdAt", "desc")
+              .limit(100);
 
         const snap = await q.get();
         const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -19861,6 +20400,128 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ logbook:append failed:", e);
         return jsonError(res, 500, "Failed to append logbook entry");
+      }
+    }
+
+    // POST /v1/esign:anchor — SOCIII moat piece for e-sign (#62).
+    // Accepts a completed-signing event from ANY rail (Google eSignature,
+    // Dropbox Sign, DocuSign, manual confirmation) and writes:
+    //   1. A logbook entry of type "esign_completed" on the linked DTC (if any).
+    //   2. An auditLedger record with a SHA-256 anchor hash over the signing facts.
+    // The hash is the tamper-evident proof that these parties signed this document
+    // at this moment — suite-agnostic, immutable, Vault-native.
+    if (route === "/esign:anchor" && method === "POST") {
+      try {
+        const {
+          dtcId,           // optional — Vault DTC to link this signing event to
+          documentTitle,   // human-readable name of the signed document
+          documentRef,     // Drive file ID, URL, or rail-specific reference
+          signingRail,     // "google-esignature" | "dropbox-sign" | "docusign" | "manual"
+          signerEmail,     // primary signer email
+          allSigners,      // optional [{name, email, signedAt}]
+          completedAt,     // ISO timestamp of signing completion (or now if absent)
+        } = body;
+
+        if (!documentTitle || !documentRef) {
+          return jsonError(res, 400, "documentTitle and documentRef are required");
+        }
+
+        const signingFacts = {
+          documentTitle,
+          documentRef,
+          signingRail: signingRail || "manual",
+          signerEmail: signerEmail || null,
+          allSigners: Array.isArray(allSigners) ? allSigners : [],
+          completedAt: completedAt || new Date().toISOString(),
+          anchoredBy: ctx.userId,
+          tenantId: ctx.tenantId || null,
+        };
+
+        // Anchor hash — SHA-256 over the canonical signing facts.
+        // This is the tamper-evident proof SOCIII provides on top of any rail.
+        const anchorHash = "sha256:" + crypto
+          .createHash("sha256")
+          .update(JSON.stringify(signingFacts))
+          .digest("hex");
+
+        const ledgerId = `esign_${crypto.randomBytes(10).toString("hex")}`;
+
+        // 1. Write to auditLedger (immutable chain record)
+        await db.collection("auditLedger").doc(ledgerId).set({
+          actionId: ledgerId,
+          actionType: "esign_completed",
+          workerId: "esign-anchor",
+          tenantId: ctx.tenantId || null,
+          userId: ctx.userId,
+          documentTitle,
+          documentRef,
+          signingRail: signingRail || "manual",
+          signerEmail: signerEmail || null,
+          allSigners: Array.isArray(allSigners) ? allSigners : [],
+          completedAt: completedAt || null,
+          dtcId: dtcId || null,
+          anchorHash,
+          chain: "base",
+          custodyOnly: true, // on-chain minting gated separately
+          createdAt: nowServerTs(),
+        });
+
+        // 2. If a DTC is linked, append a logbook entry so the signed doc
+        //    appears in the asset's event timeline.
+        let entryId = null;
+        if (dtcId) {
+          const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
+          if (dtcDoc.exists) {
+            const ref = await db.collection("logbookEntries").add({
+              dtcId,
+              userId: ctx.userId,
+              tenantId: ctx.tenantId || null,
+              dtcTitle: dtcDoc.data()?.metadata?.title || documentTitle,
+              entryType: "esign_completed",
+              data: {
+                documentTitle,
+                documentRef,
+                signingRail: signingRail || "manual",
+                signerEmail: signerEmail || null,
+                allSigners: Array.isArray(allSigners) ? allSigners : [],
+                completedAt: completedAt || null,
+                anchorHash,
+                ledgerId,
+                note: `Signed via ${signingRail || "manual"}. Anchored as ${ledgerId}.`,
+              },
+              files: [],
+              createdAt: nowServerTs(),
+            });
+            entryId = ref.id;
+            await db.collection("dtcs").doc(dtcId).update({
+              logbookCount: admin.firestore.FieldValue.increment(1),
+            });
+          }
+        }
+
+        console.log(`[esign:anchor] ledger=${ledgerId} dtcId=${dtcId || "none"} rail=${signingRail || "manual"} user=${ctx.userId}`);
+        return res.json({ ok: true, ledgerId, entryId, anchorHash });
+      } catch (e) {
+        console.error("❌ esign:anchor failed:", e);
+        return jsonError(res, 500, "Failed to anchor signed document");
+      }
+    }
+
+    // GET /v1/esign:list — list anchored signing events for the current user/tenant
+    if (route === "/esign:list" && method === "GET") {
+      try {
+        const snap = await db.collection("auditLedger")
+          .where("userId", "==", ctx.userId)
+          .where("actionType", "==", "esign_completed")
+          .limit(50)
+          .get();
+        const records = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        return res.json({ ok: true, count: records.length, records });
+      } catch (e) {
+        console.error("❌ esign:list failed:", e);
+        return jsonError(res, 500, "Failed to list signed documents");
       }
     }
 
@@ -25070,6 +25731,39 @@ Analyze now:`;
       }
     }
 
+    // GET /v1/billing:paymentMethod — Return the user's default Stripe payment method.
+    // Used by BillingPage to show card-on-file without opening the portal.
+    if (route === "/billing:paymentMethod" && method === "GET") {
+      try {
+        const user = await requireFirebaseUser(req, res);
+        if (!user) return;
+        const fdb = getFirestore();
+        // Try personal user first, then active tenant
+        let stripeCustomerId = null;
+        const userSnap = await fdb.doc(`users/${user.uid}`).get();
+        if (userSnap.exists) stripeCustomerId = userSnap.data().stripeCustomerId || null;
+        if (!stripeCustomerId) {
+          const tid = ctx.tenantId;
+          if (tid && tid !== "vault") {
+            const tSnap = await fdb.doc(`tenants/${tid}`).get();
+            if (tSnap.exists) stripeCustomerId = tSnap.data().stripeCustomerId || null;
+          }
+        }
+        if (!stripeCustomerId) return res.json({ ok: true, paymentMethod: null });
+        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+        const customer = await stripe.customers.retrieve(stripeCustomerId, { expand: ["default_source", "invoice_settings.default_payment_method"] });
+        const pm = customer.invoice_settings?.default_payment_method || customer.default_source;
+        if (!pm) return res.json({ ok: true, paymentMethod: null });
+        // Resolve if only an ID was returned
+        let pmObj = typeof pm === "string" ? await stripe.paymentMethods.retrieve(pm) : pm;
+        const card = pmObj.card || {};
+        return res.json({ ok: true, paymentMethod: { brand: card.brand || null, last4: card.last4 || null, expMonth: card.exp_month || null, expYear: card.exp_year || null } });
+      } catch (e) {
+        console.error("billing:paymentMethod failed:", e.message);
+        return res.json({ ok: true, paymentMethod: null });
+      }
+    }
+
     // GET /v1/subscription:status — Get subscription/trial status
     if (route === "/subscription:status" && method === "GET") {
       try {
@@ -25264,6 +25958,115 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // GMAIL — connect + read + send. Same Google OAuth client as
+    // Calendar/Drive/YouTube; tokens at users/{uid}/integrations/gmail.
+    // Scopes: gmail.readonly, gmail.send, gmail.compose, contacts.readonly.
+    // NOTE: gmail.readonly + gmail.send are "restricted" scopes — requires
+    // Google verification for public use. Test users can connect immediately.
+    // ----------------------------
+    if (route && route.startsWith("/gmail:")) {
+      const gmailAction = route.replace("/gmail:", "");
+      try {
+        const gmail = require("./services/social/gmail");
+        switch (gmailAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gmail.handleGmailAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gmail.handleGmailExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gmail.handleGmailStatus(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gmail.handleGmailDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "syncContacts": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { tenantId: syncTenant } = getCtx(req, req.body, auth.user);
+          if (!syncTenant) return jsonError(res, 400, "tenantId required");
+          const syncResult = await gmail.syncContacts(auth.user.uid, syncTenant, req.body || {});
+          return res.json({ ok: true, ...syncResult });
+        }
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { to, subject, body: emailBody, htmlBody, cc, replyTo } = req.body || {};
+          if (!to || !subject) return jsonError(res, 400, "to and subject required");
+          const sendResult = await gmail.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo });
+          return res.json(sendResult);
+        }
+        default:
+          return jsonError(res, 404, "Unknown gmail action: " + gmailAction);
+        }
+      } catch (e) {
+        console.error("gmail action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // SHOPIFY — OAuth lifecycle + store data reads.
+    // Tokens at users/{uid}/integrations/shopify.
+    // ENV: SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_REDIRECT_URI
+    // ----------------------------
+    if (route && route.startsWith("/shopify:")) {
+      const shopifyAction = route.replace("/shopify:", "");
+      try {
+        const shopify = require("./services/shopify/shopify");
+        switch (shopifyAction) {
+        case "authUrl": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await shopify.handleShopifyAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "callback": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await shopify.handleShopifyCallback(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await shopify.handleShopifyStatus(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await shopify.handleShopifyDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "orders": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const orders = await shopify.getRecentOrders(auth.user.uid, {
+            limit: parseInt(req.query?.limit || "20"),
+            status: req.query?.status || "any",
+            since: req.query?.since || null,
+          });
+          return res.json({ ok: true, orders });
+        }
+        case "revenue": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const summary = await shopify.getRevenueSummary(auth.user.uid, {
+            days: parseInt(req.query?.days || "30"),
+          });
+          return res.json({ ok: true, ...summary });
+        }
+        case "customers": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const customers = await shopify.getCustomers(auth.user.uid, {
+            limit: parseInt(req.query?.limit || "50"),
+          });
+          return res.json({ ok: true, customers });
+        }
+        default:
+          return jsonError(res, 404, "Unknown shopify action: " + shopifyAction);
+        }
+      } catch (e) {
+        console.error("shopify action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // SOCIAL — direct post (#64). Posts immediately, bypassing the chat
     // marker — handy for testing + automation. Body: { text, platforms?,
     // mediaStoragePath? }. Defaults to X (@SOCIIIai). X is live; other
@@ -25425,6 +26228,9 @@ Analyze now:`;
         case "kentFlags":
           if (method !== "GET") return jsonError(res, 405, "GET required");
           return await usageProcessor.handleGetKentFlags(req, res);
+        case "paymentMethod":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await usageProcessor.handleGetPaymentMethod(req, res, { userId: auth.user.uid });
         default:
           return jsonError(res, 404, "Unknown billing action: " + billingAction);
         }
@@ -26602,7 +27408,7 @@ exports.processChainMints = onSchedule(
 // ----------------------------
 // COS WORKERS: Morning Run (7am PT) + Evening Run (6pm PT)
 // ----------------------------
-const { runCosMorning, runCosEvening } = require("./services/cosScheduler");
+const { runCosMorning, runCosEvening, runWeeklyAdvisorTelegram } = require("./services/cosScheduler");
 
 exports.cosWorkerMorningRun = onSchedule(
   { schedule: "0 7 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
@@ -26612,6 +27418,12 @@ exports.cosWorkerMorningRun = onSchedule(
 exports.cosWorkerEveningRun = onSchedule(
   { schedule: "0 18 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await runCosEvening(); }
+);
+
+// Monday 8am PT — draft the weekly advisor Telegram (approval-gated, never auto-sends)
+exports.cosAdvisorTelegramDraft = onSchedule(
+  { schedule: "0 8 * * 1", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await runWeeklyAdvisorTelegram(); }
 );
 
 // ----------------------------

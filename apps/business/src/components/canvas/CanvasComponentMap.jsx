@@ -36,6 +36,9 @@ import VideoCard from "./VideoCard";
 import MapCard from "./MapCard";
 import AircraftCard from "./AircraftCard";
 import FlightPlanningCard from "./FlightPlanningCard";
+import PatentPortfolioCard from "./PatentPortfolioCard";
+import EsignAnchorCard from "./EsignAnchorCard";
+import BundleOfferCard from "./BundleOfferCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -69,6 +72,9 @@ const CANVAS_COMPONENT_MAP = {
   MapCard,
   AircraftCard,
   FlightPlanningCard,
+  PatentPortfolioCard,
+  EsignAnchorCard,
+  BundleOfferCard,
 };
 
 /**

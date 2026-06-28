@@ -4410,6 +4410,9 @@ import "./admin/admin.css";
 function WorkerHomeRenderer({ onBack }) {
   const workerCtx = useWorkerState();
   const panel = useRightPanel();
+  // Keep a ref so event handlers always get the latest panel without stale closures
+  const panelRef = React.useRef(panel);
+  panelRef.current = panel;
   // 50.10-T3 — tab bar from active worker's canvasTabs
   const worker = workerCtx?.activeWorkerData || null;
   const tabs = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
@@ -4536,13 +4539,12 @@ function WorkerHomeRenderer({ onBack }) {
   // Re-land on the default data tab when a canvas card is dismissed, so the ×
   // returns to the worker's real home instead of a blank canvas.
   React.useEffect(() => {
-    const onReland = () => {
+    const onReland = (e) => {
       autoFiredRef.current = null;
-      // panel.canvasData is still the pre-dismiss value here — dismissCanvas
-      // queued setCanvasData(null) but React hasn't flushed that batch yet.
-      // Calling showCanvas now batches with the dismiss setState, and the last
-      // setState("CANVAS") wins → canvas stays showing with no blank flash.
-      const last = panel?.canvasData;
+      // Use savedCanvas from event detail (passed by dismissCanvas before it
+      // cleared state) — panel.canvasData may already be null if React flushed
+      // the setState synchronously before this listener ran.
+      const last = e?.detail?.savedCanvas || panel?.canvasData;
       if (last?.resolved && panel?.showCanvas) {
         panel.showCanvas(last.resolved, last.context);
       }
@@ -4718,6 +4720,10 @@ function AdminShell({ onBackToHub, initialSection }) {
         window.location.href = "/workers/" + slug;
         return;
       }
+      // Clear previous worker's canvas so it doesn't bleed into the new worker
+      // (e.g. Site Recon map persisting in Alex/Accounting/Contacts after switch)
+      panelRef.current?.resetCanvas?.();
+      autoFiredRef.current = null; // allow the new worker to auto-land its canvas
       // Any surface that fires ta:select-worker (Sidebar, VaultDashboard
       // My Workers cards, entitled-worker shortcuts) needs the worker
       // actually loaded into context so WorkerHomeRenderer has something
@@ -4777,9 +4783,12 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <React.Suspense fallback={<div />}><TeamSetup onComplete={() => window.location.reload()} /></React.Suspense>;
       }
       case "dashboard": {
-        // CODEX 48.2 Fix 4 — vault-native dashboard for personal mode.
         const v = (localStorage.getItem("VERTICAL") || "").toLowerCase();
-        return v === "consumer" ? <VaultDashboard /> : <WorkerHome />;
+        const isVaultTenant = localStorage.getItem("TENANT_ID") === "vault";
+        // Consumer/vault persona lands directly on the tabbed Vault view (pillar tabs, net worth,
+        // real records). Check both VERTICAL and TENANT_ID for robustness (returning users may
+        // have VERTICAL unset if they landed on vault without going through TeamHome).
+        return (v === "consumer" || isVaultTenant) ? <VaultDTCs /> : <WorkerHome />;
       }
       case "analyst":
         return <Analyst />;
@@ -5193,6 +5202,12 @@ export default function App() {
 
   // ── /auth/magic route intercept ─────────────────────
   const isAuthMagic = /^\/auth\/magic\/?$/.test(window.location.pathname);
+
+  // ── /auth/gmail-callback — OAuth popup landing for Gmail connector ──
+  const isGmailCallback = /^\/auth\/gmail-callback\/?$/.test(window.location.pathname);
+
+  // ── /auth/shopify-callback — OAuth popup landing for Shopify connector ──
+  const isShopifyCallback = /^\/auth\/shopify-callback\/?$/.test(window.location.pathname);
 
   // ── /onboard/advisor route intercept (IR Phase 2) ──
   const isAdvisorOnboard = /^\/onboard\/advisor\/?$/.test(window.location.pathname);
@@ -5748,6 +5763,7 @@ export default function App() {
             // switcher; the picker hub is no longer the default landing.
             localStorage.setItem("TENANT_ID", "vault");
             localStorage.setItem("WORKSPACE_NAME", "Personal Vault");
+            localStorage.setItem("VERTICAL", "consumer");
             viewResolvedRef.current = true;
             transitionTo("app");
           }
@@ -6087,6 +6103,18 @@ export default function App() {
   if (isAuthMagic) {
     const AuthMagic = React.lazy(() => import("./pages/AuthMagic"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><AuthMagic /></React.Suspense>;
+  }
+
+  // ── Gmail OAuth popup callback ─────────────────────────────
+  if (isGmailCallback) {
+    const GmailAuthCallback = React.lazy(() => import("./pages/GmailAuthCallback"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><GmailAuthCallback /></React.Suspense>;
+  }
+
+  // ── Shopify OAuth popup callback ────────────────────────────
+  if (isShopifyCallback) {
+    const ShopifyAuthCallback = React.lazy(() => import("./pages/ShopifyAuthCallback"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><ShopifyAuthCallback /></React.Suspense>;
   }
 
   // ── Advisor onboarding (IR Phase 2) ────────────────────────

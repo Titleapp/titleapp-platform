@@ -79,6 +79,21 @@ export default function MeetAlex() {
     }
   }, []);
 
+  // #65: When action=signup, fire the Google popup immediately so users go
+  // straight to Google SSO instead of seeing a blocking auth form in the chat.
+  // Small delay lets anon auth settle first. If the popup is blocked (mobile),
+  // the user still sees the fallback auth card in the thread.
+  const autoGoogleFired = useRef(false);
+  useEffect(() => {
+    if (!isSignUp || autoGoogleFired.current) return;
+    autoGoogleFired.current = true;
+    const t = setTimeout(() => {
+      handleGoogleSave();
+    }, 600);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignUp]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -264,8 +279,8 @@ export default function MeetAlex() {
     if (!isSignIn) {
       const SPINE_SLUGS = [
         "platform-accounting",
-        "platform-hr-people",
-        "platform-marketing-content",
+        "platform-hr",
+        "platform-marketing",
         "platform-contacts",
         "platform-control-center-pro",
       ];

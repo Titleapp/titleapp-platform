@@ -199,7 +199,7 @@ export const CAMPAIGN_ROUTES = {
     alexOpening: "Did you like that ad? I hate my boss too — that's why I work for me. No synergy required. What do you actually know how to do?",
   },
   "hate-boss-vc": {
-    workerSlug: "platform-marketing-content",
+    workerSlug: "platform-marketing",
     workerDisplayName: "Marketing & Content",
     bossCharacter: "YC Brandon",
     creatorSlug: "yc-brandon",

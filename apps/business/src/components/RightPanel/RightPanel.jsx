@@ -17,6 +17,187 @@ import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
+// ── Artifact Panel ─────────────────────────────────────────────────────────
+// Renders the latest Alex output as a rich artifact, replacing inert worker
+// links when Alex is actively producing content (email draft, Apollo searches,
+// analysis, bundle). Dismissed with × → returns to WorkerCanvas.
+
+const API_BASE_ARTIFACT = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+const BUNDLE_WORKERS = [
+  { slug: "platform-accounting", name: "Accounting", desc: "P&L, cash flow, financial reports" },
+  { slug: "platform-hr", name: "HR & People", desc: "Hiring, onboarding, team records" },
+  { slug: "platform-marketing", name: "Marketing", desc: "Content calendar, campaigns, social" },
+  { slug: "platform-contacts", name: "Contacts", desc: "CRM, deals, relationship tracking" },
+  { slug: "platform-control-center-pro", name: "Control Center", desc: "Daily briefings, cross-worker view" },
+];
+
+function BundlePanel({ onClose }) {
+  const [status, setStatus] = useState("idle"); // idle | loading | done | error
+
+  async function handleSubscribeAll() {
+    setStatus("loading");
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      if (!token) { setStatus("error"); return; }
+      await Promise.allSettled(BUNDLE_WORKERS.map(w =>
+        fetch(`${API_BASE_ARTIFACT}/api?path=/v1/worker:subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ slug: w.slug }),
+        })
+      ));
+      setStatus("done");
+      // Reload worker list so My Workers shows the new subscriptions
+      setTimeout(() => window.dispatchEvent(new CustomEvent("ta:workers-updated")), 800);
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const S2 = {
+    header: { padding: "16px 18px 12px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 },
+    badge: { display: "inline-block", background: "#dcfce7", color: "#16a34a", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "2px 8px", borderRadius: 4, marginBottom: 6 },
+    title: { fontSize: 16, fontWeight: 700, color: "#0f172a" },
+    sub: { fontSize: 12, color: "#64748b", marginTop: 4, lineHeight: 1.5 },
+    closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, lineHeight: 1, padding: "2px 4px", flexShrink: 0 },
+    body: { flex: 1, overflow: "auto", padding: "14px 18px" },
+    workerRow: { display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: "1px solid #f8fafc" },
+    checkMark: { width: 18, height: 18, borderRadius: "50%", background: "#f1f5f9", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#94a3b8", flexShrink: 0, marginTop: 1 },
+    checkDone: { background: "#dcfce7", border: "1px solid #86efac", color: "#16a34a" },
+    workerName: { fontSize: 13, fontWeight: 600, color: "#0f172a" },
+    workerDesc: { fontSize: 12, color: "#64748b", marginTop: 1 },
+    footer: { padding: "12px 18px 16px", flexShrink: 0 },
+    btn: { width: "100%", padding: "12px 0", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" },
+    btnDone: { background: "#16a34a" },
+    btnLoading: { opacity: 0.7, cursor: "not-allowed" },
+    doneMsg: { textAlign: "center", fontSize: 13, color: "#16a34a", fontWeight: 600, marginTop: 8 },
+  };
+
+  return (
+    <>
+      <div style={S2.header}>
+        <div>
+          <div style={S2.badge}>Free Bundle</div>
+          <div style={S2.title}>Business in a Box</div>
+          <div style={S2.sub}>Five workers. Everything you need to run your business from day one.</div>
+        </div>
+        <button style={S2.closeBtn} onClick={onClose} title="Dismiss">×</button>
+      </div>
+      <div style={S2.body}>
+        {BUNDLE_WORKERS.map(w => (
+          <div key={w.slug} style={S2.workerRow}>
+            <div style={{ ...S2.checkMark, ...(status === "done" ? S2.checkDone : {}) }}>
+              {status === "done" ? "✓" : "○"}
+            </div>
+            <div>
+              <div style={S2.workerName}>{w.name}</div>
+              <div style={S2.workerDesc}>{w.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={S2.footer}>
+        {status === "done" ? (
+          <div style={S2.doneMsg}>All 5 workers added to My Workers</div>
+        ) : (
+          <button
+            style={{ ...S2.btn, ...(status === "loading" ? S2.btnLoading : {}) }}
+            onClick={handleSubscribeAll}
+            disabled={status === "loading"}
+          >
+            {status === "loading" ? "Adding workers..." : "Get Business in a Box — Free"}
+          </button>
+        )}
+        {status === "error" && <div style={{ textAlign: "center", fontSize: 12, color: "#dc2626", marginTop: 6 }}>Something went wrong. Try refreshing.</div>}
+      </div>
+    </>
+  );
+}
+
+function ArtifactPanel({ artifact, onClose }) {
+  if (!artifact) return null;
+  const { type, data, title } = artifact;
+
+  const S = {
+    wrap: { display: "flex", flexDirection: "column", height: "100%", background: "#fff", borderLeft: "1px solid #f1f5f9" },
+    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 10px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 },
+    label: { fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" },
+    title: { fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 2 },
+    closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, lineHeight: 1, padding: "2px 4px", borderRadius: 4 },
+    body: { flex: 1, overflow: "auto", padding: "16px 18px" },
+    // Email
+    emailField: { marginBottom: 10 },
+    emailLabel: { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 },
+    emailValue: { fontSize: 13, color: "#0f172a" },
+    divider: { borderTop: "1px solid #f1f5f9", margin: "12px 0" },
+    bodyText: { fontSize: 13, color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap" },
+    // Apollo
+    searchCard: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 },
+    searchTitle: { fontSize: 12, fontWeight: 600, color: "#0f172a", marginBottom: 6 },
+    searchMeta: { fontSize: 11, color: "#64748b", lineHeight: 1.6 },
+    pill: { display: "inline-block", background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", fontSize: 11, color: "#475569", marginRight: 4, marginBottom: 3 },
+    // Text
+    textBody: { fontSize: 13, color: "#1e293b", lineHeight: 1.8 },
+  };
+
+  const typeLabel = {
+    "email-draft": "Email Draft",
+    "apollo-searches": "Investor Prospecting",
+    "bundle": "Marketplace",
+    "text": "Alex's Output",
+  }[type] || "Artifact";
+
+  if (type === "bundle") {
+    return (
+      <div style={S.wrap}>
+        <BundlePanel onClose={onClose} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={S.wrap}>
+      <div style={S.header}>
+        <div>
+          <div style={S.label}>{typeLabel}</div>
+          {title && <div style={S.title}>{title}</div>}
+        </div>
+        <button style={S.closeBtn} onClick={onClose} title="Dismiss">×</button>
+      </div>
+      <div style={S.body}>
+        {type === "email-draft" && data && (
+          <>
+            <div style={S.emailField}>
+              <div style={S.emailLabel}>To</div>
+              <div style={S.emailValue}>{data.to}</div>
+            </div>
+            <div style={S.emailField}>
+              <div style={S.emailLabel}>Subject</div>
+              <div style={S.emailValue}>{data.subject}</div>
+            </div>
+            <div style={S.divider} />
+            <div style={S.bodyText}>{data.body}</div>
+          </>
+        )}
+        {type === "apollo-searches" && Array.isArray(data) && data.map((s, i) => (
+          <div key={i} style={S.searchCard}>
+            <div style={S.searchTitle}>Search {i + 1} — {s.person_titles?.slice(0, 2).join(", ") || "Investor search"}</div>
+            <div style={S.searchMeta}>
+              {s.q_organization_industries?.map((ind, j) => <span key={j} style={S.pill}>{ind}</span>)}
+              {s.person_locations?.map((loc, j) => <span key={j} style={S.pill}>{loc}</span>)}
+              {s.per_page && <span style={S.pill}>up to {s.per_page} results</span>}
+            </div>
+          </div>
+        ))}
+        {type === "text" && data && (
+          <div style={S.textBody}>{data}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function getGuestId() {
   let id = localStorage.getItem("ta_guest_id");
   if (!id) {
@@ -539,6 +720,16 @@ export default function RightPanel() {
   // 40.2-T1: Arrival animation system
   // 50.10-T3: tab bar above the landing card so tabs are reachable pre-signal
   if (state === "WORKSPACE_HOME" && panel.activeWorkerData) {
+    // Artifact takes over when Alex produces content (email draft, searches, analysis)
+    if (panel.artifactData) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <BetaNotice />
+          <ArtifactPanel artifact={panel.artifactData} onClose={panel.clearArtifact} />
+        </div>
+      );
+    }
+
     const tabs = workerState?.activeWorkerData?.canvasTabs?.length
       ? workerState.activeWorkerData.canvasTabs
       : (panel.activeWorkerData?.canvasTabs || []);

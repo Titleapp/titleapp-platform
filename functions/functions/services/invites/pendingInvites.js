@@ -327,9 +327,10 @@ async function enrichInviteWithEntityState(invite) {
   // entity-state predicate that decides whether to set completedAt.
   const completionMap = {
     advisor: {
-      "acknowledge-terms": () => tsToIso(entity.termsAcknowledgedAt) || (entity.flowStep && ["identity_pending","identity_complete","signature_pending","signature_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null),
+      // "affirmed" is written by affirmAgreement() — a post-signature vault-anchor step. TC-027.
+      "acknowledge-terms": () => tsToIso(entity.termsAcknowledgedAt) || (entity.flowStep && ["identity_pending","identity_complete","signature_pending","signature_complete","affirmed","closed"].includes(entity.flowStep) ? new Date().toISOString() : null),
       "verify-identity": () => entity.kycStatus === "approved" ? (tsToIso(entity.kycApprovedAt) || new Date().toISOString()) : null,
-      "sign-agreement": () => ["signature_complete","closed"].includes(entity.flowStep) ? (tsToIso(entity.signatureCompletedAt) || new Date().toISOString()) : null,
+      "sign-agreement": () => ["signature_complete","affirmed","closed"].includes(entity.flowStep) ? (tsToIso(entity.signatureCompletedAt) || new Date().toISOString()) : null,
     },
     investor: {
       "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
@@ -339,12 +340,14 @@ async function enrichInviteWithEntityState(invite) {
     },
     warrant_holder: {
       "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
-      "sign-warrant": () => ["signature_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
+      "sign-warrant": () => ["signature_complete","affirmed","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
     },
     creator: {
-      "accept-license": () => tsToIso(entity.agreementAcceptedAt),
+      // "terms_accepted" is written by acceptLicense(). TC-027.
+      "accept-license": () => tsToIso(entity.agreementAcceptedAt) || (entity.flowStep && ["terms_accepted","identity_pending","identity_complete","subscription_active","closed"].includes(entity.flowStep) ? new Date().toISOString() : null),
       "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
-      "activate-license": () => entity.subscriptionStatus === "active" ? new Date().toISOString() : null,
+      // "subscription_active" is written by activateSubscription(). TC-027.
+      "activate-license": () => entity.subscriptionStatus === "active" || ["subscription_active","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
     },
   };
 

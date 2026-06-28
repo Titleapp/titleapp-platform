@@ -346,6 +346,36 @@ export const CANVAS_TYPES = {
     _title: "Course Content",
   },
 
+  // Patent portfolio + deadline engine
+  "patent:portfolio": {
+    component: "PatentPortfolioCard",
+    dataSource: "firestore",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask the Patent Worker about your portfolio to see it here.",
+    _title: "Patent Portfolio",
+  },
+
+  // Business-in-a-Box bundle offer — one-click add all 5 spine workers
+  "bundle:offer": {
+    component: "BundleOfferCard",
+    dataSource: "static",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to show you the Business-in-a-Box to get all 5 workers at once.",
+    _title: "Business-in-a-Box",
+  },
+
+  // E-sign anchor log — SOCIII moat: suite-agnostic chain record of completed signings
+  "esign:documents": {
+    component: "EsignAnchorCard",
+    dataSource: "firestore",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Tell Alex when you complete a signing — I'll create a SOCIII anchor record.",
+    _title: "Signed Documents",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",
