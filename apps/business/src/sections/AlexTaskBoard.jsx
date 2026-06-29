@@ -88,7 +88,7 @@ export default function AlexTaskBoard() {
       } else {
         setCreateError(data.error || "Failed to create task");
       }
-    } catch (err) {
+    } catch (_err) {
       setCreateError("Failed to create task");
     } finally {
       setCreating(false);

@@ -311,7 +311,7 @@ function findSloCriteria(data, courseCode, sloNumber) {
   // Criteria may be JSON-encoded or a plain array
   if (Array.isArray(slo.criteria)) return slo.criteria;
   if (typeof slo.criteria === "string") {
-    try { const parsed = JSON.parse(slo.criteria); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; }
+    try { const parsed = JSON.parse(slo.criteria); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
   }
   return [];
 }
@@ -319,7 +319,7 @@ function findSloCriteria(data, courseCode, sloNumber) {
 function GradeReflectionModal({ reflection, data, onClose }) {
   const [stage, setStage] = useState("preview"); // preview | scoring | proposed | locked
   const [proposedScore, setProposedScore] = useState(null);
-  const [scoringInProgress, setScoringInProgress] = useState(false);
+  const [_scoringInProgress, setScoringInProgress] = useState(false);
   const studentText = SAMPLE_REFLECTIONS[reflection.name] || "Sample reflection text not yet authored for this student. In the live worker, this loads from the student's submission.";
   const criteria = findSloCriteria(data, reflection.course, reflection.slo) || [];
 

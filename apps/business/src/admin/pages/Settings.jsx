@@ -3,13 +3,10 @@ import useAdminAuth from "../hooks/useAdminAuth";
 import { db } from "../../firebase";
 import {
   doc,
-  getDoc,
   setDoc,
   onSnapshot,
   collection,
   getDocs,
-  updateDoc,
-  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 

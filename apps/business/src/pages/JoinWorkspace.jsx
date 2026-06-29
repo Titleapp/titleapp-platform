@@ -59,14 +59,14 @@ export default function JoinWorkspace({ token }) {
           localStorage.setItem("TENANT_ID", data.tenantId);
           localStorage.setItem("WORKSPACE_ID", data.tenantId);
           localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
-        } catch (_) {}
+        } catch { /* ignore */ }
         setSuccess(data);
         // Hard navigation so the dashboard re-bootstraps with the new context.
         setTimeout(() => { window.location.href = "/dashboard"; }, 800);
       } else {
         setError(data?.error || "REDEEM_FAILED");
       }
-    } catch (e) {
+    } catch {
       setError("NETWORK_ERROR");
     } finally {
       setRedeeming(false);
@@ -76,14 +76,14 @@ export default function JoinWorkspace({ token }) {
   function gotoSignIn() {
     // Magic-link sign-in already exists on /auth/magic. Pass the join URL
     // back through sessionStorage so the post-signin redirect lands here.
-    try { sessionStorage.setItem("ta_post_signin_redirect", `/join/${token}`); } catch (_) {}
+    try { sessionStorage.setItem("ta_post_signin_redirect", `/join/${token}`); } catch { /* ignore */ }
     window.location.href = "/?signin=1";
   }
 
   async function gotoSwitchAccount() {
     try {
       await auth.signOut();
-    } catch (_) {}
+    } catch { /* ignore */ }
     setUser(null);
   }
 

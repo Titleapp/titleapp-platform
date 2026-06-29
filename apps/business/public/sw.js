@@ -14,15 +14,15 @@ self.addEventListener('activate', (e) => {
     try {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
-    } catch (_) { /* no caches */ }
+    } catch { /* no caches */ }
     try {
       await self.registration.unregister();
-    } catch (_) { /* already gone */ }
+    } catch { /* already gone */ }
     // Tell any live tab the SW retired; the app may refresh on its own terms.
     try {
       const wins = await self.clients.matchAll({ type: 'window' });
       wins.forEach((c) => c.postMessage({ type: 'SW_RETIRED' }));
-    } catch (_) { /* no clients */ }
+    } catch { /* no clients */ }
   })());
 });
 

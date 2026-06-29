@@ -48,6 +48,7 @@ export default function MyImagesPanel({ onClose, localAssets = [] }) {
   // Initial load + filter changes
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -115,7 +116,7 @@ export default function MyImagesPanel({ onClose, localAssets = [] }) {
     }
   };
 
-  const handleLedger = (asset) => {
+  const handleLedger = (_asset) => {
     setToast("Ledger integration coming soon.");
     setTimeout(() => setToast(null), 3000);
   };

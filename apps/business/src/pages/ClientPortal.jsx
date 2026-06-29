@@ -121,7 +121,7 @@ function BookingCanvas({ skin, onConfirm }) {
   );
 }
 
-function RecordsCanvas({ skin }) {
+function RecordsCanvas() {
   const rows = [
     ["Rabies vaccine", "Current · expires 2027-03-01", "#16a34a"],
     ["RHDV2 vaccine", "Current · expires 2026-11-10", "#16a34a"],
@@ -131,7 +131,7 @@ function RecordsCanvas({ skin }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>Clover's record — yours, tamper-evident, owned for life. Travel, boarding, or a new vet: it comes with you.</div>
-      {rows.map(([t, s, c]) => (
+      {rows.map(([t, s]) => (
         <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t}</div>
@@ -162,7 +162,7 @@ function AffirmCanvas({ skin }) {
       const params = new URLSearchParams(window.location.search);
       const advisorId = params.get("advisor") || params.get("advisorId");
       let token = null;
-      try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+      try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
       if (!token) token = localStorage.getItem("ID_TOKEN");
       if (token && advisorId) {
         const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/ir:advisor:step")}`, {
@@ -173,7 +173,7 @@ function AffirmCanvas({ skin }) {
         const j = await res.json().catch(() => ({}));
         if (j && j.ok && j.dtcId) setDtcId(j.dtcId);
       }
-    } catch (_) { /* graceful — demo still completes */ }
+    } catch { /* graceful — demo still completes */ }
     setBusy(false);
     setAffirmed(true);
   }
@@ -210,7 +210,7 @@ function DocumentsCanvas({ skin }) {
     ["W-9.pdf", "On file"],
   ]} note="Your documents — owned by you, in your Vault." />;
 }
-function RecordsCanvasLike({ skin, rows, note }) {
+function RecordsCanvasLike({ rows, note }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>{note}</div>
@@ -224,7 +224,7 @@ function RecordsCanvasLike({ skin, rows, note }) {
   );
 }
 
-function Confirmed({ skin, title, sub }) {
+function Confirmed({ title, sub }) {
   return (
     <div style={{ textAlign: "center", padding: "24px 8px" }}>
       <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
@@ -315,6 +315,7 @@ export default function ClientPortal() {
 
   // Persona-relevant left-nav items (monoline icons — Switzerland, not Disneyland).
   const I = (d) => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+  function scrollToEnd() { endRef.current?.scrollIntoView({ behavior: "smooth" }); }
   const navItems = persona === "advisor"
     ? [
         { label: "My agreements", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "affirm" }) },
@@ -322,7 +323,7 @@ export default function ClientPortal() {
         { label: "My votes", icon: I(<><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>), action: () => say("No board votes pending right now — you're all caught up. I'll surface anything that needs your vote here.") },
       ]
     : [
-        { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: () => endRef.current?.scrollIntoView({ behavior: "smooth" }) },
+        { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
         { label: `${person.pet || "Pet"}'s records`, icon: I(<><path d="M9 11H5a2 2 0 0 0-2 2v7h6z"/><path d="M9 7h6v13H9z"/><path d="M15 4h4a2 2 0 0 1 2 2v14h-6z"/></>), action: () => setCanvas({ type: "records" }) },
         { label: "Appointments", icon: I(<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>), action: () => setCanvas({ type: "booking" }) },
         { label: "Bills & account", icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>), action: () => say("Nothing due right now — your last visit was paid in full. I'll text you before anything's coming up.") },
@@ -347,6 +348,7 @@ export default function ClientPortal() {
         {/* Claude-style left nav (desktop) — what this customer can do here */}
         {isDesktop && (
           <nav style={{ width: 212, flexShrink: 0, borderRight: "1px solid #f1f5f9", padding: "16px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* eslint-disable-next-line react-hooks/refs */}
             {navItems.map((it, i) => (
               <button key={i} onClick={it.action}
                 style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", border: "none", background: "transparent", borderRadius: 10, cursor: "pointer", fontSize: 14, color: "#334155", fontWeight: 500, textAlign: "left", width: "100%" }}

@@ -438,7 +438,7 @@ export default function WorkerSandbox() {
 
   // ── Boot: load or create session ─────────────────────────────────────────
 
-  const refresh = useCallback(async (sid) => {
+  const _refresh = useCallback(async (sid) => {
     const r = await getWorkerFlowState(sid);
     if (r.ok) {
       setState(r.state);
@@ -805,7 +805,7 @@ export default function WorkerSandbox() {
       {!sidebarHidden && (
         <Sidebar
           currentSection="sandbox-worker"
-          onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {} window.location.href = "/"; }}
+          onNavigate={(section) => { try { sessionStorage.setItem("ta_redirect_page", section); } catch { /* ignore */ } window.location.href = "/"; }}
           tenantName={localStorage.getItem("TENANT_NAME") || undefined}
           guestMode={false}
         />

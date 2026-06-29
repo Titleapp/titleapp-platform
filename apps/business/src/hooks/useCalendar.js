@@ -57,6 +57,7 @@ export function useCalendarStatus() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
 
   return { status, refresh };
@@ -101,7 +102,7 @@ export async function connectCalendar() {
             reject(new Error("Connection cancelled."));
           }
         }
-      } catch {}
+      } catch { /* ignore */ }
     }, 500);
   });
 }

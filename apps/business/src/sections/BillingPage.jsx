@@ -127,7 +127,7 @@ export default function BillingPage() {
         ));
         const subs = subsQ.docs.map(d => ({ id: d.id, ...d.data() }));
         setSubscriptions(subs);
-      } catch (_) { setSubscriptions([]); }
+      } catch { setSubscriptions([]); }
     } catch (e) {
       console.warn("BillingPage refresh failed:", e.message);
     }
@@ -187,14 +187,15 @@ export default function BillingPage() {
         credits,
         successUrl: `${window.location.origin}/subscribe/success?type=credits&amount=${credits}&scope=${pickerScope}`,
         cancelUrl: `${window.location.origin}/?credits=cancel`,
+        ...(pickerScope === "tenant" && tenantId ? { tenantId } : {}),
       };
-      if (pickerScope === "tenant" && tenantId) body.tenantId = tenantId;
       const res = await fetch(`${API_BASE}/api?path=/v1/credits:purchase`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(tenantId ? { "X-Tenant-Id": tenantId } : {}) },
         body: JSON.stringify(body),
       });
       const data = await res.json();
+      // eslint-disable-next-line react-hooks/immutability
       if (data.ok && data.checkoutUrl) window.location.href = data.checkoutUrl;
       else { setError(data.error || "Could not start checkout. Try again."); setBusyPack(null); }
     } catch (e) { setError(e.message || "Checkout failed."); setBusyPack(null); }

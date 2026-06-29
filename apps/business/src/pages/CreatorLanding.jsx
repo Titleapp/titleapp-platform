@@ -111,7 +111,7 @@ export default function CreatorLanding() {
       // Convenience fields used elsewhere in the app
       sessionStorage.setItem("ta_campaign_id", ctx.campaignId || "");
       sessionStorage.setItem("ta_campaign_character", ctx.character || "");
-    } catch (_) { /* private mode etc. — non-fatal */ }
+    } catch { /* private mode etc. — non-fatal */ }
   }, [ctx]);
 
   if (!ctx) {
@@ -510,7 +510,7 @@ function WorkerCard({ character, subject, handle }) {
   );
 }
 
-function Bullets({ character, subject }) {
+function Bullets({ character, subject: _subject }) {
   return (
     <div style={{ marginTop: 22 }}>
       <div style={{ color: COLORS.text, fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>

@@ -26,7 +26,7 @@ async function startBoxCheckout(planKey) {
     const data = await res.json();
     if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
     window.location.href = `/meet-alex?intent=${planKey}`;
-  } catch (_) {
+  } catch {
     window.location.href = `/meet-alex?intent=${planKey}`;
   }
 }

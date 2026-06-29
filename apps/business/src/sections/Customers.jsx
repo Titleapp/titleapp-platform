@@ -157,9 +157,6 @@ function AutoCustomers() {
  * Customers - CRM and customer relationship management
  */
 export default function Customers() {
-  const currentVertical = localStorage.getItem("VERTICAL") || "auto";
-  if (currentVertical === "auto") return <AutoCustomers />;
-
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -178,55 +175,16 @@ export default function Customers() {
   const vertical = "auto";
   const jurisdiction = "il";
 
-  // Mock customer data
-  const mockCustomers = [
-    {
-      id: "cust-001",
-      firstName: "John",
-      lastName: "Smith",
-      email: "john.smith@example.com",
-      phone: "+1-555-0100",
-      tags: ["hot-lead"],
-      deals: [
-        { id: "deal-001", item: "2023 Honda Accord", status: "negotiating", value: 28500 },
-      ],
-      notes: "Interested in EX-L trim. Pre-approved for financing.",
-      createdAt: "2026-02-10T09:00:00Z",
-      lastContact: "2026-02-14T10:30:00Z",
-    },
-    {
-      id: "cust-002",
-      firstName: "Sarah",
-      lastName: "Lee",
-      email: "sarah.lee@example.com",
-      phone: "+1-555-0200",
-      tags: ["repeat-customer"],
-      deals: [
-        { id: "deal-002", item: "2024 Toyota Camry", status: "sold", value: 26900 },
-      ],
-      notes: "Purchased Camry on 2/12. Very satisfied.",
-      createdAt: "2026-01-15T08:00:00Z",
-      lastContact: "2026-02-12T14:30:00Z",
-    },
-    {
-      id: "cust-003",
-      firstName: "Mike",
-      lastName: "Johnson",
-      email: "mike.j@example.com",
-      phone: "+1-555-0300",
-      tags: [],
-      deals: [
-        { id: "deal-003", item: "Premium Oil Change", status: "scheduled", value: 79.99 },
-      ],
-      notes: "Service appointment scheduled for 2/20.",
-      createdAt: "2026-02-08T11:00:00Z",
-      lastContact: "2026-02-13T16:00:00Z",
-    },
-  ];
+  const currentVertical = localStorage.getItem("VERTICAL") || "auto";
 
   useEffect(() => {
-    loadCustomers();
+    if (currentVertical !== "auto") {
+      loadCustomers();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (currentVertical === "auto") return <AutoCustomers />;
 
   async function loadCustomers() {
     setLoading(true);

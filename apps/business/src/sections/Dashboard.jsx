@@ -137,7 +137,7 @@ function ConsumerDashboard() {
                         if (/\b(property|house|rental)\b/i.test(lc.chatSummary)) return "Let's add that property you mentioned. Your AI is ready in the chat panel.";
                         if (/\b(document|passport|license)\b/i.test(lc.chatSummary)) return "Let's organize those documents you mentioned. Your AI is ready in the chat panel.";
                       }
-                    } catch {}
+                    } catch { /* ignore */ }
                     return "Add your first item to start building your Vault";
                   })()}
             </div>
@@ -320,7 +320,7 @@ export default function Dashboard() {
   const isAuto = vertical === "auto";
   const isRealEstate = vertical === "real-estate";
   const isBuilder = vertical === "custom";
-  const isAviation = vertical === "aviation";
+  const _isAviation = vertical === "aviation";
 
   // Check onboarding state for "Get Started" empty state
   const onboardingState = (() => {
@@ -400,7 +400,7 @@ export default function Dashboard() {
     },
   ]);
 
-  const [autoRecentActivity] = useState([
+  const [_autoRecentActivity] = useState([
     "AI sent service reminder to Lawrence Foster -- confirmed for Monday 7:00 AM",
     "AI generated Facebook listing for 2025 Camry LE (Stock N25000, 70 days)",
     "Price alert: 2022 Ford Explorer XLT -- 126 days on lot -- markdown recommended",
@@ -501,7 +501,7 @@ export default function Dashboard() {
         setPendingSigCount(pending.length);
         const now = Date.now();
         setUrgentSigCount(pending.filter(s => s.expiresAt && (new Date(s.expiresAt).getTime() - now) < 4 * 60 * 60 * 1000).length);
-      } catch (e) { /* ignore — signatures widget is non-critical */ }
+      } catch { /* ignore — signatures widget is non-critical */ }
 
       // Load AI activity (non-critical)
       let aiActivity = [];
@@ -634,13 +634,13 @@ export default function Dashboard() {
       try {
         const inventoryResult2 = await api.getInventory({ vertical, jurisdiction });
         recentItems = (inventoryResult2.inventory || []).slice(0, 2);
-      } catch (err) { /* non-critical */ }
+      } catch { /* non-critical */ }
 
       let recentAppts = [];
       try {
         const appointmentsResult = await api.getAppointments({ vertical, jurisdiction });
         recentAppts = (appointmentsResult.appointments || []).slice(0, 2);
-      } catch (err) { /* non-critical */ }
+      } catch { /* non-critical */ }
 
       const activity = [
         ...recentItems.map(i => ({

@@ -23,7 +23,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [transitionStep, setTransitionStep] = useState(0);
-  const [transitionActive, setTransitionActive] = useState(false);
+  const [_transitionActive, setTransitionActive] = useState(false);
   const [utmParams, setUtmParams] = useState({});
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -50,6 +50,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
   // ── UTM extraction ────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUtmParams({
       utm_source: params.get("utm_source") || null,
       utm_medium: params.get("utm_medium") || null,
@@ -114,7 +115,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
           ...utmParams,
         }),
       }).catch(() => {});
-    } catch {}
+    } catch { /* ignore fetch errors — lead capture is non-blocking */ }
 
     // Start transition animation
     setFormSubmitted(true);

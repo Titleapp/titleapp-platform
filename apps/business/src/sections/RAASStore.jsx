@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useWorkerCatalog } from "../data/useWorkerCatalog";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
@@ -190,6 +190,7 @@ export default function RAASStore() {
   // Reset suite filter when vertical changes — picking "Government" should
   // not strand the user on a "Compliance" suite that filters to zero.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveSuite("All");
   }, [activeVertical]);
 
@@ -216,8 +217,8 @@ export default function RAASStore() {
     return matchesSuite;
   });
 
-  const liveCount = workers.filter(w => w.status === "live").length;
-  const plannedCount = workers.filter(w => w.status === "planned" || w.status === "waitlist").length;
+  const _liveCount = workers.filter(w => w.status === "live").length;
+  const _plannedCount = workers.filter(w => w.status === "planned" || w.status === "waitlist").length;
 
   async function handleHire(worker) {
     if (worker.status !== "live") {

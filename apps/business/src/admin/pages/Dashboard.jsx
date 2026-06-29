@@ -6,8 +6,6 @@ import {
   collection,
   getCountFromServer,
   getDocs,
-  query,
-  where,
 } from "firebase/firestore";
 import ActivityFeed from "../components/ActivityFeed";
 import MetricCard from "../components/MetricCard";

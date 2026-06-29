@@ -41,8 +41,6 @@ export default function ReviewQueue() {
   const [acting, setActing] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => { loadQueue(); }, []);
-
   async function loadQueue() {
     setLoading(true);
     try {
@@ -53,6 +51,8 @@ export default function ReviewQueue() {
     }
     setLoading(false);
   }
+
+  useEffect(() => { loadQueue(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   async function selectItem(item) {
     setSelected(item);
@@ -74,7 +74,7 @@ export default function ReviewQueue() {
         const w = data.workers.find(w => w.id === item.workerId);
         setWorkerDetail(w || null);
       }
-    } catch {}
+    } catch { /* ignore */ }
     setLoadingDetail(false);
   }
 

@@ -17,7 +17,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 async function apiFetch(path) {
   let token = null;
-  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
   const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`, {
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -67,7 +67,7 @@ export default function InvestorHome() {
     try {
       const data = await apiFetch("/v1/investor:my-position");
       if (data?.ok) setPosition(data);
-    } catch (_) {
+    } catch {
       // non-fatal; render with placeholder values
     } finally {
       setLoading(false);

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
-import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
 import { useWorkerState } from "../../context/WorkerStateContext";
-import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
+import WorkerIcon from "../../utils/workerIcons";
 import SessionEndCTA from "../worker/SessionEndCTA";
 import CanvasPanel from "../canvas/CanvasPanel";
 import CanvasTabBar from "../canvas/CanvasTabBar";
@@ -319,7 +319,7 @@ async function subscribeToWorker(worker) {
     try {
       const token = await currentUser.getIdToken(true);
       headers.Authorization = `Bearer ${token}`;
-    } catch (e) {
+    } catch {
       // Token refresh failed — use guestId
       bodyData.guestId = getGuestId();
     }
@@ -501,10 +501,35 @@ export default function RightPanel() {
   const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas, relatedWorkers } = panel;
   const [loading, setLoading] = useState(false);
 
+  async function loadLeaderboard(v) {
+    setLoading(true);
+    try {
+      // Use "all" as the cross-vertical default so anonymous landings on
+      // /meet-alex see a populated scoreboard immediately.
+      const effective = v || "all";
+      const res = await fetch(`${API_BASE}/api?path=/v1/leaderboard:top10&vertical=${encodeURIComponent(effective)}`);
+      const data = await res.json();
+      if (data.ok && data.workers && data.workers.length > 0) {
+        setWorkers(data.workers);
+        setLoading(false);
+        return;
+      }
+      // Leaderboard returned empty — fall back to catalog with same vertical.
+      const fallbackVertical = v || "aviation";
+      const res2 = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(fallbackVertical)}&limit=10`);
+      const data2 = await res2.json();
+      if (data2.ok && data2.workers) setWorkers(data2.workers);
+    } catch (err) {
+      console.error("Failed to load leaderboard:", err);
+    }
+    setLoading(false);
+  }
+
   // Load workers from leaderboard API on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLeaderboard(vertical);
-  }, [vertical]);
+  }, [vertical]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for Alex recommendation events
   useEffect(() => {
@@ -535,31 +560,7 @@ export default function RightPanel() {
       window.removeEventListener("ta:panel-show-recommendations", onRecommendations);
       window.removeEventListener("ta:panel-highlight-worker", onHighlight);
     };
-  }, [workers, showRecommendations, showWorkerDetail, workerState?.activeWorkerId]);
-
-  async function loadLeaderboard(v) {
-    setLoading(true);
-    try {
-      // Use "all" as the cross-vertical default so anonymous landings on
-      // /meet-alex see a populated scoreboard immediately.
-      const effective = v || "all";
-      const res = await fetch(`${API_BASE}/api?path=/v1/leaderboard:top10&vertical=${encodeURIComponent(effective)}`);
-      const data = await res.json();
-      if (data.ok && data.workers && data.workers.length > 0) {
-        setWorkers(data.workers);
-        setLoading(false);
-        return;
-      }
-      // Leaderboard returned empty — fall back to catalog with same vertical.
-      const fallbackVertical = v || "aviation";
-      const res2 = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(fallbackVertical)}&limit=10`);
-      const data2 = await res2.json();
-      if (data2.ok && data2.workers) setWorkers(data2.workers);
-    } catch (err) {
-      console.error("Failed to load leaderboard:", err);
-    }
-    setLoading(false);
-  }
+  }, [workers, showRecommendations, showWorkerDetail, workerState?.activeWorkerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for worker selection — show workspace home with related workers
   useEffect(() => {
@@ -703,7 +704,7 @@ export default function RightPanel() {
               // App.jsx handleTabSelect so both render paths behave the same.
               const w = workerState?.activeWorkerData || panel.activeWorkerData;
               let payload = null;
-              try { payload = await getLiveDataForTab(w, _tab.id); } catch (_) {}
+              try { payload = await getLiveDataForTab(w, _tab.id); } catch { /* ignore */ }
               if (!payload) payload = getFixtureForTab(w, _tab.id);
               panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
             }}
@@ -749,7 +750,7 @@ export default function RightPanel() {
               // App.jsx handleTabSelect so both render paths behave the same.
               const w = workerState?.activeWorkerData || panel.activeWorkerData;
               let payload = null;
-              try { payload = await getLiveDataForTab(w, _tab.id); } catch (_) {}
+              try { payload = await getLiveDataForTab(w, _tab.id); } catch { /* ignore */ }
               if (!payload) payload = getFixtureForTab(w, _tab.id);
               panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
             }}

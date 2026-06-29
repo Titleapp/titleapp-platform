@@ -28,7 +28,7 @@ function defaultDemoForContext() {
     const tenant = localStorage.getItem("TENANT_ID");
     const realTenant = !!tenant && tenant !== "vault" && tenant !== "personal";
     if (token && realTenant) return false; // real operator → no fabricated data
-  } catch {}
+  } catch { /* ignore */ }
   return true; // guest / marketing / personal-vault browsing → samples help
 }
 
@@ -45,14 +45,14 @@ export function clearDemoMode() {
   try {
     localStorage.setItem(HIDE_SAMPLES_KEY, "1");
     window.dispatchEvent(new Event("ta:demo-mode-changed"));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 export function restoreDemoMode() {
   try {
     localStorage.setItem(HIDE_SAMPLES_KEY, "0"); // explicit ON overrides context default
     window.dispatchEvent(new Event("ta:demo-mode-changed"));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 /**
@@ -1636,9 +1636,9 @@ export function markWorkerVisitedAndCheck(slug) {
   let seen = {};
   try {
     seen = JSON.parse(localStorage.getItem(KEY) || "{}");
-  } catch {}
+  } catch { /* ignore */ }
   const wasSeen = !!seen[slug];
   seen[slug] = Date.now();
-  try { localStorage.setItem(KEY, JSON.stringify(seen)); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(seen)); } catch { /* ignore */ }
   return wasSeen;
 }

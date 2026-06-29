@@ -30,8 +30,6 @@ export default function BogoManager() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -47,6 +45,9 @@ export default function BogoManager() {
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []);
+
   async function handlePlatformToggle() {
     setToggling("platform");
     const prev = platformEnabled;
@@ -55,7 +56,7 @@ export default function BogoManager() {
       const res = await adminApi("POST", "admin:bogo:toggle", { scope: "platform" });
       if (res.ok) setPlatformEnabled(res.newValue);
       else setPlatformEnabled(prev);
-    } catch (e) {
+    } catch (_e) {
       setPlatformEnabled(prev);
     }
     setToggling(null);
@@ -68,7 +69,7 @@ export default function BogoManager() {
     try {
       const res = await adminApi("POST", "admin:bogo:toggle", { scope: "worker", workerId: worker.id });
       if (!res.ok) setWorkers(prevWorkers);
-    } catch (e) {
+    } catch (_e) {
       setWorkers(prevWorkers);
     }
     setToggling(null);

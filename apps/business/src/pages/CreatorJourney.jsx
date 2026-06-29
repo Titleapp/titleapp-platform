@@ -9,7 +9,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
 
   const [bare, qs] = String(path).split("?");
@@ -113,7 +113,7 @@ export default function CreatorJourney({ embedded = false }) {
         try {
           sessionStorage.setItem("sociii_canvas_payload", JSON.stringify(e.detail));
           sessionStorage.setItem("sociii_canvas_visible", "1");
-        } catch {}
+        } catch { /* ignore */ }
       }
     };
     window.addEventListener("sociii:canvas:payload", onCanvas);
@@ -142,7 +142,7 @@ export default function CreatorJourney({ embedded = false }) {
       } else {
         setState({ loading: false, ok: !!r.ok, completedIds: new Set(), error: r.error });
       }
-    } catch (e) {
+    } catch {
       setState({ loading: false, ok: false, completedIds: new Set(), error: "fetch_failed" });
     }
   }, []);
@@ -255,7 +255,7 @@ export default function CreatorJourney({ embedded = false }) {
         <SiteReconCanvas
           key={canvasPayload.searchId || canvasPayload.anchoredAt || "sr"}
           payload={canvasPayload}
-          onBack={() => { setShowCanvas(false); try { sessionStorage.setItem("sociii_canvas_visible", "0"); } catch {} }}
+          onBack={() => { setShowCanvas(false); try { sessionStorage.setItem("sociii_canvas_visible", "0"); } catch { /* ignore */ } }}
         />
       </div>
     );
@@ -263,7 +263,7 @@ export default function CreatorJourney({ embedded = false }) {
   const resultsPill = canvasPayload && !showCanvas ? (
     <button
       type="button"
-      onClick={() => { setShowCanvas(true); try { sessionStorage.setItem("sociii_canvas_visible", "1"); } catch {} }}
+      onClick={() => { setShowCanvas(true); try { sessionStorage.setItem("sociii_canvas_visible", "1"); } catch { /* ignore */ } }}
       style={{
         position: "sticky", top: 8, zIndex: 5, display: "inline-flex", alignItems: "center", gap: 8,
         margin: "8px 0 0 8px", padding: "8px 14px", borderRadius: 999, cursor: "pointer",

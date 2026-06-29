@@ -10,6 +10,7 @@ import React, { createContext, useContext, useRef, useState } from "react";
 // 50.10-T4 — shells auto-render a SAMPLE chip when wrapped in a CanvasDemoContext
 // with value true. CanvasPanel wraps every card with this provider so individual
 // card files don't need to thread the flag.
+// eslint-disable-next-line react-refresh/only-export-components
 export const CanvasDemoContext = createContext(false);
 
 const S = {
@@ -49,11 +50,14 @@ const S = {
 const shimmerKeyframes = `@keyframes canvasShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`;
 
 function ShimmerBlock({ rows = 4 }) {
+  const widths = useRef(Array.from({ length: rows }, (_, i) => // eslint-disable-line react-hooks/purity
+    i === rows - 1 ? "60%" : `${85 + Math.random() * 15}%` // eslint-disable-line react-hooks/purity
+  ));
   return (
     <>
       <style>{shimmerKeyframes}</style>
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ ...S.shimmerRow, width: i === rows - 1 ? "60%" : `${85 + Math.random() * 15}%` }} />
+      {widths.current.map((w, i) => (
+        <div key={i} style={{ ...S.shimmerRow, width: w }} />
       ))}
     </>
   );

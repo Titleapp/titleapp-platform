@@ -5,7 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 async function apiFetch(path) {
   let token = null;
-  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
   const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`, {
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -41,7 +41,7 @@ export default function WorkspaceInvestorDeadlines() {
       const order = { action_required: 0, vote_open: 1, informational: 2 };
       list.sort((a, b) => (order[a.urgency] || 3) - (order[b.urgency] || 3));
       setItems(list);
-    } catch (_) {
+    } catch {
       if (mountedRef.current) setItems([]);
     } finally {
       if (mountedRef.current) setLoading(false);

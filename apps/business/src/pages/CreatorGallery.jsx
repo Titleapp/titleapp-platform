@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { CAMPAIGN_ROUTES, CREATOR_SLUG_TO_CAMPAIGN } from "../lib/campaignRouting";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 

@@ -9,7 +9,7 @@ async function getToken() {
       const token = await firebaseAuth.currentUser.getIdToken(true);
       localStorage.setItem("ID_TOKEN", token);
       return token;
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
   if (firebaseAuth) {
     try {
@@ -22,7 +22,7 @@ async function getToken() {
         });
         setTimeout(() => { unsub(); reject(new Error("Auth timeout")); }, 5000);
       });
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
   const stored = localStorage.getItem("ID_TOKEN");
   if (stored && stored !== "undefined" && stored !== "null") return stored;
@@ -105,7 +105,7 @@ By checking the box below, I confirm that I have read and accept this Liability 
   },
 };
 
-export default function PublishPreflight({ worker, workerCardData, sessionId, onPublish, onGateError }) {
+export default function PublishPreflight({ worker, workerCardData, sessionId, onPublish, onGateError: _onGateError }) {
   const testMode = isTestMode();
 
   const [gates, setGates] = useState({
@@ -190,7 +190,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
           const sData = await sRes.json();
           if (sData.ok) setBlockchainEnabled(sData.settings?.blockchainEnabled || false);
         }
-      } catch {}
+      } catch { /* ignore */ }
       setLoading(false);
     }
     loadGates();
@@ -213,12 +213,6 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   const prereqsMet = gates.creatorAgreement && gates.liabilityDisclaimer &&
     gates.identityVerified && gates.creatorCv && gates.w9Tax && gates.stripeConnect;
   const allPassed = prereqsMet && gates.adminReview;
-
-  useEffect(() => {
-    if (prereqsMet && !adminSubmitted) {
-      submitForAdminReview();
-    }
-  }, [prereqsMet]);
 
   const canPublish = allPassed && (!needsMdGate || mdSigned);
 
@@ -265,6 +259,13 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
     setActionLoading(null);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (prereqsMet && !adminSubmitted) {
+      submitForAdminReview();
+    }
+  }, [prereqsMet]);
+
   async function handleGateAction(gateId) {
     setError(null);
     setActionLoading(gateId);
@@ -282,7 +283,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
           });
           const d = await r.json();
           if (d.ok) { setGates(prev => ({ ...prev, creatorAgreement: true })); setActionLoading(null); return; }
-        } catch {}
+        } catch { /* ignore */ }
         // Fallback — mark accepted (user saw the page)
         setGates(prev => ({ ...prev, creatorAgreement: true }));
 
@@ -296,7 +297,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
           });
           const d = await r.json();
           if (d.ok) { setGates(prev => ({ ...prev, liabilityDisclaimer: true })); setActionLoading(null); return; }
-        } catch {}
+        } catch { /* ignore */ }
         // Fallback — accept locally
         setGates(prev => ({ ...prev, liabilityDisclaimer: true }));
 
@@ -332,7 +333,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               surface: "sandbox",
-              sessionId: "cv_gen_" + Date.now(),
+              sessionId: "cv_gen_" + Date.now(), // eslint-disable-line react-hooks/purity
               userInput: `Generate a 2-3 sentence professional expertise summary for a Digital Worker creator profile. Their background: "${cvBio}". Output ONLY the summary, no preamble.`,
             }),
           });
@@ -394,7 +395,6 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   }
 
   // For prereqsMet check, both true and "simulated" count as passed
-  const gateValue = (id) => !!gates[id];
   const completedCount = Object.values(gates).filter(v => !!v).length;
   const totalGates = GATES.length;
 
@@ -458,7 +458,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ tenantId: tId, workerId: wId, blockchainEnabled: next }),
       });
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   const S = {

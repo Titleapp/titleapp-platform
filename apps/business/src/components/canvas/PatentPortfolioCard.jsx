@@ -33,7 +33,7 @@ const CAS = {
   GREEN:  { dot: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" },
 };
 
-export default function PatentPortfolioCard({ resolved, context, onDismiss }) {
+export default function PatentPortfolioCard({ resolved: _resolved, context, onDismiss }) {
   const [portfolio, setPortfolio] = useState(context?.payload?.patents || null);
   const [loading, setLoading] = useState(!context?.payload?.patents);
   const [error, setError] = useState(null);

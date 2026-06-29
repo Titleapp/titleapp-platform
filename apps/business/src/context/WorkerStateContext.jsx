@@ -190,6 +190,7 @@ export function WorkerStateProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useWorkerState() {
   return useContext(WorkerStateContext);
 }

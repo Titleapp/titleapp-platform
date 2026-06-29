@@ -32,6 +32,7 @@ export default memo(function CollapsibleSection({
   // via useEffect instead of setState-during-render (which caused
   // synchronous re-renders amplifying the parent re-render cascade).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setManualOverride(null);
   }, [defaultExpanded]);
 

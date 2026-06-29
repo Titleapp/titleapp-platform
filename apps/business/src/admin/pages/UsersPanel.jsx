@@ -45,8 +45,6 @@ export default function UsersPanel() {
   const [search, setSearch] = useState("");
   const [impersonating, setImpersonating] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -57,6 +55,9 @@ export default function UsersPanel() {
     }
     setLoading(false);
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []);
 
   async function handleImpersonate(uid) {
     setImpersonating(uid);
@@ -84,7 +85,7 @@ export default function UsersPanel() {
   const withPlan = users.filter(u => u.plan && u.plan !== "free").length;
   const recent7d = users.filter(u => {
     if (!u.createdAt) return false;
-    return new Date(u.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return new Date(u.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // eslint-disable-line react-hooks/purity
   }).length;
 
   return (

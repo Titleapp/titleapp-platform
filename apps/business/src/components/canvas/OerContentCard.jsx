@@ -41,7 +41,7 @@ export default function OerContentCard({ resolved, context, onDismiss }) {
       const r = await liveApiFetch(`/v1/edu:content${term ? `?q=${encodeURIComponent(term)}` : ""}`);
       setRows((r && r.results) || []);
       setNote((r && r.note) || "");
-    } catch (_) { /* keep prior */ }
+    } catch { /* keep prior */ }
     setBusy(false);
   }
 

@@ -82,7 +82,9 @@ export default function WorkerBuildLog() {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("sessionId") || localStorage.getItem("ta_worker_sandbox_session");
     if (!sid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("No session id");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }

@@ -23,7 +23,7 @@ const PIPELINE_DEALS = [
 ];
 
 export default function SalesPipeline() {
-  const [selectedDeal, setSelectedDeal] = useState(null);
+  const [_selectedDeal, setSelectedDeal] = useState(null);
 
   function openChat(prompt) {
     window.dispatchEvent(new CustomEvent("ta:chatPrompt", {

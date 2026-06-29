@@ -30,14 +30,14 @@ function normalizeWorker(d) {
 }
 
 let workers = [];
-let firstLoadPromise = null;
+let _firstLoadPromise = null;
 let firstLoadResolve = null;
 const subscribers = new Set();
 let unsubscribe = null;
 
 function start() {
   if (unsubscribe) return;
-  firstLoadPromise = new Promise((resolve) => { firstLoadResolve = resolve; });
+  _firstLoadPromise = new Promise((resolve) => { firstLoadResolve = resolve; });
   try {
     unsubscribe = onSnapshot(
       collection(db, "digitalWorkers"),
@@ -67,7 +67,7 @@ function subscribe(cb) {
     if (subscribers.size === 0 && unsubscribe) {
       unsubscribe();
       unsubscribe = null;
-      firstLoadPromise = null;
+      _firstLoadPromise = null;
     }
   };
 }

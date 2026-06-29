@@ -155,7 +155,7 @@ const RE_PM_BREAKDOWN = [
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
-  const [reportData, setReportData] = useState({
+  const [_reportData, setReportData] = useState({
     deals: 0, avgRisk: 0, sessions: 0, reports: 0, recentDeals: [],
   });
   const [loading, setLoading] = useState(true);
@@ -203,7 +203,7 @@ export default function Reports() {
     }
   }
 
-  function getRiskColor(score) {
+  function _getRiskColor(score) {
     if (score >= 70) return "#ef4444";
     if (score >= 40) return "#f59e0b";
     return "#10b981";

@@ -84,7 +84,7 @@ export default function AlexPipelines() {
       } else {
         setCreateError(data.error || "Failed to create pipeline");
       }
-    } catch (err) {
+    } catch (_err) {
       setCreateError("Failed to create pipeline");
     } finally {
       setCreating(false);

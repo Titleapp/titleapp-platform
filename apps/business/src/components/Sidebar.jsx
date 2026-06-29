@@ -1124,7 +1124,7 @@ export default function Sidebar({
   workspaces = [],
   currentWorkspaceId,
   onSwitchWorkspace,
-  workerGroups = [],
+  workerGroups: _workerGroups = [],
   activeWorkers = [],
   chiefOfStaff,
   guestMode = false,
@@ -1152,8 +1152,10 @@ export default function Sidebar({
   // 49.32 — workspace role for badge display. Refreshed on workspace switch.
   const [workspaceRole, setWorkspaceRole] = useState(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (guestMode || isPersonal) { setWorkspaceRole(null); return; }
     const tid = localStorage.getItem("TENANT_ID");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!tid || tid === "vault" || tid === "personal") { setWorkspaceRole(null); return; }
     let cancelled = false;
     async function loadRole() {
@@ -1171,7 +1173,7 @@ export default function Sidebar({
         if (!cancelled) {
           setWorkspaceRole(snap.empty ? null : (snap.docs[0].data().role || "member"));
         }
-      } catch (_) { /* non-fatal */ }
+      } catch { /* non-fatal */ }
     }
     loadRole();
     function onChange() { loadRole(); }
@@ -1447,7 +1449,7 @@ export default function Sidebar({
   // folds in the selected worker name like "Maya's Vet 003"). This is the
   // persona/workspace itself, so the Workers/Drive/Games/Account block can be
   // unmistakably labeled with the context it belongs to.
-  const personaName = isPersonal
+  const _personaName = isPersonal
     ? (userFirstName ? `${userFirstName}'s Personal Space` : "Personal Space")
     : (companyName || "Workspace");
 

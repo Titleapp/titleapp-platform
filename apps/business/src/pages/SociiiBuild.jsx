@@ -82,7 +82,7 @@ export default function SociiiBuild() {
       } else {
         setStatus({ error: r.error || "Submission failed. Please email build@sociii.ai directly." });
       }
-    } catch (e) {
+    } catch (_e) {
       setStatus({ error: "Network error. Please email build@sociii.ai directly." });
     }
   }

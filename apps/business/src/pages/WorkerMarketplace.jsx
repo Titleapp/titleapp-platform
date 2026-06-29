@@ -90,15 +90,15 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
   const filtered = searchQuery
     ? suiteFiltered.filter((w) => w.name.toLowerCase().includes(searchQuery.toLowerCase()) || (w.description || "").toLowerCase().includes(searchQuery.toLowerCase()))
     : suiteFiltered;
-  const liveCount = publicWorkers.filter((w) => w.status === "live").length;
-  const plannedCount = publicWorkers.filter((w) => w.status === "planned").length;
+  const _liveCount = publicWorkers.filter((w) => w.status === "live").length;
+  const _plannedCount = publicWorkers.filter((w) => w.status === "planned").length;
 
   function handleCardClick(w) {
     if (authenticated && w.status === "live" && onSubscribe) {
       setSubscribing(w.slug);
       onSubscribe(w);
     } else {
-      window.location.href = `/workers/${w.slug}`;
+      window.location.assign(`/workers/${w.slug}`);
     }
   }
 
@@ -108,7 +108,7 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
       setSubscribing(w.slug);
       onSubscribe(w);
     } else {
-      window.location.href = `/workers/${w.slug}`;
+      window.location.assign(`/workers/${w.slug}`);
     }
   }
 

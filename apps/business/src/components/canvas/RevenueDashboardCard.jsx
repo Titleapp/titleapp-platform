@@ -25,7 +25,7 @@ const S = {
   row: { display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #f8fafc" },
 };
 
-export default function RevenueDashboardCard({ resolved, context, onDismiss }) {
+export default function RevenueDashboardCard({ resolved: _resolved, context: _context, onDismiss }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 

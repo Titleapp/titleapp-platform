@@ -8,7 +8,7 @@
 // Intentionally simple for this pass — static sections with real data.
 // No animations, no complex state.
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { firstNameFrom, prettyWorkerName } from "../utils/displayName";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";

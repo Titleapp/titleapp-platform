@@ -1748,6 +1748,7 @@ const ICONS = {
 };
 
 // Suite → color for marketplace card icon backgrounds
+// eslint-disable-next-line react-refresh/only-export-components
 export const SUITE_COLORS = {
   "Real Estate": "#7c3aed",
   "Construction": "#ea580c",
@@ -1763,6 +1764,7 @@ export const SUITE_COLORS = {
 };
 
 // Vertical → color for workspace hub icons
+// eslint-disable-next-line react-refresh/only-export-components
 export const VERTICAL_COLORS = {
   consumer: "#6366f1",
   analyst: "#0891b2",
@@ -1778,6 +1780,7 @@ export const VERTICAL_COLORS = {
 };
 
 // Vertical → icon slug
+// eslint-disable-next-line react-refresh/only-export-components
 export const VERTICAL_ICON_SLUGS = {
   consumer: "insurance-coi",
   analyst: "cre-analyst",
@@ -1793,6 +1796,7 @@ export const VERTICAL_ICON_SLUGS = {
 // ── 40.2-T1: Vertical theme accent system ──
 // Four theme packages for the Studio layout accent color.
 // Maps normalizeVertical() output → theme → hex accent.
+// eslint-disable-next-line react-refresh/only-export-components
 export const VERTICAL_THEME_MAP = {
   "Aviation": "machines",
   "Auto Dealer": "machines",
@@ -1804,6 +1808,7 @@ export const VERTICAL_THEME_MAP = {
   "Other": "games",
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const THEME_ACCENT = {
   machines: "#0284c7",   // instrument blue
   finance: "#16a34a",    // capital green
@@ -1815,6 +1820,7 @@ export const THEME_ACCENT = {
  * Get the scoped accent color for a worker's vertical.
  * Games always get purple. Everything else maps through VERTICAL_THEME_MAP.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getThemeAccent(vertical, isGame) {
   if (isGame) return THEME_ACCENT.games;
   const theme = VERTICAL_THEME_MAP[vertical] || "games";
@@ -1824,6 +1830,7 @@ export function getThemeAccent(vertical, isGame) {
 /**
  * Get the icon slug for a vertical (for arrival heartbeat icon).
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getVerticalIconSlug(vertical) {
   const map = {
     "Aviation": "permit-tracker",
@@ -1838,7 +1845,7 @@ export function getVerticalIconSlug(vertical) {
 }
 
 export default function WorkerIcon({ slug, size = 24, color = "#7c3aed", className = "" }) {
-  const gidRef = useRef(`wg${Math.random().toString(36).slice(2, 8)}`);
+  const gidRef = useRef(`wg${Math.random().toString(36).slice(2, 8)}`); // eslint-disable-line react-hooks/purity
   const gid = gidRef.current;
   const iconFn = ICONS[slug];
 

@@ -4408,11 +4408,10 @@ import "./admin/admin.css";
 
 // Worker-home renderer — must be a component (not inline in renderSection)
 // so it renders INSIDE AppShell's WorkerStateProvider
-function WorkerHomeRenderer({ onBack }) {
+function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
   const workerCtx = useWorkerState();
   const panel = useRightPanel();
   // Keep a ref so event handlers always get the latest panel without stale closures
-  const panelRef = React.useRef(panel);
   panelRef.current = panel;
   // 50.10-T3 — tab bar from active worker's canvasTabs
   const worker = workerCtx?.activeWorkerData || null;
@@ -4420,56 +4419,6 @@ function WorkerHomeRenderer({ onBack }) {
     const base = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
     return base;
   }, [worker?.canvasTabs, worker?.slug]);
-
-
-  // Spine-worker overrides — for workers with first-class UI sections, render
-  // those instead of the generic canvas-tab home. Contacts has its own list
-  // view with workspace pill, search, tabs, KPIs, and Apollo pull. Accounting
-  // has 7 tabs + a persistent setup checklist (Sean 2026-05-13 design call).
-  if (worker?.slug === "platform-contacts") {
-    return <Contacts />;
-  }
-  if (worker?.slug === "platform-accounting") {
-    return <Accounting />;
-  }
-  if (worker?.slug === "platform-control-center-pro") {
-    return <CommandCenter />;
-  }
-
-  // Ruthie Clearwater's nursing-education-001 worker — first reference
-  // creator worker. Real data from her Master Config Sheet (5 courses,
-  // 45 SLOs, 31 sites, 25 instructors, 6 cohorts) + 8 demo students with
-  // multi-dimensional event timelines (competency + professionalism +
-  // attendance + clinical incidents). Tonight: reads from bundled JSON.
-  // Sunday: swap to live Firestore tenants/clearwater-nursing/nurseEdu/...
-  if (worker?.slug === "nursing-education-001") {
-    return <NursingEducationPanel />;
-  }
-
-  // re-ce-nevada-001 — Nevada Real Estate CE worker (the "what do you hate"
-  // demo). Renders its own 4-tab canvas: Readiness / Course / Reporting / Done.
-  if (worker?.slug === "re-ce-nevada-001") {
-    return <CECourseCanvas />;
-  }
-
-  // Investor entitlement override — when the IR/fundraise worker is opened
-  // by an entitled investor (not the founder/tenant), swap the founder canvas
-  // for the investor-side surface (position + materials/deadlines render via
-  // the AdminShell-level banners). Detected via ACTIVE_WORKERS which carries
-  // the isEntitled flag set in AppShell when fetching /v1/user:entitlements:list.
-  if (worker?.slug === "fundraise") {
-    let isInvestorEntitlement = false;
-    try {
-      const active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]");
-      isInvestorEntitlement = active.some(w =>
-        (w?.slug === "fundraise") && w?.isEntitled === true && w?.role === "investor"
-      );
-    } catch (_) { /* non-fatal */ }
-    if (isInvestorEntitlement) {
-      const InvestorHome = React.lazy(() => import("./sections/InvestorHome"));
-      return <React.Suspense fallback={<div style={{ padding: 40 }}>Loading…</div>}><InvestorHome /></React.Suspense>;
-    }
-  }
 
   // S51.43.7 — keep the currently-active tab id so worker-canvas can swap
   // bespoke section components (e.g. HRSchedulePanel) in for the generic
@@ -4492,7 +4441,7 @@ function WorkerHomeRenderer({ onBack }) {
     setActiveTabId(tab.id);
     if (!resolved) return;
     let payload = null;
-    try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
+    try { payload = await getLiveDataForTab(worker, tab.id); } catch { /* ignore */ }
     if (!payload) payload = getFixtureForTab(worker, tab.id);
     const ctx = { worker, ...(payload ? { payload } : {}) };
     if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
@@ -4507,7 +4456,6 @@ function WorkerHomeRenderer({ onBack }) {
   // tenant data OR a fixture — we render it as the worker's home. Only a tab
   // with no signal/payload at all falls back to the landing.
   // Chat-emitted signals always win — handled by the existing CANVAS state.
-  const autoFiredRef = React.useRef(null);
   // Land on the first tab that actually resolves DATA. Reusable so we can also
   // re-land when the user dismisses a canvas card (× ) — otherwise closing the
   // overlay left the underlying canvas BLANK (Sean, 2026-06-26, seen on CVT /
@@ -4522,7 +4470,7 @@ function WorkerHomeRenderer({ onBack }) {
       const resolved = lookupSignal(tab.signal);
       if (!resolved) continue;
       let payload = null;
-      try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
+      try { payload = await getLiveDataForTab(worker, tab.id); } catch { /* ignore */ }
       if (!payload) payload = getFixtureForTab(worker, tab.id);
       if (!payload) continue; // no data for this tab — try the next one
       setActiveTabId(tab.id);
@@ -4539,7 +4487,7 @@ function WorkerHomeRenderer({ onBack }) {
     autoFiredRef.current = worker.slug;
     markWorkerVisitedAndCheck(worker.slug); // keep visit bookkeeping (side effect)
     landOnFirstDataTab();
-  }, [worker?.slug, tabs, panel, landOnFirstDataTab]);
+  }, [worker?.slug, tabs, panel, landOnFirstDataTab, autoFiredRef]);
 
   // Re-land on the default data tab when a canvas card is dismissed, so the ×
   // returns to the worker's real home instead of a blank canvas.
@@ -4557,7 +4505,7 @@ function WorkerHomeRenderer({ onBack }) {
     };
     window.addEventListener("ta:reland-canvas", onReland);
     return () => window.removeEventListener("ta:reland-canvas", onReland);
-  }, [landOnFirstDataTab, panel]);
+  }, [landOnFirstDataTab, panel, autoFiredRef]);
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
 
@@ -4628,6 +4576,55 @@ function WorkerHomeRenderer({ onBack }) {
     _hrPayloadTitle === "coverage" ||
     (!_hrPayloadTitle && activeTabId === "schedule")
   );
+
+  // Spine-worker overrides — for workers with first-class UI sections, render
+  // those instead of the generic canvas-tab home. Contacts has its own list
+  // view with workspace pill, search, tabs, KPIs, and Apollo pull. Accounting
+  // has 7 tabs + a persistent setup checklist (Sean 2026-05-13 design call).
+  if (worker?.slug === "platform-contacts") {
+    return <Contacts />;
+  }
+  if (worker?.slug === "platform-accounting") {
+    return <Accounting />;
+  }
+  if (worker?.slug === "platform-control-center-pro") {
+    return <CommandCenter />;
+  }
+
+  // Ruthie Clearwater's nursing-education-001 worker — first reference
+  // creator worker. Real data from her Master Config Sheet (5 courses,
+  // 45 SLOs, 31 sites, 25 instructors, 6 cohorts) + 8 demo students with
+  // multi-dimensional event timelines (competency + professionalism +
+  // attendance + clinical incidents). Tonight: reads from bundled JSON.
+  // Sunday: swap to live Firestore tenants/clearwater-nursing/nurseEdu/...
+  if (worker?.slug === "nursing-education-001") {
+    return <NursingEducationPanel />;
+  }
+
+  // re-ce-nevada-001 — Nevada Real Estate CE worker (the "what do you hate"
+  // demo). Renders its own 4-tab canvas: Readiness / Course / Reporting / Done.
+  if (worker?.slug === "re-ce-nevada-001") {
+    return <CECourseCanvas />;
+  }
+
+  // Investor entitlement override — when the IR/fundraise worker is opened
+  // by an entitled investor (not the founder/tenant), swap the founder canvas
+  // for the investor-side surface (position + materials/deadlines render via
+  // the AdminShell-level banners). Detected via ACTIVE_WORKERS which carries
+  // the isEntitled flag set in AppShell when fetching /v1/user:entitlements:list.
+  if (worker?.slug === "fundraise") {
+    let isInvestorEntitlement = false;
+    try {
+      const active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]");
+      isInvestorEntitlement = active.some(w =>
+        (w?.slug === "fundraise") && w?.isEntitled === true && w?.role === "investor"
+      );
+    } catch { /* non-fatal */ }
+    if (isInvestorEntitlement) {
+      const InvestorHome = React.lazy(() => import("./sections/InvestorHome"));
+      return <React.Suspense fallback={<div style={{ padding: 40 }}>Loading…</div>}><InvestorHome /></React.Suspense>;
+    }
+  }
 
   // S52.46 — THE overlay, finally killed at the render gate. A discovery signal
   // (vertical:* / browse:*) resolves to WorkerListCanvas (the "<vertical> Workers"
@@ -4701,6 +4698,10 @@ function WorkerHomeRenderer({ onBack }) {
 
 function AdminShell({ onBackToHub, initialSection }) {
   const workerCtx = useWorkerState();
+  // Shared refs passed to WorkerHomeRenderer so AdminShell event handlers can
+  // reset the panel and auto-fire state when switching workers.
+  const panelRef = React.useRef(null);
+  const autoFiredRef = React.useRef(null);
   const [currentSection, setCurrentSection] = useState(() => {
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
@@ -4751,9 +4752,9 @@ function AdminShell({ onBackToHub, initialSection }) {
   // of dropping the user on the generic dashboard/home. One-shot (key removed).
   useEffect(() => {
     let slug = null;
-    try { slug = sessionStorage.getItem("ta_open_worker"); } catch (_) {}
+    try { slug = sessionStorage.getItem("ta_open_worker"); } catch { /* ignore */ }
     if (!slug) return;
-    try { sessionStorage.removeItem("ta_open_worker"); } catch (_) {}
+    try { sessionStorage.removeItem("ta_open_worker"); } catch { /* ignore */ }
     if (workerCtx?.selectWorker) workerCtx.selectWorker(slug);
     setCurrentSection("worker-home");
   }, [workerCtx]);
@@ -4828,7 +4829,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "billing":
         return <BillingPage />;
       case "worker-home":
-        return <WorkerHomeRenderer onBack={() => setCurrentSection("dashboard")} />;
+        return <WorkerHomeRenderer onBack={() => setCurrentSection("dashboard")} panelRef={panelRef} autoFiredRef={autoFiredRef} />;
       case "my-vehicles":
         return <MyVehicles />;
       case "my-properties":
@@ -4954,15 +4955,12 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
   }
 
-  // 49.32 — Personal Vault is the launch baseline. No more auto-dealer-by-default.
-  const vertical = localStorage.getItem("VERTICAL") || "consumer";
-
   // Workspace-at-invite banner — render once at the AdminShell level so it
   // appears on every section (Dashboard, Vault, WorkerHome, etc.) instead
   // of needing to be mounted into each section component.
   const inviteIdFromUrl = React.useMemo(() => {
     try { return new URLSearchParams(window.location.search).get("invite") || null; }
-    catch (_) { return null; }
+    catch { return null; }
   }, []);
 
   return (
@@ -5129,7 +5127,6 @@ export default function App() {
   const isTitleEscrowLanding = /^\/title-escrow\/?$/.test(window.location.pathname);
   const isPropMgmtLanding = /^\/property-management\/?$/.test(window.location.pathname);
   const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
-  const isDevelopersRedirect = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
   const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
   const isDataRoom = /^\/data-room\/?$/.test(window.location.pathname);
@@ -5300,7 +5297,7 @@ export default function App() {
             try {
               const u = JSON.parse(utm);
               if (u.campaign) { verticalParam = "&vertical=" + u.campaign; utmParams = "&utm_source=" + (u.source || "meet-alex") + "&utm_medium=" + (u.medium || "guest-chat") + "&utm_campaign=" + u.campaign; }
-            } catch {}
+            } catch { /* ignore */ }
           }
           window.history.replaceState({}, "", "/?promoted=true" + verticalParam + utmParams);
           // setToken triggers re-render — isMeetAlex becomes false (pathname is now /),
@@ -5820,7 +5817,7 @@ export default function App() {
     }
   }
 
-  async function handleFirstSubscribe(worker) {
+  async function _handleFirstSubscribe(worker) {
     const suiteToVertical = {
       "Real Estate": "real-estate",
       "Construction": "real-estate",
@@ -6256,7 +6253,7 @@ export default function App() {
           if (section === "creator-dashboard") { window.location.href = "/creators/dashboard"; return; }
           if (section === "creator-journey") { window.location.href = "/creators/journey"; return; }
           // S52.44: escape the /creators/journey URL for any other section (see dashboard note).
-          try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+          try { sessionStorage.setItem("ta_redirect_page", section); } catch { /* ignore */ }
           window.location.href = "/";
         }}>
           <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading creator journey…</div>}>
@@ -6276,7 +6273,7 @@ export default function App() {
         // S52.44: any other section must LEAVE the /creators/dashboard URL — else the
         // URL-based branch keeps rendering the dashboard ("stuck in creator mode"). Restore
         // the target section on the main app via ta_redirect_page.
-        try { sessionStorage.setItem("ta_redirect_page", section); } catch (_) {}
+        try { sessionStorage.setItem("ta_redirect_page", section); } catch { /* ignore */ }
         window.location.href = "/";
       }}>
         <CreatorDashboard />
@@ -6446,7 +6443,7 @@ function AddWorkspaceWizardLoader({ onCreated, onCancel, onBuilderStart }) {
         const data = await resp.json();
         if (data.ok) setExisting(data.workspaces || []);
         else setLoadError(data.error || "Failed to load workspaces");
-      } catch (e) {
+      } catch {
         setLoadError("Failed to load workspaces");
       }
     })();

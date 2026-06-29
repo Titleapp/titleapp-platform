@@ -30,7 +30,7 @@ let _inflight = null;
 
 async function getToken() {
   if (window.__firebaseAuth?.currentUser) {
-    try { return await window.__firebaseAuth.currentUser.getIdToken(true); } catch (_) {}
+    try { return await window.__firebaseAuth.currentUser.getIdToken(true); } catch { /* ignore */ }
   }
   const stored = localStorage.getItem("ID_TOKEN");
   if (stored && stored !== "undefined" && stored !== "null") return stored;
@@ -70,7 +70,7 @@ async function fetchCreatorProfile() {
       return { status: "in_progress", profile: p };
     }
     return { status: "none", profile: p };
-  } catch (_) {
+  } catch {
     if (journeyTouched || manualToggle) {
       return { status: "in_progress", profile: null };
     }

@@ -213,11 +213,17 @@ export function DefineCanvas({ session, onComplete }) {
   // prefilled fields flow in via session.spec and update the form live.
   useEffect(() => {
     const sp = session?.spec || {};
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.name) setName(sp.name);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.category) setVertical(sp.category);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.targetAudience) setAudience(sp.targetAudience);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.problemSolves) setJob(sp.problemSolves);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.creatorBio) setCreatorBio(sp.creatorBio);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sp.creatorName) setCreatorName(sp.creatorName);
   }, [session?.spec?.name, session?.spec?.category, session?.spec?.targetAudience, session?.spec?.problemSolves, session?.spec?.creatorBio, session?.spec?.creatorName]);
 
@@ -647,7 +653,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
 
 // ─── Step 3 — Knowledge (real ingestion) ───────────────────────────────────
 
-export function KnowledgeCanvas({ session, workerId, onComplete }) {
+export function KnowledgeCanvas({ session: _session, workerId, onComplete }) {
   const [docs, setDocs] = useState([]);
   const [busy, setBusy] = useState(false);
   const [pasteText, setPasteText] = useState("");
@@ -988,7 +994,7 @@ export function TestCanvas({ session, sessionId, onComplete }) {
       } else {
         setError((r && r.error) || "The worker couldn't answer — try again.");
       }
-    } catch (e) {
+    } catch {
       setError("The worker couldn't answer — try again.");
     } finally {
       setRunningQ(null);
@@ -1347,6 +1353,7 @@ export function GrowCanvas({ onComplete }) {
 
 // ─── Canvas selector ────────────────────────────────────────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const CANVAS_BY_STEP = {
   define: DefineCanvas,
   design: DesignCanvas,

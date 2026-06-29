@@ -16,12 +16,12 @@ function getChatToken() {
   if (_chatAuthReady) return _chatAuthReady.then(u => u ? u.getIdToken(false) : null);
   _chatAuthReady = new Promise((resolve) => {
     let settled = false;
-    const timer = setTimeout(() => { if (!settled) { settled = true; try { unsub(); } catch {} resolve(null); } }, 5000);
+    const timer = setTimeout(() => { if (!settled) { settled = true; try { unsub(); } catch { /* ignore */ } resolve(null); } }, 5000);
     const unsub = onAuthStateChanged(auth, (user) => {
       if (settled || !user) return;
       settled = true;
       clearTimeout(timer);
-      try { unsub(); } catch {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(user);
     });
   });
@@ -127,7 +127,7 @@ const VERTICAL_DISCLAIMERS = {
 // V25 (Surface 3): inline "Alex fixes the worker" approve card. Renders a pending
 // worker-change proposal with Approve / Reject. Approve applies it live (the
 // consent gate, audited); reject discards. Module-scope so it keeps its own state.
-function WorkerChangeProposalCard({ proposalId, slug, tenantId, summary }) {
+function WorkerChangeProposalCard({ proposalId, tenantId, summary }) {
   const [status, setStatus] = React.useState('pending');
   const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
   async function act(action) {
@@ -311,7 +311,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       try {
         const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         localStorage.setItem("ta_chat_session_id", newSid);
-      } catch {}
+      } catch { /* ignore */ }
 
       // Clear previous worker messages and reset opener guard
       setMessages([]);
@@ -545,7 +545,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               return;
             }
           }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
       }
 
       // Check for landing page context
@@ -559,7 +559,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             localStorage.removeItem("LANDING_CONTEXT");
             return;
           }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
       }
 
       // Legacy: sessionStorage discoveredContext
@@ -572,7 +572,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             sessionStorage.removeItem("ta_discovered_context");
             return;
           }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
       }
 
       // Landing page chat handoff — ?q= param auto-send
@@ -581,7 +581,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         sessionStorage.removeItem("ta_landing_chat");
         setMessages([{ role: 'assistant', content: "Connecting you to Alex...", isSystem: true }]);
         setTimeout(() => {
-          handleSendMessage(landingChat);
+          sendMessage(null, landingChat);
         }, 800);
         return;
       }
@@ -599,7 +599,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         try {
           const freshSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
           localStorage.setItem("ta_chat_session_id", freshSid);
-        } catch {}
+        } catch { /* ignore */ }
         return; // start blank — no welcome bubble either; canvas handles the greeting
       }
 
@@ -736,7 +736,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     return null;
   }
 
-  function handleQualifyingAnswer(answer) {
+  function _handleQualifyingAnswer(answer) {
     setQualifyingMode(false);
     localStorage.setItem('ta_alex_qualified', 'done');
     setMessages(prev => [...prev, { role: 'user', content: answer }]);
@@ -780,7 +780,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   useEffect(() => {
     // Demo mode (?demo=1) — never inject contextual section messages; the
     // canvas greeting ("Good afternoon, Maya") is the entry point, not chat.
-    try { if (new URL(window.location.href).searchParams.get("demo") === "1") return; } catch {}
+    try { if (new URL(window.location.href).searchParams.get("demo") === "1") return; } catch { /* ignore */ }
     const stepKey = onboardingStep || currentSection;
     const vertical = localStorage.getItem('VERTICAL') || 'auto';
     const isPersonal = vertical === 'consumer';
@@ -809,7 +809,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // Listen for workspace context switches (smooth team switching without reload)
   useEffect(() => {
     function handleWorkspaceChange(e) {
-      const detail = e.detail || {};
+      void e.detail;
       setMessages([]);
       setGreetingCollapsed(false);
       // Reset the active worker to Alex/COS on EVERY workspace switch. Otherwise
@@ -819,11 +819,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // Vault canvas renders by section, so only the chat side persisted.
       setActiveWorkerName(null);
       setActiveWorkerSlug(null);
-      try { if (workerCtx?.selectWorker) workerCtx.selectWorker(null); } catch (_) { /* no ctx */ }
+      try { if (workerCtx?.selectWorker) workerCtx.selectWorker(null); } catch { /* no ctx */ }
       try {
         const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         localStorage.setItem("ta_chat_session_id", newSid);
-      } catch {}
+      } catch { /* ignore */ }
       // Do NOT reload history on workspace switch — each workspace starts with
       // a clean Alex greeting. Loading history here caused messages from the
       // previous workspace to bleed through (Sean, 2026-06-27).
@@ -876,7 +876,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         try {
           const resolved = lookupSignal('card:image');
           if (resolved) panel.showCanvas(resolved, { payload: lastImagePayload });
-        } catch (_) { /* non-fatal */ }
+        } catch { /* non-fatal */ }
       }
     } catch (error) {
       console.error('Failed to load conversation history:', error);
@@ -1070,7 +1070,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const d = e.detail || {};
       if (!d.filename) return;
       const text = `I'm handing you "${d.filename}" from my Drive — please take a look and help me with it.`;
-      setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch (_) {} }, 60);
+      setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch { /* ignore */ } }, 60);
     }
     window.addEventListener("ta:drive-to-chat", onDriveToChat);
     return () => window.removeEventListener("ta:drive-to-chat", onDriveToChat);
@@ -1139,7 +1139,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           setMessages(prev => [...prev, { role: 'assistant', content: (d && d.message) || "I couldn't turn that into a concrete change — can you be more specific about what the worker should do differently?" }]);
         }
         return;
-      } catch (err) {
+      } catch {
         setIsSending(false);
         setMessages(prev => [...prev, { role: 'assistant', content: "I hit an error drafting that change. Try again in a moment." }]);
         return;
@@ -1387,8 +1387,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             ...(dealContext ? { dealContext } : {}),
             ...(pendingActions.length > 0 ? { pendingActions: pendingActions.map(a => ({ customerName: a.customerName, actionType: a.actionType, context: a.context })) } : {}),
             ...(alexContext ? { alexContext } : {}),
-            ...(() => { try { const cc = sessionStorage.getItem("ta_campaign_context"); if (cc) { sessionStorage.removeItem("ta_campaign_context"); return { campaignContext: JSON.parse(cc) }; } } catch {} return {}; })(),
-            ...(() => { try { const u = JSON.parse(sessionStorage.getItem("ta_utm") || "{}"); return u.source ? { utmSource: u.source, utmMedium: u.medium || "", utmCampaign: u.campaign || "" } : {}; } catch {} return {}; })(),
+            ...(() => { try { const cc = sessionStorage.getItem("ta_campaign_context"); if (cc) { sessionStorage.removeItem("ta_campaign_context"); return { campaignContext: JSON.parse(cc) }; } } catch { /* ignore */ } return {}; })(),
+            ...(() => { try { const u = JSON.parse(sessionStorage.getItem("ta_utm") || "{}"); return u.source ? { utmSource: u.source, utmMedium: u.medium || "", utmCampaign: u.campaign || "" } : {}; } catch { /* ignore */ } return {}; })(),
             // 50.27 — Live canvas snapshot. Whatever card is currently
             // rendered in the right panel (Map + flight plan, social post
             // draft, illustration, accounting report, etc.) gets summarized
@@ -1432,7 +1432,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 try {
                   const cl = JSON.parse(localStorage.getItem(`ta_checklist_${slug}`) || "{}");
                   completedIds = Object.keys(cl).filter(k => cl[k]);
-                } catch {}
+                } catch { /* ignore */ }
                 if (checklist) {
                   for (const item of checklist.items) {
                     if (item.default && !completedIds.includes(item.id)) completedIds.push(item.id);
@@ -1518,8 +1518,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         try {
           sessionStorage.setItem('sociii_canvas_payload', JSON.stringify(data.canvas));
           sessionStorage.setItem('sociii_canvas_visible', '1');
-        } catch {}
-        try { window.dispatchEvent(new CustomEvent('sociii:canvas:payload', { detail: data.canvas })); } catch {}
+        } catch { /* ignore */ }
+        try { window.dispatchEvent(new CustomEvent('sociii:canvas:payload', { detail: data.canvas })); } catch { /* ignore */ }
       }
       // Intercept |||COMMAND||| blocks before storing in state
       // S52.50 — read `message` as a fallback for `response`. Several server
@@ -1540,7 +1540,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           pendingSwitchSlug = m[1];
           cleanResponse = cleanResponse.replace(m[0], '').replace(/\n{3,}/g, '\n\n').trim();
         }
-      } catch {}
+      } catch { /* ignore */ }
 
       // Signal extractor — update canvas when user mentions a vertical.
       // S52.45 — THE overlay root cause: this fires showRecommendations (the
@@ -1689,7 +1689,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [dismissedSmsDrafts, setDismissedSmsDrafts] = useState(new Set());
   const [dismissedTelegramDrafts, setDismissedTelegramDrafts] = useState(new Set());
   const [dismissedGithubIssues, setDismissedGithubIssues] = useState(new Set());
-  const [scheduledDrafts, setScheduledDrafts] = useState(new Set());
+  const [_scheduledDrafts, _setScheduledDrafts] = useState(new Set());
   const [schedulerOpen, setSchedulerOpen] = useState({});
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
 
@@ -1743,10 +1743,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const d = JSON.parse(driveRaw);
         if (d.filename) {
           const text = `I'm handing you "${d.filename}" from my Drive — please take a look and help me with it.`;
-          setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch (_) {} }, 60);
+          setTimeout(() => { try { sendMessageRef.current?.(null, text); } catch { /* ignore */ } }, 60);
           return;
         }
-      } catch (_) { /* fall through to OS-file path */ }
+      } catch { /* fall through to OS-file path */ }
     }
     const files = Array.from(e.dataTransfer.files || []);
     if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
@@ -2245,7 +2245,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                   displayContent = displayContent.replace(jsonMatch[0], '').trim();
                 }
               }
-            } catch {}
+            } catch { /* ignore */ }
           }
           return (
           <div key={idx}>
@@ -2352,7 +2352,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                           const d = await r.json();
                           setApolloRunState(prev => ({ ...prev, [key]: d.ok ? 'done' : 'error' }));
                           setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Apollo search complete — ${d.written || 0} new contacts added, ${d.enrichedExisting || 0} existing enriched. Tagged as "${search.tag || 'Potential Investor'}". Open Contacts to review.` : `Apollo search failed — ${d.error || "please try again."}`, isSystem: true }]);
-                        } catch (_) {
+                        } catch {
                           setApolloRunState(prev => ({ ...prev, [key]: 'error' }));
                           setMessages(prev => [...prev, { role: "assistant", content: "Apollo search failed — check connection and try again.", isSystem: true }]);
                         }
@@ -2426,7 +2426,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             });
                             const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
                             setMessages(prev => [...prev, { role: "assistant", content: `Queued — email to ${msg.emailDraft.to} will send ${readableTime}.`, isSystem: true }]);
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
                           }
                         }}
@@ -2458,9 +2458,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                                   headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
                                   body: JSON.stringify({ type: "email_edit", subject: msg.emailDraft.subject, to: msg.emailDraft.to, alexDraft: msg.emailDraft.body, seanSent: editedEmailBodies[idx] }),
                                 });
-                              } catch (_) {}
+                              } catch { /\* ignore \*/ }
                             }
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not send — check your Gmail connection in Settings.", isSystem: true }]);
                           }
                         }}
@@ -2521,7 +2521,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             });
                             const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
                             setMessages(prev => [...prev, { role: "assistant", content: `Queued — SMS to ${msg.smsDraft.to} will send ${readableTime}.`, isSystem: true }]);
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
                           }
                         }}
@@ -2545,7 +2545,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             });
                             const d = await r.json();
                             setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `SMS sent to ${msg.smsDraft.to}.` : `Send failed — check Twilio config.`, isSystem: true }]);
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not send SMS — try again in a moment.", isSystem: true }]);
                           }
                         }}
@@ -2603,7 +2603,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             });
                             const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
                             setMessages(prev => [...prev, { role: "assistant", content: `Queued — Telegram message will send ${readableTime}.`, isSystem: true }]);
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not queue — try again.", isSystem: true }]);
                           }
                         }}
@@ -2627,7 +2627,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             });
                             const d = await r.json();
                             setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Telegram message sent.` : `Send failed — check bot config in Settings.`, isSystem: true }]);
-                          } catch (_) {
+                          } catch {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not send Telegram message — try again in a moment.", isSystem: true }]);
                           }
                         }}
@@ -2684,7 +2684,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                         });
                         const d = await r.json();
                         setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Issue #${d.number} created in CODE.` : `Failed to create issue — check GitHub config.`, isSystem: true }]);
-                      } catch (_) {
+                      } catch {
                         setMessages(prev => [...prev, { role: "assistant", content: "Could not log to CODE — try again in a moment.", isSystem: true }]);
                       }
                     }}

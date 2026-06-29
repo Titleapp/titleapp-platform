@@ -7,7 +7,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
 
   const [bare, qs] = String(path).split("?");
@@ -42,7 +42,7 @@ export default function AdvisorOnboarding() {
       const data = await apiFetch(`/v1/ir:advisor:status?advisorId=${encodeURIComponent(advisorId)}`, { method: "GET" });
       setStatus({ loading: false, ...data });
       return data;
-    } catch (e) {
+    } catch {
       setStatus({ loading: false, error: "Could not load advisor status" });
       return null;
     }
@@ -70,7 +70,7 @@ export default function AdvisorOnboarding() {
           method: "POST",
           body: JSON.stringify({ advisorId, action: "sync_kyc" }),
         });
-      } catch (_) {}
+      } catch { /* ignore */ }
       const fresh = await load();
       if (cancelled) return;
       if (fresh?.kycStatus === "approved") {
@@ -102,7 +102,7 @@ export default function AdvisorOnboarding() {
       } else {
         setError(res.error || "Could not record acknowledgment");
       }
-    } catch (e) {
+    } catch {
       setError("Could not record acknowledgment");
     } finally {
       setBusy(false);
@@ -124,7 +124,7 @@ export default function AdvisorOnboarding() {
       } else {
         setError("Could not start identity verification");
       }
-    } catch (e) {
+    } catch {
       setError("Could not start identity verification");
     } finally {
       setBusy(false);
@@ -169,7 +169,7 @@ export default function AdvisorOnboarding() {
       } else {
         setInfo(`Status: ${res?.status || "unknown"}`);
       }
-    } catch (e) {
+    } catch {
       setError("Sync failed");
     } finally {
       setBusy(false);

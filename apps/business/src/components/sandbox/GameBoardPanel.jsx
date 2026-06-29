@@ -178,6 +178,7 @@ export default function GameBoardPanel({
         asset,
       });
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEntities(seed);
   }, [phase, icons, characters, selectedCharIdx, entities.length, PLAY_W, PLAY_H]);
 

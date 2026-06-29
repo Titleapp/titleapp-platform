@@ -247,7 +247,7 @@ export default function MeetAlex() {
         try {
           sessionStorage.setItem("ta_campaign_id", campaign.campaignId);
           sessionStorage.setItem("ta_campaign_worker", campaign.workerSlug);
-        } catch (_) {}
+        } catch { /* ignore */ }
       } else if (isCreatorAuthoring) {
         // Creator Journey Step 3 handoff \u2014 start the Intent Spec round.
         opening = "You're starting a new worker. In one sentence \u2014 what does it do that no other worker on the platform does?\n\nNo need to wordsmith. The version we sharpen later starts here.";

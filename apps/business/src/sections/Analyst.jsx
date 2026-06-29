@@ -175,7 +175,7 @@ export default function Analyst() {
     const positives = (analysis.evidence?.positive || []).map(t => `<li style="color:#059669">${t}</li>`).join("");
     const negatives = (analysis.evidence?.negative || []).map(t => `<li style="color:#dc2626">${t}</li>`).join("");
     const neutrals = (analysis.evidence?.neutral || []).map(t => `<li style="color:#6b7280">${t}</li>`).join("");
-    const steps = (analysis.nextSteps || []).map((s, i) => `<li>${s}</li>`).join("");
+    const steps = (analysis.nextSteps || []).map((s, _i) => `<li>${s}</li>`).join("");
     const missing = (analysis.missingInfo || []).map(m => `<li>${m}</li>`).join("");
     const metrics = analysis.keyMetrics ? Object.entries(analysis.keyMetrics).map(([k, v]) =>
       `<tr><td style="padding:6px 12px;border:1px solid #e5e7eb;font-weight:600;text-transform:capitalize">${k.replace(/_/g, " ")}</td><td style="padding:6px 12px;border:1px solid #e5e7eb">${v}</td></tr>`

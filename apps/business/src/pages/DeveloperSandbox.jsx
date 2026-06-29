@@ -58,7 +58,7 @@ class PanelErrorBoundary extends React.Component {
               {this.props.recoverLabel || "Go back"}
             </button>
             <button
-              onClick={() => { try { navigator.clipboard.writeText(errMsg + "\n" + errStack); } catch {} }}
+              onClick={() => { try { navigator.clipboard.writeText(errMsg + "\n" + errStack); } catch { /* ignore */ } }}
               style={{ padding: "10px 24px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               Copy error
@@ -156,14 +156,14 @@ function waitForAuthInternal(timeoutMs = 5000) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { unsub(); } catch (_) {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(null);
     }, timeoutMs);
     const unsub = firebaseAuth.onAuthStateChanged((user) => {
       if (settled || !user) return; // skip null callbacks
       settled = true;
       clearTimeout(timer);
-      try { unsub(); } catch (_) {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(user);
     });
   });
@@ -533,7 +533,7 @@ function LifecycleCard({ flowStep, isGame }) {
 const CreatorStudioHeader = SharedCreatorStudioHeader;
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep, onShowMyImages, showMyImages, isGameMode = false }) {
+function CreatorStudioNav({ flowStep, workerCardData, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep, onShowMyImages, showMyImages, isGameMode = false }) {
   const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
   const [wsDropOpen, setWsDropOpen] = React.useState(false);
   return (
@@ -739,7 +739,7 @@ export default function DeveloperSandbox() {
       }
     } catch {
       // Corrupted session — clear it
-      try { localStorage.removeItem("ta_sandbox_session"); } catch {}
+      try { localStorage.removeItem("ta_sandbox_session"); } catch { /* ignore */ }
     }
   }
 
@@ -846,15 +846,15 @@ export default function DeveloperSandbox() {
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
-    } catch {}
+    } catch { /* ignore */ }
   }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, gameInteractionsAnswered, canvasAssets, includedAssetIds, testDevice]);
 
   // Edit mode (post-publish)
-  const [editMode, setEditMode] = useState(false);
+  const [_editMode, setEditMode] = useState(false);
 
   // Inline auth (for unauthenticated users)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [signupPromptShown, setSignupPromptShown] = useState(false); // guard: fire once only
+  const [_signupPromptShown, _setSignupPromptShown] = useState(false); // guard: fire once only
   const [authEmail, setAuthEmail] = useState(() => new URLSearchParams(window.location.search).get("email") || "");
   const [authName, setAuthName] = useState(() => new URLSearchParams(window.location.search).get("name") || "");
   const [pastedSpec] = useState(() => new URLSearchParams(window.location.search).get("spec") || "");
@@ -1083,7 +1083,7 @@ export default function DeveloperSandbox() {
       if (s?.workerCardData?.name && s.flowStep > 0 && s.flowStep < 7) {
         return { name: s.workerCardData.name, flowStep: s.flowStep };
       }
-    } catch {}
+    } catch { /* ignore */ }
     return null;
   });
 
@@ -1125,7 +1125,7 @@ export default function DeveloperSandbox() {
     function onMouseUp() {
       setIsDragging(false);
       // Persist nav width
-      try { localStorage.setItem("ta_sandbox_navW", String(navWidthPx)); } catch {}
+      try { localStorage.setItem("ta_sandbox_navW", String(navWidthPx)); } catch { /* ignore */ }
     }
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
@@ -1763,7 +1763,7 @@ export default function DeveloperSandbox() {
       } else {
         addAssistantMessage(reply || "Something went wrong. Try again.");
       }
-    } catch (err) {
+    } catch {
       const isOffline = !navigator.onLine;
       addAssistantMessage(
         isOffline
@@ -1787,7 +1787,7 @@ export default function DeveloperSandbox() {
   function handleBridgeSend() {
     const text = bridgePasteBack.trim();
     if (!text) return;
-    setShowBridge(false);
+    setShowPasteArea(false);
     setBridgePasteBack("");
     setInput("");
     addUserMessage(text);
@@ -2138,8 +2138,8 @@ export default function DeveloperSandbox() {
       // Scroll chat to the latest message and focus the input so the creator
       // can keep building (define rules, add artwork, etc.).
       requestAnimationFrame(() => {
-        try { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); } catch {}
-        try { chatInputRef.current?.focus(); } catch {}
+        try { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); } catch { /* ignore */ }
+        try { chatInputRef.current?.focus(); } catch { /* ignore */ }
       });
       return;
     }
@@ -2283,7 +2283,7 @@ export default function DeveloperSandbox() {
       } else {
         addAssistantMessage(result.error || "Signup didn't go through. Try again or use a different email.");
       }
-    } catch (err) {
+    } catch {
       addAssistantMessage("Could not reach the signup server. Check your connection and try again.");
     } finally {
       setAuthLoading(false);
@@ -2291,7 +2291,7 @@ export default function DeveloperSandbox() {
   }
 
   // Handle session error — silent inline UI, not Alex conversation
-  function handleSessionError() {
+  function _handleSessionError() {
     setShowSessionError(true);
   }
 
@@ -2395,7 +2395,7 @@ export default function DeveloperSandbox() {
 
   // ── Post-publish edit ──────────────────────────────────────
 
-  function handleEditWorker(existingWorker) {
+  function _handleEditWorker(existingWorker) {
     setEditMode(true);
     setWorker(existingWorker);
     setWorkerCardData({

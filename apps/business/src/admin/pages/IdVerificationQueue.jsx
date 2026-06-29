@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 
@@ -77,6 +77,23 @@ export default function IdVerificationQueue() {
   const [photoUrl, setPhotoUrl] = useState(null);
   const [photoLoading, setPhotoLoading] = useState(false);
 
+  async function loadViaApi() {
+    try {
+      const status = tab === "pending" ? "pending" : undefined;
+      const endpoint = status ? `admin:verify:id:queue?status=${status}` : "admin:verify:id:queue";
+      const res = await adminApi("GET", endpoint);
+      if (res.ok) {
+        const filtered = tab === "pending"
+          ? (res.items || []).filter(i => i.status === "pending")
+          : (res.items || []).filter(i => ["approved", "rejected"].includes(i.status));
+        setItems(filtered);
+      }
+    } catch (e) {
+      console.error("Failed to load queue:", e);
+    }
+    setLoading(false);
+  }
+
   // Real-time Firestore listener
   useEffect(() => {
     setLoading(true);
@@ -108,24 +125,8 @@ export default function IdVerificationQueue() {
     });
 
     return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-
-  async function loadViaApi() {
-    try {
-      const status = tab === "pending" ? "pending" : undefined;
-      const endpoint = status ? `admin:verify:id:queue?status=${status}` : "admin:verify:id:queue";
-      const res = await adminApi("GET", endpoint);
-      if (res.ok) {
-        const filtered = tab === "pending"
-          ? (res.items || []).filter(i => i.status === "pending")
-          : (res.items || []).filter(i => ["approved", "rejected"].includes(i.status));
-        setItems(filtered);
-      }
-    } catch (e) {
-      console.error("Failed to load queue:", e);
-    }
-    setLoading(false);
-  }
 
   async function handleApprove(userId) {
     setActing(true);

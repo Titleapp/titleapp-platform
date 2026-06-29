@@ -78,7 +78,7 @@ export default function PreviewBriefPanel() {
           const c = snap.data().digestCadence;
           if (c && CADENCES.find(x => x.value === c)) setCadence(c);
         }
-      } catch (_) { /* non-fatal */ }
+      } catch { /* non-fatal */ }
     }
     load();
     return () => { cancelled = true; };

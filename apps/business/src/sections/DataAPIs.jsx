@@ -7,8 +7,8 @@ import * as api from "../api/client";
  */
 export default function DataAPIs() {
   const [integrations, setIntegrations] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [_loading, setLoading] = useState(false);
+  const [_error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState(null);
 

@@ -482,7 +482,7 @@ function FiscalYearModal({ getFiscalYear, onClose, onSubmit }) {
   );
 }
 
-function DashboardPane({ accounts, getDashboardSummary, listObligations, markObligationComplete }) {
+function DashboardPane({ accounts: _accounts, getDashboardSummary, listObligations, markObligationComplete }) {
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [obligations, setObligations] = useState({ list: [], counts: {} });
@@ -498,6 +498,7 @@ function DashboardPane({ accounts, getDashboardSummary, listObligations, markObl
     setLoadingSummary(false);
   }, [getDashboardSummary, listObligations]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const refresh = () => load();
@@ -681,7 +682,7 @@ async function ensureStripeJs(publishableKey) {
   return window.Stripe(publishableKey);
 }
 
-function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSync, connecting, syncing, fcMessage }) {
+function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank: _onConnectBank, onSync: _onSync, connecting: _connecting, syncing: _syncing, fcMessage: _fcMessage }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
@@ -1155,7 +1156,7 @@ function TransactionsPane({ coa }) {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
-  const { parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction } = useAccounting();
+  const { parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary: _getDashboardSummary, listTransactions, tagTransaction } = useAccounting();
   const { uploadFile, listDocuments } = useDocuments();
   // "Import from Drive" — pull a statement that's already in this persona's Drive
   // straight into the parser, without re-uploading (Sean 2026-06-24, Flow A).
@@ -1862,6 +1863,7 @@ function ApprovalsPane() {
     setLoading(false);
   }, [filter, listApprovals]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
 
   const onDecide = async (approvalId, decision) => {

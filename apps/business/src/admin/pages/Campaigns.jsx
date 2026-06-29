@@ -4,9 +4,7 @@ import {
   collection,
   query,
   orderBy,
-  where,
   onSnapshot,
-  getCountFromServer,
 } from "firebase/firestore";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";

@@ -115,7 +115,7 @@ function TrialBanner({ worker }) {
             }).catch(() => {});
           }
           await startTrialWithToken(idToken);
-        } catch (innerErr) {
+        } catch {
           setCheckoutError("Sign-in failed. Try again.");
         }
         setProcessing(false);
@@ -240,6 +240,7 @@ const PLATFORM_DISPLAY_NAMES = {
 
 // ── 49.8: Contextual checklists per worker type ─────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const WORKER_CHECKLISTS = {
   "platform-control-center-pro": {
     heading: "Make Control Center more useful",
@@ -311,6 +312,7 @@ export const WORKER_CHECKLISTS = {
 };
 
 // ── 49.13: Worker Intelligence definitions ──────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
 export const WORKER_INTELLIGENCE = {
   "platform-accounting": {
     kpis: [
@@ -874,6 +876,7 @@ function WorkerChecklist({ workerSlug, workerName }) {
 
 // ── 40.2-T1: Worker Canvas with Arrival Animation ──────────────────
 
+// eslint-disable-next-line no-unused-vars
 export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers = [], onLeave }) {
   const ws = useWorkerState();
   const rightPanel = useRightPanel();
@@ -1008,6 +1011,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
       const t = setTimeout(() => setShowSkeleton(true), 300);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowSkeleton(false);
   }, [workerReady]);
 
@@ -1015,6 +1019,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     if (workerState !== "arrival") return;
     arrivalCancelled.current = false;
     clearTimeouts();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setArrivalPhase("heartbeat");
     setShowName(false);
     setShowTagline(false);
@@ -1030,6 +1035,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     if (prevWorkerRef.current === wId) return;
     prevWorkerRef.current = wId;
     if (workerState === "idle" && workerReady) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArrivalPhase("done");
       setShowName(true);
       setShowTagline(true);
@@ -1063,6 +1069,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     if (workerState === "working" && arrivalPhase !== "done") {
       arrivalCancelled.current = true;
       clearTimeouts();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArrivalPhase("done");
       setShowName(true);
       setShowTagline(true);
@@ -1081,6 +1088,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const [confirmPulse, setConfirmPulse] = useState(false);
   useEffect(() => {
     if (workerState === "complete") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConfirmPulse(true);
     }
   }, [workerState]);

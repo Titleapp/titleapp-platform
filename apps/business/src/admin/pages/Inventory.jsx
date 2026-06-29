@@ -189,7 +189,7 @@ export default function Inventory() {
 
   // Export to JSON
   function exportJSON() {
-    const data = workers.map(({ _docId, ...w }) => w);
+    const data = workers.map(({ _docId: _id, ...w }) => w);
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

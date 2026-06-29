@@ -89,7 +89,7 @@ export default function WorkerHome() {
       const isPersonal = (localStorage.getItem("VERTICAL") || "") === "consumer";
       if (isPersonal) {
         let active = [];
-        try { active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch (_) { /* blocked */ }
+        try { active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { /* blocked */ }
         for (const w of active) {
           const s = typeof w === "string" ? w : (w?.slug || w?.id);
           if (s && !ALEX_SLUGS.has(s) && !(typeof w === "object" && w?.workerType === "game")) allWorkerSlugs.add(s);
@@ -103,7 +103,7 @@ export default function WorkerHome() {
         });
         const wsData = await wsResp.json();
         let currentWs = null;
-        try { currentWs = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID"); } catch (_) { /* blocked */ }
+        try { currentWs = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID"); } catch { /* blocked */ }
         if (wsData.ok && wsData.workspaces) {
           const current = wsData.workspaces.find(ws => ws.id === currentWs)
             || wsData.workspaces.find(ws => ws.isDefault)

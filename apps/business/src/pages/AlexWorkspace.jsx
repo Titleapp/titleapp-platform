@@ -17,8 +17,10 @@ export default function AlexWorkspace() {
     try {
       const ws = JSON.parse(localStorage.getItem("CURRENT_WORKSPACE") || "{}");
       const workers = ws.activeWorkers || [];
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVerticals(getVerticalsFromWorkers(workers));
     } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVerticals([]);
     }
   }, []);
@@ -29,6 +31,7 @@ export default function AlexWorkspace() {
     const today = new Date().toISOString().slice(0, 10);
     const lastBrief = sessionStorage.getItem("ALEX_BRIEF_DATE");
     if (lastBrief !== today) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBriefRequested(true);
       sessionStorage.setItem("ALEX_BRIEF_DATE", today);
     }

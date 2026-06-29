@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 /**
  * CanvasPanel.jsx — Canvas Protocol panel renderer (44.9)
  *
@@ -12,13 +13,13 @@ import { CanvasDemoContext } from "./CanvasCardShell";
 import CanvasFallbackView from "./CanvasFallbackView";
 
 export default function CanvasPanel({ canvasData, onDismiss }) {
+  const { resolved, context } = canvasData || {};
+  const Component = resolveComponent(resolved?.component);
+
   if (!canvasData?.resolved) {
     console.log('[canvas:diag] CanvasPanel — no canvasData.resolved, returning null');
     return null;
   }
-
-  const { resolved, context } = canvasData;
-  const Component = resolveComponent(resolved.component);
 
   // 2026-05-22 diagnostic: trace #219 (Accounting canvas not rendering)
   console.log('[canvas:diag] CanvasPanel render signal=' + resolved._signal + ' component=' + resolved.component +

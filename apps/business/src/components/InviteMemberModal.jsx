@@ -49,7 +49,7 @@ export default function InviteMemberModal({ tenantId, workspaceName, onClose }) 
       } else {
         setResult({ kind: "error", message: errorMessage(data?.error) });
       }
-    } catch (e) {
+    } catch {
       setResult({ kind: "error", message: "Could not send invite. Try again." });
     } finally {
       setSubmitting(false);

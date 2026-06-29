@@ -27,6 +27,7 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
   useEffect(() => {
     if (!activeSignal) return;
     const matches = sorted.filter(t => t.signal === activeSignal);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (matches.length === 1 && matches[0].id !== activeId) setActiveId(matches[0].id);
   }, [activeSignal, sorted, activeId]);
 

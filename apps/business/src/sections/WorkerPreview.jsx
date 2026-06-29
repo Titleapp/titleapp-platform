@@ -38,7 +38,7 @@ export default function WorkerPreview() {
         if (ctx.businessName) setUserName(ctx.businessName);
         else if (ctx.name) setUserName(ctx.name);
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
 
     if (!userName && auth.currentUser?.displayName) {
       setUserName(auth.currentUser.displayName);

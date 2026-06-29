@@ -36,6 +36,7 @@ export default function ConcernsCard() {
     setTypes(Array.isArray(b?.types) ? b.types : []);
   }, [list, listTypes]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
 
   const live = concerns.filter(c => c.status !== "deleted");

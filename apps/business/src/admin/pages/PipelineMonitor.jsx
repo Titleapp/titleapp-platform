@@ -39,12 +39,6 @@ export default function PipelineMonitor() {
   const [retrying, setRetrying] = useState(null);
   const intervalRef = useRef(null);
 
-  useEffect(() => {
-    loadData();
-    intervalRef.current = setInterval(loadData, 60000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
-
   async function loadData() {
     try {
       const res = await adminApi("GET", "admin:pipeline:monitor");
@@ -57,6 +51,13 @@ export default function PipelineMonitor() {
     }
     setLoading(false);
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadData();
+    intervalRef.current = setInterval(loadData, 60000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
 
   async function handleRetry(docId) {
     setRetrying(docId);

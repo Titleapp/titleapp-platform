@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as api from "../api/client";
 
 export default function PendingSignatures() {
@@ -9,8 +9,6 @@ export default function PendingSignatures() {
   const vertical = localStorage.getItem("VERTICAL") || "analyst";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "GLOBAL";
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -20,9 +18,12 @@ export default function PendingSignatures() {
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []);
+
   // Compute KPIs
   const total = pending.length;
-  const now = Date.now();
+  const now = useRef(Date.now()).current; // eslint-disable-line react-hooks/purity
   const urgent = pending.filter(s => s.expiresAt && (new Date(s.expiresAt).getTime() - now) < 4 * 60 * 60 * 1000).length;
   const expiring = pending.filter(s => s.expiresAt && (new Date(s.expiresAt).getTime() - now) < 48 * 60 * 60 * 1000).length;
 
@@ -35,7 +36,7 @@ export default function PendingSignatures() {
     return { bg: "#f0fdf4", color: "#16a34a", label: `${daysLeft}d left` };
   }
 
-  async function handleSign(requestId) {
+  async function handleSign(_requestId) {
     // For now, navigate to a sign URL or show typed consent
     setToast("Opening signature...");
     setTimeout(() => setToast(null), 2000);

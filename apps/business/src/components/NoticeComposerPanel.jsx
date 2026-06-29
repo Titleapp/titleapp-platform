@@ -15,7 +15,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 async function apiFetch(path, opts = {}) {
   let token = null;
-  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+  try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
   const [bare, qs] = String(path).split("?");
   const url = `${API_BASE}/api?path=${encodeURIComponent(bare)}${qs ? "&" + qs : ""}`;

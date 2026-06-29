@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -17,7 +17,7 @@ export default function CreatorSpotlight({ worker, workerCardData }) {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoError, setPhotoError] = useState(null);
   const [bio, setBio] = useState("");
-  const [workerDesc, setWorkerDesc] = useState("");
+  const [workerDesc, setWorkerDesc] = useState(workerCardData?.description || "");
   const [releaseAgreed, setReleaseAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -27,13 +27,6 @@ export default function CreatorSpotlight({ worker, workerCardData }) {
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
   const workerUrl = `https://sociii.ai/w/${(worker?.slug || workerName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
   const email = localStorage.getItem("USER_EMAIL") || "";
-
-  // Auto-populate worker description on mount
-  useEffect(() => {
-    if (workerCardData?.description && !workerDesc) {
-      setWorkerDesc(workerCardData.description);
-    }
-  }, [workerCardData?.description]);
 
   if (!SPOTLIGHT_ENABLED) return null;
 

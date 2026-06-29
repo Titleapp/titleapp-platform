@@ -101,6 +101,7 @@ export default function DocsShell({ slug }) {
     // and depend on activeSlug only.
     const p = findPage(activeSlug);
     setMeta(p);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setContent({ loading: true, md: "", error: null });
     fetch(`/docs/${activeSlug}.md`)
       .then(r => r.ok ? r.text() : Promise.reject(`${r.status}`))
@@ -193,8 +194,8 @@ export default function DocsShell({ slug }) {
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}
               components={{
-                h2: ({node, children}) => <h2 id={slugify(children?.toString())} style={{ fontSize: 24, fontWeight: 700, marginTop: 40, marginBottom: 12, scrollMarginTop: 20 }}>{children}</h2>,
-                h3: ({node, children}) => <h3 id={slugify(children?.toString())} style={{ fontSize: 18, fontWeight: 600, marginTop: 28, marginBottom: 10, scrollMarginTop: 20 }}>{children}</h3>,
+                h2: ({node: _node, children}) => <h2 id={slugify(children?.toString())} style={{ fontSize: 24, fontWeight: 700, marginTop: 40, marginBottom: 12, scrollMarginTop: 20 }}>{children}</h2>,
+                h3: ({node: _node, children}) => <h3 id={slugify(children?.toString())} style={{ fontSize: 18, fontWeight: 600, marginTop: 28, marginBottom: 10, scrollMarginTop: 20 }}>{children}</h3>,
                 p:  ({children}) => <p style={{ marginTop: 0, marginBottom: 16 }}>{children}</p>,
                 a:  ({href, children}) => <a href={href} style={{ color: "#7c3aed", textDecoration: "underline" }}>{children}</a>,
                 code: ({inline, children}) => inline

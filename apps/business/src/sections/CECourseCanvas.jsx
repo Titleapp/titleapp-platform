@@ -61,7 +61,7 @@ function Ring({ pct, label, sub, band }) {
   );
 }
 
-function ModuleRow({ m, live, locked, onPlay }) {
+function ModuleRow({ m, live: _live, locked, onPlay }) {
   const credited = m.status === "credited";
   const b = credited ? C.green : m.status === "scheduled" ? C.accent : m.status === "inprogress" ? C.amber : C.slate;
   const disabled = locked && m.status === "notstarted";
@@ -89,7 +89,7 @@ function ModuleRow({ m, live, locked, onPlay }) {
 
 export default function CECourseCanvas() {
   const [tab, setTab] = useState("readiness");
-  const [active, setActive] = useState(OND_MODULES.find((m) => m.status === "inprogress") || LIVE_MODULES[0]);
+  const [_active, setActive] = useState(OND_MODULES.find((m) => m.status === "inprogress") || LIVE_MODULES[0]);
   const overallPct = Math.round((totalDone / TOTAL) * 100);
 
   // Binding constraint FIRST (Claude #1/#7): live deficit leads when present.

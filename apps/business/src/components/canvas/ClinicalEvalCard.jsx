@@ -84,7 +84,7 @@ function SignForm() {
       });
       if (!out || out.ok === false) throw new Error((out && out.error) || "Sign failed");
       setResult(out);
-      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas")); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas")); } catch { /* ignore */ }
     } catch (e) { setErr(e.message || "Sign failed"); }
     setBusy(false);
   }

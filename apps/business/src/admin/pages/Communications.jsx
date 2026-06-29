@@ -63,6 +63,7 @@ export default function Communications() {
   // Load thread when message selected
   useEffect(() => {
     if (!selected?.contactId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThread([]);
       return;
     }

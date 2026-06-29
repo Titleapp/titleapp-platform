@@ -156,7 +156,7 @@ function BillingSummary({ workspaces }) {
   );
 }
 
-export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch, onAddWorker, onBack }) {
+export default function WorkspaceHub({ userName, onLaunch, onBuilderStart: _onBuilderStart, onAdminLaunch, onAddWorker, onBack }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -200,6 +200,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadWorkspaces();
   }, []);
 

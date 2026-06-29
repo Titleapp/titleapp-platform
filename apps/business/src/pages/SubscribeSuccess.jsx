@@ -36,7 +36,7 @@ export default function SubscribeSuccess() {
             return; // stop polling once credits visible
           }
         }
-      } catch (_) {}
+      } catch { /* ignore */ }
       if (!cancelled && attempts < 6) {
         attempts++;
         setTimeout(poll, 2000);

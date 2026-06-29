@@ -25,7 +25,7 @@ export function personaTintFor(seed, isPersonal) {
 // The active persona's tint, read from the current tenant in localStorage.
 export function currentPersonaTint() {
   let t = null;
-  try { t = localStorage.getItem("TENANT_ID"); } catch (_) { /* SSR / blocked */ }
+  try { t = localStorage.getItem("TENANT_ID"); } catch { /* SSR / blocked */ }
   return personaTintFor(t, isPersonalTenant(t));
 }
 

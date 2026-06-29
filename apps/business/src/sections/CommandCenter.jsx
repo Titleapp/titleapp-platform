@@ -51,6 +51,7 @@ export default function CommandCenter() {
     setBrief(r);
   }, [previewBrief]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
     const onWorkspace = () => refresh();
@@ -653,6 +654,7 @@ function ComplianceFilingsCard() {
     setLoading(false);
   }, [listObligations]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const refresh = () => load();

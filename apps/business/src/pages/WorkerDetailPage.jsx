@@ -137,11 +137,11 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
   const [subscribed, setSubscribed] = useState(false);
   const [subError, setSubError] = useState(null);
   const [expiredTrial, setExpiredTrial] = useState(null); // { expiredAt, historyPreview[] }
-  const [checkingTrial, setCheckingTrial] = useState(false);
+  const [_checkingTrial, setCheckingTrial] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const bogoUsed = localStorage.getItem("ta_bogo_used") === "true";
-  const color = SUITE_COLORS[worker.suite] || "#7c3aed";
+  const _color = SUITE_COLORS[worker.suite] || "#7c3aed";
 
   function handleAddToCart() {
     const cart = JSON.parse(localStorage.getItem("ta_cart") || "[]");
@@ -180,7 +180,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         } else if (data.ok && data.status === "active") {
           setSubscribed(true);
         }
-      } catch {}
+      } catch { /* ignore */ }
       setCheckingTrial(false);
     }
     checkSubscription();
@@ -192,7 +192,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
     // home. Stash the slug; the authenticated app consumes ta_open_worker on
     // mount (App.jsx) and opens the worker with its canvas. Fixes the deep-link
     // bug where "Start Free Trial" / "/login?redirect=" dumped to the landing.
-    try { sessionStorage.setItem("ta_open_worker", worker.slug || worker.id); } catch (_) {}
+    try { sessionStorage.setItem("ta_open_worker", worker.slug || worker.id); } catch { /* ignore */ }
     setSubscribing(true);
     setSubError(null);
     try {

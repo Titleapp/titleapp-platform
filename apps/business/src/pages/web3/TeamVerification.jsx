@@ -48,7 +48,7 @@ export default function TeamVerification() {
         body: JSON.stringify({ attestations: ["no_financial_returns", "collectibles_utility", "legal_review"] }),
       });
       setStep(2);
-    } catch {}
+    } catch { /* ignore */ }
     setSubmitting(false);
   }
 
@@ -62,7 +62,7 @@ export default function TeamVerification() {
         body: JSON.stringify({ entityName, jurisdiction }),
       });
       setStep(3);
-    } catch {}
+    } catch { /* ignore */ }
     setSubmitting(false);
   }
 
@@ -78,7 +78,7 @@ export default function TeamVerification() {
       });
       setMembers(prev => [...prev, { email: memberEmail.trim(), role: memberRole, status: "Pending", date: null }]);
       setMemberEmail("");
-    } catch {}
+    } catch { /* ignore */ }
     setSubmitting(false);
   }
 

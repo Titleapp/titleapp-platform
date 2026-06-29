@@ -82,6 +82,7 @@ const CANVAS_COMPONENT_MAP = {
  * @param {string} componentName — e.g. "PLSummaryCard"
  * @returns {React.ComponentType|null}
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function resolveComponent(componentName) {
   return CANVAS_COMPONENT_MAP[componentName] || null;
 }

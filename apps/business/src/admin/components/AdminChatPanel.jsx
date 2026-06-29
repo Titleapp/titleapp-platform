@@ -83,13 +83,13 @@ export default function AdminChatPanel({ currentPage }) {
         try {
           const snap = await getDoc(doc(db, "analytics", `daily_${today}`));
           if (snap.exists()) data.todayAnalytics = snap.data();
-        } catch {}
+        } catch { /* ignore */ }
 
         // Config
         try {
           const snap = await getDoc(doc(db, "config", "platform"));
           if (snap.exists()) data.platformConfig = snap.data();
-        } catch {}
+        } catch { /* ignore */ }
 
         setPlatformData(data);
       } catch (err) {
@@ -135,7 +135,7 @@ export default function AdminChatPanel({ currentPage }) {
           replied = true;
         }
       }
-    } catch {}
+    } catch { /* ignore */ }
 
     // Smart fallback with real data
     if (!replied) {
@@ -304,7 +304,7 @@ function generateLocalResponse(message, currentPage, data) {
   const d = data || {};
   const users = d.userCount || 0;
   const tenants = d.tenantCount || 0;
-  const workspaces = d.workspaceCount || 0;
+  const _workspaces = d.workspaceCount || 0;
   const trialDays = d.platformConfig?.trialDays || 14;
   const wsPrice = d.platformConfig?.workspacePrice || 900;
 

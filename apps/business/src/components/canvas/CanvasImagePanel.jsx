@@ -29,7 +29,7 @@ export default function CanvasImagePanel({
   onIncludeInBuild,
   onSaveToLibrary,
   onDelete,
-  currentWorkerId,
+  currentWorkerId: _currentWorkerId,
   includedAssetIds = [],
 }) {
   // Show all assets up to MAX_DISPLAY in oldest-first order so the newest appears at the bottom.

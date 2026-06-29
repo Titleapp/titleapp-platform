@@ -196,7 +196,7 @@ export default function ContentCalendar() {
                 <div style={S.dayDate}>{day.getDate()}</div>
                 {dayDrafts.map(draft => {
                   const firstPlatform = draft.platforms?.[0]?.toLowerCase();
-                  const pc = PLATFORM_COLORS[firstPlatform] || PLATFORM_COLORS.linkedin;
+                  const _pc = PLATFORM_COLORS[firstPlatform] || PLATFORM_COLORS.linkedin;
                   const dotColor = STATUS_DOT[draft.status] || STATUS_DOT.draft;
                   return (
                     <div key={draft.id} style={S.postItem} onClick={() => setExpanded(draft)}>

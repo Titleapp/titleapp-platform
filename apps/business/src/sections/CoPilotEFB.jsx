@@ -362,7 +362,7 @@ function CurrencyTab({ currency }) {
 }
 
 function DutyTab() {
-  const [dutyStatus, setDutyStatus] = useState(null);
+  const [_dutyStatus, _setDutyStatus] = useState(null);
   const [actionMsg, setActionMsg] = useState("");
 
   async function recordEvent(eventType) {
@@ -757,7 +757,7 @@ const DOC_TYPES = [
   { id: "wb", label: "W&B (Weight & Balance)", ext: ".pdf" },
 ];
 
-function DocumentsTab({ documents, onUpload, uploadMsg, onReload, onOpenDriveImport, importProgress }) {
+function DocumentsTab({ documents, onUpload: _onUpload, uploadMsg, onReload, onOpenDriveImport, importProgress }) {
   const [uploading, setUploading] = useState(null);
   const [uploadForm, setUploadForm] = useState({ docType: "", revision: "", effectiveDate: "", confirmed: false });
   const [selectedFile, setSelectedFile] = useState(null);
@@ -780,7 +780,7 @@ function DocumentsTab({ documents, onUpload, uploadMsg, onReload, onOpenDriveImp
       setSelectedFile(null);
       setUploadForm({ docType: "", revision: "", effectiveDate: "", confirmed: false });
       onReload();
-    } catch (e) {
+    } catch {
       setUploading(null);
     }
   }

@@ -39,8 +39,6 @@ export default function WorkerPipeline() {
   const [publishing, setPublishing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -54,6 +52,9 @@ export default function WorkerPipeline() {
     }
     setLoading(false);
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []);
 
   async function handlePublish(ids) {
     setPublishing(true);

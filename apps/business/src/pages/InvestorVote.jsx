@@ -8,7 +8,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
 
   const [bare, qs] = String(path).split("?");
@@ -69,7 +69,7 @@ export default function InvestorVote() {
       } else {
         setBallot(data.ballot);
       }
-    } catch (e) {
+    } catch {
       setError("Could not reach the SOCIII voting service. Please try again in a moment.");
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export default function InvestorVote() {
       } else {
         setVoted({ choice, at: new Date().toISOString() });
       }
-    } catch (e) {
+    } catch {
       setError("Vote submission failed. Please try again.");
     } finally {
       setSubmitting(false);

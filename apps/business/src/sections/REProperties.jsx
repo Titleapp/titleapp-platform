@@ -176,7 +176,7 @@ export default function REProperties() {
           const occ = (prop.occupiedUnits / prop.totalUnits) * 100;
           const isExpanded = expandedId === prop.id;
           const vacantUnits = prop.units.filter((u) => u.status === "vacant");
-          const renewalUnits = prop.units.filter((u) => {
+          const _renewalUnits = prop.units.filter((u) => {
             if (!u.leaseEnd) return false;
             const d = daysUntil(u.leaseEnd);
             return d !== null && d <= 60 && d >= 0;

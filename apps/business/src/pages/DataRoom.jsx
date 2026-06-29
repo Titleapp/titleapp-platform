@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 async function logVisit(docId, action) {
   try {
     let token = null;
-    try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+    try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
     if (!token) token = localStorage.getItem("ID_TOKEN");
     await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/canonical-docs:log")}`, {
       method: "POST",
@@ -16,7 +16,7 @@ async function logVisit(docId, action) {
       },
       body: JSON.stringify({ workerSlug: "fundraise", docId, action }),
     });
-  } catch (_) { /* non-blocking */ }
+  } catch { /* non-blocking */ }
 }
 
 const TITLE = "SOCIII Investor Data Room";

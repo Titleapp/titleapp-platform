@@ -74,6 +74,7 @@ const VERTICAL_ICONS = {
   "Solar Energy": "\u2600",
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getVerticalsFromWorkers(activeWorkers = []) {
   const verticalMap = {};
   for (const slug of activeWorkers) {

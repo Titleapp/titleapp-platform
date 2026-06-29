@@ -61,6 +61,7 @@ export function useGmailStatus() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
 
   return { status, refresh };
@@ -104,7 +105,7 @@ export async function connectGmail() {
             reject(new Error("Connection cancelled."));
           }
         }
-      } catch {}
+      } catch { /* ignore */ }
     }, 500);
   });
 }

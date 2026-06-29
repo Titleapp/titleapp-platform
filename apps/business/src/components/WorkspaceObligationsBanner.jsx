@@ -7,7 +7,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
 
   const [bare, qs] = String(path).split("?");
@@ -120,7 +120,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
         if (!mountedRef.current) return;
         setInvites(Array.isArray(data?.invites) ? data.invites : []);
       }
-    } catch (_) {
+    } catch {
       if (mountedRef.current) setInvites([]);
     } finally {
       if (mountedRef.current) setLoading(false);
@@ -193,7 +193,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                   body: JSON.stringify({ ...resolved.payload }),
                 });
                 await refresh();
-              } catch (_) { /* non-fatal */ }
+              } catch { /* non-fatal */ }
             }
           }
         }
@@ -212,7 +212,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                   body: JSON.stringify({ ...resolved.payload }),
                 });
                 await refresh();
-              } catch (_) { /* non-fatal */ }
+              } catch { /* non-fatal */ }
             }
           }
         }
@@ -269,7 +269,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
       }
       // Inline-completion (accept_terms, sync_kyc) — refresh state.
       await refresh();
-    } catch (_) {
+    } catch {
       setError("Action failed; please try again.");
     } finally {
       if (mountedRef.current) setBusyAction(null);

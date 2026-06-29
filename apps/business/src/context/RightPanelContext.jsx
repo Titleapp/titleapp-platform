@@ -22,7 +22,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   // the ta:reland-canvas event even after React flushes state synchronously.
   const canvasDataRef = useRef(null);
 
-  const showRecommendations = useCallback((workerList, detectedVertical, detectedLabel) => {
+  const showRecommendations = useCallback((_workerList, _detectedVertical, _detectedLabel) => {
     // S52.45 — DISABLED ENTIRELY. The "<vertical> Workers" recommendation panel
     // kept overlaying worker canvases and survived every targeted guard. Killed
     // at the source: this never enters STATE-3. Worker discovery lives on the
@@ -124,7 +124,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     // source; fall back to local state for the brief window before it's populated.
     const insideWorker = !!(wsc?.activeWorkerData || _localWorkerData);
     if (insideWorker) {
-      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas", { detail: { savedCanvas } })); } catch (_) { /* SSR/no-window */ }
+      try { window.dispatchEvent(new CustomEvent("ta:reland-canvas", { detail: { savedCanvas } })); } catch { /* SSR/no-window */ }
     }
   }, [wsc, _localWorkerData]);
 
@@ -171,6 +171,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useRightPanel() {
   return useContext(RightPanelContext);
 }

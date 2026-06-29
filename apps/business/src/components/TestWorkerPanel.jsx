@@ -75,14 +75,14 @@ function waitForAuth(timeoutMs = 5000) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { unsub(); } catch (_) {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(null);
     }, timeoutMs);
     const unsub = firebaseAuth.onAuthStateChanged((user) => {
       if (settled || !user) return; // skip null callbacks
       settled = true;
       clearTimeout(timer);
-      try { unsub(); } catch (_) {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(user);
     });
   });
@@ -117,7 +117,7 @@ async function getToken() {
   return null;
 }
 
-export default function TestWorkerPanel({ worker, workerCardData, sessionId, onExchange }) {
+export default function TestWorkerPanel({ worker, workerCardData, sessionId: _sessionId, onExchange }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -270,7 +270,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
       } else {
         setMessages(prev => [...prev, { role: "assistant", text: data.error || "Something went wrong. Try again." }]);
       }
-    } catch (e) {
+    } catch {
       setMessages(prev => [...prev, { role: "assistant", text: "Connection error. Try again." }]);
     } finally {
       setSending(false);

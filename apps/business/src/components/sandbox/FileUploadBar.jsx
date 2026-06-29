@@ -21,6 +21,7 @@ const STATUS_DOTS = {
 };
 
 // Accepted file extensions — keep in sync with the <input accept=""> attributes
+// eslint-disable-next-line react-refresh/only-export-components
 export const ACCEPTED_EXTENSIONS = [
   // documents
   "pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "xls", "pptx", "ppt", "rtf",
@@ -30,8 +31,10 @@ export const ACCEPTED_EXTENSIONS = [
   "mp4", "mov", "webm",
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ACCEPT_STRING = ACCEPTED_EXTENSIONS.map(e => `.${e}`).join(",");
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function classifyFile(file) {
   const ext = (file.name || "").toLowerCase().split(".").pop();
   if (["pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "xls", "pptx", "ppt", "rtf"].includes(ext)) return "document";
@@ -46,6 +49,7 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function validateFiles(fileList) {
   const valid = [];
   const rejected = [];

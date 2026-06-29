@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
 
 const API_BASE = "https://api-feyfibglbq-uc.a.run.app/v1";
@@ -56,47 +56,11 @@ export default function DriveImportModal({ isOpen, onClose, workerId, onImportSt
   const [selectedFiles, setSelectedFiles] = useState(new Map());
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState("root");
+  const [_currentFolder, setCurrentFolder] = useState("root");
   const [showAssignment, setShowAssignment] = useState(false);
   const [assignmentData, setAssignmentData] = useState([]);
   const [acknowledged, setAcknowledged] = useState(false);
   const [importing, setImporting] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) checkDriveStatus();
-  }, [isOpen]);
-
-  async function checkDriveStatus() {
-    try {
-      const res = await driveApi("status");
-      setDriveStatus(res);
-      if (res.connected) browseFolder("root");
-    } catch (e) {
-      setDriveStatus({ connected: false });
-    }
-  }
-
-  async function connectDrive() {
-    try {
-      const res = await driveApi("authUrl");
-      if (!res.authUrl) return;
-      const popup = window.open(res.authUrl, "google-drive-auth", "width=600,height=700");
-      // Listen for code from popup
-      const handler = async (event) => {
-        if (event.data && event.data.type === "google-drive-auth-code") {
-          window.removeEventListener("message", handler);
-          const exchangeRes = await driveApi("exchangeCode", "POST", { code: event.data.code });
-          if (exchangeRes.ok) {
-            setDriveStatus({ connected: true, email: exchangeRes.email });
-            browseFolder("root");
-          }
-        }
-      };
-      window.addEventListener("message", handler);
-    } catch (e) {
-      console.error("Drive connect failed:", e);
-    }
-  }
 
   async function browseFolder(folderId) {
     setLoading(true);
@@ -112,6 +76,43 @@ export default function DriveImportModal({ isOpen, onClose, workerId, onImportSt
       console.error("Browse failed:", e);
     }
     setLoading(false);
+  }
+
+  async function checkDriveStatus() {
+    try {
+      const res = await driveApi("status");
+      setDriveStatus(res);
+      if (res.connected) browseFolder("root");
+    } catch {
+      setDriveStatus({ connected: false });
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isOpen) checkDriveStatus();
+  }, [isOpen]);
+
+  async function connectDrive() {
+    try {
+      const res = await driveApi("authUrl");
+      if (!res.authUrl) return;
+      const _popup = window.open(res.authUrl, "google-drive-auth", "width=600,height=700");
+      // Listen for code from popup
+      const handler = async (event) => {
+        if (event.data && event.data.type === "google-drive-auth-code") {
+          window.removeEventListener("message", handler);
+          const exchangeRes = await driveApi("exchangeCode", "POST", { code: event.data.code });
+          if (exchangeRes.ok) {
+            setDriveStatus({ connected: true, email: exchangeRes.email });
+            browseFolder("root");
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+    } catch (e) {
+      console.error("Drive connect failed:", e);
+    }
   }
 
   async function handleSearch() {

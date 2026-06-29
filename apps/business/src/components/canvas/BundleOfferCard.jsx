@@ -41,7 +41,7 @@ const BUNDLE_WORKERS = [
   },
 ];
 
-export default function BundleOfferCard({ resolved, context, onDismiss }) {
+export default function BundleOfferCard({ resolved: _resolved, context: _context, onDismiss }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [result, setResult] = useState(null);

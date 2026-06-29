@@ -27,8 +27,6 @@ export default function PricingCompliance() {
   const [auditing, setAuditing] = useState(false);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -42,6 +40,8 @@ export default function PricingCompliance() {
     }
     setLoading(false);
   }
+
+  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   async function handleFix(worker) {
     setFixing(worker.id);

@@ -52,7 +52,7 @@ export default function CreatorApplication() {
       } else {
         setError(data.error || "Something went wrong. Please try again.");
       }
-    } catch (err) {
+    } catch (_err) {
       setError("Connection error. Please try again.");
     } finally {
       setSubmitting(false);
@@ -77,7 +77,7 @@ export default function CreatorApplication() {
         setError(data.error || "Failed to start checkout.");
         setActivating(false);
       }
-    } catch (err) {
+    } catch (_err) {
       setError("Connection error. Please try again.");
       setActivating(false);
     }

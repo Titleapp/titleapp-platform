@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import DistributionKit from "../components/DistributionKit";
 import CreatorSpotlight from "../components/CreatorSpotlight";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";

@@ -23,7 +23,7 @@ const S = {
   tag: { fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" },
 };
 
-export default function WorkerListCanvas({ resolved, context, onDismiss }) {
+export default function WorkerListCanvas({ resolved, context: _context, onDismiss }) {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const signal = resolved?._signal || "";

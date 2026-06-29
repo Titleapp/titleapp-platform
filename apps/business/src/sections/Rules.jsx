@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 const AUTONOMY_LEVELS = [
   { level: 1, name: "Draft Only", description: "AI prepares everything for your review. No actions taken without your explicit approval." },

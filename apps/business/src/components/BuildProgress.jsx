@@ -119,11 +119,11 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
   // Detect second build — store in localStorage (guarded for private browsing)
   const buildKey = `build_count_${worker?.id || "unknown"}`;
   let buildCount = 0;
-  try { buildCount = parseInt(localStorage.getItem(buildKey) || "0", 10); } catch {}
+  try { buildCount = parseInt(localStorage.getItem(buildKey) || "0", 10); } catch { /* ignore */ }
   const showMatrix = buildCount >= 1;
 
   useEffect(() => {
-    try { localStorage.setItem(buildKey, String(buildCount + 1)); } catch {}
+    try { localStorage.setItem(buildKey, String(buildCount + 1)); } catch { /* ignore */ }
   }, []);
 
   const tier = TIERS.find(t => t.id === selectedTier) || TIERS[2];
@@ -185,7 +185,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
             }
           }
         }
-      } catch {}
+      } catch { /* ignore */ }
     }, 4000);
     return () => clearInterval(poll);
   }, [worker?.id]);

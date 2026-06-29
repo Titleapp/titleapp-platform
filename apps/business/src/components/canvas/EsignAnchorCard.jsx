@@ -103,7 +103,7 @@ function AnchorForm({ onAnchored }) {
   );
 }
 
-export default function EsignAnchorCard({ resolved, context, onDismiss }) {
+export default function EsignAnchorCard({ resolved: _resolved, context, onDismiss }) {
   const [records, setRecords] = useState(context?.payload?.records || null);
   const [loading, setLoading] = useState(!context?.payload?.records);
   const [error, setError] = useState(null);

@@ -33,7 +33,7 @@ const S = {
   barFill: { height: "100%", background: "#7c3aed", borderRadius: 2, transition: "width 0.3s" },
 };
 
-export default function ChecklistCard({ resolved, context, onDismiss }) {
+export default function ChecklistCard({ resolved: _resolved, context: _context, onDismiss }) {
   const [checked, setChecked] = useState(new Set());
 
   function toggle(id) {

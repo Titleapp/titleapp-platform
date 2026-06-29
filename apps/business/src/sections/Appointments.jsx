@@ -25,14 +25,14 @@ export default function Appointments() {
   const jurisdiction = "il";
 
   // Mock customers for selection
-  const mockCustomers = [
+  const _mockCustomers = [
     { id: "cust-001", name: "John Smith" },
     { id: "cust-002", name: "Sarah Lee" },
     { id: "cust-003", name: "Mike Johnson" },
   ];
 
   // Mock appointments
-  const mockAppointments = [
+  const _mockAppointments = [
     {
       id: "appt-001",
       customerId: "cust-001",

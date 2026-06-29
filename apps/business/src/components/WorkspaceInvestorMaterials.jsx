@@ -7,7 +7,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
   const [bare, qs] = String(path).split("?");
   const url = `${API_BASE}/api?path=${encodeURIComponent(bare)}${qs ? "&" + qs : ""}`;
@@ -83,7 +83,7 @@ export default function WorkspaceInvestorMaterials() {
       const investorMats = mats.filter((m) => !m.viaAdmin);
       setInvestorInvite(inv || (investorMats.length > 0 ? { role: "investor", _viaEntitlement: true } : null));
       setMaterialsConfig(investorMats[0] || null);
-    } catch (_) {
+    } catch {
       if (mountedRef.current) { setInvestorInvite(null); setMaterialsConfig(null); }
     } finally {
       if (mountedRef.current) setLoading(false);

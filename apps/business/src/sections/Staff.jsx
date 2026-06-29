@@ -51,6 +51,7 @@ export default function Staff() {
     if (r?.ok) setPeople(r.staff || []);
   }, [list]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
 
   function openCreate(type = "employee") {

@@ -62,6 +62,7 @@ export default function DocumentControlTab({ workerId }) {
     setLoading(false);
   }, [workerId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
   function handleUploadComplete() {

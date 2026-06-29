@@ -33,7 +33,7 @@ const S = {
   }),
 };
 
-function statusBadge(status, faaStatus) {
+function statusBadge(status, _faaStatus) {
   const map = {
     pending: { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "Pending" },
     cert_verified: { color: "#10b981", bg: "rgba(16,185,129,0.12)", label: "Cert Verified" },
@@ -71,8 +71,6 @@ export default function VerificationQueue() {
   const [acting, setActing] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
-  useEffect(() => { loadQueue(); }, [tab]);
-
   async function loadQueue() {
     setLoading(true);
     setSelected(null);
@@ -87,6 +85,8 @@ export default function VerificationQueue() {
     }
     setLoading(false);
   }
+
+  useEffect(() => { loadQueue(); }, [tab]); // eslint-disable-line react-hooks/set-state-in-effect
 
   async function handleApprove(userId) {
     setActing(true);

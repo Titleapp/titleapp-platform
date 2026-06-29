@@ -248,6 +248,7 @@ export default function CampaignPage({ slug }) {
       v = Math.random() < 0.5 ? "A" : "B";
       sessionStorage.setItem("ta_ab_variant_" + slug, v);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVariant(v);
 
     // Log session to Firestore

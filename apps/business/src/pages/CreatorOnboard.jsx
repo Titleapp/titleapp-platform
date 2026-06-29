@@ -8,7 +8,7 @@ async function apiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
 
   const [bare, qs] = String(path).split("?");
@@ -55,7 +55,7 @@ export default function CreatorOnboard() {
     try {
       const data = await apiFetch(`/v1/creator:status?creatorId=${encodeURIComponent(creatorId)}`, { method: "GET" });
       setStatus({ loading: false, ...data });
-    } catch (e) {
+    } catch (_e) {
       setStatus({ loading: false, error: "fetch_failed" });
     }
   }, [creatorId]);
@@ -100,7 +100,7 @@ export default function CreatorOnboard() {
         setInfo("FIRST100 applied — first year on us.");
       }
       await refresh();
-    } catch (e) {
+    } catch (_e) {
       setError("Action failed; please try again.");
     } finally {
       setBusy(false);

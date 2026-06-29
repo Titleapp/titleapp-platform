@@ -40,7 +40,7 @@ function waitForAuth(timeoutMs = 5000) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { unsub(); } catch (_) {}
+      try { unsub(); } catch { /* ignore */ }
       resolve(null);
     }, timeoutMs);
 
@@ -52,7 +52,7 @@ function waitForAuth(timeoutMs = 5000) {
       if (user) {
         settled = true;
         clearTimeout(timer);
-        try { unsub(); } catch (_) {}
+        try { unsub(); } catch { /* ignore */ }
         resolve(user);
       }
     });
@@ -176,7 +176,7 @@ export async function ingestDocument({ workerId, name, sourceType, tier, file, u
       const buffer = await file.arrayBuffer();
       base64 = arrayBufferToBase64(buffer);
       mime = file.type || null;
-    } catch (e) {
+    } catch {
       return { ok: false, error: "Could not read file" };
     }
   }
@@ -233,7 +233,7 @@ export async function uploadFile(file) {
   try {
     const buffer = await file.arrayBuffer();
     base64 = arrayBufferToBase64(buffer);
-  } catch (e) {
+  } catch {
     return { ok: false, error: "Could not read file" };
   }
   return call("POST", "/v1/sandbox:file:upload", {

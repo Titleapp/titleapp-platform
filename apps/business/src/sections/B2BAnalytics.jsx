@@ -77,7 +77,7 @@ export default function B2BAnalytics() {
       } else {
         setDeployError(data.error || "Deploy failed");
       }
-    } catch (err) {
+    } catch (_err) {
       setDeployError("Deploy failed");
     } finally {
       setDeploying(false);

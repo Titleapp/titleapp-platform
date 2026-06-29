@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signInWithCustomToken, EmailAuthProvider, linkWithCredential } from "firebase/auth";
 
@@ -22,10 +22,6 @@ export default function AuthMagic() {
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("worker");
   });
-
-  useEffect(() => {
-    if (!token) { setStatus("error"); setErrorMsg("No token provided"); }
-  }, [token]);
 
   async function startVerify() {
     if (!token) { setStatus("error"); setErrorMsg("No token provided"); return; }
@@ -149,7 +145,7 @@ export default function AuthMagic() {
           + (workerSlug ? "&worker=" + workerSlug : "")
           + "&utm_source=magic-link";
       }, 1000);
-    } catch (err) {
+    } catch (_err) {
       setStatus("error");
       setErrorMsg("Verification failed. Try again.");
     }

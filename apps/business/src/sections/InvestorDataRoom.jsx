@@ -589,7 +589,7 @@ export default function InvestorDataRoom() {
 // OVERVIEW — Raise thermometer, quick links, recent updates
 // ══════════════════════════════════════════════════════════════════
 
-function OverviewSection({ raiseConfig, capTable, updates, gates, isVerified, tier2Unlocked, onUnlock, onNavigate }) {
+function OverviewSection({ raiseConfig, capTable, updates, gates: _gates, isVerified, tier2Unlocked, onUnlock, onNavigate }) {
   const raised = raiseConfig?.raiseCurrent || capTable?.totalRaised || 0;
   const target = raiseConfig?.raiseTarget || raiseConfig?.raiseAmount || 1070000;
   const pct = Math.min(100, (raised / target) * 100);
@@ -718,7 +718,7 @@ function OverviewSection({ raiseConfig, capTable, updates, gates, isVerified, ti
           background: "white", borderRadius: 16, padding: 24,
           boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
         }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 16, margin: 0, marginBottom: 16 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", margin: 0, marginBottom: 16 }}>
             Recent Updates
           </h3>
           {updates.slice(0, 3).map(u => (
@@ -1349,7 +1349,7 @@ function GovernanceSection({ capTable, proposals, raiseConfig }) {
 // ID CHECK — Verification + disclaimers in one place
 // ══════════════════════════════════════════════════════════════════
 
-function IDCheckSection({ gates, isVerified, hasDisclaimer, disclaimers, disclaimerChecks, setDisclaimerChecks, onStartVerify, onAcceptDisclaimer, acceptingDisclaimer }) {
+function IDCheckSection({ gates: _gates, isVerified, hasDisclaimer, disclaimers, disclaimerChecks, setDisclaimerChecks, onStartVerify, onAcceptDisclaimer, acceptingDisclaimer }) {
   return (
     <div style={{ maxWidth: 800 }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Identity Verification</h2>
@@ -1546,7 +1546,7 @@ function ProfileSection({ userName, userEmail, gates, onSave }) {
     try {
       const saved = JSON.parse(localStorage.getItem("INVESTOR_PROFILE") || "{}");
       setProfile(prev => ({ ...prev, ...saved, displayName: userName || saved.displayName || "" }));
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }, [userName]);
 
   function handleAvatarClick() {

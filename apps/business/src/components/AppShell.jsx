@@ -29,7 +29,7 @@ import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
 
-export default function AppShell({ children, currentSection, onNavigate, onBackToHub, guestMode, guestVertical, guestId }) {
+export default function AppShell({ children, currentSection, onNavigate, onBackToHub, guestMode, guestVertical }) {
   const visitorCtx = useVisitorContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState(null);
@@ -41,7 +41,6 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   const [chatWidth, setChatWidth] = useState(Math.min(65, Math.max(25, savedWidth)));
   const [isResizing, setIsResizing] = useState(false); // false | "chat" | "sidebar"
   const dualPanelRef = useRef(null);
-  const shellRef = useRef(null);
 
   // Sidebar resize state (Col1: 180-320px, default 280)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -76,43 +75,6 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     window.addEventListener("ta:alex-review-dismissed", onDismiss);
     return () => { window.removeEventListener("ta:alex-has-recommendation", onReview); window.removeEventListener("ta:alex-review-dismissed", onDismiss); };
   }, []);
-
-  useEffect(() => {
-    if (guestMode) return;
-    loadTenantInfo();
-    loadWorkspaces();
-  }, [guestMode]);
-
-  // Reload workspace data on smooth context switch
-  useEffect(() => {
-    function handleWorkspaceChange() {
-      loadWorkspaces();
-      loadTenantInfo();
-    }
-    window.addEventListener("ta:workspace-changed", handleWorkspaceChange);
-    return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
-  }, []);
-
-  // Auto-open worker from URL param or sessionStorage after auth (or guest mode)
-  const autoWorkerHandled = useRef(false);
-  useEffect(() => {
-    if (autoWorkerHandled.current) return;
-    // For authenticated users, wait until workspaces are loaded
-    if (!guestMode && workspaces.length === 0) return;
-    const params = new URLSearchParams(window.location.search);
-    const workerSlug = params.get("worker") || sessionStorage.getItem("ta_auto_worker");
-    if (!workerSlug) return;
-    autoWorkerHandled.current = true;
-    sessionStorage.removeItem("ta_auto_worker");
-    params.delete("worker");
-    const qs = params.toString();
-    window.history.replaceState({}, "", qs ? `/?${qs}` : "/");
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("ta:select-worker", {
-        detail: { slug: workerSlug, name: workerSlug },
-      }));
-    }, 500);
-  }, [workspaces, guestMode]);
 
   async function loadTenantInfo() {
     try {
@@ -172,6 +134,44 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       console.error("Failed to load workspaces:", error);
     }
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (guestMode) return;
+    loadTenantInfo();
+    loadWorkspaces();
+  }, [guestMode]);
+
+  // Reload workspace data on smooth context switch
+  useEffect(() => {
+    function handleWorkspaceChange() {
+      loadWorkspaces();
+      loadTenantInfo();
+    }
+    window.addEventListener("ta:workspace-changed", handleWorkspaceChange);
+    return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
+  }, []);
+
+  // Auto-open worker from URL param or sessionStorage after auth (or guest mode)
+  const autoWorkerHandled = useRef(false);
+  useEffect(() => {
+    if (autoWorkerHandled.current) return;
+    // For authenticated users, wait until workspaces are loaded
+    if (!guestMode && workspaces.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const workerSlug = params.get("worker") || sessionStorage.getItem("ta_auto_worker");
+    if (!workerSlug) return;
+    autoWorkerHandled.current = true;
+    sessionStorage.removeItem("ta_auto_worker");
+    params.delete("worker");
+    const qs = params.toString();
+    window.history.replaceState({}, "", qs ? `/?${qs}` : "/");
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("ta:select-worker", {
+        detail: { slug: workerSlug, name: workerSlug },
+      }));
+    }, 500);
+  }, [workspaces, guestMode]);
 
   function handleSwitchWorkspace(workspace) {
     // Entitlement-backed synthetic workspaces (investor personas) skip the
@@ -325,7 +325,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       try {
         const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
         let token = null;
-        try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+        try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch { /* ignore */ }
         if (!token) token = localStorage.getItem("ID_TOKEN");
         if (!token) return;
         const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/user:entitlements:list")}`, {
@@ -350,7 +350,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           vertical: e.role === "investor" ? "Banking & Finance" : "Platform",
         }));
         setEntitledWorkers(mapped);
-      } catch (_) { /* non-fatal */ }
+      } catch { /* non-fatal */ }
     })();
     return () => { cancelled = true; };
   }, [guestMode]);

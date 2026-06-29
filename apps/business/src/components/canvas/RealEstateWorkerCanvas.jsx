@@ -275,7 +275,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
       const j = await resp.json();
       if (j.ok && j.canvasSpec) setLiveSpec(j.canvasSpec);
       else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
-    } catch (err) {
+    } catch (_err) {
       setLiveErr("Lookup failed — try again.");
     } finally {
       setLiveBusy(false);
@@ -344,6 +344,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
 // worker, including freshly-built sandbox workers) OR matches a seed fixture.
 // Name kept as isREWorker to avoid churn across call sites; it's no longer
 // RE-specific.
+// eslint-disable-next-line react-refresh/only-export-components
 export function isREWorker(worker) {
   if (!worker) return false;
   if (isValidCanvasSpec(worker.canvasSpec || worker.canvas)) return true;

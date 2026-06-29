@@ -52,7 +52,7 @@ export default function MarketplaceListing({ slug }) {
       } else {
         setError(data.error || "Listing not found");
       }
-    } catch (e) {
+    } catch {
       setError("Failed to load listing");
     } finally {
       setLoading(false);

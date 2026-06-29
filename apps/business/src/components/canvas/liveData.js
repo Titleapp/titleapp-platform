@@ -18,7 +18,7 @@ export async function liveApiFetch(path, opts = {}) {
   let token = null;
   try {
     if (auth.currentUser) token = await auth.currentUser.getIdToken();
-  } catch (_) {}
+  } catch { /* ignore */ }
   if (!token) token = localStorage.getItem("ID_TOKEN");
   const tenantId = localStorage.getItem("TENANT_ID");
   const [bare, qs] = String(path).split("?");
@@ -60,7 +60,7 @@ async function buildFundraisePayload(tabId) {
     try {
       const r = await liveApiFetch(`/v1/fundraise:investor:list?fundraiseId=${encodeURIComponent(fr.fundraiseId)}`);
       investors = Array.isArray(r?.investors) ? r.investors : [];
-    } catch (_) {}
+    } catch { /* ignore */ }
     const byStage = {};
     investors.forEach(i => {
       const s = (i.stage || "approached").toLowerCase().replace(/\s+/g, "_");
@@ -118,7 +118,7 @@ async function buildFundraisePayload(tabId) {
       ]);
       docs = Array.isArray(docsRes?.docs) ? docsRes.docs : [];
       stats = statsRes?.ok ? statsRes : null;
-    } catch (_) {}
+    } catch { /* ignore */ }
     if (docs.length === 0) return null; // fall back to sample fixture
     const groups = docs.reduce((acc, d) => {
       const cat = d.category || "other";
@@ -172,7 +172,7 @@ async function buildFundraisePayload(tabId) {
         ],
         sections: [{ heading: "Recent", body: recent.join("\n") }],
       };
-    } catch (_) {
+    } catch {
       return null;
     }
   }
@@ -206,7 +206,7 @@ async function buildFundraisePayload(tabId) {
           ? [{ heading: "Status", body: "SAFE executed and stored in your vault. You'll receive notices and ballots as the round progresses." }]
           : [{ heading: "Status", body: `In progress — flowStep=${p.flowStep}` }],
       };
-    } catch (_) { return null; }
+    } catch { return null; }
   }
 
   // Tabs not yet wired to live data — fall through to sample fixture.
@@ -338,7 +338,7 @@ async function buildPlatformHrPayload(tabId) {
           ? []
           : [{ heading: "Recent", body: recent.join("\n") }],
       };
-    } catch (_) {
+    } catch {
       return null;
     }
   }
@@ -385,7 +385,7 @@ async function buildAccountingPayload(tabId) {
 //  CONTACTS (platform-contacts) — the Salesforce replacement
 // ──────────────────────────────────────────────────────────────────
 
-async function buildContactsPayload(_tabId) {
+async function buildContactsPayload() {
   const r = await liveApiFetch("/v1/contacts:list?limit=12&stats=1");
   const list = Array.isArray(r?.contacts) ? r.contacts : [];
   const total = (r?.stats && typeof r.stats.total === "number") ? r.stats.total
