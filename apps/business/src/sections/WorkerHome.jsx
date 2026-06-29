@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
 import { currentPersonaTint, gradient } from "../utils/personaColor";
-import { firstNameFrom, prettyWorkerName } from "../utils/displayName";
+import { prettyWorkerName } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext";
+import MorningBriefCanvas from "../components/MorningBriefCanvas";
 
 // Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
 const WORKER_NAMES = {
@@ -61,17 +61,34 @@ function slugToName(slug) {
   return prettyWorkerName(slug);
 }
 
+const AVIATION_SLUGS = /^av-|aviation|copilot|pilot/i;
+
 export default function WorkerHome() {
-  const auth = getAuth();
   const workerCtx = useWorkerState();
   const [workers, setWorkers] = useState([]);
   const [catalogMap, setCatalogMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [notes, setNotes] = useState([]);
 
   useEffect(() => {
     loadWorkers();
+    loadNotes();
   }, []);
+
+  async function loadNotes() {
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const r = await fetch(`${apiBase}/api?path=/v1/notes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (d.ok && Array.isArray(d.notes)) setNotes(d.notes);
+    } catch {
+      // notes are optional — brief still renders without them
+    }
+  }
 
   async function loadWorkers() {
     try {
@@ -178,30 +195,25 @@ export default function WorkerHome() {
     return a.localeCompare(b);
   });
 
-  const firstName = firstNameFrom(auth.currentUser?.displayName, auth.currentUser?.email);
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const hasAviationWorker = workers.some(s => AVIATION_SLUGS.test(s));
 
   if (loading) {
     return (
-      <div style={{ padding: 40, color: "#94a3b8" }}>Loading your workers...</div>
+      <div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>
     );
   }
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 960, overflowY: "auto", height: "100%" }}>
-      {/* Greeting */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: 0 }}>
-          {greeting}{firstName ? `, ${firstName}` : ""}
-        </h1>
-        <p style={{ fontSize: 14, color: "#64748b", margin: "6px 0 0" }}>
-          {workers.length > 0
-            ? `You have ${workers.length} active worker${workers.length === 1 ? "" : "s"}`
-            : "Get started by adding your first Digital Worker"}
-        </p>
-      </div>
+    <div style={{ height: "100%", overflowY: "auto" }}>
+      {/* Morning brief canvas — always shown at top */}
+      <MorningBriefCanvas hasAviationWorker={hasAviationWorker} notes={notes} />
+
+      {/* Workers section */}
+      {workers.length > 0 && (
+      <div style={{ padding: "0 32px 32px", maxWidth: 960 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>
+          Your Workers ({workers.length})
+        </div>
 
       {/* Workers grouped by vertical — collapsible */}
       {sortedGroups.map(([verticalName, vWorkers]) => {
@@ -298,31 +310,21 @@ export default function WorkerHome() {
         );
       })}
 
-      {/* Empty state */}
+      </div>
+      )}
+
+      {/* Add workers CTA when none yet */}
       {workers.length === 0 && (
-        <div style={{
-          textAlign: "center", padding: "60px 20px",
-          background: "#f8fafc", borderRadius: 16,
-          border: "1px dashed #cbd5e1",
-        }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-          </div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", margin: "0 0 8px" }}>
-            No workers yet
-          </h3>
-          <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px", maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}>
-            Browse the marketplace to find Digital Workers that can help run your business.
-          </p>
+        <div style={{ padding: "0 32px 32px", textAlign: "center" }}>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "raas-store" } }))}
             style={{
               padding: "10px 24px", fontSize: 14, fontWeight: 600,
-              color: "#fff", background: "#7c3aed",
-              border: "none", borderRadius: 10, cursor: "pointer",
+              color: "#7c3aed", background: "#f5f3ff",
+              border: "1px solid #ddd6fe", borderRadius: 10, cursor: "pointer",
             }}
           >
-            Browse Marketplace
+            Browse Marketplace to add workers
           </button>
         </div>
       )}

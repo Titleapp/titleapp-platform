@@ -1573,6 +1573,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         workerCards: data.workerCards || null,
         emailDraft: data.emailDraft || null,
         smsDraft: data.smsDraft || null,
+        whatsappDraft: data.whatsappDraft || null,
         telegramDraft: data.telegramDraft || null,
         githubIssue: data.githubIssue || null,
         apolloSearches: data.apolloSearches || null,
@@ -2573,6 +2574,43 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                       <button onClick={() => setDismissedSmsDrafts(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                     </>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* WhatsApp draft approval card */}
+            {msg.whatsappDraft && !dismissedSmsDrafts.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#15803d", letterSpacing: "0.03em" }}>WHATSAPP — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>To: </span>{msg.whatsappDraft.to}</div>
+                  <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.whatsappDraft.body}</div>
+                </div>
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    onClick={async () => {
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const tenantId = localStorage.getItem("TENANT_ID") || "";
+                      const token = await getChatToken();
+                      setDismissedSmsDrafts(prev => new Set([...prev, idx]));
+                      try {
+                        const r = await fetch(`${apiBase}/api?path=/v1/whatsapp:send`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                          body: JSON.stringify({ to: msg.whatsappDraft.to, body: msg.whatsappDraft.body, mediaUrl: msg.whatsappDraft.mediaUrl }),
+                        });
+                        const d = await r.json();
+                        setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `WhatsApp sent to ${msg.whatsappDraft.to}.` : `Send failed — ${d.error || "check Twilio WhatsApp config"}.`, isSystem: true }]);
+                      } catch {
+                        setMessages(prev => [...prev, { role: "assistant", content: "Could not send WhatsApp — try again in a moment.", isSystem: true }]);
+                      }
+                    }}
+                    style={{ flex: 1, padding: "8px 14px", background: "#15803d", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >Send WhatsApp</button>
+                  <button onClick={() => setDismissedSmsDrafts(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                 </div>
               </div>
             )}

@@ -5280,8 +5280,9 @@ HARD RULES:
 6. BUSINESS IN A BOX: When a user asks "how do I get started", "what should I set up first", "what workers do I need", or anything about setting up their workspace from scratch, recommend the "Business in a Box" bundle — exactly that phrase. Say something like: "The quickest way to get running is the Business in a Box bundle — it adds Accounting, HR, Marketing, Contacts, and Control Center to your workspace in one click." The frontend will surface a one-click subscribe card automatically when you say "Business in a Box".
 7. MULTI-CHANNEL COMMS ACTIONS: You can propose actions on these channels — always propose first, never execute without user approval:
    - SMS: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/SMS_DRAFT]
+   - WhatsApp: [WHATSAPP_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/WHATSAPP_DRAFT] — use for contacts the user says prefers WhatsApp or is more reachable that way. Supports text + optional mediaUrl for images/PDFs.
    - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
-   - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE]
+   - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE] — the approval card says "Log to CODE", not "Run". Use this when you need CODE to build something or investigate a bug.
    - Email (Gmail): Use this EXACT multi-line format (no JSON — quotes and newlines are fine):
      [EMAIL_DRAFT]
      TO: recipient@example.com
@@ -5401,6 +5402,22 @@ HOW YOU AND CODE COMMUNICATE:
                   _txt = _txt.replace(/\s*\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]\s*/g, '').trim();
                 }
 
+                // Parse [GITHUB_ISSUE] — CODE task logging card
+                let _cosGithubIssue = null;
+                const _cosGhMatch = _txt.match(/\[GITHUB_ISSUE\]([\s\S]*?)\[\/GITHUB_ISSUE\]/);
+                if (_cosGhMatch) {
+                  try { _cosGithubIssue = JSON.parse(_cosGhMatch[1].trim()); } catch (_) {}
+                  _txt = _txt.replace(/\s*\[GITHUB_ISSUE\][\s\S]*?\[\/GITHUB_ISSUE\]\s*/g, '').trim();
+                }
+
+                // Parse [WHATSAPP_DRAFT] — WhatsApp message proposal card
+                let _cosWhatsappDraft = null;
+                const _cosWaMatch = _txt.match(/\[WHATSAPP_DRAFT\]([\s\S]*?)\[\/WHATSAPP_DRAFT\]/);
+                if (_cosWaMatch) {
+                  try { _cosWhatsappDraft = JSON.parse(_cosWaMatch[1].trim()); } catch (_) {}
+                  _txt = _txt.replace(/\s*\[WHATSAPP_DRAFT\][\s\S]*?\[\/WHATSAPP_DRAFT\]\s*/g, '').trim();
+                }
+
                 sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: "chief-of-staff" });
                 sessionState.salesHistory.push({ role: 'assistant', content: _txt, workerSlug: "chief-of-staff" });
                 if (sessionState.salesHistory.length > 30) sessionState.salesHistory = sessionState.salesHistory.slice(-30);
@@ -5414,7 +5431,12 @@ HOW YOU AND CODE COMMUNICATE:
                   updatedAt: nowServerTs(),
                 }, { merge: true });
 
-                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active', ...((_cosEmailDraft) ? { emailDraft: _cosEmailDraft } : {}) });
+                return res.json({
+                  ok: true, response: _txt, message: _txt, conversationState: 'cos_active',
+                  ...((_cosEmailDraft) ? { emailDraft: _cosEmailDraft } : {}),
+                  ...((_cosGithubIssue) ? { githubIssue: _cosGithubIssue } : {}),
+                  ...((_cosWhatsappDraft) ? { whatsappDraft: _cosWhatsappDraft } : {}),
+                });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
               }
@@ -17155,6 +17177,38 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("sms:send failed:", e);
         return jsonError(res, 500, e.message || "SMS send failed");
+      }
+    }
+
+    // ----------------------------
+    // POST /v1/whatsapp:send — send a WhatsApp message via Twilio WhatsApp API.
+    // Alex proposes via [WHATSAPP_DRAFT], user approves, frontend hits this endpoint.
+    // Requires Twilio WhatsApp sandbox or approved WhatsApp Business number.
+    // ----------------------------
+    if (route === "/whatsapp:send" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const { to, body: waBody, mediaUrl } = req.body || {};
+        if (!to || !waBody) return jsonError(res, 400, "to and body required");
+        const twilio = require("twilio");
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken  = process.env.TWILIO_AUTH_TOKEN;
+        const from       = process.env.TWILIO_WHATSAPP_NUMBER || `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`;
+        if (!accountSid || !authToken) return jsonError(res, 500, "Twilio not configured");
+        const client = twilio(accountSid, authToken);
+        const toWa = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
+        const msg = await client.messages.create({
+          from,
+          to: toWa,
+          body: waBody,
+          ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
+        });
+        console.log(`[whatsapp:send] sid=${msg.sid} to=${to}`);
+        return res.json({ ok: true, to, sid: msg.sid });
+      } catch (e) {
+        console.error("whatsapp:send failed:", e.message);
+        return jsonError(res, 500, e.message || "WhatsApp send failed");
       }
     }
 
