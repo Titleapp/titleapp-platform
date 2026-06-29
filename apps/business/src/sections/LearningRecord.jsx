@@ -4,7 +4,45 @@
 // workers (e.g. Ruthie's nursing evaluator) READ it. SAMPLE data until a real
 // record loads.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+function authHeaders() {
+  const token = localStorage.getItem("ID_TOKEN");
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "x-tenant-id": "vault" };
+}
+
+function fmtDate(ts) {
+  if (!ts) return "";
+  if (typeof ts === "string" && ts.match(/^\d{4}-\d{2}-\d{2}/)) return ts.slice(0, 10);
+  const ms = ts._seconds ? ts._seconds * 1000 : (ts.toMillis ? ts.toMillis() : new Date(ts).getTime());
+  return ms ? new Date(ms).toISOString().slice(0, 10) : "";
+}
+
+function dtcToProgram(dtc, entries) {
+  const m = dtc.metadata || {};
+  const institution = m.institution || m.school || dtc.name || "Unknown institution";
+  const mark = institution.split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+  return {
+    id: dtc.id,
+    kind: m.kind || (m.degree || m.certification ? "academic" : "professional"),
+    mark,
+    brand: "#4c1d95",
+    institution,
+    program: m.program || m.degree || m.certification || m.level || dtc.name || "Education record",
+    status: m.status || dtc.status || "Active",
+    entries: entries.map(e => ({
+      kind: e.kind || "note",
+      title: e.title || e.summary || "(entry)",
+      detail: e.detail || e.notes || undefined,
+      source: e.source || "vault",
+      at: fmtDate(e.at || e.date || e.createdAt),
+      v: e.verified !== false ? "verified" : "pending",
+    })),
+    courses: Array.isArray(m.courses) ? m.courses : [],
+  };
+}
 
 const C = {
   verified: { dot: "#16a34a", text: "#166534", bg: "#f0fdf4", border: "#bbf7d0", label: "Verified" },
@@ -215,9 +253,9 @@ const PROGRAM_ICON = { academic: "🎓", professional: "🏅" };
 // course-level entries, the course code/title too. Program milestones AND the
 // granular course entries (materials, quizzes, exams, warnings, coaching,
 // AI sessions, dive logbook) all land in one append-only logbook.
-function allEntries() {
+function allEntries(record = RECORD) {
   const out = [];
-  for (const p of RECORD.programs) {
+  for (const p of record.programs) {
     for (const e of p.entries || []) out.push({ ...e, program: p.program });
     for (const c of p.courses || [])
       for (const e of c.entries || []) out.push({ ...e, program: p.program, course: c.code || c.title });
@@ -267,13 +305,13 @@ function EntryRow({ e, showProgram }) {
 }
 
 // Journey — grouped by PROGRAM, the longitudinal life-of-learning view.
-function JourneyView() {
+function JourneyView({ record }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
         One record across <strong>every program</strong> — high school, professional certifications, and college — that follows the person school-to-school and into work. The thing a transcript can't show.
       </div>
-      {RECORD.programs.map((p) => {
+      {record.programs.map((p) => {
         const verified = p.entries.filter((e) => e.v === "verified").length;
         return (
           <div key={p.id} style={{ marginBottom: 16, border: "1px solid #f1f5f9", borderRadius: 14, overflow: "hidden" }}>
@@ -401,7 +439,7 @@ function CourseBlock({ course, open, onToggle, flash }) {
 
 // Institutions overview — the OPENING view: every place this person has learned
 // (formal, technical/vocational, and continuing ed) at a glance.
-function InstitutionsView({ flash }) {
+function InstitutionsView({ flash, record }) {
   const [openId, setOpenId] = useState(null);
   const [openCourse, setOpenCourse] = useState(null); // `${programId}:${courseId}`
   const typeLabel = { academic: "Academic", professional: "Vocational / Technical" };
@@ -422,7 +460,7 @@ function InstitutionsView({ flash }) {
         </div>
       </div>
       <div style={{ display: "grid", gap: 10 }}>
-        {RECORD.programs.map((p) => {
+        {record.programs.map((p) => {
           const verified = p.entries.filter((e) => e.v === "verified").length;
           const hasCE = p.entries.some((e) => e.kind === "ce_activity");
           const open = openId === p.id;
@@ -504,11 +542,44 @@ const TABS = [
 export default function LearningRecord() {
   const [tab, setTab] = useState("institutions");
   const [notice, setNotice] = useState(null);
+  const [record, setRecord] = useState(RECORD);
+  const [isSample, setIsSample] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const headers = authHeaders();
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/dtc:list?type=education_record")}`, { headers });
+        const data = await res.json();
+        if (cancelled || !data?.ok || !Array.isArray(data.dtcs) || data.dtcs.length === 0) return;
+
+        const programs = await Promise.all(data.dtcs.map(async dtc => {
+          try {
+            const lr = await fetch(`${API_BASE}/api?path=${encodeURIComponent(`/v1/logbook:list?dtcId=${dtc.id}`)}`, { headers });
+            const ld = await lr.json();
+            const entries = (ld?.ok && Array.isArray(ld.entries)) ? ld.entries : [];
+            return dtcToProgram(dtc, entries);
+          } catch {
+            return dtcToProgram(dtc, []);
+          }
+        }));
+
+        if (!cancelled && programs.length > 0) {
+          setRecord({ holder: { name: "Your Record", kyc: { level: "KYC-1", verified: true } }, programs });
+          setIsSample(false);
+        }
+      } catch { /* keep sample */ }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
   const flash = (m) => { setNotice(m); setTimeout(() => setNotice(null), 2800); };
-  const entries = allEntries();
+  const entries = allEntries(record);
   const verified = entries.filter((e) => e.v === "verified");
   const pending = entries.filter((e) => e.v === "pending");
-  const h = RECORD.holder;
+  const h = record.holder;
 
   return (
     <div style={{ padding: "8px 4px", maxWidth: 860 }}>
@@ -516,7 +587,7 @@ export default function LearningRecord() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Academic Record</div>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>SAMPLE — your real record loads here</span>
+        {isSample && <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>SAMPLE — your real record loads here</span>}
       </div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>A record you own and carry — append-only, attested, portable across schools, certifications, and into work.</div>
 
@@ -526,7 +597,7 @@ export default function LearningRecord() {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: 0.5 }}>Academic Record</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginTop: 3 }}>{h.name}</div>
-            <div style={{ fontSize: 13, color: "#475569", marginTop: 2 }}>{RECORD.programs.length} programs · {entries.length} entries</div>
+            <div style={{ fontSize: 13, color: "#475569", marginTop: 2 }}>{record.programs.length} programs · {entries.length} entries</div>
             {h.kyc?.verified && <div style={{ fontSize: 11.5, fontWeight: 600, color: C.verified.text, marginTop: 6 }}>✓ Identity verified ({h.kyc.level})</div>}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -554,10 +625,10 @@ export default function LearningRecord() {
       </div>
 
       {/* INSTITUTIONS — the opening overview (formal / technical / CE) */}
-      {tab === "institutions" && <InstitutionsView flash={flash} />}
+      {tab === "institutions" && <InstitutionsView flash={flash} record={record} />}
 
       {/* JOURNEY — grouped by program */}
-      {tab === "journey" && <JourneyView />}
+      {tab === "journey" && <JourneyView record={record} />}
 
       {/* ALL ENTRIES — flat logbook, newest first */}
       {tab === "record" && (
