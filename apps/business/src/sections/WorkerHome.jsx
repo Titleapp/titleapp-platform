@@ -74,6 +74,8 @@ export default function WorkerHome() {
   useEffect(() => {
     loadWorkers();
     loadNotes();
+    const notesInterval = setInterval(loadNotes, 60000);
+    return () => clearInterval(notesInterval);
   }, []);
 
   async function loadNotes() {

@@ -5350,7 +5350,7 @@ HARD RULES:
    - WhatsApp: [WHATSAPP_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/WHATSAPP_DRAFT] — use for contacts the user says prefers WhatsApp or is more reachable that way. Supports text + optional mediaUrl for images/PDFs.
    - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
    - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE] — the approval card says "Log to CODE", not "Run". Use this when you need CODE to build something or investigate a bug.
-   - Email (Gmail): Use this EXACT multi-line format (no JSON — quotes and newlines are fine):
+   - Email (Gmail): Use this EXACT multi-line format (no JSON — quotes and newlines are fine). IMPORTANT: field names (TO:, CC:, SUBJECT:, ATTACH:, BODY:) must be plain text — NO markdown bold (**), NO asterisks, NO backticks around field names:
      [EMAIL_DRAFT]
      TO: recipient@example.com
      CC: cc@example.com (optional — omit line if not needed)
@@ -5448,11 +5448,13 @@ HOW YOU AND CODE COMMUNICATE:
                 const _cosEmailMatch = _txt.match(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/);
                 if (_cosEmailMatch) {
                   const _raw = _cosEmailMatch[1];
-                  const _toM = _raw.match(/^[ \t]*TO:[ \t]*(.+)$/mi);
-                  const _ccM = _raw.match(/^[ \t]*CC:[ \t]*(.+)$/mi);
-                  const _subM = _raw.match(/^[ \t]*SUBJECT:[ \t]*(.+)$/mi);
-                  const _bodyM = _raw.match(/^[ \t]*BODY:[ \t]*\r?\n([\s\S]*)$/mi);
-                  const _attachLines = [..._raw.matchAll(/^[ \t]*ATTACH:[ \t]*(.+)$/gmi)];
+                  // Strip markdown bold/italic markers the model sometimes inserts (e.g. **TO:** → TO:)
+                  const _r = _raw.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_(?=[A-Z])/g, '');
+                  const _toM = _r.match(/^[ \t]*TO:[ \t]*(.+)$/mi);
+                  const _ccM = _r.match(/^[ \t]*CC:[ \t]*(.+)$/mi);
+                  const _subM = _r.match(/^[ \t]*SUBJECT:[ \t]*(.+)$/mi);
+                  const _bodyM = _r.match(/^[ \t]*BODY:[ \t]*\r?\n([\s\S]*)$/mi);
+                  const _attachLines = [..._r.matchAll(/^[ \t]*ATTACH:[ \t]*(.+)$/gmi)];
                   if (_toM && _subM && _bodyM) {
                     const _attachments = _attachLines.map(m => {
                       const parts = m[1].split("|").map(s => s.trim());
