@@ -329,8 +329,9 @@ async function searchEmails(uid, query, opts = {}) {
 
 /**
  * sendEmail — send via Gmail as the connected user.
+ * attachments: [{ url, filename, mimeType? }] — fetched server-side and attached as base64 MIME parts.
  */
-async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo }) {
+async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attachments }) {
   const auth = await buildAuthedClient(uid);
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
@@ -347,16 +348,46 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo }) {
     return s;
   };
 
+  const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+  const boundary = `----=_Part_${Date.now()}`;
+
   let raw = `To: ${toLine}\r\n`;
   if (ccLine) raw += `Cc: ${ccLine}\r\n`;
   if (replyTo) raw += `Reply-To: ${replyTo}\r\n`;
   raw += `Subject: ${encodeSubject(subject)}\r\n`;
   raw += `MIME-Version: 1.0\r\n`;
 
-  if (htmlBody) {
-    raw += `Content-Type: text/html; charset=utf-8\r\n\r\n${htmlBody}`;
+  if (!hasAttachments) {
+    if (htmlBody) {
+      raw += `Content-Type: text/html; charset=utf-8\r\n\r\n${htmlBody}`;
+    } else {
+      raw += `Content-Type: text/plain; charset=utf-8\r\n\r\n${body || ""}`;
+    }
   } else {
-    raw += `Content-Type: text/plain; charset=utf-8\r\n\r\n${body || ""}`;
+    raw += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n\r\n`;
+    raw += `--${boundary}\r\n`;
+    if (htmlBody) {
+      raw += `Content-Type: text/html; charset=utf-8\r\n\r\n${htmlBody}\r\n`;
+    } else {
+      raw += `Content-Type: text/plain; charset=utf-8\r\n\r\n${body || ""}\r\n`;
+    }
+    for (const att of attachments) {
+      try {
+        const resp = await fetch(att.url);
+        if (!resp.ok) { console.warn(`[gmail] attachment fetch failed for ${att.filename}: ${resp.status}`); continue; }
+        const buf = Buffer.from(await resp.arrayBuffer());
+        const mime = att.mimeType || "application/pdf";
+        const name = att.filename || "attachment.pdf";
+        raw += `--${boundary}\r\n`;
+        raw += `Content-Type: ${mime}; name="${name}"\r\n`;
+        raw += `Content-Disposition: attachment; filename="${name}"\r\n`;
+        raw += `Content-Transfer-Encoding: base64\r\n\r\n`;
+        raw += buf.toString("base64") + "\r\n";
+      } catch (e) {
+        console.warn(`[gmail] attachment error for ${att.filename}:`, e.message);
+      }
+    }
+    raw += `--${boundary}--`;
   }
 
   const encoded = Buffer.from(raw).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");

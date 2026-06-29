@@ -4376,7 +4376,7 @@ IDENTITY RULES:
                 if (_gmailSnap.exists && _gmailSnap.data().accessToken) {
                   const _inboxCtx = _alwaysPullInbox ? await _gmail.listRecentSummary(authUser.uid, { maxResults: 8 }) : null;
                   const _gmailEmail = _gmailSnap.data().email || "connected";
-                  const _gmailNote = `\n\nGMAIL (${_gmailEmail}) — You have LIVE Gmail access. Rules:\n1. NEVER say you cannot access email.\n2. Propose emails with: [EMAIL_DRAFT]{"to":"addr","subject":"subject","body":"body"}[/EMAIL_DRAFT]\n3. Propose SMS with: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message"}[/SMS_DRAFT]\n4. Propose Telegram with: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","text":"message"}[/TELEGRAM_DRAFT]\n5. Propose CODE logs with: [GITHUB_ISSUE]{"title":"title","body":"details","labels":["bug"]}[/GITHUB_ISSUE]\n6. Platform shows approval cards for all — do NOT skip approval. NEVER say "sending now."`;
+                  const _gmailNote = `\n\nGMAIL (${_gmailEmail}) — You have LIVE Gmail access. Rules:\n1. NEVER say you cannot access email.\n2. Propose emails with: [EMAIL_DRAFT]{"to":"addr","subject":"subject","body":"body"}[/EMAIL_DRAFT]\n   To attach a file (e.g. pitch deck), add: "attachments":[{"url":"https://...","filename":"SOCIII-deck.pdf"}]\n   IMPORTANT: If you have a deckUrl, whitepaperUrl, or any document URL in context, include it as an attachment — do NOT just mention the URL in the body text.\n3. Propose SMS with: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message"}[/SMS_DRAFT]\n4. Propose Telegram with: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","text":"message"}[/TELEGRAM_DRAFT]\n5. Propose CODE logs with: [GITHUB_ISSUE]{"title":"title","body":"details","labels":["bug"]}[/GITHUB_ISSUE]\n6. Platform shows approval cards for all — do NOT skip approval. NEVER say "sending now."`;
                   if (_inboxCtx) {
                     selectedSystemPrompt += `\n\nINBOX (live):\n${_inboxCtx}${_gmailNote}`;
                   } else {
@@ -5287,9 +5287,11 @@ HARD RULES:
      TO: recipient@example.com
      CC: cc@example.com (optional — omit line if not needed)
      SUBJECT: Subject line
+     ATTACH: https://storage.googleapis.com/... | filename.pdf  (optional — one line per attachment; use when you have a deckUrl, whitepaperUrl, or any document URL in context)
      BODY:
      Full email body here — multiple lines, quotes, anything. No escaping needed.
      [/EMAIL_DRAFT]
+   ATTACHMENT RULE: If you have a deckUrl, whitepaperUrl, or any document URL in context, ALWAYS add an ATTACH line. Never just put the URL in the body text and say "see attached" — the file will not actually be attached unless you include the ATTACH line.
    Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use EMAIL_DRAFT whenever you need to draft or send an email — including outreach, follow-ups, investor emails, or any email the user asks you to write or recall. ALWAYS use EMAIL_DRAFT — NEVER say "I'm sending now." The approval card is mandatory. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
@@ -5370,7 +5372,7 @@ HOW YOU AND CODE COMMUNICATE:
                   || "Let me pull that together for you.";
 
                 // Parse [EMAIL_DRAFT] marker — line-based format avoids JSON escaping failures
-                // Format: TO: / SUBJECT: / BODY: on separate lines inside [EMAIL_DRAFT][/EMAIL_DRAFT]
+                // Format: TO: / CC: / SUBJECT: / ATTACH: url | filename (optional, repeatable) / BODY: on separate lines
                 let _cosEmailDraft = null;
                 const _cosEmailMatch = _txt.match(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/);
                 if (_cosEmailMatch) {
@@ -5379,10 +5381,21 @@ HOW YOU AND CODE COMMUNICATE:
                   const _ccM = _raw.match(/^[ \t]*CC:[ \t]*(.+)$/mi);
                   const _subM = _raw.match(/^[ \t]*SUBJECT:[ \t]*(.+)$/mi);
                   const _bodyM = _raw.match(/^[ \t]*BODY:[ \t]*\r?\n([\s\S]*)$/mi);
+                  const _attachLines = [..._raw.matchAll(/^[ \t]*ATTACH:[ \t]*(.+)$/gmi)];
                   if (_toM && _subM && _bodyM) {
-                    _cosEmailDraft = { to: _toM[1].trim(), subject: _subM[1].trim(), body: _bodyM[1].trim(), ...((_ccM && _ccM[1].trim()) ? { cc: _ccM[1].trim() } : {}) };
+                    const _attachments = _attachLines.map(m => {
+                      const parts = m[1].split("|").map(s => s.trim());
+                      return { url: parts[0], filename: parts[1] || "attachment.pdf" };
+                    }).filter(a => a.url);
+                    _cosEmailDraft = {
+                      to: _toM[1].trim(),
+                      subject: _subM[1].trim(),
+                      body: _bodyM[1].trim(),
+                      ...((_ccM && _ccM[1].trim()) ? { cc: _ccM[1].trim() } : {}),
+                      ...(_attachments.length ? { attachments: _attachments } : {}),
+                    };
                   } else {
-                    // Fallback: try JSON parse for backwards compat
+                    // Fallback: try JSON parse for backwards compat (includes attachments field)
                     try { _cosEmailDraft = JSON.parse(_raw.trim()); } catch (_) {}
                   }
                   _txt = _txt.replace(/\s*\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]\s*/g, '').trim();
@@ -26486,9 +26499,9 @@ Analyze now:`;
         }
         case "send": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          const { to, subject, body: emailBody, htmlBody, cc, replyTo } = req.body || {};
+          const { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments } = req.body || {};
           if (!to || !subject) return jsonError(res, 400, "to and subject required");
-          const sendResult = await gmail.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo });
+          const sendResult = await gmail.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
           return res.json(sendResult);
         }
         default:

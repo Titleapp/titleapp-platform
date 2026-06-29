@@ -2395,6 +2395,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     style={{ marginTop: 6, width: "100%", fontSize: 12, color: "#334155", lineHeight: 1.6, borderTop: "1px solid #f1f5f9", paddingTop: 8, border: "1px solid #e2e8f0", borderRadius: 6, padding: "8px 10px", fontFamily: "inherit", resize: "vertical", background: "#fafbfc", boxSizing: "border-box" }}
                   />
                   <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>Edit above before sending</div>
+                  {msg.emailDraft.attachments && msg.emailDraft.attachments.length > 0 && (
+                    <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {msg.emailDraft.attachments.map((att, ai) => (
+                        <span key={ai} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#475569", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 5, padding: "2px 8px" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                          {att.filename}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {schedulerOpen[`email-${idx}`] && (
                   <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2422,7 +2432,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             await fetch(`${apiBase}/api?path=/v1/message:enqueue`, {
                               method: "POST",
                               headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
-                              body: JSON.stringify({ channel: "gmail", to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined), scheduledAt }),
+                              body: JSON.stringify({ channel: "gmail", to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined), attachments: msg.emailDraft.attachments || undefined, scheduledAt }),
                             });
                             const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
                             setMessages(prev => [...prev, { role: "assistant", content: `Queued — email to ${msg.emailDraft.to} will send ${readableTime}.`, isSystem: true }]);
@@ -2446,7 +2456,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             const r = await fetch(`${apiBase}/api?path=/v1/gmail:send`, {
                               method: "POST",
                               headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
-                              body: JSON.stringify({ to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined) }),
+                              body: JSON.stringify({ to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined), attachments: msg.emailDraft.attachments || undefined }),
                             });
                             const d = await r.json();
                             setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Sent to ${msg.emailDraft.to}.` : `Send failed — please try again.`, isSystem: true }]);
