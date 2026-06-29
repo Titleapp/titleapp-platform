@@ -5350,20 +5350,8 @@ HARD RULES:
    - WhatsApp: [WHATSAPP_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/WHATSAPP_DRAFT] — use for contacts the user says prefers WhatsApp or is more reachable that way. Supports text + optional mediaUrl for images/PDFs.
    - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
    - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE] — the approval card says "Log to CODE", not "Run". Use this when you need CODE to build something or investigate a bug.
-   - Email (Gmail): Use this EXACT multi-line format (no JSON — quotes and newlines are fine). IMPORTANT: field names (TO:, CC:, SUBJECT:, ATTACH:, BODY:) must be plain text — NO markdown bold (**), NO asterisks, NO backticks around field names:
-     [EMAIL_DRAFT]
-     TO: recipient@example.com
-     CC: cc@example.com (optional — omit line if not needed)
-     SUBJECT: Subject line
-     ATTACH: https://... | filename.pdf         (standard HTTPS URL)
-     ATTACH: gs://bucket/path | filename.pptx   (Studio Locker file — use exact gs:// path from STUDIO LOCKER FILES)
-     ATTACH: gdrive://fileId | filename.pdf      (Google Drive file — use exact gdrive:// id from GOOGLE DRIVE FILES)
-     BODY:
-     Full email body here — multiple lines, quotes, anything. No escaping needed.
-     [/EMAIL_DRAFT]
-   ATTACHMENT RULE: If you have a deck, whitepaper, or any relevant file listed in GOOGLE DRIVE FILES or STUDIO LOCKER FILES, ALWAYS add an ATTACH line using the exact prefix shown above. Never put the path/URL in the body — the file will not be attached unless you include the ATTACH line.
-   CRITICAL EMAIL RULE: The [EMAIL_DRAFT]...[/EMAIL_DRAFT] block is MANDATORY every single time you propose an email — including re-proposals, corrections, test sends, and follow-ups. If you write "click to approve" or "ready to send" without including the full [EMAIL_DRAFT] block, NO approval card appears and the user cannot send anything. Never say "click to approve" without the block present. If a conversation gets confusing, just output a fresh [EMAIL_DRAFT] block with the correct recipient.
-   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use EMAIL_DRAFT whenever you need to draft or send an email — including outreach, follow-ups, investor emails, or any email the user asks you to write or recall. ALWAYS use EMAIL_DRAFT — NEVER say "I'm sending now." The approval card is mandatory. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
+   - Email (Gmail): Call the propose_email TOOL — this is the ONLY way to propose an email. Do NOT write email content in your text response. The tool accepts: to (required), subject (required), body (required), cc (optional), attachments (optional array of {url, filename}). For attachments: use exact gs://bucket/path for Studio Locker files, gdrive://fileId for Drive files, https://... for public URLs. ALWAYS attach relevant files — deck, whitepaper, any document in context. The user will see an editable email composer and must approve before anything sends.
+   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use propose_email TOOL whenever you need to send an email — outreach, follow-ups, investor emails, test sends. NEVER say "I'm sending now" or write the email in your text. Always use the tool. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
 
@@ -5395,6 +5383,25 @@ HOW YOU AND CODE COMMUNICATE:
                     description: "Save a persistent note that survives across sessions. Always save after drafting an important email, making a key decision, or receiving context you'd have to repeat.",
                     input_schema: { type: "object", properties: { title: { type: "string" }, content: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["title", "content"] },
                   },
+                  {
+                    name: "propose_email",
+                    description: "Propose an email for the user to review, edit, and approve before it sends. Use this EVERY TIME you want to send an email — outreach, follow-ups, test sends, investor emails, any email at all. The user sees an editable composer with all fields. For attachments: use gs://bucket/path for Studio Locker files, gdrive://fileId for Google Drive files, https://... for public URLs.",
+                    input_schema: {
+                      type: "object",
+                      required: ["to", "subject", "body"],
+                      properties: {
+                        to: { type: "string", description: "Recipient email address" },
+                        cc: { type: "string", description: "CC email address, optional" },
+                        subject: { type: "string", description: "Subject line" },
+                        body: { type: "string", description: "Full email body" },
+                        attachments: {
+                          type: "array",
+                          description: "Files to attach. Each item needs url and filename. gs:// = Studio Locker, gdrive:// = Drive, https:// = public URL.",
+                          items: { type: "object", required: ["url", "filename"], properties: { url: { type: "string" }, filename: { type: "string" } } },
+                        },
+                      },
+                    },
+                  },
                 ];
 
                 const anthropic = getAnthropic();
@@ -5406,46 +5413,64 @@ HOW YOU AND CODE COMMUNICATE:
                   tools: _cosTools,
                 });
 
-                // Handle tool calls from COS
-                const _cosToolBlock = _resp.content.find(b => b.type === 'tool_use');
-                if (_cosToolBlock) {
-                  let _toolResult = "";
-                  try {
-                    if (_cosToolBlock.name === 'recall_notes') {
-                      let _nDocs;
-                      try {
-                        const _nSnap = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).orderBy("createdAt", "desc").limit(20).get();
-                        _nDocs = _nSnap.docs;
-                      } catch (_) {
-                        const _nSnap2 = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).limit(20).get();
-                        _nDocs = _nSnap2.docs.sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+                // Handle tool calls from COS — may be chained (recall then propose, etc.)
+                let _cosEmailDraftFromTool = null;
+                let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
+                while (_toolsToProcess.length > 0) {
+                  const _toolResults = [];
+                  for (const _cosToolBlock of _toolsToProcess) {
+                    let _toolResult = "";
+                    try {
+                      if (_cosToolBlock.name === 'recall_notes') {
+                        let _nDocs;
+                        try {
+                          const _nSnap = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).orderBy("createdAt", "desc").limit(20).get();
+                          _nDocs = _nSnap.docs;
+                        } catch (_) {
+                          const _nSnap2 = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).limit(20).get();
+                          _nDocs = _nSnap2.docs.sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+                        }
+                        let _notes = _nDocs.map(d => ({ id: d.id, ...d.data() }));
+                        if (_cosToolBlock.input.query) {
+                          const _kw = _cosToolBlock.input.query.toLowerCase();
+                          const _f = _notes.filter(n => (n.title + " " + n.content + " " + (n.tags || []).join(" ")).toLowerCase().includes(_kw));
+                          if (_f.length) _notes = _f;
+                        }
+                        _toolResult = _notes.length
+                          ? `Found ${_notes.length} note(s):\n\n${_notes.map(n => `## ${n.title}\n${n.content}`).join("\n\n---\n\n")}`
+                          : "No notes found. Fresh session — no prior context saved.";
+                      } else if (_cosToolBlock.name === 'save_note') {
+                        const { title, content, tags } = _cosToolBlock.input;
+                        await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
+                        _toolResult = `Note saved: "${title}". I'll remember this across sessions.`;
+                      } else if (_cosToolBlock.name === 'propose_email') {
+                        // Structured email proposal — extract draft directly, no text parsing needed
+                        const { to, cc, subject, body: emailBody, attachments: emailAtts } = _cosToolBlock.input;
+                        _cosEmailDraftFromTool = {
+                          to,
+                          subject,
+                          body: emailBody,
+                          ...(cc ? { cc } : {}),
+                          ...(emailAtts && emailAtts.length ? { attachments: emailAtts } : {}),
+                        };
+                        console.log("[cosEmail:tool] propose_email called:", JSON.stringify(_cosEmailDraftFromTool).slice(0, 200));
+                        _toolResult = "Email draft ready for user review. The approval card will appear in the chat.";
                       }
-                      let _notes = _nDocs.map(d => ({ id: d.id, ...d.data() }));
-                      if (_cosToolBlock.input.query) {
-                        const _kw = _cosToolBlock.input.query.toLowerCase();
-                        const _f = _notes.filter(n => (n.title + " " + n.content + " " + (n.tags || []).join(" ")).toLowerCase().includes(_kw));
-                        if (_f.length) _notes = _f;
-                      }
-                      _toolResult = _notes.length
-                        ? `Found ${_notes.length} note(s):\n\n${_notes.map(n => `## ${n.title}\n${n.content}`).join("\n\n---\n\n")}\n\nIMPORTANT: If any note contains a VERBATIM email draft, present it EXACTLY using [EMAIL_DRAFT]{"to":"...","subject":"...","body":"..."}[/EMAIL_DRAFT] format — do not rewrite or summarize it.`
-                        : "No notes found. Fresh session — no prior context saved.";
-                    } else if (_cosToolBlock.name === 'save_note') {
-                      const { title, content, tags } = _cosToolBlock.input;
-                      await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
-                      _toolResult = `Note saved: "${title}". I'll remember this across sessions.`;
-                    }
-                  } catch (_te) { _toolResult = "Tool error: " + _te.message; }
-                  const _followUpMsgs = [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosToolBlock.id, content: _toolResult }] }];
-                  _resp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2048, system: cosPrompt, messages: _followUpMsgs, tools: [] });
+                    } catch (_te) { _toolResult = "Tool error: " + _te.message; }
+                    _toolResults.push({ type: "tool_result", tool_use_id: _cosToolBlock.id, content: _toolResult });
+                  }
+                  const _followUpMsgs = [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: _toolResults }];
+                  _resp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2048, system: cosPrompt, messages: _followUpMsgs, tools: _cosTools });
+                  _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 }
 
                 let _txt = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim()
                   || "Let me pull that together for you.";
 
-                // Parse [EMAIL_DRAFT] marker — line-based format avoids JSON escaping failures
-                // Format: TO: / CC: / SUBJECT: / ATTACH: url | filename (optional, repeatable) / BODY: on separate lines
-                let _cosEmailDraft = null;
+                // Parse [EMAIL_DRAFT] text marker as fallback (tool-use is preferred primary path)
+                let _cosEmailDraftFromText = null;
                 const _cosEmailMatch = _txt.match(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/);
+                console.log("[cosEmail] tool draft:", !!_cosEmailDraftFromTool, "| text block:", !!_cosEmailMatch, "| txt snippet:", _txt.slice(0, 200).replace(/\n/g, '↵'));
                 if (_cosEmailMatch) {
                   const _raw = _cosEmailMatch[1];
                   // Strip markdown bold/italic markers the model sometimes inserts (e.g. **TO:** → TO:)
@@ -5455,12 +5480,13 @@ HOW YOU AND CODE COMMUNICATE:
                   const _subM = _r.match(/^[ \t]*SUBJECT:[ \t]*(.+)$/mi);
                   const _bodyM = _r.match(/^[ \t]*BODY:[ \t]*\r?\n([\s\S]*)$/mi);
                   const _attachLines = [..._r.matchAll(/^[ \t]*ATTACH:[ \t]*(.+)$/gmi)];
+                  console.log("[cosEmail] text parsed: to=", _toM?.[1], "| sub=", _subM?.[1], "| bodyFound=", !!_bodyM);
                   if (_toM && _subM && _bodyM) {
                     const _attachments = _attachLines.map(m => {
                       const parts = m[1].split("|").map(s => s.trim());
                       return { url: parts[0], filename: parts[1] || "attachment.pdf" };
                     }).filter(a => a.url);
-                    _cosEmailDraft = {
+                    _cosEmailDraftFromText = {
                       to: _toM[1].trim(),
                       subject: _subM[1].trim(),
                       body: _bodyM[1].trim(),
@@ -5468,11 +5494,12 @@ HOW YOU AND CODE COMMUNICATE:
                       ...(_attachments.length ? { attachments: _attachments } : {}),
                     };
                   } else {
-                    // Fallback: try JSON parse for backwards compat (includes attachments field)
-                    try { _cosEmailDraft = JSON.parse(_raw.trim()); } catch (_) {}
+                    try { _cosEmailDraftFromText = JSON.parse(_raw.trim()); } catch (_) {}
                   }
                   _txt = _txt.replace(/\s*\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]\s*/g, '').trim();
                 }
+                // Tool-sourced draft takes priority; text-parsed is the fallback
+                const _cosEmailDraft = _cosEmailDraftFromTool || _cosEmailDraftFromText;
 
                 // Parse [GITHUB_ISSUE] — CODE task logging card
                 let _cosGithubIssue = null;
