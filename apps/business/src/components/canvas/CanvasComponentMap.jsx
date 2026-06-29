@@ -26,9 +26,6 @@ import TitleAbstractCard from "./TitleAbstractCard";
 import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
-import ContactCard from "./ContactCard";
-import BusinessAssetCard from "./BusinessAssetCard";
-import TransactionCard from "./TransactionCard";
 import WorkProductCard from "./WorkProductCard";
 import ChartCard from "./ChartCard";
 import ImageCard from "./ImageCard";
@@ -38,8 +35,10 @@ import AircraftCard from "./AircraftCard";
 import FlightPlanningCard from "./FlightPlanningCard";
 import PatentPortfolioCard from "./PatentPortfolioCard";
 import EsignAnchorCard from "./EsignAnchorCard";
+import StudentTranscriptCard from "./StudentTranscriptCard";
 import BundleOfferCard from "./BundleOfferCard";
 import ShopifyCommerceCard from "./ShopifyCommerceCard";
+import ListingScorecardCard from "./ListingScorecardCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -63,9 +62,6 @@ const CANVAS_COMPONENT_MAP = {
   RevenueDashboardCard,
   AviationCurrencyCard,
   RealEstateClosingCard,
-  ContactCard,
-  BusinessAssetCard,
-  TransactionCard,
   WorkProductCard,
   ChartCard,
   ImageCard,
@@ -75,8 +71,10 @@ const CANVAS_COMPONENT_MAP = {
   FlightPlanningCard,
   PatentPortfolioCard,
   EsignAnchorCard,
+  StudentTranscriptCard,
   BundleOfferCard,
   ShopifyCommerceCard,
+  ListingScorecardCard,
 };
 
 /**

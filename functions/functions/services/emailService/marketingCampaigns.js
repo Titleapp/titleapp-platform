@@ -51,13 +51,14 @@ async function createContactList(userId, { name, contacts }) {
     });
   }
 
-  // Log to Firestore
+  // Log to Firestore — also store contacts so the transactional fallback can use them.
   const db = getDb();
   await db.collection("emailLists").doc(listId).set({
     userId,
     name,
     sendgridListId: listId,
     contactCount: contacts?.length || 0,
+    contacts: (contacts || []).map(c => ({ email: c.email, firstName: c.firstName || c.first_name || "", lastName: c.lastName || c.last_name || "" })),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -75,45 +76,77 @@ async function sendMarketingEmail(userId, { listId, subject, htmlContent, plainC
   if (!subject) return { ok: false, error: "Missing subject" };
   if (!htmlContent) return { ok: false, error: "Missing htmlContent" };
 
-  const senderEmail = fromEmail || "alex@sociii.ai";
-  const senderName = fromName || "Alex -- SOCIII";
-
-  // Create single send
-  const sendResult = await sgFetch("/marketing/singlesends", "POST", {
-    name: subject,
-    send_to: { list_ids: [listId] },
-    email_config: {
-      subject,
-      html_content: htmlContent,
-      plain_content: plainContent || "",
-      sender_id: null,
-      custom_unsubscribe_url: "",
-      suppression_group_id: null,
-      generate_plain_content: !plainContent,
-    },
-  });
-
-  const campaignId = sendResult.id;
-
-  // Schedule send immediately
-  await sgFetch(`/marketing/singlesends/${campaignId}/schedule`, "PUT", {
-    send_at: "now",
-  });
-
-  // Log to Firestore
+  const senderEmail = fromEmail || process.env.SENDGRID_FROM_EMAIL || "alex@sociii.ai";
+  const senderName = fromName || process.env.SENDGRID_FROM_NAME || "Alex — SOCIII";
+  const senderId = process.env.SENDGRID_SENDER_ID ? Number(process.env.SENDGRID_SENDER_ID) : null;
   const db = getDb();
+  const campaignId = "mc_" + require("crypto").randomUUID().replace(/-/g, "").slice(0, 16);
+
+  if (senderId) {
+    // Proper Marketing Campaigns Single Send when sender ID is configured.
+    const sendResult = await sgFetch("/marketing/singlesends", "POST", {
+      name: subject,
+      send_to: { list_ids: [listId] },
+      email_config: {
+        subject,
+        html_content: htmlContent,
+        plain_content: plainContent || "",
+        sender_id: senderId,
+        generate_plain_content: !plainContent,
+      },
+    });
+    const sgCampaignId = sendResult.id;
+    await sgFetch(`/marketing/singlesends/${sgCampaignId}/schedule`, "PUT", { send_at: "now" });
+
+    await db.collection("emailCampaigns").doc(campaignId).set({
+      userId, listId, subject, fromName: senderName, fromEmail: senderEmail,
+      sendgridCampaignId: sgCampaignId, status: "sent", method: "singlesend",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: true, campaignId: sgCampaignId };
+  }
+
+  // Fallback: read contacts from Firestore (stored on list creation), send individually.
+  // Used when SENDGRID_SENDER_ID is not configured (e.g. sandbox / new accounts).
+  // Cap at 200 recipients to avoid runaway spend.
+  const listSnap = await db.collection("emailLists").doc(listId).get();
+  const contacts = listSnap.exists ? (listSnap.data().contacts || []).slice(0, 200) : [];
+  if (contacts.length === 0) {
+    return { ok: false, error: "No contacts found in this list — set SENDGRID_SENDER_ID to use the Marketing API, or re-create the list with inline contacts" };
+  }
+
+  const results = [];
+  for (const c of contacts) {
+    const personalHtml = htmlContent.replace(/{{first_name}}/gi, c.firstName || "there");
+    try {
+      const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: c.email, name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || undefined }] }],
+          from: { email: senderEmail, name: senderName },
+          reply_to: { email: senderEmail, name: senderName },
+          subject,
+          content: [{ type: "text/html", value: personalHtml }],
+          tracking_settings: { click_tracking: { enable: true }, open_tracking: { enable: true } },
+        }),
+      });
+      results.push({ email: c.email, ok: sgRes.ok, status: sgRes.status });
+    } catch (e) {
+      results.push({ email: c.email, ok: false, error: e.message });
+    }
+  }
+
   await db.collection("emailCampaigns").doc(campaignId).set({
-    userId,
-    listId,
-    subject,
-    fromName: senderName,
-    fromEmail: senderEmail,
-    sendgridCampaignId: campaignId,
-    status: "sent",
+    userId, listId, subject, fromName: senderName, fromEmail: senderEmail,
+    status: "sent", method: "transactional_fallback",
+    sentCount: results.filter(r => r.ok).length,
+    failCount: results.filter(r => !r.ok).length,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { ok: true, campaignId };
+  const okCount = results.filter(r => r.ok).length;
+  return { ok: okCount > 0, campaignId, sentCount: okCount, failCount: results.length - okCount };
 }
 
 /**

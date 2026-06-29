@@ -1,12 +1,18 @@
 {
-  "version": "1.0.0",
-  "lastUpdated": "2026-06-23",
-  "rules": {
-    "no_undeclared_endpoints": true,
-    "chat_and_web_parity": true,
-    "audit_and_event_required": true,
-    "permission_matrix_is_source_of_truth": true,
-    "lego_model_add_only": true
+  "version": "1.1.0",
+  "lastUpdated": "2026-06-28",
+  "_enforcement": {
+    "status": "design_doc",
+    "note": "This file is the authoritative design contract, NOT runtime-enforced middleware. Routes in index.js do not check this registry before executing. Enforcement target: capabilities-as-middleware in a future phase. Until then, this file serves as the human-readable permission matrix and drift tracker.",
+    "runtimeEnforced": false,
+    "enforceByVersion": "2.0.0"
+  },
+  "principles": {
+    "no_undeclared_endpoints": "INTENT — every API route should map to a declared capability here. Currently descriptive, not enforced.",
+    "chat_and_web_parity": "INTENT — chat and UI should have access to the same capability set.",
+    "audit_and_event_required": "ENFORCED — emitsEvent/writesAudit fields are accurate per implementation.",
+    "permission_matrix_is_source_of_truth": "INTENT — callers/roles/kyc declared here should match route guards in index.js.",
+    "lego_model_add_only": "ENFORCED — never silently modify an existing capability id; create v2."
   },
   "kycLevels": [
     "KYC-0",
@@ -1087,6 +1093,193 @@
       "requiredRoles": [],
       "emitsEvent": true,
       "writesAudit": true
+    },
+    {
+      "id": "vault.create_dtc_v1",
+      "class": "vault",
+      "summary": "Create a new Digital Title Certificate in the personal Vault (home, vehicle, credentials, health, money).",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "vault.append_logbook_v1",
+      "class": "vault",
+      "summary": "Append an immutable logbook entry to an existing DTC (service records, attestations, course completions).",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "vault.lookup_assets_v1",
+      "class": "vault",
+      "summary": "Query personal Vault assets by type or keyword. Used by workers to find dtcId before logbook writes.",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "marketing.schedule_social_post_v1",
+      "class": "marketing",
+      "summary": "Draft and schedule a social media post (X, YouTube, TikTok) with optional Fal.ai-generated image. Requires human approval.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "marketing.send_email_campaign_v1",
+      "class": "marketing",
+      "summary": "Send or schedule a marketing email blast to a contact list via SendGrid. Requires human approval.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "marketing.create_contact_list_v1",
+      "class": "marketing",
+      "summary": "Create a named email contact list in SendGrid and sync to Firestore.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "marketing.generate_creative_v1",
+      "class": "marketing",
+      "summary": "Generate campaign creative (images, copy) via Fal.ai image generation. Subject to RAAS image governance (NSFW gate, no real-location fabrication).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "comms.send_email_v1",
+      "class": "comms",
+      "summary": "Send a transactional email via SendGrid or personal Gmail OAuth. Requires human approval when called from chat.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "system"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "comms.send_sms_v1",
+      "class": "comms",
+      "summary": "Send an SMS via Twilio. Requires human approval when called from chat. Respects smsOptOut flag.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "system"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "comms.send_telegram_v1",
+      "class": "comms",
+      "summary": "Send a Telegram message to owner or advisor group via the SOCIII bot. Requires human approval from chat.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "system"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": false
+    },
+    {
+      "id": "comms.queue_message_v1",
+      "class": "comms",
+      "summary": "Enqueue a scheduled message (email/SMS/telegram) for future delivery. Processed by messageQueueProcessor every 15 min.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "system"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": false
+    },
+    {
+      "id": "drive.connect_oauth_v1",
+      "class": "drive",
+      "summary": "Connect Google Drive or OneDrive via OAuth. Stores encrypted tokens per-user.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "drive.save_document_v1",
+      "class": "drive",
+      "summary": "Save a document generated by Alex to the user's connected Google Drive or OneDrive. Requires human approval.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.get_weather_v1",
+      "class": "aviation",
+      "summary": "Fetch live METAR/TAF/SIGMET from aviationweather.gov for a given station or area.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.get_notams_v1",
+      "class": "aviation",
+      "summary": "Fetch active NOTAMs from Notamify (paid/metered). Requires NOTAMIFY_API_KEY.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.get_traffic_v1",
+      "class": "aviation",
+      "summary": "Fetch real-time ADS-B traffic from ADS-B Exchange (paid/metered). Requires ADSB_API_KEY.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.check_currency_v1",
+      "class": "aviation",
+      "summary": "Check pilot currency status (day/night IFR/recent landings) against FAR requirements from Vault logbook data.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
     }
   ]
 }

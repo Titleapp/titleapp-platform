@@ -101,12 +101,12 @@ The chat interface is the **primary user experience** — Door 1 (admin dashboar
 ## Tech Stack
 
 - **Frontend:** React 19, Vite, Firebase SDK 12
-- **Backend:** Firebase Functions v2, Node.js 20, Firebase Admin SDK, Stripe SDK
+- **Backend:** Firebase Functions v2, Node.js 22, Firebase Admin SDK, Stripe SDK
 - **Database:** Firestore (append-only event store)
 - **Storage:** Firebase Cloud Storage
 - **Auth:** Firebase Authentication (email/password) + Stripe Identity (KYC)
 - **Edge:** Cloudflare Workers
-- **Node version:** 20 (enforced via `.nvmrc`)
+- **Node version:** 22 (`.nvmrc`, `package.json engines`, and `firebase.json` runtime all set to 22)
 
 ## Terminology
 

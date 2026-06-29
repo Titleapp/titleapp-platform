@@ -130,6 +130,131 @@ function checkNsfw(prompt) {
   return { blocked: false };
 }
 
+// ── IMG-02: real-location fabrication patterns ────────────────
+const _MAP_VOCAB = /\b(satellite|aerial|bird'?s.?eye|drone|map of|aerial view|street ?view|topograph|parcel|lot ?lines?|plat ?map|site ?plan|floor ?plan|survey ?map|google ?maps?|real ?estate (photo|listing|image))\b/i;
+const _PROP_PHOTO = /\b(photo|picture|image|render(ing)?|view)\b[\s\S]{0,40}\b(house|home|property|building|lot|land|parcel|residence|address)\b/i;
+const _STREET_ADDR = /\b\d{1,6}\s+[\w.'-]+(\s+[\w.'-]+){0,3}\s+(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|way|ct|court|pl|place|hwy|highway|cir|circle|ter|terrace)\b/i;
+
+// ── IMG-03: realistic named individuals ──────────────────────
+// Catches "[realistic|photorealistic|hyperrealistic|photo] [of|portrait] <Name>"
+// and "headshot of <Firstname Lastname>" patterns.
+const _REAL_PERSON_PATTERNS = [
+  /\b(?:realistic|photorealistic|hyperrealistic|lifelike)\b[\s\S]{0,30}\b(?:photo(?:graph)?|portrait|headshot|image)\b[\s\S]{0,30}\bof\b[\s\S]{0,20}[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/,
+  /\b(?:photo(?:graph)?|portrait|headshot)\b[\s\S]{0,20}\bof\b[\s\S]{0,20}[A-Z][a-z]+\s+[A-Z][a-z]+/,
+  /\b(?:photo(?:graph)?|portrait|headshot)\s+of\s+(?:President|Senator|CEO|Prime\s+Minister|Chancellor|Governor|Mayor)\s+[A-Z]/i,
+];
+
+// ── IMG-04: brand logos / trademarks ─────────────────────────
+// Catches requests for well-known brand marks. Not exhaustive — catches the
+// most common patterns. Creators using their OWN brand pass is_own_brand: true.
+const _TRADEMARK_PATTERNS = [
+  /\b(?:nike|adidas|apple|google|microsoft|meta|amazon|starbucks|mcdonald'?s|coca.cola|pepsi|disney|netflix|tesla|twitter|instagram|facebook|youtube|tiktok|snapchat|uber|airbnb|spotify|samsung|louis\s+vuitton|gucci|chanel|hermes|rolex|ferrari|lamborghini)\s+(?:logo|brand mark|trademark|icon|wordmark)\b/i,
+  /\b(?:logo|brand mark|trademark|wordmark)\b[\s\S]{0,20}\b(?:nike|adidas|apple|google|microsoft|meta|amazon|starbucks|mcdonald'?s|coca.cola|pepsi|disney|netflix|tesla)\b/i,
+];
+
+/**
+ * W-IMG-001 RAAS governance pre-flight for image generation.
+ *
+ * Runs BEFORE any fal.ai call or billing charge. Checks all four blocking
+ * rules (IMG-01 through IMG-04). Returns { ok: true } if the prompt is clean,
+ * or { ok: false, reason, rule } if it must be blocked.
+ *
+ * Blocked attempts are logged to auditLedger asynchronously — the caller
+ * does not need to await the log write (fire-and-forget is fine here; the
+ * record is best-effort and must not block the user response path).
+ *
+ * @param {string} prompt
+ * @param {string} [vertical] — worker vertical (e.g. "real-estate", "marketing")
+ * @param {object} [ctx] — optional context for audit logging
+ * @param {string} [ctx.workerId]
+ * @param {string} [ctx.userId]
+ * @param {string} [ctx.tenantId]
+ * @param {boolean} [ctx.isOwnBrand] — skip IMG-04 if creator confirmed own-brand
+ * @returns {{ ok: boolean, reason?: string, rule?: string }}
+ */
+function validateImagePrompt(prompt, vertical, ctx = {}) {
+  const p = String(prompt || "");
+
+  // IMG-01 — NSFW
+  for (const pattern of NSFW_PATTERNS) {
+    // Reset lastIndex for global patterns (avoid stateful regex bugs)
+    if (pattern.global) pattern.lastIndex = 0;
+    if (pattern.test(p)) {
+      _logImageBlocked({ rule: "IMG-01", reason: "Prompt contains NSFW or prohibited content.", prompt: p, vertical, ctx });
+      return { ok: false, reason: "This image cannot be generated — it contains prohibited content (NSFW, graphic violence, or drug references). Please describe a different visual.", rule: "IMG-01" };
+    }
+  }
+
+  // IMG-02 — Real-location fabrication
+  if (_MAP_VOCAB.test(p) || _PROP_PHOTO.test(p) || _STREET_ADDR.test(p)) {
+    _logImageBlocked({ rule: "IMG-02", reason: "Real-location fabrication blocked.", prompt: p, vertical, ctx });
+    return {
+      ok: false,
+      reason: "I can't generate a map, satellite view, or photo of a real location — a generated image would be a fabrication, not a real photograph. Use a real data source instead (emit a card:re-map marker for the address, or use a Google Static Maps tile for aerial/satellite views).",
+      rule: "IMG-02",
+    };
+  }
+
+  // IMG-03 — Realistic named individuals / deepfakes
+  for (const pattern of _REAL_PERSON_PATTERNS) {
+    if (pattern.test(p)) {
+      _logImageBlocked({ rule: "IMG-03", reason: "Realistic depiction of named individual blocked.", prompt: p, vertical, ctx });
+      return {
+        ok: false,
+        reason: "I can't generate a realistic photo or portrait of a named real person — this could be mistaken for a real photograph. Use a clearly stylized or cartoon illustration of a generic, unnamed person instead.",
+        rule: "IMG-03",
+      };
+    }
+  }
+
+  // IMG-04 — Brand logos / trademarks (skip if creator confirmed own brand)
+  if (!ctx.isOwnBrand) {
+    for (const pattern of _TRADEMARK_PATTERNS) {
+      if (pattern.test(p)) {
+        _logImageBlocked({ rule: "IMG-04", reason: "Third-party trademark reproduction blocked.", prompt: p, vertical, ctx });
+        return {
+          ok: false,
+          reason: "I can't reproduce a third-party brand logo or trademark. Design an original logo instead, or describe your own brand mark.",
+          rule: "IMG-04",
+        };
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Fire-and-forget audit log for a blocked image prompt.
+ * Writes to auditLedger (consistent with capability audit pattern).
+ * Never throws — errors are swallowed so the block response is never delayed.
+ * @private
+ */
+function _logImageBlocked({ rule, reason, prompt, vertical, ctx }) {
+  try {
+    const db = getDb();
+    const entry = {
+      actionType: "image_blocked",
+      rule,
+      reason,
+      promptSnippet: String(prompt || "").slice(0, 120),
+      vertical: vertical || null,
+      workerId: ctx.workerId || null,
+      userId: ctx.userId || null,
+      tenantId: ctx.tenantId || null,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    // Fire-and-forget — do not await
+    db.collection("auditLedger").add(entry).catch(e => {
+      console.warn("[image:governance] auditLedger write failed:", e.message);
+    });
+    console.warn(`[image:governance] BLOCKED rule=${rule} vertical=${vertical || "none"} prompt="${String(prompt || "").slice(0, 80)}"`);
+  } catch (e) {
+    // Never propagate — the block response is what matters
+    console.warn("[image:governance] _logImageBlocked error:", e.message);
+  }
+}
+
 /**
  * Build styled prompt from user input.
  * @param {string} userPrompt
@@ -388,7 +513,37 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   await storeAsset({ workerId, creatorId, imageUrl, prompt: finalPrompt, style, model: DEFAULT_MODEL, assetId });
   await logUsageEvent({ userId: creatorId, workerId, model: DEFAULT_MODEL, cost: 0.008, parentInteractionId, tenantId });
 
+  // ── RAAS governance audit (#80) — immutable record of every generation decision.
+  // Captures what governance actions ran, what was scrubbed, what reached fal.ai.
+  const governanceActions = [];
+  if (phiScrubbed)       governanceActions.push({ rule: "phi_scrub", vertical, applied: true });
+  if (aviationScrubbed)  governanceActions.push({ rule: "aviation_pii_scrub", vertical, applied: true });
+  governanceActions.push({ rule: "nsfw_gate", applied: false /* would have blocked above */ });
+  governanceActions.push({ rule: "real_location_gate", applied: false });
+
+  try {
+    await getDb().collection("imageGovernanceAudit").add({
+      workerId: workerId || null,
+      userId: creatorId || null,
+      tenantId: tenantId || null,
+      assetId,
+      vertical: vertical || null,
+      style: style || "cartoon",
+      promptOriginal: prompt,
+      promptSent: finalPrompt,
+      promptWasScrubbed: phiScrubbed || aviationScrubbed,
+      model: DEFAULT_MODEL,
+      imageUrl,
+      governanceActions,
+      outcome: "generated",
+      chargedCredits: _chargedCredits,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (auditErr) {
+    console.warn("[image:generator] Governance audit write failed:", auditErr.message);
+  }
+
   return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed, chargedCredits: _chargedCredits, priceUsd: _chargedCredits > 0 ? IMAGE_PRICE_USD : 0 };
 }
 
-module.exports = { generateImage, buildPrompt, scrubPhi, scrubAviationPii, checkNsfw };
+module.exports = { generateImage, buildPrompt, scrubPhi, scrubAviationPii, checkNsfw, validateImagePrompt };

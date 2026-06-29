@@ -346,6 +346,16 @@ export const CANVAS_TYPES = {
     _title: "Course Content",
   },
 
+  // Student transcript — #74 course-level granularity (clinical hours, assignments, assessments, grades)
+  "card:student-transcript": {
+    component: "StudentTranscriptCard",
+    dataSource: "firestore",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Your course-by-course transcript will appear here as your instructor records assessments, reflections, and clinical hours.",
+    _title: "Student Transcript",
+  },
+
   // Patent portfolio + deadline engine
   "patent:portfolio": {
     component: "PatentPortfolioCard",
@@ -374,6 +384,17 @@ export const CANVAS_TYPES = {
     mobileFallback: "inline-card",
     emptyPrompt: "Tell Alex when you complete a signing — I'll create a SOCIII anchor record.",
     _title: "Signed Documents",
+  },
+
+  // Listing Readiness scorecard — real-estate listing worker (S52.47)
+  // Worker emits |||CANVAS_RENDER|||{type:"card:listing-readiness",...}|||END_CANVAS|||
+  "card:listing-readiness": {
+    component: "ListingScorecardCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask the Listing Readiness worker about a property to see its scorecard here.",
+    _title: "Listing Readiness",
   },
 
   // Generic work product (any worker, fallback)

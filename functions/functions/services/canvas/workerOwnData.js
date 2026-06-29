@@ -98,21 +98,66 @@ async function eduCohortBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
-// ── Marketing campaigns (detail on top of spineState's counts) ──
-async function marketingBlock(db, tenantId) {
+// ── Marketing campaigns + social post history (detail on top of spineState's counts) ──
+async function marketingBlock(db, tenantId, uid) {
+  const lines = [];
+
+  // Campaign KPIs
   const snap = await safe(db.collection("campaigns").where("tenantId", "==", tenantId).get(), null);
   let campaigns = docs(snap);
-  if (!campaigns.length) return "";
-  campaigns = campaigns.map(c => {
-    const ctr = c.impressions ? Math.round((c.clicks / c.impressions) * 1000) / 10 : 0;
-    const cpl = c.conversions ? Math.round((c.spend || 0) / c.conversions) : null;
-    return { ...c, ctr, cpl };
-  }).sort((a, b) => (b.conversions || 0) - (a.conversions || 0) || (b.ctr - a.ctr));
-  const fmt = (c) => `${c.name}${c.channel ? ` (${c.channel})` : ""} — ${c.conversions || 0} leads, ${c.ctr}% CTR, ${(c.impressions || 0).toLocaleString()} impressions, $${c.spend || 0} spend${c.cpl != null ? `, $${c.cpl}/lead` : ""}`;
-  const lines = [`YOUR OWN RECORDS — Marketing campaigns (${campaigns.length} active):`];
-  lines.push(`TOP PERFORMER: ${fmt(campaigns[0])}`);
-  lines.push("ALL CAMPAIGNS (best first):\n" + campaigns.map(c => `- ${fmt(c)}`).join("\n"));
-  return lines.join("\n") + "\n\n";
+  if (campaigns.length) {
+    campaigns = campaigns.map(c => {
+      const ctr = c.impressions ? Math.round((c.clicks / c.impressions) * 1000) / 10 : 0;
+      const cpl = c.conversions ? Math.round((c.spend || 0) / c.conversions) : null;
+      return { ...c, ctr, cpl };
+    }).sort((a, b) => (b.conversions || 0) - (a.conversions || 0) || (b.ctr - a.ctr));
+    const fmt = (c) => `${c.name}${c.channel ? ` (${c.channel})` : ""} — ${c.conversions || 0} leads, ${c.ctr}% CTR, ${(c.impressions || 0).toLocaleString()} impressions, $${c.spend || 0} spend${c.cpl != null ? `, $${c.cpl}/lead` : ""}`;
+    lines.push(`YOUR OWN RECORDS — Marketing campaigns (${campaigns.length} active):`);
+    lines.push(`TOP PERFORMER: ${fmt(campaigns[0])}`);
+    lines.push("ALL CAMPAIGNS (best first):\n" + campaigns.map(c => `- ${fmt(c)}`).join("\n"));
+    lines.push("");
+  }
+
+  // Recent social posts (shows what's already been posted so Alex doesn't re-post)
+  if (uid) {
+    const postsSnap = await safe(db.collection("socialPosts").where("userId", "==", uid).orderBy("createdAt", "desc").limit(5).get(), null);
+    const posts = docs(postsSnap);
+    if (posts.length) {
+      lines.push("RECENT SOCIAL POSTS (last 5 — do NOT re-post these):");
+      posts.forEach(p => {
+        const platforms = (p.platforms || []).join("+");
+        const preview = (p.content || "").slice(0, 80).replace(/\n/g, " ");
+        const results = Object.entries(p.results || {}).map(([pl, r]) => `${pl}:${r.ok ? "✓" : "✗"}`).join(" ");
+        lines.push(`  [${platforms}] "${preview}..." ${results}`);
+      });
+      lines.push("");
+    }
+
+    // Scheduled drafts (upcoming queue)
+    const draftsSnap = await safe(db.collection("marketingDrafts").where("userId", "==", uid).where("status", "==", "draft").limit(5).get(), null);
+    const drafts = docs(draftsSnap);
+    if (drafts.length) {
+      lines.push("SCHEDULED DRAFTS (queued, not yet posted):");
+      drafts.forEach(d => {
+        const platforms = (d.platforms || []).join("+");
+        const preview = (d.content || "").slice(0, 60).replace(/\n/g, " ");
+        const when = d.scheduledAt ? (typeof d.scheduledAt.toDate === "function" ? d.scheduledAt.toDate().toISOString().slice(0, 16) : String(d.scheduledAt)) : "immediate";
+        lines.push(`  [${platforms}] "${preview}..." — fires ${when}`);
+      });
+      lines.push("");
+    }
+
+    // Email contact list count
+    const listsSnap = await safe(db.collection("emailLists").where("userId", "==", uid).limit(5).get(), null);
+    const lists = docs(listsSnap);
+    if (lists.length) {
+      const totalContacts = lists.reduce((s, l) => s + (l.contactCount || 0), 0);
+      lines.push(`EMAIL LISTS: ${lists.length} list(s), ${totalContacts} total contacts available for blast.`);
+      lines.push("");
+    }
+  }
+
+  return lines.length ? lines.join("\n") + "\n\n" : "";
 }
 
 // ── Accounting (real YTD + MTD totals, so chat matches the dashboard) ──
@@ -214,14 +259,15 @@ const BUILDERS = {
  * @param {object} args.db        Firestore admin db
  * @param {string} args.tenantId  caller's tenant
  * @param {string} args.workerSlug active worker
+ * @param {string} [args.uid]     authenticated user id (enriches per-user blocks like marketing)
  * @returns {Promise<string>} grounding block ("" if none / no data)
  */
-async function buildWorkerOwnData({ db, tenantId, workerSlug }) {
+async function buildWorkerOwnData({ db, tenantId, workerSlug, uid }) {
   if (!db || !tenantId || tenantId === "vault" || !workerSlug) return "";
   const builder = BUILDERS[workerSlug];
   if (!builder) return "";
   try {
-    const block = await builder(db, tenantId);
+    const block = await builder(db, tenantId, uid);
     if (!block) return "";
     return block + "Ground every answer in YOUR OWN RECORDS above — these are the real records on this workspace's canvas right now. Cite specific names, numbers, and dates from them. Never say you lack access to this data or ask the user to upload it.\n\n";
   } catch (e) {

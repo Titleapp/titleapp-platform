@@ -241,14 +241,23 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       setIsResizing(false);
     }
 
+    function handleTouchMove(e) {
+      if (!e.touches[0]) return;
+      handleResizeMove({ clientX: e.touches[0].clientX });
+    }
+
     document.addEventListener("mousemove", handleResizeMove);
     document.addEventListener("mouseup", handleResizeEnd);
+    document.addEventListener("touchmove", handleTouchMove, { passive: true });
+    document.addEventListener("touchend", handleResizeEnd);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
 
     return () => {
       document.removeEventListener("mousemove", handleResizeMove);
       document.removeEventListener("mouseup", handleResizeEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleResizeEnd);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
@@ -526,6 +535,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       <div
         className={`resizeHandle${isResizing === "sidebar" ? " active" : ""}`}
         onMouseDown={handleSidebarResizeStart}
+        onTouchStart={handleSidebarResizeStart}
         onDoubleClick={() => {
           setSidebarWidth(220);
           localStorage.setItem("SIDEBAR_WIDTH", "220");
@@ -546,6 +556,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         <div
           className={`resizeHandle${isResizing === "chat" ? " active" : ""}`}
           onMouseDown={handleChatResizeStart}
+          onTouchStart={handleChatResizeStart}
           onDoubleClick={() => {
             setChatWidth(40);
             localStorage.setItem("PANEL_WIDTH", "40");

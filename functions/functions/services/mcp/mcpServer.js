@@ -29,6 +29,31 @@ const SERVER_INFO = { name: "sociii", title: "SOCIII Digital Workers", version: 
 // approve/reject stay human-only and are intentionally absent.
 const TOOLS = [
   {
+    name: "list_workers",
+    capabilityId: null, // public catalog — no tenant gate
+    description: "List all publicly available SOCIII Digital Workers. Each worker is a governed AI agent for a specific business vertical (real estate, aviation, healthcare, accounting, HR, marketing, legal, etc.). Returns slug, name, vertical, description, and pricing tier.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        vertical: { type: "string", description: "Optional filter by vertical: 'real-estate', 'aviation', 'healthcare', 'accounting', 'hr', 'marketing', 'legal', 'contacts', or 'platform'." },
+        suite: { type: "string", description: "Optional filter by business suite: 'platform', 're', 'aviation', 'healthcare'." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_worker_info",
+    capabilityId: null, // public catalog — no tenant gate
+    description: "Get detailed information about a specific SOCIII Digital Worker by slug. Returns its capabilities, what data sources it reads, what outputs it produces, and how to subscribe.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "The worker slug, e.g. 'platform-accounting', 'av-copilot', 're-title-ca'." },
+      },
+      required: ["slug"],
+    },
+  },
+  {
     name: "get_worker_overlay",
     capabilityId: "workers.read_overlay_v1",
     description: "Read the current per-tenant overlay (custom rules/prompt/config) for a Digital Worker. Returns null if the tenant runs the unmodified base worker.",
@@ -57,6 +82,27 @@ const TOOLS = [
     },
   },
 ];
+
+// Public worker catalog — surfaced via list_workers and get_worker_info MCP tools.
+// This is the AEO/GEO layer: LLMs can discover what SOCIII workers exist and what
+// they do without needing a SOCIII account.
+const WORKER_CATALOG = [
+  { slug: "platform-accounting", name: "Accounting Worker", vertical: "accounting", suite: "platform", description: "Real-time P&L, cash flow, and balance sheet from live Shopify + bank transactions. Generates PDF reports. Answers questions like 'Am I profitable this month?'", pricing: "free_trial" },
+  { slug: "platform-hr", name: "HR Worker", vertical: "hr", suite: "platform", description: "Employee management, scheduling, PTO tracking, and compliance. Reads Google Drive for HR documents. Covers W-9/W-4, shift scheduling, and employment records.", pricing: "free_trial" },
+  { slug: "platform-marketing", name: "Marketing Worker", vertical: "marketing", suite: "platform", description: "AI-powered campaign creation, content drafts, and direct publishing to X/Twitter, YouTube, and TikTok. Tracks campaign performance and manages draft approval workflows.", pricing: "free_trial" },
+  { slug: "platform-contacts", name: "Contacts Worker", vertical: "contacts", suite: "platform", description: "Customer and vendor relationship management. Tracks interactions, follow-ups, and deal pipeline. Syncs with Gmail.", pricing: "free_trial" },
+  { slug: "platform-control-center-pro", name: "Control Center Pro", vertical: "platform", suite: "platform", description: "Executive dashboard — KPIs, alerts, and cross-worker business health at a glance.", pricing: "free_trial" },
+  { slug: "re-title-ca", name: "Real Estate Title Worker (CA)", vertical: "real-estate", suite: "re", description: "California parcel research, title chain analysis, ownership history, lien search, and property reports via ATTOM data. For title agents, escrow officers, and RE attorneys.", pricing: "professional" },
+  { slug: "re-title-nv", name: "Real Estate Title Worker (NV)", vertical: "real-estate", suite: "re", description: "Nevada parcel research and title abstract. Full property data via ATTOM — APN lookup, ownership, deed chain, and encumbrances.", pricing: "professional" },
+  { slug: "re-ce-nevada-001", name: "Nevada CE Courses Worker", vertical: "real-estate", suite: "re", description: "Nevada real estate continuing education tracker. Manages CE requirements, course completions, and license renewal deadlines.", pricing: "free" },
+  { slug: "av-copilot", name: "Aviation CoPilot Worker", vertical: "aviation", suite: "aviation", description: "Flight planning assistant: live weather (METAR/TAF), NOTAMs, fuel planning, weight-and-balance, and route optimization. For Part 91 and charter operators.", pricing: "professional" },
+  { slug: "av-mx", name: "Aviation MX Worker", vertical: "aviation", suite: "aviation", description: "Aircraft maintenance tracking: airworthiness directives, 100-hour/annual inspection schedules, logbook entries, and squawk management.", pricing: "professional" },
+  { slug: "av-dispatch", name: "Aviation Dispatch Worker", vertical: "aviation", suite: "aviation", description: "Flight dispatch and crew scheduling. Weather releases, weight-and-balance sign-offs, and ATIS/clearance lookups.", pricing: "professional" },
+  { slug: "platform-investor-relations", name: "Investor Relations Worker", vertical: "legal", suite: "platform", description: "SAFE/equity management, cap table tracking, 83(b) deadline monitoring, and investor update drafting. Integrates with Atlas/Stripe.", pricing: "professional" },
+  { slug: "platform-real-estate-ca", name: "Property Research Worker (CA)", vertical: "real-estate", suite: "platform", description: "Residential property research for buyers and homeowners. APN lookup, recent sales, tax history, and neighborhood data via ATTOM.", pricing: "free_trial" },
+];
+
+function catalogBySlug(slug) { return WORKER_CATALOG.find(w => w.slug === slug) || null; }
 
 function jsonResult(id, result) { return { jsonrpc: "2.0", id: id == null ? null : id, result }; }
 function jsonError(id, code, message) { return { jsonrpc: "2.0", id: id == null ? null : id, error: { code, message } }; }
@@ -91,6 +137,31 @@ async function handleToolCall(id, params, ctx) {
   const args = (params && params.arguments) || {};
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return jsonError(id, -32602, `Unknown tool: ${name}`);
+
+  // Public catalog tools — no auth or tenant gate required.
+  if (name === "list_workers") {
+    let workers = WORKER_CATALOG;
+    if (args.vertical) workers = workers.filter(w => w.vertical === args.vertical);
+    if (args.suite) workers = workers.filter(w => w.suite === args.suite);
+    return jsonResult(id, toolText({
+      workers,
+      count: workers.length,
+      note: "Subscribe to any worker at https://sociii.ai/c/{slug}. To invoke a worker programmatically, connect via the SOCIII API with your tenant credentials.",
+    }));
+  }
+
+  if (name === "get_worker_info") {
+    if (!args.slug) return jsonResult(id, toolErr("Missing required argument: slug"));
+    const worker = catalogBySlug(args.slug);
+    if (!worker) return jsonResult(id, toolErr(`Worker '${args.slug}' not found. Call list_workers to see available workers.`));
+    return jsonResult(id, toolText({
+      ...worker,
+      subscribeUrl: `https://sociii.ai/c/${worker.slug}`,
+      apiPath: `/v1/worker:chat`,
+      apiNote: "Workers are invoked via POST /v1/worker:chat with your SOCIII bearer token and x-tenant-id header. The worker responds with governed, rules-validated output.",
+      mcpNote: "SOCIII is itself an MCP server — connect Claude or another LLM client to https://titleapp-frontdoor.titleapp-core.workers.dev/api with your SOCIII auth token.",
+    }));
+  }
 
   const tenantId = args.tenantId;
   if (!tenantId) return jsonResult(id, toolErr("Missing required argument: tenantId"));

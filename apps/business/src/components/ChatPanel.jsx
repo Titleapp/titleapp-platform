@@ -1684,6 +1684,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [savingDraftIdx, setSavingDraftIdx] = useState(null);
   const [draftToast, setDraftToast] = useState(null);
   const [sentEmailDrafts, setSentEmailDrafts] = useState(new Set());
+  const [editedEmailBodies, setEditedEmailBodies] = useState({});
+  const [editedEmailCcs, setEditedEmailCcs] = useState({});
   const [dismissedSmsDrafts, setDismissedSmsDrafts] = useState(new Set());
   const [dismissedTelegramDrafts, setDismissedTelegramDrafts] = useState(new Set());
   const [dismissedGithubIssues, setDismissedGithubIssues] = useState(new Set());
@@ -2375,8 +2377,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 </div>
                 <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>To: </span>{msg.emailDraft.to}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontWeight: 600, color: "#334155" }}>CC: </span>
+                    <input
+                      type="text"
+                      placeholder="cc@example.com (optional)"
+                      value={editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || "")}
+                      onChange={e => setEditedEmailCcs(prev => ({ ...prev, [idx]: e.target.value }))}
+                      style={{ flex: 1, fontSize: 12, color: "#334155", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit", background: "#fafbfc" }}
+                    />
+                  </div>
                   <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Subject: </span>{msg.emailDraft.subject}</div>
-                  <div style={{ fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.emailDraft.body}</div>
+                  <textarea
+                    value={editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body}
+                    onChange={e => setEditedEmailBodies(prev => ({ ...prev, [idx]: e.target.value }))}
+                    rows={12}
+                    style={{ marginTop: 6, width: "100%", fontSize: 12, color: "#334155", lineHeight: 1.6, borderTop: "1px solid #f1f5f9", paddingTop: 8, border: "1px solid #e2e8f0", borderRadius: 6, padding: "8px 10px", fontFamily: "inherit", resize: "vertical", background: "#fafbfc", boxSizing: "border-box" }}
+                  />
+                  <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>Edit above before sending</div>
                 </div>
                 {schedulerOpen[`email-${idx}`] && (
                   <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2404,7 +2422,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             await fetch(`${apiBase}/api?path=/v1/message:enqueue`, {
                               method: "POST",
                               headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
-                              body: JSON.stringify({ channel: "gmail", to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: msg.emailDraft.body, scheduledAt }),
+                              body: JSON.stringify({ channel: "gmail", to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined), scheduledAt }),
                             });
                             const readableTime = new Date(scheduledAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
                             setMessages(prev => [...prev, { role: "assistant", content: `Queued — email to ${msg.emailDraft.to} will send ${readableTime}.`, isSystem: true }]);
@@ -2428,10 +2446,20 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             const r = await fetch(`${apiBase}/api?path=/v1/gmail:send`, {
                               method: "POST",
                               headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
-                              body: JSON.stringify({ to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: msg.emailDraft.body }),
+                              body: JSON.stringify({ to: msg.emailDraft.to, subject: msg.emailDraft.subject, body: editedEmailBodies[idx] !== undefined ? editedEmailBodies[idx] : msg.emailDraft.body, cc: editedEmailCcs[idx] !== undefined ? editedEmailCcs[idx] : (msg.emailDraft.cc || undefined) }),
                             });
                             const d = await r.json();
                             setMessages(prev => [...prev, { role: "assistant", content: d.ok ? `Sent to ${msg.emailDraft.to}.` : `Send failed — please try again.`, isSystem: true }]);
+                            // Learning signal: if Sean edited the body, save the diff so Alex learns his patterns
+                            if (d.ok && editedEmailBodies[idx] !== undefined && editedEmailBodies[idx] !== msg.emailDraft.body) {
+                              try {
+                                fetch(`${apiBase}/api?path=/v1/alex:learn`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                                  body: JSON.stringify({ type: "email_edit", subject: msg.emailDraft.subject, to: msg.emailDraft.to, alexDraft: msg.emailDraft.body, seanSent: editedEmailBodies[idx] }),
+                                });
+                              } catch (_) {}
+                            }
                           } catch (_) {
                             setMessages(prev => [...prev, { role: "assistant", content: "Could not send — check your Gmail connection in Settings.", isSystem: true }]);
                           }

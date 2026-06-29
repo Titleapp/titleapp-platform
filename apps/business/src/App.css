@@ -961,6 +961,45 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
   }
 }
 
+/* ── Mobile canvas + card polish (#57) ──────────────────────────────────── */
+
+/* Worker card grids stack to single-column on phones */
+@media (max-width: 640px) {
+  /* RightPanel worker list grid (2-col on desktop → 1-col on phone) */
+  [class*="workerGrid"], [class*="workerCardGrid"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Canvas card max-width: let them fill the screen */
+  [class*="canvasCard"], [class*="cardShell"] {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Canvas panel safe-area (notched phones — bottom of canvas must clear home bar) */
+@media (max-width: 768px) {
+  [class*="canvasPanel"], [class*="rightPanel"] {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Tab bars in worker canvas should have 44px min touch targets */
+  [class*="canvasTab"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Landscape on phone: constrain chat height so content is still visible */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobileChatPanel {
+    max-height: 50vh;
+  }
+  .main { padding-top: 8px; }
+}
+
+/* Flex children: prevent accidental overflow-squish */
+.dualPanel > * { min-width: 0; }
+.chatSidebar { min-width: 0; }
+
 /* S52.45 — collapsible sidebar (Claude/Linear-style). Desktop only; mobile uses the overlay. */
 .sidebar.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; border-right: none; }
 .sidebarCollapseToggle {

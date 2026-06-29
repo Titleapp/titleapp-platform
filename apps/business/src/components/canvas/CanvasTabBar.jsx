@@ -35,7 +35,6 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
   function handleClick(tab) {
     setActiveId(tab.id);
     const resolved = lookupSignal(tab.signal);
-    if (!resolved) return;
     if (typeof onSelectTab === "function") onSelectTab(tab, resolved);
   }
 

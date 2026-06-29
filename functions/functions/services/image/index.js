@@ -14,4 +14,7 @@ module.exports = {
   get scrubPhi() {
     return require("./generator").scrubPhi;
   },
+  get validateImagePrompt() {
+    return require("./generator").validateImagePrompt;
+  },
 };

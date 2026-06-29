@@ -3012,7 +3012,7 @@ CANVAS RENDER MARKER FORMAT:
 {"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
 |||END_CANVAS|||
 
-Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency, card:shopify-commerce (use when the user asks about Shopify orders, revenue, customers, or store performance — pulls live data from the connected store). Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
+Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:listing-readiness (use for listing readiness / pre-listing scorecard — payload: {"address":"…","overallReadiness":82,"verdict":"Nearly Ready","band":"GREEN","categories":[{"name":"Condition","score":90,"band":"GREEN","notes":"…"},…],"flags":[],"punchList":["…"],"summary":"…","nextSteps":"…"}), card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency, card:shopify-commerce (use when the user asks about Shopify orders, revenue, customers, or store performance — pulls live data from the connected store). Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
 
 TYPE-SPECIFIC PAYLOAD SHAPES — use these exactly when emitting the corresponding type. Do NOT default to the generic work-product shape for these types or the card will render empty.
 
@@ -3051,10 +3051,10 @@ If approval is missing, ASK FOR IT FIRST in plain text — do not emit the marke
 
 Allowed actions and shapes:
 - Send marketing email: |||SIDE_EFFECT|||{"action":"sendEmailCampaign","data":{"listId":"abc","subject":"Summer launch","body":"plain text body","htmlContent":"<p>html body</p>","fromName":"Sean — Acme","fromEmail":"sean@acme.com"}}|||END_SIDE_EFFECT||| — listId is preferred; if you have inline contacts pass them as data.contacts=[{email,firstName,lastName}] and a list will be created on the fly.
-- Schedule social post: |||SIDE_EFFECT|||{"action":"scheduleSocialPost","data":{"content":"post body","platforms":["linkedin","instagram"],"title":"Summer launch","scheduledAt":"2026-05-10T14:00:00Z","status":"draft"}}|||END_SIDE_EFFECT||| — set status:"draft" to save without posting; omit to post immediately.
+- Schedule social post: |||SIDE_EFFECT|||{"action":"scheduleSocialPost","data":{"content":"post body","platforms":["x","tiktok"],"title":"Summer launch","mediaUrl":"https://cdn.fal.ai/...","scheduledAt":"2026-05-10T14:00:00Z","status":"draft"}}|||END_SIDE_EFFECT||| — set status:"draft" to save without posting; omit to post immediately. CRITICAL: if an image was generated in this conversation (a generate_image tool result returned a URL), include that URL as "mediaUrl" — this attaches the image to the post on X and TikTok. X supports images; TikTok requires a video (images post as text only). Platforms: "x", "youtube", "tiktok".
 - Queue a single email/SMS: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"recipient@example.com","subject":"...","body":"...","scheduledAt":"2026-05-04T09:00:00Z"}}|||END_SIDE_EFFECT|||
 - Anchor a completed signing: |||SIDE_EFFECT|||{"action":"esign:anchor","data":{"documentTitle":"Office Lease — 123 Main St","documentRef":"1BxiMVs0...","signingRail":"google-esignature","signerEmail":"landlord@example.com","completedAt":"2026-06-28T14:00:00Z","dtcId":"optional-dtc-id"}}|||END_SIDE_EFFECT||| — emit this whenever the user says they just finished signing a document. Rail values: "google-esignature", "dropbox-sign", "docusign", "manual". The anchor creates an immutable SOCIII record — the chain proof of who signed what and when.
-- Append a Vault logbook entry: |||SIDE_EFFECT|||{"action":"logbook:append","data":{"dtcId":"the-dtc-document-id","entryType":"ce_credit","data":{"course":"AVMA Ethics 2026","hours":3,"provider":"AVMA","completedAt":"2026-06-28"}}}|||END_SIDE_EFFECT||| — emit this when the user confirms completing a CE credit, flight, service event, or any significant update to an asset in their Vault. Only emit when the user has provided the dtcId explicitly or it was established earlier in the conversation. Never guess a dtcId. Common entryTypes: ce_credit, flight_logged, service_event, course_completed, milestone, renewal, certification_issued.
+- Append a Vault logbook entry: |||SIDE_EFFECT|||{"action":"logbook:append","data":{"dtcId":"the-dtc-document-id","entryType":"ce_credit","data":{"course":"AVMA Ethics 2026","hours":3,"provider":"AVMA","completedAt":"2026-06-28"}}}|||END_SIDE_EFFECT||| — emit this when the user confirms completing a CE credit, flight, service event, or any significant update to an asset in their Vault. If the dtcId is not already known from this conversation, call the lookup_vault_assets tool first to find it. Never fabricate a dtcId. Common entryTypes: ce_credit, flight_logged, service_event, course_completed, milestone, renewal, certification_issued.
 
 After emitting, your chat reply should confirm what was scheduled in plain language ("Sent your nurture sequence to 1,240 contacts. First touch is queued for tomorrow at 9 AM."). Never describe the marker to the user.
 For esign:anchor, confirm with something like: "Anchored. The signing of [Document Title] is now on the SOCIII chain — your Signed Documents panel will update."
@@ -3097,7 +3097,7 @@ END DELIVERY RULES.
               if (workerPrompt) {
                 try {
                   const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
-                  const ownData = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug });
+                  const ownData = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug, uid: authUser ? authUser.uid : null });
                   if (ownData) workerPrompt = ownData + workerPrompt;
                 } catch (ownErr) {
                   console.warn("worker chat: own-data inject failed:", ownErr.message);
@@ -3352,6 +3352,68 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 });
               }
 
+              // E-sign anchor — lets Alex propose recording a completed signing as
+              // an immutable SOCIII chain record. Available to all workers: any
+              // signed doc can be anchored regardless of signing rail or vertical.
+              businessTools.push({
+                name: "anchor_signed_document",
+                description: "Record a completed document signing as an immutable SOCIII anchor — a SHA-256 tamper-proof record that proves who signed what and when, independent of the signing platform. Call this ONLY when the user explicitly confirms a document has been fully executed by all parties and wants it on record. Works with any signing rail: Google eSignature, Dropbox Sign, DocuSign, or manual/paper. NEVER anchor without confirmed completion.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    documentTitle: { type: "string", description: "Human-readable name of the signed document, e.g. 'Series A SAFE — Acme Corp' or 'Office Lease — 123 Main St'" },
+                    documentRef: { type: "string", description: "Google Drive file ID, URL, or descriptive reference to the document (e.g. drive file name or deal reference)" },
+                    signingRail: { type: "string", enum: ["google-esignature", "dropbox-sign", "docusign", "manual"], description: "Platform/method used to sign. Default: manual" },
+                    signerEmail: { type: "string", description: "Email of the primary signer or counterparty" },
+                    dtcId: { type: "string", description: "Optional: Vault DTC ID to link this signing to (e.g. a company, property, or deal record in the user's Vault)" },
+                    completedAt: { type: "string", description: "Optional ISO timestamp when signing was completed. Defaults to now if omitted." },
+                  },
+                  required: ["documentTitle", "documentRef"],
+                },
+              });
+
+              // Vault asset lookup — available to all workers so Alex can resolve
+              // dtcIds before emitting logbook:append (education, aviation, RE).
+              businessTools.push({
+                name: "lookup_vault_assets",
+                description: "Look up the user's Vault assets (DTCs — Digital Trust Certificates) to find the right one before appending a logbook entry. Returns asset names, types, IDs, and logbook entry counts. Call this BEFORE emitting a logbook:append side effect whenever you don't already have the dtcId from the current conversation.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", description: "Optional filter: 'vehicle', 'property', 'credential', 'health', 'education', 'aviation'" },
+                    query: { type: "string", description: "Optional keyword to find a specific asset by name (e.g. 'Pilatus', 'Tesla', 'nursing license')" },
+                  },
+                  required: [],
+                },
+              });
+
+              // Persistent memory — Alex can recall notes across sessions.
+              // Solves "amnesia" when a chat resets and Alex loses prior context.
+              businessTools.push({
+                name: "recall_notes",
+                description: "Recall persistent notes saved from prior conversations — outreach drafts, decisions, people, reminders. Call this whenever the user mentions something you 'forgot', asks if you remember a person or decision, or when you need prior context. Also call at conversation start when the user references past work.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Optional keyword to filter notes, e.g. 'Shane' or 'investor outreach' or 'email draft'" },
+                  },
+                  required: [],
+                },
+              });
+              businessTools.push({
+                name: "save_note",
+                description: "Save a persistent note that survives across sessions. Use this proactively: always save_note when you draft an important email, make a key decision, or the user gives you context they would have to repeat otherwise. Don't wait to be asked.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string", description: "Short descriptive title, e.g. 'Shane Parrish outreach draft'" },
+                    content: { type: "string", description: "Full content to remember — include names, email text, decisions, context" },
+                    tags: { type: "array", items: { type: "string" }, description: "Optional tags like ['outreach', 'investor', 'draft', 'email']" },
+                  },
+                  required: ["title", "content"],
+                },
+              });
+
               // 2026-06-26 — image-tool honesty. The Marketing worker was
               // DESCRIBING images it never generated ("I created four images and
               // added them to your canvas") then contradicting itself — a
@@ -3387,14 +3449,26 @@ IMAGE & VISUAL RULES (MANDATORY):
                 try {
                   const ar = toolBlock.input.aspect_ratio || "1:1";
                   const sizeForAr = ar === "16:9" ? "landscape_4_3" : ar === "9:16" ? "portrait_3_4" : "square";
-                  const { generateImage } = require("./services/image");
+                  const { generateImage, validateImagePrompt } = require("./services/image");
+
+                  // W-IMG-001 — RAAS governance pre-flight (runs before billing + fal.ai call)
+                  const _imgVertical = dw.vertical || "business";
+                  const _govCheck = validateImagePrompt(toolBlock.input.prompt, _imgVertical, {
+                    workerId: workerSlug,
+                    userId: authUser ? authUser.uid : null,
+                    tenantId: reqTenantId || null,
+                  });
+                  if (!_govCheck.ok) {
+                    workerImgErrMsg = _govCheck.reason;
+                    console.warn(`[worker:${workerSlug}] image blocked by ${_govCheck.rule}:`, _govCheck.reason);
+                  } else {
                   const imgResult = await generateImage({
                     prompt: toolBlock.input.prompt,
                     style: toolBlock.input.style || "minimal",
                     size: sizeForAr,
                     workerId: workerSlug,
                     creatorId: authUser ? authUser.uid : "anonymous",
-                    vertical: dw.vertical || "business",
+                    vertical: _imgVertical,
                     // CODEX 50.5 — group image-gen event under the chat turn's parent_interaction_id
                     parentInteractionId,
                     tenantId: reqTenantId || null,
@@ -3402,6 +3476,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                   workerImageUrl = imgResult.imageUrl || null;
                   if (imgResult.error) { workerImgErrMsg = imgResult.message || null; console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error); }
                   else if (imgResult.chargedCredits) { workerImgCharge = `Charged ${imgResult.chargedCredits} Data Credit ($${(imgResult.priceUsd || 0).toFixed(2)}) for this image — briefly tell the user the cost.`; }
+                  } // end governance-passed branch
                 } catch (imgErr) {
                   console.warn(`[worker:${workerSlug}] image gen failed:`, imgErr.message);
                 }
@@ -3583,6 +3658,140 @@ IMAGE & VISUAL RULES (MANDATORY):
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] lookup_property failed:`, e.message); }
               }
+              // Vault asset lookup — resolves dtcIds so logbook:append works.
+              if (toolBlock && toolBlock.name === 'lookup_vault_assets') {
+                try {
+                  const uid = authUser ? authUser.uid : null;
+                  if (!uid) {
+                    aiText = "I can't access Vault assets without a signed-in user.";
+                  } else {
+                    let q = db.collection("dtcs").where("userId", "==", uid).limit(30);
+                    if (toolBlock.input.type) q = q.where("type", "==", toolBlock.input.type);
+                    const snap = await q.get();
+                    let assets = snap.docs.map(d => ({
+                      dtcId: d.id,
+                      name: d.data().name || d.data().title || d.data().label || "(unnamed)",
+                      type: d.data().type || "asset",
+                      logbookCount: d.data().logbookCount || 0,
+                      description: d.data().description || null,
+                    }));
+                    if (toolBlock.input.query) {
+                      const kw = toolBlock.input.query.toLowerCase();
+                      const ranked = assets.filter(a => (a.name + " " + (a.description || "")).toLowerCase().includes(kw));
+                      if (ranked.length) assets = ranked;
+                    }
+                    const toolResultText = assets.length
+                      ? `Found ${assets.length} Vault asset(s):\n${assets.map(a => `- ${a.name} (type: ${a.type}, dtcId: ${a.dtcId}, logbook entries: ${a.logbookCount})`).join("\n")}\n\nChoose the most relevant one and emit a logbook:append SIDE_EFFECT with its dtcId. Ask the user to confirm which asset if ambiguous.`
+                      : `No Vault assets found${toolBlock.input.type ? " of type " + toolBlock.input.type : ""}. The user may not have set up a Vault record for this asset yet. Tell them briefly and offer to help create one.`;
+                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1024, system: workerPrompt, messages: followUpMessages });
+                    aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are your Vault assets.";
+                  }
+                } catch (e) { console.warn(`[worker:${workerSlug}] lookup_vault_assets failed:`, e.message); }
+              }
+              // Alex persistent memory — recall_notes
+              if (toolBlock && toolBlock.name === 'recall_notes') {
+                try {
+                  const uid = authUser ? authUser.uid : null;
+                  let _noteDocs;
+                  try {
+                    const snap = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").orderBy("createdAt", "desc").limit(20).get();
+                    _noteDocs = snap.docs;
+                  } catch (_) {
+                    const snap2 = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").limit(20).get();
+                    _noteDocs = snap2.docs.sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+                  }
+                  let notes = _noteDocs.map(d => ({ id: d.id, ...d.data() }));
+                  if (toolBlock.input.query) {
+                    const kw = toolBlock.input.query.toLowerCase();
+                    const filtered = notes.filter(n => (n.title + " " + n.content + " " + (n.tags || []).join(" ")).toLowerCase().includes(kw));
+                    if (filtered.length) notes = filtered;
+                  }
+                  const toolResultText = notes.length
+                    ? `Found ${notes.length} note(s):\n\n${notes.map(n => `## ${n.title}\n${n.content}\nTags: ${(n.tags || []).join(", ") || "none"}\nSaved: ${n.createdAt?.toDate?.().toISOString?.() || n.createdAt || "unknown"}`).join("\n\n---\n\n")}`
+                    : `No notes found${toolBlock.input.query ? " for query: " + toolBlock.input.query : ""}. This may be a fresh session with no prior context saved.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages, tools: [] });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Let me check my notes.";
+                } catch (e) { console.warn(`[worker:${workerSlug}] recall_notes failed:`, e.message); }
+              }
+              // Alex persistent memory — save_note
+              if (toolBlock && toolBlock.name === 'save_note') {
+                try {
+                  const uid = authUser ? authUser.uid : null;
+                  const { title, content, tags } = toolBlock.input;
+                  await db.collection("alex_notes").add({
+                    ownerUid: uid || "system",
+                    tenantId: reqTenantId || null,
+                    title, content,
+                    tags: tags || [],
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    workerSlug: workerSlug || null,
+                  });
+                  const toolResultText = `Note saved: "${title}". I'll remember this across sessions.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 512, system: workerPrompt, messages: followUpMessages, tools: [] });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Got it — I've saved a note about ${title}.`;
+                } catch (e) { console.warn(`[worker:${workerSlug}] save_note failed:`, e.message); }
+              }
+              // #62 — E-sign anchor tool. Writes an immutable auditLedger record
+              // (SHA-256 over signing facts) and optionally links to a Vault DTC.
+              // Same logic as POST /v1/esign:anchor but called inline from chat
+              // so Alex can propose → user approves → anchor written in one turn.
+              if (toolBlock && toolBlock.name === 'anchor_signed_document') {
+                try {
+                  const uid = authUser ? authUser.uid : null;
+                  if (!uid) {
+                    aiText = "I can't anchor a signed document without a signed-in user.";
+                  } else {
+                    const { documentTitle, documentRef, signingRail, signerEmail, dtcId, completedAt } = toolBlock.input;
+                    if (!documentTitle || !documentRef) {
+                      aiText = "I need both the document title and a document reference (Drive file name, URL, or deal reference) to create an anchor. Can you provide those?";
+                    } else {
+                      const signingFacts = {
+                        documentTitle, documentRef,
+                        signingRail: signingRail || "manual",
+                        signerEmail: signerEmail || null,
+                        completedAt: completedAt || new Date().toISOString(),
+                        anchoredBy: uid,
+                        tenantId: reqTenantId || null,
+                      };
+                      const anchorHash = "sha256:" + crypto.createHash("sha256").update(JSON.stringify(signingFacts)).digest("hex");
+                      const ledgerId = `esign_${crypto.randomBytes(10).toString("hex")}`;
+                      await db.collection("auditLedger").doc(ledgerId).set({
+                        actionId: ledgerId, actionType: "esign_completed", workerId: workerSlug,
+                        tenantId: reqTenantId || null, userId: uid, documentTitle, documentRef,
+                        signingRail: signingRail || "manual", signerEmail: signerEmail || null,
+                        allSigners: [], completedAt: completedAt || null, dtcId: dtcId || null,
+                        anchorHash, chain: "base", custodyOnly: true, createdAt: nowServerTs(),
+                      });
+                      let entryId = null;
+                      if (dtcId) {
+                        try {
+                          const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
+                          if (dtcDoc.exists) {
+                            const ref = await db.collection("logbookEntries").add({
+                              dtcId, userId: uid, tenantId: reqTenantId || null,
+                              dtcTitle: dtcDoc.data()?.metadata?.title || documentTitle,
+                              entryType: "esign_completed",
+                              data: { documentTitle, documentRef, signingRail: signingRail || "manual", signerEmail: signerEmail || null, anchorHash, ledgerId, note: `Signed via ${signingRail || "manual"}. Anchored as ${ledgerId}.` },
+                              files: [], createdAt: nowServerTs(),
+                            });
+                            entryId = ref.id;
+                            await db.collection("dtcs").doc(dtcId).update({ logbookCount: admin.firestore.FieldValue.increment(1) });
+                          }
+                        } catch (dtcErr) { console.warn(`[anchor_signed_document] dtc link failed:`, dtcErr.message); }
+                      }
+                      console.log(`[anchor_signed_document] ledger=${ledgerId} dtcId=${dtcId || "none"} rail=${signingRail || "manual"} user=${uid}`);
+                      const toolResultText = `Successfully anchored. Anchor ID: ${ledgerId}. SHA-256: ${anchorHash}${entryId ? ". Vault logbook entry created." : ""} Tell the user: their document "${documentTitle}" is now permanently on the SOCIII chain — the anchor proves who signed what and when, regardless of which signing platform was used. Mention the short anchor ID (${ledgerId.slice(0, 14)}…) and that they can see it in Signed Documents on the canvas.`;
+                      const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                      const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 512, system: workerPrompt, messages: followUpMessages });
+                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Document anchored on the SOCIII chain.";
+                    }
+                  }
+                } catch (e) { console.warn(`[worker:${workerSlug}] anchor_signed_document failed:`, e.message); }
+              }
+
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
 
               // 49.30 DIAG — also log raw model output before delivery filter
@@ -4992,7 +5201,15 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
           if (_isCos && !action && userInput && authUser && _cosTenantId && _cosTenantId !== "vault") {
             let _ws = null;
             try { _ws = (await db.collection("users").doc(authUser.uid).collection("workspaces").doc(_cosTenantId).get()).data() || null; } catch (_) {}
-            if (_ws && (_ws.onboardingComplete || _ws.vertical)) {
+            // Fallback: workspace may live in top-level tenants/ collection
+            // (e.g. legacy title-app-llc that predates the subcollection pattern)
+            if (!_ws) {
+              try {
+                const _tDoc = await db.collection("tenants").doc(_cosTenantId).get();
+                if (_tDoc.exists) _ws = _tDoc.data() || null;
+              } catch (_) {}
+            }
+            if (_ws) {
               try {
                 if (!sessionState.salesHistory) sessionState.salesHistory = [];
                 // Real workspace data — same sources the worker chats use.
@@ -5020,6 +5237,35 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   }
                 } catch (_) {}
 
+                // Pre-fetch alex_notes and inject into system prompt so Alex has
+                // cross-session memory from message 1, without relying on a tool call.
+                // Falls back to unordered query if the composite index isn't built yet.
+                let _alexNotesContext = "";
+                try {
+                  let _notesDocs = [];
+                  try {
+                    const _notesSnap = await db.collection("alex_notes")
+                      .where("ownerUid", "==", authUser.uid)
+                      .orderBy("createdAt", "desc")
+                      .limit(10)
+                      .get();
+                    _notesDocs = _notesSnap.docs;
+                  } catch (_idxErr) {
+                    // Index not built yet — fall back to unordered and sort client-side
+                    const _notesSnap2 = await db.collection("alex_notes")
+                      .where("ownerUid", "==", authUser.uid)
+                      .limit(10)
+                      .get();
+                    _notesDocs = _notesSnap2.docs.sort((a, b) =>
+                      (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0)
+                    );
+                  }
+                  if (_notesDocs.length) {
+                    const _recentNotes = _notesDocs.map(d => d.data());
+                    _alexNotesContext = `\n\nYOUR PERSISTENT MEMORY — notes you saved from prior sessions. Treat these as your own recalled knowledge. Do NOT say "I found a note" — speak from memory naturally:\n\n${_recentNotes.map(n => `### ${n.title}\n${n.content}`).join("\n\n---\n\n")}`;
+                  }
+                } catch (_) {}
+
                 const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
 ${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}.` : ""}
 
@@ -5036,7 +5282,24 @@ HARD RULES:
    - SMS: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/SMS_DRAFT]
    - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
    - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE]
-   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates and investor follow-ups who prefer it. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", "flag this for the dev team", or similar. NEVER say you're "sending now" — always show the approval card.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}`;
+   - Email (Gmail): Use this EXACT multi-line format (no JSON — quotes and newlines are fine):
+     [EMAIL_DRAFT]
+     TO: recipient@example.com
+     CC: cc@example.com (optional — omit line if not needed)
+     SUBJECT: Subject line
+     BODY:
+     Full email body here — multiple lines, quotes, anything. No escaping needed.
+     [/EMAIL_DRAFT]
+   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use EMAIL_DRAFT whenever you need to draft or send an email — including outreach, follow-ups, investor emails, or any email the user asks you to write or recall. ALWAYS use EMAIL_DRAFT — NEVER say "I'm sending now." The approval card is mandatory. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
+
+PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
+
+HOW YOU AND CODE COMMUNICATE:
+- CODE → You: CODE writes notes to your shared memory store (alex_notes). Those notes appear above under "YOUR PERSISTENT MEMORY." When CODE builds something or needs to tell you something, it leaves a note there. You'll see it automatically next session.
+- You → CODE: Two paths:
+  1. Use [GITHUB_ISSUE]{"title":"[ASK_CODE] your question here","body":"full context","labels":["ask-code"]}[/GITHUB_ISSUE] when you need CODE to DO something or answer a technical question. Sean approves the card and it becomes a GitHub issue CODE will see.
+  2. Use save_note with tags: ["for-code"] to leave a note CODE will read at the start of the next session. Good for non-urgent context handoffs.
+- You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.${_alexNotesContext}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
@@ -5048,15 +5311,82 @@ HARD RULES:
                 while (_cosHist.length && _cosHist[0].role !== 'user') _cosHist.shift();
                 const _msgs = [..._cosHist, { role: 'user', content: userInput }];
 
+                const _cosTools = [
+                  {
+                    name: "recall_notes",
+                    description: "Recall persistent notes saved from prior conversations — outreach drafts, decisions, people, reminders. Call this whenever the user mentions something you forgot, asks if you remember a person or decision, or references past work.",
+                    input_schema: { type: "object", properties: { query: { type: "string", description: "Optional keyword filter, e.g. 'Shane' or 'investor email'" } }, required: [] },
+                  },
+                  {
+                    name: "save_note",
+                    description: "Save a persistent note that survives across sessions. Always save after drafting an important email, making a key decision, or receiving context you'd have to repeat.",
+                    input_schema: { type: "object", properties: { title: { type: "string" }, content: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["title", "content"] },
+                  },
+                ];
+
                 const anthropic = getAnthropic();
-                const _resp = await anthropic.messages.create({
+                let _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-5-20250929',
                   max_tokens: 2048,
                   system: cosPrompt,
                   messages: _msgs,
+                  tools: _cosTools,
                 });
+
+                // Handle tool calls from COS
+                const _cosToolBlock = _resp.content.find(b => b.type === 'tool_use');
+                if (_cosToolBlock) {
+                  let _toolResult = "";
+                  try {
+                    if (_cosToolBlock.name === 'recall_notes') {
+                      let _nDocs;
+                      try {
+                        const _nSnap = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).orderBy("createdAt", "desc").limit(20).get();
+                        _nDocs = _nSnap.docs;
+                      } catch (_) {
+                        const _nSnap2 = await db.collection("alex_notes").where("ownerUid", "==", authUser.uid).limit(20).get();
+                        _nDocs = _nSnap2.docs.sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+                      }
+                      let _notes = _nDocs.map(d => ({ id: d.id, ...d.data() }));
+                      if (_cosToolBlock.input.query) {
+                        const _kw = _cosToolBlock.input.query.toLowerCase();
+                        const _f = _notes.filter(n => (n.title + " " + n.content + " " + (n.tags || []).join(" ")).toLowerCase().includes(_kw));
+                        if (_f.length) _notes = _f;
+                      }
+                      _toolResult = _notes.length
+                        ? `Found ${_notes.length} note(s):\n\n${_notes.map(n => `## ${n.title}\n${n.content}`).join("\n\n---\n\n")}\n\nIMPORTANT: If any note contains a VERBATIM email draft, present it EXACTLY using [EMAIL_DRAFT]{"to":"...","subject":"...","body":"..."}[/EMAIL_DRAFT] format — do not rewrite or summarize it.`
+                        : "No notes found. Fresh session — no prior context saved.";
+                    } else if (_cosToolBlock.name === 'save_note') {
+                      const { title, content, tags } = _cosToolBlock.input;
+                      await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
+                      _toolResult = `Note saved: "${title}". I'll remember this across sessions.`;
+                    }
+                  } catch (_te) { _toolResult = "Tool error: " + _te.message; }
+                  const _followUpMsgs = [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosToolBlock.id, content: _toolResult }] }];
+                  _resp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2048, system: cosPrompt, messages: _followUpMsgs, tools: [] });
+                }
+
                 let _txt = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim()
                   || "Let me pull that together for you.";
+
+                // Parse [EMAIL_DRAFT] marker — line-based format avoids JSON escaping failures
+                // Format: TO: / SUBJECT: / BODY: on separate lines inside [EMAIL_DRAFT][/EMAIL_DRAFT]
+                let _cosEmailDraft = null;
+                const _cosEmailMatch = _txt.match(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/);
+                if (_cosEmailMatch) {
+                  const _raw = _cosEmailMatch[1];
+                  const _toM = _raw.match(/^[ \t]*TO:[ \t]*(.+)$/mi);
+                  const _ccM = _raw.match(/^[ \t]*CC:[ \t]*(.+)$/mi);
+                  const _subM = _raw.match(/^[ \t]*SUBJECT:[ \t]*(.+)$/mi);
+                  const _bodyM = _raw.match(/^[ \t]*BODY:[ \t]*\r?\n([\s\S]*)$/mi);
+                  if (_toM && _subM && _bodyM) {
+                    _cosEmailDraft = { to: _toM[1].trim(), subject: _subM[1].trim(), body: _bodyM[1].trim(), ...((_ccM && _ccM[1].trim()) ? { cc: _ccM[1].trim() } : {}) };
+                  } else {
+                    // Fallback: try JSON parse for backwards compat
+                    try { _cosEmailDraft = JSON.parse(_raw.trim()); } catch (_) {}
+                  }
+                  _txt = _txt.replace(/\s*\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]\s*/g, '').trim();
+                }
 
                 sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: "chief-of-staff" });
                 sessionState.salesHistory.push({ role: 'assistant', content: _txt, workerSlug: "chief-of-staff" });
@@ -5071,7 +5401,7 @@ HARD RULES:
                   updatedAt: nowServerTs(),
                 }, { merge: true });
 
-                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active' });
+                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active', ...((_cosEmailDraft) ? { emailDraft: _cosEmailDraft } : {}) });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
               }
@@ -5908,7 +6238,18 @@ ${nameGuidance}${authGuidance}`;
               const toolBlock = aiResp.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
-                  const { generateImage } = require("./services/image");
+                  const { generateImage, validateImagePrompt } = require("./services/image");
+
+                  // W-IMG-001 — RAAS governance pre-flight (sandbox path)
+                  const _sandboxGovCheck = validateImagePrompt(toolBlock.input.prompt, 'sandbox', {
+                    workerId: sessionState.lastWorkerId || 'sandbox-draft',
+                    userId: authUser?.uid || null,
+                    tenantId: reqTenantId || null,
+                  });
+                  if (!_sandboxGovCheck.ok) {
+                    console.warn('[sandbox] image blocked by', _sandboxGovCheck.rule, ':', _sandboxGovCheck.reason);
+                    // imageUrl stays null; follow-up messages below will tell the model it failed
+                  } else {
                   const imgResult = await generateImage({
                     prompt: toolBlock.input.prompt,
                     style: toolBlock.input.style || (sessionState.creatorPath === 'game' ? 'cartoon' : 'minimal'),
@@ -5921,6 +6262,7 @@ ${nameGuidance}${authGuidance}`;
                     console.warn('[sandbox] Image generation error:', imgResult.error, imgResult.message);
                   }
                   imageUrl = imgResult.imageUrl || null;
+                  } // end governance-passed branch
                 } catch (imgErr) {
                   console.warn('[sandbox] Image generation failed:', imgErr.message);
                 }
@@ -9823,120 +10165,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return res.json({ ok: true, version: AGREEMENT_VERSION, text: AGREEMENT_TEXT });
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // V4 CREATOR JOURNEY + PUBLIC PROFILE + CREDENTIAL VERIFY + STUDIO
-    // Per docs/specs/SOCIII-Creator-Experience-Brief-v4.md
-    // ─────────────────────────────────────────────────────────────────
-
-    // GET /v1/creator:public-profile?handle=<handle> — PUBLIC, no auth
-    // Returns the public-facing profile for sociii.ai/c/<handle>
-    if (route === "/creator:public-profile" && method === "GET") {
-      try {
-        const handle = String(req.query?.handle || "").toLowerCase().trim();
-        if (!handle) return res.json({ ok: false, error: "missing_handle" });
-
-        const handleSnap = await db.collection("creatorHandles").doc(handle).get();
-        if (!handleSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const { uid } = handleSnap.data();
-
-        const creatorSnap = await db.collection("creators").doc(uid).get();
-        if (!creatorSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const creator = creatorSnap.data();
-
-        const credSnap = await db.collection("creatorCredentials")
-          .where("uid", "==", uid)
-          .limit(20)
-          .get();
-        const credentials = credSnap.docs
-          .map(d => ({
-            id: d.id,
-            tier: d.data().tier,
-            status: d.data().status,
-            issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
-          }))
-          .filter(c => c.status === "active");
-
-        const workersSnap = await db.collection("digitalWorkers")
-          .where("creatorId", "==", uid)
-          .limit(20)
-          .get();
-        const workers = workersSnap.docs
-          .map(d => ({
-            id: d.id,
-            slug: d.data().slug || d.id,
-            name: d.data().name || d.data().display_name || d.data().displayName || d.id,
-            tagline: d.data().tagline || d.data().short_description || "",
-            vertical: d.data().vertical || null,
-            logoUrl: d.data().logoUrl || null,
-            status: d.data().status || "draft",
-          }))
-          .filter(w => w.status === "live");
-
-        return res.json({
-          ok: true,
-          profile: {
-            handle,
-            displayName: creator.displayName || creator.title || "",
-            photoURL: creator.photoURL || null,
-            bio: creator.bio || "",
-            title: creator.title || "",
-            yearsExperience: creator.yearsExperience || "",
-            credentials: creator.credentials || "",
-            verifiedExpert: !!creator.verifiedExpert,
-            joinedAt: creator.createdAt?.toDate?.()?.toISOString?.() || null,
-            linkedIn: creator.linkedIn || null,
-          },
-          workers,
-          socIICredentials: credentials,
-        });
-      } catch (e) {
-        console.error("[creator:public-profile] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
-    // GET /v1/credential:verify?credentialId=<id> — PUBLIC, no auth
-    // The win-condition page: verifiable credential for LinkedIn/UpWork/Fiverr
-    if (route === "/credential:verify" && method === "GET") {
-      try {
-        const credentialId = String(req.query?.credentialId || "").trim();
-        if (!credentialId) return res.json({ ok: false, error: "missing_id" });
-
-        const credSnap = await db.collection("creatorCredentials").doc(credentialId).get();
-        if (!credSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const cred = credSnap.data();
-
-        const creatorSnap = await db.collection("creators").doc(cred.uid).get();
-        const creator = creatorSnap.exists ? creatorSnap.data() : {};
-
-        return res.json({
-          ok: true,
-          credential: {
-            id: credentialId,
-            tier: cred.tier || "certified",
-            status: cred.status || "active",
-            issuedAt: cred.issuedAt?.toDate?.()?.toISOString?.() || null,
-            renewedAt: cred.renewedAt?.toDate?.()?.toISOString?.() || null,
-            expiresAt: cred.expiresAt?.toDate?.()?.toISOString?.() || null,
-            revokedAt: cred.revokedAt?.toDate?.()?.toISOString?.() || null,
-            revokedReason: cred.revokedReason || null,
-            issuingOrg: "SOCIII, Inc.",
-          },
-          creator: {
-            handle: cred.handle || creator.handle || "",
-            displayName: creator.displayName || creator.title || "",
-            photoURL: creator.photoURL || null,
-            verifiedExpert: !!creator.verifiedExpert,
-            workerCount: cred.workerCount || 0,
-          },
-          workers: cred.workers || [],
-        });
-      } catch (e) {
-        console.error("[credential:verify] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
     // GET /v1/journey:state — authed
     // Returns the creator's current journey state (13 beats per v4)
     if (route === "/journey:state" && method === "GET") {
@@ -10955,6 +11183,61 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       } catch (e) {
         console.error("sandbox:worker:knowledge:doc DELETE failed:", e);
         return jsonError(res, 500, "Knowledge delete failed");
+      }
+    }
+
+    // GET /v1/worker:locker:list?workerId=...
+    // Subscriber-facing read of a worker's Studio Locker. Returns non-deleted,
+    // complete documents (without extractedText — metadata only). Access: the
+    // requesting user must be the creator OR have the worker in their active workers.
+    // creatorId can be passed explicitly; if omitted, inferred from digitalWorkers collection.
+    if (route === "/worker:locker:list" && method === "GET") {
+      try {
+        const workerId = req.query.workerId || (body && body.workerId);
+        if (!workerId) return jsonError(res, 400, "workerId required");
+        const requesterId = auth.user?.uid;
+        // Resolve creator ID: passed explicitly, or from digitalWorkers catalog, or self.
+        let creatorId = req.query.creatorId || (body && body.creatorId) || null;
+        if (!creatorId) {
+          const wSnap = await db.collection("digitalWorkers").doc(workerId).get();
+          if (wSnap.exists) creatorId = wSnap.data().createdBy || wSnap.data().userId || null;
+        }
+        if (!creatorId) creatorId = requesterId; // self-created worker fallback
+        // Access gate: requester is creator, OR worker is in their activeWorkers, OR worker is public.
+        if (creatorId !== requesterId) {
+          const memberSnap = await db.collection("memberships")
+            .where("userId", "==", requesterId)
+            .limit(20).get();
+          let hasAccess = false;
+          for (const mDoc of memberSnap.docs) {
+            const mData = mDoc.data();
+            const workers = mData.activeWorkers || mData.subscribedWorkers || [];
+            if (Array.isArray(workers) && workers.some(w => (typeof w === "string" ? w : w?.slug || w?.id) === workerId)) {
+              hasAccess = true; break;
+            }
+          }
+          // Also allow if the worker is marked public (visibility: 'public')
+          if (!hasAccess) {
+            const wSnap2 = await db.collection("digitalWorkers").doc(workerId).get();
+            if (wSnap2.exists && wSnap2.data().visibility === "public") hasAccess = true;
+          }
+          if (!hasAccess) return jsonError(res, 403, "Not subscribed to this worker");
+        }
+        // Read Studio Locker docs — metadata only, no extractedText (too large for list).
+        const col = db.collection("studioLockers").doc(creatorId)
+          .collection("workers").doc(workerId).collection("documents");
+        const snap = await col.where("deletedAt", "==", null).get();
+        const documents = snap.docs
+          .map(d => {
+            const { extractedText, ...rest } = d.data();
+            return { id: d.id, ...rest };
+          })
+          .filter(d => d.ingestionStatus === "complete" || d.ingestionStatus === "needs_review")
+          .sort((a, b) => (a.createdAt?._seconds || 0) - (b.createdAt?._seconds || 0));
+        return res.json({ ok: true, documents, workerId, creatorId });
+      } catch (e) {
+        console.error("[worker:locker:list] failed:", e);
+        return jsonError(res, 500, "Locker list failed");
       }
     }
 
@@ -13868,7 +14151,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             if (data.status === "draft" || data.dryRun) {
               executionResult = await saveDraft(auth.user.uid, { content: data.content, platforms: data.platforms || [], title: data.title, tenantId: ctx.tenantId });
             } else {
-              executionResult = await postViaUnified(auth.user.uid, { content: data.content, platforms: data.platforms || [], title: data.title, scheduledAt: data.scheduledAt });
+              executionResult = await postViaUnified(auth.user.uid, { content: data.content, platforms: data.platforms || [], title: data.title, scheduledAt: data.scheduledAt, mediaUrl: data.mediaUrl || null, mediaStoragePath: data.mediaStoragePath || null });
             }
           } else if (ap.action === "enqueueMessage") {
             const queueRef = await db.collection("messageQueue").add({
@@ -18247,6 +18530,48 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/alex:learn — Save a learning signal from user edits (email diffs, corrections).
+    // Called automatically when Sean edits an Alex email draft before sending.
+    // Builds Alex's understanding of Sean's voice and preferences over time.
+    if (route === "/alex:learn" && method === "POST") {
+      try {
+        const user = await requireFirebaseUser(req, res);
+        if (!user) return;
+        const { type, subject, to, alexDraft, seanSent } = body;
+        if (!alexDraft || !seanSent || alexDraft === seanSent) return json(res, { ok: true, learned: false });
+
+        // Build a structured note capturing what changed
+        const noteContent = `LEARNING SIGNAL — email edit
+Date: ${new Date().toISOString().slice(0, 10)}
+Type: ${type || "email_edit"}
+To: ${to || "unknown"}
+Subject: ${subject || "unknown"}
+
+ALEX WROTE:
+${alexDraft}
+
+SEAN SENT:
+${seanSent}
+
+WHAT THIS TEACHES ALEX:
+Sean edited this email before sending. Study the diff: what did he cut, add, or reframe? Apply those patterns to future emails for the same recipient or context.`;
+
+        await db.collection("alex_notes").add({
+          ownerUid: user.uid,
+          tenantId: ctx.tenantId || null,
+          title: `Learning: email edit — "${subject || "untitled"}" to ${to || "unknown"}`,
+          content: noteContent,
+          tags: ["learning", "email_edit", "style", "pattern"],
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          workerSlug: "platform-cos",
+        });
+        return json(res, { ok: true, learned: true });
+      } catch (e) {
+        console.warn("[alex:learn] failed:", e.message);
+        return json(res, { ok: true, learned: false });
+      }
+    }
+
     // GET /v1/alex:briefing — Generate daily briefing
     if (route === "/alex:briefing" && (method === "GET" || method === "POST")) {
       try {
@@ -20597,28 +20922,109 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // POST /v1/nurse-edu:append — append a real event to a student's academic
-    // record (reflection, slo.observed, grade.locked, …). Body: { dtcId,
-    // entryType, data }. vaultWriter enforces the instructor's write rights.
+    // record. Supports all event types in studentRecord.EVENT_TYPES including
+    // the #74 additions: clinical_hours.logged, assessment.submitted,
+    // assignment.submitted, competency.assessed, course.graded.
+    // Body: { dtcId, entryType, data, createdByWorker? }
     if (route === "/nurse-edu:append" && method === "POST") {
       try {
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
         const ctx = getCtx(req, body, nAuth.user);
-        const { dtcId, entryType, data } = body || {};
+        const { dtcId, entryType, data, createdByWorker: cbw } = body || {};
         if (!dtcId || !entryType || !data) return jsonError(res, 400, "dtcId, entryType, and data required");
         const { appendEvent } = require("./services/vault/vaultWriter");
-        const { studentRecord } = require("./services/vault/schemas");
-        const shaped = studentRecord.isValidEvent(entryType) ? studentRecord.event(entryType, data) : { entryType, data };
+        const studentRecord = require("./services/vault/schemas/studentRecord");
+        if (!studentRecord.isValidEvent(entryType)) {
+          return jsonError(res, 400, `Unknown event type: ${entryType}. Valid types: ${Object.keys(studentRecord.EVENT_TYPES).join(", ")}`);
+        }
+        const validation = studentRecord.validateEvent(entryType, data);
+        if (!validation.ok) {
+          return jsonError(res, 400, `Missing required fields for ${entryType}: ${validation.missing.join(", ")}`);
+        }
+        const shaped = studentRecord.event(entryType, data);
         const result = await appendEvent({
           userId: ctx.userId, dtcId, entryType: shaped.entryType, data: shaped.data,
           worker: { slug: "nursing-education-001", vault_writes: ["academic_record"] },
-          createdByWorker: "Student Evaluation",
+          createdByWorker: cbw || "Student Evaluation",
         });
         if (!result.ok) return res.status(result.code === "forbidden" ? 403 : 400).json(result);
         return res.json(result);
       } catch (e) {
         console.error("nurse-edu:append failed:", e);
         return jsonError(res, 500, "Failed to append student event");
+      }
+    }
+
+    // GET /v1/nurse-edu:transcript?dtcId=xxx — #74 course-level transcript view.
+    // Returns all logbook entries for a student's academic_record DTC, grouped
+    // by course with assignment scores, assessments, clinical hours, and SLO progress.
+    if (route === "/nurse-edu:transcript" && method === "GET") {
+      try {
+        const tAuth = await requireFirebaseUser(req, res);
+        if (tAuth.handled) return tAuth.res;
+        const dtcId = req.query.dtcId;
+        if (!dtcId) return jsonError(res, 400, "dtcId required");
+        const snap = await db.collection("logbookEntries")
+          .where("dtcId", "==", dtcId)
+          .orderBy("createdAt", "asc")
+          .limit(500)
+          .get();
+        const entries = snap.docs.map(d => ({ id: d.id, ...d.data(), _ts: d.data().createdAt?.toMillis?.() || 0 }));
+        // Group by course
+        const courseMap = {};
+        const uncategorized = [];
+        for (const e of entries) {
+          const course = e.data?.course || e.data?.courseId || null;
+          if (!course) { uncategorized.push(e); continue; }
+          if (!courseMap[course]) {
+            courseMap[course] = {
+              course, courseId: e.data?.courseId || null,
+              enrolledDate: null, finalGrade: null,
+              clinicalHours: 0, clinicalCategories: {},
+              reflections: [], sloObservations: [], competencies: [],
+              assignments: [], assessments: [], incidents: [], other: [],
+            };
+          }
+          const c = courseMap[course];
+          if (e.entryType === "enrollment.recorded") { c.enrolledDate = e.data.date; }
+          else if (e.entryType === "clinical_hours.logged") {
+            const hrs = Number(e.data.hoursWorked) || 0;
+            c.clinicalHours += hrs;
+            if (e.data.category) c.clinicalCategories[e.data.category] = (c.clinicalCategories[e.data.category] || 0) + hrs;
+          }
+          else if (e.entryType === "course.graded") { c.finalGrade = { letterGrade: e.data.letterGrade, percentageGrade: e.data.percentageGrade, gpaPoints: e.data.gpaPoints, date: e.data.date }; }
+          else if (e.entryType === "reflection.submitted") { c.reflections.push(e); }
+          else if (e.entryType === "slo.observed") { c.sloObservations.push(e); }
+          else if (e.entryType === "competency.assessed") { c.competencies.push(e); }
+          else if (e.entryType === "assignment.submitted") { c.assignments.push(e); }
+          else if (e.entryType === "assessment.submitted") { c.assessments.push(e); }
+          else if (e.entryType === "incident.recorded") { c.incidents.push(e); }
+          else { c.other.push(e); }
+        }
+        // Compute per-course summaries
+        const courses = Object.values(courseMap).map(c => ({
+          ...c,
+          summary: {
+            reflectionCount: c.reflections.length,
+            sloObsCount: c.sloObservations.length,
+            competencyCount: c.competencies.length,
+            assignmentCount: c.assignments.length,
+            assessmentAvg: c.assessments.length
+              ? Math.round(c.assessments.reduce((sum, a) => sum + (Number(a.data?.score) || 0), 0) / c.assessments.length)
+              : null,
+            clinicalHoursTotal: c.clinicalHours,
+          },
+        }));
+        // GPA across locked courses
+        const gradedCourses = courses.filter(c => c.finalGrade?.gpaPoints != null);
+        const gpa = gradedCourses.length
+          ? +(gradedCourses.reduce((s, c) => s + Number(c.finalGrade.gpaPoints), 0) / gradedCourses.length).toFixed(2)
+          : null;
+        return res.json({ ok: true, dtcId, totalEntries: entries.length, courses, uncategorized, gpa, gradedCourseCount: gradedCourses.length });
+      } catch (e) {
+        console.error("nurse-edu:transcript failed:", e);
+        return jsonError(res, 500, "Failed to load transcript");
       }
     }
 
@@ -26001,6 +26407,49 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // TIKTOK — OAuth 2.0 + PKCE. Tokens at users/{uid}/integrations/tiktok.
+    // ----------------------------
+    if (route && route.startsWith("/tiktok:")) {
+      const ttAction = route.replace("/tiktok:", "");
+      try {
+        const tt = require("./services/social/tiktok");
+        switch (ttAction) {
+          case "authUrl": {
+            if (method !== "GET") return jsonError(res, 405, "GET required");
+            return await tt.handleTikTokAuthUrl(req, res, { userId: auth.user.uid });
+          }
+          case "exchangeCode": {
+            if (method !== "POST") return jsonError(res, 405, "POST required");
+            return await tt.handleTikTokExchangeCode(req, res, { userId: auth.user.uid });
+          }
+          case "status": {
+            if (method !== "GET") return jsonError(res, 405, "GET required");
+            return await tt.handleTikTokStatus(req, res, { userId: auth.user.uid });
+          }
+          case "disconnect": {
+            if (method !== "POST") return jsonError(res, 405, "POST required");
+            return await tt.handleTikTokDisconnect(req, res, { userId: auth.user.uid });
+          }
+          default:
+            return jsonError(res, 404, "Unknown tiktok action: " + ttAction);
+        }
+      } catch (e) {
+        console.error("tiktok action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // X (Twitter) — platform-level credentials (no per-user OAuth).
+    // Posts from @SOCIIIai using app keys stored in env.
+    // ----------------------------
+    if (route === "/x:status" && method === "GET") {
+      const hasX = !!(process.env.X_API_KEY && process.env.X_API_SECRET &&
+                      process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_SECRET);
+      return res.json({ ok: true, connected: hasX, handle: hasX ? "@SOCIIIai" : null, mode: "platform" });
+    }
+
+    // ----------------------------
     // GMAIL — connect + read + send. Same Google OAuth client as
     // Calendar/Drive/YouTube; tokens at users/{uid}/integrations/gmail.
     // Scopes: gmail.readonly, gmail.send, gmail.compose, contacts.readonly.
@@ -27496,6 +27945,57 @@ exports.quarterlyPricingReview = onSchedule(
 );
 
 // ----------------------------
+// PATENT DEADLINES: Daily check at 8 AM PT — Telegram alert at 60/30/14/7/3/1 days before conversion
+// ----------------------------
+exports.checkPatentDeadlines = onSchedule(
+  { schedule: "0 8 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const _db = admin.firestore();
+    const ALERT_DAYS = [365, 60, 30, 14, 7, 3, 1];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = new Date(todayStr);
+    try {
+      const snap = await _db.collection("patents")
+        .where("status", "==", "provisional_filed")
+        .get();
+      if (snap.empty) return;
+      const alerts = [];
+      snap.docs.forEach(doc => {
+        const p = doc.data();
+        if (!p.conversionDeadline) return;
+        const dl = new Date(p.conversionDeadline);
+        const daysLeft = Math.round((dl - today) / (1000 * 60 * 60 * 24));
+        if (ALERT_DAYS.includes(daysLeft)) {
+          alerts.push({ patent: p.shortTitle, daysLeft, deadline: p.conversionDeadline });
+        }
+      });
+      if (!alerts.length) return;
+      const lines = alerts.map(a =>
+        `⚠️ ${a.patent}: ${a.daysLeft} day${a.daysLeft !== 1 ? "s" : ""} to convert (deadline ${a.deadline})`
+      ).join("\n");
+      const msg = `PATENT DEADLINE ALERT\n\n${lines}\n\nProvisional → Nonprovisional/PCT conversion required. Contact patent counsel to initiate. Failure to convert = permanent lapse.`;
+      // Send via Telegram advisor group (same channel as IR/83b alerts)
+      const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+      const tgChatId = process.env.TELEGRAM_ADVISOR_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+      if (tgToken && tgChatId) {
+        await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: tgChatId, text: msg }),
+        });
+      }
+      // Also log to Firestore for the Patent Worker canvas
+      await _db.collection("patentAlerts").add({
+        alerts, sentAt: admin.firestore.FieldValue.serverTimestamp(), message: msg,
+      });
+      console.log(`Patent deadline alerts sent: ${alerts.length}`);
+    } catch (e) {
+      console.error("checkPatentDeadlines failed:", e.message);
+    }
+  }
+);
+
+// ----------------------------
 // WORKER DEPRECATION: Check for 90-day inactive workers — weekly on Mondays
 // ----------------------------
 exports.checkWorkerDeprecation = onSchedule(
@@ -27798,3 +28298,65 @@ exports.createSignatureRequest = onRequest({ region: "us-central1" }, async (req
 exports.hellosignWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
   return handleHellosignHook(req, res);
 });
+
+// ----------------------------
+// SCHEDULED SOCIAL POST PROCESSOR (every 15 minutes)
+// Drains marketingDrafts with scheduledAt <= now that are still in "draft" status.
+// This closes the scheduling gap in the marketing automation loop — Alex saves a
+// draft with a future scheduledAt, and this job fires it when the time arrives.
+// ----------------------------
+exports.scheduledSocialPostProcessor = onSchedule(
+  { schedule: "*/15 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const { Firestore } = require("firebase-admin/firestore");
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+    const snap = await db.collection("marketingDrafts")
+      .where("status", "==", "draft")
+      .where("scheduledAt", "<=", now)
+      .limit(20)
+      .get();
+
+    if (snap.empty) {
+      console.log("[scheduledSocialPostProcessor] no posts due");
+      return;
+    }
+
+    const { postToPlatforms } = require("./services/socialService");
+    let posted = 0;
+    let failed = 0;
+
+    for (const doc of snap.docs) {
+      const draft = doc.data();
+      const ref = doc.ref;
+      try {
+        // Mark in-flight first (prevents double-fire on concurrent runs).
+        await ref.update({ status: "posting", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+        const r = await postToPlatforms(draft.userId, {
+          content: draft.content,
+          platforms: draft.platforms || [],
+          title: draft.title || null,
+          mediaUrl: draft.mediaUrl || null,
+          mediaStoragePath: draft.mediaStoragePath || null,
+          scheduledAt: draft.scheduledAt,
+        });
+
+        await ref.update({
+          status: r.ok ? "posted" : "failed",
+          postResult: r,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (r.ok) posted++; else failed++;
+        console.log(`[scheduledSocialPostProcessor] ${r.ok ? "OK" : "FAIL"} draftId=${doc.id}`);
+      } catch (e) {
+        failed++;
+        await ref.update({ status: "failed", postError: e.message, updatedAt: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+        console.error(`[scheduledSocialPostProcessor] error draftId=${doc.id}:`, e.message);
+      }
+    }
+
+    console.log(`[scheduledSocialPostProcessor] done: posted=${posted} failed=${failed}`);
+  }
+);

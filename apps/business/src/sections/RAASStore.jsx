@@ -1,6 +1,111 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useWorkerCatalog } from "../data/useWorkerCatalog";
 import { SUITE_COLORS } from "../utils/workerIcons";
+
+const _BIAB_SLUGS = ["platform-accounting","platform-hr","platform-marketing","platform-contacts","platform-control-center-pro"];
+const _BIAB_API = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+function BundleHeroCard() {
+  const [status, setStatus] = useState("idle"); // idle | loading | done | error
+  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem("biab_dismissed") === "1");
+
+  // Check if already fully subscribed
+  const alreadyHave = useMemo(() => {
+    try {
+      const active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]");
+      const slugs = active.map(w => typeof w === "string" ? w : w?.slug).filter(Boolean);
+      return _BIAB_SLUGS.every(s => slugs.includes(s));
+    } catch { return false; }
+  }, []);
+
+  if (dismissed || alreadyHave) return null;
+
+  async function handleAdd() {
+    setStatus("loading");
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const tenantId = localStorage.getItem("TENANT_ID") || null;
+      const res = await fetch(`${_BIAB_API}/api?path=/v1/bundle:subscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+        },
+        body: JSON.stringify({ bundleId: "business-in-a-box", tenantId }),
+      });
+      const data = await res.json();
+      if (data?.ok) {
+        setStatus("done");
+        window.dispatchEvent(new CustomEvent("ta:workspace-changed", {}));
+        setTimeout(() => window.dispatchEvent(new CustomEvent("ta:workers-updated")), 800);
+      } else {
+        setStatus("error");
+      }
+    } catch { setStatus("error"); }
+  }
+
+  function dismiss() {
+    sessionStorage.setItem("biab_dismissed", "1");
+    setDismissed(true);
+  }
+
+  const WORKERS = [
+    { name: "Accounting", desc: "Live P&L, cash flow, invoice tracker" },
+    { name: "HR & People", desc: "Hiring, time-off, team records" },
+    { name: "Marketing", desc: "Campaigns, social calendar, ad copy" },
+    { name: "Contacts", desc: "CRM, leads, relationship tracking" },
+    { name: "Control Center", desc: "Daily briefings, cross-worker view" },
+  ];
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+      borderRadius: 14, padding: "24px 28px", marginBottom: 28, position: "relative",
+      border: "1px solid #334155",
+    }}>
+      <button
+        onClick={dismiss}
+        style={{ position: "absolute", top: 12, right: 14, background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer", lineHeight: 1, padding: "2px 6px" }}
+        title="Dismiss"
+      >×</button>
+
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ display: "inline-block", background: "#dcfce7", color: "#15803d", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 10px", borderRadius: 4, marginBottom: 10 }}>Free Bundle</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Business in a Box</div>
+          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 18 }}>
+            Five AI workers — everything a small business needs — added to your workspace in one click.
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+            {WORKERS.map(w => (
+              <div key={w.name} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 12px" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>{w.name}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>{w.desc}</div>
+              </div>
+            ))}
+          </div>
+          {status === "done" ? (
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#4ade80" }}>All 5 workers added to My Workers</div>
+          ) : (
+            <button
+              onClick={handleAdd}
+              disabled={status === "loading"}
+              style={{
+                padding: "12px 28px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 700,
+                background: status === "loading" ? "#475569" : "#7c3aed", color: "#fff",
+                cursor: status === "loading" ? "default" : "pointer", opacity: status === "loading" ? 0.8 : 1,
+              }}
+            >
+              {status === "loading" ? "Setting up workers…" : "Add all 5 workers — free"}
+            </button>
+          )}
+          {status === "error" && <div style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>Something went wrong — try again.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // 50.10 Phase 2 — RAASStore now reads from digitalWorkers/* (Firestore) via
 // the useWorkerCatalog hook. Replaces the static WORKER_ROUTES import that
@@ -146,7 +251,7 @@ export default function RAASStore() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
+      <div style={{ marginBottom: "20px" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: "0 0 6px 0" }}>
           Marketplace
         </h1>
@@ -154,6 +259,9 @@ export default function RAASStore() {
           AI-powered apps built by domain experts — browse, subscribe, or build your own.
         </p>
       </div>
+
+      {/* Business in a Box hero — proactive bundle offer */}
+      <BundleHeroCard />
 
       {/* Stats + Language Bar */}
       <div style={{ marginBottom: 20, padding: "14px 0", borderBottom: "1px solid #e5e7eb" }}>

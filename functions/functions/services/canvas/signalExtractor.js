@@ -48,6 +48,14 @@ const WORKER_SIGNALS = {
   "title-abstract-001": [
     { keywords: ["title abstract", "abstract", "chain of title", "title", "deed", "lien", "encumbrance", "easement", "parcel", "tmk", "ownership", "vesting"], signal: "card:title-abstract" },
   ],
+
+  // Real-estate — Listing Readiness / Listing Scorecard worker (S52.47).
+  // The model emits CANVAS_RENDER markers directly; this extractor signal
+  // fires when the user message contains listing-prep keywords so the tab
+  // pre-selects before the model finishes generating.
+  "listing-readiness-001": [
+    { keywords: ["listing readiness", "listing scorecard", "list my home", "list the property", "ready to list", "listing prep", "pre-listing", "seller readiness", "price opinion", "list it"], signal: "card:listing-readiness" },
+  ],
 };
 
 // ═══════════════════════════════════════════════════════════════

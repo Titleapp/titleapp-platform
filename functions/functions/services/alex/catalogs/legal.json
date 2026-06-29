@@ -471,7 +471,8 @@
         { "id": "exposure-map", "label": "Practice Exposure", "signal": "card:practice-exposure", "order": 3, "view": "closing_attorney", "description": "Practice-wide exposure; identifies trend risk + carrier-reportable patterns" },
         { "id": "cle-tracker", "label": "CLE Credits", "signal": "card:cle-tracker", "order": 4, "view": "closing_attorney", "description": "CLE credits earned via state bar partnerships" },
         { "id": "carrier-reports", "label": "Malpractice Carrier Reports", "signal": "card:carrier-reports", "order": 5, "view": "closing_attorney", "description": "Carrier-formatted reports demonstrating audit-anchored process; supports premium reduction" },
-        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 6, "view": "closing_attorney", "description": "Logbook of all closings + forward-defense docs + carrier interactions" }
+        { "id": "audit-trail", "label": "Audit Trail", "signal": "card:audit-trail", "order": 6, "view": "closing_attorney", "description": "Logbook of all closings + forward-defense docs + carrier interactions" },
+        { "id": "signed-docs", "label": "Signed Docs", "signal": "esign:documents", "order": 7, "description": "SOCIII anchor records for every executed closing document — immutable chain proof, any signing rail" }
       ],
       "controlCenterContribution": {
         "section": "closing_attorney",

@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import { useWorkerState } from "./WorkerStateContext.jsx";
 
 const RightPanelContext = createContext(null);
 
 export function RightPanelProvider({ children, initialState, initialVertical, initialVerticalLabel }) {
+  const wsc = useWorkerState();
   const [state, setState] = useState(initialState || "STATE-1");
   const [vertical, setVertical] = useState(initialVertical || null);
   const [verticalLabel, setVerticalLabel] = useState(initialVerticalLabel || null);
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
-  const [activeWorkerData, setActiveWorkerData] = useState(null);
+  // _localWorkerData: fallback for the brief window before WorkerStateContext is populated.
+  // WorkerStateContext.activeWorkerData is the canonical source — prefer it in all reads.
+  const [_localWorkerData, _setLocalWorkerData] = useState(null);
   const [relatedWorkers, setRelatedWorkers] = useState([]);
   const [canvasData, setCanvasData] = useState(null); // { resolved, context }
   const [artifactData, setArtifactData] = useState(null); // { type, data, title? }
@@ -24,30 +28,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     // at the source: this never enters STATE-3. Worker discovery lives on the
     // Workers page + home "Top 10", never as a canvas overlay.
     return;
-    // Lock: never revert from WORKSPACE_HOME or CANVAS — a worker's canvas stays
-    // open until the user explicitly leaves. S52.44: added CANVAS so the
-    // "<vertical> Workers" recommendation panel can't hijack an open worker
-    // canvas on every chat answer (the CRE Analyst overlay bug).
-    if (state === "WORKSPACE_HOME" || state === "CANVAS") return;
-    // S52.45 — THE bulletproof overlay kill: if ANY worker workspace is open,
-    // never enter the recommendation state, regardless of `state`. activeWorkerData
-    // is set the moment a worker opens (showWorkerHome) and cleared only on
-    // leaveWorkspace — it's the reliable "inside a worker" signal. Prior guards
-    // checked WorkerStateContext.activeWorkerId, which is a DIFFERENT context and
-    // is not set in every open-worker flow, so the overlay slipped through.
-    if (activeWorkerData) return;
-    // S52.45 — belt-and-suspenders: a logged-in user is in their workspace, never
-    // the discovery funnel. The "{vertical} Workers" overlay is pure noise/bug
-    // there. Hard-off whenever a session token exists. (Reversible — the
-    // recommendation panel is for logged-OUT discovery visitors only.)
-    try { if (typeof localStorage !== "undefined" && localStorage.getItem("ID_TOKEN")) return; } catch {}
-    // STATE-2 visitors: only accept workers matching their vertical (containment)
-    if (state === "STATE-2" && detectedVertical && detectedVertical !== vertical) return;
-    if (workerList && workerList.length > 0) setWorkers(workerList);
-    if (detectedVertical) setVertical(detectedVertical);
-    if (detectedLabel) setVerticalLabel(detectedLabel);
-    setState("STATE-3");
-  }, [state, vertical, activeWorkerData]);
+  }, []);
 
   const showWorkerDetail = useCallback((worker) => {
     // Lock: never revert from WORKSPACE_HOME
@@ -71,7 +52,10 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   }, []);
 
   const showWorkerHome = useCallback((workerData, cousins) => {
-    setActiveWorkerData(workerData);
+    // WorkerStateContext.setWorkerOptimistic is the canonical writer — it was
+    // already called by Sidebar before ta:select-worker fires. Update local
+    // fallback state so WORKSPACE_HOME gate renders if wsc hasn't set data yet.
+    _setLocalWorkerData(workerData);
     if (cousins) setRelatedWorkers(cousins);
     setState("WORKSPACE_HOME");
   }, []);
@@ -84,10 +68,12 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   }, []);
 
   const leaveWorkspace = useCallback(() => {
-    setActiveWorkerData(null);
+    _setLocalWorkerData(null);
     setRelatedWorkers([]);
     setState(originRef.current);
-  }, []);
+    // Also clear WorkerStateContext so workerReady gates (canvas, chat opener) reset.
+    if (wsc?.clearWorker) wsc.clearWorker();
+  }, [wsc]);
 
   // Canvas Protocol (44.9) — show canvas card in right panel
   const showCanvas = useCallback((resolved, context) => {
@@ -134,13 +120,13 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setCanvasData(null);
     setState(prevStateRef.current || originRef.current);
     // Inside a worker, closing a canvas card must NOT leave a blank canvas —
-    // re-land on the worker's first data tab (Sean, 2026-06-26: × → blank on
-    // CVT / Drug Dosing / Staff Credentials). App.jsx listens for this and
-    // re-runs landOnFirstDataTab. Outside a worker (discovery), no-op.
-    if (activeWorkerData) {
+    // re-land on the worker's first data tab. WorkerStateContext is the canonical
+    // source; fall back to local state for the brief window before it's populated.
+    const insideWorker = !!(wsc?.activeWorkerData || _localWorkerData);
+    if (insideWorker) {
       try { window.dispatchEvent(new CustomEvent("ta:reland-canvas", { detail: { savedCanvas } })); } catch (_) { /* SSR/no-window */ }
     }
-  }, [activeWorkerData]);
+  }, [wsc, _localWorkerData]);
 
   const showArtifact = useCallback((artifact) => {
     setArtifactData(artifact);
@@ -166,6 +152,11 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setCanvasData(null);
     setState((prev) => (prev === "CANVAS" ? (prevStateRef.current || originRef.current) : prev));
   }, []);
+
+  // WorkerStateContext is the single source of truth for activeWorkerData.
+  // Fall back to _localWorkerData for the brief optimistic window before
+  // WorkerStateContext is populated (e.g. in AdminShell which has no wsc).
+  const activeWorkerData = wsc?.activeWorkerData ?? _localWorkerData;
 
   return (
     <RightPanelContext.Provider value={{

@@ -8,13 +8,14 @@ import React, { useState, useCallback, useEffect } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const SOCIAL_PLATFORMS = [
-  { id: "linkedin",  label: "LinkedIn",  icon: "in", color: "#0077B5" },
-  { id: "facebook",  label: "Facebook",  icon: "f",  color: "#1877F2" },
-  { id: "instagram", label: "Instagram", icon: "ig", color: "#E4405F" },
-  { id: "twitter",   label: "X (Twitter)", icon: "X", color: "#000000" },
-  { id: "tiktok",    label: "TikTok",    icon: "tt", color: "#010101" },
-  { id: "youtube",   label: "YouTube",   icon: "YT", color: "#FF0000" },
-  { id: "gbp",       label: "Google Business", icon: "G", color: "#4285F4" },
+  { id: "youtube",   label: "YouTube",         icon: "YT", color: "#FF0000" },
+  { id: "twitter",   label: "X (Twitter)",     icon: "X",  color: "#000000" },
+  { id: "linkedin",  label: "LinkedIn",         icon: "in", color: "#0077B5" },
+  { id: "tiktok",    label: "TikTok",           icon: "tt", color: "#010101" },
+  { id: "telegram",  label: "Telegram",         icon: "TG", color: "#2CA5E0" },
+  { id: "instagram", label: "Instagram",        icon: "ig", color: "#E4405F" },
+  { id: "facebook",  label: "Facebook",         icon: "f",  color: "#1877F2" },
+  { id: "gbp",       label: "Google Business",  icon: "G",  color: "#4285F4" },
 ];
 
 const S = {
@@ -38,12 +39,20 @@ const S = {
   connectBtn: {
     padding: "6px 14px", fontSize: 11, fontWeight: 600, borderRadius: 6,
     border: "1px solid #e2e8f0", background: "#fff", color: "#6B46C1", cursor: "pointer",
+    flexShrink: 0,
+  },
+  comingSoonBadge: {
+    padding: "4px 10px", fontSize: 10, fontWeight: 700, borderRadius: 4,
+    background: "#f1f5f9", color: "#94a3b8", flexShrink: 0,
   },
   connectedBadge: {
     padding: "4px 10px", fontSize: 10, fontWeight: 700, borderRadius: 4,
-    background: "#dcfce7", color: "#16a34a",
+    background: "#dcfce7", color: "#16a34a", flexShrink: 0,
   },
-  // Quick post form
+  platformBadge: {
+    padding: "4px 10px", fontSize: 10, fontWeight: 700, borderRadius: 4,
+    background: "#eff6ff", color: "#2563eb", flexShrink: 0,
+  },
   formCard: {
     background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0", padding: "20px 24px",
   },
@@ -67,15 +76,18 @@ const S = {
     zIndex: 9999, boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
   },
   error: { padding: 16, background: "#fef2f2", borderRadius: 8, color: "#dc2626", fontSize: 13, marginBottom: 16 },
+  info: { padding: 12, background: "#eff6ff", borderRadius: 8, color: "#1d4ed8", fontSize: 12, marginBottom: 16 },
 };
 
 async function apiFetch(path, method = "GET", body = null) {
   const token = localStorage.getItem("ID_TOKEN");
+  const tenantId = localStorage.getItem("TENANT_ID") || "sociii-inc";
   const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`, {
     method,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "x-tenant-id": tenantId,
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
@@ -84,26 +96,45 @@ async function apiFetch(path, method = "GET", body = null) {
   return data;
 }
 
+// Platforms whose connect flow is not yet built (show "Coming soon")
+const COMING_SOON = new Set(["linkedin", "instagram", "facebook", "gbp"]);
+// Platforms managed at the SOCIII platform level (no per-user OAuth needed)
+const PLATFORM_MANAGED = new Set(["twitter", "telegram"]);
+
 export default function SocialMedia() {
   const [content, setContent] = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState(["linkedin"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState(["twitter"]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [info, setInfo] = useState(null);
   const [toast, setToast] = useState(null);
-
-  // Live connection status. YouTube has a real status endpoint (#64); other
-  // platforms light up here as each one is wired.
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
+  const [platformMeta, setPlatformMeta] = useState({});
 
   const refreshConnections = useCallback(async () => {
     try {
       const yt = await apiFetch("/v1/youtube:status");
-      setConnectedPlatforms(prev => {
-        const next = prev.filter(p => p !== "youtube");
-        if (yt && yt.connected) next.push("youtube");
-        return next;
-      });
-    } catch { /* status is best-effort */ }
+      if (yt?.connected) {
+        setConnectedPlatforms(prev => prev.includes("youtube") ? prev : [...prev, "youtube"]);
+        if (yt.channelTitle) setPlatformMeta(prev => ({ ...prev, youtube: yt.channelTitle }));
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      const x = await apiFetch("/v1/x:status");
+      if (x?.connected) {
+        setConnectedPlatforms(prev => prev.includes("twitter") ? prev : [...prev, "twitter"]);
+        if (x.handle) setPlatformMeta(prev => ({ ...prev, twitter: x.handle }));
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      const tt = await apiFetch("/v1/tiktok:status");
+      if (tt?.connected) {
+        setConnectedPlatforms(prev => prev.includes("tiktok") ? prev : [...prev, "tiktok"]);
+        if (tt.displayName) setPlatformMeta(prev => ({ ...prev, tiktok: tt.displayName }));
+      }
+    } catch { /* best-effort */ }
   }, []);
 
   useEffect(() => { refreshConnections(); }, [refreshConnections]);
@@ -134,6 +165,9 @@ export default function SocialMedia() {
   }, [content, selectedPlatforms]);
 
   const handleConnect = useCallback(async (platformId) => {
+    setError(null);
+    setInfo(null);
+
     if (platformId === "youtube") {
       try {
         const res = await apiFetch("/v1/youtube:authUrl");
@@ -155,7 +189,7 @@ export default function SocialMedia() {
                 clearInterval(poll);
                 if (!done) { window.removeEventListener("message", handler); reject(new Error("Connection cancelled.")); }
               }
-            } catch { /* cross-origin until redirect — ignore */ }
+            } catch { /* cross-origin until redirect */ }
           }, 500);
         });
         const ex = await apiFetch("/v1/youtube:exchangeCode", "POST", { code });
@@ -167,8 +201,56 @@ export default function SocialMedia() {
       }
       return;
     }
-    // Other platforms (X, TikTok, …) light up as each direct OAuth is wired (#64).
-    setError(`${platformId}: connect is coming next — YouTube is live now.`);
+
+    if (platformId === "tiktok") {
+      try {
+        const res = await apiFetch("/v1/tiktok:authUrl");
+        if (!res.authUrl) throw new Error("Could not start TikTok connection");
+        const popup = window.open(res.authUrl, "tiktok-auth", "width=600,height=700");
+        if (!popup) throw new Error("Popup blocked — allow popups for this site and try again.");
+        const code = await new Promise((resolve, reject) => {
+          let done = false;
+          const handler = (event) => {
+            if (!event.data || event.data.type !== "tiktok-auth-code" || !event.data.code) return;
+            window.removeEventListener("message", handler);
+            done = true;
+            resolve(event.data.code);
+          };
+          window.addEventListener("message", handler);
+          const poll = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(poll);
+                if (!done) { window.removeEventListener("message", handler); reject(new Error("Connection cancelled.")); }
+              }
+            } catch { /* cross-origin until redirect */ }
+          }, 500);
+        });
+        const ex = await apiFetch("/v1/tiktok:exchangeCode", "POST", { code });
+        setToast(ex?.displayName ? `Connected TikTok: ${ex.displayName}` : "TikTok connected");
+        setTimeout(() => setToast(null), 3000);
+        refreshConnections();
+      } catch (e) {
+        setError(e.message);
+      }
+      return;
+    }
+
+    if (platformId === "twitter") {
+      setInfo("X posts from the @SOCIIIai managed account — no personal login needed. Alex queues posts for your approval before they go out.");
+      return;
+    }
+
+    if (platformId === "telegram") {
+      setInfo("Telegram requires a bot token setup (one-time admin step). Once configured, Alex will be able to send channel updates and receive commands via Telegram.");
+      return;
+    }
+
+    if (COMING_SOON.has(platformId)) {
+      const label = SOCIAL_PLATFORMS.find(p => p.id === platformId)?.label || platformId;
+      setInfo(`${label} direct posting is on the roadmap. Draft your posts here and publish manually for now.`);
+      return;
+    }
   }, [refreshConnections]);
 
   return (
@@ -177,13 +259,16 @@ export default function SocialMedia() {
       <div style={S.subtitle}>Manage connected accounts and create quick posts</div>
 
       {error && <div style={S.error}>{error}</div>}
+      {info && <div style={S.info}>{info}</div>}
 
-      {/* Connected Accounts */}
       <div style={S.section}>
         <div style={S.sectionTitle}>Connected Accounts</div>
         <div style={S.accountGrid}>
           {SOCIAL_PLATFORMS.map(platform => {
             const isConnected = connectedPlatforms.includes(platform.id);
+            const isPlatformManaged = PLATFORM_MANAGED.has(platform.id);
+            const isComingSoon = COMING_SOON.has(platform.id);
+            const meta = platformMeta[platform.id];
             return (
               <div key={platform.id} style={S.accountCard}>
                 <div style={{ ...S.accountIcon, background: platform.color }}>
@@ -192,11 +277,19 @@ export default function SocialMedia() {
                 <div style={S.accountInfo}>
                   <div style={S.accountName}>{platform.label}</div>
                   <div style={S.accountStatus}>
-                    {isConnected ? "Connected" : "Not connected"}
+                    {isConnected
+                      ? (meta || "Connected")
+                      : isPlatformManaged
+                        ? "Platform account"
+                        : "Not connected"}
                   </div>
                 </div>
                 {isConnected ? (
                   <span style={S.connectedBadge}>Active</span>
+                ) : isPlatformManaged ? (
+                  <button style={S.connectBtn} onClick={() => handleConnect(platform.id)}>Info</button>
+                ) : isComingSoon ? (
+                  <span style={S.comingSoonBadge}>Soon</span>
                 ) : (
                   <button style={S.connectBtn} onClick={() => handleConnect(platform.id)}>
                     Connect
@@ -208,7 +301,6 @@ export default function SocialMedia() {
         </div>
       </div>
 
-      {/* Quick Post */}
       <div style={S.section}>
         <div style={S.sectionTitle}>Quick Post</div>
         <div style={S.formCard}>

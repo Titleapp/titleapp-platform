@@ -70,7 +70,7 @@
     {
       "id": "my-journey",
       "label": "My Journey",
-      "signal": "card:work-product",
+      "signal": "card:student-transcript",
       "order": 9,
       "view": "student",
       "description": "Student view: my longitudinal record across courses I've taken, exportable as a verified transcript"

@@ -266,12 +266,17 @@ function LogbookModal({ dtc, onClose }) {
                         </div>
                       )}
                       {dataEntries.length > 0 && (
-                        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                          {dataEntries.map(([k, v]) => (
-                            <span key={k} style={{ marginRight: 12 }}>
-                              <span style={{ color: "#94a3b8" }}>{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}
-                            </span>
-                          ))}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 14px", fontSize: 12, color: "#64748b" }}>
+                          {dataEntries.map(([k, v]) => {
+                            const raw = typeof v === "object" ? null : String(v);
+                            const display = raw ? (raw.length > 60 ? raw.slice(0, 59).trimEnd() + "…" : raw) : null;
+                            if (!display) return null;
+                            return (
+                              <span key={k}>
+                                <span style={{ color: "#94a3b8" }}>{k.replace(/_/g, " ")}:</span> {display}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

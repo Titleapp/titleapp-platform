@@ -1,0 +1,436 @@
+{
+  "vertical": "fashion_boutique",
+  "name": "Women's Fashion Boutique",
+  "version": "1.0.0",
+  "description": "End-to-end operating system for independent women's clothing boutiques — buying through client relationships.",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Buying & Planning",
+      "description": "Open-to-buy, vendor sourcing, purchase orders, seasonal budgeting"
+    },
+    {
+      "phase": 1,
+      "name": "Receiving & Inventory",
+      "description": "PO receipts, tagging, stock counts, shrinkage tracking"
+    },
+    {
+      "phase": 2,
+      "name": "Merchandising",
+      "description": "Pricing strategy, floor layout, visual merchandising, lookbook production"
+    },
+    {
+      "phase": 3,
+      "name": "Sales & Clienteling",
+      "description": "Client book, style profiles, appointment scheduling, special orders"
+    },
+    {
+      "phase": 4,
+      "name": "Marketing & Promotions",
+      "description": "Email campaigns, social media, trunk shows, loyalty rewards, seasonal events"
+    },
+    {
+      "phase": 5,
+      "name": "Operations & Service",
+      "description": "Staff scheduling, alterations, returns, store maintenance, vendor payments"
+    },
+    {
+      "phase": 6,
+      "name": "Finance & Reporting",
+      "description": "Daily close, margin analysis, payroll, cash flow, open-to-buy reconciliation"
+    }
+  ],
+  "suites": [
+    { "id": "buying", "name": "Buying & Inventory" },
+    { "id": "merchandising", "name": "Merchandising" },
+    { "id": "clienteling", "name": "Clienteling & CRM" },
+    { "id": "marketing", "name": "Marketing" },
+    { "id": "operations", "name": "Operations" },
+    { "id": "finance", "name": "Finance" }
+  ],
+  "workers": [
+    {
+      "id": "FB-001",
+      "name": "Open-to-Buy Planner",
+      "slug": "open-to-buy-planner",
+      "suite": "Buying & Inventory",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Calculates open-to-buy budget by month and category; tracks planned vs. actual receipts; flags over-bought positions before the season closes",
+      "tags": ["buying", "planning", "inventory"],
+      "valueBucket": ["make_money", "stay_organized"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "buying_budget_status"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "otb-summary", "label": "OTB Summary", "signal": "card:otb-summary", "default": true, "order": 0, "description": "Current open-to-buy by month and category — planned vs. actual vs. remaining" },
+        { "id": "receipts", "label": "Receipts", "signal": "card:po-receipts", "order": 1, "description": "Incoming purchase orders — on-order, in-transit, received this week" },
+        { "id": "by-category", "label": "By Category", "signal": "card:category-budget", "order": 2, "description": "OTB split across tops, dresses, bottoms, outerwear, accessories" }
+      ],
+      "constraintRaasSources": ["raas/fashion/GLOBAL/buying-rules.md"],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-002",
+      "name": "Vendor & PO Manager",
+      "slug": "vendor-po-manager",
+      "suite": "Buying & Inventory",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Tracks all vendor relationships, purchase orders, terms, and delivery windows; flags late shipments and minimum-order violations",
+      "tags": ["vendors", "purchase-orders", "buying"],
+      "valueBucket": ["stay_organized"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "vendor_alerts"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "vendors", "label": "Vendors", "signal": "card:vendor-list", "default": true, "order": 0, "description": "All active vendors — terms, contact, season history, payment status" },
+        { "id": "open-pos", "label": "Open POs", "signal": "card:open-purchase-orders", "order": 1, "description": "Outstanding purchase orders — amount, expected delivery, status" },
+        { "id": "late-shipments", "label": "Late Shipments", "signal": "card:late-shipments", "order": 2, "description": "Orders past expected delivery — escalation status and vendor contact" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-003",
+      "name": "Inventory Intelligence",
+      "slug": "inventory-intelligence",
+      "suite": "Buying & Inventory",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Identifies top sellers, slow movers, and dead stock by SKU, category, and vendor; recommends reorder points and markdown candidates",
+      "tags": ["inventory", "analytics", "buying"],
+      "valueBucket": ["make_money", "stay_organized"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "inventory_health"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "top-sellers", "label": "Top Sellers", "signal": "card:top-sellers", "default": true, "order": 0, "description": "Best-performing SKUs by units sold and sell-through rate" },
+        { "id": "slow-movers", "label": "Slow Movers", "signal": "card:slow-movers", "order": 1, "description": "Items below target sell-through — markdown candidates and days-on-hand" },
+        { "id": "reorder", "label": "Reorder", "signal": "card:reorder-recommendations", "order": 2, "description": "SKUs at or near reorder point based on velocity and lead time" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-004",
+      "name": "Pricing & Markdown Engine",
+      "slug": "pricing-markdown-engine",
+      "suite": "Merchandising",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Optimizes initial markup, markdown timing, and discount depth to hit sell-through goals without leaving margin on the table",
+      "tags": ["pricing", "markdown", "merchandising"],
+      "valueBucket": ["make_money"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "markdown_alerts"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "markdown-calendar", "label": "Markdown Calendar", "signal": "card:markdown-calendar", "default": true, "order": 0, "description": "Scheduled markdowns by date — category, depth, expected sell-through impact" },
+        { "id": "pricing-by-category", "label": "By Category", "signal": "card:category-pricing", "order": 1, "description": "Current AUR and IMU by category vs. target" },
+        { "id": "price-history", "label": "Price History", "signal": "card:price-history", "order": 2, "description": "SKU-level price history — original, each markdown event, final clearing price" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-005",
+      "name": "Visual Merchandising Planner",
+      "slug": "visual-merchandising-planner",
+      "suite": "Merchandising",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Plans floor layout, display rotations, and window themes; generates change-out schedules aligned with buying calendar and new receipts",
+      "tags": ["visual-merchandising", "floor-planning"],
+      "valueBucket": ["stay_organized"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "vm_schedule"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "floor-plan", "label": "Floor Plan", "signal": "card:floor-plan", "default": true, "order": 0, "description": "Current fixture layout and zone assignments" },
+        { "id": "rotation-schedule", "label": "Rotations", "signal": "card:rotation-schedule", "order": 1, "description": "Upcoming display changes — date, zone, theme, responsible staff" },
+        { "id": "window-calendar", "label": "Windows", "signal": "card:window-calendar", "order": 2, "description": "Window display calendar tied to marketing and new arrivals" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-006",
+      "name": "Client Book",
+      "slug": "client-book",
+      "suite": "Clienteling & CRM",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Maintains rich style profiles for top clients — size, brand preferences, purchase history, life events; generates personalized outreach and new-arrivals alerts",
+      "tags": ["clienteling", "crm", "vip"],
+      "valueBucket": ["make_money", "delight_customers"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "client_follow_ups"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "top-clients", "label": "Top Clients", "signal": "card:top-clients", "default": true, "order": 0, "description": "VIP clients ranked by LTV — purchase history, contact cadence, style notes" },
+        { "id": "outreach-queue", "label": "Outreach", "signal": "card:outreach-queue", "order": 1, "description": "Clients due for follow-up — new arrivals that match their profile, occasions coming up" },
+        { "id": "style-profiles", "label": "Style Profiles", "signal": "card:style-profiles", "order": 2, "description": "Individual client style cards — sizes, brands, fit notes, wishlists" }
+      ],
+      "vault_reads": ["client_profiles"],
+      "vault_writes": ["client_notes", "purchase_history"]
+    },
+    {
+      "id": "FB-007",
+      "name": "Loyalty & Rewards",
+      "slug": "loyalty-rewards",
+      "suite": "Clienteling & CRM",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Manages loyalty tiers, point balances, birthday offers, and reward redemptions; flags clients near tier upgrades for targeted outreach",
+      "tags": ["loyalty", "crm", "retention"],
+      "valueBucket": ["delight_customers"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "loyalty_alerts"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "tier-summary", "label": "Tiers", "signal": "card:loyalty-tier-summary", "default": true, "order": 0, "description": "Client counts by tier — Bronze/Silver/Gold — and tier thresholds" },
+        { "id": "near-upgrade", "label": "Near Upgrade", "signal": "card:near-upgrade", "order": 1, "description": "Clients within reach of next tier — outreach opportunity to close the gap" },
+        { "id": "birthday-pipeline", "label": "Birthdays", "signal": "card:birthday-pipeline", "order": 2, "description": "Upcoming client birthdays with offer status" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-008",
+      "name": "Alterations & Special Orders",
+      "slug": "alterations-special-orders",
+      "suite": "Operations",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 19 },
+      "status": "live",
+      "capabilitySummary": "Tracks alterations tickets, tailor turnaround times, and special orders from vendors; notifies clients when items are ready",
+      "tags": ["alterations", "special-orders", "operations"],
+      "valueBucket": ["delight_customers", "stay_organized"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "alteration_ready"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "active-tickets", "label": "Active Tickets", "signal": "card:alteration-tickets", "default": true, "order": 0, "description": "Open alteration tickets — client, item, tailor, promised date, status" },
+        { "id": "ready-to-pick-up", "label": "Ready", "signal": "card:ready-pickups", "order": 1, "description": "Completed alterations waiting for client pickup — days waiting, contact status" },
+        { "id": "special-orders", "label": "Special Orders", "signal": "card:special-orders", "order": 2, "description": "Client special orders on order from vendors — expected dates, deposit status" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-009",
+      "name": "Email & SMS Campaign Manager",
+      "slug": "email-sms-campaign-manager",
+      "suite": "Marketing",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Creates and sends targeted email and SMS campaigns — new arrivals, trunk shows, sales events, lookbooks — segmented by purchase history and style preference",
+      "tags": ["email", "marketing", "campaigns"],
+      "valueBucket": ["make_money"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "campaign_performance"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "campaigns", "label": "Campaigns", "signal": "card:campaign-list", "default": true, "order": 0, "description": "All campaigns — sent, scheduled, and draft — with open/click rates" },
+        { "id": "upcoming", "label": "Upcoming", "signal": "card:upcoming-campaigns", "order": 1, "description": "Next 4 weeks of planned campaigns — event-driven and evergreen" },
+        { "id": "segments", "label": "Segments", "signal": "card:list-segments", "order": 2, "description": "Email list segments — by tier, category preference, purchase recency (RFM)" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-010",
+      "name": "Social Media & Lookbook Creator",
+      "slug": "social-lookbook-creator",
+      "suite": "Marketing",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Generates social content calendar, creates styled lookbook posts using Fal.ai image generation, schedules posts to Instagram/TikTok/Pinterest; tracks engagement",
+      "tags": ["social-media", "lookbook", "content", "instagram"],
+      "valueBucket": ["make_money"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "social_performance"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "content-calendar", "label": "Content Calendar", "signal": "card:content-calendar", "default": true, "order": 0, "description": "30-day social content plan — draft, scheduled, and published by platform" },
+        { "id": "recent-posts", "label": "Recent Posts", "signal": "card:social-posts", "order": 1, "description": "Last 30 posts with engagement metrics — likes, saves, reach, link clicks" },
+        { "id": "lookbooks", "label": "Lookbooks", "signal": "card:lookbooks", "order": 2, "description": "Seasonal lookbooks — current season in production, published archives" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-011",
+      "name": "Staff Scheduler",
+      "slug": "staff-scheduler",
+      "suite": "Operations",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Builds weekly schedules based on sales forecasts and team availability; tracks hours for payroll compliance; flags overtime and understaffed peak periods",
+      "tags": ["scheduling", "hr", "operations"],
+      "valueBucket": ["stay_organized"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "staffing_alerts"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "this-week", "label": "This Week", "signal": "card:weekly-schedule", "default": true, "order": 0, "description": "Current week schedule by associate — hours, coverage, open shifts" },
+        { "id": "next-week", "label": "Next Week", "signal": "card:next-week-schedule", "order": 1, "description": "Upcoming schedule draft — awaiting publish or already confirmed" },
+        { "id": "hours-tracker", "label": "Hours", "signal": "card:hours-tracker", "order": 2, "description": "YTD hours by associate — overtime alerts, payroll-period summaries" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-012",
+      "name": "Daily Sales Reconciler",
+      "slug": "daily-sales-reconciler",
+      "suite": "Finance",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Closes the day: reconciles POS totals against cash drawer and card batches, flags discrepancies, pushes to accounting; generates daily and weekly trend reports",
+      "tags": ["daily-close", "pos", "finance"],
+      "valueBucket": ["stay_compliant", "stay_organized"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "daily_sales_summary"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "today", "label": "Today", "signal": "card:daily-sales", "default": true, "order": 0, "description": "Today's sales — net sales, units, avg transaction, vs. plan and vs. LY" },
+        { "id": "weekly-trend", "label": "Weekly Trend", "signal": "card:weekly-sales-trend", "order": 1, "description": "7-day sales trend — daily net sales bar chart, running MTD vs. budget" },
+        { "id": "discrepancies", "label": "Discrepancies", "signal": "card:pos-discrepancies", "order": 2, "description": "Unresolved POS-to-cash discrepancies awaiting review" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-013",
+      "name": "Margin & COGS Analyzer",
+      "slug": "margin-cogs-analyzer",
+      "suite": "Finance",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Tracks gross margin by category and vendor; identifies which brands and styles are actually profitable after markdowns; informs next season's buying decisions",
+      "tags": ["margin", "cogs", "finance", "buying"],
+      "valueBucket": ["make_money"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "margin_summary"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "margin-by-category", "label": "By Category", "signal": "card:margin-by-category", "default": true, "order": 0, "description": "Gross margin % by category vs. target and vs. LY" },
+        { "id": "margin-by-vendor", "label": "By Vendor", "signal": "card:margin-by-vendor", "order": 1, "description": "Realized margin by brand/vendor after all markdowns" },
+        { "id": "markdown-impact", "label": "Markdown Impact", "signal": "card:markdown-impact", "order": 2, "description": "How markdowns dented margin this season — units, depth, timing analysis" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    },
+    {
+      "id": "FB-014",
+      "name": "Alex — Chief of Staff",
+      "slug": "alex-chief-of-staff-boutique",
+      "suite": "Chief of Staff",
+      "phase": 0,
+      "type": "orchestrator",
+      "pricing": { "monthly": 0 },
+      "status": "live",
+      "capabilitySummary": "Daily briefing: yesterday's sales vs. plan, OTB status, markdown alerts, client follow-ups due, alteration pickups ready, upcoming campaigns. Coordinates all boutique workers.",
+      "tags": ["orchestrator", "briefing", "cos"],
+      "valueBucket": ["stay_organized", "make_money"],
+      "alexRegistration": {
+        "priority": "highest",
+        "acceptsTasks": true,
+        "briefingContribution": "daily_boutique_briefing"
+      },
+      "temporalType": "always_on",
+      "canvasTabs": [
+        { "id": "daily-briefing", "label": "Daily Briefing", "signal": "card:boutique-briefing", "default": true, "order": 0, "description": "Alex's morning summary: sales vs. plan, OTB, top client actions, operational alerts" }
+      ],
+      "vault_reads": [],
+      "vault_writes": []
+    }
+  ],
+  "bundles": [
+    {
+      "id": "boutique-starter",
+      "name": "Boutique Starter",
+      "description": "The essential OS for a boutique: know what to buy, what's selling, and who your best clients are.",
+      "targetPersona": "Single-location boutique owner or GM",
+      "workerIds": ["FB-001", "FB-003", "FB-006", "FB-009", "FB-012"],
+      "pricing": { "monthly": 179 },
+      "saves": "Spreadsheet buying tracking + manual client notes + separate email tool"
+    },
+    {
+      "id": "boutique-complete",
+      "name": "Boutique Complete",
+      "description": "Full boutique operations suite — buying through finance, clienteling through marketing.",
+      "targetPersona": "Multi-associate boutique or small boutique group",
+      "workerIds": ["FB-001", "FB-002", "FB-003", "FB-004", "FB-005", "FB-006", "FB-007", "FB-008", "FB-009", "FB-010", "FB-011", "FB-012", "FB-013", "FB-014"],
+      "pricing": { "monthly": 389 },
+      "saves": "NuOrder + Shopify analytics + Klaviyo + manual scheduling + spreadsheet margins"
+    }
+  ]
+}

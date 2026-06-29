@@ -7,6 +7,18 @@ function getDb() { return admin.firestore(); }
 // posted). X/Twitter posts directly to SOCIII's own account via services/
 // social/x.js; other platforms light up as their direct integrations land.
 const X_ALIASES = new Set(["x", "twitter", "twitter/x", "x (twitter)"]);
+const YT_ALIASES = new Set(["youtube", "youtube (google)", "google/youtube"]);
+const TT_ALIASES = new Set(["tiktok", "tik tok"]);
+
+// Generate a short-lived signed public URL for a Storage object so TikTok
+// can pull the video from an HTTPS URL without Firebase auth.
+async function _signedVideoUrl(storagePath) {
+  const admin = require("firebase-admin");
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+  const [url] = await file.getSignedUrl({ action: "read", expires: Date.now() + 3 * 60 * 60 * 1000 }); // 3h
+  return url;
+}
 
 /**
  * Post content directly to each requested platform.
@@ -33,8 +45,35 @@ async function postToPlatforms(userId, { content, platforms, title, mediaStorage
         platformResults[platform] = r.ok
           ? { ok: true, id: r.tweetId || null, url: r.url || null }
           : { ok: false, error: r.error };
+      } else if (YT_ALIASES.has(p)) {
+        if (!mediaStoragePath && !mediaUrl) {
+          platformResults[platform] = { ok: false, error: "YouTube requires a video file — add a mediaStoragePath to this draft" };
+        } else {
+          const { uploadVideoFromStorage } = require("../social/youtube");
+          const storagePath = mediaStoragePath || mediaUrl;
+          const r = await uploadVideoFromStorage(userId, storagePath, {
+            title: title || content.slice(0, 100),
+            description: content,
+            privacyStatus: "private",
+          });
+          platformResults[platform] = { ok: r.ok, id: r.videoId || null, url: r.url || null };
+        }
+      } else if (TT_ALIASES.has(p)) {
+        if (!mediaStoragePath && !mediaUrl) {
+          platformResults[platform] = { ok: false, error: "TikTok requires a video file — add a mediaStoragePath to this draft" };
+        } else {
+          const { postVideoToTikTok } = require("../social/tiktok");
+          const storagePath = mediaStoragePath || mediaUrl;
+          const videoUrl = storagePath.startsWith("http") ? storagePath : await _signedVideoUrl(storagePath);
+          const r = await postVideoToTikTok(userId, {
+            videoUrl,
+            title: title || content.slice(0, 150),
+            privacyLevel: "SELF_ONLY",
+          });
+          platformResults[platform] = { ok: r.ok, id: r.publishId || null, url: r.url || null };
+        }
       } else {
-        platformResults[platform] = { ok: false, error: `${platform} is not connected yet — direct integration in progress` };
+        platformResults[platform] = { ok: false, error: `${platform} posting is not yet available — connect it in Settings` };
       }
     } catch (e) {
       platformResults[platform] = { ok: false, error: e.message };

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import sociiiMarkUrl from "../../assets/sociii-brand/icon/sociii-icon-mark.svg";
 import { applyLandingMeta } from "../../lib/landingMeta";
+import { auth } from "../../firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const MAX_W = 1200;
 
@@ -24,6 +26,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
   const [transitionActive, setTransitionActive] = useState(false);
   const [utmParams, setUtmParams] = useState({});
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const pricingRef = useRef(null);
   const signupRef = useRef(null);
@@ -127,6 +130,19 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
     setTimeout(() => {
       window.location.href = "/sandbox";
     }, 2100);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleBusy(true);
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      window.location.href = "/";
+    } catch (e) {
+      if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
+        console.error("[LandingPage] Google sign-in:", e.message);
+      }
+      setGoogleBusy(false);
+    }
   };
 
   // ── Chat widget send ──────────────────────────────────────
@@ -447,6 +463,45 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
       <section ref={signupRef} style={S.section("#f8fafc")}>
         <div style={S.sectionInner}>
           <h2 style={S.sectionTitle}>Get started in 60 seconds</h2>
+
+          {/* Google SSO — primary CTA */}
+          <div style={{ maxWidth: 480, margin: "0 auto 28px" }}>
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={googleBusy}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                padding: "14px 24px", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: googleBusy ? "wait" : "pointer",
+                background: googleBusy ? "#f5f3ff" : "#7c3aed", color: googleBusy ? "#7c3aed" : "#ffffff",
+                border: googleBusy ? "2px solid #ddd6fe" : "2px solid transparent",
+                boxShadow: "0 2px 8px rgba(124,58,237,0.20)", transition: "all 0.15s",
+              }}
+            >
+              {googleBusy ? (
+                <span>Opening Google…</span>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </>
+              )}
+            </button>
+            <div style={{ textAlign: "center", margin: "16px 0 0", fontSize: 12, color: "#94a3b8" }}>
+              Instant access — no credit card required
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, maxWidth: 480, margin: "0 auto 24px" }}>
+            <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+            <span style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>or sign up with email</span>
+            <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+          </div>
+
           {formSubmitted ? (
             <div style={{ textAlign: "center", padding: "40px 0" }}>
               <div style={{ fontSize: 18, fontWeight: 600, color: "#1a202c", marginBottom: 20 }}>

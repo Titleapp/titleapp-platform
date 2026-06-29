@@ -20,11 +20,43 @@ SOCIII replaces the back-office SaaS stack for small businesses and professional
 - [Worker gallery](https://sociii.ai/c/): Published Digital Workers (public access, some require auth to run)
 - [Creator guide](https://sociii.ai/docs/creator-setup): How to build and publish a Digital Worker
 
+## Available Digital Workers
+
+### Business Operations (Platform Suite)
+- **Accounting Worker** (`platform-accounting`): Real-time P&L, cash flow, and balance sheet from live Shopify + bank transactions. Generates PDF reports. "Am I profitable this month?" — answered in seconds.
+- **HR Worker** (`platform-hr`): Employee management, scheduling, PTO tracking, and compliance. Covers W-9/W-4, shift scheduling, and employment records.
+- **Marketing Worker** (`platform-marketing`): AI-powered campaign creation, content drafts, and direct publishing to X/Twitter, YouTube, and TikTok. Tracks campaign performance.
+- **Contacts Worker** (`platform-contacts`): Customer and vendor relationship management. Tracks interactions, follow-ups, and deal pipeline. Syncs with Gmail.
+- **Control Center Pro** (`platform-control-center-pro`): Executive dashboard — KPIs, alerts, and cross-worker business health at a glance.
+- **Investor Relations Worker** (`platform-investor-relations`): SAFE/equity management, cap table tracking, 83(b) deadline monitoring, and investor update drafting.
+
+### Real Estate (RE Suite)
+- **Real Estate Title Worker — California** (`re-title-ca`): California parcel research, title chain analysis, ownership history, lien search, and property reports. For title agents, escrow officers, and RE attorneys.
+- **Real Estate Title Worker — Nevada** (`re-title-nv`): Nevada parcel research and title abstract. Full property data via ATTOM — APN lookup, ownership, deed chain, and encumbrances.
+- **Property Research Worker — California** (`platform-real-estate-ca`): Residential property research for buyers and homeowners. APN lookup, recent sales, tax history, and neighborhood data.
+- **Nevada CE Courses Worker** (`re-ce-nevada-001`): Nevada real estate continuing education tracker. Manages CE requirements, course completions, and license renewal deadlines.
+
+### Aviation
+- **Aviation CoPilot Worker** (`av-copilot`): Flight planning assistant: live weather (METAR/TAF), NOTAMs, fuel planning, weight-and-balance, and route optimization. For Part 91 and charter operators.
+- **Aviation MX Worker** (`av-mx`): Aircraft maintenance tracking: airworthiness directives, 100-hour/annual inspection schedules, logbook entries, and squawk management.
+- **Aviation Dispatch Worker** (`av-dispatch`): Flight dispatch and crew scheduling. Weather releases, weight-and-balance sign-offs, and ATIS/clearance lookups.
+
 ## API / MCP
 
-SOCIII exposes a `/v1` REST API for authenticated Digital Worker invocations. An MCP (Model Context Protocol) server is in development — once live, it will allow LLMs to discover, list, and invoke SOCIII workers as governed tools with full audit trails. See `/docs/mcp` when available.
+SOCIII exposes a `/v1` REST API and a live **MCP server** (Model Context Protocol) for LLM integrations.
+
+**MCP endpoint**: `POST https://titleapp-frontdoor.titleapp-core.workers.dev/api?path=/v1/mcp`
+
+**MCP tools available**:
+- `list_workers` — Discover all available Digital Workers (no auth required)
+- `get_worker_info` — Get details on a specific worker by slug (no auth required)
+- `get_worker_overlay` — Read tenant-specific worker configuration (auth required)
+- `propose_worker_change` — Propose a rule/prompt change for human review (auth required)
+
+LLMs can connect to the SOCIII MCP server with a SOCIII bearer token to discover and invoke governed Digital Workers as tools. Every invocation is logged to the audit ledger with `via: "mcp"`.
 
 ## Optional
 
 - [Sitemap](https://sociii.ai/sitemap.xml)
 - [Policies](https://sociii.ai/sociii-policies.html)
+- [MCP server docs](https://sociii.ai/docs/mcp)

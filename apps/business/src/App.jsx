@@ -4416,7 +4416,10 @@ function WorkerHomeRenderer({ onBack }) {
   panelRef.current = panel;
   // 50.10-T3 — tab bar from active worker's canvasTabs
   const worker = workerCtx?.activeWorkerData || null;
-  const tabs = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
+  const tabs = React.useMemo(() => {
+    const base = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
+    return base;
+  }, [worker?.canvasTabs, worker?.slug]);
 
 
   // Spine-worker overrides — for workers with first-class UI sections, render
@@ -4487,6 +4490,7 @@ function WorkerHomeRenderer({ onBack }) {
   // we fall straight to the existing fixture path (no regression).
   const handleTabSelect = React.useCallback(async (tab, resolved) => {
     setActiveTabId(tab.id);
+    if (!resolved) return;
     let payload = null;
     try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
     if (!payload) payload = getFixtureForTab(worker, tab.id);
@@ -4846,7 +4850,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "deal-pipeline":
         return <DealPipeline />;
       case "vault-documents":
-        return <VaultDocuments />;
+        return <VaultGate><VaultDocuments /></VaultGate>;
       case "contacts-all":
       case "client-list":
       case "vendor-list":
@@ -4864,11 +4868,11 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "vault-dtcs":
         return <VaultGate><VaultDTCs /></VaultGate>;
       case "vault-learning-record":
-        return <LearningRecord />;
+        return <VaultGate><LearningRecord /></VaultGate>;
       case "vault-assets":
-        return <VaultAssets />;
+        return <VaultGate><VaultAssets /></VaultGate>;
       case "vault-deadlines":
-        return <VaultDeadlines />;
+        return <VaultGate><VaultDeadlines /></VaultGate>;
       case "re-listings":
         return <REListings />;
       case "re-buyers":

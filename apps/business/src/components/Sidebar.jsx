@@ -890,11 +890,7 @@ const WORKER_NAV_MAP = {
     { id: "hr-compliance", label: "Compliance" },
     { id: "onboarding", label: "Onboarding" },
   ],
-  "platform-marketing": [
-    { id: "campaigns", label: "Campaigns" },
-    { id: "content-calendar", label: "Content Calendar" },
-    { id: "social-media", label: "Social Media" },
-  ],
+  "platform-marketing": [],
   "platform-accounting": [
     { id: "financials", label: "Financials" },
     { id: "ap-ar", label: "AP/AR" },
@@ -1183,17 +1179,26 @@ export default function Sidebar({
     return () => { cancelled = true; window.removeEventListener("ta:workspace-changed", onChange); };
   }, [guestMode, isPersonal]);
 
-  // User's actual first name (for personalized header)
+  // User's display label (for personalized header, e.g. "Sean's Personal Space").
+  // Honorifics like "Dr." are kept when present so "Dr. Ruthie Clearwater" → "Dr. Ruthie"
+  // rather than stripping to just "Ruthie". Non-medical titles (Mr/Mrs/Ms/Prof etc.)
+  // are skipped so the label stays casual — those users see "Firstname's Personal Space".
   const userFirstName = (() => {
     if (guestMode) return "";
     const raw = localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME") || (localStorage.getItem("USER_EMAIL") || "").split("@")[0] || "";
-    // Skip an honorific so "Dr. Maya Chen" → "Maya", not "Dr." (Sean, 2026-06-26).
-    const TITLES = /^(dr|mr|mrs|ms|miss|prof|professor|sir|rev|fr|capt|lt|sgt|hon)\.?$/i;
+    const MEDICAL = /^(dr|doc)\.?$/i;
+    const OTHER_TITLES = /^(mr|mrs|ms|miss|prof|professor|sir|rev|fr|capt|lt|sgt|hon)\.?$/i;
     const parts = raw.split(/\s+/).filter(Boolean);
-    let first = parts[0] || "";
-    // If the first token is an honorific, use the next token. If there is no
-    // next token (display name is just "Dr."), fall through to email fallback.
-    if (TITLES.test(first)) first = parts[1] || "";
+    const first = parts[0] || "";
+    if (MEDICAL.test(first) && parts[1]) {
+      // Keep the "Dr." prefix: "Dr. Ruthie Clearwater" → "Dr. Ruthie"
+      return `${first.replace(/\.?$/, ".")} ${parts[1]}`;
+    }
+    if (OTHER_TITLES.test(first)) {
+      // Skip non-medical honorifics: "Prof. Smith" → "Smith"
+      const next = parts[1] || "";
+      return (next && next.length >= 2) ? next : "";
+    }
     return (first && first.length >= 2) ? first : "";
   })();
 
@@ -1359,7 +1364,10 @@ export default function Sidebar({
       const workerNav = WORKER_NAV_MAP[selectedWorker] || [];
       const items = workerNav.length > 0
         ? [...workerNav]
-        : [{ id: "worker-home", label: "Worker Home" }];
+        // platform-marketing uses canvas tabs (Channels/Campaigns/Creative) — no sidebar sub-nav needed
+        : selectedWorker === "platform-marketing"
+          ? []
+          : [{ id: "worker-home", label: "Worker Home" }];
       // Always append billing to every worker's nav
       if (!items.some(i => i.id === "billing")) {
         items.push({ id: "billing", label: "Billing" });

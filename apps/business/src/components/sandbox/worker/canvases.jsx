@@ -722,7 +722,7 @@ export function KnowledgeCanvas({ session, workerId, onComplete }) {
   return (
     <CanvasShell
       title="Knowledge — Studio Locker"
-      subtitle="The most important step. Everything your worker knows lives here."
+      subtitle="The most important step. Everything your worker knows lives here — and subscribers can browse these docs in their Drive."
     >
       <StepHero kind="knowledge" />
       <div style={card}>

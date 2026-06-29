@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import useDocuments from "../hooks/useDocuments";
 import DriveImportModal from "../components/DriveImportModal";
+import WorkerLibrarySection from "../components/WorkerLibrarySection";
 
 // CODEX 50.13 Day 2 Fix #3 — mime-class taxonomy (Google Drive style).
 // Drive holds raw files; classification is by file type, not asset class.
@@ -570,6 +571,10 @@ export default function VaultDocuments() {
           })}
         </div>
       )}
+
+      {/* Worker Libraries — Studio Locker docs for each subscribed worker.
+          Same docs that power RAAS, now readable by the user from Drive. */}
+      <WorkerLibrarySection />
     </div>
   );
 }

@@ -35,3 +35,4 @@ docs/data-room/
 firebase-debug.log
 .firebase/
 !.env.example
+investor_blast_preview.csv

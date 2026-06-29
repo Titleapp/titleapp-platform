@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
@@ -6,6 +6,122 @@ import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks
 import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts } from "../hooks/useGmail";
 import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive";
 import { useShopifyStatus, connectShopify, disconnectShopify } from "../hooks/useShopify";
+
+const _API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+async function _socialFetch(path, method = "GET", body = null) {
+  const token = localStorage.getItem("ID_TOKEN");
+  const tenantId = localStorage.getItem("TENANT_ID") || "sociii-inc";
+  const res = await fetch(`${_API_BASE}/api?path=${encodeURIComponent(path)}`, {
+    method,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "x-tenant-id": tenantId },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function YouTubeRow() {
+  const [status, setStatus] = useState({ loading: true, connected: false, channelTitle: null });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const refresh = useCallback(async () => {
+    try { const r = await _socialFetch("/v1/youtube:status"); setStatus({ loading: false, connected: !!r.connected, channelTitle: r.channelTitle || null }); }
+    catch { setStatus({ loading: false, connected: false, channelTitle: null }); }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await _socialFetch("/v1/youtube:authUrl");
+      if (!r.authUrl) throw new Error("Could not start YouTube connection");
+      const popup = window.open(r.authUrl, "google-youtube-auth", "width=600,height=700");
+      if (!popup) throw new Error("Popup blocked — allow popups for this site.");
+      const code = await new Promise((resolve, reject) => {
+        let done = false;
+        const h = (e) => { if (!e.data || e.data.type !== "google-youtube-auth-code" || !e.data.code) return; window.removeEventListener("message", h); done = true; resolve(e.data.code); };
+        window.addEventListener("message", h);
+        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch {} }, 500);
+      });
+      await _socialFetch("/v1/youtube:exchangeCode", "POST", { code });
+      await refresh();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect YouTube?")) return;
+    setBusy(true);
+    try { await _socialFetch("/v1/youtube:disconnect", "POST"); await refresh(); } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600 }}>YouTube</div>
+        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+          {status.loading ? "Checking…" : status.connected ? `Connected: ${status.channelTitle || "YouTube channel"}. Workers can publish video content.` : "Connect your YouTube channel so Alex can publish content on your behalf."}
+        </div>
+        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "Connecting…" : "Connect"}</button>
+      )}
+    </div>
+  );
+}
+
+function TikTokRow() {
+  const [status, setStatus] = useState({ loading: true, connected: false, displayName: null });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const refresh = useCallback(async () => {
+    try { const r = await _socialFetch("/v1/tiktok:status"); setStatus({ loading: false, connected: !!r.connected, displayName: r.displayName || null }); }
+    catch { setStatus({ loading: false, connected: false, displayName: null }); }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await _socialFetch("/v1/tiktok:authUrl");
+      if (!r.authUrl) throw new Error("Could not start TikTok connection");
+      const popup = window.open(r.authUrl, "tiktok-auth", "width=600,height=700");
+      if (!popup) throw new Error("Popup blocked — allow popups for this site.");
+      const code = await new Promise((resolve, reject) => {
+        let done = false;
+        const h = (e) => { if (!e.data || e.data.type !== "tiktok-auth-code" || !e.data.code) return; window.removeEventListener("message", h); done = true; resolve(e.data.code); };
+        window.addEventListener("message", h);
+        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch {} }, 500);
+      });
+      await _socialFetch("/v1/tiktok:exchangeCode", "POST", { code });
+      await refresh();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect TikTok?")) return;
+    setBusy(true);
+    try { await _socialFetch("/v1/tiktok:disconnect", "POST"); await refresh(); } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600 }}>TikTok</div>
+        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+          {status.loading ? "Checking…" : status.connected ? `Connected: @${status.displayName || "TikTok account"}. Workers can upload and publish videos.` : "Connect your TikTok account so Alex can publish short-form content."}
+        </div>
+        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "Connecting…" : "Connect"}</button>
+      )}
+    </div>
+  );
+}
 
 // Google Calendar connector status + connect/disconnect button.
 // Renders a single row inside the Integrations card.
@@ -1527,6 +1643,35 @@ function BusinessSettings() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontWeight: 600 }}>Stripe Payments</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Accept online payments</div></div>
             <span className="badge badge-completed">Connected</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Media */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Social Media</div>
+            <div className="cardSub">Connect accounts so Alex can publish content on your behalf</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <YouTubeRow />
+          <TikTokRow />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>X (Twitter)</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Posts from the @SOCIIIai managed account — Alex queues posts for your approval.</div>
+            </div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#eff6ff", color: "#2563eb", whiteSpace: "nowrap" }}>Platform account</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontWeight: 600 }}>LinkedIn</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Publish posts and articles to your company page</div></div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontWeight: 600 }}>Instagram</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Publish photos and reels to your Instagram account</div></div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
           </div>
         </div>
       </div>

@@ -40,7 +40,8 @@
         { "id": "communication", "label": "Updates", "signal": "card:work-product", "order": 6, "view": "investor", "description": "Investor-facing updates from the company" },
         { "id": "voting", "label": "Vote", "signal": "card:work-product", "order": 7, "view": "investor", "description": "Open ballots and your voting history" },
         { "id": "my-position", "label": "My Position", "signal": "card:work-product", "order": 8, "view": "investor", "description": "Your shares, ownership %, and documents" },
-        { "id": "documents", "label": "Documents", "signal": "card:work-product", "order": 9, "view": "investor", "description": "Your SAFE, signed agreements, and tax docs" }
+        { "id": "documents", "label": "Documents", "signal": "card:work-product", "order": 9, "view": "investor", "description": "Your SAFE, signed agreements, and tax docs" },
+        { "id": "signed-docs", "label": "Signed Docs", "signal": "esign:documents", "order": 10, "description": "Anchored signing records — immutable SOCIII chain proof for every executed SAFE, agreement, and closing doc" }
       ],
       "controlCenterContribution": {
         "section": "capital_formation",
