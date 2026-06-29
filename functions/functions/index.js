@@ -2955,12 +2955,18 @@ INSTRUCTOR VIEW ACTIVE: The user is an instructor or program admin (Ruthie or on
                     const m = fr.materials || {};
                     let investors = [];
                     try { investors = await dr.listInvestors(frId); } catch (_) {}
+                    const deckStoragePath = m.deckStoragePath || null;
+                    const deckFilename = (deckStoragePath || "").split("/").pop() || "SOCIII-deck.pptx";
+                    const deckGsUrl = deckStoragePath
+                      ? `gs://title-app-alpha.firebasestorage.app/${deckStoragePath}`
+                      : null;
                     workerPrompt = `LIVE RAISE — you are the founder's Investor Relations chief of staff and you KNOW this. NEVER tell the user you can't see the raise or the data room.
 - Fundraise: ${fr.name || frId} | stage: ${fr.stage || "—"} | instrument: ${fr.instrument || "—"}
 - Target: ${fr.target_raise || "—"}${fr.valuation_cap ? ` | cap: ${fr.valuation_cap}` : ""} | committed: ${fr.current_raised || 0}
-- DATA ROOM (share these links with investors): deck ${m.deckUrl || "(not set)"} · whitepaper ${m.whitepaperUrl || "(not set)"} · data room ${m.dataRoomUrl || "(not set)"}
+- DATA ROOM URL (share with investors): ${m.dataRoomUrl || "https://sociii.ai/data-room"} · whitepaper: ${m.whitepaperUrl || "(not set)"}
+- PITCH DECK: ${deckGsUrl ? `ATTACH: ${deckGsUrl} | ${deckFilename}` : "(not available)"}
 - Formal investors tracked: ${investors.length}. (The broader prospect pipeline lives in Contacts.)
-When asked about the data room or materials, GIVE THE LINKS ABOVE. You help the founder RUN the raise — pipeline, data room, outreach drafting.
+When emailing investors, ALWAYS attach the pitch deck using the exact ATTACH line above. Share the DATA ROOM URL with investors — never send the gs:// path in the email body. You help the founder RUN the raise — pipeline, data room, outreach drafting.
 
 ${workerPrompt}`;
                   }
@@ -4388,6 +4394,42 @@ IDENTITY RULES:
               }
             }
 
+            // Drive file inventory — injected so Alex can attach files from Google Drive
+            if (authUser) {
+              try {
+                const _driveSnap = await db.doc(`users/${authUser.uid}/integrations/drive`).get();
+                if (_driveSnap.exists && _driveSnap.data().accessToken) {
+                  const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                  const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                  const _driveRes = await _driveClient.files.list({
+                    q: "trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+                    fields: "files(id, name, mimeType)",
+                    orderBy: "modifiedTime desc",
+                    pageSize: 20,
+                  });
+                  const _driveFiles = (_driveRes.data.files || []).slice(0, 20);
+                  if (_driveFiles.length > 0) {
+                    const _driveList = _driveFiles.map(f => `  gdrive://${f.id} | ${f.name}`).join("\n");
+                    selectedSystemPrompt += `\n\nGOOGLE DRIVE FILES (recent — use these in ATTACH lines):\n${_driveList}`;
+                  }
+                }
+              } catch (_drErr) { /* Drive not connected or unavailable */ }
+            }
+
+            // Studio Locker (investorDocs) — always available
+            try {
+              const _lockerSnap = await db.doc("config/investorDocs").get();
+              if (_lockerSnap.exists) {
+                const _lockerDocs = (_lockerSnap.data().documents || []).filter(d => d.storagePath);
+                if (_lockerDocs.length > 0) {
+                  const _lockerList = _lockerDocs.map(d =>
+                    `  gs://title-app-alpha.firebasestorage.app/${d.storagePath} | ${d.filename || d.name}`
+                  ).join("\n");
+                  selectedSystemPrompt += `\n\nSTUDIO LOCKER FILES (use these in ATTACH lines):\n${_lockerList}`;
+                }
+              }
+            } catch (_lkErr) { /* non-blocking */ }
+
             // Apollo investor-search capability — always available for authenticated users
             if (authUser) {
               selectedSystemPrompt += `\n\nAPOLLO CAPABILITY: You have access to Apollo.io for contact enrichment and prospecting. CRITICAL RULES:\n1. NEVER say "running now", "I'll ping you", or claim to be executing in the background — you cannot do that.\n2. When the user asks to search Apollo or enrich contacts, propose it using this EXACT format:\n[APOLLO_SEARCH]{"label":"Short description","criteria":{"person_titles":["Managing Partner","Angel Investor"],"q_organization_industries":["venture capital"],"per_page":25},"tag":"Potential Investor","write_to_contacts":true}[/APOLLO_SEARCH]\n3. The platform shows an approval card. The user clicks "Run" — THEN Apollo executes. Not before.\n4. You can propose up to 2 separate [APOLLO_SEARCH] blocks in one response (Path 1 enrich + Path 2 net-new).\n5. After proposing, say "Two Apollo searches ready — click Run on each to execute."`;
@@ -5266,6 +5308,31 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   }
                 } catch (_) {}
 
+                // Drive + Studio Locker file inventory for COS attachment context
+                let _cosFileCtx = "";
+                try {
+                  const _driveSnap2 = await db.doc(`users/${authUser.uid}/integrations/drive`).get();
+                  if (_driveSnap2.exists && _driveSnap2.data().accessToken) {
+                    const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                    const _driveC2 = await getAuthenticatedDriveClient(authUser.uid);
+                    const _dRes = await _driveC2.files.list({
+                      q: "trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+                      fields: "files(id, name)",
+                      orderBy: "modifiedTime desc",
+                      pageSize: 20,
+                    });
+                    const _dFiles = (_dRes.data.files || []).slice(0, 20);
+                    if (_dFiles.length) _cosFileCtx += `\n\nGOOGLE DRIVE FILES:\n${_dFiles.map(f => `  gdrive://${f.id} | ${f.name}`).join("\n")}`;
+                  }
+                } catch (_cde) { /* Drive not connected */ }
+                try {
+                  const _lSnap = await db.doc("config/investorDocs").get();
+                  if (_lSnap.exists) {
+                    const _lDocs = (_lSnap.data().documents || []).filter(d => d.storagePath);
+                    if (_lDocs.length) _cosFileCtx += `\n\nSTUDIO LOCKER FILES:\n${_lDocs.map(d => `  gs://title-app-alpha.firebasestorage.app/${d.storagePath} | ${d.filename || d.name}`).join("\n")}`;
+                  }
+                } catch (_cle) { /* non-blocking */ }
+
                 const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
 ${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}.` : ""}
 
@@ -5288,11 +5355,13 @@ HARD RULES:
      TO: recipient@example.com
      CC: cc@example.com (optional — omit line if not needed)
      SUBJECT: Subject line
-     ATTACH: https://storage.googleapis.com/... | filename.pdf  (optional — one line per attachment; use when you have a deckUrl, whitepaperUrl, or any document URL in context)
+     ATTACH: https://... | filename.pdf         (standard HTTPS URL)
+     ATTACH: gs://bucket/path | filename.pptx   (Studio Locker file — use exact gs:// path from STUDIO LOCKER FILES)
+     ATTACH: gdrive://fileId | filename.pdf      (Google Drive file — use exact gdrive:// id from GOOGLE DRIVE FILES)
      BODY:
      Full email body here — multiple lines, quotes, anything. No escaping needed.
      [/EMAIL_DRAFT]
-   ATTACHMENT RULE: If you have a deckUrl, whitepaperUrl, or any document URL in context, ALWAYS add an ATTACH line. Never just put the URL in the body text and say "see attached" — the file will not actually be attached unless you include the ATTACH line.
+   ATTACHMENT RULE: If you have a deck, whitepaper, or any relevant file listed in GOOGLE DRIVE FILES or STUDIO LOCKER FILES, ALWAYS add an ATTACH line using the exact prefix shown above. Never put the path/URL in the body — the file will not be attached unless you include the ATTACH line.
    Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use EMAIL_DRAFT whenever you need to draft or send an email — including outreach, follow-ups, investor emails, or any email the user asks you to write or recall. ALWAYS use EMAIL_DRAFT — NEVER say "I'm sending now." The approval card is mandatory. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
@@ -5302,7 +5371,7 @@ HOW YOU AND CODE COMMUNICATE:
 - You → CODE: Two paths:
   1. Use [GITHUB_ISSUE]{"title":"[ASK_CODE] your question here","body":"full context","labels":["ask-code"]}[/GITHUB_ISSUE] when you need CODE to DO something or answer a technical question. Sean approves the card and it becomes a GitHub issue CODE will see.
   2. Use save_note with tags: ["for-code"] to leave a note CODE will read at the start of the next session. Good for non-urgent context handoffs.
-- You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.${_alexNotesContext}`;
+- You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.${_alexNotesContext}${_cosFileCtx}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)

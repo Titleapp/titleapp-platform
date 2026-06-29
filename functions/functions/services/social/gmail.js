@@ -373,9 +373,29 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
     }
     for (const att of attachments) {
       try {
-        const resp = await fetch(att.url);
-        if (!resp.ok) { console.warn(`[gmail] attachment fetch failed for ${att.filename}: ${resp.status}`); continue; }
-        const buf = Buffer.from(await resp.arrayBuffer());
+        let buf;
+        if (att.url && att.url.startsWith("gs://")) {
+          // Firebase Storage path — download directly via Admin SDK (no signed URL needed)
+          const gsMatch = att.url.match(/^gs:\/\/([^/]+)\/(.+)$/);
+          if (!gsMatch) { console.warn(`[gmail] invalid gs:// path: ${att.url}`); continue; }
+          const [, bucket, filePath] = gsMatch;
+          const [fileBuffer] = await admin.storage().bucket(bucket).file(filePath).download();
+          buf = fileBuffer;
+        } else if (att.url && att.url.startsWith("gdrive://")) {
+          // Google Drive file — download via Drive API with user's OAuth token
+          const fileId = att.url.replace("gdrive://", "");
+          const { getAuthenticatedDriveClient } = require("../vault/driveAuth");
+          const driveClient = await getAuthenticatedDriveClient(uid);
+          const driveResp = await driveClient.files.get(
+            { fileId, alt: "media" },
+            { responseType: "arraybuffer" }
+          );
+          buf = Buffer.from(driveResp.data);
+        } else {
+          const resp = await fetch(att.url);
+          if (!resp.ok) { console.warn(`[gmail] attachment fetch failed for ${att.filename}: ${resp.status}`); continue; }
+          buf = Buffer.from(await resp.arrayBuffer());
+        }
         const mime = att.mimeType || "application/pdf";
         const name = att.filename || "attachment.pdf";
         raw += `--${boundary}\r\n`;
