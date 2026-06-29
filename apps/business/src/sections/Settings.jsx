@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
-import * as api from "../api/client";
 import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks/useCalendar";
 import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts } from "../hooks/useGmail";
 import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive";
@@ -41,7 +40,7 @@ function YouTubeRow() {
         let done = false;
         const h = (e) => { if (!e.data || e.data.type !== "google-youtube-auth-code" || !e.data.code) return; window.removeEventListener("message", h); done = true; resolve(e.data.code); };
         window.addEventListener("message", h);
-        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch {} }, 500);
+        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch { /* ignore closed-window race */ } }, 500);
       });
       await _socialFetch("/v1/youtube:exchangeCode", "POST", { code });
       await refresh();
@@ -92,7 +91,7 @@ function TikTokRow() {
         let done = false;
         const h = (e) => { if (!e.data || e.data.type !== "tiktok-auth-code" || !e.data.code) return; window.removeEventListener("message", h); done = true; resolve(e.data.code); };
         window.addEventListener("message", h);
-        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch {} }, 500);
+        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch { /* ignore closed-window race */ } }, 500);
       });
       await _socialFetch("/v1/tiktok:exchangeCode", "POST", { code });
       await refresh();
@@ -186,8 +185,6 @@ function GmailRow() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [err, setErr] = useState(null);
-  // Clear any stale error from previous sessions on mount
-  useEffect(() => { setErr(null); }, []);
 
   async function handleConnect() {
     setBusy(true); setErr(null);
@@ -271,7 +268,6 @@ function ShopifyRow() {
   const [err, setErr] = useState(null);
   const [shopInput, setShopInput] = useState("");
   const [showInput, setShowInput] = useState(false);
-  useEffect(() => { setErr(null); }, []);
 
   async function handleConnect() {
     const shop = shopInput.trim().replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -349,7 +345,6 @@ function DriveRow() {
   const { status, refresh } = useDriveStatus();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  useEffect(() => { setErr(null); }, []);
 
   async function handleConnect() {
     setBusy(true); setErr(null);
@@ -417,7 +412,7 @@ function PersonalSettings() {
   const [chiefOfStaff, setChiefOfStaff] = useState(() => {
     const saved = localStorage.getItem("COS_CONFIG");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try { return JSON.parse(saved); } catch { /* ignore */ }
     }
     return {
       name: "Alex",

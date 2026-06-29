@@ -177,6 +177,7 @@ async function fetchTranscript(dtcId) {
   return res.json();
 }
 
+// eslint-disable-next-line no-unused-vars
 export default function StudentTranscriptCard({ resolved, context, onDismiss }) {
   const dtcId = context?.payload?.dtcId;
   const [data, setData] = useState(context?.payload?.transcript || null);
