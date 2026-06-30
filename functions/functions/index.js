@@ -5365,6 +5365,10 @@ DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to
 
 INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx (system will auto-upgrade to .pdf if that file exists — always prefer PDF for email delivery). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
 
+DASHBOARD PRIORITIES: Use set_priorities when Sean tells you his top priorities for the week, or when you've identified urgent items (investor replies pending, 83(b) deadlines, overdue compliance items). This replaces the entire list — pass all items, max 5. Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"). Items appear immediately on Sean's dashboard canvas. Use proactively at morning brief time.
+
+CALENDAR INVITES: Use propose_calendar_event when the user wants to schedule a meeting, send an investor a calendar invite, block time, or add any event to Google Calendar. Always include summary, start (ISO 8601), end (ISO 8601), and attendees (array of email strings). The user sees an approval card and confirms before anything is created. Google Calendar must be connected — if you get a "not connected" error, tell the user to go to Settings → Integrations → Connect Google Calendar.
+
 HOW YOU AND CODE COMMUNICATE:
 - CODE → You: CODE writes notes to your shared memory store (alex_notes). Those notes appear above under "YOUR PERSISTENT MEMORY." When CODE builds something or needs to tell you something, it leaves a note there. You'll see it automatically next session.
 - You → CODE: Two paths:
@@ -5473,6 +5477,52 @@ HOW YOU AND CODE COMMUNICATE:
                       },
                     },
                   },
+                  {
+                    name: "set_priorities",
+                    description: "Write or replace the Today's Priorities list on Sean's dashboard canvas. Use when Sean tells you his top priorities for the week, or when you want to surface urgent items (deadlines, overdue actions, investor replies) onto his dashboard. Replaces the entire list — always pass all current items, not just new ones.",
+                    input_schema: {
+                      type: "object",
+                      required: ["items"],
+                      properties: {
+                        items: {
+                          type: "array",
+                          description: "List of priority items to display on the dashboard. Max 5.",
+                          items: {
+                            type: "object",
+                            required: ["title"],
+                            properties: {
+                              title: { type: "string", description: "Short priority title, e.g. 'Reply to Marc Andreessen — investor follow-up'" },
+                              detail: { type: "string", description: "One-sentence detail or context, optional" },
+                              deadline: { type: "string", description: "Deadline date string, e.g. 'Today by 5pm' or '2026-07-01'" },
+                              sourceWorker: { type: "string", description: "Which worker surfaced this — e.g. 'investor-relations', 'hr', 'accounting'" },
+                              priority: { type: "string", enum: ["high", "medium", "low"], description: "Priority level" },
+                            },
+                          },
+                          maxItems: 5,
+                        },
+                      },
+                    },
+                  },
+                  {
+                    name: "propose_calendar_event",
+                    description: "Propose a Google Calendar event for the user to review and confirm before it is created. Use when the user wants to schedule a meeting, send an investor calendar invite, block time, or add any calendar event. The user sees a confirmation card with all event details. Google Calendar must be connected — if unsure, tell the user to connect it in Settings → Integrations.",
+                    input_schema: {
+                      type: "object",
+                      required: ["summary", "start", "end"],
+                      properties: {
+                        summary: { type: "string", description: "Event title / subject line" },
+                        description: { type: "string", description: "Event description or agenda body" },
+                        location: { type: "string", description: "Location string or video call link" },
+                        start: { type: "string", description: "Start datetime in ISO 8601 format, e.g. '2026-07-01T14:00:00-07:00'" },
+                        end: { type: "string", description: "End datetime in ISO 8601 format" },
+                        attendees: {
+                          type: "array",
+                          description: "Guest email addresses to invite. Google Calendar sends them an invite automatically.",
+                          items: { type: "string" },
+                        },
+                      },
+                    },
+                  },
                 ];
 
                 const anthropic = getAnthropic();
@@ -5487,6 +5537,7 @@ HOW YOU AND CODE COMMUNICATE:
                 // Handle tool calls from COS — may be chained (recall then propose, etc.)
                 let _cosEmailDraftFromTool = null;
                 let _cosCampaignProposal = null;
+                let _cosCalendarProposal = null;
                 let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 while (_toolsToProcess.length > 0) {
                   const _toolResults = [];
@@ -5680,6 +5731,37 @@ HOW YOU AND CODE COMMUNICATE:
                         };
                         console.log("[cosEmail:tool] propose_email called:", JSON.stringify(_cosEmailDraftFromTool).slice(0, 200));
                         _toolResult = "Email draft ready for user review. The approval card will appear in the chat.";
+                      } else if (_cosToolBlock.name === 'set_priorities') {
+                        const { items: _priItems } = _cosToolBlock.input;
+                        try {
+                          if (!Array.isArray(_priItems) || _priItems.length === 0) throw new Error("items array required");
+                          await db.collection("userPriorities").doc(authUser.uid).set({
+                            uid: authUser.uid,
+                            items: _priItems.slice(0, 5).map((it, i) => ({
+                              id: `p${Date.now()}_${i}`,
+                              title: it.title || "Untitled",
+                              detail: it.detail || null,
+                              deadline: it.deadline || null,
+                              sourceWorker: it.sourceWorker || null,
+                              priority: it.priority || "medium",
+                            })),
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                          });
+                          _toolResult = `Priorities saved — ${_priItems.length} item(s) are now on Sean's dashboard.`;
+                        } catch (_priErr) {
+                          _toolResult = "set_priorities error: " + _priErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'propose_calendar_event') {
+                        const { summary: _calSum, description: _calDesc, location: _calLoc, start: _calStart, end: _calEnd, attendees: _calAttendees } = _cosToolBlock.input;
+                        _cosCalendarProposal = {
+                          summary: _calSum,
+                          description: _calDesc || null,
+                          location: _calLoc || null,
+                          start: _calStart,
+                          end: _calEnd,
+                          attendees: Array.isArray(_calAttendees) ? _calAttendees : [],
+                        };
+                        _toolResult = "Calendar event proposal ready. The approval card will appear in the chat — user must confirm before it is created.";
                       }
                     } catch (_te) { _toolResult = "Tool error: " + _te.message; }
                     _toolResults.push({ type: "tool_result", tool_use_id: _cosToolBlock.id, content: _toolResult });
@@ -5761,6 +5843,7 @@ HOW YOU AND CODE COMMUNICATE:
                   ...((_cosGithubIssue) ? { githubIssue: _cosGithubIssue } : {}),
                   ...((_cosWhatsappDraft) ? { whatsappDraft: _cosWhatsappDraft } : {}),
                   ...((_cosCampaignProposal) ? { emailCampaign: _cosCampaignProposal } : {}),
+                  ...((_cosCalendarProposal) ? { calendarProposal: _cosCalendarProposal } : {}),
                 });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
@@ -18833,6 +18916,65 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("alex:status failed:", e);
         return jsonError(res, 500, "Failed to get orchestration status");
+      }
+    }
+
+    // GET /v1/notes — Returns alex_notes for the authenticated user (used by dashboard Priorities block)
+    if (route === "/notes" && method === "GET") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        let snap;
+        try {
+          snap = await db.collection("alex_notes").where("ownerUid", "==", user.uid).orderBy("createdAt", "desc").limit(50).get();
+        } catch (_) {
+          snap = await db.collection("alex_notes").where("ownerUid", "==", user.uid).limit(50).get();
+        }
+        const notes = snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate?.().toISOString() || null }));
+        return json(res, { ok: true, notes });
+      } catch (e) {
+        console.error("/notes failed:", e);
+        return jsonError(res, 500, "Failed to load notes");
+      }
+    }
+
+    // POST /v1/priorities:set — Alex writes structured priorities to the dashboard (replaces current list)
+    if (route === "/priorities:set" && method === "POST") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const { items } = body;
+        if (!Array.isArray(items)) return jsonError(res, 400, "items array required");
+        await db.collection("userPriorities").doc(user.uid).set({
+          uid: user.uid,
+          items: items.map((it, i) => ({
+            id: `p${Date.now()}_${i}`,
+            title: it.title || "Untitled",
+            detail: it.detail || null,
+            deadline: it.deadline || null,
+            sourceWorker: it.sourceWorker || null,
+            priority: it.priority || "medium",
+          })),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return json(res, { ok: true, count: items.length });
+      } catch (e) {
+        console.error("/priorities:set failed:", e);
+        return jsonError(res, 500, "Failed to set priorities");
+      }
+    }
+
+    // GET /v1/priorities — Returns structured priorities from the dashboard feed
+    if (route === "/priorities" && method === "GET") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const snap = await db.collection("userPriorities").doc(user.uid).get();
+        const items = snap.exists ? (snap.data().items || []) : [];
+        return json(res, { ok: true, items });
+      } catch (e) {
+        console.error("/priorities failed:", e);
+        return jsonError(res, 500, "Failed to load priorities");
       }
     }
 

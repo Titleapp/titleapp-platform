@@ -1,181 +1,587 @@
-# SOCIII Loom Video Scripts
-**Updated:** 2026-06-29 · **Status:** Ready to record
-**Demo workspace:** Meadow Creek Veterinary — `https://sociii.ai/?demo=1`
-**SOCIII Inc. workspace:** `https://sociii.ai` (log in as Sean)
+# SOCIII — Loom Scripts v2
+
+**Format:** Sean talking to camera, casual peer-to-peer, screen recording. ~60s each unless noted. **Annotation cues** are in `[brackets]` — use Loom's highlighter/arrow/circle tools.
+
+**Readiness:** 🟢 ready to shoot · 🟡 needs seed data · 🔴 needs build
 
 ---
 
-## Framing: the narrative across all videos
+## ⭐ FLAGSHIP — "What is SOCIII & why should you care?" (~2 min) 🟢
 
-SOCIII is **OnlyFans for smart people.** Expert practitioners distill their expertise into AI workers. Others run them. Everyone wins.
+**Hook (on camera):** Hey — so I've been building something and I want to show you what it actually does. Not the pitch deck version, the real thing.
 
-The three design rules tattooed on everything we build:
-- **Trump Rule** — people don't read; every screen works in 3 seconds (maps, charts, numbers)
-- **Britney Rule** — structural fix beats prompt fix; hallucinations get removed, not prompted around
-- **Reagan Rule** — big picture first; workers open on dashboards, not configuration
+**Screen share starts:** Here's the idea. Most businesses — and honestly most people — are running on a pile of software: QuickBooks, a CRM, some HR tool, Google Drive, a scheduling app. And they're still paying people to glue it all together. SOCIII replaces that whole stack with AI workers.
 
-The videos show these rules in action, not in theory.
+`[highlight the Spine / workers panel]`
 
----
+These workers aren't just chatbots. They follow your rules, they log every single action, and every record they create — every document, every decision — goes into something we call the Vault.
 
-## VIDEO 0 — What is SOCIII (90-second overview) ← NEW
+`[click into the Vault]`
 
-**Purpose:** The single link you send someone who asks "what is this?"
-**Workspace:** SOCIII Inc.
-**Narrative:** "This is Alex. She's my Chief of Staff. Tonight she helped me send 25 investor emails, attached a PDF deck, and tracked who opened it. Let me show you what that actually looks like."
+The Vault is yours. Hash-anchored, tamper-evident. Even if SOCIII disappears tomorrow, your records don't.
 
-**Script:**
+`[show a Vault record]`
 
-1. Open SOCIII Inc. workspace. Alex is on screen. Say: *"Alex, how many investor contacts do we have?"*
-   - Alex responds: "451 tagged as investors in the investor segment."
+Now there are three kinds of people watching this. If you're a customer of a business that runs on SOCIII — you get 24/7 answers and records you own. If you're a business owner — this replaces your whole back office. And if you're a builder — you can publish workers to our marketplace or keep them private to your company.
 
-2. Say: *"Propose a campaign to 25 of them with the SOCIII deck attached."*
-   - Alex proposes the campaign — approval card appears on screen with recipient count, sample email, PDF attachment.
-   - **Talking point:** "One approval. Not 25 emails. One card. She handles the rest."
+`[come back to camera]`
 
-3. Click Launch. Show the campaign sent confirmation.
-
-4. Say: *"Draft a follow-up email to Shane Parrish at Parrishnyc.com."*
-   - Alex opens the email composer with a pre-filled draft. You can see the to/subject/body.
-   - **Talking point:** "Every action goes through an approval card. Nothing sends until I say yes."
-
-5. Hard cut to: *"That's the Chief of Staff. Here's one of the workers she coordinates."*
-   - Open HR & People. Show the roster, compliance flags (OSHA overdue, DEA expiring).
-   - Say: *"Alex, who on our team has a compliance flag?"*
-   - Alex answers from the HR data. No app-switching. No copy-paste.
-
-6. End card: "sociii.ai — the hive, not the bee."
+Let me show you all three. Starting right now.
 
 ---
 
-## VIDEO 1 — The A-HA: governed worker (text + voice + image + video)
-
-**Worker:** Drug Dosing (Meadow Creek)
-**Runtime target:** 2–3 min
-
-1. Open Drug Dosing. Show the canvas: AI-generated dosage video at top, KPIs, proposed order (Slinky · Burmese Python · Dexmedetomidine+Ketamine), math, DEA badge, contraindication check, **Approve order** button.
-2. Say: *"Can you make me a picture of where to apply the pre-anesthetic?"* → Alex generates the IM-injection diagram onto the canvas.
-   - **Talking point:** "That image cost 1 Data Credit. It's metered, governed, append-only. The Britney Rule in action — the model can't invent a dose; it reads the protocol."
-3. Walk the tabs: Order History (real patients), Protocols, Controlled Log.
-4. **Talking point:** "Every number here is a real record. Not a mockup. The Trump Rule: this worker passes the 3-second test — I see the proposed order, the math, and the approve button without reading a paragraph."
+## GROUP 1 — CONSUMER
 
 ---
 
-## VIDEO 2 — Drive → Accounting (document to books)
+### V1 — 24/7 Correct Care 🟢
 
-**Worker:** Accounting (Meadow Creek)
-**Runtime target:** 2 min
+**Hook (on camera):** Okay so imagine you're a customer of a vet clinic. It's 11pm, your rabbit just ate something, and the office is closed. Here's what happens on SOCIII.
 
-1. Open Accounting. Dashboard: setup 6/6, $165k cash, $20.6k avg burn, ~8-month runway, real P&L.
-2. Go to **Import from Drive** → pick "Meadow Creek — Business Card Statement (June 2026).pdf"
-3. Claude parses the actual PDF → 16 transactions → categorizes against chart of accounts → review → commit.
-4. **Talking point:** "A real bank statement, parsed and posted to the books. Append-only — nothing overwrites. Three years from now if she gets audited, this transaction has a timestamp and a hash."
+**Screen:** `[navigate to sociii.ai/portal?company=meadow-vet]`
 
----
+I'm going to type: "Is chocolate dangerous for rabbits?"
 
-## VIDEO 3 — Personal Vault DTC (the "why care" for consumers)
+`[type the question, highlight the response as it comes in]`
 
-**Persona:** Dr.'s Personal Space
-**Runtime target:** 90 sec
+Look at that — instant triage, first aid steps, and a cited source. Not a generic FAQ. Not "please call during business hours."
 
-1. Chat: *"I just bought a new Rad Power e-bike for $2,400 — add it to my vault so I have proof I own it."*
-2. Alex creates a Digital Title Certificate + Logbook entry.
-3. Show Vault → 4 pillars (Stuff / Money / Health / Education) → e-bike DTC.
-4. **Talking point:** "This is proof of ownership that can't be altered. Not a photo of a receipt. A cryptographically anchored record that I hold — not the platform, not Apple, not Google. Me."
+`[circle the cited source]`
+
+This is a worker that knows Meadow Creek's protocols. It escalates if it needs to. And it logs everything.
+
+**Camera close:** The clinic isn't paying someone to answer that call at 11pm anymore. And you got a real answer.
 
 ---
 
-## VIDEO 4 — HR + Credentials: one source of truth
+### V2 — Book + Records You Own 🟢
 
-**Workers:** HR & People, Staff Credentials (Meadow Creek)
-**Runtime target:** 90 sec
+**Hook (on camera):** Same portal, different scenario. I want to book a visit — and I want to grab my pet's records.
 
-1. HR & People → People tab: full roster (Dr. Chen, Dr. Park, Sam Rivera CVT, Alex Torres, Casey Kim + 4 digital workers). Compliance tab: Alex Torres OSHA overdue (hard-stop), Dr. Chen DEA expiring in 14 days (soft-flag).
-2. Staff Credentials → same flags, Renewals calendar, Training log.
-3. **Talking point:** "HR and Credentials read the same records. One source of truth. The overdue OSHA shows up in both because it's one fact in the database, not two copies. The Britney Rule — structural fix."
+**Screen:** `[portal — click Book a Visit]`
 
----
+It handles scheduling right here in the chat. No third-party booking site, no phone tag.
 
-## VIDEO 5 — Alex as Chief of Staff: email + campaign + sibling workers ← NEW
+`[highlight the booking confirmation]`
 
-**Workspace:** SOCIII Inc.
-**Purpose:** Show Alex doing real work across the whole company, not just answering questions.
-**Runtime target:** 3–4 min
+Now watch this — I ask for Clover's records.
 
-### Part A: Reading the inbox
+`[type "Show me Clover's records"]` `[highlight the hash-anchored record that appears]`
 
-1. Open SOCIII Inc., Alex visible. Say: *"What's in my inbox today?"*
-   - Alex surfaces 3–5 email priorities from the real Gmail inbox.
-2. Say: *"Draft a reply to [one of them]."*
-   - Alex proposes the email. You edit, approve, send. Show the approval card.
-3. **Talking point:** "She reads my actual inbox. Not a summary I fed her — the live Gmail thread."
+See that hash? This record is anchored. It's mine. I can take it to any vet, any clinic. It doesn't live in Meadow Creek's system that I can never access — it lives in my Vault.
 
-### Part B: Campaign blast
-
-4. Say: *"How many investors do we have?"* → Alex: "451 in the investor segment."
-5. Say: *"Propose a campaign to 25 of them."*
-   - Approval card appears: 25 recipients, sample email, PDF deck attached.
-6. **Talking point:** "One card to reach 25 people. She handles the personalization, the tracking pixel, the unsubscribe footer — I just say yes."
-7. Launch. Show: "25 sent."
-
-### Part C: Sibling workers
-
-8. Say: *"Do we have any HR compliance issues I should know about?"*
-   - Alex bridges to the HR worker context and surfaces the compliance flags.
-9. Say: *"Who in my investor contacts works in healthcare?"*
-   - Alex queries the Contacts worker and returns names + companies.
-10. **Talking point:** "This is the hive. Alex is the queen bee — she coordinates the other workers. I don't switch apps. I don't copy-paste between tools. I ask Alex and she knows where to look."
-
-### Part D: Memory
-
-11. Say: *"What did we last send Shane Parrish?"*
-    - Alex recalls from her persistent memory (the note she saved after the last email).
-12. **Talking point:** "She remembers. Session after session. Not because I reminded her — because she saved a note when it happened. That's the Chief of Staff model."
+**Camera close:** Your records, owned for life. That's new.
 
 ---
 
-## VIDEO 6 — The sandbox: build a worker in an afternoon ← NEW
+### V3 — The Advisor: Just Affirm 🟡
 
-**Workspace:** Sandbox (creator mode)
-**Purpose:** Show the creator experience — for the "OF for smart people" angle.
-**Runtime target:** 3 min
+**Hook (on camera):** This one's subtle but kind of wild. When you work with an advisor through SOCIII — financial, legal, doesn't matter — you don't fill out paperwork. The paperwork is already done.
 
-1. Open the Sandbox. Show the 9-step creator flow.
-2. Narrate: *"A 30-year tax attorney doesn't need a software team. She opens the Sandbox, describes her expertise, and the platform does the rest."*
-3. Walk through Define → Design → Bio → Distribute (each with a green check).
-4. Show the generated LinkedIn bio and headshot.
-5. Show the 10-slide pitch deck auto-generated from the worker spec.
-6. Hit Distribute → the worker is live and shareable.
-7. **Talking point:** "That took an afternoon. The traditional equivalent is $230,000 and twelve weeks. The cost difference isn't the headline — the headline is she can find out if she's wrong before she's spent real money. Speed to falsifiability is the product."
+**Screen:** `[navigate to sociii.ai/portal?company=sociii-advisors]`
+
+I'm going to affirm my advisor agreement. Watch what happens.
+
+`[type "Affirm my advisor agreement"]` `[highlight the agreement that surfaces — already pre-populated]`
+
+It's already in my Vault. The worker drafted it based on our conversation. I just confirm.
+
+`[circle the Affirm button or confirmation step]`
+
+No PDFs, no DocuSign back and forth, no "did you get my email." It's there. I say yes.
+
+**Camera close:** You fill out nothing. It's already yours.
 
 ---
 
-## Recording checklist (before every take)
+### V4 — Meet Alex, Your Free Chief of Staff 🟢
 
-- [ ] Hard-refresh on the latest build (dismiss version popup)
-- [ ] Warm up each worker with one click first (avoids onboarding landing on camera)
-- [ ] SOCIII Inc. workspace: confirm you're on the right workspace before recording
-- [ ] Alex chat canary is green (if she goes silent mid-take, check the canary at +13104300780)
-- [ ] Close all other browser tabs (prevent notification noise)
+**Hook (on camera):** Okay so this one's for personal use. Not a business — just you. And it's free.
 
-## Rough edges to avoid
+**Screen:** `[navigate to sociii.ai]`
 
-| Edge | Workaround |
-|---|---|
-| Marketing Creative images are colored placeholders | Stay on Overview/Campaigns numbers; skip individual campaign creative |
-| First-ever visit to a worker shows onboarding landing | Warm-up above |
-| HR tabs slow to switch | Click once, wait; data is correct once rendered |
-| Alex in Personal Space has no SOCIII Inc. contacts | Switch to SOCIII Inc. workspace before investor-related questions |
-| TikTok/X posting not live yet | Don't demo posting; demo campaign card and approval flow instead |
+This is Alex. Alex is your Chief of Staff. One place, one conversation, and behind it — specialists.
 
-## Posting plan (once recorded)
+`[type "What's in my inbox today?"]` `[highlight Alex surfacing email priorities from real Gmail]`
 
-| Video | YouTube | TikTok | X | LinkedIn |
-|---|---|---|---|---|
-| 0 — Overview | Short | ✓ | ✓ | Long-form |
-| 1 — Drug Dosing A-HA | Short | ✓ | ✓ | — |
-| 2 — Accounting | Short | — | ✓ | Long-form |
-| 3 — Vault DTC | Short | ✓ | ✓ | — |
-| 4 — HR/Credentials | Short | — | ✓ | Long-form |
-| 5 — Alex COS | Short + long | ✓ | ✓ | Long-form (anchor post) |
-| 6 — Sandbox | Short | ✓ | ✓ | Long-form |
+She reads my actual inbox. Not a summary I fed her — the live Gmail thread. And she can act on it.
+
+`[type "Draft a reply to [one of them]"]` `[highlight the email approval card that appears]`
+
+She proposes. I approve. Nothing sends until I say yes.
+
+`[show the Spine — the workers Alex can reach]` `[circle the free tier indication if visible]`
+
+Alex knows when to hand you off to the right specialist. You're not digging through apps. You're just talking.
+
+**Camera close:** This is what your phone should have been doing. One place, talk to specialists. Free.
+
+---
+
+### V5 — Your Vault: My Stuff 🟢
+
+**Hook (on camera):** Let me show you the Vault for personal use. I call this section "My Stuff" — and it's basically a live net worth dashboard for everything you own.
+
+**Screen:** `[open Vault → My Stuff on demo account]` `[highlight car, house, valuables listed]`
+
+Car. House. Valuables. All in one tamper-evident place. No spreadsheet to maintain.
+
+`[show the live net worth total]` `[circle or highlight the net worth number]`
+
+And every record here is hash-anchored. If something's ever disputed — you have proof.
+
+`[click into one asset record to show detail]`
+
+**Camera close:** Everything you own, one place, you own the record. That's the Vault.
+
+---
+
+### V6 — Your Vault: Health Records 🟡
+
+**Hook (on camera):** Same Vault, different pillar. Your medical history.
+
+**Screen:** `[open Vault → Health pillar]`
+
+Your records here are portable. You move, you change doctors, you travel — your history comes with you.
+
+`[highlight a record, show the portability / export aspect]` `[circle the ownership indicator or hash]`
+
+No more calling your old doctor to fax something over. No more paper folders in a drawer somewhere. This is built to support HIPAA-covered workflows — the records stay yours, and the access controls are yours too.
+
+**Camera close:** Your health history, owned by you. Portable. Permanent.
+
+---
+
+### V7 — Your Vault: Education Records 🟢
+
+**Hook (on camera):** Degrees, licenses, continuing education — all in one place, all owned by you.
+
+**Screen:** `[open Vault → Education pillar]` `[highlight a degree or license record]`
+
+This matters more than people realize. You complete a certification — it goes here. You change employers — it comes with you.
+
+`[circle the student-owned / user-owned indicator]`
+
+No more chasing down old institutions for transcripts. The record is yours.
+
+**Camera close:** Student-owned. Portable. Permanent.
+
+---
+
+### V8 — Your Vault: Even Your Pet's Records 🟢
+
+**Hook (on camera):** Quick one — remember Clover from the vet portal? Her records don't just live at the clinic. They live in your Vault too.
+
+**Screen:** `[open Vault → show Clover's records]` `[highlight the pet health records section]`
+
+Vaccines, visits, vet notes — all here.
+
+`[circle the hash or anchor indicator]`
+
+Same portability. Same ownership. Take Clover to a new vet — hand them this. Done.
+
+**Camera close:** Your Vault isn't just for you. It's for your whole household.
+
+---
+
+### V9 — Drive: Connect Your Google Drive / OneDrive 🟢
+
+**Hook (on camera):** Okay this one just shipped. You can now connect your Google Drive or OneDrive directly inside SOCIII — and browse it like a tab in your workspace.
+
+**Screen:** `[show the Drive connect flow]` `[highlight the Drive appearing in the workspace sidebar or panel]`
+
+Your real files. In the workspace. Workers can read them, reference them, help you act on them.
+
+`[open a Drive file from within the workspace]` `[circle or highlight the file interaction]`
+
+**Camera close:** No more switching tabs. Your Drive is in here now.
+
+---
+
+### V10 — Permanent Records 🟡
+
+**Hook (on camera):** Last one for consumers — and it matters. What happens to your records if SOCIII ever goes away?
+
+**Screen:** `[navigate to a Vault record — show the hash anchor]`
+
+Every record in your Vault is hashed and anchored to an independent, immutable ledger outside our control.
+
+`[circle the hash / anchor indicator]` `[zoom in on the anchor detail]`
+
+That's not marketing. That means this record exists outside of us. You can verify it without us. Even if we disappear, the proof doesn't.
+
+**Camera close:** This is the promise. Yours even if SOCIII disappears.
+
+---
+
+## GROUP 2 — BUSINESS (Dr. Chen / Meadow Creek)
+
+---
+
+### V11 — The Cockpit 🟢
+
+**Hook (on camera):** Okay, switching gears. I'm going to show you the business side. This is Dr. Chen's view — she runs Meadow Creek Vet Clinic. And this is her cockpit.
+
+**Screen:** `[open business account — Alex + Spine workers panel]` `[highlight the workers listed in the panel]`
+
+Alex runs her whole back office. Accounting, HR, marketing, client portal — all accessible from one conversation.
+
+`[type something into Alex as Dr. Chen — "give me today's priorities"]` `[highlight the response — urgent items surfaced]`
+
+`[circle the Spine workers panel]`
+
+She doesn't check six tools in the morning. She asks Alex.
+
+**Camera close:** One chat. Whole back office. That's the cockpit.
+
+---
+
+### V12 — Accounting 🟢
+
+**Hook (on camera):** For a lot of small businesses, this replaces QuickBooks. And the bookkeeper who maintains it.
+
+**Screen:** `[navigate to the Accounting worker]` `[show P&L — highlight it]`
+
+P&L. Burn rate. Runway. All here. Ask it anything.
+
+`[type "What's my burn rate this month?"]` `[highlight the answer and the underlying data]`
+
+It reads from real transactions. Not a spreadsheet someone manually updated.
+
+`[show the Import from Drive — highlight a bank statement being parsed]`
+
+She drops in a statement, it categorizes it, posts it to the books. Done.
+
+**Camera close:** One less subscription. One less person you're paying to pull this together.
+
+---
+
+### V13 — Contacts 🟢
+
+**Hook (on camera):** Your CRM. But actually relationship-aware.
+
+**Screen:** `[open Contacts worker]` `[highlight a contact record — show relationship context]`
+
+This isn't just name, email, phone. It knows the history. Last interaction, notes, what they need.
+
+`[type a natural language query — "when did I last talk to James Chen?"]` `[highlight the response]` `[circle the relationship-aware detail]`
+
+**Camera close:** A CRM that thinks like a person who's been paying attention.
+
+---
+
+### V14 — Marketing 🟢
+
+**Hook (on camera):** Brand voice, campaigns, the visual board — all in one worker. And it actually sends.
+
+**Screen:** `[open Marketing worker]` `[show the visual campaign board]` `[highlight brand voice settings]`
+
+Dr. Chen set her brand voice once. Now every campaign, every post, every client email — consistent.
+
+`[type "draft a reminder email for rabies vaccine season"]` `[highlight the output — show it matches the clinic's tone]`
+
+Watch this — she doesn't just draft it. She proposes it for approval. One click to send to her whole list.
+
+`[show the campaign approval card — highlight recipient count + attach]`
+
+`[circle the visual board]`
+
+**Camera close:** Brand-consistent output. Campaign sent. No agency required.
+
+---
+
+### V15 — HR & People 🟢
+
+**Hook (on camera):** W2s, 1099s, advisors — HR without an HR department.
+
+**Screen:** `[open HR & People worker]` `[highlight the staff list — show W2 vs 1099 distinction]`
+
+All her staff in one place. Full-time, contractors, advisors.
+
+`[show a staff record or credential]` `[highlight compliance flags — OSHA overdue, DEA expiring]`
+
+`[circle the compliance-related fields]`
+
+**Camera close:** No HR software subscription. No separate payroll platform. It's here.
+
+---
+
+### V16 — Control Center 🟢
+
+**Hook (on camera):** This is probably my favorite view for a business owner. The daily brief.
+
+**Screen:** `[open Control Center]` `[highlight the deadline list — DEA renewal 7/4, X-ray calibration overdue, rabies 7/19]`
+
+DEA renewal — July 4th. That's coming up fast. `[circle DEA renewal date]`
+
+X-ray calibration — already overdue. `[circle or highlight "overdue"]`
+
+Rabies clinic — July 19th. `[circle that date]`
+
+She didn't have to check three systems to know this. Alex surfaced it.
+
+**Camera close:** Nothing slips. That's the Control Center.
+
+---
+
+### V17 — The Cost-Savings Tally 🟢
+
+**Hook (on camera):** Let me just do the math out loud.
+
+**Screen:** `[show a cost comparison — list the tools SOCIII replaces]` `[highlight each tool being replaced]`
+
+QuickBooks — gone. `[mark it off]`
+
+CRM — gone. `[mark it off]`
+
+HR software — gone. `[mark it off]`
+
+Scheduling tool — gone. `[mark it off]`
+
+Client portal / answering service — gone. `[mark it off]`
+
+Marketing platform — gone. `[mark it off]`
+
+`[circle the total savings number or "one subscription" line]`
+
+**Camera close:** Seven tools. One subscription. For most small businesses that's several hundred dollars a month back in your pocket — minimum.
+
+---
+
+### V18 — Her Customers Get the Portal 🟡
+
+**Hook (on camera):** This is the operator side of what we showed in Group 1. Dr. Chen turned on the customer portal — here's what she sees.
+
+**Screen:** `[open the customer/client list in the operator view]` `[highlight a customer record]`
+
+She sees who's using it, what they asked, what the worker said.
+
+`[show a recent customer interaction log]` `[highlight the escalation log — show when a worker escalated vs handled it]`
+
+`[circle the 24/7 availability indicator]`
+
+**Camera close:** Her clients get 24/7 care. She sees everything. She's not on call.
+
+---
+
+### V19 — Vet Dosing Worker 🟢
+
+**Hook (on camera):** This is a specialist worker built specifically for Meadow Creek. It handles dosing calculations — with DEA gating.
+
+**Screen:** `[invoke the Drug Dosing worker]` `[type a dosing scenario — "proposed dose for 12kg dog, ketamine protocol"]`
+
+Watch the flow — it proposes. `[highlight the PROPOSE state]`
+
+Dr. Chen has to approve. `[highlight the APPROVE step — show the human gate]`
+
+`[circle the DEA gating indicator]`
+
+The worker can never approve itself. That's by design.
+
+**Camera close:** A specialist that knows her protocol. With a human in the loop. Every time.
+
+---
+
+### V20 — Staff Credentials Worker 🟢
+
+**Hook (on camera):** Licenses lapsing is a real risk for any clinic. This worker makes sure it never happens.
+
+**Screen:** `[invoke the Staff Credentials worker]` `[show the credentials dashboard — highlight expiration dates]`
+
+Every license, every staff member, tracked. Expiration dates flagged before they're a problem.
+
+`[circle an upcoming expiration]` `[show the automated reminder or alert]`
+
+**Camera close:** Licenses never lapse. That's it. That's the whole pitch for this one.
+
+---
+
+## GROUP 3 — CREATOR
+
+---
+
+### V21 — Why Build a Worker 🟢
+
+**Hook (on camera):** Okay, this section is for builders. Here's the idea: what if your expertise was the product?
+
+A 30-year tax attorney. A pilot with 15,000 hours. A title officer who's seen every lien dispute in the county. That knowledge lives in their head — and when they retire, it's gone.
+
+**Screen:** `[show the marketplace / creator dashboard]` `[highlight "publish to marketplace" vs "keep private to your org"]`
+
+On SOCIII, you package that expertise as a worker. Two paths: you publish to the public marketplace — anyone on SOCIII can subscribe. Or you build it private — just for your business.
+
+`[circle the two options]` `[show a published worker as an example]`
+
+The traditional route — license your expertise through consulting, courses, a firm — caps at your hours. A worker doesn't sleep. It runs for anyone, anywhere, while you're doing something else.
+
+**Camera close:** Your expertise, packaged as a worker. Available to thousands of businesses. Or just yours.
+
+---
+
+### V22 — Dr. Chen Builds Her Dosing Worker 🟢
+
+**Hook (on camera):** Let me show you how Dr. Chen actually built that dosing worker we just saw. This is the sandbox.
+
+**Screen:** `[open the worker sandbox / build flow]` `[show the Design step]`
+
+She starts with design — what does this worker do, what are the rules. `[highlight the rules/constraints field]`
+
+Then she tests it. `[show the test step — run a sample prompt]` `[highlight the test output]`
+
+Then she publishes — private to Meadow Creek. `[show the publish step]` `[circle "private to your org" option]`
+
+**Camera close:** No code. Just her protocol, structured into a worker.
+
+---
+
+### V23 — GitHub: The Foundational Step 🟢
+
+**Hook (on camera):** If you want to build more advanced workers — the kind that connect to external APIs, run real logic — you start here. With the SDK.
+
+**Screen:** `[navigate to SOCIII-Inc/sociii-sdk on GitHub]` `[highlight the repo structure]`
+
+Clone this. The worker-spec contract is here — it's the shape every worker has to follow.
+
+`[highlight the worker spec file]` `[show the AI-guided setup — CREATOR-SETUP flow]`
+
+And your AI walks you through the whole setup. You don't have to figure this out alone.
+
+`[circle the CREATOR-SETUP prompt or guide]`
+
+**Camera close:** This is where serious builders start. The SDK, the spec, and AI to walk you through it.
+
+---
+
+### V24 — Publish: Marketplace or Private 🟢
+
+**Hook (on camera):** You've built your worker. Now what?
+
+**Screen:** `[show the publish flow]` `[highlight the two choices — marketplace vs private]`
+
+If you publish to the marketplace, subscribers can find it and add it to their SOCIII account. `[circle the marketplace listing preview]`
+
+If you keep it private, it's only available inside your organization. `[circle the "private to org" option]`
+
+`[show what happens after publish — worker appears live]`
+
+**Camera close:** Ship it once. Your subscribers get it instantly. Or your team does. Your call.
+
+---
+
+### V25 — Alex Fixes It Live (The Fix-Loop) 🟡 ⚠️ rehearse before shooting — punchline only lands if the demo is crisp
+
+**Hook (on camera):** This is the one I'm most excited about. Watch this.
+
+**Screen:** `[in the worker chat interface — invoke the fix-loop]`
+
+I'm going to tell Alex: "Fix the worker so it does X."
+
+`[type the instruction]` `[highlight the PROPOSAL that comes back]`
+
+It proposes the change. Shows me exactly what it wants to modify.
+
+`[circle the Approve button]`
+
+I hit Approve.
+
+`[click Approve — show the worker updating live]`
+
+It's live. Only on my worker.
+
+`[highlight that the change is scoped — not global]`
+
+**Camera close:** This is what Salesforce charges an SI partner for. We just made it a one-line chat.
+
+---
+
+### V26 — Real Estate Worker 🟢
+
+**Hook (on camera):** Here's a published worker built by a creator in our marketplace. Real estate.
+
+**Screen:** `[invoke the Real Estate worker]` `[type a query — "pull parcel data for 123 Main St, Austin TX"]`
+
+Title history. Parcel data. Zoning. Live. `[highlight the live data returned]` `[circle the data source citation]`
+
+This isn't a web search. It's a worker that knows how to pull and interpret real property data.
+
+**Camera close:** Domain knowledge, packaged. That's what the marketplace enables.
+
+---
+
+### V27 — Aviation Worker 🟢
+
+**Hook (on camera):** Same idea — aviation.
+
+**Screen:** `[invoke the Aviation / CoPilot worker]` `[type a query — "check my currency for IFR, last flight was 45 days ago"]`
+
+Weather. Currency checks. Flight planning context. `[highlight the currency check response]` `[circle the weather data pull]`
+
+Built by someone who actually knows aviation regs. Available to any pilot on SOCIII.
+
+**Camera close:** Expert knowledge, in a worker, available to everyone who needs it.
+
+---
+
+## THE MOAT (Investor / Anthropic Cut)
+
+---
+
+### V28 — Anchored On-Chain 🟡
+
+**Hook (on camera):** I want to explain the technical thing that makes the Vault actually mean something.
+
+**Screen:** `[open a Vault record — show the hash]`
+
+Every record we create gets hashed. That hash goes into a Merkle tree. `[circle the hash value]`
+
+That Merkle root gets anchored to an independent, immutable ledger outside our control. `[show the anchor / chain reference]`
+
+What that means: you can prove this record existed, unchanged, at this point in time — without trusting us. Without trusting any server. The anchor is the proof.
+
+`[highlight the audit trail]`
+
+**Camera close:** This is the audit trail that lawyers actually want. And it's under every record in the Vault.
+
+---
+
+### V29 — MCP, Already Built 🟢
+
+**Hook (on camera):** If you're in the AI infrastructure world — you know MCP. Model Context Protocol. The standard for AI agents connecting to tools and data.
+
+**Screen:** `[show Claude / the AI agent interface connecting through SOCIII]`
+
+We've already built MCP into SOCIII. Claude connects, acts under your rules —
+
+`[highlight the rules/constraints in the worker config]`
+
+— but it can propose, it can't approve. `[circle the human-gate / approve step]`
+
+That's a hard architectural constraint. And every action is logged. `[highlight the audit trail]`
+
+**Camera close:** MCP, already built. With the audit trail. And a human in the loop. That's the differentiator.
+
+---
+
+### V30 — Curated & Owned 🟢
+
+**Hook (on camera):** Last one. Why is this defensible?
+
+**Screen:** `[show the marketplace — a curated list of workers]`
+
+We don't have ten thousand workers. We have a few excellent ones. Governed. Tested. Built by verified creators.
+
+`[highlight the curation / governance aspect]` `[show the Vault — records owned by users]`
+
+And the records aren't ours. They're yours.
+
+`[circle the user-ownership indicator]`
+
+That combination — governed workers, owned records, a trusted creator network — is the moat. You can't just clone it. The trust is earned over time.
+
+**Camera close:** Curated. Owned. Defensible. That's SOCIII.
+
+---
+
+*End of scripts — 30 videos total. 🟢 = ready to shoot · 🟡 = needs seed data / minor build · 🔴 = needs build*
+
+**Shoot order recommendation:** Flagship → V17 (cost savings) → V4 (Alex) → V11 (cockpit) → V1 (consumer portal) → rest of Group 2 → Group 1 → Group 3 → Moat.

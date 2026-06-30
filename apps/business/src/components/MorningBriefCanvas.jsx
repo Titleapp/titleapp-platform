@@ -93,7 +93,7 @@ function savePrefs(p) {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
-export default function MorningBriefCanvas({ hasAviationWorker, notes }) {
+export default function MorningBriefCanvas({ hasAviationWorker, notes, priorities }) {
   const auth = getAuth();
   const user = auth.currentUser;
 
@@ -164,9 +164,12 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes }) {
     );
   }, [prefs.showWeather]);
 
-  const todayPriorities = (notes || []).filter(n =>
+  // Structured priorities from Alex take precedence; fall back to note-tagged items
+  const structuredPriorities = Array.isArray(priorities) && priorities.length > 0 ? priorities : null;
+  const notePriorities = (notes || []).filter(n =>
     n.tags?.some(t => ["today", "priority", "urgent", "from-code"].includes(t))
-  ).slice(0, 5);
+  ).slice(0, 5).map(n => ({ id: n.id, title: n.title, detail: n.content?.slice(0, 120) || null }));
+  const todayPriorities = structuredPriorities || notePriorities;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -297,18 +300,29 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes }) {
           </div>
           {todayPriorities.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {todayPriorities.map((n, i) => (
-                <div key={n.id || i} style={{
-                  display: "flex", alignItems: "flex-start", gap: 10,
-                  padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0",
-                }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed", marginTop: 5, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{n.title}</div>
-                    {n.content && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineClamp: 2 }}>{n.content.slice(0, 120)}{n.content.length > 120 ? "…" : ""}</div>}
+              {todayPriorities.map((n, i) => {
+                const dotColor = n.priority === "high" ? "#dc2626" : n.priority === "low" ? "#94a3b8" : "#7c3aed";
+                return (
+                  <div key={n.id || i} style={{
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                    padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0",
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 5, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{n.title}</div>
+                      {n.detail && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{n.detail}</div>}
+                      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                        {n.deadline && (
+                          <span style={{ fontSize: 10, color: "#dc2626", fontWeight: 600, background: "#fef2f2", borderRadius: 4, padding: "1px 6px" }}>{n.deadline}</span>
+                        )}
+                        {n.sourceWorker && (
+                          <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 500, background: "#f5f3ff", borderRadius: 4, padding: "1px 6px" }}>{n.sourceWorker}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div style={{ fontSize: 13, color: "#94a3b8" }}>

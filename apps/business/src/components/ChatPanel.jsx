@@ -1588,6 +1588,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         telegramDraft: data.telegramDraft || null,
         githubIssue: data.githubIssue || null,
         apolloSearches: data.apolloSearches || null,
+        calendarProposal: data.calendarProposal || null,
       }]);
 
       // Push structured output to the right-panel artifact view so the canvas
@@ -1701,6 +1702,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [dismissedSmsDrafts, setDismissedSmsDrafts] = useState(new Set());
   const [dismissedTelegramDrafts, setDismissedTelegramDrafts] = useState(new Set());
   const [dismissedGithubIssues, setDismissedGithubIssues] = useState(new Set());
+  const [dismissedCalendarProposals, setDismissedCalendarProposals] = useState(new Set());
   const [_scheduledDrafts, _setScheduledDrafts] = useState(new Set());
   const [schedulerOpen, setSchedulerOpen] = useState({});
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
@@ -2812,6 +2814,71 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                       <button onClick={() => setDismissedTelegramDrafts(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                     </>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Calendar event approval card */}
+            {msg.calendarProposal && !dismissedCalendarProposals.has(idx) && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#f0f9ff", borderBottom: "1px solid #bae6fd", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#0369a1", letterSpacing: "0.03em" }}>CALENDAR INVITE — AWAITING APPROVAL</span>
+                </div>
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{msg.calendarProposal.summary}</div>
+                  {msg.calendarProposal.start && (
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      <span style={{ fontWeight: 600, color: "#334155" }}>When: </span>
+                      {new Date(msg.calendarProposal.start).toLocaleString()} – {new Date(msg.calendarProposal.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                  {msg.calendarProposal.location && (
+                    <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Where: </span>{msg.calendarProposal.location}</div>
+                  )}
+                  {msg.calendarProposal.attendees?.length > 0 && (
+                    <div style={{ fontSize: 12, color: "#64748b" }}><span style={{ fontWeight: 600, color: "#334155" }}>Guests: </span>{msg.calendarProposal.attendees.join(", ")}</div>
+                  )}
+                  {msg.calendarProposal.description && (
+                    <div style={{ fontSize: 12, color: "#334155", marginTop: 4, lineHeight: 1.6, whiteSpace: "pre-wrap", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>{msg.calendarProposal.description}</div>
+                  )}
+                </div>
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    onClick={async () => {
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const tenantId = localStorage.getItem("TENANT_ID") || "";
+                      const token = await getChatToken();
+                      setDismissedCalendarProposals(prev => new Set([...prev, idx]));
+                      try {
+                        const r = await fetch(`${apiBase}/api?path=/v1/calendar:events:create`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), "X-Tenant-Id": tenantId },
+                          body: JSON.stringify({
+                            summary: msg.calendarProposal.summary,
+                            description: msg.calendarProposal.description,
+                            location: msg.calendarProposal.location,
+                            start: msg.calendarProposal.start,
+                            end: msg.calendarProposal.end,
+                            attendees: msg.calendarProposal.attendees,
+                            source: "chat",
+                          }),
+                        });
+                        const d = await r.json();
+                        if (d.ok) {
+                          setMessages(prev => [...prev, { role: "assistant", content: `Calendar event created: "${msg.calendarProposal.summary}". ${msg.calendarProposal.attendees?.length ? `Invites sent to ${msg.calendarProposal.attendees.join(", ")}.` : ""}${d.event?.htmlLink ? ` [View in Google Calendar](${d.event.htmlLink})` : ""}`, isSystem: true }]);
+                        } else if (d.code === "calendar_not_connected") {
+                          setMessages(prev => [...prev, { role: "assistant", content: "Google Calendar isn't connected yet. Go to Settings → Integrations → Connect Google Calendar, then try again.", isSystem: true }]);
+                        } else {
+                          setMessages(prev => [...prev, { role: "assistant", content: `Failed to create event — ${d.error || "please try again"}.`, isSystem: true }]);
+                        }
+                      } catch {
+                        setMessages(prev => [...prev, { role: "assistant", content: "Could not create calendar event — try again in a moment.", isSystem: true }]);
+                      }
+                    }}
+                    style={{ flex: 1, padding: "8px 14px", background: "#0369a1", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >Add to Calendar</button>
+                  <button onClick={() => setDismissedCalendarProposals(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                 </div>
               </div>
             )}
