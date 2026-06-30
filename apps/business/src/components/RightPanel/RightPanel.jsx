@@ -577,6 +577,13 @@ export default function RightPanel() {
       const { slug } = e.detail || {};
       if (!slug) return;
 
+      // Chief of Staff: clear all worker/canvas state so previous worker's canvas
+      // doesn't bleed into the COS view. leaveWorkspace() clears WorkerStateContext.
+      if (slug === "chief-of-staff") {
+        panel.leaveWorkspace();
+        return;
+      }
+
       // Try Firestore-backed catalog first (cached snapshot, no network)
       const catalogList = catalog.length ? catalog : getCachedWorkers();
       const localMatch = catalogList.find(w => w.slug === slug);

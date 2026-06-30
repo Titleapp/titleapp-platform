@@ -522,6 +522,9 @@ function getRoute(req) {
   }
 
   if (p.startsWith("/v1/")) p = p.slice(3);
+  // Public hosting rewrites bypass the Frontdoor — map short paths to canonical routes
+  if (p === "/track") p = "/email:track";
+  if (p === "/unsub") p = "/email:unsubscribe";
   console.log("🔍 getRoute result:", p);
   return p;
 }
@@ -2289,7 +2292,10 @@ exports.api = onRequest(
         // Session continuity: if session is empty and user is authenticated,
         // try to resume their most recent session from any surface.
         // SKIP for special surfaces — they always get a fresh session.
-        if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
+        // SKIP for stable session IDs (wkr_/cos_) — they're per-worker; resume
+        // would bleed a different worker's history into the new session.
+        const _isStableSessionId = /^(wkr_|cos_)/.test(sessionId);
+        if (!_isStableSessionId && !sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
             const recentSnap = await db.collection("chatSessions")
               .where("userId", "==", authUser.uid)
@@ -5355,6 +5361,10 @@ HARD RULES:
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
 
+DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to "save to Drive", "put that in my Drive", or after generating/referencing a document that belongs in the user's files. Accepts gs:// Storage paths (for SOCIII files) and https:// public URLs. The file appears immediately in My Drive.
+
+INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx (system will auto-upgrade to .pdf if that file exists — always prefer PDF for email delivery). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
+
 HOW YOU AND CODE COMMUNICATE:
 - CODE → You: CODE writes notes to your shared memory store (alex_notes). Those notes appear above under "YOUR PERSISTENT MEMORY." When CODE builds something or needs to tell you something, it leaves a note there. You'll see it automatically next session.
 - You → CODE: Two paths:
@@ -5382,6 +5392,67 @@ HOW YOU AND CODE COMMUNICATE:
                     name: "save_note",
                     description: "Save a persistent note that survives across sessions. Always save after drafting an important email, making a key decision, or receiving context you'd have to repeat.",
                     input_schema: { type: "object", properties: { title: { type: "string" }, content: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["title", "content"] },
+                  },
+                  {
+                    name: "campaign_report",
+                    description: "Get open rate and engagement stats for an email campaign you sent. Use when the user asks 'who opened our emails', 'how is the investor outreach doing', or proactively report back after a campaign is sent.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        campaign_id: { type: "string", description: "The campaignId returned when the campaign was sent (e.g. camp_1234_abcd)" },
+                        proposal_id: { type: "string", description: "The proposalId from when the campaign was proposed" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "query_contacts",
+                    description: "Query the Contacts database directly — get investor lists, segment counts, or search for a specific person. Use when the user asks 'how many investors do we have', 'pull my investor list', 'find contacts tagged X', or before launching a campaign.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        segment: { type: "string", description: "Filter by segment tag, e.g. 'investor-pipeline', 'accredited-candidates', 'warm-leads'" },
+                        q: { type: "string", description: "Search by name, email, or company" },
+                        limit: { type: "number", description: "Max contacts to return (default 50, max 200)" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "propose_email_campaign",
+                    description: "Propose a batch email campaign to a contact segment. User sees ONE approval card showing count + sample email + attachments, then approves once to send all. Use for investor outreach, bulk follow-ups, announcements. Do NOT use propose_email for bulk sends — that requires one card per email.",
+                    input_schema: {
+                      type: "object",
+                      required: ["segment", "subject", "body_template"],
+                      properties: {
+                        segment: { type: "string", description: "Contact segment to send to, e.g. 'investor-pipeline'. Use query_contacts first to confirm count." },
+                        subject: { type: "string", description: "Email subject line" },
+                        body_template: { type: "string", description: "Email body. Use {{firstName}}, {{lastName}}, {{email}} for personalization. Plain text." },
+                        attachments: {
+                          type: "array",
+                          description: "Files to attach to every email. gs:// = Storage, https:// = public URL.",
+                          items: { type: "object", required: ["url", "filename"], properties: { url: { type: "string" }, filename: { type: "string" } } },
+                        },
+                        from_name: { type: "string", description: "Sender display name (defaults to the user's name)" },
+                        limit: { type: "number", description: "Optional cap on number of emails to send (for test runs)" },
+                        cc: { type: "string", description: "Email address to CC on every outbound email (e.g. a team member who should be looped in)" },
+                        exclude_emails: { type: "array", items: { type: "string" }, description: "List of email addresses to exclude from this campaign" },
+                        exclude_names: { type: "array", items: { type: "string" }, description: "List of contact names (partial match) to exclude from this campaign" },
+                      },
+                    },
+                  },
+                  {
+                    name: "save_to_drive",
+                    description: "Save a file to the user's My Drive in SOCIII. Use this to save documents you create or download (decks, memos, drafts, images). Accepts a URL (gs:// for Storage files, https:// for public URLs) and a filename.",
+                    input_schema: {
+                      type: "object",
+                      required: ["url", "filename"],
+                      properties: {
+                        url: { type: "string", description: "Source URL — gs://bucket/path for Storage, or https:// for public files" },
+                        filename: { type: "string", description: "Filename to save as in Drive (e.g. 'SOCIII-Deck-v4.pptx')" },
+                        workerSlug: { type: "string", description: "Optional: tag file to a specific worker (e.g. 'investor-relations')" },
+                      },
+                    },
                   },
                   {
                     name: "propose_email",
@@ -5415,6 +5486,7 @@ HOW YOU AND CODE COMMUNICATE:
 
                 // Handle tool calls from COS — may be chained (recall then propose, etc.)
                 let _cosEmailDraftFromTool = null;
+                let _cosCampaignProposal = null;
                 let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 while (_toolsToProcess.length > 0) {
                   const _toolResults = [];
@@ -5443,6 +5515,159 @@ HOW YOU AND CODE COMMUNICATE:
                         const { title, content, tags } = _cosToolBlock.input;
                         await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
                         _toolResult = `Note saved: "${title}". I'll remember this across sessions.`;
+                      } else if (_cosToolBlock.name === 'campaign_report') {
+                        const { campaign_id: _rCampId, proposal_id: _rPropId } = _cosToolBlock.input;
+                        try {
+                          let _rQuery = db.collection("emailCampaignSends").where("ownerUid", "==", authUser.uid);
+                          if (_rCampId) _rQuery = _rQuery.where("campaignId", "==", _rCampId);
+                          if (_rPropId) _rQuery = _rQuery.where("proposalId", "==", _rPropId);
+                          const _rSnap = await _rQuery.limit(1000).get();
+                          const _rSends = _rSnap.docs.map(d => d.data());
+                          if (!_rSends.length) {
+                            _toolResult = "No sends found for that campaign. Check the campaign_id or proposalId.";
+                          } else {
+                            const _rOpened = _rSends.filter(s => (s.openCount || 0) > 0);
+                            const _rRate = Math.round((_rOpened.length / _rSends.length) * 100);
+                            _toolResult = `Campaign report:\n- Sent: ${_rSends.length}\n- Opened: ${_rOpened.length} (${_rRate}% open rate)\n- Top openers:\n${_rOpened.slice(0, 10).map(s => `  • ${s.name} <${s.email}> (${s.openCount} open${s.openCount > 1 ? "s" : ""})`).join("\n")}`;
+                          }
+                        } catch (_rErr) {
+                          _toolResult = "campaign_report error: " + _rErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'query_contacts') {
+                        const { segment: _cSeg, q: _cQ, limit: _cLim } = _cosToolBlock.input;
+                        try {
+                          const _cLimit = Math.min(Number(_cLim) || 50, 200);
+                          let _cQuery = db.collection("contacts").where("tenantId", "==", _cosTenantId || reqTenantId).limit(5000);
+                          const _cSnap = await _cQuery.get();
+                          let _cContacts = _cSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== "deleted");
+                          if (_cSeg) {
+                            _cContacts = _cContacts.filter(c =>
+                              (c.segments || []).includes(_cSeg) ||
+                              (c.tags || []).some(t => t.toLowerCase().includes(_cSeg.toLowerCase())) ||
+                              (c.type || "").toLowerCase().includes(_cSeg.toLowerCase()) ||
+                              (c.tier || "").toLowerCase().includes(_cSeg.toLowerCase())
+                            );
+                          }
+                          if (_cQ) {
+                            const _qL = _cQ.toLowerCase();
+                            _cContacts = _cContacts.filter(c =>
+                              [c.email, c.firstName, c.lastName, c.company, c.name].join(" ").toLowerCase().includes(_qL)
+                            );
+                          }
+                          const _cTotal = _cContacts.length;
+                          const _cSample = _cContacts.slice(0, _cLimit).map(c => ({
+                            name: [c.firstName, c.lastName].filter(Boolean).join(" ") || c.name || "Unknown",
+                            email: c.email || "(no email)",
+                            company: c.company || "",
+                            segments: c.segments || [],
+                          }));
+                          _toolResult = `Found ${_cTotal} contact(s)${_cSeg ? ` in segment "${_cSeg}"` : ""}${_cQ ? ` matching "${_cQ}"` : ""}.\n\nSample (up to ${_cLimit}):\n${_cSample.map(c => `- ${c.name} <${c.email}>${c.company ? " @ " + c.company : ""}`).join("\n")}`;
+                        } catch (_cErr) {
+                          _toolResult = "query_contacts error: " + _cErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'propose_email_campaign') {
+                        const { segment: _camSeg, subject: _camSubj, body_template: _camBody, attachments: _camAtts, from_name: _camFrom, limit: _camLim, cc: _camCc, exclude_emails: _camExclEmails, exclude_names: _camExclNames } = _cosToolBlock.input;
+                        try {
+                          // Fetch contacts for the segment to get the real count + sample
+                          let _camQuery = db.collection("contacts").where("tenantId", "==", _cosTenantId || reqTenantId).limit(5000);
+                          const _camSnap = await _camQuery.get();
+                          let _camContacts = _camSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== "deleted" && c.email);
+                          if (_camSeg) {
+                            _camContacts = _camContacts.filter(c =>
+                              (c.segments || []).includes(_camSeg) ||
+                              (c.tags || []).some(t => t.toLowerCase().includes(_camSeg.toLowerCase())) ||
+                              (c.type || "").toLowerCase().includes(_camSeg.toLowerCase()) ||
+                              (c.tier || "").toLowerCase().includes(_camSeg.toLowerCase())
+                            );
+                          }
+                          // Apply exclude lists
+                          if (_camExclEmails?.length) {
+                            const _exclEmailSet = new Set((_camExclEmails).map(e => e.toLowerCase()));
+                            _camContacts = _camContacts.filter(c => !_exclEmailSet.has((c.email || "").toLowerCase()));
+                          }
+                          if (_camExclNames?.length) {
+                            _camContacts = _camContacts.filter(c => {
+                              const fullName = (c.name || [c.firstName, c.lastName].filter(Boolean).join(" ") || "").toLowerCase();
+                              return !_camExclNames.some(n => fullName.includes(n.toLowerCase()));
+                            });
+                          }
+                          if (_camLim) _camContacts = _camContacts.slice(0, Number(_camLim));
+                          if (_camContacts.length === 0) {
+                            _toolResult = `No contacts with email addresses found in segment "${_camSeg}". Use query_contacts to verify the segment name.`;
+                          } else {
+                            const _sample = _camContacts[0];
+                            const _sampleBody = (_camBody || "")
+                              .replace(/{{firstName}}/g, _sample.firstName || _sample.name || "there")
+                              .replace(/{{lastName}}/g, _sample.lastName || "")
+                              .replace(/{{email}}/g, _sample.email || "");
+                            // Store campaign proposal in Firestore for the frontend to pick up
+                            const _campRef = await db.collection("emailCampaignProposals").add({
+                              ownerUid: authUser.uid,
+                              tenantId: _cosTenantId || reqTenantId,
+                              segment: _camSeg,
+                              subject: _camSubj,
+                              bodyTemplate: _camBody,
+                              attachments: _camAtts || [],
+                              fromName: _camFrom || null,
+                              cc: _camCc || null,
+                              excludeEmails: _camExclEmails || [],
+                              excludeNames: _camExclNames || [],
+                              contactCount: _camContacts.length,
+                              sampleContact: { name: [_sample.firstName, _sample.lastName].filter(Boolean).join(" ") || _sample.name || "Recipient", email: _sample.email },
+                              sampleBody: _sampleBody,
+                              status: "proposed",
+                              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                            });
+                            // Signal the frontend via the response
+                            _cosCampaignProposal = {
+                              proposalId: _campRef.id,
+                              segment: _camSeg,
+                              subject: _camSubj,
+                              contactCount: _camContacts.length,
+                              sampleContact: { name: [_sample.firstName, _sample.lastName].filter(Boolean).join(" ") || _sample.name || "Recipient", email: _sample.email },
+                              sampleBody: _sampleBody,
+                              attachments: _camAtts || [],
+                            };
+                            _toolResult = `Campaign proposal ready: ${_camContacts.length} recipients in "${_camSeg}". The user will see an approval card to launch or cancel.`;
+                          }
+                        } catch (_camErr) {
+                          _toolResult = "propose_email_campaign error: " + _camErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'save_to_drive') {
+                        const { url: _driveUrl, filename: _driveName, workerSlug: _driveWorker } = _cosToolBlock.input;
+                        try {
+                          let _driveBuffer;
+                          if (_driveUrl.startsWith("gs://")) {
+                            // Firebase Storage download via Admin SDK
+                            const _gsParts = _driveUrl.replace("gs://", "").split("/");
+                            const _gsBucket = _gsParts.shift();
+                            const _gsPath = _gsParts.join("/");
+                            const [_gsData] = await admin.storage().bucket(_gsBucket).file(_gsPath).download();
+                            _driveBuffer = _gsData;
+                          } else {
+                            // Public https:// URL
+                            const _fetchRes = await fetch(_driveUrl);
+                            if (!_fetchRes.ok) throw new Error(`Fetch failed: ${_fetchRes.status}`);
+                            const _arrayBuf = await _fetchRes.arrayBuffer();
+                            _driveBuffer = Buffer.from(_arrayBuf);
+                          }
+                          const _mime = _driveName.endsWith(".pptx") ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                            : _driveName.endsWith(".pdf") ? "application/pdf"
+                            : _driveName.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            : "application/octet-stream";
+                          const _uploadRes = await getStorageService().upload({
+                            uid: authUser.uid, orgId: _cosTenantId || null, scope: "personal", subdir: "chat-uploads",
+                            filename: _driveName, buffer: _driveBuffer, mimeType: _mime,
+                            createdByWorker: _driveWorker || "chief-of-staff",
+                            tags: _driveWorker ? [`worker:${_driveWorker}`] : [],
+                          });
+                          if (!_uploadRes.ok) throw new Error(_uploadRes.error || "Upload failed");
+                          console.log("[cosTools:save_to_drive] saved:", _driveName, "objectId:", _uploadRes.objectId);
+                          _toolResult = `Saved "${_driveName}" to your Drive (objectId: ${_uploadRes.objectId}). It will appear in My Drive.`;
+                        } catch (_driveErr) {
+                          console.error("[cosTools:save_to_drive] failed:", _driveErr.message);
+                          _toolResult = `Failed to save to Drive: ${_driveErr.message}`;
+                        }
                       } else if (_cosToolBlock.name === 'propose_email') {
                         // Structured email proposal — extract draft directly, no text parsing needed
                         const { to, cc, subject, body: emailBody, attachments: emailAtts } = _cosToolBlock.input;
@@ -5535,6 +5760,7 @@ HOW YOU AND CODE COMMUNICATE:
                   ...((_cosEmailDraft) ? { emailDraft: _cosEmailDraft } : {}),
                   ...((_cosGithubIssue) ? { githubIssue: _cosGithubIssue } : {}),
                   ...((_cosWhatsappDraft) ? { whatsappDraft: _cosWhatsappDraft } : {}),
+                  ...((_cosCampaignProposal) ? { emailCampaign: _cosCampaignProposal } : {}),
                 });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
@@ -9361,6 +9587,36 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         console.error("❌ dtc verify failed:", e);
         return jsonError(res, 500, "Failed to verify DTC");
       }
+    }
+
+    // GET /v1/email:track — 1×1 tracking pixel; records email open, no auth required.
+    // Also reachable as GET /track (Firebase Hosting rewrite bypasses Frontdoor auth).
+    if (route === "/email:track" && method === "GET") {
+      const trackId = req.query.id;
+      if (trackId) {
+        db.collection("emailCampaignSends").doc(trackId).set({
+          openedAt: admin.firestore.FieldValue.serverTimestamp(),
+          openCount: admin.firestore.FieldValue.increment(1),
+        }, { merge: true }).catch(() => {});
+      }
+      const gif = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
+      res.set("Content-Type", "image/gif");
+      res.set("Cache-Control", "no-store");
+      return res.send(gif);
+    }
+
+    // GET /v1/email:unsubscribe — one-click unsubscribe; no auth required (CAN-SPAM).
+    // Also reachable as GET /unsub (Firebase Hosting rewrite bypasses Frontdoor auth).
+    if (route === "/email:unsubscribe" && method === "GET") {
+      const { cid: contactId } = req.query;
+      if (contactId) {
+        db.collection("contacts").doc(contactId).set(
+          { unsubscribed: true, unsubscribedAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        ).catch(e => console.warn("[email:unsubscribe] Firestore write failed:", e.message));
+      }
+      res.set("Content-Type", "text/html");
+      return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Unsubscribed</title><style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}.card{background:#fff;border-radius:12px;padding:40px 48px;box-shadow:0 1px 4px rgba(0,0,0,.1);text-align:center;max-width:400px}h2{color:#111827;margin:0 0 8px}p{color:#6b7280;margin:0;font-size:14px}</style></head><body><div class="card"><h2>You've been unsubscribed</h2><p>You won't receive any more emails from this campaign.</p></div></body></html>`);
     }
 
     // All other routes require Firebase auth
@@ -26622,6 +26878,207 @@ Analyze now:`;
     // NOTE: gmail.readonly + gmail.send are "restricted" scopes — requires
     // Google verification for public use. Test users can connect immediately.
     // ----------------------------
+    // Note: /email:track and /email:unsubscribe are handled before the auth gate above.
+
+    // POST /v1/email:sendCampaign — send batch emails from a campaign proposal.
+    // Body: { proposalId } — the proposal was created by Alex's propose_email_campaign tool.
+    // Sends each email via Gmail with a tracking pixel; records send events in Firestore.
+    if (route === "/email:sendCampaign" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      const { proposalId } = req.body || {};
+      if (!proposalId) return jsonError(res, 400, "proposalId required");
+      try {
+        const propSnap = await db.collection("emailCampaignProposals").doc(proposalId).get();
+        if (!propSnap.exists) return jsonError(res, 404, "Campaign proposal not found");
+        const prop = propSnap.data();
+        if (prop.ownerUid !== auth.user.uid) return jsonError(res, 403, "Forbidden");
+        if (prop.status === "sent") return jsonError(res, 409, "Campaign already sent");
+
+        // Mark as sending
+        await db.collection("emailCampaignProposals").doc(proposalId).update({ status: "sending", startedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+        // Fetch contacts
+        const contactSnap = await db.collection("contacts").where("tenantId", "==", prop.tenantId).limit(5000).get();
+        let contacts = contactSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== "deleted" && c.email);
+        if (prop.segment) {
+          contacts = contacts.filter(c =>
+            (c.segments || []).includes(prop.segment) ||
+            (c.tags || []).some(t => t.toLowerCase().includes(prop.segment.toLowerCase())) ||
+            (c.type || "").toLowerCase().includes(prop.segment.toLowerCase())
+          );
+        }
+        if (prop.contactCount && contacts.length > prop.contactCount * 1.2) {
+          contacts = contacts.slice(0, prop.contactCount);
+        }
+
+        const gmail = require("./services/social/gmail");
+        const crypto = require("crypto");
+        const campaignId = `camp_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+        const TRACKING_BASE = "https://sociii.ai/track";
+        const UNSUB_BASE = "https://sociii.ai/unsub";
+        const COMPANY_ADDR = process.env.COMPANY_ADDRESS || "SOCIII, Inc.";
+        let sentCount = 0, failCount = 0;
+
+        // Skip contacts who already unsubscribed
+        contacts = contacts.filter(c => !c.unsubscribed);
+
+        // Apply exclude lists from proposal
+        if (prop.excludeEmails?.length) {
+          const exclSet = new Set(prop.excludeEmails.map(e => e.toLowerCase()));
+          contacts = contacts.filter(c => !exclSet.has((c.email || "").toLowerCase()));
+        }
+        if (prop.excludeNames?.length) {
+          contacts = contacts.filter(c => {
+            const fullName = (c.name || [c.firstName, c.lastName].filter(Boolean).join(" ") || "").toLowerCase();
+            return !prop.excludeNames.some(n => fullName.includes(n.toLowerCase()));
+          });
+        }
+
+        // Pre-cache all attachment buffers ONCE (avoid N downloads for N contacts)
+        const attWithBufs = await Promise.all((prop.attachments || []).map(async a => {
+          try {
+            // PDF-first: if the attachment is a .pptx, try a .pdf sibling first
+            // (better cross-platform formatting — Mac opens .pptx as Keynote).
+            if (a.url?.startsWith("gs://") && a.filename?.endsWith(".pptx")) {
+              const pdfUrl = a.url.replace(".pptx", ".pdf");
+              const pdfFilename = a.filename.replace(".pptx", ".pdf");
+              const pdfMatch = pdfUrl.match(/^gs:\/\/([^/]+)\/(.+)$/);
+              if (pdfMatch) {
+                try {
+                  const [, pBucket, pPath] = pdfMatch;
+                  const [pBuf] = await admin.storage().bucket(pBucket).file(pPath).download();
+                  return { filename: pdfFilename, mimeType: "application/pdf", buf: pBuf };
+                } catch { /* PDF not found — fall through to PPTX */ }
+              }
+            }
+            const mimeType = a.filename?.endsWith(".pptx") ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              : a.filename?.endsWith(".pdf") ? "application/pdf"
+              : a.filename?.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              : "application/octet-stream";
+            let buf;
+            if (a.url?.startsWith("gs://")) {
+              const gsMatch = a.url.match(/^gs:\/\/([^/]+)\/(.+)$/);
+              if (gsMatch) {
+                const [, bucket, filePath] = gsMatch;
+                const [fb] = await admin.storage().bucket(bucket).file(filePath).download();
+                buf = fb;
+              }
+            } else if (a.url) {
+              const r = await fetch(a.url);
+              if (r.ok) buf = Buffer.from(await r.arrayBuffer());
+            }
+            return { filename: a.filename, mimeType, buf };
+          } catch (e) {
+            console.warn(`[email:sendCampaign] attachment pre-fetch failed for ${a.filename}:`, e.message);
+            return { filename: a.filename, mimeType: "application/octet-stream", buf: null };
+          }
+        }));
+        const cachedAtts = attWithBufs.filter(a => a.buf);
+
+        for (const contact of contacts) {
+          const trackId = `t_${campaignId}_${crypto.randomBytes(6).toString("hex")}`;
+          const unsubToken = crypto.createHash("sha256").update(`${contact.id}${campaignId}${process.env.GDRIVE_ENCRYPTION_KEY || "secret"}`).digest("hex").slice(0, 32);
+          const firstName = contact.firstName || contact.name?.split(" ")[0] || "there";
+          const lastName = contact.lastName || contact.name?.split(" ").slice(1).join(" ") || "";
+          const personalizedBody = (prop.bodyTemplate || "")
+            .replace(/{{firstName}}/g, firstName)
+            .replace(/{{lastName}}/g, lastName)
+            .replace(/{{email}}/g, contact.email);
+          const trackPixel = `<img src="${TRACKING_BASE}&id=${trackId}" width="1" height="1" style="display:none" alt="" />`;
+          const unsubUrl = `${UNSUB_BASE}&id=${unsubToken}&cid=${contact.id}`;
+          const canSpamFooter = `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:11px;color:#6b7280;text-align:center;line-height:1.6">${COMPANY_ADDR}<br><a href="${unsubUrl}" style="color:#6b7280">Unsubscribe</a></div>`;
+          const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">${personalizedBody.replace(/\n/g, "<br>")}</div>${trackPixel}${canSpamFooter}`;
+
+          try {
+            const sendResult = await gmail.sendEmail(auth.user.uid, {
+              to: contact.email,
+              subject: prop.subject,
+              body: personalizedBody,
+              htmlBody,
+              attachments: cachedAtts,
+              ...(prop.cc ? { cc: prop.cc } : {}),
+              ...(prop.fromName ? { replyTo: auth.user.email } : {}),
+            });
+            await db.collection("emailCampaignSends").doc(trackId).set({
+              campaignId, proposalId,
+              contactId: contact.id,
+              email: contact.email,
+              name: [firstName, lastName].filter(Boolean).join(" "),
+              gmailMessageId: sendResult.messageId || null,
+              sentAt: admin.firestore.FieldValue.serverTimestamp(),
+              opened: false, openCount: 0,
+              ownerUid: auth.user.uid,
+            });
+            sentCount++;
+          } catch (e) {
+            console.warn(`[email:sendCampaign] failed for ${contact.email}:`, e.message);
+            failCount++;
+          }
+          // Respect Gmail API quota — 100ms between sends
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        await db.collection("emailCampaignProposals").doc(proposalId).update({
+          status: "sent", campaignId, sentCount, failCount,
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, campaignId, sentCount, failCount, total: contacts.length });
+      } catch (e) {
+        console.error("[email:sendCampaign] error:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/email:campaignReport — report open/send stats for a campaign.
+    if (route === "/email:campaignReport" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      const { campaignId, proposalId } = req.query;
+      if (!campaignId && !proposalId) return jsonError(res, 400, "campaignId or proposalId required");
+      try {
+        let query = db.collection("emailCampaignSends").where("ownerUid", "==", auth.user.uid);
+        if (campaignId) query = query.where("campaignId", "==", campaignId);
+        if (proposalId) query = query.where("proposalId", "==", proposalId);
+        const snap = await query.limit(1000).get();
+        const sends = snap.docs.map(d => d.data());
+        const opened = sends.filter(s => s.openCount > 0);
+        const summary = {
+          total: sends.length,
+          opened: opened.length,
+          openRate: sends.length ? Math.round((opened.length / sends.length) * 100) : 0,
+          openers: opened.slice(0, 20).map(s => ({ name: s.name, email: s.email, openCount: s.openCount })),
+        };
+        return res.json({ ok: true, ...summary });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/email:attachmentUrl — exchange a gs:// Storage path for a signed download URL
+    // so the frontend can preview email attachments before approving.
+    if (route === "/email:attachmentUrl" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      const { url: attUrl } = req.body || {};
+      if (!attUrl) return jsonError(res, 400, "url required");
+      try {
+        if (attUrl.startsWith("gs://")) {
+          const parts = attUrl.replace("gs://", "").split("/");
+          const bucket = parts.shift();
+          const filePath = parts.join("/");
+          const [signedUrl] = await admin.storage().bucket(bucket).file(filePath).getSignedUrl({
+            action: "read", expires: Date.now() + 15 * 60 * 1000,
+          });
+          return res.json({ ok: true, url: signedUrl });
+        }
+        return res.json({ ok: true, url: attUrl });
+      } catch (e) {
+        return jsonError(res, 500, "Could not generate preview URL: " + e.message);
+      }
+    }
+
     if (route && route.startsWith("/gmail:")) {
       const gmailAction = route.replace("/gmail:", "");
       try {

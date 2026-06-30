@@ -374,7 +374,10 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
     for (const att of attachments) {
       try {
         let buf;
-        if (att.url && att.url.startsWith("gs://")) {
+        if (att.buf) {
+          // Pre-fetched buffer (campaign sends pre-cache once to avoid N downloads)
+          buf = att.buf;
+        } else if (att.url && att.url.startsWith("gs://")) {
           // Firebase Storage path — download directly via Admin SDK (no signed URL needed)
           const gsMatch = att.url.match(/^gs:\/\/([^/]+)\/(.+)$/);
           if (!gsMatch) { console.warn(`[gmail] invalid gs:// path: ${att.url}`); continue; }
@@ -411,8 +414,8 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
   }
 
   const encoded = Buffer.from(raw).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-  await gmail.users.messages.send({ userId: "me", requestBody: { raw: encoded } });
-  return { ok: true };
+  const sent = await gmail.users.messages.send({ userId: "me", requestBody: { raw: encoded } });
+  return { ok: true, messageId: sent.data?.id || null, threadId: sent.data?.threadId || null };
 }
 
 /**

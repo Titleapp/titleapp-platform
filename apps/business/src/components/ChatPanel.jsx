@@ -303,13 +303,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setActiveWorkerName(name);
       setActiveWorkerSlug(slug || null);
 
-      // 50.27 — Rotate chat sessionId when worker changes. Without this the
-      // chat backend keeps loading prior worker's history (per-tenant per-
-      // user per-session) and the old worker's system prompt context bleeds
-      // into the new worker's response. Bug Sean hit: switched from Contacts
-      // to Control Center Pro; chat still answered as Contacts.
+      // Persistent worker memory: use a stable sessionId so each worker
+      // resumes its own history across page reloads and browser sessions.
+      // Format: cos_{uid} for Alex, wkr_{uid}_{slug} for all other workers.
       try {
-        const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const uid = getAuth().currentUser?.uid;
+        const safeSlug = (slug || "unknown").replace(/[^a-z0-9-]/gi, "_");
+        const newSid = uid
+          ? (slug === "chief-of-staff" ? `cos_${uid}` : `wkr_${uid}_${safeSlug}`)
+          : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         localStorage.setItem("ta_chat_session_id", newSid);
       } catch { /* ignore */ }
 
@@ -931,12 +933,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     const lower = message.toLowerCase();
 
     // Worker discovery queries (no vertical bias — searches the full worker
-    // registry). ONLY when NOT inside a worker — if a worker is selected the user
-    // is talking TO it, not browsing the catalog, so discovery interception must
-    // not fire (that's what turned in-worker questions into "no workers found").
+    // registry). ONLY when NOT inside a worker AND NOT in COS — COS has its own
+    // query_contacts / propose_email_campaign tools on the backend and must not
+    // be intercepted by local marketplace search patterns.
     const _activeSlug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
     const _inWorker = _activeSlug && _activeSlug !== "chief-of-staff";
-    if (!_inWorker) {
+    const _inCos = alexContext?.surface === 'chief-of-staff' || _activeSlug === 'chief-of-staff';
+    if (!_inWorker && !_inCos) {
       const workerResult = matchWorkerQuery(message);
       if (workerResult) return workerResult;
     }
@@ -1351,8 +1354,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           sessionId: (() => {
             const KEY = "ta_chat_session_id";
             let sid = localStorage.getItem(KEY);
+            // If no sid yet, compute stable id from uid+worker now (same scheme
+            // as handleWorkerSelect above, so sessions persist across reloads).
             if (!sid) {
-              sid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+              const uid = getAuth().currentUser?.uid;
+              const slug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
+              const safeSlug = (slug || "unknown").replace(/[^a-z0-9-]/gi, "_");
+              sid = uid
+                ? (slug === "chief-of-staff" ? `cos_${uid}` : `wkr_${uid}_${safeSlug}`)
+                : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
               localStorage.setItem(KEY, sid);
             }
             return sid;
@@ -1572,6 +1582,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         recommendationCard: data.recommendationCard || null,
         workerCards: data.workerCards || null,
         emailDraft: data.emailDraft || null,
+        emailCampaign: data.emailCampaign || null,
         smsDraft: data.smsDraft || null,
         whatsappDraft: data.whatsappDraft || null,
         telegramDraft: data.telegramDraft || null,
@@ -1693,6 +1704,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [_scheduledDrafts, _setScheduledDrafts] = useState(new Set());
   const [schedulerOpen, setSchedulerOpen] = useState({});
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
+  const [campaignSendState, setCampaignSendState] = useState({}); // { idx: "sending"|"done"|"error" }
 
   async function handleSaveDraft(content, idx) {
     setSavingDraftIdx(idx);
@@ -2092,7 +2104,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           // SPECIALIST worker is the speaker — show its name + a "Worker" tag,
           // and the header bar is already tinted that worker's color. Only the
           // home view is Alex, the Chief of Staff.
-          if (activeWorkerName) return `${activeWorkerName} · Worker`;
+          if (activeWorkerName && activeWorkerSlug !== 'chief-of-staff') return `${activeWorkerName} · Worker`;
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
             return cfg.name ? `${cfg.name} · Chief of Staff` : 'Alex · Chief of Staff';
@@ -2402,6 +2414,28 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                         <span key={ai} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#475569", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 5, padding: "2px 8px" }}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                           {att.filename}
+                          <button
+                            onClick={async () => {
+                              const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                              const token = await getChatToken();
+                              let previewUrl = att.url;
+                              if (att.url && att.url.startsWith("gs://")) {
+                                // Exchange gs:// for a signed download URL
+                                try {
+                                  const r = await fetch(`${apiBase}/api?path=/v1/email:attachmentUrl`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                                    body: JSON.stringify({ url: att.url }),
+                                  });
+                                  const d = await r.json();
+                                  if (d.ok && d.url) previewUrl = d.url;
+                                } catch { /* fall through to raw url */ }
+                              }
+                              window.open(previewUrl, "_blank");
+                            }}
+                            style={{ marginLeft: 2, background: "none", border: "none", cursor: "pointer", padding: 0, color: "#7c3aed", fontSize: 10, fontWeight: 600, textDecoration: "underline" }}
+                            title="Preview attachment"
+                          >Preview</button>
                         </span>
                       ))}
                     </div>
@@ -2492,6 +2526,91 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                       >Cancel</button>
                     </>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Email campaign approval card */}
+            {msg.emailCampaign && !sentEmailDrafts.has(`camp_${idx}`) && (
+              <div style={{ marginTop: 10, maxWidth: 480, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background: "#eff6ff", borderBottom: "1px solid #bfdbfe", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1e40af" }}>Email Campaign</span>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", background: "#dbeafe", borderRadius: 20, padding: "2px 10px" }}>
+                    {msg.emailCampaign.contactCount} recipients
+                  </span>
+                </div>
+                <div style={{ padding: "12px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, color: "#334155" }}>Subject: </span>{msg.emailCampaign.subject}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600 }}>Sample — </span>{msg.emailCampaign.sampleContact?.name} &lt;{msg.emailCampaign.sampleContact?.email}&gt;
+                  </div>
+                  <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.6, background: "#f8fafc", borderRadius: 7, padding: "8px 10px", maxHeight: 80, overflow: "auto", whiteSpace: "pre-wrap", borderLeft: "3px solid #bfdbfe" }}>
+                    {msg.emailCampaign.sampleBody?.slice(0, 300)}{msg.emailCampaign.sampleBody?.length > 300 ? "…" : ""}
+                  </div>
+                  {msg.emailCampaign.attachments?.length > 0 && (
+                    <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {msg.emailCampaign.attachments.map((att, ai) => (
+                        <span key={ai} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#475569", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 5, padding: "2px 8px" }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                          {att.filename}
+                          {att.url && (
+                            <button onClick={async () => {
+                              let url = att.url;
+                              if (url.startsWith("gs://")) {
+                                const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                                const token = await getChatToken();
+                                const r = await fetch(`${apiBase}/api?path=/v1/email:attachmentUrl`, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ url }) });
+                                const d = await r.json();
+                                if (d.ok) url = d.url;
+                              }
+                              window.open(url, "_blank");
+                            }} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 10, fontWeight: 600, textDecoration: "underline", padding: 0, marginLeft: 2 }}>Preview</button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    disabled={campaignSendState[idx] === "sending" || campaignSendState[idx] === "done"}
+                    onClick={async () => {
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const token = await getChatToken();
+                      setCampaignSendState(prev => ({ ...prev, [idx]: "sending" }));
+                      try {
+                        const r = await fetch(`${apiBase}/api?path=/v1/email:sendCampaign`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": localStorage.getItem("TENANT_ID") || "" },
+                          body: JSON.stringify({ proposalId: msg.emailCampaign.proposalId }),
+                        });
+                        const d = await r.json();
+                        setCampaignSendState(prev => ({ ...prev, [idx]: d.ok ? "done" : "error" }));
+                        setSentEmailDrafts(prev => new Set([...prev, `camp_${idx}`]));
+                        const failNote = d.failCount > 0 ? ` (${d.failCount} failed — check Gmail quota or recipient addresses)` : "";
+                        setMessages(prev => [...prev, {
+                          role: "assistant",
+                          content: d.ok
+                            ? `Campaign launched — ${d.sentCount} emails sent${failNote}. I'll report back on opens. Say "show campaign report" to check open rates. Campaign ID: ${d.campaignId}`
+                            : `Campaign send failed: ${d.error || "unknown error"}. Check that Gmail is connected and try again.`,
+                          isSystem: true,
+                        }]);
+                      } catch (e) {
+                        setCampaignSendState(prev => ({ ...prev, [idx]: "error" }));
+                        setMessages(prev => [...prev, { role: "assistant", content: "Campaign launch failed — check connection and try again.", isSystem: true }]);
+                      }
+                    }}
+                    style={{ flex: 1, padding: "9px 14px", background: campaignSendState[idx] === "sending" ? "#93c5fd" : "#2563eb", color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: campaignSendState[idx] === "sending" ? "not-allowed" : "pointer" }}
+                  >{campaignSendState[idx] === "sending" ? `Sending… (this takes ~${Math.ceil((msg.emailCampaign.contactCount || 10) * 0.1 / 60)} min)` : `Launch Campaign (${msg.emailCampaign.contactCount} emails)`}</button>
+                  <button
+                    onClick={() => setSentEmailDrafts(prev => new Set([...prev, `camp_${idx}`]))}
+                    style={{ padding: "9px 14px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >Cancel</button>
                 </div>
               </div>
             )}
