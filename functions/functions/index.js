@@ -5363,7 +5363,7 @@ PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that su
 
 DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to "save to Drive", "put that in my Drive", or after generating/referencing a document that belongs in the user's files. Accepts gs:// Storage paths (for SOCIII files) and https:// public URLs. The file appears immediately in My Drive.
 
-INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx (system will auto-upgrade to .pdf if that file exists — always prefer PDF for email delivery). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
+INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx — attach it as a PPTX (opens in PowerPoint, Keynote, and Google Slides on all platforms). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
 
 DASHBOARD PRIORITIES: Use set_priorities when Sean tells you his top priorities for the week, or when you've identified urgent items (investor replies pending, 83(b) deadlines, overdue compliance items). This replaces the entire list — pass all items, max 5. Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"). Items appear immediately on Sean's dashboard canvas. Use proactively at morning brief time.
 
@@ -27090,8 +27090,12 @@ Analyze now:`;
                 try {
                   const [, pBucket, pPath] = pdfMatch;
                   const [pBuf] = await admin.storage().bucket(pBucket).file(pPath).download();
-                  return { filename: pdfFilename, mimeType: "application/pdf", buf: pBuf };
-                } catch { /* PDF not found — fall through to PPTX */ }
+                  // Validate: real PDFs start with %PDF-
+                  if (pBuf && pBuf.slice(0, 5).toString("ascii") === "%PDF-") {
+                    return { filename: pdfFilename, mimeType: "application/pdf", buf: pBuf };
+                  }
+                  console.warn(`[email] PDF sibling for ${a.filename} failed magic-byte check — falling back to PPTX`);
+                } catch { /* PDF not found or unreadable — fall through to PPTX */ }
               }
             }
             const mimeType = a.filename?.endsWith(".pptx") ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
