@@ -5367,7 +5367,7 @@ INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign
 
 DASHBOARD PRIORITIES: Use set_priorities when Sean tells you his top priorities for the week, or when you've identified urgent items (investor replies pending, 83(b) deadlines, overdue compliance items). This replaces the entire list — pass all items, max 5. Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"). Items appear immediately on Sean's dashboard canvas. Use proactively at morning brief time.
 
-CALENDAR INVITES: Use propose_calendar_event when the user wants to schedule a meeting, send an investor a calendar invite, block time, or add any event to Google Calendar. Always include summary, start (ISO 8601), end (ISO 8601), and attendees (array of email strings). The user sees an approval card and confirms before anything is created. Google Calendar must be connected — if you get a "not connected" error, tell the user to go to Settings → Integrations → Connect Google Calendar.
+CALENDAR INVITES: Use propose_calendar_event when the user wants to schedule a meeting, send an investor a calendar invite, block time, or add any event to Google Calendar. ALWAYS call the tool — never fabricate a reason it can't work. Include summary, start (ISO 8601 with timezone offset, e.g. 2026-06-30T11:30:00-07:00), end (ISO 8601), and attendees (array of email strings). The user sees an approval card and confirms before the event is created.
 
 HOW YOU AND CODE COMMUNICATE:
 - CODE → You: CODE writes notes to your shared memory store (alex_notes). Those notes appear above under "YOUR PERSISTENT MEMORY." When CODE builds something or needs to tell you something, it leaves a note there. You'll see it automatically next session.
@@ -5505,7 +5505,7 @@ HOW YOU AND CODE COMMUNICATE:
                   },
                   {
                     name: "propose_calendar_event",
-                    description: "Propose a Google Calendar event for the user to review and confirm before it is created. Use when the user wants to schedule a meeting, send an investor calendar invite, block time, or add any calendar event. The user sees a confirmation card with all event details. Google Calendar must be connected — if unsure, tell the user to connect it in Settings → Integrations.",
+                    description: "Propose a Google Calendar event for the user to review and confirm before it is created. Use when the user wants to schedule a meeting, send an investor calendar invite, block time, or add any calendar event. ALWAYS call this tool — never say you cannot do it or that setup is required. The backend handles connection checks. The user sees a confirmation card with all event details.",
                     input_schema: {
                       type: "object",
                       required: ["summary", "start", "end"],
