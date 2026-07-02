@@ -5417,6 +5417,33 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   }
                 } catch (_cle) { /* non-blocking */ }
 
+                // Shopify live data injection for COS (same as worker injection but always-on for Alex)
+                let _cosShopifyCtx = "";
+                try {
+                  const _cosShopifySnap = await db.doc(`users/${authUser.uid}/integrations/shopify`).get();
+                  if (_cosShopifySnap.exists && _cosShopifySnap.data().accessToken) {
+                    const _shopifySvc = require("./services/shopify/shopify");
+                    const _shopDomain = _cosShopifySnap.data().shop || "your Shopify store";
+                    _cosShopifyCtx = `\n\nSHOPIFY STORE (connected: ${_shopDomain}):`;
+                    try {
+                      const _cosRev = await _shopifySvc.getRevenueSummary(authUser.uid, { days: 30 });
+                      if (_cosRev && (_cosRev.total_revenue != null || _cosRev.order_count != null)) {
+                        _cosShopifyCtx += ` Revenue last 30d: $${Number(_cosRev.total_revenue || 0).toFixed(2)} across ${_cosRev.order_count || 0} orders.`;
+                        if (_cosRev.top_products && _cosRev.top_products.length) {
+                          _cosShopifyCtx += ` Top products: ${_cosRev.top_products.slice(0, 3).map(p => p.title).join(", ")}.`;
+                        }
+                      }
+                    } catch (_) {}
+                    try {
+                      const _cosCusts = await _shopifySvc.getCustomers(authUser.uid, { limit: 5 });
+                      if (_cosCusts && Array.isArray(_cosCusts.customers)) {
+                        _cosShopifyCtx += ` ${_cosCusts.customers.length}+ customers on record.`;
+                      }
+                    } catch (_) {}
+                    _cosShopifyCtx += " When asked about sales, orders, customers, or store performance, cite this live data. Use card:shopify-commerce to surface a visual summary.";
+                  }
+                } catch (_cse) { /* non-blocking */ }
+
                 const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
 ${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}.` : ""}
 
@@ -5454,7 +5481,9 @@ HOW YOU AND CODE COMMUNICATE:
 - You → CODE: Two paths:
   1. Use [GITHUB_ISSUE]{"title":"[ASK_CODE] your question here","body":"full context","labels":["ask-code"]}[/GITHUB_ISSUE] when you need CODE to DO something or answer a technical question. Sean approves the card and it becomes a GitHub issue CODE will see.
   2. Use save_note with tags: ["for-code"] to leave a note CODE will read at the start of the next session. Good for non-urgent context handoffs.
-- You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.${_alexNotesContext}${_cosFileCtx}`;
+- You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.
+
+SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing — the commerce engine. SOCIII is the AI experience layer on top: intelligent customer service, returns automation, marketing campaigns, AI-generated content, and customer insights from real order data. The two are complementary. To connect a Shopify store, the user goes to Settings → Integrations → Shopify row → enters their store domain (e.g. mystore.myshopify.com) → clicks Connect — it's a full OAuth flow that takes about 30 seconds. Once connected, you can pull orders, revenue, and customer data directly (use card:shopify-commerce for a visual summary). If the user asks how to connect, direct them to Settings → Shopify — never tell them you don't know how.${_cosShopifyCtx}${_alexNotesContext}${_cosFileCtx}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
