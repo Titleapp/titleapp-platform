@@ -25,6 +25,24 @@ const PRESS_RELEASES = [
 
 const ARTICLES = [
   {
+    slug: "shopify-intelligence-layer",
+    title: "Wall-E had all the data. Eva knew what to do with it.",
+    subtitle: "Shopify is the world's best commerce engine. It is not a brain. Here's what happens when you give it one — and why it costs less than a single customer service hire.",
+    date: "2026-07-01",
+    readingMinutes: 8,
+    tag: "Product",
+    accent: "#96BF48",
+  },
+  {
+    slug: "eu-dpp-shopify-merchants",
+    title: "The EU is about to require what you already have.",
+    subtitle: "Digital Product Passports are mandatory for most product categories sold into Europe, starting 2027. SOCIII's Vault architecture already satisfies the core structural requirement — as a byproduct of running your business.",
+    date: "2026-07-01",
+    readingMinutes: 6,
+    tag: "Compliance",
+    accent: "#003399",
+  },
+  {
     slug: "alex-action-loop-june-2026",
     title: "Alex reads your inbox, drafts the email, and waits for you to say go.",
     subtitle: "The Chief of Staff action loop is live: real Gmail context, structured approval cards, actual sends. The total platform cost for this capability is $0/month if you build it on SOCIII.",
@@ -194,6 +212,129 @@ const PRESS_RELEASE_BODIES = {
 };
 
 const ARTICLE_BODIES = {
+  "shopify-intelligence-layer": (
+    <>
+      <p>
+        If you've seen Wall-E, you remember the image: a little robot who has spent years faithfully stacking trash into towers, alone on a planet full of forgotten stuff. He's diligent. Reliable. Works harder than anyone. And after all that time, he has accumulated an extraordinary amount of — everything.
+      </p>
+      <p>
+        Then Eva arrives. She's sleek, purposeful, intelligent. She sees immediately what all those years of collected material actually mean. She has a mission. And together — Wall-E giving her the grounded reality of what exists, Eva giving Wall-E's world direction and meaning — they change everything.
+      </p>
+      <p>
+        <strong>Shopify is Wall-E. SOCIII is Eva.</strong>
+      </p>
+      <p>
+        Your Shopify store has been working tirelessly. It knows every product you've ever sold, every customer who's ever bought, every cart that was abandoned at checkout at 11pm on a Tuesday. It has processed thousands of transactions, tracked hundreds of SKUs, and logged every return, every refund, every review. It has done all of this faithfully and without complaint.
+      </p>
+      <p>And then it just... sits there. Waiting for the next order. The data is all there. The insight is not.</p>
+      <h2>Where the money actually bleeds</h2>
+      <p>
+        Before explaining what SOCIII does, it's worth being honest about what running a Shopify store actually costs beyond the subscription. A store doing $500K/year typically spends $2,000–$3,500/month on customer service, $875–$1,500 on returns processing, and $1,000–$2,500 on marketing tools that aren't connected to real inventory data. Add chargeback losses and the invisible cost of VIP customer churn — customers worth $1,500/year who go quiet and buy from someone else — and you're looking at $5,000–$11,000 a month in operational overhead before a single new product is sold.
+      </p>
+      <p>SOCIII attacks every line of that list.</p>
+      <h2>Customer service: the problem that doesn't scale</h2>
+      <p>
+        Customer service compounds with every order you add. Every ticket is a judgment call. Is this return within the window? Does this customer's story check out? Is this a chargeback threat or a genuine complaint? Do we make an exception for this VIP? Each one requires a human to find the order in Shopify, read the history, check the policy, decide, and respond. At 50 tickets a day that's a full-time job. At 200 tickets a day it's three full-time jobs.
+      </p>
+      <p>
+        And here's the hidden cost nobody talks about: inconsistency. Two different agents make two different calls on nearly identical situations. One customer gets a refund with no questions asked. The next customer, same issue, gets a runaround. The second customer posts on Reddit. You never see it.
+      </p>
+      <p>
+        When a customer sends an inquiry, SOCIII's Customer Service worker reads the actual Shopify order in real time. It already knows what they ordered and where it is, their full purchase history, whether they've filed a return before, and exactly where they fall within your return window. From that context, it applies your encoded rules — your actual policy, written once and enforced identically every time. Not dependent on how well a new hire reads the onboarding doc.
+      </p>
+      <p>
+        For a "where is my order?" ticket: it reads the fulfillment status, generates the tracking update, and drafts a response. No human needed. For a return request: it checks the window, the exceptions, the customer tier. If it falls cleanly within policy, it auto-approves. If it's an edge case, it escalates to you with full context and a recommended response. You never touch the routine 80%. You only see the 20% that genuinely need judgment.
+      </p>
+      <h2>Returns and exchanges: where margins go to die</h2>
+      <p>
+        Returns are the dirty secret of e-commerce. The average return rate is 20–30% for apparel, 15–20% for electronics, 8–12% for general merchandise. For a $500K store, that's $40,000–$150,000 in returned goods moving back through your operation every year. Each return costs $25–50 in processing before you count the lost margin.
+      </p>
+      <p>
+        Your return policy is encoded once — directly into the rules engine. The rules are precise: return window (30 days from delivery, not order date), exceptions (sale items, intimates, electronics unopened only), VIP threshold (5+ orders get an extended 45-day window automatically), serial returners flagged for review after the third return in 90 days. Every decision and the rule that triggered it are logged immutably — so you can audit every call, spot patterns, and prove policy compliance if a chargeback is ever filed.
+      </p>
+      <p>
+        Exchanges specifically — this is where most Shopify stores lose money they didn't have to. A customer wants to exchange a size-medium for a size-large. Most stores process this as a return plus a new order: two fulfillment events, two customer service touches, a gap where the customer is anxious. SOCIII handles exchanges as a single transaction: confirms new size in stock via live Shopify inventory, generates the exchange label, creates the new order, closes the loop with the customer in one message.
+      </p>
+      <h2>The money math</h2>
+      <p>
+        Concrete scenario: a store doing $600,000/year, 120 orders/month, 25 returns/month, two-person customer service operation. CS labor at 80% automation saves $2,400/month. Returns processing drops from $35 to $8 per return — $675 saved. Recovering two VIP customers per month at their average order value adds $300. Better chargeback documentation wins 60% more disputes — $300 saved. Marketing that uses real inventory data instead of generic campaigns adds $800 in revenue on the same spend. Total: roughly $4,475/month in combined savings and revenue improvement.
+      </p>
+      <p>SOCIII costs a fraction of one customer service hire. The returns and CS automation alone typically pays for it within the first week of the month.</p>
+      <h2>The Tuesday morning test</h2>
+      <p>
+        <strong>Without SOCIII:</strong> You open your laptop. Revenue is up or down but you're not sure what's driving it and you don't have time to dig. You have 18 customer service tickets to triage. One of your best customers ordered three times last year and hasn't been back in four months. You have no idea. You close the laptop and go to a meeting.
+      </p>
+      <p>
+        <strong>With SOCIII:</strong> You open the app. Alex has already run your morning brief: revenue up 12% this week, one VIP customer approaching their reorder window (draft re-engagement ready), three return requests processed automatically within policy (one flagged for your review — outside window, longtime customer, recommended exception). Every item is one approval tap away from done. The flagged return takes 45 seconds. The VIP email takes 20 seconds. You close the app and go to the same meeting. But now you're actually running your business.
+      </p>
+      <h2>The 30 seconds that change everything</h2>
+      <p>
+        Connecting SOCIII to your Shopify store is not an integration project. There is no developer, no API key hunting, no CSV export. Settings → Integrations → Shopify → enter your store domain → Connect. Thirty seconds. OAuth. Done. SOCIII reads your orders, revenue, customers, and inventory live — always current, always accurate, never a stale export.
+      </p>
+      <p>
+        Wall-E was already doing the most important work in the world. He just needed Eva to show him what it all meant — and what to do next. Your store has been doing the same. Connect SOCIII, and find out what you've actually been building.
+      </p>
+    </>
+  ),
+
+  "eu-dpp-shopify-merchants": (
+    <>
+      <p>
+        If you sell into Europe — or plan to — what follows is not optional reading.
+      </p>
+      <p>
+        The EU's <strong>Ecodesign for Sustainable Products Regulation (ESPR)</strong> mandates <strong>Digital Product Passports (DPPs)</strong> for most product categories on a rolling timeline beginning in 2026. A Digital Product Passport is a persistent, tamper-evident, machine-readable record tied to a specific product — covering materials, origin, supply chain provenance, certifications, repair history, and end-of-life instructions.
+      </p>
+      <p>
+        In plain terms: every product you sell into the EU will need a permanent, verifiable record that travels with it. That record must be accessible to consumers, regulators, and customs authorities on demand. It cannot be a PDF you email on request. It must be structured, persistent, and provable.
+      </p>
+      <h2>The timeline</h2>
+      <p>
+        Batteries and accumulators are first — February 2027, covering chemistry, carbon footprint, supply chain, and recycled content. Textiles and apparel follow in 2027 — fibre composition, country of origin, repair and recycling information. Electronics and ICT come in 2027–2028. Furniture in 2028. Most other product categories by 2028–2030.
+      </p>
+      <p>
+        If you sell apparel, accessories, electronics, home goods, or anything with a material composition, this is coming for your catalog. The merchants who treat it as a last-minute compliance sprint will spend far more than the merchants who treat it as a byproduct of good operations.
+      </p>
+      <h2>Why this is not a fine. It is a border.</h2>
+      <p>
+        DPP non-compliance is not a fine. It is a border. Products without a valid Digital Product Passport cannot legally be sold in the EU market. For a Shopify merchant doing any volume into Europe — or planning to — this is an existential requirement, not a sustainability initiative.
+      </p>
+      <p>
+        Most Shopify merchants have no plan for DPP compliance. The DPP requirement is still under-reported in the e-commerce press, underestimated by platform vendors, and mostly invisible to store owners who are focused on next month's revenue. That will change rapidly once customs authorities begin enforcement — and the merchants without documentation will find out about it at the border, not before it.
+      </p>
+      <h2>What a DPP actually requires</h2>
+      <p>
+        A Digital Product Passport needs to be: persistent (survives after the sale), portable (the consumer can access it independently of the merchant), tamper-evident (provable that it hasn't been altered after the fact), machine-readable (structured data, not a narrative description), and independently verifiable (a third party can check it without trusting either the merchant or the platform).
+      </p>
+      <p>
+        That is a specific architectural requirement. It is not a database record. It is not a PDF attached to an order confirmation. It requires a system that writes records in a form that can be proven authentic without trusting the system that wrote them.
+      </p>
+      <h2>Why SOCIII's architecture already satisfies this</h2>
+      <p>
+        SOCIII's Vault stores records that are hash-anchored to an independent ledger outside SOCIII's control — meaning the record can be proven authentic without trusting us. Every meaningful action written to the Vault produces a cryptographic fingerprint that is committed to a public registry. If SOCIII were destroyed tomorrow, the receipts survive on the public registry. The record can be rebuilt.
+      </p>
+      <p>
+        That is not a feature we added for DPP compliance. It is the structural property of every record SOCIII creates. It was designed to solve a different problem — making AI-agent actions defensible in regulated industries — and it turns out to be the same architecture the EU is now mandating for product records.
+      </p>
+      <p>
+        For a Shopify merchant, this means: product records created in SOCIII — materials, certifications, supply chain documentation — are automatically DPP-eligible in structure. The audit trail of customer interactions, returns, and exchanges builds the product's living history automatically, as a byproduct of running your business. When a regulator, customs authority, or consumer requests the DPP for a product, the record exists, is timestamped, and is independently verifiable — without a separate compliance project.
+      </p>
+      <h2>The structural advantage</h2>
+      <p>
+        The merchants who connect SOCIII now will be building DPP compliance automatically, while their competitors are still figuring out what a Digital Product Passport is.
+      </p>
+      <p>
+        That is not a theoretical advantage. Lower compliance costs, faster customs clearance, and access to a market that competitors without documentation simply cannot enter — these are structural differences in operating cost and market access. The EU's DPP requirement creates a certification barrier that rewards merchants with good operational records and penalizes merchants who waited.
+      </p>
+      <p>
+        The moat is not the regulation. The moat is having built the infrastructure before the regulation arrived.
+      </p>
+      <p style={{ fontSize: 14, color: "#6b7280", marginTop: 32, lineHeight: 1.6 }}>
+        <em>† DPP requirements vary by product category and are being phased in under ESPR. Confirm your specific category timeline and technical requirements with your legal or compliance team. SOCIII's Vault architecture satisfies the structural requirements for tamper-evident, portable records — category-specific data fields must be configured per your product type.</em>
+      </p>
+    </>
+  ),
+
   "alex-action-loop-june-2026": (
     <>
       <p>
