@@ -131,6 +131,13 @@ async function handleShopifyAuthUrl(req, res, { userId }) {
     nonce, shop: shopDomain, createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // Also write a nonce-keyed doc so the public server-side callback can look up userId
+  await getDb().doc(`shopify_oauth_nonces/${nonce}`).set({
+    userId,
+    shop: shopDomain,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
   const authUrl = `https://${shopDomain}/admin/oauth/authorize?client_id=${apiKey}&scope=${SHOPIFY_SCOPES}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${nonce}`;
   return res.json({ ok: true, authUrl });
 }
@@ -170,6 +177,51 @@ async function handleShopifyCallback(req, res, { userId }) {
   await storeToken(userId, shop, access_token);
 
   return res.json({ ok: true, shop });
+}
+
+async function handleShopifyServerCallback(req, res) {
+  try {
+    const query = req.query || {};
+    const { code, shop, state } = query;
+    if (!code || !shop || !state) {
+      return res.redirect("https://sociii.ai/?shopify_error=missing_params");
+    }
+
+    // Look up userId from the nonce
+    const nonceDoc = await getDb().doc(`shopify_oauth_nonces/${state}`).get();
+    if (!nonceDoc.exists) {
+      return res.redirect("https://sociii.ai/?shopify_error=invalid_state");
+    }
+    const { userId } = nonceDoc.data();
+    await getDb().doc(`shopify_oauth_nonces/${state}`).delete();
+    await getDb().doc(`users/${userId}/integrations/shopify_pending`).delete().catch(() => {});
+
+    // Verify HMAC
+    if (process.env.SHOPIFY_API_SECRET && !verifyShopifyHmac(query)) {
+      return res.redirect("https://sociii.ai/?shopify_error=hmac_failed");
+    }
+
+    // Exchange code for token
+    const fetch = (await import("node-fetch")).default;
+    const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: process.env.SHOPIFY_API_KEY,
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        code,
+      }),
+    });
+    if (!tokenRes.ok) {
+      return res.redirect("https://sociii.ai/?shopify_error=exchange_failed");
+    }
+    const { access_token } = await tokenRes.json();
+    await storeToken(userId, shop, access_token);
+    return res.redirect("https://sociii.ai/?shopify=connected");
+  } catch (e) {
+    console.error("shopify server callback error:", e);
+    return res.redirect("https://sociii.ai/?shopify_error=server_error");
+  }
 }
 
 async function handleShopifyStatus(req, res, { userId }) {
@@ -278,6 +330,7 @@ async function getCustomers(uid, opts = {}) {
 module.exports = {
   handleShopifyAuthUrl,
   handleShopifyCallback,
+  handleShopifyServerCallback,
   handleShopifyStatus,
   handleShopifyDisconnect,
   getRecentOrders,

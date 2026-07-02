@@ -93,22 +93,41 @@ function savePrefs(p) {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
-export default function MorningBriefCanvas({ hasAviationWorker, notes, priorities }) {
+export default function MorningBriefCanvas({ hasAviationWorker, notes, priorities: prioritiesProp }) {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  const [metars, setMetars]           = useState([]);
-  const [weather, setWeather]         = useState(null);
-  const [weatherLoading, setWL]       = useState(true);
-  const [metarLoading, setML]         = useState(true);
-  const [customizing, setCustomizing] = useState(false);
-  const [prefs, setPrefs]             = useState(() => ({
+  const [metars, setMetars]             = useState([]);
+  const [weather, setWeather]           = useState(null);
+  const [weatherLoading, setWL]         = useState(true);
+  const [metarLoading, setML]           = useState(true);
+  const [customizing, setCustomizing]   = useState(false);
+  const [fetchedPriorities, setFetchedPriorities] = useState([]);
+  const [prefs, setPrefs]               = useState(() => ({
     showWeather: true,
     showAviation: true,
     showPriorities: true,
     city: null,
     ...loadPrefs(),
   }));
+
+  // Self-fetch priorities so this component works on any surface (Alex, Home, etc.)
+  useEffect(() => {
+    async function fetchPriorities() {
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        if (!token) return;
+        const r = await fetch(`${API_BASE}/api?path=/v1/priorities`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await r.json();
+        if (d.ok && Array.isArray(d.items)) setFetchedPriorities(d.items);
+      } catch { /* priorities optional */ }
+    }
+    fetchPriorities();
+    const iv = setInterval(fetchPriorities, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   const updatePref = useCallback((key, val) => {
     setPrefs(prev => {
@@ -164,7 +183,10 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
     );
   }, [prefs.showWeather]);
 
-  // Structured priorities from Alex take precedence; fall back to note-tagged items
+  // Structured priorities: prop (WorkerHome) > self-fetched > note-tagged fallback
+  const priorities = (Array.isArray(prioritiesProp) && prioritiesProp.length > 0)
+    ? prioritiesProp
+    : fetchedPriorities;
   const structuredPriorities = Array.isArray(priorities) && priorities.length > 0 ? priorities : null;
   const notePriorities = (notes || []).filter(n =>
     n.tags?.some(t => ["today", "priority", "urgent", "from-code"].includes(t))
@@ -173,7 +195,8 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = user?.displayName?.split(" ")[0] || "";
+  const _HONORIFICS = new Set(["Dr.", "Dr", "Mr.", "Mr", "Ms.", "Ms", "Mrs.", "Mrs", "Prof.", "Prof"]);
+  const firstName = (user?.displayName || "").split(" ").find(p => !_HONORIFICS.has(p)) || "";
   const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (

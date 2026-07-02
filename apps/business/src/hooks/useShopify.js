@@ -64,40 +64,21 @@ export function useShopifyStatus() {
 }
 
 /**
- * Open the Shopify OAuth popup.
+ * Start the Shopify OAuth flow via full-page redirect.
  * shop: "mystore.myshopify.com" (or with/without https://)
- * Listens for postMessage from ShopifyAuthCallback with success/error.
+ *
+ * Navigates the current page to Shopify's auth URL. Shopify redirects to
+ * shopify-callback.html, which forwards to the backend server-callback,
+ * which redirects back to /?shopify=connected.
  */
 export async function connectShopify(shop) {
   const res = await shopifyApi("authUrl", "POST", { shop });
   if (!res.ok || !res.authUrl) throw new Error(res.error || "Failed to start Shopify connection");
-
-  const popup = window.open(res.authUrl, "shopify-auth", "width=700,height=800");
-  if (!popup) throw new Error("Popup blocked. Allow popups for this site and try again.");
-
-  return new Promise((resolve, reject) => {
-    let resolved = false;
-    const handler = (event) => {
-      if (!event.data || event.data.type !== "shopify-auth-result") return;
-      window.removeEventListener("message", handler);
-      resolved = true;
-      if (event.data.ok) resolve(event.data);
-      else reject(new Error(event.data.error || "Shopify connection failed"));
-    };
-    window.addEventListener("message", handler);
-
-    const pollClose = setInterval(() => {
-      try {
-        if (popup.closed) {
-          clearInterval(pollClose);
-          if (!resolved) {
-            window.removeEventListener("message", handler);
-            reject(new Error("Connection cancelled."));
-          }
-        }
-      } catch { /* ignore */ }
-    }, 500);
-  });
+  // Full-page redirect — no popup. Shopify redirects to shopify-callback.html,
+  // which forwards to the backend server-callback, which redirects back to /?shopify=connected.
+  window.location.href = res.authUrl;
+  // This never returns — page navigates away.
+  return new Promise(() => {});
 }
 
 export async function disconnectShopify() {

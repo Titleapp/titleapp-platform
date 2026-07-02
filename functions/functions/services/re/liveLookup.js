@@ -45,6 +45,14 @@ async function lookupAddress(address, apiKey) {
     return { ok: false, error: `No property found at "${address}". Check the address and try again.`, code: "NOT_FOUND" };
   }
   const salesArr = (sales.json && sales.json.property && sales.json.property[0] && (sales.json.property[0].salehistory || sales.json.property[0].saleHistory)) || [];
+  const ownerRaw =
+    (p.assessment && p.assessment.owner && (p.assessment.owner.owner1?.fullname || p.assessment.owner.owner1?.lastName)) ||
+    (p.identification && p.identification.owner && p.identification.owner.fullname) ||
+    null;
+  const county = (p.address && (p.address.county || p.address.countyname)) || null;
+  const state = (p.address && p.address.countrySubd) || null;
+  const zoning = (p.summary && p.summary.legal1) || null;
+  const assessedValue = (p.assessment && p.assessment.assessed && p.assessment.assessed.assdttlvalue) || null;
   const attom = {
     address: (p.address && p.address.oneLine) || address,
     apn: p.identifier.apn || null,
@@ -54,9 +62,16 @@ async function lookupAddress(address, apiKey) {
     bldgSqft: (p.building && p.building.size && (p.building.size.universalsize || p.building.size.bldgsize)) || null,
     lat: (p.location && p.location.latitude) || null,
     lng: (p.location && p.location.longitude) || null,
+    owner: ownerRaw,
+    county,
+    state,
+    zoning,
+    assessedValue,
     sales: (Array.isArray(salesArr) ? salesArr : []).slice(0, 6).map((sh) => ({
       date: sh.saleTransDate || (sh.amount && sh.amount.salerecdate) || null,
       amount: (sh.amount && sh.amount.saleamt) || sh.saleamt || null,
+      grantor: sh.amount?.seller || sh.seller || null,
+      grantee: sh.amount?.buyer || sh.buyer || ownerRaw || null,
     })),
   };
   return { ok: true, attom, canvasSpec: buildLiveCanvasSpec(attom) };

@@ -41,8 +41,12 @@ export default function ShopifyAuthCallback() {
       }
 
       try {
-        const user = auth.currentUser;
-        if (!user) throw new Error("Not authenticated");
+        // Wait for Firebase auth to initialize — currentUser is null until
+        // the auth state observer fires, which is async even on same domain.
+        const user = await new Promise(resolve => {
+          const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+        });
+        if (!user) throw new Error("Not authenticated — please sign in and try again.");
         const token = await user.getIdToken();
 
         const qs = new URLSearchParams({ code, shop, state: state || "", hmac: params.get("hmac") || "" });

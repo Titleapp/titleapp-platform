@@ -73,18 +73,36 @@ export function useGmailStatus() {
  * then exchanges it for tokens via /v1/gmail:exchangeCode.
  */
 export async function connectGmail() {
-  const res = await gmailApi("authUrl");
-  if (!res.ok || !res.authUrl) throw new Error(res.error || "Failed to start Gmail connection");
+  // Open blank popup synchronously (within the user gesture) so browsers don't block it.
+  const popup = window.open("about:blank", "google-gmail-auth", "width=600,height=700");
+  if (!popup) throw new Error("Popup blocked. Allow popups for this site in your browser settings and try again.");
 
-  const popup = window.open(res.authUrl, "google-gmail-auth", "width=600,height=700");
-  if (!popup) throw new Error("Popup blocked. Allow popups for this site and try again.");
+  let res;
+  try {
+    res = await gmailApi("authUrl");
+  } catch (e) {
+    popup.close();
+    throw e;
+  }
+  if (!res.ok || !res.authUrl) {
+    popup.close();
+    throw new Error(res.error || "Failed to start Gmail connection");
+  }
+  popup.location.href = res.authUrl;
 
   return new Promise((resolve, reject) => {
     let resolved = false;
+
+    function cleanup() {
+      window.removeEventListener("message", handler);
+      clearInterval(pollClose);
+      clearTimeout(timeout);
+    }
+
     const handler = async (event) => {
       if (!event.data || event.data.type !== "google-gmail-auth-code") return;
       if (!event.data.code) return;
-      window.removeEventListener("message", handler);
+      cleanup();
       resolved = true;
       try {
         const exchangeRes = await gmailApi("exchangeCode", "POST", { code: event.data.code });
@@ -99,14 +117,19 @@ export async function connectGmail() {
     const pollClose = setInterval(() => {
       try {
         if (popup.closed) {
-          clearInterval(pollClose);
-          if (!resolved) {
-            window.removeEventListener("message", handler);
-            reject(new Error("Connection cancelled."));
-          }
+          cleanup();
+          if (!resolved) reject(new Error("Connection cancelled. Try again."));
         }
       } catch { /* ignore */ }
     }, 500);
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        cleanup();
+        try { popup.close(); } catch { /* ignore */ }
+        reject(new Error("Connection timed out. If your browser blocked a popup, allow popups for this site and try again."));
+      }
+    }, 180000);
   });
 }
 

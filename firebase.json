@@ -4,6 +4,7 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/auth/google-drive-callback", "destination": "/auth/google-drive-callback.html" },
+      { "source": "/auth/shopify-callback", "destination": "/auth/shopify-callback.html" },
       { "source": "/track", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/unsub", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "**", "destination": "/index.html" }

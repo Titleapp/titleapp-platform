@@ -1,49 +1,52 @@
-// Seed a real title-abstract record for the demo: 30 Pihaa Street, Lahaina HI
-// (Maui). Grounds the title-abstract-001 worker chat + canvas in a tenant
-// Firestore record (not a fixture). Idempotent. Demo data — clearly marked.
+// Seed a clean demo title-abstract record for the Meadow Creek workspace.
+// Property: 3825 S Mason St, Fort Collins CO — illustrative commercial parcel.
+// Run: node functions/functions/scripts/demo/seedTitleAbstract.js
 const admin = require("firebase-admin");
 admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
 const TENANT = "ws_1781920656122_tl9dhn";
 
+const OLD_ID = `${TENANT}__ta-lahaina-30pihaa`;
 const ABSTRACT = {
   tenantId: TENANT, demo: true,
-  abstract_id: "ta-lahaina-30pihaa",
-  property_address: "30 Pihaa Street, Lahaina, HI 96761",
-  county: "Maui", island: "Maui", state: "HI",
-  tmk: "(2) 4-6-012:045",
-  legal_description: "Lot 45, Block 12, Pihaa Subdivision Unit 2, as shown on File Plan 1187, Maui County; being a portion of Royal Patent 1234, Land Commission Award 5678 to the original awardee.",
-  land_area_sqft: 8276, // ~0.19 acre
-  zoning: "R-2 Residential",
-  current_owner: "Kahale Family Revocable Living Trust",
-  vesting: "Trustee(s) of the Kahale Family Revocable Living Trust dated March 3, 2014",
-  assessed_value_usd: 985000,
+  abstract_id: "ta-meadowcreek-3825mason",
+  property_address: "3825 S Mason St, Fort Collins, CO 80525",
+  county: "Larimer", state: "CO",
+  apn: "97152-04-018",
+  legal_description: "Lot 4, Block 2, Harmony Technology Park Filing No. 3, Larimer County, Colorado; as shown on the Final Plat recorded in Reception No. 2004-0041872.",
+  land_area_sqft: 18750, // ~0.43 acre commercial lot
+  zoning: "C-C (Community Commercial)",
+  current_owner: "Meadow Creek Properties LLC",
+  vesting: "Meadow Creek Properties LLC, a Colorado limited liability company",
+  assessed_value_usd: 1_240_000,
   chain_of_title: [
-    { date: "1998-05-12", grantor: "Pihaa Land Co., LLC", grantee: "Robert & Marie Kahale", instrument: "Warranty Deed", doc_number: "98-073145" },
-    { date: "2014-03-21", grantor: "Robert & Marie Kahale", grantee: "Kahale Family Revocable Living Trust", instrument: "Quitclaim Deed (to trust)", doc_number: "2014-013902" },
+    { date: "2003-09-15", grantor: "Harmony Tech Park LLC", grantee: "Clearwater Medical Group LLC", instrument: "Warranty Deed", doc_number: "2003-0104821" },
+    { date: "2011-04-01", grantor: "Clearwater Medical Group LLC", grantee: "Meadow Creek Properties LLC", instrument: "Warranty Deed", doc_number: "2011-0039745" },
   ],
   liens_encumbrances: [
-    { type: "Mortgage", holder: "Bank of Hawaii", amount_usd: 412000, recorded: "2019-08-02", doc_number: "2019-118334", status: "Open" },
-    { type: "Property tax", holder: "County of Maui", amount_usd: 0, recorded: "2026-01-01", status: "Current — paid through 2026 H1" },
+    { type: "Property tax", holder: "Larimer County Treasurer", amount_usd: 0, recorded: "2026-01-01", status: "Current — paid through 2026 H1" },
   ],
   easements: [
-    { type: "Utility easement", description: "5-ft along rear lot line in favor of Maui Electric Co." },
-    { type: "Access easement", description: "Shared driveway, makai 10 ft, recorded File Plan 1187." },
+    { type: "Utility easement", description: "10-ft along south lot line in favor of Poudre Valley REA for electric service." },
+    { type: "Access easement", description: "Shared ingress/egress from S Mason St, 24-ft wide, per Reception No. 2004-0041873." },
   ],
   exceptions: [
     "Taxes for the current half-year not yet due or payable.",
-    "Mineral and water rights reserved to the State of Hawaii.",
-    "Title to all minerals/metals and any easements per Royal Patent 1234.",
+    "Rights of parties in possession not shown by the public records.",
+    "Easements, claims of easements, or encumbrances not shown by the public records.",
+    "Title to all minerals/metals reserved per Colorado statute.",
   ],
   tax_status: "Current (paid through 2026 H1)",
   examiner: "SOCIII Title Abstract Worker",
-  abstract_prepared: "2026-06-26",
+  abstract_prepared: "2026-06-30",
   disclaimer: "Demo abstract — illustrative title record for the Meadow Creek workspace. Not a title commitment or legal opinion.",
 };
 
 (async () => {
+  // Remove the old Lahaina record if it exists
+  try { await db.collection("title_abstracts").doc(OLD_ID).delete(); } catch { /* fine */ }
   await db.collection("title_abstracts").doc(`${TENANT}__${ABSTRACT.abstract_id}`).set(ABSTRACT, { merge: true });
   const snap = await db.collection("title_abstracts").where("tenantId", "==", TENANT).get();
-  console.log(`✓ seeded title_abstracts: ${snap.size} record(s) — ${ABSTRACT.property_address} · TMK ${ABSTRACT.tmk}`);
+  console.log(`✓ seeded title_abstracts: ${snap.size} record(s) — ${ABSTRACT.property_address} · APN ${ABSTRACT.apn}`);
   process.exit(0);
 })().catch(e => { console.error("FAILED:", e.message); process.exit(1); });

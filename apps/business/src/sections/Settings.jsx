@@ -7,6 +7,47 @@ import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive
 import { useShopifyStatus, connectShopify, disconnectShopify } from "../hooks/useShopify";
 
 const _API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+// ── Brand icons (inline SVG, 24×24) ──────────────────────────────────────────
+function BrandIcon({ name, size = 24 }) {
+  const s = { width: size, height: size, flexShrink: 0, display: "block" };
+  const icons = {
+    gmail: <svg style={s} viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.964l8.073-6.471C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>,
+    "google-calendar": <svg style={s} viewBox="0 0 24 24"><path d="M18 2h-1V0h-2v2H9V0H7v2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H6V8h12v12z" fill="#4285F4"/><path d="M8 10h2v2H8zm0 4h2v2H8zm4-4h2v2h-2zm0 4h2v2h-2zm4-4h2v2h-2zm0 4h2v2h-2z" fill="#34A853"/></svg>,
+    "google-drive": <svg style={s} viewBox="0 0 24 24"><path d="M6.28 3h11.44l2.28 3.953L12 21.047 1 6.953z" fill="#0066DA" opacity=".5"/><path d="M1 6.953L6.28 3H12L6.72 6.953z" fill="#00832D"/><path d="M12 3h5.72l4.28 3.953-9 14.094z" fill="#0066DA"/><path d="M1 6.953l9 14.094H1z" fill="#00AC47" opacity=".7"/><path d="M22 6.953H12l8 14.094h2z" fill="#0066DA" opacity=".7"/><path d="M10 21.047l2-3.467 2 3.467z" fill="#EA4335" opacity=".8"/></svg>,
+    "microsoft-onedrive": <svg style={s} viewBox="0 0 24 24"><path d="M10.5 14L7 10.5A6.5 6.5 0 0 1 19.5 9.5a4.5 4.5 0 0 1 .5 9H10.5z" fill="#0078D4"/><path d="M4 16.5a3.5 3.5 0 0 1 3-3.47A5 5 0 0 1 14 9.5h1a6.5 6.5 0 0 0-12.5 2.5A3.5 3.5 0 0 0 4 19.5h3l-1-3z" fill="#28A8E8"/></svg>,
+    "microsoft-outlook": <svg style={s} viewBox="0 0 24 24"><rect width="14" height="18" x="1" y="3" rx="2" fill="#0078D4"/><path d="M9 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="#fff" opacity=".9"/><rect width="11" height="15" x="12" y="4.5" rx="1.5" fill="#28A8E8"/><path d="M15 9h5M15 12h5M15 15h3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+    quickbooks: <svg style={s} viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2CA01C"/><path d="M6 12a6 6 0 1 0 6-6v2a4 4 0 1 1-4 4H6z" fill="#fff"/><path d="M12 6v2M12 6v-2" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>,
+    salesforce: <svg style={s} viewBox="0 0 24 24"><path d="M10.07 5.1A3.43 3.43 0 0 1 12.5 4.2a3.5 3.5 0 0 1 3.28 2.3 2.85 2.85 0 0 1 1.22-.27 2.9 2.9 0 0 1 2.9 2.9 2.9 2.9 0 0 1-.42 1.5A2.5 2.5 0 0 1 21 12.9a2.5 2.5 0 0 1-2.5 2.5H6.5A2.5 2.5 0 0 1 4 12.9a2.5 2.5 0 0 1 1.4-2.24 3.5 3.5 0 0 1-.4-1.63 3.5 3.5 0 0 1 5.07-3.13z" fill="#00A1E0"/></svg>,
+    shopify: <svg style={s} viewBox="0 0 24 24"><path d="M15.337 4.47s-.14-.07-.4-.14c-.02-.48-.28-1.8-1.1-2.73-.56-.63-1.4-.96-2.28-.76C11.26.5 10.9.7 10.57 1c-.2-.36-.48-.63-.84-.76-.8-.28-1.63.16-2.12 1.1-.32.64-.48 1.44-.5 2.12-.9.28-1.53.47-1.55.48-.46.14-.48.16-.54.6C5 4.88 4 12.76 4 12.76L14.94 15 20 13.7S15.52 4.6 15.34 4.47zM12.6 3.15c-.56.17-1.2.37-1.84.57.02-.7.17-1.7.55-2.27.14-.22.34-.43.57-.54.25.63.36 1.5.72 2.24zm-1.04-2.74c.2 0 .37.04.52.1-.22.14-.43.34-.6.6-.44.67-.63 1.7-.7 2.67l-2.1.64c.4-1.58 1.37-3.84 2.88-4.01z" fill="#96BF48"/><path d="M14.94 15L20 13.7 15.34 4.47s-.14-.07-.4-.14c-.02-.48-.28-1.8-1.1-2.73-.23-.26-.5-.46-.8-.6l-3 10z" fill="#5E8E3E"/></svg>,
+    stripe: <svg style={s} viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#635BFF"/><path d="M11.1 9.26c0-.74.61-1.03 1.61-1.03 1.44 0 3.26.44 4.7 1.22V5.74C15.9 5.1 14.36 4.8 12.7 4.8 9.3 4.8 7 6.58 7 9.45c0 4.44 6.12 3.73 6.12 5.65 0 .88-.76 1.16-1.82 1.16-1.58 0-3.6-.65-5.2-1.52v3.77c1.77.76 3.56 1.08 5.2 1.08 3.48 0 5.87-1.72 5.87-4.62C17.17 10.35 11.1 11.21 11.1 9.26z" fill="#fff"/></svg>,
+    youtube: <svg style={s} viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8z" fill="#FF0000"/><path d="M9.6 15.6V8.4L15.8 12z" fill="#fff"/></svg>,
+    tiktok: <svg style={s} viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.29 6.29 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z" fill="#010101"/></svg>,
+    x: <svg style={s} viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.23H2.746l7.73-8.835L1.254 2.25H8.08l4.26 5.632 5.905-5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="#000"/></svg>,
+    linkedin: <svg style={s} viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><path d="M7 9h2.5v8H7V9zm1.25-4a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zM11 9h2.4v1.1h.03c.34-.64 1.16-1.31 2.38-1.31C18.28 8.79 19 10.25 19 12.5V17h-2.5v-4.08c0-.97-.02-2.22-1.36-2.22-1.35 0-1.56 1.06-1.56 2.15V17H11V9z" fill="#fff"/></svg>,
+    instagram: <svg style={s} viewBox="0 0 24 24"><defs><linearGradient id="ig" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FD5949"/><stop offset="50%" stopColor="#D6249F"/><stop offset="100%" stopColor="#285AEB"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#ig)"/><circle cx="12" cy="12" r="4.5" stroke="#fff" strokeWidth="1.8" fill="none"/><circle cx="17" cy="7" r="1.2" fill="#fff"/></svg>,
+  };
+  return icons[name] || <svg style={s} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#e2e8f0"/></svg>;
+}
+
+// ── Integration row wrapper with icon ────────────────────────────────────────
+function IntRow({ icon, name, desc, badge, children }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <BrandIcon name={icon} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{name}</div>
+            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>{desc}</div>
+          </div>
+        </div>
+        {badge && <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: badge === "Connected" ? "#dcfce7" : badge === "Platform account" ? "#eff6ff" : "#f1f5f9", color: badge === "Connected" ? "#16a34a" : badge === "Platform account" ? "#2563eb" : "#64748b", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0 }}>{badge}</span>}
+        {children}
+      </div>
+    </div>
+  );
+}
 async function _socialFetch(path, method = "GET", body = null) {
   const token = localStorage.getItem("ID_TOKEN");
   const tenantId = localStorage.getItem("TENANT_ID") || "sociii-inc";
@@ -18,6 +59,41 @@ async function _socialFetch(path, method = "GET", body = null) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+// Platform services are always-on — surfaced by Alex when relevant, metered on Billing.
+// This card shows what's active so users can see what's running on their behalf.
+function ApolloServiceCard() {
+  return (
+    <div className="card" style={{ marginBottom: "16px" }}>
+      <div className="cardHeader">
+        <div>
+          <div className="cardTitle">Platform Intelligence</div>
+          <div className="cardSub">AI-powered data services included with your plan — usage appears on your Billing page</div>
+        </div>
+      </div>
+      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>Apollo Intelligence</div>
+            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+              Search 275M+ B2B contacts. Ask Alex to find investors, VCs, or decision-makers by title, firm, or location — with verified emails.
+            </div>
+          </div>
+          <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#dcfce7", color: "#15803d", whiteSpace: "nowrap", flexShrink: 0 }}>Active</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>ATTOM Property Data</div>
+            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+              Real estate records, ownership history, and valuation for any US address.
+            </div>
+          </div>
+          <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#dcfce7", color: "#15803d", whiteSpace: "nowrap", flexShrink: 0 }}>Active</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function YouTubeRow() {
@@ -55,12 +131,15 @@ function YouTubeRow() {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>YouTube</div>
-        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-          {status.loading ? "Checking…" : status.connected ? `Connected: ${status.channelTitle || "YouTube channel"}. Workers can publish video content.` : "Connect your YouTube channel so Alex can publish content on your behalf."}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="youtube" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>YouTube</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading ? "Checking…" : status.connected ? `Connected: ${status.channelTitle || "YouTube channel"}. Workers can publish video content.` : "Connect your YouTube channel so Alex can publish content on your behalf."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
-        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
       </div>
       {status.connected ? (
         <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
@@ -106,12 +185,15 @@ function TikTokRow() {
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>TikTok</div>
-        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-          {status.loading ? "Checking…" : status.connected ? `Connected: @${status.displayName || "TikTok account"}. Workers can upload and publish videos.` : "Connect your TikTok account so Alex can publish short-form content."}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="tiktok" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>TikTok</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading ? "Checking…" : status.connected ? `Connected: @${status.displayName || "TikTok account"}. Workers can upload and publish videos.` : "Connect your TikTok account so Alex can publish short-form content."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
-        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
       </div>
       {status.connected ? (
         <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
@@ -154,16 +236,19 @@ function GoogleCalendarRow() {
 
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>Google Calendar</div>
-        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-          {status.loading
-            ? "Checking…"
-            : status.connected
-              ? `Connected as ${status.email || "Google account"}. Workers can read your schedule and propose events.`
-              : "Connect so Alex and every worker can read your schedule and coordinate meetings, webinars, and deadlines."}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="google-calendar" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Google Calendar</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading
+              ? "Checking…"
+              : status.connected
+                ? `Connected as ${status.email || "Google account"}. Workers can read your schedule and propose events.`
+                : "Connect so Alex and every worker can read your schedule and coordinate meetings, webinars, and deadlines."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
-        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
       </div>
       {status.connected ? (
         <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -224,21 +309,24 @@ function GmailRow() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600 }}>Gmail</div>
-          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-            {status.loading
-              ? "Checking…"
-              : status.connected
-                ? `Connected as ${status.email || "Google account"}. Workers can read email context and send on your behalf.`
-                : "Connect so workers can sync your contacts, search email context, and send outbound from your address."}
-          </div>
-          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <BrandIcon name="gmail" />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>Gmail</div>
+            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+              {status.loading
+                ? "Checking…"
+                : status.connected
+                  ? `Connected as ${status.email || "Google account"}. Workers can read email context and send on your behalf.`
+                  : "Connect so workers can sync your contacts, search email context, and send outbound from your address."}
+            </div>
+            {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
           {syncResult && (
             <div style={{ fontSize: "12px", color: "#166534", marginTop: 4 }}>
               Sync complete — {syncResult.added} added, {syncResult.updated} updated ({syncResult.total} contacts found)
             </div>
           )}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           {status.connected && (
@@ -269,19 +357,30 @@ function ShopifyRow() {
   const [shopInput, setShopInput] = useState("");
   const [showInput, setShowInput] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("shopify") === "connected") {
+      window.history.replaceState({}, "", window.location.pathname);
+      refresh();
+    } else if (params.get("shopify_error")) {
+      const errMsg = params.get("shopify_error") || "Connection failed";
+      window.history.replaceState({}, "", window.location.pathname);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setErr("Shopify connection failed: " + errMsg);
+    }
+  }, [refresh]);
+
   async function handleConnect() {
     const shop = shopInput.trim().replace(/https?:\/\//, "").replace(/\/$/, "");
     if (!shop) { setErr("Enter your store domain (e.g. mystore.myshopify.com)"); return; }
     setBusy(true); setErr(null);
     try {
       await connectShopify(shop);
-      await refresh();
-      setShowInput(false);
-      setShopInput("");
+      // connectShopify navigates the page away — nothing after this runs.
     } catch (e) {
       setErr(e?.message || "Connection failed");
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function handleDisconnect() {
@@ -299,7 +398,9 @@ function ShopifyRow() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <BrandIcon name="shopify" />
+          <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600 }}>Shopify</div>
           <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
             {status.loading
@@ -309,6 +410,7 @@ function ShopifyRow() {
                 : "Connect your Shopify store so workers can surface sales data in Accounting and contacts in CRM."}
           </div>
           {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           {status.connected ? (
@@ -371,16 +473,19 @@ function DriveRow() {
 
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>Google Drive</div>
-        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-          {status.loading
-            ? "Checking…"
-            : status.connected
-              ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
-              : "Connect so workers can read documents, contracts, and files from your Drive."}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="google-drive" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Google Drive</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading
+              ? "Checking…"
+              : status.connected
+                ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
+                : "Connect so workers can read documents, contracts, and files from your Drive."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
-        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
       </div>
       {status.connected ? (
         <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -1615,30 +1720,15 @@ function BusinessSettings() {
           </div>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <GoogleCalendarRow />
           <GmailRow />
+          <GoogleCalendarRow />
           <DriveRow />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>Salesforce CRM</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync customer data with Salesforce</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>QuickBooks</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync financial data and invoices</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
+          <IntRow icon="microsoft-onedrive" name="Microsoft OneDrive" desc="Sync files and documents from OneDrive" badge="Coming Soon" />
+          <IntRow icon="microsoft-outlook" name="Microsoft Outlook" desc="Sync email and calendar from Outlook" badge="Coming Soon" />
+          <IntRow icon="quickbooks" name="QuickBooks" desc="Sync financial data and invoices" badge="Coming Soon" />
+          <IntRow icon="salesforce" name="Salesforce CRM" desc="Sync customer data with Salesforce" badge="Coming Soon" />
           <ShopifyRow />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>Microsoft OneDrive</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync files and documents from OneDrive</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>Microsoft Outlook</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync email and calendar from Outlook</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>Stripe Payments</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Accept online payments</div></div>
-            <span className="badge badge-completed">Connected</span>
-          </div>
+          <IntRow icon="stripe" name="Stripe Payments" desc="Accept online payments" badge="Connected" />
         </div>
       </div>
 
@@ -1651,25 +1741,16 @@ function BusinessSettings() {
           </div>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <YouTubeRow />
+          <IntRow icon="instagram" name="Instagram" desc="Publish photos and reels to your Instagram account" badge="Coming Soon" />
+          <IntRow icon="linkedin" name="LinkedIn" desc="Publish posts and articles to your company page" badge="Coming Soon" />
           <TikTokRow />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>X (Twitter)</div>
-              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Posts from the @SOCIIIai managed account — Alex queues posts for your approval.</div>
-            </div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#eff6ff", color: "#2563eb", whiteSpace: "nowrap" }}>Platform account</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>LinkedIn</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Publish posts and articles to your company page</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontWeight: 600 }}>Instagram</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Publish photos and reels to your Instagram account</div></div>
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase" }}>Coming Soon</span>
-          </div>
+          <IntRow icon="x" name="X (Twitter)" desc="Posts from the @SOCIIIai managed account — Alex queues posts for your approval." badge="Platform account" />
+          <YouTubeRow />
         </div>
       </div>
+
+      {/* Platform Services */}
+      <ApolloServiceCard />
 
       {/* API Keys */}
       <div className="card" style={{ marginBottom: "16px" }}>

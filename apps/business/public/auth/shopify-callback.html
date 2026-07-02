@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connecting Shopify…</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f8fafc; color: #0f172a;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+      padding: 24px; text-align: center;
+    }
+    .box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px 32px; max-width: 420px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    h1 { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+    p { font-size: 13px; color: #475569; line-height: 1.5; margin: 4px 0; }
+    .spinner { width: 28px; height: 28px; margin: 0 auto 14px; border: 3px solid #e2e8f0; border-top-color: #96BF48; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <h1>Finishing Shopify connection…</h1>
+    <p>Please wait while we complete the connection.</p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var code  = params.get("code");
+      var shop  = params.get("shop");
+      var state = params.get("state") || "";
+      var error = params.get("error");
+
+      if (error || !code || !shop) {
+        window.location.href = "https://sociii.ai/?shopify_error=" + encodeURIComponent(error || "missing_params");
+        return;
+      }
+
+      // Forward ALL original params to the backend server-callback endpoint.
+      // The backend uses the nonce (state) to look up the userId — no Firebase auth needed.
+      var API_BASE = "https://api-feyfibglbq-uc.a.run.app";
+      window.location.href = API_BASE + "/v1/shopify:server-callback?" + params.toString();
+    })();
+  </script>
+</body>
+</html>

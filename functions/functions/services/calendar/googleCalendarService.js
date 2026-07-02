@@ -76,6 +76,7 @@ function shapeEvent(g) {
     organizer: g.organizer ? { email: g.organizer.email, displayName: g.organizer.displayName } : null,
     created: g.created || null,
     updated: g.updated || null,
+    meetLink: g.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || null,
   };
 }
 
@@ -154,21 +155,30 @@ async function createEvent(userId, {
   if (!start || !end) throw new Error("start and end are required");
 
   const calendar = await getAuthenticatedCalendarClient(userId);
+  const hasAttendees = Array.isArray(attendees) && attendees.length > 0;
   const resource = {
     summary,
     description: (description || "") + buildMetadataBlock({ workerSlug, projectId, source }),
     location: location || undefined,
     start: asDateTime(start),
     end:   asDateTime(end),
-    attendees: Array.isArray(attendees) && attendees.length > 0
+    attendees: hasAttendees
       ? attendees.map(a => typeof a === "string" ? { email: a } : a)
       : undefined,
+    // Auto-create a Google Meet link for every event
+    conferenceData: {
+      createRequest: {
+        requestId: `sociii-${Date.now()}`,
+        conferenceSolutionKey: { type: "hangoutsMeet" },
+      },
+    },
   };
 
   const result = await calendar.events.insert({
     calendarId,
     resource,
-    sendUpdates: attendees.length > 0 ? "all" : "none",
+    sendUpdates: hasAttendees ? "all" : "none",
+    conferenceDataVersion: 1,
   });
 
   return shapeEvent(result.data);

@@ -5208,6 +5208,9 @@ export default function App() {
   // ── /auth/gmail-callback — OAuth popup landing for Gmail connector ──
   const isGmailCallback = /^\/auth\/gmail-callback\/?$/.test(window.location.pathname);
 
+  // ── /auth/calendar-callback — OAuth popup landing for Google Calendar connector ──
+  const isCalendarCallback = /^\/auth\/calendar-callback\/?$/.test(window.location.pathname);
+
   // ── /auth/shopify-callback — OAuth popup landing for Shopify connector ──
   const isShopifyCallback = /^\/auth\/shopify-callback\/?$/.test(window.location.pathname);
 
@@ -6111,6 +6114,12 @@ export default function App() {
   if (isGmailCallback) {
     const GmailAuthCallback = React.lazy(() => import("./pages/GmailAuthCallback"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><GmailAuthCallback /></React.Suspense>;
+  }
+
+  // ── Google Calendar OAuth popup callback ───────────────────
+  if (isCalendarCallback) {
+    const CalendarAuthCallback = React.lazy(() => import("./pages/CalendarAuthCallback"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CalendarAuthCallback /></React.Suspense>;
   }
 
   // ── Shopify OAuth popup callback ────────────────────────────

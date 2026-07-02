@@ -49,6 +49,7 @@ keystone** — it blocks the portal, the fix-loop, and the "350 distributors" pr
 
 15. [`15-alex-memory-social-governance-vault-portal.md`](15-alex-memory-social-governance-vault-portal.md) — 🟢 **shipped 2026-06-28** — Alex memory root-cause fix (title-app-llc tenant missing from workspaces subcollection → COS block skipped; fallback to tenants/), RAAS W-IMG-001 image governance, worker chat tools (anchor_signed_document, lookup_vault_assets, recall_notes/save_note), vault substrate completion, nursing transcript, social publishing pipeline, client portal, canvas:listing-readiness
 16. [`16-lint-zero-errors-surface5-deploy.md`](16-lint-zero-errors-surface5-deploy.md) — 🟢 **shipped 2026-06-29** — QA001: 465 ESLint errors → 0 across 130 frontend files; extended no-unused-vars config (args + catch bindings), 132 parallel workflow agents + 8 manual fixes; rule ID mapping for react-hooks v5.x; clean prod build
+17. [`17-settings-brand-icons-shopify-oauth.md`](17-settings-brand-icons-shopify-oauth.md) — 🟢 **shipped 2026-07-01** — Settings brand icons (inline SVG, all integrations + social), alphabetical reorder, ApolloServiceCard; Shopify server-side OAuth (popup killed by Shopify COOP headers → full-page redirect + nonce-keyed public callback → `/?shopify=connected`); confirmed connected to sociii-test.myshopify.com; QA002 clean (0 errors)
 
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started

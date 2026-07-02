@@ -3133,6 +3133,33 @@ END DELIVERY RULES.
                 }
               }
 
+              // 2026-06-30 — shared workspace memory pre-injection. Every worker
+              // starts each session knowing what Alex + sibling workers have saved.
+              // Mirrors the COS injection at ~line 5334 so workers don't have to
+              // call recall_notes to get context from message 1.
+              if (workerPrompt && reqTenantId) {
+                try {
+                  const _wNotesSnap = await db.collection("alex_notes")
+                    .where("ownerUid", "==", authUser ? authUser.uid : "")
+                    .orderBy("createdAt", "desc").limit(30).get();
+                  const _wNotesFiltered = _wNotesSnap.docs.filter(d => {
+                    const nt = d.data().tenantId;
+                    return !nt || nt === reqTenantId;
+                  }).slice(0, 12);
+                  if (_wNotesFiltered.length > 0) {
+                    const _wNoteLines = _wNotesFiltered.map(d => {
+                      const n = d.data();
+                      const _nb = n.savedBy || (n.workerSlug === "chief-of-staff" ? "alex" : n.workerSlug ? "worker" : "user");
+                      const from = _nb === "alex" ? "Alex (Chief of Staff)" : _nb === "worker" ? (n.workerSlug || "Worker") : "You";
+                      return `- [${n.tag || "note"}] ${from}: ${n.content}`;
+                    }).join("\n");
+                    workerPrompt = `SHARED WORKSPACE MEMORY (notes from you, Alex, and sibling workers in this workspace):\n${_wNoteLines}\n\nUse these notes as live context — they reflect what has been saved across this workspace.\n\n` + workerPrompt;
+                  }
+                } catch (_wNoteErr) {
+                  console.warn("worker chat: notes pre-inject failed:", _wNoteErr.message);
+                }
+              }
+
               // Load conversation history — strip prior assistant turns that
               // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
@@ -3356,7 +3383,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // property spine. Match on vertical, suite, AND slug (Sean, 2026-06-26).
               const _reHay = `${dw.vertical || ""} ${dw.suite || ""} ${workerSlug}`.toLowerCase();
               const _isReWorker = /real[_\s-]?estate|re_professional|\bparcel\b|zoning|appraisal|land[\s_-]?use|\bproperty\b|title[\s_-]?(abstract|escrow|search)|escrow|\bcre[\s_-]/.test(_reHay);
-              if (_isReWorker && workerSlug !== "site-recon-001" && workerSlug !== "title-abstract-001") {
+              if (_isReWorker && workerSlug !== "site-recon-001") {
                 businessTools.push({
                   name: "lookup_property",
                   description: "Pull LIVE property data for a street address — assessor/owner facts, APN, year built, lot size, building size, and recorded sale history (real ATTOM data). Call this WHENEVER the user gives or asks about a property address or parcel. NEVER tell the user to look it up at the county recorder/assessor or to upload documents — fetch it yourself; it renders on the canvas.",
@@ -3403,18 +3430,18 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // Solves "amnesia" when a chat resets and Alex loses prior context.
               businessTools.push({
                 name: "recall_notes",
-                description: "Recall persistent notes saved from prior conversations — outreach drafts, decisions, people, reminders. Call this whenever the user mentions something you 'forgot', asks if you remember a person or decision, or when you need prior context. Also call at conversation start when the user references past work.",
+                description: "Recall persistent notes from the shared workspace memory — notes saved by you, by Alex (Chief of Staff), or by any other worker in this workspace. Call this whenever the user mentions something you 'forgot', asks if you remember a person or decision, or when prior context would help. Notes from Alex are here too — you share memory with the full workspace.",
                 input_schema: {
                   type: "object",
                   properties: {
-                    query: { type: "string", description: "Optional keyword to filter notes, e.g. 'Shane' or 'investor outreach' or 'email draft'" },
+                    query: { type: "string", description: "Optional keyword to filter notes, e.g. 'bird owners' or 'Q3 priorities' or 'lease renewal'" },
                   },
                   required: [],
                 },
               });
               businessTools.push({
                 name: "save_note",
-                description: "Save a persistent note that survives across sessions. Use this proactively: always save_note when you draft an important email, make a key decision, or the user gives you context they would have to repeat otherwise. Don't wait to be asked.",
+                description: "Save a persistent note to the shared workspace memory. Notes you save are readable by Alex (Chief of Staff) and every other worker in this workspace — this is how workers communicate across sessions. Save proactively: after any key decision, important conversation, or context the user would otherwise have to repeat. Tag with 'for-alex' if you want Alex to act on it.",
                 input_schema: {
                   type: "object",
                   properties: {
@@ -3663,6 +3690,45 @@ IMAGE & VISUAL RULES (MANDATORY):
                       `Recorded sales: ${(a.sales || []).filter(s => s.amount || s.date).map(s => `${s.amount ? "$" + Number(s.amount).toLocaleString() : "?"}${s.date ? " (" + s.date + ")" : ""}`).join("; ") || "none on file"}`,
                     ].join("\n");
                     liveReLookup = { address: a.address, lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null, facts };
+                    // For title-abstract-001: save to Firestore so canvas card re-renders with real data
+                    if (workerSlug === 'title-abstract-001' && ctx.tenantId) {
+                      try {
+                        const taDocId = `${ctx.tenantId}__attom__${(a.apn || a.address).replace(/[^a-zA-Z0-9]/g, '-')}`;
+                        const taRecord = {
+                          tenantId: ctx.tenantId, demo: false, attomLive: true,
+                          abstract_id: taDocId,
+                          property_address: a.address,
+                          apn: a.apn || null,
+                          county: a.county || null,
+                          state: a.state || null,
+                          zoning: a.zoning || null,
+                          current_owner: a.owner || null,
+                          land_area_sqft: a.lotSizeAcres ? Math.round(a.lotSizeAcres * 43560) : null,
+                          assessed_value_usd: a.assessedValue || null,
+                          tax_status: "See county records",
+                          chain_of_title: (a.sales || []).filter(s => s.date).map((s, i) => ({
+                            date: s.date,
+                            grantor: s.grantor || (i === 0 ? "Prior owner" : "—"),
+                            grantee: s.grantee || a.owner || "Current owner",
+                            instrument: "Recorded transfer",
+                            doc_number: null,
+                          })),
+                          liens_encumbrances: [],
+                          easements: [],
+                          exceptions: [
+                            "Taxes for the current half-year not yet due or payable.",
+                            "Rights of parties in possession not shown by the public records.",
+                            "Full lien/encumbrance search requires county recorder pull — not yet run.",
+                          ],
+                          disclaimer: "Parcel data from ATTOM. Chain of title shows recorded sale transfers only. Full lien/title search required for closing.",
+                          abstract_prepared: new Date().toISOString().slice(0, 10),
+                          examiner: "SOCIII Title Abstract Worker",
+                          updatedAt: Date.now(),
+                        };
+                        await db.collection("title_abstracts").doc(taDocId).set(taRecord, { merge: true });
+                        liveReLookup._titleAbstractSaved = true;
+                      } catch (taErr) { console.warn("[title-abstract] Firestore save failed:", taErr.message); }
+                    }
                     const toolResultText = `Live ATTOM pull for ${addr}. Present these REAL facts in plain English, framed through THIS worker's specialty (e.g. a title worker reads the ownership/lien picture from them and flags what still needs a deeper paid title search). Be specific with the numbers below; do NOT tell the user to go research it themselves — you already pulled it:\n${facts}`;
                     const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
                     const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
@@ -3707,13 +3773,18 @@ IMAGE & VISUAL RULES (MANDATORY):
                   const uid = authUser ? authUser.uid : null;
                   let _noteDocs;
                   try {
-                    const snap = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").orderBy("createdAt", "desc").limit(20).get();
+                    const snap = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").orderBy("createdAt", "desc").limit(40).get();
                     _noteDocs = snap.docs;
                   } catch (_) {
-                    const snap2 = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").limit(20).get();
+                    const snap2 = await db.collection("alex_notes").where("ownerUid", "==", uid || "system").limit(40).get();
                     _noteDocs = snap2.docs.sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
                   }
-                  let notes = _noteDocs.map(d => ({ id: d.id, ...d.data() }));
+                  // Tenant-scope: only return notes for current tenant or global (null) notes
+                  const _recallTenant = reqTenantId || null;
+                  let notes = _noteDocs
+                    .filter(d => { const nt = d.data().tenantId; return !nt || nt === _recallTenant; })
+                    .slice(0, 20)
+                    .map(d => ({ id: d.id, ...d.data() }));
                   if (toolBlock.input.query) {
                     const kw = toolBlock.input.query.toLowerCase();
                     const filtered = notes.filter(n => (n.title + " " + n.content + " " + (n.tags || []).join(" ")).toLowerCase().includes(kw));
@@ -3737,6 +3808,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                     tenantId: reqTenantId || null,
                     title, content,
                     tags: tags || [],
+                    savedBy: "worker",
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                     workerSlug: workerSlug || null,
                   });
@@ -5291,22 +5363,28 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                 let _alexNotesContext = "";
                 try {
                   let _notesDocs = [];
+                  // Scope to current tenant + global (null tenantId) notes only.
+                  // Prevents cross-tenant bleed when one uid operates multiple workspaces.
+                  const _notesTenantId = reqTenantId || null;
                   try {
                     const _notesSnap = await db.collection("alex_notes")
                       .where("ownerUid", "==", authUser.uid)
                       .orderBy("createdAt", "desc")
-                      .limit(10)
+                      .limit(30)
                       .get();
-                    _notesDocs = _notesSnap.docs;
+                    _notesDocs = _notesSnap.docs.filter(d => {
+                      const nt = d.data().tenantId;
+                      return !nt || nt === _notesTenantId;
+                    }).slice(0, 12);
                   } catch (_idxErr) {
-                    // Index not built yet — fall back to unordered and sort client-side
                     const _notesSnap2 = await db.collection("alex_notes")
                       .where("ownerUid", "==", authUser.uid)
-                      .limit(10)
+                      .limit(30)
                       .get();
-                    _notesDocs = _notesSnap2.docs.sort((a, b) =>
-                      (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0)
-                    );
+                    _notesDocs = _notesSnap2.docs
+                      .filter(d => { const nt = d.data().tenantId; return !nt || nt === _notesTenantId; })
+                      .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
+                      .slice(0, 12);
                   }
                   if (_notesDocs.length) {
                     const _recentNotes = _notesDocs.map(d => d.data());
@@ -5362,6 +5440,8 @@ HARD RULES:
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
 
 DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to "save to Drive", "put that in my Drive", or after generating/referencing a document that belongs in the user's files. Accepts gs:// Storage paths (for SOCIII files) and https:// public URLs. The file appears immediately in My Drive.
+
+APOLLO PROSPECTING: You have access to Apollo.io (B2B contact database with 275M+ contacts). Use apollo_search_prospects when the user asks to find investors, VCs, LPs, or decision-makers at specific firms. ALWAYS call apollo_search_prospects before saying "I can't find contacts" — it returns real verified emails and titles. For investor prospecting use titles like ["Partner", "General Partner", "Managing Director"] and q_keywords like "venture capital seed" or "proptech investor". Results are real people; after getting them you can immediately propose a campaign or email.
 
 INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx — attach it as a PPTX (opens in PowerPoint, Keynote, and Google Slides on all platforms). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
 
@@ -5504,6 +5584,22 @@ HOW YOU AND CODE COMMUNICATE:
                     },
                   },
                   {
+                    name: "apollo_search_prospects",
+                    description: "Search Apollo.io for real investor or prospect contacts. Use when the user asks to find VCs, investors, LPs, or contacts at specific firms. Returns verified emails, titles, and LinkedIn profiles. ALWAYS call this before drafting an outreach campaign when the user needs new leads — do not tell them to search Apollo themselves.",
+                    input_schema: {
+                      type: "object",
+                      required: [],
+                      properties: {
+                        titles: { type: "array", items: { type: "string" }, description: "Job titles to filter by, e.g. ['Partner', 'Managing Director', 'General Partner']" },
+                        person_seniorities: { type: "array", items: { type: "string" }, description: "Seniority levels: 'partner', 'vp', 'director', 'manager', 'c_suite'" },
+                        organization_industry_tag_ids: { type: "array", items: { type: "string" }, description: "Apollo industry IDs — use for 'venture capital', 'private equity', 'real estate'" },
+                        q_keywords: { type: "string", description: "Freeform keyword search, e.g. 'proptech seed investor' or 'real estate venture capital'" },
+                        person_locations: { type: "array", items: { type: "string" }, description: "Location filters, e.g. ['San Francisco, CA', 'New York, NY']" },
+                        per_page: { type: "number", description: "Results to return (max 25 per call)" },
+                      },
+                    },
+                  },
+                  {
                     name: "propose_calendar_event",
                     description: "Propose a Google Calendar event for the user to review and confirm before it is created. Use when the user wants to schedule a meeting, send an investor calendar invite, block time, or add any calendar event. ALWAYS call this tool — never say you cannot do it or that setup is required. The backend handles connection checks. The user sees a confirmation card with all event details.",
                     input_schema: {
@@ -5538,6 +5634,7 @@ HOW YOU AND CODE COMMUNICATE:
                 let _cosEmailDraftFromTool = null;
                 let _cosCampaignProposal = null;
                 let _cosCalendarProposal = null;
+                let _cosCreditWarning = null;
                 let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 while (_toolsToProcess.length > 0) {
                   const _toolResults = [];
@@ -5564,7 +5661,7 @@ HOW YOU AND CODE COMMUNICATE:
                           : "No notes found. Fresh session — no prior context saved.";
                       } else if (_cosToolBlock.name === 'save_note') {
                         const { title, content, tags } = _cosToolBlock.input;
-                        await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
+                        await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], savedBy: "alex", createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
                         _toolResult = `Note saved: "${title}". I'll remember this across sessions.`;
                       } else if (_cosToolBlock.name === 'campaign_report') {
                         const { campaign_id: _rCampId, proposal_id: _rPropId } = _cosToolBlock.input;
@@ -5751,6 +5848,48 @@ HOW YOU AND CODE COMMUNICATE:
                         } catch (_priErr) {
                           _toolResult = "set_priorities error: " + _priErr.message;
                         }
+                      } else if (_cosToolBlock.name === 'apollo_search_prospects') {
+                        try {
+                          const apollo = require("./services/marketingService/apollo");
+                          const criteria = {};
+                          const inp = _cosToolBlock.input || {};
+                          if (inp.titles?.length) criteria.person_titles = inp.titles;
+                          if (inp.person_seniorities?.length) criteria.person_seniorities = inp.person_seniorities;
+                          if (inp.organization_industry_tag_ids?.length) criteria.organization_industry_tag_ids = inp.organization_industry_tag_ids;
+                          if (inp.q_keywords) criteria.q_keywords = inp.q_keywords;
+                          if (inp.person_locations?.length) criteria.person_locations = inp.person_locations;
+                          criteria.per_page = Math.min(inp.per_page || 10, 25);
+                          const { people = [] } = await apollo.searchPeople(criteria, {
+                            tenantId: ctx.tenantId || null,
+                            userId: authUser.uid,
+                            requestedBy: "cos:apollo_search_prospects",
+                          });
+                          // Check monthly burn for low-balance warning
+                          let _apolloBurn = null;
+                          try { _apolloBurn = await apollo.getMonthlyBurnRate(); } catch { /* non-fatal */ }
+                          if (_apolloBurn && _apolloBurn.percent >= 75) {
+                            _cosCreditWarning = {
+                              service: "Apollo Intelligence",
+                              used: _apolloBurn.used,
+                              budget: _apolloBurn.budget,
+                              percent: Math.round(_apolloBurn.percent),
+                            };
+                          }
+                          if (!people.length) {
+                            _toolResult = "Apollo returned no matches for those criteria. Try broader titles, fewer location filters, or a different keyword.";
+                          } else {
+                            const summary = people.map((p, i) => {
+                              const name = [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unknown";
+                              const title = p.title || "—";
+                              const org = p.organization?.name || "—";
+                              const email = p.email || "(no email)";
+                              return `${i + 1}. ${name} — ${title} @ ${org} | ${email}`;
+                            }).join("\n");
+                            _toolResult = `Apollo found ${people.length} prospects:\n${summary}\n\nThese are real contacts. You can now draft a campaign using propose_email_campaign or propose individual emails via propose_email.`;
+                          }
+                        } catch (_apErr) {
+                          _toolResult = "Apollo search failed: " + _apErr.message;
+                        }
                       } else if (_cosToolBlock.name === 'propose_calendar_event') {
                         const { summary: _calSum, description: _calDesc, location: _calLoc, start: _calStart, end: _calEnd, attendees: _calAttendees } = _cosToolBlock.input;
                         _cosCalendarProposal = {
@@ -5844,6 +5983,7 @@ HOW YOU AND CODE COMMUNICATE:
                   ...((_cosWhatsappDraft) ? { whatsappDraft: _cosWhatsappDraft } : {}),
                   ...((_cosCampaignProposal) ? { emailCampaign: _cosCampaignProposal } : {}),
                   ...((_cosCalendarProposal) ? { calendarProposal: _cosCalendarProposal } : {}),
+                  ...((_cosCreditWarning) ? { creditWarning: _cosCreditWarning } : {}),
                 });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
@@ -9700,6 +9840,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
       res.set("Content-Type", "text/html");
       return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Unsubscribed</title><style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}.card{background:#fff;border-radius:12px;padding:40px 48px;box-shadow:0 1px 4px rgba(0,0,0,.1);text-align:center;max-width:400px}h2{color:#111827;margin:0 0 8px}p{color:#6b7280;margin:0;font-size:14px}</style></head><body><div class="card"><h2>You've been unsubscribed</h2><p>You won't receive any more emails from this campaign.</p></div></body></html>`);
+    }
+
+    // GET /v1/shopify:server-callback — public endpoint, no auth required
+    // Called by shopify-callback.html after Shopify redirects back
+    if (route === "/shopify:server-callback" && method === "GET") {
+      const shopify = require("./services/shopify/shopify");
+      return await shopify.handleShopifyServerCallback(req, res);
     }
 
     // All other routes require Firebase auth

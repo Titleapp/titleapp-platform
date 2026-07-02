@@ -12,9 +12,31 @@ import CanvasCardShell from "./CanvasCardShell";
 
 const money = (n) => (n == null ? "—" : "$" + Number(n).toLocaleString());
 
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+function PropertyMap({ address }) {
+  if (!MAPS_KEY || !address) return null;
+  const src = `https://www.google.com/maps/embed/v1/place?key=${MAPS_KEY}&q=${encodeURIComponent(address)}&zoom=16&maptype=satellite`;
+  return (
+    <div style={{ borderRadius: 10, overflow: "hidden", marginBottom: 14, border: "1px solid #e2e8f0" }}>
+      <iframe
+        title="Property location"
+        src={src}
+        width="100%"
+        height="200"
+        style={{ display: "block", border: "none" }}
+        allowFullScreen=""
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    </div>
+  );
+}
+
 function Header({ a }) {
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden", marginBottom: 18 }}>
+      <PropertyMap address={a.property_address} />
       <div style={{ background: "linear-gradient(135deg,#f0f9ff,#eff6ff)", padding: "14px 18px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "#0369a1", textTransform: "uppercase", letterSpacing: 0.5 }}>Title Abstract</div>
         <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{a.property_address}</div>

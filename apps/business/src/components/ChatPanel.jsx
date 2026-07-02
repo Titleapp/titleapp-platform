@@ -1589,6 +1589,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         githubIssue: data.githubIssue || null,
         apolloSearches: data.apolloSearches || null,
         calendarProposal: data.calendarProposal || null,
+        creditWarning: data.creditWarning || null,
       }]);
 
       // Push structured output to the right-panel artifact view so the canvas
@@ -2115,7 +2116,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       </div>
 
       {/* S52.45 — explicit BETA/in-development warning in the chat surface */}
-      {currentSection !== 'creator-journey' && <BetaNotice />}
+      {currentSection !== 'creator-journey' && !isDemoMode() && <BetaNotice />}
 
       {/* Language change toast */}
       {langToast && (
@@ -2128,8 +2129,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         </div>
       )}
 
-      {/* Worker search + filter pills */}
-      <div className="chatWorkerSearch">
+      {/* Worker search + filter pills — only on COS/discovery surface, not inside a specific worker */}
+      {!(workerCtx?.activeWorkerData?.slug || activeWorkerSlug) && <div className="chatWorkerSearch">
         <form onSubmit={handleWorkerSearch} style={{ display: "flex", gap: 6, padding: "10px 14px 0" }}>
           <input
             type="text"
@@ -2155,7 +2156,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             >{suite}</button>
           ))}
         </div>
-      </div>
+      </div>}
 
       <div className="chatPanelMessages" ref={conversationRef}>
         {/* Pending action chips */}
@@ -2602,7 +2603,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             : `Campaign send failed: ${d.error || "unknown error"}. Check that Gmail is connected and try again.`,
                           isSystem: true,
                         }]);
-                      } catch (e) {
+                      } catch (_e) {
                         setCampaignSendState(prev => ({ ...prev, [idx]: "error" }));
                         setMessages(prev => [...prev, { role: "assistant", content: "Campaign launch failed — check connection and try again.", isSystem: true }]);
                       }
@@ -2879,6 +2880,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     style={{ flex: 1, padding: "8px 14px", background: "#0369a1", color: "white", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >Add to Calendar</button>
                   <button onClick={() => setDismissedCalendarProposals(prev => new Set([...prev, idx]))} style={{ padding: "8px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Metered service credit warning */}
+            {msg.creditWarning && (
+              <div style={{ marginTop: 10, maxWidth: 440, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <svg style={{ flexShrink: 0, marginTop: 1 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 2 }}>
+                    {msg.creditWarning.service} at {msg.creditWarning.percent}% of monthly budget
+                  </div>
+                  <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.5 }}>
+                    {msg.creditWarning.used?.toLocaleString()} of {msg.creditWarning.budget?.toLocaleString()} credits used this month. Top up your account to keep searches running.
+                  </div>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "billing" } }))}
+                    style={{ marginTop: 6, fontSize: 11, fontWeight: 600, color: "#92400e", background: "transparent", border: "1px solid #fbbf24", borderRadius: 5, padding: "3px 8px", cursor: "pointer" }}
+                  >
+                    Go to Billing →
+                  </button>
                 </div>
               </div>
             )}
