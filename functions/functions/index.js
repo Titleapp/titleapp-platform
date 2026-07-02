@@ -5416,6 +5416,17 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                     if (_lDocs.length) _cosFileCtx += `\n\nSTUDIO LOCKER FILES:\n${_lDocs.map(d => `  gs://title-app-alpha.firebasestorage.app/${d.storagePath} | ${d.filename || d.name}`).join("\n")}`;
                   }
                 } catch (_cle) { /* non-blocking */ }
+                // Scan chat-uploads prefix for text/markdown documents Alex can read
+                try {
+                  const [_uploadFiles] = await admin.storage().bucket("title-app-alpha.firebasestorage.app").getFiles({
+                    prefix: "chat-uploads/",
+                    maxResults: 20,
+                  });
+                  const _uploadDocs = _uploadFiles.filter(f => /\.(md|txt|csv)$/i.test(f.name));
+                  if (_uploadDocs.length) {
+                    _cosFileCtx += `\n\nDOCUMENTS (use read_document to read any of these):\n${_uploadDocs.map(f => `  gs://title-app-alpha.firebasestorage.app/${f.name} | ${f.name.split("/").pop()}`).join("\n")}`;
+                  }
+                } catch (_ufe) { /* non-blocking */ }
 
                 // Shopify live data injection for COS (same as worker injection but always-on for Alex)
                 let _cosShopifyCtx = "";
@@ -5465,6 +5476,8 @@ HARD RULES:
    Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use propose_email TOOL whenever you need to send an email — outreach, follow-ups, investor emails, test sends. NEVER say "I'm sending now" or write the email in your text. Always use the tool. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
+
+DRIVE READ: You have a read_document tool. Use it IMMEDIATELY whenever the user asks you to review, read, summarize, critique, or discuss any document — whether they say "read the brief", "what does that file say", "can you review this", or share a filename. Call read_document with the gdrive:// path from the GOOGLE DRIVE FILES list above, or with the filename and it will search. Do not say you cannot read files — call the tool. After reading, engage with the content directly: share your opinion, flag weak sections, suggest improvements, ask what angle they want to explore.
 
 DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to "save to Drive", "put that in my Drive", or after generating/referencing a document that belongs in the user's files. Accepts gs:// Storage paths (for SOCIII files) and https:// public URLs. The file appears immediately in My Drive.
 
@@ -5625,6 +5638,17 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         q_keywords: { type: "string", description: "Freeform keyword search, e.g. 'proptech seed investor' or 'real estate venture capital'" },
                         person_locations: { type: "array", items: { type: "string" }, description: "Location filters, e.g. ['San Francisco, CA', 'New York, NY']" },
                         per_page: { type: "number", description: "Results to return (max 25 per call)" },
+                      },
+                    },
+                  },
+                  {
+                    name: "read_document",
+                    description: "Read the full text content of a document so you can discuss, summarize, critique, or edit it. Use this whenever the user says 'review this doc', 'what does the brief say', 'can you read that file', or shares a file path. Accepts gdrive://fileId (from the Drive file list above), gs://bucket/path (Studio Locker), or a plain filename to fuzzy-match against known files.",
+                    input_schema: {
+                      type: "object",
+                      required: ["path"],
+                      properties: {
+                        path: { type: "string", description: "File path: gdrive://fileId, gs://bucket/path, or a filename to match (e.g. 'SOCIII-Shopify-Brief.md')" },
                       },
                     },
                   },
@@ -5844,6 +5868,74 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         } catch (_driveErr) {
                           console.error("[cosTools:save_to_drive] failed:", _driveErr.message);
                           _toolResult = `Failed to save to Drive: ${_driveErr.message}`;
+                        }
+                      } else if (_cosToolBlock.name === 'read_document') {
+                        const { path: _rdPath } = _cosToolBlock.input;
+                        try {
+                          let _rdContent = null;
+                          // gdrive://fileId — download via Drive API
+                          if (_rdPath.startsWith("gdrive://")) {
+                            const _rdFileId = _rdPath.replace("gdrive://", "").trim();
+                            const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                            const _rdDrive = await getAuthenticatedDriveClient(authUser.uid);
+                            // Try to get metadata first to know MIME type
+                            const _rdMeta = await _rdDrive.files.get({ fileId: _rdFileId, fields: "name,mimeType" });
+                            const _rdMime = _rdMeta.data.mimeType || "";
+                            if (_rdMime.startsWith("application/vnd.google-apps")) {
+                              // Google Doc/Sheet/Slide — export as plain text
+                              const _rdExportMime = _rdMime.includes("spreadsheet") ? "text/csv" : "text/plain";
+                              const _rdExport = await _rdDrive.files.export({ fileId: _rdFileId, mimeType: _rdExportMime }, { responseType: "text" });
+                              _rdContent = String(_rdExport.data || "").slice(0, 12000);
+                            } else {
+                              // Binary or text file — download directly
+                              const _rdDownload = await _rdDrive.files.get({ fileId: _rdFileId, alt: "media" }, { responseType: "text" });
+                              _rdContent = String(_rdDownload.data || "").slice(0, 12000);
+                            }
+                            _toolResult = `Document content (${_rdMeta.data.name}):\n\n${_rdContent}`;
+                          } else if (_rdPath.startsWith("gs://")) {
+                            // GCS path — download via Admin SDK
+                            const _rdParts = _rdPath.replace("gs://", "").split("/");
+                            const _rdBucket = _rdParts.shift();
+                            const _rdGsPath = _rdParts.join("/");
+                            const [_rdData] = await admin.storage().bucket(_rdBucket).file(_rdGsPath).download();
+                            _rdContent = _rdData.toString("utf8").slice(0, 12000);
+                            _toolResult = `Document content:\n\n${_rdContent}`;
+                          } else {
+                            // Fuzzy filename match — search known Drive files injected into context
+                            if (authUser) {
+                              const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                              try {
+                                const _rdDrive2 = await getAuthenticatedDriveClient(authUser.uid);
+                                const _rdSearch = await _rdDrive2.files.list({
+                                  q: `name contains '${_rdPath.replace(/'/g, "\\'")}' and trashed = false`,
+                                  fields: "files(id, name, mimeType)",
+                                  pageSize: 1,
+                                });
+                                const _rdHit = (_rdSearch.data.files || [])[0];
+                                if (_rdHit) {
+                                  const _rdMime2 = _rdHit.mimeType || "";
+                                  let _rdData2;
+                                  if (_rdMime2.startsWith("application/vnd.google-apps")) {
+                                    const _rdEx2 = await _rdDrive2.files.export({ fileId: _rdHit.id, mimeType: "text/plain" }, { responseType: "text" });
+                                    _rdData2 = String(_rdEx2.data || "").slice(0, 12000);
+                                  } else {
+                                    const _rdDl2 = await _rdDrive2.files.get({ fileId: _rdHit.id, alt: "media" }, { responseType: "text" });
+                                    _rdData2 = String(_rdDl2.data || "").slice(0, 12000);
+                                  }
+                                  _toolResult = `Document content (${_rdHit.name}):\n\n${_rdData2}`;
+                                } else {
+                                  _toolResult = `No file matching "${_rdPath}" found in Drive. Check the filename or use the gdrive:// path from the file list.`;
+                                }
+                              } catch (_rdDriveErr) {
+                                _toolResult = `Drive not connected or file not accessible: ${_rdDriveErr.message}`;
+                              }
+                            } else {
+                              _toolResult = "Cannot search Drive — not authenticated.";
+                            }
+                          }
+                        } catch (_rdErr) {
+                          console.error("[cosTools:read_document] failed:", _rdErr.message);
+                          _toolResult = `Could not read document: ${_rdErr.message}`;
                         }
                       } else if (_cosToolBlock.name === 'propose_email') {
                         // Structured email proposal — extract draft directly, no text parsing needed
