@@ -837,6 +837,14 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   async function loadConversationHistory() {
     try {
       const platformSid = sessionStorage.getItem('ta_platform_sid');
+      const localSid = localStorage.getItem('ta_chat_session_id');
+
+      // COS starts fresh every session — memory lives in alex_notes, not chat replay.
+      // This guard must come BEFORE the platformSid check. ta_platform_sid is set from
+      // landing-page ?sid= handoffs and persists in sessionStorage across refreshes;
+      // it must NOT override the cos_ skip or Alex loads stale sync-problem conversations.
+      if (localSid && localSid.startsWith('cos_')) return;
+
       const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
       const constraints = [
         where('userId', '==', currentUser.uid),
@@ -846,6 +854,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       ];
       if (platformSid) {
         constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', platformSid));
+      } else if (localSid) {
+        // Filter to the specific session stored in localStorage so we never replay
+        // messages from a different worker or a previous browser session.
+        constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', localSid));
       }
       const q = query(collection(db, 'messageEvents'), ...constraints);
       const snapshot = await getDocs(q);
@@ -1591,6 +1603,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         calendarProposal: data.calendarProposal || null,
         creditWarning: data.creditWarning || null,
       }]);
+      if (data.prioritiesUpdated) {
+        window.dispatchEvent(new CustomEvent("ta:priorities-updated"));
+      }
 
       // Push structured output to the right-panel artifact view so the canvas
       // becomes a live artifact display instead of inert worker links.
@@ -3024,15 +3039,22 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
         {isTyping && (
           <div className="chat-message assistant">
-            <svg width="24" height="24" viewBox="0 0 200 200" fill="none" style={{ animation: "spinKey 1.5s ease-in-out infinite" }}>
-              <circle cx="100" cy="100" r="95" fill="#7c3aed"/>
-              <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2"/>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="1" strokeDasharray="3,5"/>
-              <circle cx="100" cy="80" r="18" fill="white"/>
-              <circle cx="100" cy="80" r="8" fill="#7c3aed"/>
-              <rect x="94" y="90" width="12" height="35" fill="white"/>
-              <rect x="94" y="115" width="8" height="4" fill="white"/>
-              <rect x="94" y="122" width="5" height="3" fill="white"/>
+            <svg width="36" height="36" viewBox="0 0 30 30" fill="none" overflow="visible">
+              <path
+                d="M15,7 L17.26,12.74 L23,15 L17.26,17.26 L15,23 L12.74,17.26 L7,15 L12.74,12.74Z"
+                fill="#16a34a"
+                style={{ transformBox: "fill-box", transformOrigin: "center", animation: "twinkleMain 1.8s ease-in-out infinite" }}
+              />
+              <path
+                d="M25,1.5 L25.71,3.29 L27.5,4 L25.71,4.71 L25,6.5 L24.29,4.71 L22.5,4 L24.29,3.29Z"
+                fill="#16a34a"
+                style={{ transformBox: "fill-box", transformOrigin: "center", animation: "twinkleSmall 1.8s ease-in-out 0.4s infinite" }}
+              />
+              <path
+                d="M5,24 L5.57,25.43 L7,26 L5.57,26.57 L5,28 L4.43,26.57 L3,26 L4.43,25.43Z"
+                fill="#16a34a"
+                style={{ transformBox: "fill-box", transformOrigin: "center", animation: "twinkleTiny 1.8s ease-in-out 0.8s infinite" }}
+              />
             </svg>
           </div>
         )}
