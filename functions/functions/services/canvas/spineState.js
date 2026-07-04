@@ -99,6 +99,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       draftsSnap, socialSnap, msgQSnap, campaignsSnap, listsSnap,
       employeesSnap, staffCredsSnap,
       tenantSnap, subsSnap,
+      emailProposalsSnap, emailSendsSnap,
     ] = await Promise.all([
       safe(db.collection("coaAccounts").where("tenantId", "==", tenantId).get()),
       safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get()),
@@ -123,6 +124,11 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
 
       safe(db.collection("tenants").doc(tenantId).get()),
       safe(db.collection("subscriptions").where("tenantId", "==", tenantId).where("status", "==", "active").get()),
+
+      // Investor email outreach — owner-scoped, NOT tenant-scoped. Without these,
+      // Alex reports "no campaigns" while 3 batches of 25 emails have been sent.
+      uid ? safe(db.collection("emailCampaignProposals").where("ownerUid", "==", uid).orderBy("createdAt", "desc").limit(50).get()) : Promise.resolve(empty),
+      uid ? safe(db.collection("emailCampaignSends").where("ownerUid", "==", uid).limit(500).get()) : Promise.resolve(empty),
     ]);
 
     const live = {};
@@ -177,7 +183,14 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     };
 
     // ── Contacts ──
-    const contacts = contactsSnap.docs.map(d => d.data());
+    // Fall back to ownerUid if tenantId returned nothing (contacts may live in a
+    // different workspace — cross-workspace COS access, codex 19 Phase 1.5 bridge).
+    let _contactDocs = contactsSnap.docs;
+    if (_contactDocs.length === 0 && uid) {
+      const _fallbackContacts = await safe(db.collection("contacts").where("ownerUid", "==", uid).limit(2000).get());
+      _contactDocs = _fallbackContacts.docs;
+    }
+    const contacts = _contactDocs.map(d => d.data());
     if (contacts.length > 0) {
       const customers = contacts.filter(c => (c.lifecycleStage || "").toLowerCase() === "customer").length;
       const newThisMonth = contacts.filter(c => {
@@ -239,7 +252,19 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     }).length;
     const queued = msgQSnap.docs.map(d => d.data()).filter(m => m.status === "pending").length;
     const lists = listsSnap.docs.length;
-    const hasAnyMarketing = drafts.length || socialPosts.length || campaigns.length || queued || lists;
+
+    // Investor outreach — emailCampaignProposals/Sends are owner-scoped (ownerUid),
+    // not tenant-scoped, so they weren't in `campaigns`. Without this, Alex would
+    // report "no campaigns" while batches had already been sent (Sean, 2026-07-03).
+    const emailProposals = emailProposalsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const emailSends = emailSendsSnap.docs.map(d => d.data());
+    const sentBatches = emailProposals.filter(p => p.status === "sent" || p.status === "completed").length;
+    const sentIndividual = emailSends.length;
+    const pendingBatches = emailProposals.filter(p => p.status === "proposed" || p.status === "sending").length;
+    const topEmailBatches = emailProposals.slice(0, 5).map(p =>
+      `${p.segment || "All"} → ${p.contactCount || "?"} contacts${p.status === "sent" ? " ✓ sent" : p.status === "sending" ? " (sending)" : " (proposed)"}`);
+
+    const hasAnyMarketing = drafts.length || socialPosts.length || campaigns.length || queued || lists || emailProposals.length;
     const topCampaigns = campaigns
       .slice(0, 6)
       .map(c => `${c.name || c.title || "Campaign"}${c.channel ? ` (${c.channel})` : ""}${c.ctr != null ? ` · ${c.ctr}% CTR` : ""}${c.leads != null ? ` · ${c.leads} leads` : ""}`);
@@ -252,8 +277,15 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
         "Email campaigns sent (30d)": sent30d,
         "Contact lists":        lists,
         "Queued messages":      queued,
+        ...(emailProposals.length ? {
+          "Investor email batches": emailProposals.length,
+          "Batches sent":           sentBatches,
+          "Individual sends":       sentIndividual,
+          "Batches pending":        pendingBatches || 0,
+        } : {}),
       } : { "Note": "no campaigns, drafts, or contact lists yet" },
       ...(topCampaigns.length ? { campaigns: topCampaigns } : {}),
+      ...(topEmailBatches.length ? { investorBatches: topEmailBatches } : {}),
     };
 
     // ── HR & People ── prefer the canonical staff_credentials roster (the same

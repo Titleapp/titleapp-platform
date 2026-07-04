@@ -242,6 +242,7 @@ CROSS-WORKER ROUTING (HARD RULE) — This applies ONLY to the specific spine-wor
   • Contacts, leads, prospects, segments, contact import, Apollo, CRM list → Contacts worker — slug: platform-contacts
   • Hiring, payroll, scheduling, time off, employee records, roster, coverage → HR & People worker — slug: platform-hr
   • Workspace status, milestones, brief, runway/spend roll-up, accountability concerns, cap table, fundraise progress → Control Center Pro — slug: platform-control-center-pro
+  • "Take me to Alex", "switch me to Alex", "talk to my chief of staff", or any request to hand off to the executive overview / inbox triage / daily brief → Alex — Chief of Staff — slug: chief-of-staff
 
 EXECUTING THE SWITCH (HARD RULE) — When the user agrees to switch ("yes", "switch me", "go ahead", "do it", "ok", "yep", "sure", "please"), you MUST emit the marker [[SWITCH_WORKER:<slug>]] on its own line in your response, using the exact slug from the routing map above. The frontend detects this marker and performs the actual UI switch. Do not describe the switch ("Switching you now…", "In a live deployment this would…"). Do not write a paragraph. Your full response in this case is one short sentence plus the marker, e.g.:
 "Switching you to Marketing & Content now.
@@ -3545,6 +3546,9 @@ IMAGE & VISUAL RULES (MANDATORY):
                 try {
                   const { searchDistressedCRE } = require("./services/attom/distressedCRE");
                   const res = await searchDistressedCRE({ metro: toolBlock.input.metro, limit: 12 }, process.env.ATTOM_API_KEY);
+                  if (res.code === 'ATTOM_UNAVAILABLE') {
+                    aiText = res.error || "Live property data is temporarily unavailable — please check back shortly.";
+                  } else {
                   liveDistressed = res;
                   const summary = (res.candidates || []).map((p, i) => `${i + 1}. [${p.distressBand} ${p.distressScore}] ${p.address} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || '').slice(0, 7)}) · ${p.propType} · ${p.distressReasons.join('; ')}`).join("\n");
                   const toolResultText = (res.candidates && res.candidates.length)
@@ -3562,6 +3566,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                     model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
                   });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the distressed candidates.";
+                  } // end ATTOM_UNAVAILABLE else
                 } catch (creErr) {
                   console.warn(`[worker:${workerSlug}] find_distressed_cre failed:`, creErr.message);
                 }
@@ -3613,8 +3618,11 @@ IMAGE & VISUAL RULES (MANDATORY):
                     const { pullParcelBundle } = require("./workers/site-recon-001/attomClient");
                     const { scoreFeasibility } = require("./workers/site-recon-001/scoreFeasibility");
                     const bundle = await pullParcelBundle(params, process.env.ATTOM_API_KEY);
+                    const attomStatus = bundle?.propertyDetail?.httpStatus;
                     const prop0 = bundle?.propertyDetail?.data?.property?.[0];
-                    if (!prop0) {
+                    if (attomStatus === 401 || attomStatus === 403) {
+                      aiText = "Live property data is temporarily unavailable — please check back shortly.";
+                    } else if (!prop0) {
                       aiText = `I couldn't find a property record at "${addr}" in ATTOM — double-check the street, city, and state.`;
                     } else {
                       let overlays = {};
@@ -4107,7 +4115,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                 });
               }
 
-              // S52.44 — repaint the Map with LIVE ATTOM distressed-CRE results.
+              // S52.44 — repaint the Map AND Deal Screen with LIVE ATTOM distressed-CRE results.
               if (liveDistressed && Array.isArray(liveDistressed.candidates) && liveDistressed.candidates.length) {
                 workerCanvasRenders.push({
                   type: "card:re-map",
@@ -4121,6 +4129,34 @@ IMAGE & VISUAL RULES (MANDATORY):
                     })),
                   },
                 });
+                // Also push a Deal Screen card so the analysis tabs update with live data,
+                // not just the map. Hero = first candidate (pre-sorted RED-first by distressScore).
+                const _creHero = liveDistressed.candidates[0];
+                if (_creHero) {
+                  const _creReds = liveDistressed.candidates.filter(p => p.distressBand === "RED");
+                  const _creYels = liveDistressed.candidates.filter(p => p.distressBand === "YELLOW");
+                  workerCanvasRenders.push({
+                    type: "card:re-property-analysis",
+                    payload: {
+                      title: `CRE Deal Screen — ${liveDistressed.label} (live ATTOM)`,
+                      subtitle: `${liveDistressed.count} candidates · ${_creReds.length} RED · ${_creYels.length} YELLOW`,
+                      fields: [
+                        { label: "Lead property", value: _creHero.address || "—" },
+                        { label: "Property type", value: _creHero.propType || "—" },
+                        { label: "Distress band", value: `${_creHero.distressBand || "—"} (score ${_creHero.distressScore ?? "n/a"})` },
+                        { label: "Last recorded sale", value: _creHero.lastSale ? "$" + (_creHero.lastSale / 1e6).toFixed(1) + "M" : "—" },
+                        { label: "Sale date", value: (_creHero.lastSaleDate || "").slice(0, 7) || "—" },
+                        { label: "Distress signals", value: (_creHero.distressReasons || []).join(", ") || "—" },
+                      ],
+                      sections: [
+                        {
+                          heading: "All screened candidates",
+                          body: liveDistressed.candidates.map((p, i) => `${i + 1}. [${p.distressBand} ${p.distressScore}] ${p.address} — $${(p.lastSale / 1e6).toFixed(0)}M (${(p.lastSaleDate || "").slice(0, 7)}) · ${p.propType} · ${(p.distressReasons || []).join("; ")}`).join("\n"),
+                        },
+                      ],
+                    },
+                  });
+                }
               }
 
               // S52.46 — repaint the canvas with the REAL Site Recon pull: a real
@@ -5343,8 +5379,9 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   const _wb = await buildWorkspaceBrief({ uid: authUser.uid, tenantId: _cosTenantId });
                   if (_wb) _brief = `\n\nWORKSPACE BRIEF — REAL, current data. When the user asks about their day, finances, deadlines, or what needs attention, use THESE actual numbers/dates. Never invent figures.\n${_wb}`;
                 } catch (_) {}
-                // Detect which Business-in-a-Box workers are missing so Alex can
-                // recommend the bundle proactively — even on a casual opener.
+                // Detect which Business-in-a-Box workers are missing + build real worker catalog.
+                // The catalog is injected as ground truth so Alex NEVER invents worker IDs or counts.
+                let _workerCatalogCtx = "";
                 try {
                   const BIAB = ["platform-accounting","platform-hr","platform-marketing","platform-contacts","platform-control-center-pro"];
                   const _memberSnap = await db.collection("memberships").where("tenantId","==",_cosTenantId).limit(1).get();
@@ -5354,6 +5391,22 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   if (_missingBiab.length >= 2) {
                     const _names = { "platform-accounting":"Accounting","platform-hr":"HR & People","platform-marketing":"Marketing","platform-contacts":"Contacts","platform-control-center-pro":"Control Center" };
                     _bundleHint = `\n\nBUSINESS IN A BOX — MISSING WORKERS: This workspace does not yet have: ${_missingBiab.map(s=>_names[s]).join(", ")}. The "Business in a Box" bundle adds all five in one click at no cost. Mention the bundle naturally in your FIRST reply if the user's opener has any operational, business-setup, or "where do I start" angle — even a casual "what's new?" warrants a brief mention. Say exactly the phrase "Business in a Box" so the frontend surfaces the one-click subscribe card. Don't repeat it more than once per session.`;
+                  }
+
+                  // Fetch real worker names from Firestore to ground the catalog.
+                  // Workers are the ONLY ones that exist — never invent others.
+                  if (_activeWorkers.length) {
+                    const _workerDocs = await Promise.all(
+                      _activeWorkers.slice(0, 20).map(slug =>
+                        db.collection("digitalWorkers").doc(slug).get().catch(() => null)
+                      )
+                    );
+                    const _workerLines = _activeWorkers.map((slug, i) => {
+                      const doc = _workerDocs[i];
+                      const name = doc && doc.exists ? (doc.data().name || slug) : slug;
+                      return `  - ${name} (${slug})`;
+                    });
+                    _workerCatalogCtx = `\n\nTHIS WORKSPACE'S ACTIVE WORKERS (exhaustive — do not invent others):\n${_workerLines.join("\n")}\n\nWORKER CATALOG RULES:\n- ONLY reference workers in the list above when discussing what workers this workspace has.\n- NEVER invent worker IDs (like "RD-001"), made-up worker names, or worker counts.\n- NEVER mention promotional offers (BOGO, discounts, free trials) unless they appear in a pricing context you received.\n- If asked about workers not in this list, say "That worker isn't in your workspace yet — want me to add it?" and recommend the Business in a Box bundle if relevant.`;
                   }
                 } catch (_) {}
 
@@ -5455,6 +5508,23 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                   }
                 } catch (_cse) { /* non-blocking */ }
 
+                // Gmail inbox context for COS — pull from ALL connected accounts
+                let _cosGmailCtx = "";
+                try {
+                  const _gmailSvcCos = require("./services/social/gmail");
+                  const _allInbox = await _gmailSvcCos.listRecentSummaryAllAccounts(authUser.uid, { maxPerAccount: 8 });
+                  if (_allInbox) {
+                    _cosGmailCtx = `\n\nGMAIL INBOXES — live view across all connected accounts. When the user asks to check email, triage from this list:\n${_allInbox}\n\nUse the read_inbox tool to refresh or search anytime. Use propose_email to draft replies.`;
+                  } else {
+                    // Fall back to checking if primary is at least connected
+                    const _gmailSnapCos = await db.doc(`users/${authUser.uid}/integrations/gmail`).get();
+                    if (_gmailSnapCos.exists && _gmailSnapCos.data().accessToken) {
+                      const _gmailEmailCos = _gmailSnapCos.data().email || "connected";
+                      _cosGmailCtx = `\n\nGMAIL (${_gmailEmailCos}) — connected. Inbox appears empty. Use read_inbox tool to check anytime.`;
+                    }
+                  }
+                } catch (_cge) { console.warn("[COS] Gmail inbox inject failed:", _cge.message); }
+
                 const cosPrompt = `You are Alex, the Chief of Staff for ${_ws.name || "this business"}${_ws.vertical ? `, a ${_ws.vertical} business` : ""}.${_ws.location ? ` Located in ${_ws.location} (a LOCATION — never part of the business name).` : ""}
 ${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws.ownerRole}` : ""}.` : ""}
 
@@ -5473,7 +5543,7 @@ HARD RULES:
    - Telegram: [TELEGRAM_DRAFT]{"destination":"owner|advisor-group","chatId":"optional-override","text":"message text"}[/TELEGRAM_DRAFT]
    - GitHub issue (for CODE tasks): [GITHUB_ISSUE]{"title":"issue title","body":"detailed description","labels":["bug","enhancement"]}[/GITHUB_ISSUE] — the approval card says "Log to CODE", not "Run". Use this when you need CODE to build something or investigate a bug.
    - Email (Gmail): Call the propose_email TOOL — this is the ONLY way to propose an email. Do NOT write email content in your text response. The tool accepts: to (required), subject (required), body (required), cc (optional), attachments (optional array of {url, filename}). For attachments: use exact gs://bucket/path for Studio Locker files, gdrive://fileId for Drive files, https://... for public URLs. ALWAYS attach relevant files — deck, whitepaper, any document in context. The user will see an editable email composer and must approve before anything sends.
-   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use propose_email TOOL whenever you need to send an email — outreach, follow-ups, investor emails, test sends. NEVER say "I'm sending now" or write the email in your text. Always use the tool. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}
+   Use SMS for time-sensitive nudges. Use Telegram for advisor group updates. Use propose_email TOOL whenever you need to send an email — outreach, follow-ups, investor emails, test sends. NEVER say "I'm sending now" or write the email in your text. Always use the tool. Use GITHUB_ISSUE when the user says "log this for CODE", "create a bug", or similar.${_sib ? "\n\n" + _sib : ""}${_brief}${_bundleHint}${_workerCatalogCtx}
 
 PERSISTENT MEMORY: You have two tools — recall_notes and save_note — that survive across sessions. Use recall_notes for targeted mid-session queries (e.g. "find everything about Shane"). Use save_note proactively after drafting any important email, making a key decision, or receiving context you'd need to repeat. Your prior notes are already injected above — speak from them naturally, as your own memory.
 
@@ -5483,9 +5553,9 @@ DRIVE WRITE: You have a save_to_drive tool. Use it whenever the user asks you to
 
 APOLLO PROSPECTING: You have access to Apollo.io (B2B contact database with 275M+ contacts). Use apollo_search_prospects when the user asks to find investors, VCs, LPs, or decision-makers at specific firms. ALWAYS call apollo_search_prospects before saying "I can't find contacts" — it returns real verified emails and titles. For investor prospecting use titles like ["Partner", "General Partner", "Managing Director"] and q_keywords like "venture capital seed" or "proptech investor". Results are real people; after getting them you can immediately propose a campaign or email.
 
-INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII deck is at gs://title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pptx — attach it as a PPTX (opens in PowerPoint, Keynote, and Google Slides on all platforms). ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
+INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII investor deck is publicly available as a PDF link — use this in email body instead of attaching a file (many corporate firewalls block attachments): https://storage.googleapis.com/title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pdf — include it as a hyperlink labeled "View Investor Deck (PDF)" or similar. ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
 
-DASHBOARD PRIORITIES: Use set_priorities when Sean tells you his top priorities for the week, or when you've identified urgent items (investor replies pending, 83(b) deadlines, overdue compliance items). This replaces the entire list — pass all items, max 5. Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"). Items appear immediately on Sean's dashboard canvas. Use proactively at morning brief time.
+DASHBOARD PRIORITIES: CALL set_priorities IMMEDIATELY — without asking — whenever Sean mentions 2+ actionable tasks, shares his plate for the week, says what's keeping him busy, describes deadlines, or asks what he should focus on. You do NOT need an explicit list — extract priorities from conversational context. Examples that MUST trigger set_priorities: "I need to finish the deck and call Kent", "I'm slammed this week with the RE closings", "what should I focus on today?", "I have the Reg CF filing due soon". Do not respond conversationally first; call the tool, THEN reply. Do not claim priorities are saved unless you actually called the tool. This replaces the entire list — always pass all items (up to 15). Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"), horizon ("today"|"this-week"|"next-week"|"waiting"|"someday"), status ("pending"|"in-progress"|"blocked"|"done"). Use horizon to group: things due today → "today", things due this week → "this-week", things blocked on someone else → "waiting", Switzerland week → "next-week". Use proactively at morning brief time — if it's morning and this is the first message, call set_priorities with whatever you know from the workspace brief above.
 
 CALENDAR INVITES: Use propose_calendar_event when the user wants to schedule a meeting, send an investor a calendar invite, block time, or add any event to Google Calendar. ALWAYS call the tool — never fabricate a reason it can't work. Include summary, start (ISO 8601 with timezone offset, e.g. 2026-06-30T11:30:00-07:00), end (ISO 8601), and attendees (array of email strings). The user sees an approval card and confirms before the event is created.
 
@@ -5496,7 +5566,7 @@ HOW YOU AND CODE COMMUNICATE:
   2. Use save_note with tags: ["for-code"] to leave a note CODE will read at the start of the next session. Good for non-urgent context handoffs.
 - You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.
 
-SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing — the commerce engine. SOCIII is the AI experience layer on top: intelligent customer service, returns automation, marketing campaigns, AI-generated content, and customer insights from real order data. The two are complementary. To connect a Shopify store, the user goes to Settings → Integrations → Shopify row → enters their store domain (e.g. mystore.myshopify.com) → clicks Connect — it's a full OAuth flow that takes about 30 seconds. Once connected, you can pull orders, revenue, and customer data directly (use card:shopify-commerce for a visual summary). If the user asks how to connect, direct them to Settings → Shopify — never tell them you don't know how.${_cosShopifyCtx}${_alexNotesContext}${_cosFileCtx}`;
+SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing — the commerce engine. SOCIII is the AI experience layer on top: intelligent customer service, returns automation, marketing campaigns, AI-generated content, and customer insights from real order data. The two are complementary. To connect a Shopify store, the user goes to Settings → Integrations → Shopify row → enters their store domain (e.g. mystore.myshopify.com) → clicks Connect — it's a full OAuth flow that takes about 30 seconds. Once connected, you can pull orders, revenue, and customer data directly (use card:shopify-commerce for a visual summary). If the user asks how to connect, direct them to Settings → Shopify — never tell them you don't know how.${_cosShopifyCtx}${_alexNotesContext}${_cosFileCtx}${_cosGmailCtx}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
@@ -5601,26 +5671,28 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                   },
                   {
                     name: "set_priorities",
-                    description: "Write or replace the Today's Priorities list on Sean's dashboard canvas. Use when Sean tells you his top priorities for the week, or when you want to surface urgent items (deadlines, overdue actions, investor replies) onto his dashboard. Replaces the entire list — always pass all current items, not just new ones.",
+                    description: "Write or replace the project tracker on Sean's dashboard canvas. CALL IMMEDIATELY without asking when Sean shares his plate or a list of priorities — do not respond conversationally first. Replaces the entire list — always pass all current items.",
                     input_schema: {
                       type: "object",
                       required: ["items"],
                       properties: {
                         items: {
                           type: "array",
-                          description: "List of priority items to display on the dashboard. Max 5.",
+                          description: "List of priority items to display on the dashboard. Up to 15 items.",
                           items: {
                             type: "object",
                             required: ["title"],
                             properties: {
-                              title: { type: "string", description: "Short priority title, e.g. 'Reply to Marc Andreessen — investor follow-up'" },
-                              detail: { type: "string", description: "One-sentence detail or context, optional" },
-                              deadline: { type: "string", description: "Deadline date string, e.g. 'Today by 5pm' or '2026-07-01'" },
-                              sourceWorker: { type: "string", description: "Which worker surfaced this — e.g. 'investor-relations', 'hr', 'accounting'" },
+                              title: { type: "string", description: "Short priority title, e.g. 'Send Scott RSPA via DocuSign'" },
+                              detail: { type: "string", description: "One-sentence context, optional" },
+                              deadline: { type: "string", description: "Deadline string, e.g. 'Today' or 'By Thursday'" },
+                              sourceWorker: { type: "string", description: "Which worker owns this — e.g. 'investor-relations', 'accounting'" },
                               priority: { type: "string", enum: ["high", "medium", "low"], description: "Priority level" },
+                              horizon: { type: "string", enum: ["today", "this-week", "next-week", "waiting", "someday"], description: "Time horizon: today=must do today, this-week=due this week, next-week=Switzerland week, waiting=blocked on someone else, someday=backlog" },
+                              status: { type: "string", enum: ["pending", "in-progress", "blocked", "done"], description: "Current status" },
                             },
                           },
-                          maxItems: 5,
+                          maxItems: 15,
                         },
                       },
                     },
@@ -5650,6 +5722,30 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                       properties: {
                         path: { type: "string", description: "File path: gdrive://fileId, gs://bucket/path, or a filename to match (e.g. 'SOCIII-Shopify-Brief.md')" },
                       },
+                    },
+                  },
+                  {
+                    name: "read_inbox",
+                    description: "Fetch the user's live Gmail inbox. Call this whenever the user asks to check email, see what's new, asks what's pressing, or wants email triage. Returns the most recent inbox threads. Use in addition to the inbox snapshot injected at the top of your context — this gets a fresh pull.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        maxResults: { type: "number", description: "Number of threads to return (default 10, max 20)" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "search_inbox",
+                    description: "Search Gmail by keyword, sender, subject, or date range across ALL connected accounts. Use Gmail search syntax. Examples: 'subject:invoice after:2026/05/01', 'from:vendor@company.com has:attachment', 'receipt after:2026/06/01 before:2026/07/01'. Call this when the user wants to find specific emails — receipts, invoices, messages from a person, or anything by date range. Far more powerful than read_inbox for targeted lookups. ALWAYS prefer this over read_inbox when the user wants to find something specific.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        query: { type: "string", description: "Gmail search string. Supports: subject:, from:, to:, after:YYYY/MM/DD, before:YYYY/MM/DD, has:attachment, label:, is:unread. Example: 'subject:receipt after:2026/06/01'" },
+                        maxResults: { type: "number", description: "Max results per account (default 15, max 30)" },
+                        account: { type: "string", description: "Which accounts to search: 'all' (default, searches every connected Gmail), 'primary', or a specific account email" },
+                      },
+                      required: ["query"],
                     },
                   },
                   {
@@ -5688,6 +5784,7 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                 let _cosCampaignProposal = null;
                 let _cosCalendarProposal = null;
                 let _cosCreditWarning = null;
+                let _cosPrioritiesUpdated = false;
                 let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 while (_toolsToProcess.length > 0) {
                   const _toolResults = [];
@@ -5712,6 +5809,30 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         _toolResult = _notes.length
                           ? `Found ${_notes.length} note(s):\n\n${_notes.map(n => `## ${n.title}\n${n.content}`).join("\n\n---\n\n")}`
                           : "No notes found. Fresh session — no prior context saved.";
+                      } else if (_cosToolBlock.name === 'read_inbox') {
+                        try {
+                          const _gmailSvcRead = require("./services/social/gmail");
+                          const _inboxFresh = await _gmailSvcRead.listRecentSummaryAllAccounts(authUser.uid, { maxPerAccount: Math.min(_cosToolBlock.input.maxResults || 10, 20) });
+                          _toolResult = _inboxFresh || "Inbox appears empty or Gmail not connected.";
+                        } catch (_rie) {
+                          _toolResult = `Could not fetch inbox: ${_rie.message}`;
+                        }
+                      } else if (_cosToolBlock.name === 'search_inbox') {
+                        try {
+                          const _gmailSvcSearch = require("./services/social/gmail");
+                          const _searchQuery = _cosToolBlock.input.query || "";
+                          const _searchMax = Math.min(_cosToolBlock.input.maxResults || 15, 30);
+                          const _searchAcct = _cosToolBlock.input.account || "all";
+                          const _searchResults = await _gmailSvcSearch.searchEmailsAllAccounts(authUser.uid, _searchQuery, { maxResults: _searchMax, account: _searchAcct });
+                          if (!_searchResults || !_searchResults.length) {
+                            _toolResult = `No emails found matching "${_searchQuery}".`;
+                          } else {
+                            const _srLines = _searchResults.map(m => `[${m.account}] ${m.date}\nFrom: ${m.from}\nSubject: ${m.subject}\n${m.snippet}`);
+                            _toolResult = `Found ${_searchResults.length} email(s) matching "${_searchQuery}":\n\n${_srLines.join("\n\n---\n\n")}`;
+                          }
+                        } catch (_sie) {
+                          _toolResult = `Search failed: ${_sie.message}`;
+                        }
                       } else if (_cosToolBlock.name === 'save_note') {
                         const { title, content, tags } = _cosToolBlock.input;
                         await db.collection("alex_notes").add({ ownerUid: authUser.uid, tenantId: _cosTenantId || null, title, content, tags: tags || [], savedBy: "alex", createdAt: admin.firestore.FieldValue.serverTimestamp(), workerSlug: "chief-of-staff" });
@@ -5738,9 +5859,17 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         const { segment: _cSeg, q: _cQ, limit: _cLim } = _cosToolBlock.input;
                         try {
                           const _cLimit = Math.min(Number(_cLim) || 50, 200);
-                          let _cQuery = db.collection("contacts").where("tenantId", "==", _cosTenantId || reqTenantId).limit(5000);
-                          const _cSnap = await _cQuery.get();
+                          const _cTenantId = _cosTenantId || reqTenantId;
+                          let _cQuery = db.collection("contacts").where("tenantId", "==", _cTenantId).limit(5000);
+                          let _cSnap = await _cQuery.get();
+                          // Fall back to ownerUid if tenantId returned nothing —
+                          // contacts may live in a different workspace (codex 19 Phase 1.5 bridge).
+                          // ownerUid is backfilled on all contacts; source_member_uid was wrong uid.
+                          if (_cSnap.docs.length === 0 && authUser?.uid) {
+                            _cSnap = await db.collection("contacts").where("ownerUid", "==", authUser.uid).limit(5000).get().catch(() => ({ docs: [] }));
+                          }
                           let _cContacts = _cSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== "deleted");
+                          const _cTotalAll = _cContacts.length;
                           if (_cSeg) {
                             _cContacts = _cContacts.filter(c =>
                               (c.segments || []).includes(_cSeg) ||
@@ -5762,7 +5891,9 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                             company: c.company || "",
                             segments: c.segments || [],
                           }));
-                          _toolResult = `Found ${_cTotal} contact(s)${_cSeg ? ` in segment "${_cSeg}"` : ""}${_cQ ? ` matching "${_cQ}"` : ""}.\n\nSample (up to ${_cLimit}):\n${_cSample.map(c => `- ${c.name} <${c.email}>${c.company ? " @ " + c.company : ""}`).join("\n")}`;
+                          // Include total-before-segment-filter so tenantId mismatches are diagnosable
+                          const _cDiag = _cTotalAll === 0 ? ` [DIAGNOSTIC: 0 contacts total for tenantId="${_cTenantId}" — tenantId mismatch suspected]` : (_cTotal === 0 && _cSeg ? ` [DIAGNOSTIC: ${_cTotalAll} total contacts found but 0 matched segment "${_cSeg}" — check segment tag spelling]` : ` [${_cTotalAll} total in workspace]`);
+                          _toolResult = `Found ${_cTotal} contact(s)${_cSeg ? ` in segment "${_cSeg}"` : ""}${_cQ ? ` matching "${_cQ}"` : ""}${_cDiag}.\n\nSample (up to ${_cLimit}):\n${_cSample.map(c => `- ${c.name} <${c.email}>${c.company ? " @ " + c.company : ""}`).join("\n")}`;
                         } catch (_cErr) {
                           _toolResult = "query_contacts error: " + _cErr.message;
                         }
@@ -5771,7 +5902,10 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         try {
                           // Fetch contacts for the segment to get the real count + sample
                           let _camQuery = db.collection("contacts").where("tenantId", "==", _cosTenantId || reqTenantId).limit(5000);
-                          const _camSnap = await _camQuery.get();
+                          let _camSnap = await _camQuery.get();
+                          if (_camSnap.docs.length === 0 && authUser?.uid) {
+                            _camSnap = await db.collection("contacts").where("ownerUid", "==", authUser.uid).limit(5000).get().catch(() => ({ docs: [] }));
+                          }
                           let _camContacts = _camSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status !== "deleted" && c.email);
                           if (_camSeg) {
                             _camContacts = _camContacts.filter(c =>
@@ -5955,16 +6089,19 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                           if (!Array.isArray(_priItems) || _priItems.length === 0) throw new Error("items array required");
                           await db.collection("userPriorities").doc(authUser.uid).set({
                             uid: authUser.uid,
-                            items: _priItems.slice(0, 5).map((it, i) => ({
+                            items: _priItems.slice(0, 15).map((it, i) => ({
                               id: `p${Date.now()}_${i}`,
                               title: it.title || "Untitled",
                               detail: it.detail || null,
                               deadline: it.deadline || null,
                               sourceWorker: it.sourceWorker || null,
                               priority: it.priority || "medium",
+                              horizon: it.horizon || "this-week",
+                              status: it.status || "pending",
                             })),
                             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                           });
+                          _cosPrioritiesUpdated = true;
                           _toolResult = `Priorities saved — ${_priItems.length} item(s) are now on Sean's dashboard.`;
                         } catch (_priErr) {
                           _toolResult = "set_priorities error: " + _priErr.message;
@@ -6084,6 +6221,16 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                   _txt = _txt.replace(/\s*\[WHATSAPP_DRAFT\][\s\S]*?\[\/WHATSAPP_DRAFT\]\s*/g, '').trim();
                 }
 
+                // Canvas render markers — COS chat can also drive the right-panel canvas.
+                // (Worker-direct path does this at line 4051; COS was missing it.)
+                let _cosCanvasRenders = [];
+                try {
+                  const { extractCanvasRenders } = require("./services/alex/canvasMarkers");
+                  const _cosExtracted = extractCanvasRenders(_txt);
+                  _txt = _cosExtracted.cleanText;
+                  _cosCanvasRenders = _cosExtracted.canvasRenders || [];
+                } catch (_cre) { console.warn("[COS] canvas render extraction failed:", _cre.message); }
+
                 sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: "chief-of-staff" });
                 sessionState.salesHistory.push({ role: 'assistant', content: _txt, workerSlug: "chief-of-staff" });
                 if (sessionState.salesHistory.length > 30) sessionState.salesHistory = sessionState.salesHistory.slice(-30);
@@ -6105,6 +6252,8 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                   ...((_cosCampaignProposal) ? { emailCampaign: _cosCampaignProposal } : {}),
                   ...((_cosCalendarProposal) ? { calendarProposal: _cosCalendarProposal } : {}),
                   ...((_cosCreditWarning) ? { creditWarning: _cosCreditWarning } : {}),
+                  ...(_cosPrioritiesUpdated ? { prioritiesUpdated: true } : {}),
+                  ...(_cosCanvasRenders.length ? { canvasRenders: _cosCanvasRenders } : {}),
                 });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
@@ -19222,6 +19371,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             deadline: it.deadline || null,
             sourceWorker: it.sourceWorker || null,
             priority: it.priority || "medium",
+            horizon: it.horizon || "this-week",
+            status: it.status || "pending",
           })),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -19485,7 +19636,7 @@ Sean edited this email before sending. Study the diff: what did he cut, add, or 
     // User-scoped connectors (calendar, drive auth) are owned by the user, not
     // the workspace. Bypass the tenant gate — handlers authenticate via auth.user.uid.
     // 2026-05-13 — Google Calendar connector parity with Drive auth lifecycle.
-    const isUserScopedConnector = route && (route.startsWith("/calendar:") || route.startsWith("/drive:"));
+    const isUserScopedConnector = route && (route.startsWith("/calendar:") || route.startsWith("/drive:") || route.startsWith("/esign:"));
     const isPersonalVaultRoute = PERSONAL_VAULT_ROUTES.has(route) && method === "POST";
     if (!isPersonalVaultRoute && !isUserScopedConnector) {
       const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
@@ -27281,6 +27432,28 @@ Analyze now:`;
       return res.json({ ok: true, connected: hasX, handle: hasX ? "@SOCIIIai" : null, mode: "platform" });
     }
 
+    // X (Twitter) — per-user OAuth 2.0 + PKCE.
+    // Lets any SOCIII user connect their own X account.
+    // Tokens at users/{uid}/integrations/twitter.
+    // Requires X_OAUTH2_CLIENT_ID (+ optional X_OAUTH2_CLIENT_SECRET) in env.
+    if (route && route.startsWith("/x:user")) {
+      const xAction = route.replace("/x:user", "");
+      const xAuth = await requireFirebaseUser(req, res);
+      if (xAuth.handled) return;
+      const userId = xAuth.user.uid;
+      try {
+        const xu = require("./services/social/xUserAuth");
+        if (xAction === "AuthUrl" && method === "GET") return xu.handleXAuthUrl(req, res, { userId });
+        if (xAction === "ExchangeCode" && method === "POST") return xu.handleXExchangeCode(req, res, { userId });
+        if (xAction === "Status" && method === "GET") return xu.handleXStatus(req, res, { userId });
+        if (xAction === "Disconnect" && method === "POST") return xu.handleXDisconnect(req, res, { userId });
+        return jsonError(res, 404, "Unknown x:user action: " + xAction);
+      } catch (e) {
+        console.error("x:user action failed:", e);
+        return jsonError(res, 500, e.message || "X user action failed");
+      }
+    }
+
     // ----------------------------
     // GMAIL — connect + read + send. Same Google OAuth client as
     // Calendar/Drive/YouTube; tokens at users/{uid}/integrations/gmail.
@@ -27528,6 +27701,22 @@ Analyze now:`;
           const sendResult = await gmail.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
           return res.json(sendResult);
         }
+        case "listAccounts": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return gmail.handleGmailListAccounts(req, res, { userId: auth.user.uid });
+        }
+        case "addAccountUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return gmail.handleGmailAddAccountUrl(req, res, { userId: auth.user.uid });
+        }
+        case "addAccountExchange": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return gmail.handleGmailAddAccountExchange(req, res, { userId: auth.user.uid });
+        }
+        case "removeAccount": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return gmail.handleGmailRemoveAccount(req, res, { userId: auth.user.uid });
+        }
         default:
           return jsonError(res, 404, "Unknown gmail action: " + gmailAction);
         }
@@ -27663,6 +27852,58 @@ Analyze now:`;
         }
       } catch (e) {
         console.error("drive: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // GOOGLE ESIGNATURE
+    // ----------------------------
+    if (route && route.startsWith("/esign:")) {
+      const esignAction = route.replace("/esign:", "");
+      try {
+        const googleESign = require("./services/esign/googleESign");
+        switch (esignAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await googleESign.handleAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await googleESign.handleExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await googleESign.handleDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await googleESign.handleStatus(req, res, { userId: auth.user.uid });
+        }
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { title, signers, message, fileBase64, mimeType, metadata } = body || {};
+          if (!signers || !signers.length) return jsonError(res, 400, "signers required");
+          if (!fileBase64) return jsonError(res, 400, "fileBase64 required");
+          const fileBuffer = Buffer.from(fileBase64, "base64");
+          const result = await googleESign.sendForSignature(auth.user.uid, {
+            title, signers, message, fileBuffer,
+            mimeType: mimeType || "application/pdf",
+            tenantId: ctx.tenantId,
+            metadata: metadata || {},
+          });
+          return res.json(result);
+        }
+        case "requests": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const requests = await googleESign.listRequests(auth.user.uid, ctx.tenantId);
+          return res.json({ ok: true, requests });
+        }
+        default:
+          return jsonError(res, 404, "Unknown esign action: " + esignAction);
+        }
+      } catch (e) {
+        console.error("esign: failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
