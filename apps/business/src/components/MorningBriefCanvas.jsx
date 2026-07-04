@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, collection, doc, query, where, orderBy, limit, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -93,95 +94,105 @@ function savePrefs(p) {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
-const HORIZON_ORDER = ["today", "this-week", "next-week", "waiting", "someday"];
-const HORIZON_LABELS = {
-  "today": "Today",
-  "this-week": "This Week",
-  "next-week": "Next Week",
-  "waiting": "Waiting On",
-  "someday": "Backlog",
-};
-const STATUS_CONFIG = {
-  "done":        { color: "#16a34a", bg: "#dcfce7", label: "Done" },
-  "in-progress": { color: "#2563eb", bg: "#dbeafe", label: "In Progress" },
-  "blocked":     { color: "#dc2626", bg: "#fee2e2", label: "Blocked" },
-  "pending":     { color: "#94a3b8", bg: "#f1f5f9", label: "Pending" },
-};
-const PRIORITY_DOT = { high: "#dc2626", medium: "#7c3aed", low: "#94a3b8" };
+const THOUGHTS = [
+  // Ancient wisdom
+  { text: "You have power over your mind, not outside events. Realize this, and you will find strength.", attr: "Marcus Aurelius" },
+  { text: "It is not that I am so smart, it is just that I stay with problems longer.", attr: "Socrates" },
+  { text: "The unexamined life is not worth living.", attr: "Socrates" },
+  { text: "We suffer more in imagination than in reality.", attr: "Seneca" },
+  { text: "Waste no more time arguing about what a good man should be. Be one.", attr: "Marcus Aurelius" },
+  { text: "Make the best use of what is in your power, and take the rest as it happens.", attr: "Epictetus" },
+  { text: "Knowing others is intelligence; knowing yourself is true wisdom. Mastering others is strength; mastering yourself is true power.", attr: "Lao Tzu" },
+  { text: "The obstacle is the way.", attr: "Marcus Aurelius" },
+  { text: "He who learns but does not think is lost. He who thinks but does not learn is in great danger.", attr: "Confucius" },
+  { text: "The way out is through.", attr: "Seneca" },
+  { text: "First, say to yourself what you would be; then do what you have to do.", attr: "Epictetus" },
+  { text: "Do not go where the path may lead; go instead where there is no path and leave a trail.", attr: "Ralph Waldo Emerson" },
+  { text: "The present moment always will have been.", attr: "Marcus Aurelius" },
+  { text: "If you realize that all things change, there is nothing you will try to hold on to.", attr: "Lao Tzu" },
+  { text: "No man ever steps in the same river twice, for it's not the same river and he's not the same man.", attr: "Heraclitus" },
+  { text: "The mind is not a vessel to be filled, but a fire to be kindled.", attr: "Plutarch" },
+  { text: "He that can have patience can have what he will.", attr: "Benjamin Franklin" },
+  { text: "Almost everything will work again if you unplug it for a few minutes, including you.", attr: "Anne Lamott" },
+  // Modern / AI age
+  { text: "For the first time in history, we have created entities that can outperform us at cognitive tasks — yet meaning remains stubbornly human.", attr: null },
+  { text: "Algorithms can optimize for almost anything. They cannot tell you what is worth optimizing for.", attr: null },
+  { text: "When machines can do everything we can do, the only distinctly human act left is to choose what matters.", attr: null },
+  { text: "We are the first generation that must decide, consciously, what it means to be human.", attr: null },
+  { text: "AI can write a symphony. It takes a human to need one.", attr: null },
+  { text: "The ancient questions return with new urgency: What am I? What do I want? What should I do?", attr: null },
+  { text: "Technology amplifies what we already are. If we don't know what we are, that is terrifying.", attr: null },
+  { text: "The danger of AI is not that it will rebel. It is that we will outsource our judgment to it, and slowly forget how to judge.", attr: null },
+  { text: "Consciousness remains unexplained. That gap — between neurons and experience — is where humans still live, fully.", attr: null },
+  { text: "Community is not a product. You cannot download belonging.", attr: null },
+  { text: "In a world of infinite information, the rarest thing is a person who knows what they believe and why.", attr: null },
+  { text: "We built tools to extend our hands, engines to extend our muscles, computers to extend our memory. Now we build minds. What remains that is ours?", attr: null },
+  { text: "Meaning is not found in optimization. It emerges from commitment to something beyond yourself.", attr: null },
+  { text: "Perhaps the most human thing left is to sit with uncertainty and not reach for your phone.", attr: null },
+  { text: "To know what you love — and to choose it, daily, in the face of infinite distraction — may be the defining act of the coming century.", attr: null },
+];
 
-function ProjectTrackerGroups({ items }) {
-  const grouped = HORIZON_ORDER.reduce((acc, h) => {
-    const group = items.filter(n => (n.horizon || "this-week") === h);
-    if (group.length > 0) acc[h] = group;
-    return acc;
-  }, {});
+function getDailyThought() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  return THOUGHTS[dayOfYear % THOUGHTS.length];
+}
 
+
+const SEV_CONFIG = {
+  red:   { color: "#dc2626", bg: "#fee2e2", dot: "#dc2626", label: "Critical" },
+  amber: { color: "#d97706", bg: "#fef3c7", dot: "#f59e0b", label: "Heads up" },
+  green: { color: "#16a34a", bg: "#dcfce7", dot: "#16a34a", label: "FYI" },
+};
+
+const FEED_CAP = 12;
+
+function OperatingFeedItem({ item, onResolve, onSnooze }) {
+  const sc = SEV_CONFIG[item.severity] || SEV_CONFIG.amber;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {Object.entries(grouped).map(([horizon, group]) => (
-        <div key={horizon}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-              {HORIZON_LABELS[horizon]}
-            </div>
-            <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
-            <div style={{ fontSize: 10, color: "#94a3b8" }}>
-              {group.filter(n => n.status === "done").length}/{group.length}
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {group.map((n, i) => {
-              const sc = STATUS_CONFIG[n.status || "pending"] || STATUS_CONFIG.pending;
-              const dotColor = PRIORITY_DOT[n.priority || "medium"] || "#7c3aed";
-              const isDone = n.status === "done";
-              return (
-                <div key={n.id || i} style={{
-                  display: "flex", alignItems: "flex-start", gap: 10,
-                  padding: "9px 12px", background: isDone ? "#fafafa" : "#f8fafc",
-                  borderRadius: 8, border: `1px solid ${isDone ? "#f1f5f9" : "#e2e8f0"}`,
-                  opacity: isDone ? 0.55 : 1,
-                }}>
-                  <div style={{
-                    width: 7, height: 7, borderRadius: "50%", background: dotColor,
-                    marginTop: 5, flexShrink: 0,
-                  }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 13, fontWeight: 600, color: "#0f172a",
-                      textDecoration: isDone ? "line-through" : "none",
-                    }}>{n.title}</div>
-                    {n.detail && (
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{n.detail}</div>
-                    )}
-                    <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 600, color: sc.color,
-                        background: sc.bg, borderRadius: 4, padding: "1px 7px",
-                      }}>{sc.label}</span>
-                      {n.deadline && (
-                        <span style={{ fontSize: 10, color: "#dc2626", fontWeight: 600, background: "#fef2f2", borderRadius: 4, padding: "1px 6px" }}>
-                          {n.deadline}
-                        </span>
-                      )}
-                      {n.sourceWorker && (
-                        <span style={{ fontSize: 10, color: "#7c3aed", background: "#f5f3ff", borderRadius: 4, padding: "1px 6px" }}>
-                          {n.sourceWorker}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 10,
+      padding: "9px 12px", background: "#f8fafc",
+      borderRadius: 8, border: `1px solid ${item.severity === "red" ? "#fecaca" : "#e2e8f0"}`,
+    }}>
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: sc.dot, marginTop: 5, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{item.title}</div>
+        {item.body && (
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{item.body}</div>
+        )}
+        {item.action_hint && (
+          <div style={{ fontSize: 11, color: "#7c3aed", marginTop: 3 }}>{item.action_hint}</div>
+        )}
+        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: sc.color, background: sc.bg, borderRadius: 4, padding: "1px 7px" }}>
+            {sc.label}
+          </span>
+          {item.source_label && item.source_label !== "Alex" && (
+            <span style={{ fontSize: 10, color: "#7c3aed", background: "#f5f3ff", borderRadius: 4, padding: "1px 6px" }}>
+              {item.source_label}
+            </span>
+          )}
+          <button
+            onClick={() => onResolve(item.id)}
+            style={{ fontSize: 10, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: "1px 4px", fontWeight: 600 }}
+          >
+            Done
+          </button>
+          <button
+            onClick={() => onSnooze(item.id, 24)}
+            style={{ fontSize: 10, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: "1px 4px" }}
+          >
+            Tomorrow
+          </button>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
 
-export default function MorningBriefCanvas({ hasAviationWorker, notes, priorities: prioritiesProp }) {
+export default function MorningBriefCanvas({ hasAviationWorker }) {
   const auth = getAuth();
+  const db = getFirestore();
   const user = auth.currentUser;
 
   const [metars, setMetars]             = useState([]);
@@ -189,38 +200,93 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
   const [weatherLoading, setWL]         = useState(true);
   const [metarLoading, setML]           = useState(true);
   const [customizing, setCustomizing]   = useState(false);
-  const [fetchedPriorities, setFetchedPriorities] = useState([]);
+  const [alertItems, setAlertItems]     = useState([]);
+  const [feedOverflow, setFeedOverflow] = useState(0);
+  const [netWorth, setNetWorth]         = useState(null);
   const [prefs, setPrefs]               = useState(() => ({
     showWeather: true,
     showAviation: true,
     showPriorities: true,
+    showNetWorth: true,
+    showThought: true,
     city: null,
     ...loadPrefs(),
   }));
 
-  // Self-fetch priorities so this component works on any surface (Alex, Home, etc.)
+  // Real-time listener on alertFeed/{uid}/items — waits for auth to resolve
   useEffect(() => {
-    async function fetchPriorities() {
+    let snapUnsub = null;
+    const authUnsub = onAuthStateChanged(auth, (user) => {
+      if (snapUnsub) { snapUnsub(); snapUnsub = null; }
+      if (!user) return;
+      const q = query(
+        collection(db, "alertFeed", user.uid, "items"),
+        where("resolved", "==", false),
+        limit(50),
+      );
+      snapUnsub = onSnapshot(q, (snap) => {
+        const now = Date.now();
+        const all = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(it => !it.snoozeUntil || it.snoozeUntil.toMillis() <= now)
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        const reds = all.filter(it => it.severity === "red");
+        const rest = all.filter(it => it.severity !== "red");
+        const visible = [...reds, ...rest].slice(0, FEED_CAP);
+        setAlertItems(visible);
+        setFeedOverflow(Math.max(0, all.length - FEED_CAP));
+      }, (err) => console.error("alertFeed listener:", err));
+    });
+    return () => { if (snapUnsub) snapUnsub(); authUnsub(); };
+  }, [auth, db]);
+
+  const handleResolve = useCallback(async (alertId) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    try {
+      await updateDoc(doc(db, "alertFeed", currentUser.uid, "items", alertId), {
+        resolved: true, resolvedAt: serverTimestamp(),
+      });
+    } catch { /* ignore */ }
+  }, [auth, db]);
+
+  const handleSnooze = useCallback(async (alertId, hours) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    try {
+      const until = new Date(Date.now() + hours * 3600 * 1000);
+      // optimistic local filter — listener will catch up
+      setAlertItems(prev => prev.filter(it => it.id !== alertId));
+      await updateDoc(doc(db, "alertFeed", currentUser.uid, "items", alertId), {
+        snoozeUntil: { seconds: Math.floor(until.getTime() / 1000), nanoseconds: 0 },
+      });
+    } catch { /* ignore */ }
+  }, [auth, db]);
+
+  // Fetch Vault net worth (sum of DTC estimatedValue fields)
+  useEffect(() => {
+    if (!prefs.showNetWorth) return;
+    let cancelled = false;
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      unsubAuth();
+      if (!user || cancelled) return;
       try {
-        const currentUser = auth.currentUser;
-        if (!currentUser) return;
-        const token = await currentUser.getIdToken();
-        const r = await fetch(`${API_BASE}/api?path=/v1/priorities`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const token = await user.getIdToken();
+        const r = await fetch(`${API_BASE}/api?path=/v1/dtc:list`, {
+          headers: { Authorization: `Bearer ${token}`, "x-tenant-id": "vault" },
         });
         const d = await r.json();
-        if (d.ok && Array.isArray(d.items)) setFetchedPriorities(d.items);
-      } catch { /* priorities optional */ }
-    }
-    fetchPriorities();
-    const iv = setInterval(fetchPriorities, 30000);
-    // Re-fetch immediately when Alex writes new priorities
-    window.addEventListener("ta:priorities-updated", fetchPriorities);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener("ta:priorities-updated", fetchPriorities);
-    };
-  }, [auth]);
+        const items = d.dtcs || d.items || [];
+        function getVal(item) {
+          const m = item.metadata || {};
+          return Number(m.estimatedValue) || Number(m.value) || Number(m.marketValue) || Number(m.purchasePrice) || Number(item.value) || 0;
+        }
+        const total = items.reduce((s, a) => s + getVal(a), 0);
+        if (total > 0 && !cancelled) setNetWorth(total);
+      } catch (e) { console.warn("netWorth fetch:", e.message); }
+    });
+    return () => { cancelled = true; unsubAuth(); };
+  }, [auth, prefs.showNetWorth]);
 
   const updatePref = useCallback((key, val) => {
     setPrefs(prev => {
@@ -276,21 +342,12 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
     );
   }, [prefs.showWeather]);
 
-  // Structured priorities: prop (WorkerHome) > self-fetched > note-tagged fallback
-  const priorities = (Array.isArray(prioritiesProp) && prioritiesProp.length > 0)
-    ? prioritiesProp
-    : fetchedPriorities;
-  const structuredPriorities = Array.isArray(priorities) && priorities.length > 0 ? priorities : null;
-  const notePriorities = (notes || []).filter(n =>
-    n.tags?.some(t => ["today", "priority", "urgent", "from-code"].includes(t))
-  ).slice(0, 5).map(n => ({ id: n.id, title: n.title, detail: n.content?.slice(0, 120) || null }));
-  const todayPriorities = structuredPriorities || notePriorities;
-
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const _HONORIFICS = new Set(["Dr.", "Dr", "Mr.", "Mr", "Ms.", "Ms", "Mrs.", "Mrs", "Prof.", "Prof"]);
   const firstName = (user?.displayName || "").split(" ").find(p => !_HONORIFICS.has(p)) || "";
   const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const dailyThought = getDailyThought();
 
   return (
     <div style={{ padding: "28px 32px", maxWidth: 860, height: "100%", overflowY: "auto" }}>
@@ -325,7 +382,9 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
           {[
             { key: "showWeather",    label: "Local weather" },
             { key: "showAviation",   label: "Hawaii aviation METARs", hidden: !hasAviationWorker },
-            { key: "showPriorities", label: "Today's priorities" },
+            { key: "showNetWorth",   label: "Vault net worth" },
+            { key: "showThought",    label: "Daily thought" },
+            { key: "showPriorities", label: "Operating Feed" },
           ].filter(i => !i.hidden).map(item => (
             <label key={item.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155", cursor: "pointer" }}>
               <input
@@ -405,27 +464,85 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
         </div>
       )}
 
-      {/* Project Tracker */}
+      {/* Vault Net Worth */}
+      {prefs.showNetWorth && netWorth !== null && (
+        <div style={{
+          background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
+          padding: "16px 20px", display: "flex", alignItems: "center", gap: 20,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+              Vault — Net Worth
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em" }}>
+              ${netWorth >= 1_000_000
+                ? `${(netWorth / 1_000_000).toFixed(2)}M`
+                : netWorth >= 1_000
+                ? `${(netWorth / 1_000).toFixed(0)}K`
+                : netWorth.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Across all tracked assets</div>
+          </div>
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="10" fill="#f5f3ff"/>
+            <path d="M10 28l6-8 5 4 5-10 4 6" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      )}
+
+      {/* Daily Thought */}
+      {prefs.showThought && (
+        <div style={{
+          background: "#fafafa", border: "1px solid #f1f5f9", borderRadius: 12,
+          padding: "16px 20px",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+            Today
+          </div>
+          <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, fontStyle: "italic" }}>
+            &ldquo;{dailyThought.text}&rdquo;
+          </div>
+          {dailyThought.attr && (
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>
+              — {dailyThought.attr}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Operating Feed */}
       {prefs.showPriorities && (
         <div style={{
           background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
           padding: "16px 20px",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Operating Feed
-            </div>
-            {todayPriorities.length > 0 && (
-              <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                {todayPriorities.filter(n => n.status === "done").length}/{todayPriorities.length} done
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Operating Feed
               </div>
+              {alertItems.some(it => it.severity === "red") && (
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#dc2626" }} />
+              )}
+            </div>
+            {feedOverflow > 0 && (
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>{feedOverflow} more</div>
             )}
           </div>
-          {todayPriorities.length > 0 ? (
-            <ProjectTrackerGroups items={todayPriorities} />
+          {alertItems.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {alertItems.map(item => (
+                <OperatingFeedItem
+                  key={item.id}
+                  item={item}
+                  onResolve={handleResolve}
+                  onSnooze={handleSnooze}
+                />
+              ))}
+            </div>
           ) : (
             <div style={{ fontSize: 13, color: "#94a3b8" }}>
-              No priorities yet. Tell Alex what&apos;s on your plate — it will appear here.
+              Nothing on the feed right now. Ask Alex to surface priorities here.
             </div>
           )}
         </div>

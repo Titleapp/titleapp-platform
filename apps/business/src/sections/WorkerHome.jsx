@@ -69,45 +69,9 @@ export default function WorkerHome() {
   const [catalogMap, setCatalogMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [notes, setNotes] = useState([]);
-  const [priorities, setPriorities] = useState([]);
-
   useEffect(() => {
     loadWorkers();
-    loadNotes();
-    loadPriorities();
-    const notesInterval = setInterval(loadNotes, 60000);
-    const priInterval = setInterval(loadPriorities, 30000);
-    return () => { clearInterval(notesInterval); clearInterval(priInterval); };
   }, []);
-
-  async function loadNotes() {
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const r = await fetch(`${apiBase}/api?path=/v1/notes`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await r.json();
-      if (d.ok && Array.isArray(d.notes)) setNotes(d.notes);
-    } catch {
-      // notes are optional — brief still renders without them
-    }
-  }
-
-  async function loadPriorities() {
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const r = await fetch(`${apiBase}/api?path=/v1/priorities`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await r.json();
-      if (d.ok && Array.isArray(d.items)) setPriorities(d.items);
-    } catch {
-      // priorities are optional
-    }
-  }
 
   async function loadWorkers() {
     try {
@@ -225,7 +189,7 @@ export default function WorkerHome() {
   return (
     <div style={{ height: "100%", overflowY: "auto" }}>
       {/* Morning brief canvas — always shown at top */}
-      <MorningBriefCanvas hasAviationWorker={hasAviationWorker} notes={notes} priorities={priorities} />
+      <MorningBriefCanvas hasAviationWorker={hasAviationWorker} />
 
       {/* Workers section */}
       {workers.length > 0 && (

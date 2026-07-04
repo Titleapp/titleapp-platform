@@ -1603,10 +1603,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         calendarProposal: data.calendarProposal || null,
         creditWarning: data.creditWarning || null,
       }]);
-      if (data.prioritiesUpdated) {
-        window.dispatchEvent(new CustomEvent("ta:priorities-updated"));
-      }
-
       // Push structured output to the right-panel artifact view so the canvas
       // becomes a live artifact display instead of inert worker links.
       if (panel?.showArtifact) {

@@ -17,6 +17,8 @@ export const ASSET_CLASS_OF = {
   watch: "Personal Assets",
   jewelry: "Personal Assets",
   collectible: "Personal Assets",
+  personal_property: "Personal Assets",
+  equity: "Personal Assets",
   // Health ("my health" pillar) — medical records, same DTC + logbook substrate.
   medical_record: "Health",
   medical_certificate: "Health",

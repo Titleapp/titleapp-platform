@@ -202,6 +202,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Operating Feed — uid-scoped alerts pushed by Alex via Admin SDK
+    match /alertFeed/{uid}/{document=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

@@ -5555,7 +5555,9 @@ APOLLO PROSPECTING: You have access to Apollo.io (B2B contact database with 275M
 
 INVESTOR OUTREACH: For batch emails to many contacts, use propose_email_campaign (NOT propose_email). The user gets a single "Launch Campaign" card showing count + sample + attachments. After launch, use campaign_report to check open rates. For individual emails use propose_email. ALWAYS use query_contacts first to confirm segment size — key segments in this workspace: "investor" (matches 500+ investor-tagged contacts), "investor-candidate", "kent-investor-candidates". The SOCIII investor deck is publicly available as a PDF link — use this in email body instead of attaching a file (many corporate firewalls block attachments): https://storage.googleapis.com/title-app-alpha.firebasestorage.app/investorDocs/SOCIII-InvestorDeck-v4.pdf — include it as a hyperlink labeled "View Investor Deck (PDF)" or similar. ALWAYS CC kent@sociii.ai on investor campaigns (pass cc: "kent@sociii.ai" in propose_email_campaign). Use exclude_emails and exclude_names to skip specific people — standard excludes for investor campaigns: names ["Josh Lawler", "Mike Lee", "Chris Dunn"].
 
-DASHBOARD PRIORITIES: CALL set_priorities IMMEDIATELY — without asking — whenever Sean mentions 2+ actionable tasks, shares his plate for the week, says what's keeping him busy, describes deadlines, or asks what he should focus on. You do NOT need an explicit list — extract priorities from conversational context. Examples that MUST trigger set_priorities: "I need to finish the deck and call Kent", "I'm slammed this week with the RE closings", "what should I focus on today?", "I have the Reg CF filing due soon". Do not respond conversationally first; call the tool, THEN reply. Do not claim priorities are saved unless you actually called the tool. This replaces the entire list — always pass all items (up to 15). Each item: title (required), detail (optional one-liner), deadline (e.g. "Today by 5pm"), sourceWorker (e.g. "investor-relations"), priority ("high"/"medium"/"low"), horizon ("today"|"this-week"|"next-week"|"waiting"|"someday"), status ("pending"|"in-progress"|"blocked"|"done"). Use horizon to group: things due today → "today", things due this week → "this-week", things blocked on someone else → "waiting", Switzerland week → "next-week". Use proactively at morning brief time — if it's morning and this is the first message, call set_priorities with whatever you know from the workspace brief above.
+CAMPAIGN STATUS AWARENESS: Use get_campaigns to check what's in the queue whenever the user asks about campaigns, before proposing a new one (avoid duplicates), or when following up on Marketing. Status flow: proposed (waiting approval) → sending → sent. Use campaign_report with the proposalId from get_campaigns to get open rates on sent campaigns.
+
+OPERATING FEED: Use push_alert proactively — whenever Sean mentions something that needs attention, shares a deadline, flags an issue, or asks what he should focus on, push relevant alerts to the Operating Feed (the live priority panel on the right canvas). RED=urgent/blocking (use sparingly), AMBER=needs attention soon, GREEN=informational/FYI. Do NOT respond conversationally first — push the alert, THEN reply. Examples that should trigger push_alert: "I need to finish the deck and call Kent" (push amber alerts for each), "ATTOM is suspended" (push red alert), "Ruthie hasn't signed yet" (push amber). Each alert has a title (short headline), body (1-2 sentences why it matters), severity, source_label (e.g. "IR", "Marketing", "System"), and action_hint (what to say or do next). Use resolve_alert when an issue is addressed. Use snooze_alert when the user defers something.
 
 CALENDAR INVITES: Use propose_calendar_event when the user wants to schedule a meeting, send an investor a calendar invite, block time, or add any event to Google Calendar. ALWAYS call the tool — never fabricate a reason it can't work. Include summary, start (ISO 8601 with timezone offset, e.g. 2026-06-30T11:30:00-07:00), end (ISO 8601), and attendees (array of email strings). The user sees an approval card and confirms before the event is created.
 
@@ -5597,6 +5599,18 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                       properties: {
                         campaign_id: { type: "string", description: "The campaignId returned when the campaign was sent (e.g. camp_1234_abcd)" },
                         proposal_id: { type: "string", description: "The proposalId from when the campaign was proposed" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "get_campaigns",
+                    description: "List email campaigns — proposed (waiting for approval), currently sending, or recently sent. Call when the user asks 'what campaigns do I have?', 'is there anything in the queue?', 'show me recent campaigns', or when you want to check campaign status before suggesting next steps. Returns proposalId so you can reference it in campaign_report.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        status: { type: "string", enum: ["proposed", "sending", "sent", "all"], description: "Filter by status. Default: all recent." },
+                        limit: { type: "number", description: "Max campaigns to return (default 10)" },
                       },
                       required: [],
                     },
@@ -5665,34 +5679,6 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                           type: "array",
                           description: "Files to attach. Each item needs url and filename. gs:// = Studio Locker, gdrive:// = Drive, https:// = public URL.",
                           items: { type: "object", required: ["url", "filename"], properties: { url: { type: "string" }, filename: { type: "string" } } },
-                        },
-                      },
-                    },
-                  },
-                  {
-                    name: "set_priorities",
-                    description: "Write or replace the project tracker on Sean's dashboard canvas. CALL IMMEDIATELY without asking when Sean shares his plate or a list of priorities — do not respond conversationally first. Replaces the entire list — always pass all current items.",
-                    input_schema: {
-                      type: "object",
-                      required: ["items"],
-                      properties: {
-                        items: {
-                          type: "array",
-                          description: "List of priority items to display on the dashboard. Up to 15 items.",
-                          items: {
-                            type: "object",
-                            required: ["title"],
-                            properties: {
-                              title: { type: "string", description: "Short priority title, e.g. 'Send Scott RSPA via DocuSign'" },
-                              detail: { type: "string", description: "One-sentence context, optional" },
-                              deadline: { type: "string", description: "Deadline string, e.g. 'Today' or 'By Thursday'" },
-                              sourceWorker: { type: "string", description: "Which worker owns this — e.g. 'investor-relations', 'accounting'" },
-                              priority: { type: "string", enum: ["high", "medium", "low"], description: "Priority level" },
-                              horizon: { type: "string", enum: ["today", "this-week", "next-week", "waiting", "someday"], description: "Time horizon: today=must do today, this-week=due this week, next-week=Switzerland week, waiting=blocked on someone else, someday=backlog" },
-                              status: { type: "string", enum: ["pending", "in-progress", "blocked", "done"], description: "Current status" },
-                            },
-                          },
-                          maxItems: 15,
                         },
                       },
                     },
@@ -5768,6 +5754,44 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                       },
                     },
                   },
+                  {
+                    name: "push_alert",
+                    description: "Push a priority item to the user's Operating Feed — the live panel on the right side of the dashboard. Use proactively when you spot something needing attention: overdue tasks, upcoming deadlines, campaign results, system issues. RED=urgent/blocking, AMBER=needs attention, GREEN=informational. RED items always show even when the feed is at capacity.",
+                    input_schema: {
+                      type: "object",
+                      required: ["title", "severity"],
+                      properties: {
+                        title: { type: "string", description: "Short headline under 80 chars" },
+                        body: { type: "string", description: "1-2 sentence explanation of what's happening and why it matters" },
+                        severity: { type: "string", enum: ["red", "amber", "green"], description: "red=urgent/blocking, amber=needs attention, green=informational" },
+                        source_label: { type: "string", description: "Human-readable source, e.g. 'Investor Outreach', 'Accounting', 'HR', 'System'" },
+                        action_hint: { type: "string", description: "What the user should say or do to act on this item" },
+                      },
+                    },
+                  },
+                  {
+                    name: "resolve_alert",
+                    description: "Mark an Operating Feed alert as resolved — removes it from the feed. Use when an issue has been addressed or the user explicitly says it's done. Idempotent — safe to call even if already resolved.",
+                    input_schema: {
+                      type: "object",
+                      required: ["alert_id"],
+                      properties: {
+                        alert_id: { type: "string", description: "The alert ID (from push_alert confirmation or from context)" },
+                      },
+                    },
+                  },
+                  {
+                    name: "snooze_alert",
+                    description: "Snooze an Operating Feed alert for a period of time. Use when the user defers something — 'remind me tomorrow', 'check in 3 days', 'not until next week'.",
+                    input_schema: {
+                      type: "object",
+                      required: ["alert_id", "snooze_hours"],
+                      properties: {
+                        alert_id: { type: "string", description: "The alert ID to snooze" },
+                        snooze_hours: { type: "number", description: "Hours to snooze: 24=tomorrow, 72=3 days, 168=1 week" },
+                      },
+                    },
+                  },
                 ];
 
                 const anthropic = getAnthropic();
@@ -5784,7 +5808,6 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                 let _cosCampaignProposal = null;
                 let _cosCalendarProposal = null;
                 let _cosCreditWarning = null;
-                let _cosPrioritiesUpdated = false;
                 let _toolsToProcess = _resp.content.filter(b => b.type === 'tool_use');
                 while (_toolsToProcess.length > 0) {
                   const _toolResults = [];
@@ -5854,6 +5877,26 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                           }
                         } catch (_rErr) {
                           _toolResult = "campaign_report error: " + _rErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'get_campaigns') {
+                        try {
+                          const _gcStatus = _cosToolBlock.input.status || "all";
+                          const _gcLimit = Math.min(Number(_cosToolBlock.input.limit) || 10, 50);
+                          let _gcQuery = db.collection("emailCampaignProposals").where("ownerUid", "==", authUser.uid);
+                          if (_gcStatus !== "all") _gcQuery = _gcQuery.where("status", "==", _gcStatus);
+                          const _gcSnap = await _gcQuery.limit(_gcLimit).get();
+                          if (_gcSnap.empty) {
+                            _toolResult = `No campaigns found${_gcStatus !== "all" ? ` with status "${_gcStatus}"` : ""}.`;
+                          } else {
+                            const _gcItems = _gcSnap.docs.map(d => {
+                              const c = d.data();
+                              const ago = c.createdAt?.toDate ? Math.floor((Date.now() - c.createdAt.toDate().getTime()) / 86400000) : null;
+                              return `• [${c.status?.toUpperCase()}] "${c.subject}" → ${c.segment} (${c.contactCount || "?"} contacts)${ago != null ? ` · ${ago}d ago` : ""} · id=${d.id}`;
+                            }).join("\n");
+                            _toolResult = `Campaigns (${_gcSnap.size}):\n${_gcItems}`;
+                          }
+                        } catch (_gcErr) {
+                          _toolResult = "get_campaigns error: " + _gcErr.message;
                         }
                       } else if (_cosToolBlock.name === 'query_contacts') {
                         const { segment: _cSeg, q: _cQ, limit: _cLim } = _cosToolBlock.input;
@@ -6083,29 +6126,6 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                         };
                         console.log("[cosEmail:tool] propose_email called:", JSON.stringify(_cosEmailDraftFromTool).slice(0, 200));
                         _toolResult = "Email draft ready for user review. The approval card will appear in the chat.";
-                      } else if (_cosToolBlock.name === 'set_priorities') {
-                        const { items: _priItems } = _cosToolBlock.input;
-                        try {
-                          if (!Array.isArray(_priItems) || _priItems.length === 0) throw new Error("items array required");
-                          await db.collection("userPriorities").doc(authUser.uid).set({
-                            uid: authUser.uid,
-                            items: _priItems.slice(0, 15).map((it, i) => ({
-                              id: `p${Date.now()}_${i}`,
-                              title: it.title || "Untitled",
-                              detail: it.detail || null,
-                              deadline: it.deadline || null,
-                              sourceWorker: it.sourceWorker || null,
-                              priority: it.priority || "medium",
-                              horizon: it.horizon || "this-week",
-                              status: it.status || "pending",
-                            })),
-                            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                          });
-                          _cosPrioritiesUpdated = true;
-                          _toolResult = `Priorities saved — ${_priItems.length} item(s) are now on Sean's dashboard.`;
-                        } catch (_priErr) {
-                          _toolResult = "set_priorities error: " + _priErr.message;
-                        }
                       } else if (_cosToolBlock.name === 'apollo_search_prospects') {
                         try {
                           const apollo = require("./services/marketingService/apollo");
@@ -6159,6 +6179,42 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                           attendees: Array.isArray(_calAttendees) ? _calAttendees : [],
                         };
                         _toolResult = "Calendar event proposal ready. The approval card will appear in the chat — user must confirm before it is created.";
+                      } else if (_cosToolBlock.name === 'push_alert') {
+                        const { title: _alTitle, body: _alBody, severity: _alSev, source_label: _alSrc, action_hint: _alHint } = _cosToolBlock.input;
+                        const _alId = `al_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                        await db.collection("alertFeed").doc(authUser.uid).collection("items").doc(_alId).set({
+                          id: _alId,
+                          title: _alTitle,
+                          body: _alBody || null,
+                          severity: _alSev || "amber",
+                          source_label: _alSrc || "Alex",
+                          action_hint: _alHint || null,
+                          resolved: false,
+                          snoozeUntil: null,
+                          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        });
+                        _toolResult = `Alert pushed. id=${_alId} · severity=${_alSev || "amber"} · title="${_alTitle}"`;
+                      } else if (_cosToolBlock.name === 'resolve_alert') {
+                        const { alert_id: _raId } = _cosToolBlock.input;
+                        const _raRef = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(_raId);
+                        const _raSnap = await _raRef.get();
+                        if (!_raSnap.exists) {
+                          _toolResult = `Alert ${_raId} not found.`;
+                        } else {
+                          await _raRef.update({ resolved: true, resolvedAt: admin.firestore.FieldValue.serverTimestamp() });
+                          _toolResult = `Alert ${_raId} resolved.`;
+                        }
+                      } else if (_cosToolBlock.name === 'snooze_alert') {
+                        const { alert_id: _snId, snooze_hours: _snHours } = _cosToolBlock.input;
+                        const _snRef = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(_snId);
+                        const _snSnap = await _snRef.get();
+                        if (!_snSnap.exists) {
+                          _toolResult = `Alert ${_snId} not found.`;
+                        } else {
+                          const _snUntil = new Date(Date.now() + (_snHours || 24) * 3600 * 1000);
+                          await _snRef.update({ snoozeUntil: admin.firestore.Timestamp.fromDate(_snUntil) });
+                          _toolResult = `Alert ${_snId} snoozed for ${_snHours || 24}h (until ${_snUntil.toISOString()}).`;
+                        }
                       }
                     } catch (_te) { _toolResult = "Tool error: " + _te.message; }
                     _toolResults.push({ type: "tool_result", tool_use_id: _cosToolBlock.id, content: _toolResult });
@@ -6252,7 +6308,6 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                   ...((_cosCampaignProposal) ? { emailCampaign: _cosCampaignProposal } : {}),
                   ...((_cosCalendarProposal) ? { calendarProposal: _cosCalendarProposal } : {}),
                   ...((_cosCreditWarning) ? { creditWarning: _cosCreditWarning } : {}),
-                  ...(_cosPrioritiesUpdated ? { prioritiesUpdated: true } : {}),
                   ...(_cosCanvasRenders.length ? { canvasRenders: _cosCanvasRenders } : {}),
                 });
               } catch (cosErr) {
@@ -19355,45 +19410,86 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
-    // POST /v1/priorities:set — Alex writes structured priorities to the dashboard (replaces current list)
-    if (route === "/priorities:set" && method === "POST") {
+    // GET /v1/alertFeed — Returns the user's Operating Feed items
+    if (route === "/alertFeed" && method === "GET") {
       const user = await requireFirebaseUser(req, res);
       if (!user) return;
       try {
-        const { items } = body;
-        if (!Array.isArray(items)) return jsonError(res, 400, "items array required");
-        await db.collection("userPriorities").doc(user.uid).set({
-          uid: user.uid,
-          items: items.map((it, i) => ({
-            id: `p${Date.now()}_${i}`,
-            title: it.title || "Untitled",
-            detail: it.detail || null,
-            deadline: it.deadline || null,
-            sourceWorker: it.sourceWorker || null,
-            priority: it.priority || "medium",
-            horizon: it.horizon || "this-week",
-            status: it.status || "pending",
-          })),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        return json(res, { ok: true, count: items.length });
+        const snap = await db.collection("alertFeed").doc(user.uid).collection("items")
+          .where("resolved", "==", false)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        const now = Date.now();
+        const items = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(it => !it.snoozeUntil || it.snoozeUntil.toMillis() <= now);
+        return json(res, { ok: true, items });
       } catch (e) {
-        console.error("/priorities:set failed:", e);
-        return jsonError(res, 500, "Failed to set priorities");
+        console.error("/alertFeed failed:", e);
+        return jsonError(res, 500, "Failed to load alertFeed");
       }
     }
 
-    // GET /v1/priorities — Returns structured priorities from the dashboard feed
-    if (route === "/priorities" && method === "GET") {
+    // POST /v1/alertFeed:push — Push a priority alert to the Operating Feed
+    if (route === "/alertFeed:push" && method === "POST") {
       const user = await requireFirebaseUser(req, res);
       if (!user) return;
       try {
-        const snap = await db.collection("userPriorities").doc(user.uid).get();
-        const items = snap.exists ? (snap.data().items || []) : [];
-        return json(res, { ok: true, items });
+        const { title, body: alertBody, severity, source_label, action_hint } = body;
+        if (!title) return jsonError(res, 400, "title required");
+        const id = `al_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await db.collection("alertFeed").doc(user.uid).collection("items").doc(id).set({
+          id, title,
+          body: alertBody || null,
+          severity: severity || "amber",
+          source_label: source_label || "System",
+          action_hint: action_hint || null,
+          resolved: false,
+          snoozeUntil: null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return json(res, { ok: true, id });
       } catch (e) {
-        console.error("/priorities failed:", e);
-        return jsonError(res, 500, "Failed to load priorities");
+        console.error("/alertFeed:push failed:", e);
+        return jsonError(res, 500, "Failed to push alert");
+      }
+    }
+
+    // POST /v1/alertFeed:resolve — Resolve an Operating Feed alert
+    if (route === "/alertFeed:resolve" && method === "POST") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const { alert_id } = body;
+        if (!alert_id) return jsonError(res, 400, "alert_id required");
+        const ref = db.collection("alertFeed").doc(user.uid).collection("items").doc(alert_id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Alert not found");
+        await ref.update({ resolved: true, resolvedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return json(res, { ok: true });
+      } catch (e) {
+        console.error("/alertFeed:resolve failed:", e);
+        return jsonError(res, 500, "Failed to resolve alert");
+      }
+    }
+
+    // POST /v1/alertFeed:snooze — Snooze an Operating Feed alert
+    if (route === "/alertFeed:snooze" && method === "POST") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const { alert_id, snooze_hours } = body;
+        if (!alert_id) return jsonError(res, 400, "alert_id required");
+        const ref = db.collection("alertFeed").doc(user.uid).collection("items").doc(alert_id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Alert not found");
+        const until = new Date(Date.now() + (snooze_hours || 24) * 3600 * 1000);
+        await ref.update({ snoozeUntil: admin.firestore.Timestamp.fromDate(until) });
+        return json(res, { ok: true, snoozeUntil: until.toISOString() });
+      } catch (e) {
+        console.error("/alertFeed:snooze failed:", e);
+        return jsonError(res, 500, "Failed to snooze alert");
       }
     }
 
@@ -29636,5 +29732,110 @@ exports.scheduledSocialPostProcessor = onSchedule(
     }
 
     console.log(`[scheduledSocialPostProcessor] done: posted=${posted} failed=${failed}`);
+  }
+);
+
+// ----------------------------
+// CODEX 18 — OPERATING FEED MORNING SCANNER (7am HST daily)
+// Scans workspace state for each admin user and pushes alerts to
+// alertFeed/{uid}/items. Uses ikey as doc ID for natural dedup —
+// if an unresolved alert with that ikey already exists, skip it.
+// If it was resolved (Done), overwrite with a fresh alert next morning.
+// ----------------------------
+async function _scanPushAlert(uid, { ikey, title, body, severity, source_label, action_hint }) {
+  const ref = db.collection("alertFeed").doc(uid).collection("items").doc(ikey);
+  const snap = await ref.get();
+  if (snap.exists && snap.data().resolved === false) return; // already active, skip
+  await ref.set({
+    id: ikey, ikey, title,
+    body: body || null,
+    severity: severity || "amber",
+    source_label: source_label || "Morning Scanner",
+    action_hint: action_hint || null,
+    resolved: false,
+    snoozeUntil: null,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+exports.morningScanner = onSchedule(
+  {
+    schedule: "0 7 * * *",
+    timeZone: "Pacific/Honolulu",
+    region: "us-central1",
+    timeoutSeconds: 120,
+    memory: "256MiB",
+  },
+  async () => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 3600 * 1000);
+    const twoDaysAgo = new Date(now.getTime() - 48 * 3600 * 1000);
+
+    // Find all admin-role memberships
+    const membSnap = await db.collection("memberships").where("role", "==", "admin").get();
+    const seen = new Set(); // deduplicate uid × tenantId pairs
+
+    for (const mDoc of membSnap.docs) {
+      const { userId, tenantId } = mDoc.data();
+      if (!userId || !tenantId) continue;
+      const pairKey = `${userId}::${tenantId}`;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+
+      // 1. Pending eSignature requests older than 24h
+      const sigSnap = await db.collection("digitalSignatureRequests")
+        .where("tenantId", "==", tenantId).get();
+      for (const s of sigSnap.docs) {
+        const d = s.data();
+        if (d.status !== "pending") continue;
+        const created = d.createdAt?.toDate?.() || now;
+        if (created > oneDayAgo) continue; // too new
+        const daysPending = Math.floor((now - created) / 86400000);
+        await _scanPushAlert(userId, {
+          ikey: `esign_pending_${s.id}`,
+          title: `eSignature pending: ${d.title || d.subject || "Document"}`,
+          body: `Sent ${daysPending} day${daysPending !== 1 ? "s" : ""} ago. No signed copy received yet.`,
+          severity: daysPending > 7 ? "red" : "amber",
+          source_label: "eSign",
+          action_hint: 'Say "check eSignatures" to Alex for status update',
+        });
+      }
+
+      // 2. Proposed email campaigns waiting for approval
+      const propSnap = await db.collection("emailCampaignProposals")
+        .where("tenantId", "==", tenantId).where("status", "==", "proposed").get();
+      for (const p of propSnap.docs) {
+        const d = p.data();
+        const created = d.createdAt?.toDate?.() || now;
+        const daysPending = Math.floor((now - created) / 86400000);
+        await _scanPushAlert(userId, {
+          ikey: `campaign_pending_${p.id}`,
+          title: `Campaign approval pending: "${d.subject || d.title || "Email campaign"}"`,
+          body: `Waiting for your approval${daysPending > 0 ? ` (${daysPending}d ago)` : ""}. Review and send when ready.`,
+          severity: "amber",
+          source_label: "Marketing",
+          action_hint: 'Open Marketing worker to review this campaign',
+        });
+      }
+
+      // 3. raasPackages stalled in "running" state for >48h
+      const pkgSnap = await db.collection("raasPackages")
+        .where("tenantId", "==", tenantId).where("status", "==", "running").get();
+      for (const pkg of pkgSnap.docs) {
+        const d = pkg.data();
+        const updated = d.updatedAt?.toDate?.() || d.createdAt?.toDate?.() || now;
+        if (updated > twoDaysAgo) continue;
+        await _scanPushAlert(userId, {
+          ikey: `raas_stalled_${pkg.id}`,
+          title: `Worker package stalled: ${d.catalogId || pkg.id}`,
+          body: `Has been running for >48h without completing. May need attention.`,
+          severity: "amber",
+          source_label: "System",
+          action_hint: 'Say "check worker status" to Alex',
+        });
+      }
+    }
+
+    console.log("[morningScanner] scan complete");
   }
 );

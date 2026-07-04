@@ -363,7 +363,7 @@ function dtcValue(dtc) {
   let v = null;
   if (typeof m.valueUsd === "number") v = m.valueUsd;
   else {
-    const raw = m.balance ?? m.estValue ?? m.value ?? m.marketValue;
+    const raw = m.estimatedValue ?? m.balance ?? m.estValue ?? m.value ?? m.marketValue ?? m.purchasePrice;
     if (raw != null) { const n = parseFloat(String(raw).replace(/[^0-9.]/g, "")); if (!isNaN(n)) v = n; }
   }
   if (v == null) return null;
