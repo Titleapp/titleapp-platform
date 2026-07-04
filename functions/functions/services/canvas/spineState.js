@@ -127,7 +127,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
 
       // Investor email outreach — owner-scoped, NOT tenant-scoped. Without these,
       // Alex reports "no campaigns" while 3 batches of 25 emails have been sent.
-      uid ? safe(db.collection("emailCampaignProposals").where("ownerUid", "==", uid).orderBy("createdAt", "desc").limit(50).get()) : Promise.resolve(empty),
+      uid ? safe(db.collection("emailCampaignProposals").where("ownerUid", "==", uid).limit(50).get()) : Promise.resolve(empty),
       uid ? safe(db.collection("emailCampaignSends").where("ownerUid", "==", uid).limit(500).get()) : Promise.resolve(empty),
     ]);
 
@@ -256,7 +256,8 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     // Investor outreach — emailCampaignProposals/Sends are owner-scoped (ownerUid),
     // not tenant-scoped, so they weren't in `campaigns`. Without this, Alex would
     // report "no campaigns" while batches had already been sent (Sean, 2026-07-03).
-    const emailProposals = emailProposalsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const emailProposals = emailProposalsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?._seconds || 0) - (a.createdAt?._seconds || 0));
     const emailSends = emailSendsSnap.docs.map(d => d.data());
     const sentBatches = emailProposals.filter(p => p.status === "sent" || p.status === "completed").length;
     const sentIndividual = emailSends.length;
