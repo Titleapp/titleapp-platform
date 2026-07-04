@@ -263,7 +263,8 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     const sentIndividual = emailSends.length;
     const pendingBatches = emailProposals.filter(p => p.status === "proposed" || p.status === "sending").length;
     const topEmailBatches = emailProposals.slice(0, 5).map(p =>
-      `${p.segment || "All"} → ${p.contactCount || "?"} contacts${p.status === "sent" ? " ✓ sent" : p.status === "sending" ? " (sending)" : " (proposed)"}`);
+      `[id:${p.id}] ${p.segment || "All"} → ${p.contactCount || "?"} contacts · ${p.status === "sent" ? "✓ sent" : p.status === "sending" ? "sending" : "pending"}`
+      + (p.subject ? ` · subj: ${p.subject.slice(0, 40)}` : ""));
 
     const hasAnyMarketing = drafts.length || socialPosts.length || campaigns.length || queued || lists || emailProposals.length;
     const topCampaigns = campaigns

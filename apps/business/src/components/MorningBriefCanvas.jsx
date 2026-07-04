@@ -93,6 +93,93 @@ function savePrefs(p) {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
+const HORIZON_ORDER = ["today", "this-week", "next-week", "waiting", "someday"];
+const HORIZON_LABELS = {
+  "today": "Today",
+  "this-week": "This Week",
+  "next-week": "Next Week",
+  "waiting": "Waiting On",
+  "someday": "Backlog",
+};
+const STATUS_CONFIG = {
+  "done":        { color: "#16a34a", bg: "#dcfce7", label: "Done" },
+  "in-progress": { color: "#2563eb", bg: "#dbeafe", label: "In Progress" },
+  "blocked":     { color: "#dc2626", bg: "#fee2e2", label: "Blocked" },
+  "pending":     { color: "#94a3b8", bg: "#f1f5f9", label: "Pending" },
+};
+const PRIORITY_DOT = { high: "#dc2626", medium: "#7c3aed", low: "#94a3b8" };
+
+function ProjectTrackerGroups({ items }) {
+  const grouped = HORIZON_ORDER.reduce((acc, h) => {
+    const group = items.filter(n => (n.horizon || "this-week") === h);
+    if (group.length > 0) acc[h] = group;
+    return acc;
+  }, {});
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {Object.entries(grouped).map(([horizon, group]) => (
+        <div key={horizon}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              {HORIZON_LABELS[horizon]}
+            </div>
+            <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
+            <div style={{ fontSize: 10, color: "#94a3b8" }}>
+              {group.filter(n => n.status === "done").length}/{group.length}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {group.map((n, i) => {
+              const sc = STATUS_CONFIG[n.status || "pending"] || STATUS_CONFIG.pending;
+              const dotColor = PRIORITY_DOT[n.priority || "medium"] || "#7c3aed";
+              const isDone = n.status === "done";
+              return (
+                <div key={n.id || i} style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  padding: "9px 12px", background: isDone ? "#fafafa" : "#f8fafc",
+                  borderRadius: 8, border: `1px solid ${isDone ? "#f1f5f9" : "#e2e8f0"}`,
+                  opacity: isDone ? 0.55 : 1,
+                }}>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: "50%", background: dotColor,
+                    marginTop: 5, flexShrink: 0,
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 600, color: "#0f172a",
+                      textDecoration: isDone ? "line-through" : "none",
+                    }}>{n.title}</div>
+                    {n.detail && (
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{n.detail}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, color: sc.color,
+                        background: sc.bg, borderRadius: 4, padding: "1px 7px",
+                      }}>{sc.label}</span>
+                      {n.deadline && (
+                        <span style={{ fontSize: 10, color: "#dc2626", fontWeight: 600, background: "#fef2f2", borderRadius: 4, padding: "1px 6px" }}>
+                          {n.deadline}
+                        </span>
+                      )}
+                      {n.sourceWorker && (
+                        <span style={{ fontSize: 10, color: "#7c3aed", background: "#f5f3ff", borderRadius: 4, padding: "1px 6px" }}>
+                          {n.sourceWorker}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MorningBriefCanvas({ hasAviationWorker, notes, priorities: prioritiesProp }) {
   const auth = getAuth();
   const user = auth.currentUser;
@@ -115,8 +202,9 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
   useEffect(() => {
     async function fetchPriorities() {
       try {
-        const token = localStorage.getItem("ID_TOKEN");
-        if (!token) return;
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken();
         const r = await fetch(`${API_BASE}/api?path=/v1/priorities`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -126,8 +214,13 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
     }
     fetchPriorities();
     const iv = setInterval(fetchPriorities, 30000);
-    return () => clearInterval(iv);
-  }, []);
+    // Re-fetch immediately when Alex writes new priorities
+    window.addEventListener("ta:priorities-updated", fetchPriorities);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("ta:priorities-updated", fetchPriorities);
+    };
+  }, [auth]);
 
   const updatePref = useCallback((key, val) => {
     setPrefs(prev => {
@@ -312,41 +405,24 @@ export default function MorningBriefCanvas({ hasAviationWorker, notes, prioritie
         </div>
       )}
 
-      {/* Today's priorities */}
+      {/* Project Tracker */}
       {prefs.showPriorities && (
         <div style={{
           background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
           padding: "16px 20px",
         }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
-            Today&apos;s Priorities
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Operating Feed
+            </div>
+            {todayPriorities.length > 0 && (
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                {todayPriorities.filter(n => n.status === "done").length}/{todayPriorities.length} done
+              </div>
+            )}
           </div>
           {todayPriorities.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {todayPriorities.map((n, i) => {
-                const dotColor = n.priority === "high" ? "#dc2626" : n.priority === "low" ? "#94a3b8" : "#7c3aed";
-                return (
-                  <div key={n.id || i} style={{
-                    display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0",
-                  }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 5, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{n.title}</div>
-                      {n.detail && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{n.detail}</div>}
-                      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                        {n.deadline && (
-                          <span style={{ fontSize: 10, color: "#dc2626", fontWeight: 600, background: "#fef2f2", borderRadius: 4, padding: "1px 6px" }}>{n.deadline}</span>
-                        )}
-                        {n.sourceWorker && (
-                          <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 500, background: "#f5f3ff", borderRadius: 4, padding: "1px 6px" }}>{n.sourceWorker}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ProjectTrackerGroups items={todayPriorities} />
           ) : (
             <div style={{ fontSize: 13, color: "#94a3b8" }}>
               No priorities yet. Tell Alex what&apos;s on your plate — it will appear here.
