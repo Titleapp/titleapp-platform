@@ -1,8 +1,46 @@
 # CODEX Surface 18 — Alex Operating Feed (living attention layer)
 
-**Status:** 🔴 build now · **Owner:** Sean · **Created:** 2026-07-03 · **Red-teamed:** 2026-07-03 (CODE + Claude.ai)
+**Status:** 🟡 Phase 1 shipped · **Owner:** Sean · **Created:** 2026-07-03 · **Red-teamed:** 2026-07-03 (CODE + Claude.ai) · **Phase 1 shipped:** 2026-07-04
 **Replaces:** static `userPriorities/{uid}` project tracker
 **Bar:** Alex surfaces what needs attention without being asked. Sean glances at the right panel, sees the real state of the business, knows what to act on today. No list management required.
+
+---
+
+## Phase 1 ship log (2026-07-04)
+
+**What actually shipped vs the spec:**
+
+### ✅ Shipped
+- **F5 (Alex tools):** `push_alert`, `resolve_alert`, `snooze_alert` — wired in COS loop with Firestore writes to `alertFeed/{uid}/items`. `set_priorities` fully retired (prompt + handlers + routes).
+- **F8 (REST endpoints):** `GET /v1/alertFeed`, `POST /v1/alertFeed:push`, `POST /v1/alertFeed:resolve`, `POST /v1/alertFeed:snooze`
+- **F1 (partial) — Firestore rules + index:** `alertFeed/{uid}/{document=**}` uid-scoped read rule added to `firestore.rules`. Composite index on `{resolved ASC, createdAt DESC}` deployed.
+- **Morning scanner (F2 partial):** `exports.morningScanner` — `onSchedule` at 7am HST / `Pacific/Honolulu`. Scans: eSign packages stalled >72h, marketing campaigns stuck in `proposed`, tenant admin workspace. Uses ikey dedup (doc ID = ikey, skips if active item exists).
+- **`get_campaigns` cross-worker tool:** Alex can list marketing campaigns from any context before proposing a new one. Campaign status lifecycle documented in prompt: `proposed → sending → sent`.
+- **Feed UI (F6 partial):** Real-time `onSnapshot` listener in `MorningBriefCanvas.jsx` using `onAuthStateChanged` (not `currentUser` — auth timing fix). RED items bubble to top, severity sort client-side, FEED_CAP with overflow count badge.
+- **Vault net worth in MorningBrief:** `onAuthStateChanged`-gated fetch, reads `metadata.estimatedValue` (field chain fix). Shows $16,154,000 for Sean's seeded assets.
+- **QA-001 expanded:** `dead-code.js`, `tool-inventory.js`, `feature-smoke.js`, `alex-awareness.js` — all pass clean. QA caught the set_priorities prompt bug during this session.
+
+### ⚠️ Partial / diverged from spec
+- **F1 index scope:** Spec called for `uid+tenantId+severity+status+updatedAt` composite index. Shipped: `resolved+createdAt`. Sufficient for Phase 1 query (`where resolved==false + limit 50`), not the full sort spec.
+- **F6 UI groups:** Spec: RED / Today / This Week / Waiting on Others / Snoozed / Resolved sections. Shipped: flat list sorted red-first, no grouping by horizon. Horizon field not written by morning scanner (uses `resolved` bool only).
+- **Morning scanner coverage:** Spec: email scan + all worker collections + calendar. Shipped: eSign stalled packages + campaign status only. No email scan, no Accounting/Contacts/IR/Patents/RE queries yet.
+
+### ❌ Not yet built (Phase 1 spec, still open)
+- **F2 email scan** — 3-inbox Gmail search for signatures/payments/unread >2d
+- **F3** — `cosWorkerMorningRun` / `cosWorkerEveningRun` wired to alertFeedRefresh; scan exceptions → RED system_health item
+- **F4** — Gmail OAuth health check every 60 min; worker function smoke test every 60 min
+- **F6 full UI** — horizon groups, offline "Last updated X ago" banner, Snooze time options (1hr / Tomorrow 7am HST / Next Monday)
+- **F7** — eSign + Stripe webhook auto-resolve with recovery timestamp
+- **F9** — userPriorities collection cleanup (30-day grace window, then delete)
+- **Evening scan** — 7pm HST email-only check on `waiting_external` items
+
+### Root causes fixed (bugs caught during build)
+1. **Firestore rules gap** — `alertFeed` hit catch-all DENY; error swallowed by `() => {}` handler. Fixed: explicit uid-scoped rule added.
+2. **Auth timing** — `auth.currentUser` is null at React mount; `if (!currentUser) return` bailed before listener started. Fixed: `onAuthStateChanged` pattern for both alertFeed listener and net worth fetch.
+3. **Vault $0** — `dtcValue()` didn't read `metadata.estimatedValue`. Fixed: added first in nullish-coalescing chain.
+4. **Type mapping** — `personal_property` and `equity` not in `ASSET_CLASS_OF`. Fixed: both mapped to "Personal Assets".
+5. **Morning scanner wrong status** — queried `status == "pending"` but campaign status after Alex proposes is `"proposed"`. Fixed.
+6. **set_priorities in Alex prompt** — tool removed but DASHBOARD PRIORITIES block still said `CALL set_priorities IMMEDIATELY`. QA-001 dead-code check caught it. Fixed: replaced with OPERATING FEED / push_alert instruction block.
 
 ---
 
@@ -197,14 +235,14 @@ The existing `set_priorities` tool is retired after Phase 1 ships.
 
 ## Build tasks (Phase 1)
 
-- [ ] **F1** — Firestore security rules for `alertFeed` + indexes (uid+tenantId+severity+status+updatedAt)
-- [ ] **F2** — `alertFeedRefresh` Cloud Function: email scan + worker data scan + dedup + system health
+- [x] **F1** *(partial)* — Firestore security rules for `alertFeed` ✅ + index `{resolved, createdAt}` ✅. Full composite index spec (uid+tenantId+severity+status+updatedAt) not yet deployed.
+- [ ] **F2** — `alertFeedRefresh` Cloud Function: email scan + worker data scan + dedup + system health. *Morning scanner skeleton shipped; email + worker collection queries not yet built.*
 - [ ] **F3** — Wire `cosWorkerMorningRun` + `cosWorkerEveningRun` to call `alertFeedRefresh`; scan exceptions write RED system_health item to feed
 - [ ] **F4** — Health check schedule: Gmail OAuth check every 60 min; worker function smoke test every 60 min; failures write RED immediately
-- [ ] **F5** — Alex tools: `push_alert`, `resolve_alert` (idempotent), `snooze_alert` (Hawaii time) — retire `set_priorities`
-- [ ] **F6** — Feed UI: severity groups, cap-with-count, offline banner, `actionHint` line on cards, Hawaii time throughout
+- [x] **F5** — Alex tools: `push_alert`, `resolve_alert` (idempotent), `snooze_alert` (Hawaii time) — `set_priorities` fully retired ✅
+- [ ] **F6** *(partial)* — Feed UI: basic listener + red-first sort ✅. Groups (RED/Today/Week/Waiting/Snoozed), offline banner, snooze time options not yet built.
 - [ ] **F7** — eSign + Stripe webhook handlers: idempotent auto-resolve with recovery timestamp
-- [ ] **F8** — REST endpoints: `POST /v1/alert:push`, `POST /v1/alert:resolve`, `POST /v1/alert:snooze`, `GET /v1/alert:list`
+- [x] **F8** — REST endpoints: `GET /v1/alertFeed`, `POST /v1/alertFeed:push`, `POST /v1/alertFeed:resolve`, `POST /v1/alertFeed:snooze` ✅
 - [ ] **F9** — Retire `userPriorities/{uid}` from UI (keep Firestore doc 30 days, then delete)
 
 ## Phase 2
@@ -270,15 +308,16 @@ If 15 things are urgent, 3 silently don't appear. Sean thinks he's seeing everyt
 
 ## Sign-off gate (Phase 1 ships when all pass)
 
-- [ ] Feed shows 3+ real items from morning scan without Sean prompting
-- [ ] `push_alert` from Alex chat appears in feed within 2 seconds
-- [ ] Resolve and Snooze buttons work; resolved item exits active list immediately
+- [x] Feed shows items pushed by Alex chat (`push_alert`) within 2 seconds ✅ (confirmed 2026-07-04)
+- [x] Resolve and Snooze buttons work; resolved item exits active list immediately ✅ (confirmed 2026-07-04)
+- [x] `set_priorities` UI and tool fully retired, no orphaned code path ✅ (QA-001 dead-code + alex-awareness checks enforcing)
+- [x] Feed uses `onAuthStateChanged` — no blank panel on first load ✅
+- [ ] Feed shows 3+ real items from morning scan without Sean prompting *(next 7am HST run)*
 - [ ] Resolving an already-resolved item returns success (idempotency confirmed)
-- [ ] Gmail auth failure surfaces as RED item with re-auth link within 60 min
-- [ ] Worker function failure surfaces as RED item within 2 consecutive check intervals
-- [ ] Morning scan exception writes RED system_health item (not silent failure)
+- [ ] Gmail auth failure surfaces as RED item with re-auth link within 60 min *(F4 not built)*
+- [ ] Worker function failure surfaces as RED item within 2 consecutive check intervals *(F4 not built)*
+- [ ] Morning scan exception writes RED system_health item (not silent failure) *(F3 not built)*
 - [ ] 2-workspace test: zero items cross tenant boundary
-- [ ] 12 non-red items visible + "N more" badge when over cap; RED items always shown
-- [ ] Feed shows cached state offline with "Last updated X ago" banner (not blank)
-- [ ] Snooze "tomorrow morning" fires at 7:00 AM Hawaii time
-- [ ] `set_priorities` UI and tool fully retired, no orphaned code path
+- [ ] 12 non-red items visible + "N more" badge when over cap; RED items always shown *(partial — cap badge shipped, RED-always-shown not enforced in UI)*
+- [ ] Feed shows cached state offline with "Last updated X ago" banner (not blank) *(F6 not built)*
+- [ ] Snooze "tomorrow morning" fires at 7:00 AM Hawaii time *(snooze tool works; UI picker not built)*
