@@ -3454,6 +3454,108 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 },
               });
 
+              // CODEX 19 — baseline capability contract tools.
+              // Workers with baselineCapabilities:true get push_alert + get_sibling_summary
+              // in addition to the recall_notes/save_note already wired above.
+              if (dw.baselineCapabilities === true) {
+                businessTools.push({
+                  name: "push_alert",
+                  description: "Push an urgent finding to the workspace Operating Feed — visible to Alex and the user outside this chat. Use proactively when you find something that needs attention: compliance deadline, overdue task, anomaly. ALWAYS surface this call visibly in your chat response — never push silently. severity: red=urgent/blocking, amber=needs attention soon, green=informational.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string", description: "Short headline, max 80 chars" },
+                      body: { type: "string", description: "1-2 sentences explaining why it matters" },
+                      severity: { type: "string", enum: ["red", "amber", "green"], description: "Alert urgency" },
+                      action_hint: { type: "string", description: "What the user should say or do next" },
+                    },
+                    required: ["title", "severity"],
+                  },
+                });
+                businessTools.push({
+                  name: "get_sibling_summary",
+                  description: "Get a brief summary of sibling workers in this workspace: what they do, when they last ran, and their recent canvas output. Call this when the user's question would benefit from knowing what another worker found, or to recommend opening a different worker for a specific topic.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      slug: { type: "string", description: "Optional: slug of a specific sibling to look up. Omit for all siblings." },
+                    },
+                    required: [],
+                  },
+                });
+              }
+
+              // CODEX 19 — baseline context block injection (W1).
+              // Appended once at session start only (not per-turn) for workers with baselineCapabilities.
+              // Fail-closed: on any Firestore error, skip block and log — worker still starts.
+              if (dw.baselineCapabilities === true && authUser && reqTenantId) {
+                try {
+                  const _blkParts = [];
+
+                  // Sibling workers in this tenant (up to 5, most-recently-active first, skip self).
+                  try {
+                    const _sibMemberSnap = await db.collection("memberships")
+                      .where("tenantId", "==", reqTenantId).limit(1).get();
+                    if (!_sibMemberSnap.empty) {
+                      const _allSlugs = (_sibMemberSnap.docs[0].data().activeWorkers || [])
+                        .filter(s => s !== workerSlug).slice(0, 5);
+                      if (_allSlugs.length) {
+                        const _sibDwDocs = await Promise.all(
+                          _allSlugs.map(s => db.collection("digitalWorkers").doc(s).get().catch(() => null))
+                        );
+                        const _sibLines = _allSlugs.map((slug, i) => {
+                          const d = _sibDwDocs[i];
+                          const name = d && d.exists ? (d.data().name || slug) : slug;
+                          const desc = d && d.exists ? (d.data().capabilitySummary || d.data().headline || "").slice(0, 60) : "";
+                          return `  • ${name} (${slug})${desc ? ` — ${desc}` : ""}`;
+                        });
+                        _blkParts.push(`Sibling workers in this workspace:\n${_sibLines.join("\n")}`);
+                      }
+                    }
+                  } catch (_se) { console.warn(`[baseline:${workerSlug}] sibling read failed:`, _se.message); }
+
+                  // Recent unresolved alerts this worker pushed (last 3).
+                  try {
+                    const _alertSnap = await db.collection("alertFeed").doc(authUser.uid).collection("items")
+                      .where("resolved", "==", false)
+                      .where("source_label", "==", workerName || workerSlug)
+                      .orderBy("createdAt", "desc").limit(3).get();
+                    if (!_alertSnap.empty) {
+                      const _aLines = _alertSnap.docs.map(d => {
+                        const a = d.data();
+                        return `  • [${(a.severity || "amber").toUpperCase()}] ${a.title}`;
+                      });
+                      _blkParts.push(`Your recent Operating Feed alerts (unresolved):\n${_aLines.join("\n")}`);
+                    }
+                  } catch (_ae) { /* non-fatal, skip */ }
+
+                  // Shared workspace notes (last 3, max 200 chars each).
+                  try {
+                    const _noteSnap = await db.collection("alex_notes")
+                      .where("ownerUid", "==", authUser.uid)
+                      .orderBy("createdAt", "desc").limit(10).get();
+                    const _filteredNotes = _noteSnap.docs
+                      .filter(d => { const nt = d.data().tenantId; return !nt || nt === reqTenantId; })
+                      .slice(0, 3);
+                    if (_filteredNotes.length) {
+                      const _nLines = _filteredNotes.map(d => {
+                        const n = d.data();
+                        return `  • ${n.title}: ${(n.content || "").slice(0, 200)}`;
+                      });
+                      _blkParts.push(`Shared workspace notes:\n${_nLines.join("\n")}`);
+                    }
+                  } catch (_ne) { /* non-fatal, skip */ }
+
+                  if (_blkParts.length) {
+                    const _baselineBlock = `\nWORKSPACE CONTEXT (injected by platform — do not fabricate):\n${_blkParts.join("\n\n")}\n\nPLATFORM TOOLS AVAILABLE: push_alert, recall_notes, save_note, get_sibling_summary. Use push_alert proactively when you find something urgent. ALWAYS surface push_alert calls visibly in chat — never execute them silently.`;
+                    workerPrompt += _baselineBlock;
+                  }
+                } catch (_blkErr) {
+                  console.warn(`[baseline:${workerSlug}] context block failed — starting without it:`, _blkErr.message);
+                  // Fail-closed: worker starts without the block, not with a partial one.
+                }
+              }
+
               // 2026-06-26 — image-tool honesty. The Marketing worker was
               // DESCRIBING images it never generated ("I created four images and
               // added them to your canvas") then contradicting itself — a
@@ -3882,6 +3984,107 @@ IMAGE & VISUAL RULES (MANDATORY):
                     }
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] anchor_signed_document failed:`, e.message); }
+              }
+
+              // CODEX 19 — push_alert handler for baseline-capable workers.
+              if (toolBlock && toolBlock.name === 'push_alert' && dw.baselineCapabilities === true) {
+                try {
+                  const { title: _paTitle, body: _paBody, severity: _paSev, action_hint: _paHint } = toolBlock.input;
+                  const _paUid = authUser ? authUser.uid : null;
+                  if (_paUid && _paTitle) {
+                    // Rate limit: max 10 unresolved per (tenantId, workerSlug). Check count.
+                    const _paFeedRef = db.collection("alertFeed").doc(_paUid).collection("items");
+                    const _paActiveSnap = await _paFeedRef
+                      .where("source_label", "==", workerName || workerSlug)
+                      .where("resolved", "==", false).get();
+                    const _paActiveCount = _paActiveSnap.size;
+                    const _paId = `wk_${workerSlug}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                    if (_paActiveCount >= 10) {
+                      // Cap hit — fire meta-alert (daily ikey for idempotency) and drop this push.
+                      const _paMeta = `${workerSlug}_capreached_${new Date().toISOString().slice(0, 10)}`;
+                      await _paFeedRef.doc(_paMeta).set({
+                        id: _paMeta, ikey: _paMeta,
+                        title: `${workerName || workerSlug} has 10+ unresolved items — review needed`,
+                        body: "This worker reached its alert cap. Resolve some items to allow new alerts.",
+                        severity: "amber",
+                        source_label: workerName || workerSlug,
+                        action_hint: "Open this worker and review its Operating Feed alerts",
+                        resolved: false, snoozeUntil: null,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                      }, { merge: true });
+                      const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content },
+                        { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Alert cap reached (10 unresolved). Tell the user: "${_paTitle}" was noted but not added — ask them to review and resolve some existing alerts first.` }] }];
+                      const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 512, system: workerPrompt, messages: followUpMessages });
+                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Alert cap reached.";
+                    } else {
+                      // Write the alert. source_label is always this worker's registered name — not caller-supplied.
+                      await _paFeedRef.doc(_paId).set({
+                        id: _paId,
+                        title: _paTitle,
+                        body: _paBody || null,
+                        severity: _paSev || "amber",
+                        source_label: workerName || workerSlug,
+                        action_hint: _paHint || null,
+                        workerSlug, tenantId: reqTenantId || null,
+                        resolved: false, snoozeUntil: null,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                      });
+                      const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content },
+                        { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Alert pushed. id=${_paId} · severity=${_paSev || "amber"} · title="${_paTitle}". Tell the user you have flagged this in their Operating Feed.` }] }];
+                      const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 512, system: workerPrompt, messages: followUpMessages });
+                      aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Flagged in your Operating Feed: ${_paTitle}`;
+                    }
+                  }
+                } catch (e) { console.warn(`[worker:${workerSlug}] push_alert failed:`, e.message); }
+              }
+
+              // CODEX 19 — get_sibling_summary handler for baseline-capable workers.
+              if (toolBlock && toolBlock.name === 'get_sibling_summary' && dw.baselineCapabilities === true) {
+                try {
+                  const _gsSlug = toolBlock.input?.slug || null;
+                  const _gsUid = authUser ? authUser.uid : null;
+                  let _gsSummary = "No sibling workers found.";
+                  if (reqTenantId) {
+                    const _gsMemberSnap = await db.collection("memberships")
+                      .where("tenantId", "==", reqTenantId).limit(1).get();
+                    if (!_gsMemberSnap.empty) {
+                      let _gsSlugs = (_gsMemberSnap.docs[0].data().activeWorkers || [])
+                        .filter(s => s !== workerSlug);
+                      if (_gsSlug) _gsSlugs = _gsSlugs.filter(s => s === _gsSlug);
+                      _gsSlugs = _gsSlugs.slice(0, 5);
+                      if (_gsSlugs.length) {
+                        const _gsDwDocs = await Promise.all(
+                          _gsSlugs.map(s => db.collection("digitalWorkers").doc(s).get().catch(() => null))
+                        );
+                        const _gsLastRunDocs = await Promise.all(
+                          _gsSlugs.map(s => db.doc(`creators/${s}/lastRun`).get().catch(() => null))
+                        );
+                        const _gsLines = _gsSlugs.map((slug, i) => {
+                          const dwd = _gsDwDocs[i];
+                          const lrd = _gsLastRunDocs[i];
+                          const name = dwd && dwd.exists ? (dwd.data().name || slug) : slug;
+                          const desc = dwd && dwd.exists ? (dwd.data().capabilitySummary || dwd.data().headline || "").slice(0, 80) : "";
+                          let lastActive = "never";
+                          let summary = "";
+                          if (lrd && lrd.exists) {
+                            const renderedAt = lrd.data().renderedAt?.toDate?.();
+                            if (renderedAt) {
+                              const daysAgo = Math.round((Date.now() - renderedAt.getTime()) / 86400000);
+                              lastActive = daysAgo === 0 ? "today" : `${daysAgo}d ago`;
+                            }
+                            summary = (lrd.data().canvasSummary || "").slice(0, 200);
+                          }
+                          return `${name} (${slug}) — ${desc || "no description"} | last active: ${lastActive}${summary ? ` | last output: ${summary}` : ""}`;
+                        });
+                        _gsSummary = _gsLines.join("\n");
+                      }
+                    }
+                  }
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _gsSummary }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 512, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || _gsSummary;
+                } catch (e) { console.warn(`[worker:${workerSlug}] get_sibling_summary failed:`, e.message); }
               }
 
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
@@ -5393,20 +5596,37 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                     _bundleHint = `\n\nBUSINESS IN A BOX — MISSING WORKERS: This workspace does not yet have: ${_missingBiab.map(s=>_names[s]).join(", ")}. The "Business in a Box" bundle adds all five in one click at no cost. Mention the bundle naturally in your FIRST reply if the user's opener has any operational, business-setup, or "where do I start" angle — even a casual "what's new?" warrants a brief mention. Say exactly the phrase "Business in a Box" so the frontend surfaces the one-click subscribe card. Don't repeat it more than once per session.`;
                   }
 
-                  // Fetch real worker names from Firestore to ground the catalog.
+                  // Fetch real worker names + lastRun depth from Firestore.
                   // Workers are the ONLY ones that exist — never invent others.
+                  // lastRun (CODEX 19 C2) gives Alex real depth: when a worker last ran + what it found.
                   if (_activeWorkers.length) {
                     const _workerDocs = await Promise.all(
                       _activeWorkers.slice(0, 20).map(slug =>
                         db.collection("digitalWorkers").doc(slug).get().catch(() => null)
                       )
                     );
+                    const _lastRunDocs = await Promise.all(
+                      _activeWorkers.slice(0, 20).map(slug =>
+                        db.doc(`creators/${slug}/lastRun`).get().catch(() => null)
+                      )
+                    );
                     const _workerLines = _activeWorkers.map((slug, i) => {
                       const doc = _workerDocs[i];
+                      const lrd = _lastRunDocs[i];
                       const name = doc && doc.exists ? (doc.data().name || slug) : slug;
-                      return `  - ${name} (${slug})`;
+                      let lastRunInfo = "";
+                      if (lrd && lrd.exists) {
+                        const renderedAt = lrd.data().renderedAt?.toDate?.();
+                        if (renderedAt) {
+                          const daysAgo = Math.round((Date.now() - renderedAt.getTime()) / 86400000);
+                          const alertsPushed = lrd.data().alertsPushed || 0;
+                          const summary = (lrd.data().canvasSummary || "").slice(0, 120);
+                          lastRunInfo = ` [last ran: ${daysAgo === 0 ? "today" : `${daysAgo}d ago`}${alertsPushed ? `, pushed ${alertsPushed} alerts` : ""}${summary ? ` — ${summary}` : ""}]`;
+                        }
+                      }
+                      return `  - ${name} (${slug})${lastRunInfo}`;
                     });
-                    _workerCatalogCtx = `\n\nTHIS WORKSPACE'S ACTIVE WORKERS (exhaustive — do not invent others):\n${_workerLines.join("\n")}\n\nWORKER CATALOG RULES:\n- ONLY reference workers in the list above when discussing what workers this workspace has.\n- NEVER invent worker IDs (like "RD-001"), made-up worker names, or worker counts.\n- NEVER mention promotional offers (BOGO, discounts, free trials) unless they appear in a pricing context you received.\n- If asked about workers not in this list, say "That worker isn't in your workspace yet — want me to add it?" and recommend the Business in a Box bundle if relevant.`;
+                    _workerCatalogCtx = `\n\nTHIS WORKSPACE'S ACTIVE WORKERS (exhaustive — do not invent others):\n${_workerLines.join("\n")}\n\nWORKER CATALOG RULES:\n- ONLY reference workers in the list above when discussing what workers this workspace has.\n- NEVER invent worker IDs (like "RD-001"), made-up worker names, or worker counts.\n- NEVER mention promotional offers (BOGO, discounts, free trials) unless they appear in a pricing context you received.\n- If asked about workers not in this list, say "That worker isn't in your workspace yet — want me to add it?" and recommend the Business in a Box bundle if relevant.\n- Use [last ran: X] depth to tell users when their worker was most recently active and what it found — cite this data, not the catalog description.`;
                   }
                 } catch (_) {}
 
