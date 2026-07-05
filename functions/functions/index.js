@@ -5568,7 +5568,7 @@ HOW YOU AND CODE COMMUNICATE:
   2. Use save_note with tags: ["for-code"] to leave a note CODE will read at the start of the next session. Good for non-urgent context handoffs.
 - You do NOT need to say "I can't talk to CODE" or "I don't have access to CODE." You have two working channels above. Use them.
 
-SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing — the commerce engine. SOCIII is the AI experience layer on top: intelligent customer service, returns automation, marketing campaigns, AI-generated content, and customer insights from real order data. The two are complementary. To connect a Shopify store, the user goes to Settings → Integrations → Shopify row → enters their store domain (e.g. mystore.myshopify.com) → clicks Connect — it's a full OAuth flow that takes about 30 seconds. Once connected, you can pull orders, revenue, and customer data directly (use card:shopify-commerce for a visual summary). If the user asks how to connect, direct them to Settings → Shopify — never tell them you don't know how.${_cosShopifyCtx}${_alexNotesContext}${_cosFileCtx}${_cosGmailCtx}`;
+SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing — the commerce engine. SOCIII is the AI experience layer on top: intelligent customer service, returns automation, marketing campaigns, AI-generated content, and customer insights from real order data. The two are complementary. To connect a Shopify store, the user goes to Settings → Integrations → Shopify row → enters their store domain (e.g. mystore.myshopify.com) → clicks Connect — it's a full OAuth flow that takes about 30 seconds. Once connected, you have live tools available: use get_shopify_orders to fetch recent orders on demand (filter by status or date range), use get_shopify_products to browse the product catalog or look up inventory by SKU/product_type. Use card:shopify-commerce to surface a visual summary. DIGITAL PRODUCT PASSPORT (DPP): EU Battery Regulation (EU) 2023/1542 requires a Digital Product Passport for batteries sold in the EU by 2027. If the user operates in medical supplies, industrial equipment, or battery-adjacent products, flag this proactively — SOCIII's append-only Vault record model is the ideal DPP substrate (each battery unit = a DTC with full lifecycle log). Use get_shopify_products with product_type='battery' to surface which products need DPP compliance tracking. If the user asks how to connect, direct them to Settings → Shopify — never tell them you don't know how.${_cosShopifyCtx}${_alexNotesContext}${_cosFileCtx}${_cosGmailCtx}`;
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
@@ -5611,6 +5611,32 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                       properties: {
                         status: { type: "string", enum: ["proposed", "sending", "sent", "all"], description: "Filter by status. Default: all recent." },
                         limit: { type: "number", description: "Max campaigns to return (default 10)" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "get_shopify_orders",
+                    description: "Fetch recent Shopify orders from the connected store. Use when the user asks about sales, orders, revenue, fulfillment status, or a specific customer's purchases. Use card:shopify-commerce to surface a visual summary.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        limit: { type: "number", description: "Max orders to return (default 20, max 50)" },
+                        days: { type: "number", description: "Only orders from the last N days (default: no filter)" },
+                        status: { type: "string", enum: ["any", "open", "closed", "cancelled"], description: "Order status filter (default: any)" },
+                      },
+                      required: [],
+                    },
+                  },
+                  {
+                    name: "get_shopify_products",
+                    description: "Fetch products from the connected Shopify store. Use when the user asks about inventory, catalog, SKUs, pricing, or product types. Also use for DPP (Digital Product Passport) lookups when the user asks about battery or medical supply compliance.",
+                    input_schema: {
+                      type: "object",
+                      properties: {
+                        limit: { type: "number", description: "Max products to return (default 50)" },
+                        product_type: { type: "string", description: "Filter by product type (e.g. 'battery', 'medical supply')" },
+                        vendor: { type: "string", description: "Filter by vendor/manufacturer" },
                       },
                       required: [],
                     },
@@ -5897,6 +5923,48 @@ SHOPIFY INTEGRATION: Shopify handles inventory, products, and payment processing
                           }
                         } catch (_gcErr) {
                           _toolResult = "get_campaigns error: " + _gcErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'get_shopify_orders') {
+                        try {
+                          const _shSvc = require("./services/shopify/shopify");
+                          const _shLimit = Math.min(Number(_cosToolBlock.input.limit) || 20, 50);
+                          const _shStatus = _cosToolBlock.input.status || "any";
+                          const _shOpts = { limit: _shLimit, status: _shStatus };
+                          if (_cosToolBlock.input.days) {
+                            _shOpts.since = new Date(Date.now() - _cosToolBlock.input.days * 86400000).toISOString();
+                          }
+                          const _shOrders = await _shSvc.getRecentOrders(authUser.uid, _shOpts);
+                          if (!_shOrders.length) {
+                            _toolResult = "No orders found matching those criteria.";
+                          } else {
+                            const _shLines = _shOrders.map(o =>
+                              `• #${o.order_number} — $${o.total_price.toFixed(2)} ${o.currency} [${o.financial_status}/${o.fulfillment_status || "unfulfilled"}] ${o.customer_name ? `· ${o.customer_name}` : ""} · ${o.created_at?.slice(0,10)}`
+                            ).join("\n");
+                            _toolResult = `Orders (${_shOrders.length}):\n${_shLines}`;
+                          }
+                        } catch (_shErr) {
+                          _toolResult = "get_shopify_orders error: " + _shErr.message;
+                        }
+                      } else if (_cosToolBlock.name === 'get_shopify_products') {
+                        try {
+                          const _shPSvc = require("./services/shopify/shopify");
+                          const _shPOpts = {
+                            limit: Math.min(Number(_cosToolBlock.input.limit) || 50, 100),
+                            product_type: _cosToolBlock.input.product_type || undefined,
+                            vendor: _cosToolBlock.input.vendor || undefined,
+                          };
+                          const _shProducts = await _shPSvc.getProducts(authUser.uid, _shPOpts);
+                          if (!_shProducts.length) {
+                            _toolResult = "No products found matching those criteria.";
+                          } else {
+                            const _shPLines = _shProducts.map(p => {
+                              const skus = p.variants.map(v => `${v.sku || "—"} ($${v.price.toFixed(2)}, qty:${v.inventory_quantity ?? "?"})` ).join("; ");
+                              return `• [${p.product_type || "—"}] ${p.title} · vendor:${p.vendor || "—"} · tags:${p.tags.join(",") || "none"}\n  Variants: ${skus}`;
+                            }).join("\n");
+                            _toolResult = `Products (${_shProducts.length}):\n${_shPLines}`;
+                          }
+                        } catch (_shPErr) {
+                          _toolResult = "get_shopify_products error: " + _shPErr.message;
                         }
                       } else if (_cosToolBlock.name === 'query_contacts') {
                         const { segment: _cSeg, q: _cQ, limit: _cLim } = _cosToolBlock.input;
@@ -29833,6 +29901,69 @@ exports.morningScanner = onSchedule(
           source_label: "System",
           action_hint: 'Say "check worker status" to Alex',
         });
+      }
+
+      // 4. Gmail scan — pattern-match high-signal email categories.
+      // No LLM — rule-based subject/sender queries only. Skipped if Gmail not connected.
+      try {
+        const _gmailScan = require("./services/social/gmail");
+        const gmailIntSnap = await db.doc(`users/${userId}/integrations/gmail`).get();
+        if (gmailIntSnap.exists && gmailIntSnap.data()?.accessToken) {
+          const EMAIL_SCAN_QUERIES = [
+            // Crisis signals — always RED
+            {
+              q: 'subject:(suspended OR suspension OR "failed payment" OR "card declined" OR "account suspended" OR "payment failed") is:unread',
+              severity: "red",
+              source_label: "Email",
+              label: "crisis",
+              action_hint: 'Say "read my urgent emails" to Alex',
+            },
+            // eSign platform senders — pending signature notifications
+            {
+              q: 'from:(hellosign.com OR docusign.com OR dropboxsign.com OR eversign.com OR signnow.com) is:unread',
+              severity: "amber",
+              source_label: "eSign",
+              label: "esign",
+              action_hint: 'Say "check my pending signatures" to Alex',
+            },
+            // Financial action needed
+            {
+              q: 'subject:(invoice OR "payment due" OR "action required" OR "please sign" OR "your signature") is:unread -from:(hellosign.com OR docusign.com)',
+              severity: "amber",
+              source_label: "Email",
+              label: "financial",
+              action_hint: 'Say "read my email" to Alex for context',
+            },
+            // Ignored unread > 2 days (non-promotional)
+            {
+              q: 'is:unread older_than:2d label:inbox -category:promotions -category:social -category:updates',
+              severity: "amber",
+              source_label: "Email",
+              label: "stale",
+              action_hint: 'Say "what emails need my attention?" to Alex',
+            },
+          ];
+
+          for (const { q, severity, source_label, label, action_hint } of EMAIL_SCAN_QUERIES) {
+            try {
+              const msgs = await _gmailScan.searchEmails(userId, q, { maxResults: 5 });
+              for (const msg of msgs) {
+                await _scanPushAlert(userId, {
+                  ikey: `gmail_${label}_${msg.messageId}`,
+                  title: msg.subject || "(no subject)",
+                  body: msg.snippet ? msg.snippet.slice(0, 140) : `From: ${msg.from}`,
+                  severity,
+                  source_label,
+                  action_hint,
+                });
+              }
+            } catch (qErr) {
+              console.warn(`[morningScanner] gmail query "${label}" failed for ${userId}:`, qErr.message);
+            }
+          }
+        }
+      } catch (gmailErr) {
+        console.warn(`[morningScanner] gmail scan error for ${userId}:`, gmailErr.message);
       }
     }
 

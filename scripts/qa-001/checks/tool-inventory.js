@@ -17,6 +17,8 @@ const REQUIRED_TOOLS = [
   { tool: "resolve_alert",         definition: 'name: "resolve_alert"',         handler: "_cosToolBlock.name === 'resolve_alert'",         description: "Operating Feed — resolve alert" },
   { tool: "snooze_alert",          definition: 'name: "snooze_alert"',          handler: "_cosToolBlock.name === 'snooze_alert'",          description: "Operating Feed — snooze alert" },
   { tool: "get_campaigns",         definition: 'name: "get_campaigns"',         handler: "_cosToolBlock.name === 'get_campaigns'",         description: "Cross-worker: list marketing campaigns" },
+  { tool: "get_shopify_orders",    definition: 'name: "get_shopify_orders"',    handler: "_cosToolBlock.name === 'get_shopify_orders'",    description: "Shopify: fetch recent orders on demand" },
+  { tool: "get_shopify_products",  definition: 'name: "get_shopify_products"',  handler: "_cosToolBlock.name === 'get_shopify_products'",  description: "Shopify: fetch product catalog + DPP lookup" },
   { tool: "campaign_report",       definition: 'name: "campaign_report"',       handler: "_cosToolBlock.name === 'campaign_report'",       description: "Cross-worker: campaign open-rate report" },
   { tool: "propose_email_campaign",definition: 'name: "propose_email_campaign"',handler: "_cosToolBlock.name === 'propose_email_campaign'",description: "Cross-worker: propose batch email campaign" },
   { tool: "query_contacts",        definition: 'name: "query_contacts"',        handler: "_cosToolBlock.name === 'query_contacts'",        description: "Cross-worker: query contacts" },

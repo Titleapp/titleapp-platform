@@ -327,6 +327,40 @@ async function getCustomers(uid, opts = {}) {
   }));
 }
 
+/**
+ * getProducts — product catalog for AI context and DPP lookups.
+ * Returns id, title, vendor, product_type, tags, variants (price + sku + inventory_quantity).
+ */
+async function getProducts(uid, opts = {}) {
+  const { limit = 50, product_type, vendor } = opts;
+  const creds = await loadToken(uid);
+  if (!creds) throw new Error("Shopify not connected");
+
+  let qs = `?limit=${limit}&order=updated_at+desc`;
+  if (product_type) qs += `&product_type=${encodeURIComponent(product_type)}`;
+  if (vendor) qs += `&vendor=${encodeURIComponent(vendor)}`;
+
+  const data = await shopifyFetch(creds.shop, creds.accessToken, `/products.json${qs}`);
+  return (data.products || []).map(p => ({
+    id: p.id,
+    title: p.title,
+    vendor: p.vendor,
+    product_type: p.product_type,
+    tags: p.tags ? p.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+    status: p.status,
+    variants: (p.variants || []).map(v => ({
+      id: v.id,
+      sku: v.sku,
+      price: parseFloat(v.price || "0"),
+      inventory_quantity: v.inventory_quantity,
+      title: v.title,
+    })),
+    image_url: p.image?.src || null,
+    created_at: p.created_at,
+    updated_at: p.updated_at,
+  }));
+}
+
 module.exports = {
   handleShopifyAuthUrl,
   handleShopifyCallback,
@@ -336,5 +370,6 @@ module.exports = {
   getRecentOrders,
   getRevenueSummary,
   getCustomers,
+  getProducts,
   loadToken,
 };
