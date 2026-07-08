@@ -4413,6 +4413,15 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
   const panel = useRightPanel();
   // Keep a ref so event handlers always get the latest panel without stale closures
   panelRef.current = panel;
+  // Sync showCanvas + panel.state to refs so landOnFirstDataTab/auto-fire effect
+  // can read current values without taking panel as a reactive dep — which was the
+  // root cause of the X-button-reopens-canvas bug: panel changing on dismiss
+  // recreated landOnFirstDataTab, which caused the auto-fire effect to re-run and
+  // bypass the autoFiredRef guard with a fresh function instance.
+  const showCanvasRef = React.useRef(null);
+  showCanvasRef.current = panel?.showCanvas;
+  const panelStateRef = React.useRef(panel?.state);
+  panelStateRef.current = panel?.state;
   // 50.10-T3 — tab bar from active worker's canvasTabs
   const worker = workerCtx?.activeWorkerData || null;
   const tabs = React.useMemo(() => {
@@ -4474,38 +4483,32 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
       if (!payload) payload = getFixtureForTab(worker, tab.id);
       if (!payload) continue; // no data for this tab — try the next one
       setActiveTabId(tab.id);
-      if (panel?.showCanvas) panel.showCanvas(resolved, { worker, payload });
+      // Use ref so this callback doesn't re-create whenever panel changes
+      if (showCanvasRef.current) showCanvasRef.current(resolved, { worker, payload });
       return; // landed on real data
     }
     // No tab yielded data — leave the onboarding landing in place.
-  }, [worker, tabs, panel]);
+  }, [worker, tabs]); // No panel dep — uses showCanvasRef to avoid dep-chain re-creation
 
   React.useEffect(() => {
     if (!worker?.slug || tabs.length === 0) return;
-    if (panel?.state === "CANVAS") return; // a chat signal already drove us here
+    // Read state from ref — not from panel dep — so canvas dismiss (panel change)
+    // does NOT re-trigger this effect. Effect only runs when the worker or its
+    // tabs actually change (new slug), preventing X-button-reopens-canvas.
+    if (panelStateRef.current === "CANVAS") return; // chat signal already drove us here
     if (autoFiredRef.current === worker.slug) return;
     autoFiredRef.current = worker.slug;
     markWorkerVisitedAndCheck(worker.slug); // keep visit bookkeeping (side effect)
     landOnFirstDataTab();
-  }, [worker?.slug, tabs, panel, landOnFirstDataTab, autoFiredRef]);
+  }, [worker?.slug, tabs, landOnFirstDataTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-land on the default data tab when a canvas card is dismissed, so the ×
-  // returns to the worker's real home instead of a blank canvas.
+  // no-op listener — dismissCanvas already sets state back to WORKSPACE_HOME.
+  // WorkerCanvas renders the worker's home view; no re-land needed.
   React.useEffect(() => {
-    const onReland = (e) => {
-      autoFiredRef.current = null;
-      // Use savedCanvas from event detail (passed by dismissCanvas before it
-      // cleared state) — panel.canvasData may already be null if React flushed
-      // the setState synchronously before this listener ran.
-      const last = e?.detail?.savedCanvas || panel?.canvasData;
-      if (last?.resolved && panel?.showCanvas) {
-        panel.showCanvas(last.resolved, last.context);
-      }
-      landOnFirstDataTab(); // async refresh with latest live data
-    };
+    const onReland = () => {};
     window.addEventListener("ta:reland-canvas", onReland);
     return () => window.removeEventListener("ta:reland-canvas", onReland);
-  }, [landOnFirstDataTab, panel, autoFiredRef]);
+  }, []); // stable — never needs to re-register
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
 
@@ -4711,11 +4714,17 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
     return "dashboard";
   });
+  const [dashboardKey, setDashboardKey] = React.useState(0);
   useEffect(() => {
     function handleNav(e) {
       const section = e.detail?.section;
       if (section) setCurrentSection(section);
     }
+    function handleWorkspaceChanged() {
+      // Force dashboard section to re-evaluate localStorage (TENANT_ID / VERTICAL may have changed)
+      setDashboardKey(k => k + 1);
+    }
+    window.addEventListener("ta:workspace-changed", handleWorkspaceChanged);
     function handleWorkerSelect(e) {
       const slug = e.detail?.slug;
       if (!slug) return;
@@ -4740,9 +4749,11 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
     window.addEventListener("ta:navigate", handleNav);
     window.addEventListener("ta:select-worker", handleWorkerSelect);
+    window.addEventListener("ta:workspace-changed", handleWorkspaceChanged);
     return () => {
       window.removeEventListener("ta:navigate", handleNav);
       window.removeEventListener("ta:select-worker", handleWorkerSelect);
+      window.removeEventListener("ta:workspace-changed", handleWorkspaceChanged);
     };
   }, [workerCtx]);
 
@@ -4789,12 +4800,9 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <React.Suspense fallback={<div />}><TeamSetup onComplete={() => window.location.reload()} /></React.Suspense>;
       }
       case "dashboard": {
-        const v = (localStorage.getItem("VERTICAL") || "").toLowerCase();
-        const isVaultTenant = localStorage.getItem("TENANT_ID") === "vault";
-        // Consumer/vault persona lands directly on the tabbed Vault view (pillar tabs, net worth,
-        // real records). Check both VERTICAL and TENANT_ID for robustness (returning users may
-        // have VERTICAL unset if they landed on vault without going through TeamHome).
-        return (v === "consumer" || isVaultTenant) ? <VaultGate><VaultDTCs /></VaultGate> : <WorkerHome />;
+        // All workspaces — including Personal Space — land on WorkerHome.
+        // Vault content renders only when the user explicitly clicks MY VAULT (vault-dtcs, vault-assets, etc.).
+        return <WorkerHome key={dashboardKey} />;
       }
       case "analyst":
         return <Analyst />;
@@ -5801,6 +5809,16 @@ export default function App() {
     // WorkspaceHub already set localStorage values
     // Set TENANT_ID for all workspaces including vault
     localStorage.setItem("TENANT_ID", workspace.id);
+    // Keep VERTICAL in sync so dashboard doesn't show Vault for a real workspace
+    if (workspace.id === "vault") {
+      localStorage.setItem("VERTICAL", "consumer");
+    } else {
+      if (workspace.vertical && workspace.vertical !== "GLOBAL") {
+        localStorage.setItem("VERTICAL", workspace.vertical.toLowerCase());
+      } else if (localStorage.getItem("VERTICAL") === "consumer") {
+        localStorage.removeItem("VERTICAL");
+      }
+    }
     // Check if this workspace needs onboarding (newly created or incomplete)
     // Use both the prop flag AND localStorage (localStorage is the reliable signal)
     const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");

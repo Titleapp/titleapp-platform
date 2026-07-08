@@ -25,6 +25,8 @@ import OerContentCard from "./OerContentCard";
 import TitleAbstractCard from "./TitleAbstractCard";
 import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
+import AviationWeatherCard from "./AviationWeatherCard";
+import AviationNavDbCard from "./AviationNavDbCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
 import WorkProductCard from "./WorkProductCard";
 import ChartCard from "./ChartCard";
@@ -39,6 +41,9 @@ import StudentTranscriptCard from "./StudentTranscriptCard";
 import BundleOfferCard from "./BundleOfferCard";
 import ShopifyCommerceCard from "./ShopifyCommerceCard";
 import ListingScorecardCard from "./ListingScorecardCard";
+import SiteReconCanvas from "./SiteReconCanvas";
+import ShowingScheduleCard from "./ShowingScheduleCard";
+import PropertyManagerCanvas from "./PropertyManagerCanvas";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -61,6 +66,8 @@ const CANVAS_COMPONENT_MAP = {
   TitleAbstractCard,
   RevenueDashboardCard,
   AviationCurrencyCard,
+  AviationWeatherCard,
+  AviationNavDbCard,
   RealEstateClosingCard,
   WorkProductCard,
   ChartCard,
@@ -75,6 +82,9 @@ const CANVAS_COMPONENT_MAP = {
   BundleOfferCard,
   ShopifyCommerceCard,
   ListingScorecardCard,
+  SiteReconCanvas,
+  ShowingScheduleCard,
+  PropertyManagerCanvas,
 };
 
 /**

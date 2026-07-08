@@ -206,6 +206,31 @@ export const CANVAS_TYPES = {
     _title: "Weight & Balance",
   },
 
+  "card:aviation-weather": {
+    component: "AviationWeatherCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask about weather at a departure or destination airport.",
+    _title: "Weather Briefing",
+  },
+  "card:aviation-traffic": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask about traffic near an airport to see live ADS-B here.",
+    _title: "Live Traffic",
+  },
+  "card:aviation-navdb": {
+    component: "AviationNavDbCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Regional AIRAC nav databases load here.",
+    _title: "Nav Database",
+  },
+
   // Real Estate
   "card:real-estate-closing": {
     component: "RealEstateClosingCard",
@@ -375,6 +400,34 @@ export const CANVAS_TYPES = {
     emptyPrompt: "Ask Alex to show you the Business-in-a-Box to get all 5 workers at once.",
     _title: "Business-in-a-Box",
   },
+  "bundle:offer:re-in-a-box": {
+    component: "BundleOfferCard",
+    dataSource: "static",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    _title: "Real Estate in a Box",
+  },
+  "bundle:offer:education-in-a-box": {
+    component: "BundleOfferCard",
+    dataSource: "static",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    _title: "Education in a Box",
+  },
+  "bundle:offer:aviation-in-a-box": {
+    component: "BundleOfferCard",
+    dataSource: "static",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    _title: "Aviation in a Box",
+  },
+  "bundle:offer:ecommerce-in-a-box": {
+    component: "BundleOfferCard",
+    dataSource: "static",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    _title: "eCommerce in a Box",
+  },
 
   // E-sign anchor log — SOCIII moat: suite-agnostic chain record of completed signings
   "esign:documents": {
@@ -395,6 +448,66 @@ export const CANVAS_TYPES = {
     mobileFallback: "inline-card",
     emptyPrompt: "Ask the Listing Readiness worker about a property to see its scorecard here.",
     _title: "Listing Readiness",
+  },
+
+  // Property Manager — portfolio + compliance canvas (CODEX 23)
+  "card:pm-portfolio": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex about your portfolio to see units, rent status, and MX here.",
+    _title: "Portfolio",
+  },
+  "card:pm-leaseup": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask about a vacant unit to see the lease-up pipeline here.",
+    _title: "Lease-Up",
+  },
+  "card:pm-screening": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to screen an applicant — Fair Housing rules enforced.",
+    _title: "Screening",
+  },
+  "card:pm-maintenance": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Submit a maintenance request to see work orders here.",
+    _title: "Maintenance",
+  },
+  "card:pm-evictions": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask about an eviction to see notice timelines and filing steps here.",
+    _title: "Evictions",
+  },
+  "card:pm-compliance": {
+    component: "PropertyManagerCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex about upcoming deadlines to see your compliance calendar here.",
+    _title: "Compliance",
+  },
+
+  // RE Brokerage Marketing — showing schedule (re-marketing-001)
+  "card:re-showings": {
+    component: "ShowingScheduleCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to schedule a showing to see your showing calendar here.",
+    _title: "Showings",
   },
 
   // Generic work product (any worker, fallback)
@@ -482,6 +595,18 @@ export const CANVAS_TYPES = {
     mobileFallback: "inline-card",
     emptyPrompt: "Connect your Shopify store in Settings to see live revenue and orders here.",
     _title: "Shopify Store",
+  },
+
+  // Site Recon — full-panel parcel analysis result (site-recon-001)
+  // Emitted by workers/site-recon-001/chatIntent.js when an area or address
+  // search completes. Renders ranked parcel list + map + street-view tabs.
+  "site-recon-results": {
+    component: "SiteReconCanvas",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to run Site Recon on an address to see parcel analysis here.",
+    _title: "Site Recon",
   },
 };
 

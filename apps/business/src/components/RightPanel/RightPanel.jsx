@@ -78,9 +78,9 @@ function BundlePanel({ onClose }) {
     <>
       <div style={S2.header}>
         <div>
-          <div style={S2.badge}>Free Bundle</div>
-          <div style={S2.title}>Business in a Box</div>
-          <div style={S2.sub}>Five workers. Everything you need to run your business from day one.</div>
+          <div style={S2.badge}>Platform Foundation</div>
+          <div style={S2.title}>Platform Essentials</div>
+          <div style={S2.sub}>Five AI workers built into every workspace — your operational backbone from day one.</div>
         </div>
         <button style={S2.closeBtn} onClick={onClose} title="Dismiss">×</button>
       </div>
@@ -106,7 +106,7 @@ function BundlePanel({ onClose }) {
             onClick={handleSubscribeAll}
             disabled={status === "loading"}
           >
-            {status === "loading" ? "Adding workers..." : "Get Business in a Box — Free"}
+            {status === "loading" ? "Adding workers..." : "Add Platform Essentials — Free"}
           </button>
         )}
         {status === "error" && <div style={{ textAlign: "center", fontSize: 12, color: "#dc2626", marginTop: 6 }}>Something went wrong. Try refreshing.</div>}

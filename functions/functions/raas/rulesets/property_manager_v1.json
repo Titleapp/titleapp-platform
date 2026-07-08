@@ -1,0 +1,102 @@
+{
+  "id": "property_manager_v1",
+  "version": "v1",
+  "domain": "property-management",
+  "disclaimer": "All notices, screening decisions, and eviction timelines are drafts for your review. Verify with a licensed attorney before serving. Fair Housing rules are enforced as hard stops — the worker cannot produce discriminatory outputs.",
+  "hard_stops": [
+    {
+      "id": "PM-FH-001",
+      "logic": "Never produce a rental listing, screening criterion, or denial notice that references race, color, national origin, religion, sex, familial status, or disability — individually or via any proxy.",
+      "eval": { "type": "prohibited_content_check", "categories": ["race", "color", "national_origin", "religion", "sex", "familial_status", "disability"] }
+    },
+    {
+      "id": "PM-FH-002",
+      "logic": "Source-of-income discrimination is prohibited in CA, NV, OR, WA, NY, IL, and other jurisdictions. Never condition approval on income source (e.g., Section 8/voucher status) in these states.",
+      "eval": { "type": "jurisdiction_check", "protected_class": "source_of_income", "covered_states": ["CA", "NV", "OR", "WA", "NY", "IL", "WI", "CT", "MA", "MD", "NJ", "RI", "VT"] }
+    },
+    {
+      "id": "PM-FH-003",
+      "logic": "Blanket criminal-history bans may violate Fair Housing via disparate impact. Do not propose categorical criminal exclusions without individualized assessment guidance.",
+      "eval": { "type": "policy_pattern_check", "pattern": "all_criminal_history_ban" }
+    },
+    {
+      "id": "PM-FH-004",
+      "logic": "Do not produce screening decisions that use the same criteria inconsistently across applicants. Each decision must be documented using only the criteria declared in the operator's written policy.",
+      "eval": { "type": "consistency_check" }
+    },
+    {
+      "id": "PM-EV-001",
+      "logic": "Retaliatory eviction guard: if the eviction initiation date falls within 180 days of a documented tenant protected activity (repair request, Fair Housing complaint, tenant organizing), flag as potential retaliation before producing any notice.",
+      "eval": { "type": "timeline_proximity_check", "event_types": ["repair_request", "fair_housing_complaint", "tenant_organizing"], "window_days": 180 }
+    },
+    {
+      "id": "PM-EV-002",
+      "logic": "Never produce an eviction notice with an incorrect state-mandated cure window. CA: 3 days pay-or-quit. NV: 5 days. TX: 3 days. FL: 3 days. NY: 14 days. IL: 5 days. Always apply the jurisdiction's window from the property address.",
+      "eval": { "type": "jurisdiction_lookup", "field": "eviction.cure_window_days" }
+    },
+    {
+      "id": "PM-EV-003",
+      "logic": "Self-help eviction is illegal in all US states. Never advise or produce a notice suggesting lockout, utility shutoff, or removal of tenant's belongings as an eviction mechanism.",
+      "eval": { "type": "prohibited_content_check", "categories": ["self_help_eviction", "lockout", "utility_shutoff_threat"] }
+    },
+    {
+      "id": "PM-HAB-001",
+      "logic": "Emergency maintenance (habitability/life-safety: heat, water, structural, mold, pest infestation) requires acknowledgment and dispatch within 24 hours. Never propose deferring emergency MX beyond 24 hours.",
+      "eval": { "type": "timeline_check", "category": "emergency_maintenance", "max_hours": 24 }
+    },
+    {
+      "id": "PM-HAB-002",
+      "logic": "Do not produce a rent increase notice for a unit with an open habitability defect unless the defect is documented as tenant-caused.",
+      "eval": { "type": "cross_record_check", "fields": ["unit.open_hab_defects", "notice.type"], "condition": "no_rent_increase_with_open_hab" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "lease_expiry_90_days",
+      "logic": "Flag any lease expiring within 90 days as requiring renewal outreach. Surface in the compliance dashboard.",
+      "eval": { "field": "lease.days_to_expiry", "operator": "<=", "threshold": 90 }
+    },
+    {
+      "id": "rent_past_due_5_days",
+      "logic": "Flag any rent unpaid 5 or more days past due date for follow-up communication.",
+      "eval": { "field": "rent.days_past_due", "operator": ">=", "threshold": 5 }
+    },
+    {
+      "id": "security_deposit_cap",
+      "logic": "Alert if proposed security deposit exceeds 2× monthly rent (CA, NV) or applicable state cap. Check jurisdiction before proposing amount.",
+      "eval": { "field": "deposit.months_of_rent", "operator": ">", "threshold": 2, "states": ["CA", "NV"] }
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_discriminatory_screening",
+      "pattern": "\\b(prefer|no|won't accept|looking for).{0,40}(families|children|singles|men|women|couples|nationality|religion|race|color|origin|disability|section.?8|voucher|ESA|service animal)\\b",
+      "flags": "i",
+      "message": "That screening criterion may violate Fair Housing. I can only evaluate income, credit score, rental history, and employment — criteria in your written policy. I cannot apply criteria based on protected characteristics."
+    },
+    {
+      "id": "no_lockout_advice",
+      "pattern": "\\b(change the locks|shut off|cut (off|the) (power|water|gas)|remove (their|his|her) stuff|throw out|lock (them|him|her) out)\\b",
+      "flags": "i",
+      "message": "Self-help eviction is illegal in all US states. I can help you issue proper notice and prepare for unlawful detainer filing. Locking out or cutting utilities without a court order exposes you to significant liability."
+    },
+    {
+      "id": "no_specific_legal_advice",
+      "pattern": "\\b(you (will|won't) win|guaranteed|definitely (legal|illegal)|I (guarantee|promise)|100% sure)\\b",
+      "flags": "i",
+      "message": "I can apply the rules and surface the relevant statutes, but I can't give legal guarantees. Review with a landlord-tenant attorney before proceeding."
+    }
+  ],
+  "outputs": [
+    "screening-decision",
+    "adverse-action-notice",
+    "lease-renewal-offer",
+    "pay-or-quit-notice",
+    "cure-or-quit-notice",
+    "unconditional-quit-notice",
+    "work-order",
+    "move-in-condition-report",
+    "move-out-accounting",
+    "compliance-dashboard"
+  ]
+}

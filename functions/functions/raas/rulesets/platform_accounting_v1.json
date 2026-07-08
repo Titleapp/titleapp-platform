@@ -1,0 +1,40 @@
+{
+  "id": "platform_accounting_v1",
+  "version": "v1",
+  "domain": "accounting",
+  "disclaimer": "Financial data shown is for informational purposes only. Consult a licensed CPA or financial advisor before making tax or accounting decisions.",
+  "hard_stops": [
+    {
+      "id": "no_fabricated_transactions",
+      "logic": "Never invent, estimate, or fabricate transaction amounts, account balances, or tax figures. Only report figures present in the user's actual connected data.",
+      "eval": { "type": "epistemic_check" }
+    },
+    {
+      "id": "no_tax_advice",
+      "logic": "Do not provide specific tax advice, tax filing guidance, or IRS positions. Surface the data; recommend a CPA for tax strategy.",
+      "eval": { "type": "output_label_check", "field": "response_type", "forbidden_values": ["tax_advice", "irs_position"] }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "unreconciled_balance",
+      "logic": "If the reported balance differs from connected bank data by more than 5%, flag for reconciliation before reporting.",
+      "eval": { "field": "balance_variance_pct", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_tax_filing_advice",
+      "pattern": "\\b(file your taxes|you should deduct|claim this deduction|irs will|tax strategy for you)\\b",
+      "flags": "i",
+      "message": "I can surface your financial data, but tax strategy and filing decisions should go through your CPA."
+    },
+    {
+      "id": "no_fabricated_figures",
+      "pattern": "\\b(approximately|I estimate|roughly|about \\$[0-9])\\b",
+      "flags": "i",
+      "message": "Only report actual figures from connected accounts. Do not estimate or approximate financial data."
+    }
+  ],
+  "outputs": ["pl-summary", "cash-flow-report", "balance-sheet", "invoice-list", "transaction-export"]
+}

@@ -803,7 +803,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }, [onboardingStep, currentSection]);
 
   useEffect(() => {
-    if (conversationRef.current) {
+    if (!conversationRef.current) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.workerCards?.length > 2) {
+      // Scroll to the start of the worker results so the user sees the bundle card / top result
+      requestAnimationFrame(() => {
+        const el = conversationRef.current?.querySelector("[data-worker-results='true']:last-of-type");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        else conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+      });
+    } else {
       conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
     }
   }, [messages, isTyping, showDisclaimer]);
@@ -1612,6 +1621,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           panel.showArtifact({ type: "apollo-searches", data: data.apolloSearches, title: "Investor Prospecting" });
         } else if (data.workerBundle || /business.?in.?a.?box/i.test(cleanResponse || "")) {
           panel.showArtifact({ type: "bundle", data: data.workerBundle || null, title: "Business in a Box" });
+        } else if (panel?.showCanvas && /real.?estate.?in.?a.?box|re.?in.?a.?box/i.test(cleanResponse || "")) {
+          const sig = lookupSignal("bundle:offer:re-in-a-box");
+          if (sig) panel.showCanvas(sig, { payload: { bundleId: "re-in-a-box" } });
+        } else if (panel?.showCanvas && /education.?in.?a.?box/i.test(cleanResponse || "")) {
+          const sig = lookupSignal("bundle:offer:education-in-a-box");
+          if (sig) panel.showCanvas(sig, { payload: { bundleId: "education-in-a-box" } });
+        } else if (panel?.showCanvas && /aviation.?in.?a.?box/i.test(cleanResponse || "")) {
+          const sig = lookupSignal("bundle:offer:aviation-in-a-box");
+          if (sig) panel.showCanvas(sig, { payload: { bundleId: "aviation-in-a-box" } });
         } else if (cleanResponse && cleanResponse.length > 120) {
           panel.showArtifact({ type: "text", data: cleanResponse, title: null });
         }
@@ -2073,16 +2091,116 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     e?.preventDefault();
     if (!workerSearch.trim()) return;
     const term = workerSearch.toLowerCase();
-    let matched = visibleWorkers.filter(w => (
-      w.name.toLowerCase().includes(term) ||
-      w.description.toLowerCase().includes(term) ||
-      w.suite.toLowerCase().includes(term) ||
-      (w.vertical || "").toLowerCase().includes(term)
-    ));
+    // Normalize underscores/hyphens → spaces so "real_estate_development" matches "real estate"
+    const norm = s => (s || "").toLowerCase().replace(/[_-]/g, " ");
+    const terms = term.split(/\s+/).filter(Boolean);
+    const matches = (w) => {
+      const hay = [w.name, w.description, w.suite, w.vertical].map(norm).join(" ");
+      return terms.every(t => hay.includes(t));
+    };
+    let matched = visibleWorkers.filter(matches);
+    // Dedup by slug|id — prefer the entry with a non-empty description
+    const seen = new Map();
+    for (const w of matched) {
+      const key = w.slug || w.id;
+      const existing = seen.get(key);
+      if (!existing || (w.description && !existing.description)) seen.set(key, w);
+    }
+    matched = Array.from(seen.values());
     if (workerFilter !== "All") matched = matched.filter(w => w.suite === workerFilter);
+
+    // Detect vertical bundle queries and inject bundle offer into canvas
+    const RE_TERMS = ["real estate", "real-estate", "cre", "property", "title", "zoning", "land use"];
+    const AV_TERMS = ["aviation", "pilot", "flight", "aircraft", "dispatch", "crew", "maintenance", "mx "];
+    const ED_TERMS = ["education", "nursing", "school", "student", "ce credit", "license", "learning"];
+    const EC_TERMS = ["ecommerce", "e-commerce", "shopify", "retail", "store", "product", "dpp", "inventory", "order"];
+    const isReQuery = RE_TERMS.some(t => term.includes(t));
+    const isAvQuery = AV_TERMS.some(t => term.includes(t));
+    const isEdQuery = ED_TERMS.some(t => term.includes(t));
+    const isEcQuery = EC_TERMS.some(t => term.includes(t));
+    if (panel?.showCanvas) {
+      const showBundle = (bundleId) => {
+        const sig = lookupSignal(`bundle:offer:${bundleId}`);
+        if (sig) { if (typeof panel.openIfClosed === "function") panel.openIfClosed(); panel.showCanvas(sig, { payload: { bundleId } }); }
+      };
+      if (isReQuery) showBundle("re-in-a-box");
+      else if (isAvQuery) showBundle("aviation-in-a-box");
+      else if (isEdQuery) showBundle("education-in-a-box");
+      else if (isEcQuery) showBundle("ecommerce-in-a-box");
+    }
+
+    // For RE queries: bundle card at #1, then core 7 workers #2–8, then rest A-Z
+    const RE_RANKED = ["site-recon-001", "cre-analyst", "title-abstract-001", "zoning-001", "law-landuse-001", "feasibility-001", "re-marketing-001", "re-salesperson", "permit-submission", "property-management"];
+    const RE_BUNDLE_SLUGS = [...RE_RANKED.slice(0, 7), "1031-exchange", "appraisal-valuation"];
+    const RE_BUNDLE_ITEM = {
+      isBundle: true, bundleId: "re-in-a-box", rank: 1,
+      slug: "bundle:re-in-a-box", name: "RE in a Box",
+      description: "The most popular Real Estate digital workers — complete practice suite in one click",
+      price: 0, status: "live",
+      workerSlugs: RE_BUNDLE_SLUGS,
+    };
+    // Education bundle
+    const ED_RANKED = ["student-evaluation", "clinical-eval-001", "nursing-ce-001", "staff-credentials-001", "student-transcript-001"];
+    const ED_BUNDLE_SLUGS = [...ED_RANKED, "edu-curriculum", "edu-assessment", "edu-advising", "edu-enrollment", "edu-ferpa"];
+    const ED_BUNDLE_ITEM = {
+      isBundle: true, bundleId: "education-in-a-box", rank: 1,
+      slug: "bundle:education-in-a-box", name: "Education in a Box",
+      description: "The most popular Education digital workers — complete school operations suite in one click",
+      price: 0, status: "live",
+      workerSlugs: ED_BUNDLE_SLUGS,
+    };
+
+    // Aviation bundle — top 8 operator workers
+    const AV_RANKED = ["av-copilot-001", "av-dispatch-001", "av-mx-001", "crew-scheduling-roster", "maintenance-work-order-logbook", "flight-duty-time-enforcer", "weather-intelligence", "flight-risk-assessment-frat"];
+    const AV_BUNDLE_SLUGS = [...AV_RANKED, "ad-sb-compliance-tracker", "aircraft-status-mel"];
+    const AV_BUNDLE_ITEM = {
+      isBundle: true, bundleId: "aviation-in-a-box", rank: 1,
+      slug: "bundle:aviation-in-a-box", name: "Aviation in a Box",
+      description: "The most popular Aviation digital workers — complete air operations suite in one click",
+      price: 0, status: "live",
+      workerSlugs: AV_BUNDLE_SLUGS,
+    };
+
+    // eCommerce bundle — DPP as anchor + ops suite
+    const EC_RANKED = ["ecom-dpp", "ecom-product-catalog", "ecom-order-ops", "ecom-inventory", "ecom-customer-service", "ecom-marketing", "ecom-revenue-analytics"];
+    const EC_BUNDLE_SLUGS = [...EC_RANKED, "ecom-returns", "ecom-supplier-compliance"];
+    const EC_BUNDLE_ITEM = {
+      isBundle: true, bundleId: "ecommerce-in-a-box", rank: 1,
+      slug: "bundle:ecommerce-in-a-box", name: "eCommerce in a Box",
+      description: "The most popular eCommerce digital workers — complete store operations suite in one click",
+      price: 0, status: "live",
+      workerSlugs: EC_BUNDLE_SLUGS,
+    };
+
+    function applyRankedBundle(bundleItem, ranked) {
+      const rankedList = [];
+      const rest = [];
+      for (const w of matched) {
+        const ri = ranked.indexOf(w.slug || w.id);
+        if (ri !== -1) rankedList[ri] = { ...w, rank: ri + 2 };
+        else rest.push(w);
+      }
+      rest.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      matched = [bundleItem, ...rankedList.filter(Boolean), ...rest];
+    }
+
+    if (isReQuery) applyRankedBundle(RE_BUNDLE_ITEM, RE_RANKED);
+    else if (isEdQuery) applyRankedBundle(ED_BUNDLE_ITEM, ED_RANKED);
+    else if (isAvQuery) applyRankedBundle(AV_BUNDLE_ITEM, AV_RANKED);
+    else if (isEcQuery) applyRankedBundle(EC_BUNDLE_ITEM, EC_RANKED);
+    else matched = matched.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    const reHeader = isReQuery && matched.length ? `Found ${matched.length - 1} Real Estate workers — RE in a Box bundle at #1, then A–Z:` : null;
+    const edHeader = isEdQuery && matched.length ? `Found ${matched.length - 1} Education workers — Education in a Box bundle at #1, then A–Z:` : null;
+    const avHeader = isAvQuery && matched.length ? `Found ${matched.length - 1} Aviation workers — Aviation in a Box bundle at #1, then A–Z:` : null;
+    const ecHeader = isEcQuery && matched.length ? `Found ${matched.length - 1} eCommerce workers — eCommerce in a Box bundle at #1, then A–Z:` : null;
+    const resultContent = matched.length
+      ? reHeader || edHeader || avHeader || ecHeader || `Found ${matched.length} worker${matched.length !== 1 ? "s" : ""} matching "${workerSearch}":`
+      : `No workers found for "${workerSearch}". Try a different keyword.`;
+
     setMessages(prev => [...prev,
       { role: 'user', content: workerSearch },
-      { role: 'assistant', content: matched.length ? `Found ${matched.length} worker${matched.length !== 1 ? "s" : ""} matching "${workerSearch}":` : `No workers found for "${workerSearch}". Try a different keyword.`, workerCards: matched.slice(0, 8), isSystem: true },
+      { role: 'assistant', content: resultContent, workerCards: matched, isSystem: true },
     ]);
     setWorkerSearch("");
   }
@@ -2090,9 +2208,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   function handleFilterClick(suite) {
     setWorkerFilter(suite);
     const workers = visibleWorkers;
-    const matched = suite === "All" ? workers.filter(w => w.status === "live") : workers.filter(w => w.suite === suite);
+    const matched = (suite === "All" ? workers.filter(w => w.status === "live") : workers.filter(w => w.suite === suite))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     setMessages(prev => [...prev,
-      { role: 'assistant', content: suite === "All" ? `Showing all ${matched.length} live workers:` : `Showing ${matched.length} ${suite} worker${matched.length !== 1 ? "s" : ""}:`, workerCards: matched.slice(0, 8), isSystem: true },
+      { role: 'assistant', content: suite === "All" ? `Showing all ${matched.length} live workers:` : `Showing ${matched.length} ${suite} worker${matched.length !== 1 ? "s" : ""}:`, workerCards: matched, isSystem: true },
     ]);
   }
 
@@ -2275,7 +2394,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             } catch { /* ignore */ }
           }
           return (
-          <div key={idx}>
+          <div key={idx} {...(msg.workerCards?.length > 0 ? { "data-worker-results": "true" } : {})}>
             <div className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
               <div className="chat-bubble" style={msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' } : undefined}>
                 {msg.role === 'assistant' && !msg.isError && typeof displayContent === 'string'
@@ -2318,23 +2437,45 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             {/* Inline worker cards */}
             {msg.workerCards && msg.workerCards.length > 0 && (
               <div className="mobileWorkerCards" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxWidth: 420 }}>
-                {msg.workerCards.map(w => (
+                {msg.workerCards.map(w => w.isBundle ? (
+                  <div key={w.slug} style={{ background: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "rgba(255,255,255,0.2)", borderRadius: 4, padding: "1px 5px" }}>#1</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#e9d5ff", letterSpacing: "0.06em", textTransform: "uppercase" }}>Bundle</span>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{w.name}</div>
+                      <div style={{ fontSize: 11, color: "#ddd6fe", marginTop: 2 }}>{w.description}</div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); if (w.workerSlugs) w.workerSlugs.forEach(slug => subscribeToWorker({ workerId: slug, slug, name: slug, price: 0 })); }}
+                      style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", background: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
+                    >Add the suite — Free</button>
+                  </div>
+                ) : (
                   <div
-                    key={w.slug}
-                    onClick={() => subscribeToWorker({ workerId: w.slug, slug: w.slug, name: w.name, price: w.price })}
+                    key={w.slug || w.id}
+                    onClick={() => { const s = w.slug || w.id; subscribeToWorker({ workerId: s, slug: s, name: w.name, price: w.price }); }}
                     style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "box-shadow 0.15s" }}
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.15)"; e.currentTarget.style.borderColor = "#c4b5fd"; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {w.rank && <span style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed", background: "#f3e8ff", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>#{w.rank}</span>}
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
+                      </div>
                       <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{w.description}</div>
                       <div style={{ display: "flex", gap: 5, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" }}>{w.price === 0 ? "Free" : `$${w.price / 100}/mo`}</span>
                         {w.status === "live" && <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 20, background: "#dcfce7", color: "#166534" }}>Live</span>}
+                        {w.status !== "live" && <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 20, background: "#fef9c3", color: "#854d0e" }}>Coming Soon</span>}
                       </div>
                     </div>
-                    <button onClick={e => { e.stopPropagation(); subscribeToWorker({ workerId: w.slug, slug: w.slug, name: w.name, price: w.price }); }} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>Get this worker</button>
+                    {w.status === "live"
+                      ? <button onClick={e => { e.stopPropagation(); const s = w.slug || w.id; subscribeToWorker({ workerId: s, slug: s, name: w.name, price: w.price }); }} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>Get this worker</button>
+                      : <span style={{ fontSize: 11, fontWeight: 600, color: "#854d0e", background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 12px", flexShrink: 0, whiteSpace: "nowrap" }}>Coming Soon</span>
+                    }
                   </div>
                 ))}
               </div>
@@ -2895,22 +3036,37 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               </div>
             )}
 
-            {/* Metered service credit warning */}
+            {/* Credit warning — two shapes:
+                  1. prepaid low balance: { service, creditsRemaining } — percent is null
+                  2. monthly burn warning: { service, percent, used, budget } — Apollo/metered */}
             {msg.creditWarning && (
               <div style={{ marginTop: 10, maxWidth: 440, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <svg style={{ flexShrink: 0, marginTop: 1 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 2 }}>
-                    {msg.creditWarning.service} at {msg.creditWarning.percent}% of monthly budget
-                  </div>
-                  <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.5 }}>
-                    {msg.creditWarning.used?.toLocaleString()} of {msg.creditWarning.budget?.toLocaleString()} credits used this month. Top up your account to keep searches running.
-                  </div>
+                  {msg.creditWarning.creditsRemaining != null ? (
+                    <>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 2 }}>
+                        Data Credits running low
+                      </div>
+                      <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.5 }}>
+                        {msg.creditWarning.creditsRemaining} credits remaining in this workspace. Order more to keep workers running.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 2 }}>
+                        {msg.creditWarning.service} at {msg.creditWarning.percent}% of monthly budget
+                      </div>
+                      <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.5 }}>
+                        {msg.creditWarning.used?.toLocaleString()} of {msg.creditWarning.budget?.toLocaleString()} credits used this month. Top up your account to keep searches running.
+                      </div>
+                    </>
+                  )}
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "billing" } }))}
                     style={{ marginTop: 6, fontSize: 11, fontWeight: 600, color: "#92400e", background: "transparent", border: "1px solid #fbbf24", borderRadius: 5, padding: "3px 8px", cursor: "pointer" }}
                   >
-                    Go to Billing →
+                    Order more credits →
                   </button>
                 </div>
               </div>

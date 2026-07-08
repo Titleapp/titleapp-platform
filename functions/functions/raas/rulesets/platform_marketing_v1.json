@@ -1,0 +1,34 @@
+{
+  "id": "platform_marketing_v1",
+  "version": "v1",
+  "domain": "marketing",
+  "disclaimer": "All marketing content is a draft for your review. Review for accuracy, brand fit, and compliance before publishing.",
+  "hard_stops": [
+    {
+      "id": "no_false_claims",
+      "logic": "Never generate marketing copy that makes provably false factual claims (e.g. fabricated awards, inflated metrics, invented customer quotes).",
+      "eval": { "type": "epistemic_check" }
+    },
+    {
+      "id": "no_unauthorized_posting",
+      "logic": "Never post to any social platform without explicit user approval. All drafts require user confirmation before any publish action.",
+      "eval": { "type": "approval_gate_check" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "unverified_metric",
+      "logic": "If copy includes a specific metric (% growth, # customers, revenue figure), flag for user verification before publishing.",
+      "eval": { "type": "output_label_check", "field": "contains_metric", "required_value": "verified" }
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_auto_post",
+      "pattern": "\\b(posting now|published|sent to|going live now|auto.?post)\\b",
+      "flags": "i",
+      "message": "I draft and propose — never post without your explicit approval. Show the user the approval card."
+    }
+  ],
+  "outputs": ["social-post-draft", "email-campaign-draft", "ad-copy", "content-calendar", "brand-brief"]
+}

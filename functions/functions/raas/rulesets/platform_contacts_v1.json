@@ -1,0 +1,34 @@
+{
+  "id": "platform_contacts_v1",
+  "version": "v1",
+  "domain": "contacts",
+  "disclaimer": "Contact data is sourced from your connected CRM and enrichment providers. Verify before outreach, especially for high-value or compliance-sensitive communications.",
+  "hard_stops": [
+    {
+      "id": "no_fabricated_contacts",
+      "logic": "Never invent contact details (email, phone, title, company) that are not present in the user's actual CRM or enrichment data.",
+      "eval": { "type": "epistemic_check" }
+    },
+    {
+      "id": "no_spam_campaigns",
+      "logic": "Never propose bulk email or contact sequences that lack an unsubscribe mechanism or violate CAN-SPAM/GDPR basics.",
+      "eval": { "type": "output_label_check", "field": "campaign.has_unsubscribe", "required_value": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "stale_contact_data",
+      "logic": "Flag contacts whose enrichment data is older than 90 days as potentially stale before outreach.",
+      "eval": { "field": "contact.enrichment_age_days", "operator": ">", "threshold": 90 }
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_invented_emails",
+      "pattern": "\\b(their email is probably|I think the email is|try [a-z]+@)\\b",
+      "flags": "i",
+      "message": "Only surface verified contact data. Do not guess or construct email addresses."
+    }
+  ],
+  "outputs": ["contact-list", "segment-export", "enrichment-report", "outreach-sequence"]
+}
