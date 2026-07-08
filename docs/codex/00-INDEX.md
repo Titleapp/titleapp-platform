@@ -55,5 +55,11 @@ keystone** — it blocks the portal, the fix-loop, and the "350 distributors" pr
 
 19. [`19-cos-cross-workspace-visibility.md`](19-cos-cross-workspace-visibility.md) — 🔴 **architect now** — "Alex is the sun, personas are planets": COS queries by `ownerUid` (user-level) not `tenantId` (workspace-level) so Alex sees all contacts/campaigns across all personas; domain workers stay silo-scoped; two-key model (`ownerUid` + `tenantId` on every record); persona fan-out in `buildSiblingStatePrompt`; 3-phase migration (write path → backfill ~5k contacts → switch COS queries); 9 build tasks C1–C9; red-teamed 2026-07-03
 
+20. [`20-re-brokerage-marketing.md`](20-re-brokerage-marketing.md) — 🟢 **shipped 2026-07-07** — RE Brokerage Marketing worker (re-marketing-001): thesis (broker = keyholder + confirmation specialist), `schedule_showing` + `qualify_lead` tools, Uber deep-link, `card:listing-readiness` canvas, ATTOM live lookups, Fair Housing compliance baked into prompt; all 7 RE worker canvas tabs seeded in Firestore; ATTOM API key fixed (live key from "SOCIII, Inc" app).
+
+21. [`21-worker-taxonomy-and-sibling-comms.md`](21-worker-taxonomy-and-sibling-comms.md) — 🟡 **model locked 2026-07-07** — canonical Vertical→Suite→Worker taxonomy; `re-in-a-box` bundle (all 7 RE workers); spine workers = cross-vertical foundation; sibling context injection pattern (workers tell Alex which siblings exist + what they accept/emit); re-marketing-001 suite fixed to "Marketing"; RE workers subscribed in Sean's DEMO SPACE for testing; **BUILD NEXT**: sibling injection at chat layer + `re-in-a-box` marketplace card.
+
+24. [`24-vertical-suites-and-marketplace.md`](24-vertical-suites-and-marketplace.md) — 🟢 **shipped 2026-07-08** — 4 vertical suites with bundle-first ranked marketplace: Property Manager worker (RAAS PM-FH/EV/HAB hard stops, 6-tab canvas), RE in a Box + Education in a Box + Aviation in a Box + eCommerce in a Box search bundles; 27 new Coming Soon workers seeded across 3 verticals; eCommerce DPP worker live (Elise anchor); search scroll-to-top fix; spine RAAS canary-RED alerts resolved; Personal Space workspace UX unified; QA-001 0 errors.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started

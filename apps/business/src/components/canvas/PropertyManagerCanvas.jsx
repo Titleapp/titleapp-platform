@@ -311,8 +311,8 @@ function ComplianceTab() {
   );
 }
 
-export default function PropertyManagerCanvas({ payload: directPayload, onBack, resolved = {}, context = {}, onDismiss }) {
-  const payload = directPayload || context?.payload || resolved?.payload || {};
+export default function PropertyManagerCanvas({ payload: directPayload, onBack, resolved: _resolved = {}, context: _context = {}, onDismiss }) {
+  const _payload = directPayload || _context?.payload || _resolved?.payload || {}; void _payload;
   const handleBack = onBack || onDismiss || null;
   const [tab, setTab] = useState("Properties");
 
