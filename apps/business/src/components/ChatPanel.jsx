@@ -1083,6 +1083,49 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
   }
 
+  const BUNDLE_VERTICAL_MAP = {
+    "re-in-a-box": { vertical: "real-estate", label: "Real Estate" },
+    "education-in-a-box": { vertical: "education", label: "Education" },
+    "aviation-in-a-box": { vertical: "aviation", label: "Aviation" },
+    "ecommerce-in-a-box": { vertical: "ecommerce", label: "eCommerce" },
+  };
+
+  async function handleBundleCreateAndSubscribe(bundle, workspaceName, doCreate) {
+    setBundleSubscribeModal(null);
+    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
+
+    if (doCreate) {
+      const mapping = BUNDLE_VERTICAL_MAP[bundle.bundleId] || { vertical: "org", label: "Workspace" };
+      try {
+        const res = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ vertical: mapping.vertical, name: workspaceName, type: "org", onboardingComplete: true }),
+        });
+        const data = await res.json();
+        if (data.ok && data.workspace) {
+          const ws = data.workspace;
+          localStorage.setItem("TENANT_ID", ws.id);
+          localStorage.setItem("WORKSPACE_NAME", ws.name);
+          localStorage.setItem("WORKSPACE_ID", ws.id);
+          localStorage.setItem("VERTICAL", ws.vertical);
+          window.dispatchEvent(new CustomEvent("ta:workspace-changed", {
+            detail: { teamId: ws.id, vertical: ws.vertical, name: ws.name },
+          }));
+        }
+      } catch (err) {
+        console.error("Workspace creation failed:", err);
+      }
+    }
+
+    if (bundle.workerSlugs) {
+      for (const slug of bundle.workerSlugs) {
+        await subscribeToWorker({ workerId: slug, slug, name: slug, price: 0 });
+      }
+    }
+  }
+
   // Keep the ref pointing at the current sendMessage (hoisted function decl).
   sendMessageRef.current = sendMessage;
 
@@ -1737,6 +1780,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [schedulerOpen, setSchedulerOpen] = useState({});
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
   const [campaignSendState, setCampaignSendState] = useState({}); // { idx: "sending"|"done"|"error" }
+  const [bundleSubscribeModal, setBundleSubscribeModal] = useState(null); // { bundle, workspaceName }
 
   async function handleSaveDraft(content, idx) {
     setSavingDraftIdx(idx);
@@ -2448,7 +2492,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                       <div style={{ fontSize: 11, color: "#ddd6fe", marginTop: 2 }}>{w.description}</div>
                     </div>
                     <button
-                      onClick={e => { e.stopPropagation(); if (w.workerSlugs) w.workerSlugs.forEach(slug => subscribeToWorker({ workerId: slug, slug, name: slug, price: 0 })); }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        const mapping = BUNDLE_VERTICAL_MAP[w.bundleId] || { label: "Vertical" };
+                        setBundleSubscribeModal({ bundle: w, workspaceName: `${mapping.label} Workspace` });
+                      }}
                       style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", background: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
                     >Add the suite — Free</button>
                   </div>
@@ -3310,6 +3358,44 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </button>
         </div>
       </form>
+
+      {/* Bundle workspace creation modal */}
+      {bundleSubscribeModal && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setBundleSubscribeModal(null)}
+        >
+          <div
+            style={{ background: "#fff", borderRadius: 14, padding: "28px 24px", maxWidth: 360, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>Create a new workspace?</div>
+            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5, marginBottom: 18 }}>
+              Set up a dedicated workspace for your {(bundleSubscribeModal.bundle.name || "").replace(" in a Box", "")} workers — or skip to add them to your current workspace.
+            </div>
+            <input
+              type="text"
+              value={bundleSubscribeModal.workspaceName}
+              onChange={e => setBundleSubscribeModal(prev => ({ ...prev, workspaceName: e.target.value }))}
+              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", fontSize: 14, marginBottom: 16, boxSizing: "border-box", outline: "none" }}
+              onFocus={e => { e.target.style.borderColor = "#7c3aed"; }}
+              onBlur={e => { e.target.style.borderColor = "#e2e8f0"; }}
+            />
+            <button
+              onClick={() => handleBundleCreateAndSubscribe(bundleSubscribeModal.bundle, bundleSubscribeModal.workspaceName, true)}
+              style={{ width: "100%", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}
+            >
+              Create Workspace &amp; Add Workers
+            </button>
+            <button
+              onClick={() => handleBundleCreateAndSubscribe(bundleSubscribeModal.bundle, bundleSubscribeModal.workspaceName, false)}
+              style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", fontSize: 13, cursor: "pointer", padding: "6px" }}
+            >
+              Skip — add to my current workspace
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Draft save toast (49.2) */}
       {draftToast && (
