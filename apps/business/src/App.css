@@ -721,9 +721,17 @@ body{
   0%,100%{ opacity:0.7; }
   50%{ opacity:1; }
 }
-@keyframes spinKey{
-  from{ transform:rotate(0deg); }
-  to{ transform:rotate(360deg); }
+@keyframes twinkleMain{
+  0%,100%{ opacity:0.8; transform:scale(0.95); }
+  50%{ opacity:1; transform:scale(1.08); }
+}
+@keyframes twinkleSmall{
+  0%,100%{ opacity:1; transform:scale(1); }
+  45%{ opacity:0.15; transform:scale(0.55); }
+}
+@keyframes twinkleTiny{
+  0%,100%{ opacity:0.25; transform:scale(0.65); }
+  65%{ opacity:1; transform:scale(1.1); }
 }
 
 /* Mobile input helpers — "+" toggle hidden on desktop; extras row only used on mobile */
@@ -1000,7 +1008,19 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 .dualPanel > * { min-width: 0; }
 .chatSidebar { min-width: 0; }
 
-/* S52.45 — collapsible sidebar (Claude/Linear-style). Desktop only; mobile uses the overlay. */
+/* ── MorningBrief + WorkerHome mobile polish (#57) ── */
+.morningBriefWrapper { padding: 28px 32px; }
+.workersSection { padding: 0 32px 32px; max-width: 960px; }
+@media (max-width: 768px) {
+  .morningBriefWrapper { padding: 20px 16px; }
+  .workersSection { padding: 0 16px 100px; }
+}
+@media (max-width: 480px) {
+  .morningBriefWrapper { padding: 16px 12px; }
+  .workersSection { padding: 0 12px 100px; }
+}
+
+/* ── S52.45 — collapsible sidebar (Claude/Linear-style). Desktop only; mobile uses the overlay. */
 .sidebar.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; border-right: none; }
 .sidebarCollapseToggle {
   position: fixed; top: 14px; z-index: 1200;

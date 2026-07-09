@@ -122,7 +122,34 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         ...attributionTenant,
       });
-      return { allowed: true, source: "tenant", creditsRemaining: currentBalance - creditCost };
+      const creditsRemaining = currentBalance - creditCost;
+
+      // Low-balance alert: fire an operating feed item for the userId (workspace
+      // admin who consumed the credit) when remaining drops below 100.
+      // ikey includes the 10-credit band so it re-fires each time the balance
+      // crosses another 50-credit floor — not just once ever.
+      const LOW_CREDIT_THRESHOLD = 100;
+      if (creditsRemaining < LOW_CREDIT_THRESHOLD) {
+        try {
+          const band = Math.floor(creditsRemaining / 50); // 0=0-49, 1=50-99
+          const ikey = `low_credits_${tenantId}_band${band}`;
+          await db.collection("alertFeed").doc(userId).collection("items").doc(ikey).set({
+            id: ikey, ikey,
+            title: "Data Credits running low",
+            body: `${creditsRemaining} credits remaining in this workspace. Top up to keep workers running.`,
+            severity: creditsRemaining < 20 ? "red" : "yellow",
+            source_label: "Billing",
+            action_hint: "Go to Settings → Billing to add credits",
+            resolved: false,
+            snoozeUntil: null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        } catch (alertErr) {
+          console.warn("[credits] low-balance alert write failed:", alertErr.message);
+        }
+      }
+
+      return { allowed: true, source: "tenant", creditsRemaining, lowBalance: creditsRemaining < LOW_CREDIT_THRESHOLD };
     }
 
     // Personal Vault path — original user-pool flow.

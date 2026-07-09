@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, doc, query, where, orderBy, limit, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, limit, onSnapshot } from "firebase/firestore";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -243,25 +243,32 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
   const handleResolve = useCallback(async (alertId) => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
+    // Optimistic remove — listener confirms via Firestore
+    setAlertItems(prev => prev.filter(it => it.id !== alertId));
     try {
-      await updateDoc(doc(db, "alertFeed", currentUser.uid, "items", alertId), {
-        resolved: true, resolvedAt: serverTimestamp(),
+      const token = await currentUser.getIdToken();
+      await fetch(`${API_BASE}/api?path=/v1/alertFeed:resolve`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ alert_id: alertId }),
       });
-    } catch { /* ignore */ }
-  }, [auth, db]);
+    } catch (e) { console.warn("alertFeed resolve:", e.message); }
+  }, [auth]);
 
   const handleSnooze = useCallback(async (alertId, hours) => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
+    // Optimistic remove — listener will re-add when snooze expires
+    setAlertItems(prev => prev.filter(it => it.id !== alertId));
     try {
-      const until = new Date(Date.now() + hours * 3600 * 1000);
-      // optimistic local filter — listener will catch up
-      setAlertItems(prev => prev.filter(it => it.id !== alertId));
-      await updateDoc(doc(db, "alertFeed", currentUser.uid, "items", alertId), {
-        snoozeUntil: { seconds: Math.floor(until.getTime() / 1000), nanoseconds: 0 },
+      const token = await currentUser.getIdToken();
+      await fetch(`${API_BASE}/api?path=/v1/alertFeed:snooze`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ alert_id: alertId, snooze_hours: hours }),
       });
-    } catch { /* ignore */ }
-  }, [auth, db]);
+    } catch (e) { console.warn("alertFeed snooze:", e.message); }
+  }, [auth]);
 
   // Fetch Vault net worth (sum of DTC estimatedValue fields)
   useEffect(() => {
@@ -350,7 +357,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
   const dailyThought = getDailyThought();
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 860, height: "100%", overflowY: "auto" }}>
+    <div className="morningBriefWrapper" style={{ maxWidth: 860, height: "100%", overflowY: "auto" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
@@ -490,27 +497,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
         </div>
       )}
 
-      {/* Daily Thought */}
-      {prefs.showThought && (
-        <div style={{
-          background: "#fafafa", border: "1px solid #f1f5f9", borderRadius: 12,
-          padding: "16px 20px",
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
-            Today
-          </div>
-          <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, fontStyle: "italic" }}>
-            &ldquo;{dailyThought.text}&rdquo;
-          </div>
-          {dailyThought.attr && (
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>
-              — {dailyThought.attr}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Operating Feed */}
+      {/* Operating Feed — before Daily Thought so alerts are visible without scrolling */}
       {prefs.showPriorities && (
         <div style={{
           background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
@@ -543,6 +530,26 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
           ) : (
             <div style={{ fontSize: 13, color: "#94a3b8" }}>
               Nothing on the feed right now. Ask Alex to surface priorities here.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Daily Thought */}
+      {prefs.showThought && (
+        <div style={{
+          background: "#fafafa", border: "1px solid #f1f5f9", borderRadius: 12,
+          padding: "16px 20px",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+            Today
+          </div>
+          <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.6, fontStyle: "italic" }}>
+            &ldquo;{dailyThought.text}&rdquo;
+          </div>
+          {dailyThought.attr && (
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>
+              — {dailyThought.attr}
             </div>
           )}
         </div>

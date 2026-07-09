@@ -7,9 +7,12 @@
 // Idempotent — safe to re-run. Skips docs that already have the flag.
 // Logged to config/migrations/baseline-backfill-{date}.
 //
-// Usage: GOOGLE_APPLICATION_CREDENTIALS=... node scripts/backfill-baseline-capabilities.js
+// Usage: node scripts/backfill-baseline-capabilities.js  (from repo root)
 
-const admin = require("firebase-admin");
+const path = require("path");
+// firebase-admin lives in functions/functions/node_modules — not at repo root.
+const adminPath = path.resolve(__dirname, "../functions/functions/node_modules/firebase-admin");
+const admin = require(adminPath);
 const serviceAccount = process.env.GOOGLE_APPLICATION_CREDENTIALS
   ? require(process.env.GOOGLE_APPLICATION_CREDENTIALS)
   : null;
@@ -29,8 +32,10 @@ async function run() {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
 
-  const catalogSnap = await db.collection("raasCatalog").get();
-  console.log(`[B1] Found ${catalogSnap.size} raasCatalog entries.`);
+  // baselineCapabilities lives on digitalWorkers/{slug}, not raasCatalog.
+  // raasCatalog = rule/ruleset catalog; digitalWorkers = live worker instances.
+  const catalogSnap = await db.collection("digitalWorkers").get();
+  console.log(`[B1] Found ${catalogSnap.size} digitalWorkers entries.`);
 
   let updated = 0, alreadySet = 0, lastRunStubbed = 0, errors = 0;
 
@@ -62,7 +67,7 @@ async function run() {
       }
 
       // Write lastRun stub if the doc doesn't exist yet.
-      const lastRunRef = db.doc(`creators/${slug}/lastRun`);
+      const lastRunRef = db.doc(`creatorLastRun/${slug}`);
       const lastRunSnap = await lastRunRef.get();
       if (!lastRunSnap.exists) {
         await lastRunRef.set({
@@ -82,7 +87,7 @@ async function run() {
   }
 
   // Log migration result.
-  await db.doc(`config/migrations/baseline-backfill-${dateStr}`).set({
+  await db.doc(`migrations/baseline-backfill-${dateStr}`).set({
     runAt: admin.firestore.FieldValue.serverTimestamp(),
     totalCatalogEntries: catalogSnap.size,
     updated,

@@ -80,8 +80,9 @@ function scoreDistress(p) {
 async function attomGet(p, apiKey) {
   try {
     const r = await fetch(`${ATTOM_BASE}${p}`, { headers: { apikey: apiKey, accept: "application/json" } });
-    return r.ok ? await r.json() : null;
-  } catch { return null; }
+    const json = r.ok ? await r.json() : null;
+    return { ok: r.ok, status: r.status, json };
+  } catch { return { ok: false, status: null, json: null }; }
 }
 
 /**
@@ -95,11 +96,14 @@ async function searchDistressedCRE({ metro, radius = 0.6, limit = 12, perCenter 
   const out = [];
   for (const c of centers) {
     const snap = await attomGet(`/property/snapshot?latitude=${c.lat}&longitude=${c.lng}&radius=${radius}&propertytype=COMMERCIAL`, apiKey);
-    for (const pr of (snap?.property || []).slice(0, perCenter)) {
+    if (snap.status === 401 || snap.status === 403) {
+      return { error: "Live property data is temporarily unavailable — please check back shortly.", code: "ATTOM_UNAVAILABLE", candidates: [] };
+    }
+    for (const pr of (snap?.json?.property || []).slice(0, perCenter)) {
       const id = pr?.identifier?.attomId;
       if (!id) continue;
       const ep = await attomGet(`/property/expandedprofile?attomid=${id}`, apiKey);
-      const e = ep?.property?.[0] || {};
+      const e = ep?.json?.property?.[0] || {};
       const loc = e?.location || pr?.location || {};
       const sale = e?.sale || {};
       const rec = {

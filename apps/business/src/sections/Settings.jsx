@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
 import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks/useCalendar";
-import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts } from "../hooks/useGmail";
+import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts, useGmailAccounts, addGmailAccount, removeGmailAccount } from "../hooks/useGmail";
 import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive";
+import { useESignStatus, connectESign, disconnectESign } from "../hooks/useESign";
 import { useShopifyStatus, connectShopify, disconnectShopify } from "../hooks/useShopify";
 
 const _API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -204,6 +205,75 @@ function TikTokRow() {
   );
 }
 
+function XRow() {
+  const [status, setStatus] = useState({ loading: true, connected: false, handle: null });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const refresh = useCallback(async () => {
+    try {
+      const r = await _socialFetch("/v1/x:userStatus");
+      setStatus({ loading: false, connected: !!r.connected, handle: r.handle || null });
+    } catch { setStatus({ loading: false, connected: false, handle: null }); }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await _socialFetch("/v1/x:userAuthUrl");
+      if (!r.authUrl) throw new Error("Could not start X connection");
+      const popup = window.open(r.authUrl, "x-auth", "width=600,height=700");
+      if (!popup) throw new Error("Popup blocked — allow popups for this site.");
+      const code = await new Promise((resolve, reject) => {
+        let done = false;
+        const h = (e) => {
+          if (!e.data || e.data.type !== "twitter-auth-code" || !e.data.code) return;
+          window.removeEventListener("message", h);
+          done = true;
+          resolve(e.data.code);
+        };
+        window.addEventListener("message", h);
+        const t = setInterval(() => {
+          try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } }
+          catch { /* ignore */ }
+        }, 500);
+      });
+      await _socialFetch("/v1/x:userExchangeCode", "POST", { code });
+      await refresh();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect your X account?")) return;
+    setBusy(true);
+    try { await _socialFetch("/v1/x:userDisconnect", "POST"); await refresh(); } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="x" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>X (Twitter)</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading ? "Checking…" : status.connected
+              ? `Connected: ${status.handle || "your X account"}. Alex can post on your behalf.`
+              : "Connect your own X account so Alex can post to it."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+        </div>
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "Connecting…" : "Connect"}</button>
+      )}
+    </div>
+  );
+}
+
 // Google Calendar connector status + connect/disconnect button.
 // Renders a single row inside the Integrations card.
 function GoogleCalendarRow() {
@@ -263,48 +333,49 @@ function GoogleCalendarRow() {
   );
 }
 
-// Gmail connector status + connect/disconnect + sync contacts button.
+// Gmail connector — supports multiple connected accounts.
+// Primary account uses /gmail:connect flow; additional accounts use /gmail:addAccount.
 function GmailRow() {
-  const { status, refresh } = useGmailStatus();
+  const { status: primaryStatus, refresh: refreshPrimary } = useGmailStatus();
+  const { accounts, loading: accountsLoading, refresh: refreshAccounts } = useGmailAccounts();
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [err, setErr] = useState(null);
 
+  function refreshAll() { refreshPrimary(); refreshAccounts(); }
+
   async function handleConnect() {
     setBusy(true); setErr(null);
-    try {
-      await connectGmail();
-      await refresh();
-    } catch (e) {
-      setErr(e?.message || "Connection failed");
-    }
+    try { await connectGmail(); refreshAll(); } catch (e) { setErr(e?.message || "Connection failed"); }
     setBusy(false);
   }
 
-  async function handleDisconnect() {
-    if (!window.confirm("Disconnect Gmail? Workers won't be able to read email or sync contacts until you reconnect.")) return;
+  async function handleAddAccount() {
+    setBusy(true); setErr(null);
+    try { await addGmailAccount(); refreshAll(); } catch (e) { setErr(e?.message || "Connection failed"); }
+    setBusy(false);
+  }
+
+  async function handleRemove(accountId, email) {
+    if (!window.confirm(`Disconnect ${email || "this account"}?`)) return;
     setBusy(true); setErr(null);
     try {
-      await disconnectGmail();
-      await refresh();
-      setSyncResult(null);
-    } catch (e) {
-      setErr(e?.message || "Disconnect failed");
-    }
+      if (accountId === "primary") await disconnectGmail();
+      else await removeGmailAccount(accountId);
+      refreshAll(); setSyncResult(null);
+    } catch (e) { setErr(e?.message || "Disconnect failed"); }
     setBusy(false);
   }
 
   async function handleSync() {
     setSyncing(true); setErr(null); setSyncResult(null);
-    try {
-      const r = await syncGmailContacts();
-      setSyncResult(r);
-    } catch (e) {
-      setErr(e?.message || "Sync failed");
-    }
+    try { const r = await syncGmailContacts(); setSyncResult(r); } catch (e) { setErr(e?.message || "Sync failed"); }
     setSyncing(false);
   }
+
+  const loading = primaryStatus.loading || accountsLoading;
+  const hasAny = accounts.length > 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -314,37 +385,55 @@ function GmailRow() {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Gmail</div>
             <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-              {status.loading
-                ? "Checking…"
-                : status.connected
-                  ? `Connected as ${status.email || "Google account"}. Workers can read email context and send on your behalf.`
-                  : "Connect so workers can sync your contacts, search email context, and send outbound from your address."}
+              {loading ? "Checking…" : hasAny
+                ? `${accounts.length} account${accounts.length > 1 ? "s" : ""} connected. Alex reads all inboxes and can send on your behalf.`
+                : "Connect so workers can sync contacts, search email context, and send from your address."}
             </div>
             {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
-          {syncResult && (
-            <div style={{ fontSize: "12px", color: "#166534", marginTop: 4 }}>
-              Sync complete — {syncResult.added} added, {syncResult.updated} updated ({syncResult.total} contacts found)
-            </div>
-          )}
+            {syncResult && (
+              <div style={{ fontSize: "12px", color: "#166534", marginTop: 4 }}>
+                Sync complete — {syncResult.added} added, {syncResult.updated} updated ({syncResult.total} contacts found)
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          {status.connected && (
+          {hasAny && (
             <button className="iconBtn" disabled={syncing} onClick={handleSync} style={{ whiteSpace: "nowrap" }}>
               {syncing ? "Syncing…" : "Sync contacts"}
             </button>
           )}
-          {status.connected ? (
-            <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap" }}>
-              {busy ? "…" : "Disconnect"}
+          {hasAny ? (
+            <button className="iconBtn" disabled={busy || loading} onClick={handleAddAccount} style={{ whiteSpace: "nowrap" }}>
+              {busy ? "Connecting…" : "+ Add account"}
             </button>
           ) : (
-            <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap" }}>
+            <button className="iconBtn" disabled={busy || loading} onClick={handleConnect} style={{ whiteSpace: "nowrap" }}>
               {busy ? "Connecting…" : "Connect"}
             </button>
           )}
         </div>
       </div>
+      {accounts.length > 0 && (
+        <div style={{ paddingLeft: 48, display: "flex", flexDirection: "column", gap: 6 }}>
+          {accounts.map(acct => (
+            <div key={acct.accountId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "12px", color: "var(--textMuted)" }}>
+                {acct.email || acct.accountId}
+                {acct.primary && <span style={{ marginLeft: 6, fontSize: "10px", color: "var(--textMuted)", opacity: 0.7 }}>primary</span>}
+              </span>
+              <button
+                className="iconBtn"
+                style={{ fontSize: "11px", padding: "2px 8px", whiteSpace: "nowrap" }}
+                disabled={busy}
+                onClick={() => handleRemove(acct.accountId, acct.email)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -483,6 +572,64 @@ function DriveRow() {
               : status.connected
                 ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
                 : "Connect so workers can read documents, contracts, and files from your Drive."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+        </div>
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "…" : "Disconnect"}
+        </button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "Connecting…" : "Connect"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Google eSignature connector ───────────────────────────────────
+function GoogleESignRow() {
+  const { status, refresh } = useESignStatus();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      await connectESign();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Connection failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect Google eSignature? You can reconnect any time.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await disconnectESign();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Disconnect failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="google-drive" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Google eSignature</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading
+              ? "Checking…"
+              : status.connected
+                ? `Connected as ${status.email || "Google account"}. Alex can send documents for signature and track completions.`
+                : "Connect so Alex can send documents for signature via Google eSign (free with Workspace)."}
           </div>
           {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
@@ -1723,6 +1870,7 @@ function BusinessSettings() {
           <GmailRow />
           <GoogleCalendarRow />
           <DriveRow />
+          <GoogleESignRow />
           <IntRow icon="microsoft-onedrive" name="Microsoft OneDrive" desc="Sync files and documents from OneDrive" badge="Coming Soon" />
           <IntRow icon="microsoft-outlook" name="Microsoft Outlook" desc="Sync email and calendar from Outlook" badge="Coming Soon" />
           <IntRow icon="quickbooks" name="QuickBooks" desc="Sync financial data and invoices" badge="Coming Soon" />
@@ -1744,7 +1892,7 @@ function BusinessSettings() {
           <IntRow icon="instagram" name="Instagram" desc="Publish photos and reels to your Instagram account" badge="Coming Soon" />
           <IntRow icon="linkedin" name="LinkedIn" desc="Publish posts and articles to your company page" badge="Coming Soon" />
           <TikTokRow />
-          <IntRow icon="x" name="X (Twitter)" desc="Posts from the @SOCIIIai managed account — Alex queues posts for your approval." badge="Platform account" />
+          <XRow />
           <YouTubeRow />
         </div>
       </div>

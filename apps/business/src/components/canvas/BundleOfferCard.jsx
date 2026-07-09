@@ -3,49 +3,93 @@ import CanvasCardShell from "./CanvasCardShell";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-const BUNDLE_WORKERS = [
-  {
-    slug: "platform-control-center-pro",
-    name: "Control Center",
-    icon: "◆",
-    accent: "#7c3aed",
-    description: "Runs your daily brief, surfaces priorities, routes work across every worker.",
+const BUNDLE_CONFIGS = {
+  "business-in-a-box": {
+    title: "Business-in-a-Box",
+    subtitle: "Five AI workers, one workspace. Everything a small business needs — accounting, HR, marketing, contacts, and a Chief of Staff to tie it all together.",
+    accentColor: "#7c3aed",
+    workers: [
+      {
+        slug: "platform-control-center-pro",
+        name: "Control Center",
+        icon: "◆",
+        accent: "#7c3aed",
+        description: "Runs your daily brief, surfaces priorities, routes work across every worker.",
+      },
+      {
+        slug: "platform-accounting",
+        name: "Accounting Pro",
+        icon: "📊",
+        accent: "#0891b2",
+        description: "Live P&L, burn rate, transaction categorization, invoice tracker, tax prep.",
+      },
+      {
+        slug: "platform-hr",
+        name: "HR & People",
+        icon: "👥",
+        accent: "#059669",
+        description: "Roster, time-off, payroll data, hiring pipeline, contractor records.",
+      },
+      {
+        slug: "platform-marketing",
+        name: "Marketing & Content",
+        icon: "📣",
+        accent: "#d97706",
+        description: "Campaign drafts, social calendar, ad copy, email sequences, brand assets.",
+      },
+      {
+        slug: "platform-contacts",
+        name: "Contacts & CRM",
+        icon: "📋",
+        accent: "#2563eb",
+        description: "Contact lists, lead tracking, Apollo enrichment, segment builder.",
+      },
+    ],
   },
-  {
-    slug: "platform-accounting",
-    name: "Accounting Pro",
-    icon: "📊",
-    accent: "#0891b2",
-    description: "Live P&L, burn rate, transaction categorization, invoice tracker, tax prep.",
+  "re-in-a-box": {
+    title: "Real Estate in a Box",
+    subtitle: "7 workers for the full CRE deal lifecycle",
+    accentColor: "#15803d",
+    workers: [
+      { slug: "site-recon-001", name: "Site Recon", icon: "🗺", description: "Parcel scout — ranked opportunities with title + assessor data, feasibility verdict." },
+      { slug: "title-abstract-001", name: "Title Abstract", icon: "📜", description: "Full chain of title, encumbrances, and rights stack. Source-pinned, Vault-anchored." },
+      { slug: "cre-analyst", name: "CRE Deal Analyst", icon: "📊", description: "Deal screen + pro forma. Go/no-go verdict with ATTOM comps." },
+      { slug: "feasibility-001", name: "Market & Feasibility", icon: "📈", description: "Lender-defensible demand/supply study. Census + ATTOM sourced." },
+      { slug: "zoning-001", name: "Zoning + Entitlement", icon: "🏛", description: "Plain-English zoning verdict with live code citations. No model recall." },
+      { slug: "law-landuse-001", name: "Land Use Attorney", icon: "⚖️", description: "Entitlement roadmap with version-pinned citations. UPL-compliant." },
+      { slug: "re-marketing-001", name: "RE Broker & Marketing", icon: "🏡", description: "Listing readiness scorecard, showing schedule, buyer pipeline." },
+    ],
   },
-  {
-    slug: "platform-hr",
-    name: "HR & People",
-    icon: "👥",
-    accent: "#059669",
-    description: "Roster, time-off, payroll data, hiring pipeline, contractor records.",
+  "education-in-a-box": {
+    title: "Education in a Box",
+    subtitle: "Student evaluation, CE tracking, and immutable learning records — built for schools and programs.",
+    accentColor: "#1d4ed8",
+    workers: [
+      { slug: "student-eval-001", name: "Student Evaluation", icon: "🎓", description: "Clinical evaluation, competency tracking, and immutable learning records." },
+      { slug: "nursing-ce-001", name: "Nursing CE & License", icon: "🏥", description: "CE credit tracking, CEU verification, and state board renewal calendar." },
+    ],
   },
-  {
-    slug: "platform-marketing",
-    name: "Marketing & Content",
-    icon: "📣",
-    accent: "#d97706",
-    description: "Campaign drafts, social calendar, ad copy, email sequences, brand assets.",
+  "aviation-in-a-box": {
+    title: "Aviation in a Box",
+    subtitle: "CoPilot, maintenance, and dispatch for pilots and operators",
+    accentColor: "#0369a1",
+    workers: [
+      { slug: "av-copilot-001", name: "CoPilot", icon: "✈️", description: "Currency tracking, weather briefing, flight planning, and logbook." },
+      { slug: "av-mx-001", name: "MX Tracker", icon: "🔧", description: "Airworthiness calendar, AD compliance, inspection due-list." },
+      { slug: "av-dispatch-001", name: "Dispatch", icon: "🗼", description: "Trip planning, NOTAM briefing, fuel/FBO coordination." },
+    ],
   },
-  {
-    slug: "platform-contacts",
-    name: "Contacts & CRM",
-    icon: "📋",
-    accent: "#2563eb",
-    description: "Contact lists, lead tracking, Apollo enrichment, segment builder.",
-  },
-];
+};
 
-export default function BundleOfferCard({ resolved: _resolved, context: _context, onDismiss }) {
+export default function BundleOfferCard({ resolved: _resolved, context, onDismiss }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [result, setResult] = useState(null);
   const [err, setErr] = useState(null);
+
+  const bundleId = context?.payload?.bundleId || "business-in-a-box";
+  const config = BUNDLE_CONFIGS[bundleId] || BUNDLE_CONFIGS["business-in-a-box"];
+  const { title, subtitle, accentColor, workers } = config;
 
   async function subscribe() {
     setBusy(true);
@@ -60,7 +104,7 @@ export default function BundleOfferCard({ resolved: _resolved, context: _context
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(tenantId ? { "x-tenant-id": tenantId } : {}),
         },
-        body: JSON.stringify({ bundleId: "business-in-a-box", tenantId }),
+        body: JSON.stringify({ bundleId, tenantId }),
       });
       const data = await res.json();
       if (data?.ok) {
@@ -81,7 +125,7 @@ export default function BundleOfferCard({ resolved: _resolved, context: _context
     const added = result.subscribed?.length || 0;
     const already = result.skipped?.filter(s => s.reason === "already subscribed").length || 0;
     return (
-      <CanvasCardShell title="Business-in-a-Box" onDismiss={onDismiss}>
+      <CanvasCardShell title={title} onDismiss={onDismiss}>
         <div style={{ textAlign: "center", padding: "32px 16px" }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>✅</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#1e293b", marginBottom: 8 }}>
@@ -97,15 +141,20 @@ export default function BundleOfferCard({ resolved: _resolved, context: _context
     );
   }
 
+  // For business-in-a-box workers, use the per-worker accent; for other bundles fall back to bundle accent.
+  function workerAccent(w) {
+    return w.accent || accentColor;
+  }
+
   return (
-    <CanvasCardShell title="Business-in-a-Box" onDismiss={onDismiss}>
+    <CanvasCardShell title={title} onDismiss={onDismiss}>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, marginTop: -4, lineHeight: 1.6 }}>
-        Five AI workers, one workspace. Everything a small business needs — accounting, HR, marketing, contacts, and a Chief of Staff to tie it all together.
+        {subtitle}
       </div>
 
       {/* Worker list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-        {BUNDLE_WORKERS.map(w => (
+        {workers.map(w => (
           <div key={w.slug} style={{
             display: "flex", alignItems: "center", gap: 14,
             padding: "12px 14px", borderRadius: 10, background: "#fff",
@@ -113,10 +162,10 @@ export default function BundleOfferCard({ resolved: _resolved, context: _context
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: w.accent + "18",
+              background: workerAccent(w) + "18",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: typeof w.icon === "string" && w.icon.length > 1 ? 16 : 18,
-              color: w.accent,
+              color: workerAccent(w),
             }}>{w.icon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 2 }}>{w.name}</div>
@@ -147,7 +196,7 @@ export default function BundleOfferCard({ resolved: _resolved, context: _context
           opacity: busy ? 0.8 : 1,
         }}
       >
-        {busy ? "Setting up your workers…" : "Add all 5 workers — free"}
+        {busy ? "Setting up your workers…" : `Add all ${workers.length} worker${workers.length !== 1 ? "s" : ""} — free`}
       </button>
     </CanvasCardShell>
   );

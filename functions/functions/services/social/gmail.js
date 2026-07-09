@@ -438,14 +438,250 @@ async function listRecentSummary(uid, opts = {}) {
   return lines.length ? `RECENT INBOX (${lines.length} threads):\n${lines.join("\n")}` : null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  MULTI-ACCOUNT SUPPORT
+//  Primary account: users/{uid}/integrations/gmail (unchanged)
+//  Additional accounts: users/{uid}/gmailAccounts/{accountId}
+//  accountId = email.replace(/[@.+]/g, "_")
+// ═══════════════════════════════════════════════════════════════
+
+function accountId(email) {
+  return (email || "").toLowerCase().replace(/[@.+]/g, "_").replace(/[^a-z0-9_]/g, "");
+}
+
+async function storeExtraAccount(uid, email, tokens) {
+  const db = getDb();
+  const aId = accountId(email);
+  const data = {
+    email,
+    accountId: aId,
+    accessToken: encrypt(tokens.access_token),
+    refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
+    expiryDate: tokens.expiry_date || null,
+    scope: tokens.scope || SCOPES.join(" "),
+    connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  await db.doc(`users/${uid}/gmailAccounts/${aId}`).set(data, { merge: true });
+  return aId;
+}
+
+async function loadExtraAccountTokens(uid, aId) {
+  const db = getDb();
+  const snap = await db.doc(`users/${uid}/gmailAccounts/${aId}`).get();
+  if (!snap.exists) return null;
+  const data = snap.data();
+  if (!data.accessToken) return null;
+  return {
+    access_token: decrypt(data.accessToken),
+    refresh_token: data.refreshToken ? decrypt(data.refreshToken) : null,
+    expiry_date: data.expiryDate || null,
+    scope: data.scope || "",
+    email: data.email,
+  };
+}
+
+async function buildAuthedClientForAccount(uid, aId) {
+  const tokens = await loadExtraAccountTokens(uid, aId);
+  if (!tokens) throw new Error(`Gmail account ${aId} not found`);
+  const auth = buildOAuthClient();
+  auth.setCredentials(tokens);
+  auth.on("tokens", async (newTokens) => {
+    await storeExtraAccount(uid, tokens.email, { ...tokens, ...newTokens });
+  });
+  return auth;
+}
+
+async function handleGmailAddAccountUrl(req, res, { userId }) {
+  const auth = buildOAuthClient();
+  const url = auth.generateAuthUrl({
+    access_type: "offline",
+    scope: SCOPES,
+    prompt: "consent select_account",
+    state: `${userId}|gmail-add`,
+  });
+  return res.json({ ok: true, authUrl: url });
+}
+
+async function handleGmailAddAccountExchange(req, res, { userId }) {
+  const { code } = req.body || {};
+  if (!code) return res.status(400).json({ ok: false, error: "code required" });
+  const auth = buildOAuthClient();
+  const { tokens } = await auth.getToken(code);
+  auth.setCredentials(tokens);
+
+  const google = getGoogle();
+  const gmail = google.gmail({ version: "v1", auth });
+  let email = null;
+  try {
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    email = profile.data.emailAddress;
+  } catch (_) {}
+  if (!email) return res.status(400).json({ ok: false, error: "Could not determine account email" });
+
+  // Check if this is already the primary account
+  const primary = await getDb().doc(`users/${userId}/integrations/gmail`).get();
+  if (primary.exists && primary.data().email === email) {
+    return res.status(409).json({ ok: false, error: `${email} is already connected as your primary Gmail account.` });
+  }
+
+  const aId = await storeExtraAccount(userId, email, tokens);
+  return res.json({ ok: true, email, accountId: aId });
+}
+
+async function handleGmailListAccounts(req, res, { userId }) {
+  const db = getDb();
+  const accounts = [];
+
+  // Primary
+  try {
+    const snap = await db.doc(`users/${userId}/integrations/gmail`).get();
+    if (snap.exists && snap.data().accessToken) {
+      accounts.push({
+        accountId: "primary",
+        email: snap.data().email || null,
+        primary: true,
+        connectedAt: snap.data().connectedAt || null,
+      });
+    }
+  } catch (_) {}
+
+  // Extra accounts
+  try {
+    const extras = await db.collection(`users/${userId}/gmailAccounts`).get();
+    for (const doc of extras.docs) {
+      const data = doc.data();
+      if (data.accessToken) {
+        accounts.push({
+          accountId: doc.id,
+          email: data.email || null,
+          primary: false,
+          connectedAt: data.connectedAt || null,
+        });
+      }
+    }
+  } catch (_) {}
+
+  return res.json({ ok: true, accounts });
+}
+
+async function handleGmailRemoveAccount(req, res, { userId }) {
+  const { accountId: aId } = req.body || {};
+  if (!aId) return res.status(400).json({ ok: false, error: "accountId required" });
+  if (aId === "primary") {
+    await getDb().doc(`users/${userId}/integrations/gmail`).delete();
+  } else {
+    await getDb().doc(`users/${userId}/gmailAccounts/${aId}`).delete();
+  }
+  return res.json({ ok: true });
+}
+
+/**
+ * Merge inbox summaries from primary + all extra accounts.
+ * Cap 6 threads per account so context doesn't bloat.
+ */
+async function listRecentSummaryAllAccounts(uid, opts = {}) {
+  const { maxPerAccount = 6 } = opts;
+  const db = getDb();
+  const sections = [];
+
+  // Primary
+  try {
+    const primarySnap = await db.doc(`users/${uid}/integrations/gmail`).get();
+    if (primarySnap.exists && primarySnap.data().accessToken) {
+      const primaryEmail = primarySnap.data().email || "primary";
+      const summary = await listRecentSummary(uid, { maxResults: maxPerAccount });
+      if (summary) sections.push(`[${primaryEmail}]\n${summary}`);
+    }
+  } catch (_) {}
+
+  // Extra accounts
+  try {
+    const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+    for (const doc of extras.docs) {
+      const data = doc.data();
+      if (!data.accessToken) continue;
+      try {
+        const auth = await buildAuthedClientForAccount(uid, doc.id);
+        const google = getGoogle();
+        const gmail = google.gmail({ version: "v1", auth });
+        const snap = await gmail.users.messages.list({ userId: "me", maxResults: maxPerAccount, labelIds: ["INBOX"] });
+        const lines = [];
+        for (const msg of snap.data.messages || []) {
+          const full = await gmail.users.messages.get({ userId: "me", id: msg.id, format: "metadata", metadataHeaders: ["Subject", "From", "Date"] });
+          const headers = Object.fromEntries((full.data.payload?.headers || []).map(h => [h.name, h.value]));
+          lines.push(`  • From: ${headers.From || "?"} | ${headers.Subject || "(no subject)"} | ${headers.Date || ""}`);
+        }
+        if (lines.length) sections.push(`[${data.email}]\nRECENT INBOX (${lines.length} threads):\n${lines.join("\n")}`);
+      } catch (_) { /* skip accounts with expired tokens */ }
+    }
+  } catch (_) {}
+
+  return sections.length ? sections.join("\n\n") : null;
+}
+
+/**
+ * searchEmailsAllAccounts — fan-out keyword search across primary + all extra Gmail accounts.
+ * account: "all" (default) | "primary" | specific accountId (sanitized email)
+ */
+async function searchEmailsAllAccounts(uid, query, opts = {}) {
+  const { maxResults = 15, account = "all" } = opts;
+  const db = getDb();
+  const results = [];
+
+  const fetchForAuth = async (oauthClient, emailLabel) => {
+    const google = getGoogle();
+    const gmail = google.gmail({ version: "v1", auth: oauthClient });
+    const snap = await gmail.users.messages.list({ userId: "me", q: query, maxResults });
+    const msgs = [];
+    for (const msg of snap.data.messages || []) {
+      const full = await gmail.users.messages.get({ userId: "me", id: msg.id, format: "metadata", metadataHeaders: ["Subject", "From", "Date"] });
+      const headers = Object.fromEntries((full.data.payload?.headers || []).map(h => [h.name, h.value]));
+      msgs.push({ account: emailLabel, messageId: msg.id, subject: headers.Subject || "(no subject)", from: headers.From || "", date: headers.Date || "", snippet: full.data.snippet || "" });
+    }
+    return msgs;
+  };
+
+  if (account === "all" || account === "primary") {
+    try {
+      const auth = await buildAuthedClient(uid);
+      const primarySnap = await db.doc(`users/${uid}/integrations/gmail`).get();
+      const primaryEmail = (primarySnap.exists && primarySnap.data().email) || "primary";
+      results.push(...await fetchForAuth(auth, primaryEmail));
+    } catch (_) {}
+  }
+
+  if (account === "all" || account !== "primary") {
+    try {
+      const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+      for (const doc of extras.docs) {
+        const data = doc.data();
+        if (!data.accessToken) continue;
+        if (account !== "all" && doc.id !== account) continue;
+        try {
+          const auth = await buildAuthedClientForAccount(uid, doc.id);
+          results.push(...await fetchForAuth(auth, data.email || doc.id));
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  return results;
+}
+
 module.exports = {
   handleGmailAuthUrl,
   handleGmailExchangeCode,
   handleGmailStatus,
   handleGmailDisconnect,
+  handleGmailAddAccountUrl,
+  handleGmailAddAccountExchange,
+  handleGmailListAccounts,
+  handleGmailRemoveAccount,
   syncContacts,
   searchEmails,
+  searchEmailsAllAccounts,
   sendEmail,
   listRecentSummary,
+  listRecentSummaryAllAccounts,
   buildAuthedClient,
 };

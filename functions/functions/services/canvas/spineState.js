@@ -165,6 +165,26 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
         const cat = t.classification?.category || t.categoryHint || "uncategorized";
         return `${t.date} | ${t.direction === "debit" ? "−" : "+"}${amt} | ${cat} | ${desc}`;
       });
+    // Shopify revenue (non-blocking — skip if disconnected or API times out)
+    let shopifyKpi = null;
+    if (uid) {
+      try {
+        const shopifyIntSnap = await db.doc(`users/${uid}/integrations/shopify`).get().catch(() => null);
+        if (shopifyIntSnap && shopifyIntSnap.exists && shopifyIntSnap.data().accessToken) {
+          const shopify = require("../shopify/shopify");
+          const revData = await Promise.race([
+            shopify.getRevenueSummary(uid, { days: 30 }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 4000)),
+          ]);
+          if (revData && revData.total_revenue != null) {
+            shopifyKpi = `$${Number(revData.total_revenue).toFixed(2)} (${revData.order_count || 0} orders, 30d)`;
+          }
+        }
+      } catch (shopifyErr) {
+        console.warn("[spineState] Shopify revenue fetch skipped:", shopifyErr.message);
+      }
+    }
+
     live["platform-accounting"] = {
       label: "Accounting",
       kpis: {
@@ -176,6 +196,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
         "Net (MTD)":      txs.length ? `$${(revenueMtd - expensesMtd).toLocaleString()}` : "no data yet",
         "Projected monthly expense (from CoA caps)": expenseCaps.length ? `$${projectedMonthlyExpense.toLocaleString()}` : "no caps set",
         "Top expense caps": topCaps || "none",
+        ...(shopifyKpi ? { "Shopify Revenue (30d)": shopifyKpi } : {}),
         "Invoices (AR)": "none on file — invoice module not yet populated",
         "Bills (AP)": "none on file — bills module not yet populated",
       },

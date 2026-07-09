@@ -25,6 +25,15 @@ const PRESS_RELEASES = [
 
 const ARTICLES = [
   {
+    slug: "digital-workers-new-textbook",
+    title: "Are Digital Workers the New Textbook?",
+    subtitle: "The $4 billion academic publishing industry has a problem. The professors who created all the value are about to notice.",
+    date: "2026-07-02",
+    readingMinutes: 10,
+    tag: "Education",
+    accent: "#0ea5e9",
+  },
+  {
     slug: "shopify-intelligence-layer",
     title: "Wall-E had all the data. Eva knew what to do with it.",
     subtitle: "Shopify is the world's best commerce engine. It is not a brain. Here's what happens when you give it one — and why it costs less than a single customer service hire.",
@@ -212,6 +221,187 @@ const PRESS_RELEASE_BODIES = {
 };
 
 const ARTICLE_BODIES = {
+  "digital-workers-new-textbook": (
+    <>
+      <p>
+        You don't have your college textbooks. You sold them back at the end of the semester — $40 for the $180 you paid — because you needed the money and figured you were done with them. The professor who wrote the book got maybe 12% of net sales, if the publisher was generous. A new edition shipped in three years, not because the knowledge changed, but because the used-book market was cutting into revenue.
+      </p>
+      <p>
+        This is how academic publishing has worked for fifty years. A professor spends two years writing a clinical evaluation guide. A publisher prints it. Students pay $180. The publisher keeps 85 cents of every dollar. The professor — the one who actually knew something — gets the rest.
+      </p>
+      <p>That arrangement is ending.</p>
+
+      <h2>What a Digital Worker Actually Is</h2>
+      <p>
+        Before going further, let's be precise — because "AI tool" in 2026 means everything and nothing.
+      </p>
+      <p>
+        A Digital Worker is not ChatGPT. It is not an open-ended text generator that writes essays or makes things up. It is a structured AI system that follows rules the <em>institution</em> defines — evaluation rubrics, competency frameworks, accreditation standards, regulatory requirements. The professor's expertise becomes the governing logic. The AI enforces it.
+      </p>
+      <p>
+        A nursing professor who builds a Digital Worker for clinical evaluation encodes the Tanner Model, the school's specific CET framework, the documentation language required for accreditation — and every student interaction follows those rules, exactly as the professor would enforce them in person. The AI doesn't write the student's clinical notes. It holds the student to a higher evidentiary standard than any textbook ever could, and it produces an auditable record of every step.
+      </p>
+      <p>
+        This is not AI replacing the professor. This is the professor's expertise, finally portable.
+      </p>
+
+      <h2>The Economics Are Not Close</h2>
+      <p>Here is what the textbook publishing industry does not want you to read in the same sentence as "Digital Workers":</p>
+      <table style={{ width: "100%", borderCollapse: "collapse", margin: "16px 0", fontSize: 14 }}>
+        <thead>
+          <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+            <th style={{ textAlign: "left", padding: "8px 12px", color: "#64748b" }}></th>
+            <th style={{ textAlign: "left", padding: "8px 12px", color: "#64748b" }}>Textbook</th>
+            <th style={{ textAlign: "left", padding: "8px 12px", color: "#64748b" }}>Digital Worker</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ["Time to publish", "2 years", "2 weeks"],
+            ["Creator revenue share", "10–15%", "75%"],
+            ["Revenue timing", "Per edition cycle", "Monthly, per active student"],
+            ["Revenue after graduation", "$0 — they sold it back", "Every time they resubscribe"],
+            ["Student record after school", "Gone with the institution", "Permanent, student-owned"],
+            ["Personalized to student history", "Never", "Always"],
+            ["Survives school closure", "No", "Yes"],
+          ].map(([label, old, next], i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <td style={{ padding: "8px 12px", color: "#374151", fontWeight: 500 }}>{label}</td>
+              <td style={{ padding: "8px 12px", color: "#6b7280" }}>{old}</td>
+              <td style={{ padding: "8px 12px", color: "#0ea5e9", fontWeight: 600 }}>{next}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        Seventy-five percent to the creator. The platform takes twenty-five. Compare that to a publisher keeping 85%, or an app store keeping 30%. The professor who built a clinical evaluation Digital Worker and saw it adopted by three nursing programs earns more per student, every month, than they would from a textbook that took two years to write.
+      </p>
+      <p>And the revenue doesn't stop at graduation.</p>
+
+      <h2>You Sold Your Textbooks. You Can't Sell a Digital Worker Back.</h2>
+      <p>
+        When you finished your nursing program, you sold your clinical evaluation textbook back to the bookstore for $40. It's gone. Three years into your career, when you need to refresh your CET approach before a competency review, the book isn't there. The professor who wrote it isn't returning your call.
+      </p>
+      <p>
+        A Digital Worker stays. You resubscribe when you need it — as a student, as a new grad getting your footing, as a working professional doing continuing education, as a preceptor training someone else. The creator earns revenue at every stage. The knowledge doesn't end at the buyback counter.
+      </p>
+      <p>
+        This changes the total addressable market entirely. It's not just students — it's every working professional in a licensed, credentialed field who has ongoing recertification requirements. Nurses. Pilots. Welders. Paramedics. Surgical techs. The student is the entry point, not the ceiling.
+      </p>
+
+      <h2>The Transcript You Can Never Lose</h2>
+      <p>
+        Here is a problem no one in academic publishing has ever solved, because they couldn't: schools close.
+      </p>
+      <p>
+        ITT Tech closed in 2016. Corinthian Colleges collapsed in 2015. More than 100,000 students scrambled to prove they had ever attended, ever completed anything, ever earned a credential. Their records — years of coursework, clinical hours, documented competencies — existed only inside systems the institution no longer ran.
+      </p>
+      <p>
+        This is the transcript problem. Your academic record has always belonged to the school, not to you. The school keeps it, releases it (slowly, by fax, for a $15 fee), and if the school disappears, the record is at risk.
+      </p>
+      <p>
+        A student Vault changes this at the foundation. Every clinical evaluation, every competency checkpoint, every course completion — every record a Digital Worker generates — is written to the student's personal Vault as an immutable entry anchored to an independent ledger outside the control of any school, any platform, any company. It exists whether the school is open or closed, whether the platform is operating or not, whether the professor who built the worker is still teaching.
+      </p>
+      <p>
+        That nursing student's four years of clinical evaluations, structured by the Tanner Model and signed off by their clinical instructors, lives in their Vault permanently. They carry it to their first job. They carry it to their license renewal. They carry it to every employer who needs to verify not just that they graduated, but that they can actually do what their degree says they can do. No transcript request. No registrar phone queue. No fax.
+      </p>
+      <p>
+        The textbook assumed the school was permanent and the student was temporary. The Vault inverts that entirely — the student's record is permanent, and the institution is just one of many contributors to it.
+      </p>
+
+      <h2>Workers Are Like Bees — And That Changes Everything About Tutoring</h2>
+      <p>
+        A textbook is static. It contains the same information for every student regardless of what they already know, what they've struggled with, what rotation they just finished, or what clinical situation they're about to walk into.
+      </p>
+      <p>
+        A Digital Worker knows the student's record. It knows which competencies they've completed, which ones they've repeated, where they consistently need more evidence, and what their instructors have noted across multiple evaluations. That record compounds over time. The worker tutoring a student in their second semester knows everything that happened in their first — not because anyone manually updated it, but because the record was always there.
+      </p>
+      <p>
+        This is individual AI tutoring at scale, and it's only possible because of the Vault. Every edtech company for the last twenty years has promised personalized learning. None of them delivered it, because personalized learning requires a longitudinal record — a complete picture of what this specific student knows and doesn't know, built over time. Without that record, "personalized" means "the quiz adapted based on this session." With the Vault, it means the worker has access to the student's entire academic history and can meet them exactly where they are.
+      </p>
+      <p>
+        The second thing Digital Workers can do that textbooks categorically cannot: they can collaborate with each other. A nursing pharmacology worker and a clinical evaluation worker can share structured context about the same student — flagging, for instance, that a student who struggled with drug interaction scenarios is about to start a high-acuity rotation where that gap matters. An aviation ground school worker and a flight operations worker coordinate so the student isn't re-learning airspace concepts from scratch. Workers, in this sense, are like bees: individual, specialized, but operating on shared information and pollinating across disciplines.
+      </p>
+      <p>
+        This also opens cross-institutional instructor collaboration that has never existed. A professor at one institution and a clinical instructor at another can co-contribute to the same student's structured record — different workers, different institutions, one coherent longitudinal picture. The record belongs to the student, travels with the student, and grows richer as more educators contribute to it.
+      </p>
+
+      <h2>"Published" Is Getting a New Definition</h2>
+      <p>
+        Tenure committees understand "published textbook." They will learn "published Digital Worker" — and the evidence will be better.
+      </p>
+      <p>
+        A textbook generates citation counts that take years to accumulate and tell you almost nothing about whether students actually learned from it. A published Digital Worker generates verifiable usage data in real time: how many institutions adopted it, how many student evaluations were completed, how many professionals resubscribed after graduation. Co-authorship works exactly as in traditional publishing: a department chair and a clinical faculty member co-publish a worker, split the revenue share, both carry the credit on their CV.
+      </p>
+      <p>
+        Publishing a Digital Worker is closer to publishing a widely-used assessment instrument than writing a chapter — something tenure committees already know how to value. The adoption is the peer review. The usage is the citation count.
+      </p>
+
+      <h2>The University as Platform, Not Just Customer</h2>
+      <p>
+        Universities don't have to use someone else's Digital Workers. They can take a base worker — a nursing evaluation framework, a ground school curriculum, a welding safety checklist — and modify it to their accreditation standards, their institutional competency frameworks, their clinical language. Own that customization layer privately.
+      </p>
+      <p>
+        When a university builds its own variant of a Digital Worker, several things happen simultaneously: every student interaction is logged, structured, and exportable; accreditation audits that used to require assembling paper records across multiple systems draw from a single, complete, chronological record; and the learning record becomes a competitive asset. A nursing program that can demonstrate five years of structured, auditable clinical evaluations — every student, every rotation, every competency checkpoint — has something no competitor can replicate quickly.
+      </p>
+      <p>
+        The lock-in is deeper than any LMS. Canvas and Blackboard hold your course content. A Digital Worker holds your learning records — FERPA-compliant, structured, and seven years deep. The institution that builds on this infrastructure first owns it.
+      </p>
+
+      <h2>Technical Schools: The Most Overlooked Market</h2>
+      <p>
+        Four-year universities attract most of the conversation about AI in education. The product fit is arguably stronger in technical and vocational programs.
+      </p>
+      <p>
+        FAA-regulated aviation maintenance programs have mandatory, standardized inspection checklists. NCCER-aligned welding certifications require documented competency evaluations at each skill level. CDL programs run structured pre-trip and post-trip documentation requirements. Surgical tech and sterile processing programs have AAMI and IAHCSMM standards that govern every procedure.
+      </p>
+      <p>
+        These programs don't have a "ban AI or allow it" problem. They have a documentation and standardization problem that has existed for decades. The instructor who built the evaluation framework in their head — who knows exactly which students cut corners on which procedures — has never had a way to make that knowledge portable. A Digital Worker makes it portable.
+      </p>
+      <p>
+        The CDL instructor who publishes a pre-trip inspection worker earns royalties from every commercial driver training program that adopts it. The welding program chair who publishes a safety evaluation worker reaches every NCCER-aligned program in the country as a potential subscriber. The student volume in technical education is high, cohort turnover is fast, and recurring revenue compounds faster than in a four-year program. These instructors have never had a publishing platform. They've had photocopied handouts.
+      </p>
+
+      <h2>Aviation: The Sharpest Test Case</h2>
+      <p>
+        Aviation training is the clearest proof of the concept. FlightSafety International, CAE, and L3Harris have a genuine moat: Level D full-motion simulators cost $15 million and the FAA won't let you skip them for type ratings. Nobody is replacing that hardware.
+      </p>
+      <p>
+        But the simulator moat is also their ceiling. Every dollar they earn requires a sim bay. Everything that happens around the sim is undefended — and none of it has been meaningfully innovated in two decades. Ground school curriculum, recurrent training ground portions, Crew Resource Management courses, dispatch certification, human factors and aeronautical decision making: all of this is mandatory, recurring, and being delivered today via the same video series format that dominated aviation ground school in the 1980s.
+      </p>
+      <p>
+        A Digital Worker built by a retired check airman or an Embry-Riddle professor — encoding real systems knowledge, real airspace decision trees, real CRM scenarios — is a better product on day one than any ground school video. The pilot who used it in training reactivates it for recurrent training five years later. The creator earns that revenue without building anything new.
+      </p>
+      <p>
+        The institutions that move first in a given program area own the definitive learning instrument for that program. That applies as much to an AETC Undergraduate Pilot Training cohort as to a BSN program.
+      </p>
+
+      <h2>Why "Banning AI" Already Lost</h2>
+      <p>
+        Institutions are still debating whether to allow AI. Students already decided.
+      </p>
+      <p>
+        The question is no longer whether AI is in the classroom. It is whether the institution can see it, govern it, and learn from it. The current situation — students using general-purpose AI through channels faculty can't audit, producing no structured record — is the worst possible outcome for accreditation, for learning integrity, and for the institution's ability to demonstrate educational outcomes.
+      </p>
+      <p>
+        Digital Workers resolve this. Every interaction is logged. Every evaluation follows the institution's rules. Every student builds a record that belongs to the school, not to an AI company. The professor isn't replaced — the professor's expertise is the standard the AI enforces. "With AI" and "rigorous academic standards" are not in tension in this model. They are the same thing.
+      </p>
+
+      <h2>The First Wave Is Already Building</h2>
+      <p>
+        The first professor-creators are already building Digital Workers for their programs. The infrastructure exists. The economics are live. The gap between "this is interesting" and "this is inevitable" is closing faster than academic publishing moved in any previous disruption.
+      </p>
+      <p>
+        The professors who move first own the definitive learning instrument for their discipline. The institutions that empower them build learning infrastructure that gets more valuable every semester — not less.
+      </p>
+      <p>
+        The textbook had a five-hundred-year run. Its replacement doesn't come from a publisher. It comes from the professor who already knew everything the textbook contained, spent two years writing it down for someone else's benefit, and is now building something they actually own.
+      </p>
+      <p style={{ fontSize: 14, color: "#6b7280", marginTop: 32 }}>
+        <em>SOCIII powers Digital Workers for educators, practitioners, and institutions. Creator revenue share is 75%. If you're a faculty member building a worker for your program — contact us at press@sociii.ai.</em>
+      </p>
+    </>
+  ),
   "shopify-intelligence-layer": (
     <>
       <p>

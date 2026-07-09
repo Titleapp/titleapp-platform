@@ -31,18 +31,23 @@
     <p>You can close this window if it doesn't close automatically.</p>
   </div>
   <script>
-    // Generic Google OAuth callback. Used by Drive (since 34.7-T2) and Calendar
-    // (since 50.21). Distinguishes flow by the granted `scope` query parameter:
-    //   - scope contains "calendar"        → calendar flow
-    //   - scope contains "drive"           → drive flow
-    //   - state has "|calendar" suffix     → calendar flow (preferred, explicit)
-    //   - state has "|drive" suffix        → drive flow (explicit)
+    // Generic Google OAuth callback. Used by Drive, Calendar, YouTube, eSign, and Gmail multi-account.
+    // Distinguishes flow by the `state` suffix (preferred) or granted scope:
+    //   state has "|calendar"  → calendar
+    //   state has "|youtube"   → youtube
+    //   state has "|esign"     → esign
+    //   state has "|gmail-add" → gmail-add (additional Gmail account)
+    //   state has "|drive"     → drive
+    //   scope contains "calendar" / "youtube" / "drive" → fallback detection
     //
     // Posts to opener as:
-    //   { type: "google-drive-auth-code", code, state }     for drive
-    //   { type: "google-calendar-auth-code", code, state }  for calendar
+    //   { type: "google-drive-auth-code", code, state }      for drive
+    //   { type: "google-calendar-auth-code", code, state }   for calendar
+    //   { type: "google-youtube-auth-code", code, state }    for youtube
+    //   { type: "google-esign-auth-code", code, state }      for esign
+    //   { type: "google-gmail-add-code", code, state }       for gmail-add
     //
-    // Mirrors the message types that the relevant components listen for.
+    // Mirrors the message types that the relevant hooks listen for.
     (function() {
       var params = new URLSearchParams(window.location.search);
       var code = params.get("code");
@@ -67,6 +72,10 @@
           ? "google-calendar-auth-code"
           : flow === "youtube"
           ? "google-youtube-auth-code"
+          : flow === "esign"
+          ? "google-esign-auth-code"
+          : flow === "gmail-add"
+          ? "google-gmail-add-code"
           : "google-drive-auth-code";
         try {
           if (window.opener) {
@@ -93,6 +102,8 @@
       var flow;
       if (state.indexOf("|calendar") !== -1) flow = "calendar";
       else if (state.indexOf("|youtube") !== -1) flow = "youtube";
+      else if (state.indexOf("|esign") !== -1) flow = "esign";
+      else if (state.indexOf("|gmail-add") !== -1) flow = "gmail-add";
       else if (state.indexOf("|drive") !== -1) flow = "drive";
       else if (scope.indexOf("calendar") !== -1) flow = "calendar";
       else if (scope.indexOf("youtube") !== -1) flow = "youtube";

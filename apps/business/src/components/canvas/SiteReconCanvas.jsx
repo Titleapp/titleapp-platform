@@ -68,7 +68,10 @@ function streetViewUrl(p) {
   return `https://maps.googleapis.com/maps/api/streetview?location=${p.lat},${p.lng}&size=640x360&key=${MAPS_KEY}`;
 }
 
-export default function SiteReconCanvas({ payload, onBack }) {
+export default function SiteReconCanvas({ payload: directPayload, onBack, resolved = {}, context = {}, onDismiss }) {
+  // Accept both direct {payload,onBack} (CreatorJourney) and standard canvas props {resolved,context,onDismiss}
+  const payload = directPayload || context?.payload || resolved?.payload || {};
+  const handleBack = onBack || onDismiss || null;
   // Street View first — the visual tells the story before the table does
   // (Sean's Lahaina dogfood call; same thesis as RULE-17 visual-before-verdict).
   const [tab, setTab] = useState("street");
@@ -119,7 +122,7 @@ export default function SiteReconCanvas({ payload, onBack }) {
             {payload.anchoredAt && <> · anchored {new Date(payload.anchoredAt).toLocaleTimeString()}</>}
           </div>
         </div>
-        {onBack && <button style={S.backBtn} onClick={onBack}>← Creator steps</button>}
+        {handleBack && <button style={S.backBtn} onClick={handleBack}>{onBack ? "← Creator steps" : "← Back"}</button>}
       </div>
 
       {/* Trump Rule KPI strip — the headline numbers, card-styled */}

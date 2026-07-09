@@ -193,7 +193,7 @@ export default function WorkerHome() {
 
       {/* Workers section */}
       {workers.length > 0 && (
-      <div style={{ padding: "0 32px 32px", maxWidth: 960 }}>
+      <div className="workersSection" style={{ maxWidth: 960 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 16 }}>
           Your Workers ({workers.length})
         </div>

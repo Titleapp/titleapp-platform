@@ -20,6 +20,21 @@
       "id": "dissolution_risk",
       "logic": "association has missed more than 2 required filings — dissolution risk is imminent",
       "eval": { "field": "hoa.missed_filings", "operator": ">", "threshold": 2 }
+    },
+    {
+      "id": "secret_ballot_violated",
+      "logic": "individual ballot attribution must never be exposed — only aggregate totals are permitted in any output",
+      "eval": { "type": "output_field_check", "forbidden_fields": ["ballot.voter_id", "ballot.unit_vote_detail"] }
+    },
+    {
+      "id": "notice_window_not_met",
+      "logic": "ballot distribution must meet the statutory notice window for the jurisdiction before voting opens",
+      "eval": { "type": "date_gap_check", "field": "ballot.distribute_date", "target": "ballot.vote_by_date", "min_days_by_jurisdiction": { "CA": 30, "NV": 14, "FL": 14, "TX": 10, "DEFAULT": 14 } }
+    },
+    {
+      "id": "poll_labeled_as_vote",
+      "logic": "community polls must be clearly labeled as non-binding — they cannot be presented as official HOA votes",
+      "eval": { "type": "output_label_check", "field": "poll.result_label", "required_value": "non_binding_survey" }
     }
   ],
   "soft_flags": [
@@ -42,12 +57,29 @@
       "id": "board_meeting_overdue",
       "logic": "more than 90 days since last board meeting — governance compliance risk",
       "eval": { "field": "hoa.days_since_board_meeting", "operator": ">", "threshold": 90 }
+    },
+    {
+      "id": "ballot_quorum_at_risk",
+      "logic": "vote-by date is within 5 days and quorum has not been reached — send reminder to all non-responding units",
+      "eval": { "field": "ballot.days_until_deadline", "operator": "<", "threshold": 5, "condition": "ballot.quorum_met == false" }
+    },
+    {
+      "id": "poll_low_response",
+      "logic": "poll is expiring within 48 hours with less than 30% response rate — consider extending or sending reminder",
+      "eval": { "field": "poll.hours_until_expiry", "operator": "<", "threshold": 48, "condition": "poll.response_rate_pct < 30" }
+    },
+    {
+      "id": "ca_inspector_of_elections_required",
+      "logic": "California director elections and secret ballot matters require an independent inspector of elections (CA Civil Code §5110)",
+      "eval": { "field": "ballot.type", "operator": "in", "values": ["director_election", "special_assessment"], "condition": "jurisdiction == 'CA' AND ballot.inspector_assigned == false" }
     }
   ],
   "outputs": [
     "hoa-board-package",
     "hoa-assessment-tracker",
     "hoa-reserve-analysis",
-    "hoa-transition-checklist"
+    "hoa-transition-checklist",
+    "hoa-ballot-results",
+    "hoa-poll-summary"
   ]
 }

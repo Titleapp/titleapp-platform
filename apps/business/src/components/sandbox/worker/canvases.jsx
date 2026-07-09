@@ -1200,6 +1200,7 @@ export function DistributeCanvas({ session, onComplete }) {
   const [deck, setDeck] = useState([]);
   const [deckBusy, setDeckBusy] = useState(false);
   const [deckErr, setDeckErr] = useState(null);
+  const [baselineConsent, setBaselineConsent] = useState(false);
 
   async function generateDeck() {
     setDeckBusy(true); setDeckErr(null);
@@ -1293,8 +1294,26 @@ export function DistributeCanvas({ session, onComplete }) {
         )}
       </div>
 
+      {/* CODEX 19 S4 — creator consent before publish grants baseline capability contract */}
+      <div style={{ ...card, borderColor: baselineConsent ? "#6366F1" : "#E2E8F0" }}>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={baselineConsent}
+            onChange={e => setBaselineConsent(e.target.checked)}
+            style={{ marginTop: 3, flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
+            I understand this worker can write to the workspace Operating Feed and shared memory.
+            I am responsible for its behavior.
+          </span>
+        </label>
+      </div>
+
       <StepComplete
         prompt="Shared it / grabbed your kit? Mark this step done."
+        disabled={!baselineConsent}
+        disabledHint="Confirm you understand the worker's capabilities above to publish."
         onClick={() => onComplete({ stepData: { launchedAt: new Date().toISOString(), shareUrl: url, deckSlides: deck.length } })}
       />
     </CanvasShell>

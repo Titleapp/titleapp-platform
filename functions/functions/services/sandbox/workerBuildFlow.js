@@ -298,10 +298,30 @@ async function publishWorkerFromSession(userId, sessionId, data) {
     sandboxSessionId: sessionId,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  // CODEX 19 S1-S3 — baseline capability contract granted at publish time.
+  // Every published worker gets the platform baseline automatically.
+  // personaSlug defaults to "business"; creators can override in a future spec field.
   await db.collection("digitalWorkers").doc(slug).set({
     ...doc,
+    baselineCapabilities: true,
+    personaSlug: "business",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
+
+  // S2 — write lastRun stub so get_sibling_summary returns "last_active: never"
+  // rather than a missing-doc error on first session.
+  try {
+    await db.doc(`creatorLastRun/${slug}`).set({
+      canvasSummary: null,
+      renderedAt: null,
+      alertsPushed: 0,
+      _stub: true,
+      _stubbedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn("[workerBuildFlow] lastRun stub write failed:", e.message);
+  }
+
   return { slug, status, url: `https://sociii.ai/workers/${slug}` };
 }
 

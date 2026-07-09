@@ -40,6 +40,9 @@ async function lookupAddress(address, apiKey) {
     attomGet("/property/detail", parsed, apiKey),
     attomGet("/saleshistory/detail", parsed, apiKey),
   ]);
+  if (detail.status === 401 || detail.status === 403) {
+    return { ok: false, error: "Live property data is temporarily unavailable — please check back shortly.", code: "ATTOM_UNAVAILABLE" };
+  }
   const p = detail.json && detail.json.property && detail.json.property[0];
   if (!p || !(p.identifier && p.identifier.apn)) {
     return { ok: false, error: `No property found at "${address}". Check the address and try again.`, code: "NOT_FOUND" };

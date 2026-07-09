@@ -2726,6 +2726,14 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
                     });
                   }
                   sessionState[creditKey] = true;
+                  // Stash low-balance flag so the response builder can append a top-up nudge.
+                  if (creditResult.lowBalance) {
+                    sessionState._lowCreditWarning = {
+                      service: "Data Credits",
+                      creditsRemaining: creditResult.creditsRemaining,
+                      percent: null,
+                    };
+                  }
                 }
               }
 
@@ -3025,7 +3033,7 @@ CANVAS RENDER MARKER FORMAT:
 {"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
 |||END_CANVAS|||
 
-Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:listing-readiness (use for listing readiness / pre-listing scorecard — payload: {"address":"…","overallReadiness":82,"verdict":"Nearly Ready","band":"GREEN","categories":[{"name":"Condition","score":90,"band":"GREEN","notes":"…"},…],"flags":[],"punchList":["…"],"summary":"…","nextSteps":"…"}), card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency, card:shopify-commerce (use when the user asks about Shopify orders, revenue, customers, or store performance — pulls live data from the connected store). Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
+Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:listing-readiness (use for listing readiness / pre-listing scorecard — payload: {"address":"…","overallReadiness":82,"verdict":"Nearly Ready","band":"GREEN","categories":[{"name":"Condition","score":90,"band":"GREEN","notes":"…"},…],"flags":[],"punchList":["…"],"summary":"…","nextSteps":"…"}), card:title-abstract (title-abstract-001 ONLY — emit after a property lookup to show chain of title + liens; payload: {"tenantId":"…","property_address":"…","apn":"…","current_owner":"…","chain_of_title":[{"date":"…","grantor":"…","grantee":"…","instrument":"…"}],"liens_encumbrances":[],"easements":[],"exceptions":["…"],"disclaimer":"…"}), card:re-showings (re-marketing-001 ONLY — emit after scheduling a showing; payload: {"items":[{"label":"Address — Buyer: Name","date":"2026-07-15 10:00 AM","status":"scheduled"},…],"title":"Showing Schedule"}), card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency, card:aviation-weather (emit after get_weather tool call — payload: {"icaos":["KLAS"],"metars":[{…}]}), card:aviation-traffic (emit after get_traffic tool call — payload: {"icao":"KLAS","aircraft":[{…}]}), card:aviation-navdb (AIRAC nav database currency + regional downloads — no payload needed; component fetches live), card:shopify-commerce (use when the user asks about Shopify orders, revenue, customers, or store performance — pulls live data from the connected store). Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
 
 TYPE-SPECIFIC PAYLOAD SHAPES — use these exactly when emitting the corresponding type. Do NOT default to the generic work-product shape for these types or the card will render empty.
 
@@ -3158,6 +3166,65 @@ END DELIVERY RULES.
                   }
                 } catch (_wNoteErr) {
                   console.warn("worker chat: notes pre-inject failed:", _wNoteErr.message);
+                }
+              }
+
+              // CODEX 21 — vertical sibling injection (Phase 1: suggestion-only).
+              // Appended at end of workerPrompt so workers know which co-vertical
+              // siblings exist, what they accept/emit, and how to propose a handoff.
+              // Query filters: same vertical + same suite + tenant-entitled only.
+              if (workerPrompt && dw.vertical && dw.vertical !== 'platform' && reqTenantId) {
+                try {
+                  const BUNDLE_SHAPES = {
+                    'cre-analyst':        { name: 'CRE Analyst',            accepts: ['address + deal terms', 'site-recon-bundle/v1', 'legal-opinion-bundle/v1', 'zoning-bundle/v1', 'feasibility-roadmap/v1'], emits: ['parcel-bundle/v1'] },
+                    'site-recon-001':     { name: 'Site Recon',             accepts: ['parcel-bundle/v1'], emits: ['parcel-bundle/v1 (enriched)', 'site-recon-bundle/v1'] },
+                    'title-abstract-001': { name: 'Title Abstract',         accepts: ['parcel-bundle/v1'], emits: ['title-abstract-bundle/v1'] },
+                    'law-landuse-001':    { name: 'Land Use Attorney',      accepts: ['parcel-bundle/v1', 'title-abstract-bundle/v1'], emits: ['legal-opinion-bundle/v1'] },
+                    'zoning-001':         { name: 'Zoning + Entitlement',   accepts: ['parcel-bundle/v1'], emits: ['zoning-bundle/v1'] },
+                    'feasibility-001':    { name: 'Market & Feasibility',   accepts: ['parcel-bundle/v1', 'site-recon-bundle/v1', 'legal-opinion-bundle/v1', 'zoning-bundle/v1'], emits: ['feasibility-roadmap/v1'] },
+                    're-marketing-001':   { name: 'RE Brokerage Marketing', accepts: ['address (direct)', 'title-abstract-bundle/v1'], emits: ['listing-readiness/v1 (terminal)'] },
+                    'nursing-ce-001':     { name: 'Nursing CE',             accepts: ['enrollment + course selection'], emits: ['ce-completion/v1'] },
+                    'student-eval-001':   { name: 'Student Evaluation',     accepts: ['student-id + cohort'], emits: ['academic-record/v1'] },
+                    'av-copilot-001':     { name: 'Aviation CoPilot',       accepts: ['tail number + route'], emits: ['flight-brief/v1'] },
+                    'av-mx-001':          { name: 'Aviation Maintenance',   accepts: ['tail number + squawk'], emits: ['mx-record/v1'] },
+                    'av-dispatch-001':    { name: 'Aviation Dispatch',      accepts: ['flight-brief/v1', 'mx-record/v1'], emits: ['dispatch-release/v1'] },
+                  };
+
+                  // Get tenant's entitled slugs (subscriptions → fallback to memberships.activeWorkers)
+                  const _vSubSnap = await db.collection("subscriptions").where("ownerId", "==", reqTenantId).get();
+                  const _vEntitled = new Set(_vSubSnap.docs.map(d => d.data().workerId || d.data().workerSlug).filter(Boolean));
+                  if (_vEntitled.size === 0) {
+                    const _mSnap = await db.collection("memberships").where("tenantId", "==", reqTenantId).limit(1).get();
+                    if (!_mSnap.empty) (_mSnap.docs[0].data().activeWorkers || []).forEach(s => _vEntitled.add(s));
+                  }
+
+                  // Query co-vertical + co-suite siblings from catalog
+                  let _vsQuery = db.collection("digitalWorkers")
+                    .where("vertical", "==", dw.vertical)
+                    .where("status", "==", "active");
+                  if (dw.suite) _vsQuery = _vsQuery.where("suite", "==", dw.suite);
+                  const _vsSnap = await _vsQuery.get();
+
+                  // Intersect with entitlement; exclude self
+                  const _vsSibs = _vsSnap.docs.filter(d =>
+                    d.id !== workerSlug && (_vEntitled.size === 0 || _vEntitled.has(d.id))
+                  );
+
+                  if (_vsSibs.length > 0) {
+                    const _vsLines = _vsSibs.map(d => {
+                      const shapes = BUNDLE_SHAPES[d.id];
+                      const name = d.data().name || shapes?.name || d.id;
+                      if (shapes) {
+                        return `- ${name} (${d.id})\n  accepts: ${shapes.accepts.join(', ')}\n  emits:   ${shapes.emits.join(', ')}`;
+                      }
+                      return `- ${name} (${d.id})`;
+                    }).join('\n');
+
+                    const _vsLabel = (dw.vertical || '').toUpperCase().replace(/[-_]/g, ' ');
+                    workerPrompt += `\n\nSIBLING WORKERS IN THIS VERTICAL (${_vsLabel}):\nWorkers are listed with ALL inputs they can consume and ALL outputs they produce.\nWhen your output matches another worker's accepted input, propose the handoff.\n\n${_vsLines}\n\nSIBLING RULE: When your output matches another worker's accepted input, say:\n"Want me to pass this to [Worker Name] to [next action]? I can describe what to bring — you or Alex can open it from there."\nNever say "go to the other tab." Never imply a handoff has already happened.\nPhase 1 is suggestion-only — name the next worker, describe what it needs, stop there. No auto-execution. The user navigates; Alex routes.`;
+                  }
+                } catch (_vsErr) {
+                  console.warn('worker chat: vertical sibling inject failed:', _vsErr.message);
                 }
               }
 
@@ -3392,6 +3459,87 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 });
               }
 
+              // Aviation workers: weather, NOTAMs, and ADS-B traffic as live tools.
+              // Mirrors RE's lookup_property pattern — workers call APIs, not the user.
+              const _isAvWorker = /\bav(iation)?\b|av-copilot|av-mx|av-dispatch/.test(
+                `${dw.vertical || ""} ${workerSlug}`.toLowerCase()
+              );
+              if (_isAvWorker) {
+                businessTools.push({
+                  name: "get_weather",
+                  description: "Fetch live METAR, TAF, and SIGMET data for one or more airports. Call this whenever the user asks about weather at a departure, destination, or alternate — or before any flight planning discussion. Returns current conditions, ceiling, visibility, wind, and active SIGMETs. NEVER tell the user to check aviationweather.gov themselves.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      icaos: { type: "array", items: { type: "string" }, description: "Array of ICAO airport codes, e.g. ['KHNL','KOAK','PHKO']" },
+                      types: { type: "array", items: { type: "string", enum: ["metar", "taf", "sigmet"] }, description: "Weather product types to fetch. Default: metar + taf" },
+                    },
+                    required: ["icaos"],
+                  },
+                });
+                businessTools.push({
+                  name: "get_notams",
+                  description: "Fetch active NOTAMs for an airport or airspace area. Call this before any flight depart/arrival discussion, or when the user asks about airspace status, runway closures, TFRs, or obstacles. Returns formatted NOTAM text sorted by category.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      icao: { type: "string", description: "ICAO airport code for the query, e.g. 'KHNL'" },
+                      radius_nm: { type: "number", description: "Search radius in nautical miles (default 25)" },
+                    },
+                    required: ["icao"],
+                  },
+                });
+                businessTools.push({
+                  name: "get_traffic",
+                  description: "Fetch live ADS-B traffic near an airport or lat/lon position. Use when the user asks about traffic, conflicts, or nearby aircraft. Returns aircraft callsign, altitude, speed, squawk, and position.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      icao: { type: "string", description: "ICAO airport code near which to query traffic, e.g. 'KHNL'" },
+                      radius_nm: { type: "number", description: "Search radius in nautical miles (default 10)" },
+                    },
+                    required: ["icao"],
+                  },
+                });
+              }
+
+              // RE Brokerage Marketing: showing scheduler + lead qualifier tools
+              if (workerSlug === "re-marketing-001") {
+                businessTools.push({
+                  name: "schedule_showing",
+                  description: "Schedule a property showing. Records the showing, drafts a confirmation email for the buyer/buyer's agent with the property address, date/time, parking notes, and a Google Maps link. Also generates an Uber deep link so the buyer can ride directly to the property. Call this when the user asks to schedule a showing or a tour.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      address: { type: "string", description: "Full property address" },
+                      proposedDateTime: { type: "string", description: "Proposed date and time, e.g. 'Tuesday July 8 at 2:00 PM'" },
+                      buyerName: { type: "string", description: "Buyer or buyer's agent name" },
+                      buyerEmail: { type: "string", description: "Buyer or buyer's agent email" },
+                      buyerAgentName: { type: "string", description: "Buyer's agent name, if separate from buyer" },
+                      notes: { type: "string", description: "Any parking or access notes to include in the confirmation" },
+                    },
+                    required: ["address", "proposedDateTime"],
+                  },
+                });
+                businessTools.push({
+                  name: "qualify_lead",
+                  description: "Score a buyer lead on readiness to purchase. Returns a qualification score (1-10), readiness label (hot/warm/cold), and recommended broker action (call now / email sequence / nurture). Call this when a new inquiry comes in or when the user asks to evaluate a potential buyer.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      buyerName: { type: "string", description: "Buyer's name" },
+                      preApproved: { type: "boolean", description: "Has the buyer been pre-approved for a mortgage?" },
+                      preApprovalAmount: { type: "number", description: "Pre-approval amount in dollars, if known" },
+                      buyerTimeline: { type: "string", enum: ["immediate", "1-3months", "3-6months", "6-12months", "just-browsing"], description: "How soon is the buyer looking to purchase?" },
+                      motivation: { type: "string", description: "Why are they buying? (relocation, investment, upsizing, etc.)" },
+                      hasAgent: { type: "boolean", description: "Does the buyer already have their own agent?" },
+                      notes: { type: "string", description: "Any other context about this buyer" },
+                    },
+                    required: ["buyerName"],
+                  },
+                });
+              }
+
               // E-sign anchor — lets Alex propose recording a completed signing as
               // an immutable SOCIII chain record. Available to all workers: any
               // signed doc can be anchored regardless of signing rail or vertical.
@@ -3586,6 +3734,7 @@ IMAGE & VISUAL RULES (MANDATORY):
               let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
               let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
               let liveReLookup = null;   // 2026-06-26 — populated by lookup_property (generic RE)
+              let liveAvLookup = null;   // 2026-07-07 — populated by get_weather/get_notams/get_traffic (aviation)
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
@@ -3846,6 +3995,196 @@ IMAGE & VISUAL RULES (MANDATORY):
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] lookup_property failed:`, e.message); }
               }
+              // RE Marketing — schedule_showing: records the showing + drafts confirmation
+              if (toolBlock && toolBlock.name === 'schedule_showing') {
+                try {
+                  const { address, proposedDateTime, buyerName, buyerEmail, buyerAgentName, notes } = toolBlock.input || {};
+                  const tenantId = reqTenantId || null;
+                  const uid = authUser ? authUser.uid : null;
+                  // Build Uber deep link from address (Google Maps geocode needed for lat/lng; use address text for now)
+                  const encodedAddr = encodeURIComponent(address || "");
+                  const uberLink = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${encodedAddr}&client_id=SOCIII`;
+                  const mapsLink = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddr}`;
+                  // Write showing record to Firestore (append-only)
+                  if (tenantId && uid) {
+                    await db.collection("showings").doc(tenantId).collection("scheduled").add({
+                      address: address || null,
+                      proposedDateTime: proposedDateTime || null,
+                      buyerName: buyerName || null,
+                      buyerEmail: buyerEmail || null,
+                      buyerAgentName: buyerAgentName || null,
+                      notes: notes || null,
+                      uberLink,
+                      mapsLink,
+                      status: "scheduled",
+                      scheduledBy: uid,
+                      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                  }
+                  const toolResultText = `Showing scheduled. Here are the details to use in your confirmation email:
+Address: ${address || "(not provided)"}
+Date/Time: ${proposedDateTime || "(not provided)"}
+Buyer: ${buyerName || "(not provided)"}${buyerEmail ? " <" + buyerEmail + ">" : ""}
+${buyerAgentName ? "Buyer's Agent: " + buyerAgentName : ""}
+${notes ? "Notes: " + notes : ""}
+Google Maps link: ${mapsLink}
+Uber to property: ${uberLink}
+
+Now draft a professional showing confirmation email from the broker to the buyer/buyer's agent. Include the Google Maps link and Uber link. End with: "Questions before your visit? Please reply to this email or call directly." Do NOT reveal that AI drafted this.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 800, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Showing scheduled for ${proposedDateTime}.`;
+                } catch (showErr) {
+                  console.warn(`[worker:${workerSlug}] schedule_showing failed:`, showErr.message);
+                  aiText = aiText || `I had trouble recording the showing — please try again.`;
+                }
+              }
+
+              // RE Marketing — qualify_lead: score a buyer lead on readiness
+              if (toolBlock && toolBlock.name === 'qualify_lead') {
+                try {
+                  const { buyerName, preApproved, preApprovalAmount, buyerTimeline, motivation, hasAgent, notes } = toolBlock.input || {};
+                  // Simple scoring algorithm
+                  let score = 5;
+                  if (preApproved === true) score += 2;
+                  if (preApproved === false) score -= 2;
+                  if (preApprovalAmount && preApprovalAmount > 0) score += 1;
+                  if (buyerTimeline === "immediate") score += 2;
+                  else if (buyerTimeline === "1-3months") score += 1;
+                  else if (buyerTimeline === "6-12months") score -= 1;
+                  else if (buyerTimeline === "just-browsing") score -= 2;
+                  score = Math.min(10, Math.max(1, score));
+                  const readiness = score >= 8 ? "hot" : score >= 5 ? "warm" : "cold";
+                  const action = score >= 8 ? "call now" : score >= 5 ? "email sequence" : "nurture — check back in 60 days";
+                  const toolResultText = `Lead qualification for ${buyerName || "this buyer"}:
+Score: ${score}/10 (${readiness})
+Pre-approved: ${preApproved === true ? "Yes" + (preApprovalAmount ? " ($" + Number(preApprovalAmount).toLocaleString() + ")" : "") : preApproved === false ? "No" : "Unknown"}
+Timeline: ${buyerTimeline || "unknown"}
+Motivation: ${motivation || "not stated"}
+Has own agent: ${hasAgent === true ? "Yes" : hasAgent === false ? "No" : "Unknown"}
+Recommended action: ${action}
+${notes ? "Notes: " + notes : ""}
+
+Now give the broker a short, plain-English assessment of this buyer and the specific next action they should take. Be direct and actionable. Under 150 words.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 400, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `${buyerName || "This buyer"} scores ${score}/10.`;
+                } catch (qualErr) {
+                  console.warn(`[worker:${workerSlug}] qualify_lead failed:`, qualErr.message);
+                  aiText = aiText || `I had trouble scoring that lead — please try again.`;
+                }
+              }
+
+              // Aviation: get_weather — live METAR/TAF/SIGMET from aviationweather.gov
+              if (toolBlock && toolBlock.name === 'get_weather') {
+                try {
+                  const { getWeather } = require('./services/aviation/weather');
+                  const icaos = Array.isArray(toolBlock.input.icaos) ? toolBlock.input.icaos : [toolBlock.input.icaos].filter(Boolean);
+                  const types = Array.isArray(toolBlock.input.types) ? toolBlock.input.types : ['metar', 'taf'];
+                  const wData = await getWeather({ ids: icaos.join(','), taf: types.includes('taf'), sigmet: types.includes('sigmet') });
+                  let toolResultText;
+                  if (wData.error) {
+                    toolResultText = `Weather fetch error: ${wData.error}`;
+                  } else {
+                    const lines = [];
+                    (wData.metars || []).forEach(m => {
+                      lines.push(`${m.icao} METAR (${m.observed}): ${m.raw || '(no raw)'}`);
+                      lines.push(`  Category: ${m.flightCategory || '?'} | Wind: ${m.windDir ?? '?'}° at ${m.windSpeedKt ?? '?'}kt${m.windGustKt ? ' gusting ' + m.windGustKt + 'kt' : ''} | Vis: ${m.visibilitySm ?? '?'}SM | Altimeter: ${m.altimeterInHg ?? '?'}"Hg`);
+                    });
+                    (wData.tafs || []).forEach(t => lines.push(`${t.icao} TAF valid ${t.validFrom}–${t.validTo}: ${t.raw || '(no raw)'}`));
+                    if ((wData.sigmets || []).length) lines.push(`Active SIGMETs: ${wData.sigmets.length}`);
+                    toolResultText = lines.join('\n') || `No weather returned for ${icaos.join(', ')}`;
+                    liveAvLookup = liveAvLookup || {};
+                    liveAvLookup.weather = { icaos, metars: wData.metars || [], flightCategories: (wData.metars || []).map(m => m.flightCategory) };
+                    // Grab lat/lon for any subsequent get_traffic call
+                    const firstStation = wData.metars?.[0];
+                    if (firstStation?.lat && firstStation?.lon) {
+                      liveAvLookup.lat = firstStation.lat;
+                      liveAvLookup.lon = firstStation.lon;
+                      liveAvLookup.icao = firstStation.icao;
+                    }
+                  }
+                  const followUpMessages = [...messages, { role: 'assistant', content: aiResponse.content }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 800, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || 'Here is the current weather briefing.';
+                } catch (avWxErr) {
+                  console.warn(`[worker:${workerSlug}] get_weather failed:`, avWxErr.message);
+                  aiText = aiText || 'I had trouble fetching weather — please try again.';
+                }
+              }
+
+              // Aviation: get_notams — active NOTAMs via Notamify
+              if (toolBlock && toolBlock.name === 'get_notams') {
+                try {
+                  const { getNotams } = require('./services/aviation/notams');
+                  const icao = (toolBlock.input.icao || '').trim().toUpperCase();
+                  const nData = await getNotams({ locations: icao, userId: authUser?.uid || null, tenantId: reqTenantId || null });
+                  let toolResultText;
+                  if (nData.error) {
+                    toolResultText = `NOTAM fetch error: ${nData.error}`;
+                  } else {
+                    const lines = [];
+                    (nData.airports || []).forEach(ap => {
+                      lines.push(`${ap.icao}: ${ap.count} NOTAM(s)`);
+                      (ap.notams || []).slice(0, 8).forEach(n => lines.push(`  • [${n.category || 'GEN'}] ${n.summary || n.raw || n.number || ''}`));
+                      if ((ap.notams || []).length > 8) lines.push(`  … ${ap.notams.length - 8} more`);
+                    });
+                    toolResultText = lines.join('\n') || `No NOTAMs found for ${icao}`;
+                    liveAvLookup = liveAvLookup || {};
+                    liveAvLookup.notams = { icao, count: (nData.airports || []).reduce((s, a) => s + a.count, 0) };
+                  }
+                  const followUpMessages = [...messages, { role: 'assistant', content: aiResponse.content }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 800, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || 'Here are the active NOTAMs.';
+                } catch (avNotErr) {
+                  console.warn(`[worker:${workerSlug}] get_notams failed:`, avNotErr.message);
+                  aiText = aiText || 'I had trouble fetching NOTAMs — please try again.';
+                }
+              }
+
+              // Aviation: get_traffic — live ADS-B via liveAvLookup lat/lon (resolved from prior METAR call)
+              if (toolBlock && toolBlock.name === 'get_traffic') {
+                try {
+                  const { getWeather } = require('./services/aviation/weather');
+                  const { getTraffic } = require('./services/aviation/adsb');
+                  const icao = (toolBlock.input.icao || '').trim().toUpperCase();
+                  const radiusNm = Number(toolBlock.input.radius_nm) || 10;
+                  // Resolve lat/lon: use cached METAR data if available, else fetch METAR now
+                  let lat = liveAvLookup?.lat, lon = liveAvLookup?.lon;
+                  if ((!lat || !lon) && icao) {
+                    const wxFallback = await getWeather({ ids: icao, taf: false, sigmet: false });
+                    const st = wxFallback.metars?.[0];
+                    if (st?.lat && st?.lon) { lat = st.lat; lon = st.lon; }
+                  }
+                  let tData;
+                  if (lat && lon) {
+                    tData = await getTraffic({ lat, lon, distNm: radiusNm, userId: authUser?.uid || null, tenantId: reqTenantId || null });
+                  } else {
+                    tData = { error: `Cannot resolve lat/lon for ${icao} — METAR station not found` };
+                  }
+                  let toolResultText;
+                  if (tData.error) {
+                    toolResultText = `Traffic fetch error: ${tData.error}`;
+                  } else {
+                    const lines = [`Live ADS-B within ${radiusNm}nm of ${icao}: ${tData.count} aircraft`];
+                    (tData.aircraft || []).slice(0, 10).forEach(ac => {
+                      const alt = ac.onGround ? 'ground' : (ac.altitudeFt != null ? `${ac.altitudeFt}ft` : '?ft');
+                      lines.push(`  ${ac.flight || ac.hex || 'UNK'} ${ac.type || '?'} — ${alt}, ${ac.groundSpeedKt ?? '?'}kt, squawk ${ac.squawk || '?'}`);
+                    });
+                    if (tData.count > 10) lines.push(`  … ${tData.count - 10} more`);
+                    toolResultText = lines.join('\n');
+                    liveAvLookup = liveAvLookup || {};
+                    liveAvLookup.traffic = { icao, center: tData.center, count: tData.count, aircraft: (tData.aircraft || []).slice(0, 20) };
+                  }
+                  const followUpMessages = [...messages, { role: 'assistant', content: aiResponse.content }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolBlock.id, content: toolResultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 600, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || 'Here is the live traffic picture.';
+                } catch (avTrErr) {
+                  console.warn(`[worker:${workerSlug}] get_traffic failed:`, avTrErr.message);
+                  aiText = aiText || 'I had trouble fetching traffic data — please try again.';
+                }
+              }
+
               // Vault asset lookup — resolves dtcIds so logbook:append works.
               if (toolBlock && toolBlock.name === 'lookup_vault_assets') {
                 try {
@@ -4057,7 +4396,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                           _gsSlugs.map(s => db.collection("digitalWorkers").doc(s).get().catch(() => null))
                         );
                         const _gsLastRunDocs = await Promise.all(
-                          _gsSlugs.map(s => db.doc(`creators/${s}/lastRun`).get().catch(() => null))
+                          _gsSlugs.map(s => db.doc(`creatorLastRun/${s}`).get().catch(() => null))
                         );
                         const _gsLines = _gsSlugs.map((slug, i) => {
                           const dwd = _gsDwDocs[i];
@@ -4392,6 +4731,44 @@ IMAGE & VISUAL RULES (MANDATORY):
                   },
                 });
               }
+              // title-abstract-001 → emit card:title-abstract signal after Firestore save.
+              // Frontend card reads live from title_abstracts/{tenantId}__attom__{apn}.
+              if (workerSlug === 'title-abstract-001' && liveReLookup && liveReLookup._titleAbstractSaved) {
+                workerCanvasRenders.push({
+                  type: "card:title-abstract",
+                  payload: { tenantId: reqTenantId, property_address: liveReLookup.address },
+                });
+              }
+              // re-marketing-001 → push card:re-showings after schedule_showing fires.
+              if (workerSlug === 're-marketing-001' && toolBlock && toolBlock.name === 'schedule_showing') {
+                const _si = toolBlock.input || {};
+                workerCanvasRenders.push({
+                  type: "card:re-showings",
+                  payload: {
+                    title: "Showing Schedule",
+                    items: [{
+                      label: `${_si.address || "Property"} — Buyer: ${_si.buyerName || "TBD"}`,
+                      date: _si.proposedDateTime || "TBD",
+                      status: "scheduled",
+                    }],
+                  },
+                });
+              }
+
+              // Aviation: push weather card after get_weather tool call
+              if (liveAvLookup?.weather) {
+                workerCanvasRenders.push({
+                  type: 'card:aviation-weather',
+                  payload: { icaos: liveAvLookup.weather.icaos, metars: liveAvLookup.weather.metars },
+                });
+              }
+              // Aviation: push traffic card after get_traffic tool call
+              if (liveAvLookup?.traffic) {
+                workerCanvasRenders.push({
+                  type: 'card:aviation-traffic',
+                  payload: { icao: liveAvLookup.traffic.icao, center: liveAvLookup.traffic.center, aircraft: liveAvLookup.traffic.aircraft },
+                });
+              }
 
               // Phase D-1 — mirror Accounting canvas reports (P&L, Balance
               // Sheet, Cash Flow, CoA as .xlsx; Invoice as .pdf) to Drive so
@@ -4468,6 +4845,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                 conversationState: 'worker_active',
                 canvasSignal,
                 canvasRenders: workerCanvasRenders,
+                ...(sessionState._lowCreditWarning ? { creditWarning: sessionState._lowCreditWarning } : {}),
               });
             }
           } catch (workerErr) {
@@ -5607,7 +5985,7 @@ COMPLIANCE: This is informational only. SOCIII does not act as a registered fund
                     );
                     const _lastRunDocs = await Promise.all(
                       _activeWorkers.slice(0, 20).map(slug =>
-                        db.doc(`creators/${slug}/lastRun`).get().catch(() => null)
+                        db.doc(`creatorLastRun/${slug}`).get().catch(() => null)
                       )
                     );
                     const _workerLines = _activeWorkers.map((slug, i) => {
@@ -5757,6 +6135,11 @@ HARD RULES:
 4. When a request belongs to a specific worker, you can answer from the sibling data below and offer to open that worker.
 5. Keep replies under 250 words, warm and direct. Plain text — no emojis. Light markdown only if it aids clarity.
 6. BUSINESS IN A BOX: When a user asks "how do I get started", "what should I set up first", "what workers do I need", or anything about setting up their workspace from scratch, recommend the "Business in a Box" bundle — exactly that phrase. Say something like: "The quickest way to get running is the Business in a Box bundle — it adds Accounting, HR, Marketing, Contacts, and Control Center to your workspace in one click." The frontend will surface a one-click subscribe card automatically when you say "Business in a Box".
+6b. VERTICAL BUNDLES: When a user asks about industry-specific workers or mentions their industry, recommend the matching bundle using EXACTLY one of these phrases (triggers the one-click subscribe card):
+   - Real estate investors, agents, brokers, title teams → "RE in a Box" — includes CRE Analyst, Site Recon, Title Abstract, Land Use, Zoning, Market & Feasibility, and RE Marketing.
+   - Pilots, operators, charter, flight schools, maintenance → "Aviation in a Box" — includes CoPilot, Maintenance, and Dispatch workers.
+   - Educators, nursing schools, CE providers, professional licensing → "Education in a Box" — includes CE course management and student evaluation workers.
+   Active verticals: real estate, aviation, education, healthcare (workers coming). Finance = namespace reserved, no workers yet. Foundation (Spine + Vault + Drive) is always provisioned first — vertical bundles layer on top.
 7. MULTI-CHANNEL COMMS ACTIONS: You can propose actions on these channels — always propose first, never execute without user approval:
    - SMS: [SMS_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/SMS_DRAFT]
    - WhatsApp: [WHATSAPP_DRAFT]{"to":"+1XXXXXXXXXX","body":"message text"}[/WHATSAPP_DRAFT] — use for contacts the user says prefers WhatsApp or is more reachable that way. Supports text + optional mediaUrl for images/PDFs.
@@ -9120,16 +9503,21 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       const map = {
         'aviation':    { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
         'pilot':       { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
-        'auto-dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
-        'auto_dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
-        'auto':        { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
+        // auto-dealer retired 2026-07-07 (CODEX 22) — no workers ever existed; aliases kept for API backwards compat
+        'auto-dealer': { suites: [], prefix: 'ad-', firestoreVertical: 'unassigned' },
+        'auto_dealer': { suites: [], prefix: 'ad-', firestoreVertical: 'unassigned' },
+        'auto':        { suites: [], prefix: 'ad-', firestoreVertical: 'unassigned' },
+        'education':   { suites: ['Licensing & CE', 'Professional Development', 'Curriculum', 'Assessment'], prefix: null, firestoreVertical: 'education' },
+        // nursing reclassified to education (CODEX 22) — alias kept for backwards compat
+        'nursing':     { suites: ['Licensing & CE', 'Professional Development', 'Curriculum', 'Assessment'], prefix: null, firestoreVertical: 'education' },
+        'healthcare':  { suites: ['Clinical', 'Compliance', 'Patient Records', 'Licensing & CE'], prefix: null, firestoreVertical: 'healthcare' },
         'web3':        { suites: ['Community', 'Compliance', 'Tokenomics', 'Launch', 'Communications', 'Platform'], prefix: 'w3-', firestoreVertical: 'web3' },
         'solar':       { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
         'solar_vpp':   { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
-        'real-estate': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
-        'real_estate_development': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
-        're':          { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
-        're_professional': { suites: [], prefix: null, firestoreVertical: 're_professional' },
+        'real-estate': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Marketing', 'Brokerage', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        'real_estate_development': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Marketing', 'Brokerage', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        're':          { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Marketing', 'Brokerage', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        're_professional': { suites: ['Investment', 'Finance', 'Legal', 'Marketing', 'Brokerage', 'Entitlement'], prefix: null, firestoreVertical: 're_professional' },
         'government':  { suites: [], prefix: null, firestoreVertical: 'government' },
         'platform':    { suites: [], prefix: null, firestoreVertical: 'platform' },
         'marketing':   { suites: [], prefix: null, firestoreVertical: 'marketing' },
@@ -9982,6 +10370,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const { bundleId, slugs: explicitSlugs, tenantId: bTenantId } = body || {};
 
         const BUNDLES = {
+          // Spine workers — the platform foundation included with every vertical bundle
           "business-in-a-box": [
             "platform-control-center-pro",
             "platform-accounting",
@@ -9989,8 +10378,42 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             "platform-marketing",
             "platform-contacts",
           ],
+          // Vertical bundles — all SOCIII-built workers in that industry
+          // Third-party creator workers are NOT included; they add-on separately.
+          "re-in-a-box": [
+            "cre-analyst",
+            "site-recon-001",
+            "title-abstract-001",
+            "law-landuse-001",
+            "zoning-001",
+            "feasibility-001",
+            "re-marketing-001",
+          ],
+          "aviation-in-a-box": [
+            "av-copilot-001",
+            "av-mx-001",
+            "av-dispatch-001",
+          ],
+          // education-in-a-box replaces nursing-in-a-box (CODEX 22 — nursing is a suite not a vertical)
+          "education-in-a-box": [
+            "nursing-ce-001",
+            "student-eval-001",
+          ],
+          // backwards-compat alias — existing subscribers who subscribed via "nursing-in-a-box" get the same workers
+          "nursing-in-a-box": [
+            "nursing-ce-001",
+            "student-eval-001",
+          ],
         };
-        const targetSlugs = explicitSlugs || BUNDLES[bundleId] || BUNDLES["business-in-a-box"];
+        const FOUNDATION_SLUGS = BUNDLES["business-in-a-box"];
+        const isVerticalBundle = bundleId && bundleId !== "business-in-a-box" && BUNDLES[bundleId];
+        // Vertical bundles always include Foundation as a prerequisite (CODEX 21)
+        const targetSlugs = explicitSlugs
+          ? explicitSlugs
+          : isVerticalBundle
+            ? [...FOUNDATION_SLUGS, ...BUNDLES[bundleId]]
+            : (BUNDLES[bundleId] || BUNDLES["business-in-a-box"]);
+
         const subTenantId = bTenantId && bTenantId !== "vault" && !String(bTenantId).startsWith("guest-") ? bTenantId : null;
         let ownerType = "user";
         let ownerId = userId;
@@ -10035,9 +10458,28 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           }
         }
         if (subscribed.length > 0) {
-          // Dispatch workspace-changed event so the frontend refreshes
           console.log(`[bundle:subscribe] user=${userId} bundle=${bundleId} subscribed=[${subscribed.join(",")}]`);
         }
+
+        // CODEX 21 Fix 6 — write foundationProvisioned: true atomically once
+        // all 5 Spine workers are covered (subscribed or pre-existing).
+        // Gates downstream vertical bundle access; only written, never cleared.
+        if (userId && subTenantId) {
+          try {
+            const _allCovered = new Set([...subscribed, ...skipped.map(s => s.slug)]);
+            const _foundationDone = FOUNDATION_SLUGS.every(s => _allCovered.has(s));
+            if (_foundationDone) {
+              await db.doc(`users/${userId}/workspaces/${subTenantId}`).set(
+                { foundationProvisioned: true, foundationProvisionedAt: nowServerTs() },
+                { merge: true }
+              );
+              console.log(`[bundle:subscribe] foundationProvisioned=true tenant=${subTenantId}`);
+            }
+          } catch (_fpErr) {
+            console.warn('[bundle:subscribe] foundationProvisioned flag failed:', _fpErr.message);
+          }
+        }
+
         return res.json({ ok: true, subscribed, skipped, failed });
       } catch (e) {
         console.error("[bundle:subscribe] error:", e.message);
@@ -11497,33 +11939,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
-    // POST /v1/studio:intake — PUBLIC, no auth
-    // Sociii Build (Studio) inbound lead form per v4 Section 10
-    if (route === "/studio:intake" && method === "POST") {
-      try {
-        const { name, email, company, role, problem, budget, timeframe } = body || {};
-        if (!name || !email || !problem) return res.json({ ok: false, error: "missing_fields" });
-
-        const ref = await db.collection("studioIntake").add({
-          name: String(name).substring(0, 200),
-          email: String(email).substring(0, 200),
-          company: String(company || "").substring(0, 200),
-          role: String(role || "").substring(0, 200),
-          problem: String(problem).substring(0, 4000),
-          budget: String(budget || "").substring(0, 100),
-          timeframe: String(timeframe || "").substring(0, 100),
-          status: "new",
-          createdAt: nowServerTs(),
-          source: req.headers?.["referer"] || "direct",
-        });
-
-        return res.json({ ok: true, intakeId: ref.id });
-      } catch (e) {
-        console.error("[studio:intake] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
     // POST /v1/creator:claim-handle — authed
     // Reserve a handle for the current creator (sociii.ai/c/<handle>)
     if (route === "/creator:claim-handle" && method === "POST") {
@@ -11930,6 +12345,13 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         const workerSnap = await workerRef.get();
         if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
         const worker = workerSnap.data();
+        // CODEX 21 Fix 5 — block publish if vertical field is set but invalid.
+        // Whitelisted: canonical active verticals + 'unassigned' (valid staging zone).
+        const CANONICAL_VERTICALS = new Set(['real-estate', 'aviation', 'education', 'healthcare', 'finance', 'platform', 'unassigned']);
+        const _pubVertical = (worker.vertical || body.vertical || "").toLowerCase().trim();
+        if (_pubVertical && !CANONICAL_VERTICALS.has(_pubVertical)) {
+          return res.json({ ok: false, error: `Invalid vertical "${_pubVertical}". Must be one of: ${[...CANONICAL_VERTICALS].join(", ")}. Use "unassigned" if this worker doesn't belong to a defined vertical yet.` });
+        }
         const autoSlug = slug || (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         // Write marketplace listing doc
         await db.doc(`marketplace/${autoSlug}`).set({
@@ -11957,6 +12379,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           name: worker.name,
           shortName: (worker.name || "").substring(0, 30),
           suite: worker.suite || worker.category || "General",
+          vertical: _pubVertical || "unassigned",
           industry: (worker.industry || worker.category || "general").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           category: worker.category || "custom",
           state: worker.state || null,
@@ -16856,20 +17279,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json(result);
       } catch (e) {
         console.error("hr:schedule:register-worker failed:", e);
-        return jsonError(res, 500, e.message || "Failed");
-      }
-    }
-
-    // GET /v1/hr:people:list?type=advisor|human|digital_worker
-    // Unified roster across employees, contractors, advisors, digital workers.
-    if (route === "/hr:people:list" && method === "GET") {
-      try {
-        const people = require("./services/hr/people");
-        const type = req.query.type || null;
-        const result = await people.listPeople(ctx.tenantId, { type });
-        return res.json(result);
-      } catch (e) {
-        console.error("hr:people:list failed:", e);
         return jsonError(res, 500, e.message || "Failed");
       }
     }
@@ -27952,6 +28361,10 @@ Analyze now:`;
           const unsubToken = crypto.createHash("sha256").update(`${contact.id}${campaignId}${process.env.GDRIVE_ENCRYPTION_KEY || "secret"}`).digest("hex").slice(0, 32);
           const firstName = contact.firstName || contact.name?.split(" ")[0] || "there";
           const lastName = contact.lastName || contact.name?.split(" ").slice(1).join(" ") || "";
+          const personalizedSubject = (prop.subject || "")
+            .replace(/{{firstName}}/g, firstName)
+            .replace(/{{lastName}}/g, lastName)
+            .replace(/{{email}}/g, contact.email);
           const personalizedBody = (prop.bodyTemplate || "")
             .replace(/{{firstName}}/g, firstName)
             .replace(/{{lastName}}/g, lastName)
@@ -27964,7 +28377,7 @@ Analyze now:`;
           try {
             const sendResult = await gmail.sendEmail(auth.user.uid, {
               to: contact.email,
-              subject: prop.subject,
+              subject: personalizedSubject,
               body: personalizedBody,
               htmlBody,
               attachments: cachedAtts,
@@ -28479,6 +28892,23 @@ Analyze now:`;
       } catch (e) {
         console.error("edu:cohort failed:", e);
         return jsonError(res, 500, "Failed to load cohort data");
+      }
+    }
+
+    // GET /v1/showings:list — scheduled property showings for re-marketing-001 canvas
+    if (route === "/showings:list" && method === "GET") {
+      try {
+        const shAuth = await requireFirebaseUser(req, res);
+        if (shAuth.handled) return shAuth.res;
+        const ctx = getCtx(req, body, shAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const snap = await db.collection("showings").doc(ctx.tenantId).collection("scheduled")
+          .orderBy("createdAt", "desc").limit(50).get();
+        const showings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, showings, count: showings.length });
+      } catch (e) {
+        console.error("showings:list failed:", e);
+        return jsonError(res, 500, "Failed to load showings");
       }
     }
 

@@ -113,19 +113,6 @@ module.exports = {
     workerTier2: 'price_1Tb9WcBYvxF0jBHydXTgAVWa',
     workerTier3: 'price_1Tb9WcBYvxF0jBHyWKdH8Uav',
 
-    // Kits — Business in a Box ($99/mo each)
-    kitStartup:            'price_1Tb9WdBYvxF0jBHyWC6br2Cr',
-    kitRePropertyManager:  'price_1Tb9WdBYvxF0jBHyj7CfFik5',
-    kitReBrokerage:        'price_1Tb9WeBYvxF0jBHy3d9ERLAP',
-    kitReDeveloper:        'price_1Tb9WfBYvxF0jBHyVuvS7S8z',
-    kitAviationOperator:   'price_1Tb9WfBYvxF0jBHywRbeY3ub',
-    kitAutoDealer:         'price_1Tb9WgBYvxF0jBHyoqOE5hEo',
-    kitTitleEscrow:        'price_1Tb9WgBYvxF0jBHyu1616CPs',
-    kitGovernment:         'price_1Tb9WhBYvxF0jBHyppHckBdN',
-    kitWeb3:               'price_1Tb9WhBYvxF0jBHyjsg3pWiB',
-    kitLawFirm:            'price_1Tb9WiBYvxF0jBHyQYXwB06m',
-    kitInvestmentFirm:     'price_1Tb9WiBYvxF0jBHyPObFFnhX',
-
     // All Access / Enterprise
     allAccess: 'price_1Tb9WjBYvxF0jBHyRCjoAiY4',
 

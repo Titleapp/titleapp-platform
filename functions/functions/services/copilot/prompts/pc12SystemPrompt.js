@@ -26,7 +26,7 @@ function buildSystemPrompt(options = {}) {
 
   const layers = [
     getLayer0_Behavior(),
-    getLayer1_Aircraft(),
+    getLayer1_Aircraft(profile),
     getLayer2_Operator(vaultDocs, operatorDocChunks),
     getLayer3_Pilot(profile, currency),
     getLayer4_DutyTime(dutyStatus),
@@ -72,9 +72,18 @@ Status context (Layer 3 pilot data, Layer 4 duty data) is reference material. Pu
 }
 
 // --- Layer 1: Aircraft ---
+// Builds an aircraft-specific layer. PC-12/47E uses detailed embedded specs.
+// Any other type gets a generic layer that defers to the uploaded AFM.
 
-function getLayer1_Aircraft() {
-  return `## Layer 1 — Aircraft: Pilatus PC-12/47E
+const PC12_TYPES = ['PC-12', 'PC-12/47E', 'PC-12/47', 'PC12', 'PC 12'];
+
+function getLayer1_Aircraft(profile) {
+  const aircraftType = (profile && profile.aircraftType) ? profile.aircraftType.trim() : null;
+  const isPC12 = !aircraftType || PC12_TYPES.some(t => aircraftType.toUpperCase().includes(t.toUpperCase()));
+
+  if (isPC12) {
+    const displayType = aircraftType || 'PC-12/47E';
+    return `## Layer 1 — Aircraft: ${displayType}
 
 You are a CoPilot assistant for the Pilatus PC-12/47E single-engine turboprop.
 
@@ -108,6 +117,22 @@ Stall Training Guide, and FSI Pilot Training Manual (4,209 pages total). When an
 aircraft-specific questions, draw from this baseline in addition to any operator-uploaded documents.
 
 When discussing aircraft systems, procedures, or limitations, always reference the POH/AFM. If the pilot asks about something outside the AFM, say so clearly.`;
+  }
+
+  // Generic aircraft layer — defer to operator-uploaded AFM
+  return `## Layer 1 — Aircraft: ${aircraftType}
+
+You are a CoPilot assistant for the ${aircraftType}. You do NOT have manufacturer specs
+hardcoded for this aircraft type. All performance figures, limitations, and procedures
+must come from:
+1. The operator-uploaded AFM/POH in Layer 2 (highest authority)
+2. Type-rating training knowledge you have from your training data
+
+Rules:
+- NEVER cite a number (Vne, MTOW, ITT limit, etc.) from memory without a caveat: "Verify against your current AFM."
+- If the operator has not uploaded an AFM, tell the pilot: "Upload your AFM/POH so I can give you aircraft-specific numbers."
+- Use Layer 2 operator documents as primary aircraft reference. Layer 5 regulations apply as always.
+- Do not fabricate performance tables. Ask for the relevant AFM section if needed.`;
 }
 
 // --- Layer 2: Operator ---

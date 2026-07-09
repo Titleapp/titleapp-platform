@@ -134,6 +134,9 @@ async function searchByAddress(req, res, { body, ctx, jsonError }) {
   // ── RULE-11: fictional address — ATTOM zero-results surfaces a specific
   // error instead of an empty success. No fee, no receipt: nothing was
   // delivered to the user.
+  if (propertyDetail?.httpStatus === 401 || propertyDetail?.httpStatus === 403) {
+    return jsonError(res, 503, "Live property data is temporarily unavailable — please check back shortly.", { code: "ATTOM_UNAVAILABLE" });
+  }
   if (!propertyDetail?.data?.property?.length) {
     return jsonError(res, 400, `No property found at "${parsed.address1}, ${parsed.address2}" — check the address and try again.`, { code: "INVALID_ADDRESS", reason: "ADDRESS_NOT_FOUND" });
   }

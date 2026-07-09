@@ -386,6 +386,12 @@ function metadataPreview(dtc) {
     if (m.year || m.make || m.model) lines.push([m.year, m.make, m.model].filter(Boolean).join(" "));
     if (m.vin) lines.push(`VIN: ${m.vin}`);
     if (m.licensePlate) lines.push(`Plate: ${m.licensePlate}`);
+  } else if (dtc.type === "commercial_property") {
+    if (m.address) lines.push(m.address);
+    if (m.monthlyRent) lines.push(`Rent: $${Number(m.monthlyRent).toLocaleString()}/mo`);
+    const overdueEquip = (m.equipment || []).find(e => e.maintenanceStatus === "overdue");
+    if (overdueEquip) lines.push(`⚠ ${overdueEquip.name} calibration overdue`);
+    else if (m.equipment?.length) lines.push(`${m.equipment.length} equipment items`);
   } else if (dtc.type === "property") {
     if (m.address) lines.push(m.address);
     if (m.parcelId) lines.push(`Parcel: ${m.parcelId}`);

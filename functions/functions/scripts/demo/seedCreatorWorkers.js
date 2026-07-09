@@ -7,10 +7,11 @@
 // top-level `workers` collection filtered by creator_id == auth uid, and the
 // per-worker detail panel computes Monthly Revenue = subscriber_count *
 // pricing.price. Idempotent (demo:true, cleared + re-seeded each run).
-const admin = require("firebase-admin");
-admin.initializeApp({ projectId: "title-app-alpha" });
+const path = require("path");
+const admin = require(path.resolve(__dirname, "../../node_modules/firebase-admin"));
+if (!admin.apps.length) admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
-const UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2"; // demo@sociii.ai
+const UID = "WResykI56hW16silsOtvlw1UjJK2"; // sean@sociii.ai (DEMO SPACE owner, films as Dr. Chen)
 
 // 3 workers Dr. Chen built from her own expertise. Revenue sums to ~$27,324/mo:
 //   312×$29=9,048  +  258×$45=11,610  +  246×$27=6,642  =  $27,300/mo.

@@ -1,14 +1,15 @@
 // SPINE-4 Staff Credential Worker — seed staff_credentials / training_completions
 // / credential_reminders for Meadow Creek (DEMO SPACE), per Claude's spec.
-// Dates computed relative to today (2026-06-20) so deadlines stay correct.
-// Idempotent (demo:true). On-screen targets: DEA 14d, Sam CVT 31d, Jordan 47d,
-// Alex OSHA overdue, 18 credentials tracked, 4 reminders this month.
-const admin = require("firebase-admin");
-admin.initializeApp({ projectId: "title-app-alpha" });
+// Dates computed relative to today (2026-07-07) so deadlines stay correct.
+// Idempotent (demo:true + _isSeed:true). On-screen targets: DEA 14d, Sam CVT 31d, Jordan 47d,
+// Alex OSHA overdue (-22d), 18 credentials tracked, 4 reminders this month.
+const path = require("path");
+const admin = require(path.resolve(__dirname, "../../node_modules/firebase-admin"));
+if (!admin.apps.length) admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
 const TENANT = "ws_1781920656122_tl9dhn";
 
-const TODAY = new Date("2026-06-20T00:00:00Z");
+const TODAY = new Date("2026-07-07T00:00:00Z");
 const dPlus = (n) => new Date(TODAY.getTime() + n * 86400000).toISOString().slice(0, 10);
 const daysUntil = (iso) => Math.round((new Date(iso + "T00:00:00Z") - TODAY) / 86400000);
 const statusOf = (iso) => { const d = daysUntil(iso); return d < 0 ? "overdue" : d <= 30 ? "expiring_soon" : "current"; };
@@ -38,7 +39,7 @@ const STAFF = [
     cred({ credential_type: "osha_bloodborne", credential_name: "OSHA Bloodborne Pathogen Training", issuing_body: "OSHA", expiry_date: "2027-06-19" }),
   ]},
   { staff_id: "alex_torres", full_name: "Alex Torres", role: "vet_tech_trainee", email: "alex@meadowcreek.vet", credentials: [
-    cred({ credential_type: "osha_bloodborne", credential_name: "OSHA Bloodborne Pathogen Training", issuing_body: "OSHA", expiry_date: dPlus(-31), renewal_period_months: 12, reminder_30d_sent: true, reminder_7d_sent: true }),
+    cred({ credential_type: "osha_bloodborne", credential_name: "OSHA Bloodborne Pathogen Training", issuing_body: "OSHA", expiry_date: dPlus(-22), renewal_period_months: 12, reminder_30d_sent: true, reminder_7d_sent: true }),
     cred({ credential_type: "rabies_handler", credential_name: "Rabies Handler Certification", issuing_body: "State Lab", expiry_date: "2027-03-01" }),
     { credential_type: "vtne_enrollment", credential_name: "CVT Exam Prep Course (Dr. Chen)", issuing_body: "Meadow Creek / SOCIII", expiry_date: null, status: "in_progress", days_remaining: null, notes: "Enrolled 2026-04-01, exam in ~6 weeks" },
   ]},
@@ -63,17 +64,21 @@ const TRAINING = [
 ];
 
 const REMINDERS = [
-  { staff_id: "maya_chen",   credential_type: "dea_registration", days_before_expiry: 30, sent_at: dPlus(-16), channel: "email", status: "sent" },
-  { staff_id: "maya_chen",   credential_type: "dea_registration", days_before_expiry: 7,  sent_at: dPlus(-7),  channel: "sms",   status: "sent" },
-  { staff_id: "jordan_park", credential_type: "dvm_license",      days_before_expiry: 30, sent_at: dPlus(-12), channel: "email", status: "sent" },
-  { staff_id: "sam_rivera",  credential_type: "cvt_license",      days_before_expiry: 30, sent_at: dPlus(-4),  channel: "email", status: "sent" },
+  // All 4 in July so remindersThisMonth = 4 on the canvas
+  { staff_id: "maya_chen",   credential_type: "dea_registration", days_before_expiry: 30, sent_at: dPlus(-7),  channel: "email", status: "sent" },
+  { staff_id: "maya_chen",   credential_type: "dea_registration", days_before_expiry: 7,  sent_at: dPlus(-3),  channel: "sms",   status: "sent" },
+  { staff_id: "jordan_park", credential_type: "dvm_license",      days_before_expiry: 60, sent_at: dPlus(-5),  channel: "email", status: "sent" },
+  { staff_id: "sam_rivera",  credential_type: "cvt_license",      days_before_expiry: 30, sent_at: dPlus(-3),  channel: "email", status: "sent" },
 ];
 
 (async () => {
+  // Clear both demo:true and _isSeed:true records for clean re-seed
   for (const coll of ["staff_credentials", "training_completions", "credential_reminders"]) {
-    const prior = await db.collection(coll).where("tenantId","==",TENANT).where("demo","==",true).get();
-    const b = db.batch(); prior.forEach(d => b.delete(d.ref));
-    if (!prior.empty) { await b.commit(); console.log(`cleared ${prior.size} demo ${coll}`); }
+    for (const flag of [["demo", true], ["_isSeed", true]]) {
+      const prior = await db.collection(coll).where("tenantId","==",TENANT).where(flag[0],"==",flag[1]).get();
+      const b = db.batch(); prior.forEach(d => b.delete(d.ref));
+      if (!prior.empty) { await b.commit(); console.log(`cleared ${prior.size} ${flag[0]}:true ${coll}`); }
+    }
   }
   const batch = db.batch();
   let totalCreds = 0;
@@ -85,6 +90,6 @@ const REMINDERS = [
   for (const r of REMINDERS) batch.set(db.collection("credential_reminders").doc(), { tenantId: TENANT, demo: true, ...r, createdAt: admin.firestore.FieldValue.serverTimestamp() });
   await batch.commit();
   console.log(`✓ SPINE-4 seeded: ${STAFF.length} staff, ${totalCreds} credentials tracked, ${TRAINING.length} trainings, ${REMINDERS.length} reminders`);
-  console.log(`  DEA ${dPlus(14)} (14d) · Sam CVT ${dPlus(31)} (31d) · Jordan license ${dPlus(47)} (47d) · Alex OSHA ${dPlus(-31)} OVERDUE`);
+  console.log(`  DEA ${dPlus(14)} (14d) · Sam CVT ${dPlus(31)} (31d) · Jordan license ${dPlus(47)} (47d) · Alex OSHA ${dPlus(-22)} OVERDUE`);
   process.exit(0);
 })().catch(e => { console.error("FAILED:", e.message, e.stack); process.exit(1); });

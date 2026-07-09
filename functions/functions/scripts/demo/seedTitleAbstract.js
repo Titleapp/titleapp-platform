@@ -1,8 +1,9 @@
 // Seed a clean demo title-abstract record for the Meadow Creek workspace.
 // Property: 3825 S Mason St, Fort Collins CO — illustrative commercial parcel.
 // Run: node functions/functions/scripts/demo/seedTitleAbstract.js
-const admin = require("firebase-admin");
-admin.initializeApp({ projectId: "title-app-alpha" });
+const path = require("path");
+const admin = require(path.resolve(__dirname, "../../node_modules/firebase-admin"));
+if (!admin.apps.length) admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
 const TENANT = "ws_1781920656122_tl9dhn";
 

@@ -145,4 +145,89 @@ export async function sendViaGmail({ to, subject, body, htmlBody, cc, replyTo })
   return await gmailApi("send", "POST", { to, subject, body, htmlBody, cc, replyTo });
 }
 
-export default { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts, sendViaGmail };
+// ── Multi-account support ────────────────────────────────────────
+
+export function useGmailAccounts() {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await gmailApi("listAccounts");
+      setAccounts(res.accounts || []);
+    } catch {
+      setAccounts([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  return { accounts, loading, refresh };
+}
+
+export async function addGmailAccount() {
+  const popup = window.open("about:blank", "google-gmail-add-auth", "width=600,height=700");
+  if (!popup) throw new Error("Popup blocked. Allow popups for this site and try again.");
+
+  let res;
+  try {
+    res = await gmailApi("addAccountUrl");
+  } catch (e) {
+    popup.close();
+    throw e;
+  }
+  if (!res.ok || !res.authUrl) {
+    popup.close();
+    throw new Error(res.error || "Failed to start Gmail connection");
+  }
+  popup.location.href = res.authUrl;
+
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+
+    function cleanup() {
+      window.removeEventListener("message", handler);
+      clearInterval(pollClose);
+      clearTimeout(timeout);
+    }
+
+    const handler = async (event) => {
+      if (!event.data || event.data.type !== "google-gmail-add-code") return;
+      if (!event.data.code) return;
+      cleanup();
+      resolved = true;
+      try {
+        const exchangeRes = await gmailApi("addAccountExchange", "POST", { code: event.data.code });
+        if (exchangeRes.ok) resolve(exchangeRes);
+        else reject(new Error(exchangeRes.error || "Exchange failed"));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    window.addEventListener("message", handler);
+
+    const pollClose = setInterval(() => {
+      try {
+        if (popup.closed) {
+          cleanup();
+          if (!resolved) reject(new Error("Connection cancelled."));
+        }
+      } catch { /* ignore */ }
+    }, 500);
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        cleanup();
+        try { popup.close(); } catch { /* ignore */ }
+        reject(new Error("Connection timed out. Allow popups and try again."));
+      }
+    }, 180000);
+  });
+}
+
+export async function removeGmailAccount(accountId) {
+  return await gmailApi("removeAccount", "POST", { accountId });
+}
+
+export default { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts, sendViaGmail, useGmailAccounts, addGmailAccount, removeGmailAccount };
