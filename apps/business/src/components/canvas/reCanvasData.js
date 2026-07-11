@@ -639,6 +639,267 @@ if (Array.isArray(CRE_DISTRESSED) && CRE_DISTRESSED.length) {
 // the instrument panel for education (Met / Remediate / Not met).
 RE_CANVAS["student-eval-001"] = buildLearningCanvas();
 
+// ─────────────────── PROPERTY MANAGER (re-property-manager) ─────────────────
+// Creekwood Commons, Sacramento CA — 148-unit Class B apartment operations.
+// Tab order: Overview · Maintenance · Tenants · Leasing · HOA · Compliance.
+// Visual-first: every tab leads with map/streetview + photos before any table.
+RE_CANVAS["re-property-manager"] = {
+  title: "Property Manager — Creekwood Commons",
+  subtitle: "2901 Riverside Blvd, Sacramento CA 95818 · 148 units · Class B",
+  disclaimer: "Live operations data — Merritt Property Group, LLC",
+  attomLive: false,
+  cas: { RED: 1, YELLOW: 4, BLUE: 1, WHITE: 2, GREEN: 3 },
+  tabs: [
+    { id: "overview", label: "Overview", blocks: [
+      { type: "map",        address: "2901 Riverside Blvd, Sacramento, CA 95818", mapType: "satellite" },
+      { type: "streetview", address: "2901 Riverside Blvd, Sacramento, CA 95818", label: "Creekwood Commons — exterior" },
+      { type: "heroes", items: [
+        { band: "GREEN",  title: "95.9% occupied",          detail: "142 / 148 units · Unit 116 actively marketed" },
+        { band: "YELLOW", title: "5 open MX tickets",       detail: "1 RED (HVAC 214, Day 4) · 3 YELLOW · 1 make-ready" },
+        { band: "YELLOW", title: "12 lease renewals due",   detail: "Aug–Sep 2026 · renewal drip campaign active" },
+      ] },
+      { type: "kpis", items: [
+        { label: "Gross rent / month", value: "$261,280", band: "GREEN"  },
+        { label: "Occupancy",          value: "95.9%",    band: "GREEN"  },
+        { label: "Open MX tickets",    value: "5",        band: "YELLOW" },
+        { label: "Vacancy loss / mo",  value: "$1,840",   band: "YELLOW" },
+      ] },
+    ] },
+
+    { id: "maintenance", label: "Maintenance", blocks: [
+      { type: "heroes", items: [
+        { band: "RED",    title: "HVAC Unit 214 — Day 4",     detail: "Tenant called 3×. Habitability clock running. Vendor en route 9am." },
+        { band: "YELLOW", title: "Roof leak Unit 308",         detail: "Interior ceiling stain + bulge. Exterior contractor quote pending." },
+        { band: "YELLOW", title: "3 more open tickets",        detail: "Drain 4E · Fridge 512 · Turnover 116" },
+      ] },
+      { type: "cards", items: [
+        { band: "RED",    label: "Day 4 · Ray Estevez",  title: "HVAC not cooling — Unit 214",       detail: "Tenant escalated 3×. CoolAir HVAC confirmed 9am tomorrow. Photo: frosted coils + overflowing condensate pan.", action: "MX-2026-0142" },
+        { band: "YELLOW", label: "Day 2 · Kenji Park",   title: "Roof leak — Unit 308",              detail: "Water stain on bedroom ceiling, slight bulge. Exterior contractor quote expected today. Photo: ceiling stain.", action: "MX-2026-0138" },
+        { band: "YELLOW", label: "Day 1 · Luis Morales", title: "Kitchen drain slow — Unit 4E",      detail: "Standing water, backing up. Scheduled tomorrow 10am. Photo: standing water in basin.", action: "MX-2026-0145" },
+        { band: "YELLOW", label: "Day 1 · Carmen Vega",  title: "Refrigerator out — Unit 512",       detail: "Compressor failure. Replacement ordered ETA July 11. Photo: door seal gap, warm interior.", action: "MX-2026-0147" },
+        { band: "BLUE",   label: "Make-ready · Kenji",   title: "Turnover prep — Unit 116",          detail: "Vacated June 1. Paint + carpet July 21. New tenant Aug 1. Photo: scuffed walls, worn carpet.", action: "MX-2026-0149" },
+      ] },
+      { type: "flags", items: [
+        { band: "RED",    title: "HVAC 214: habitability clock — CA requires AC repair within 30 days", detail: "Day 4. Tenant has right to rent withhold after 30. Vendor confirmed 9am — document resolution." },
+        { band: "YELLOW", title: "Roof 308: water intrusion — mold risk exceeds 72hr mark",             detail: "Schedule exterior contractor today. Mold remediation threshold approaching." },
+        { band: "YELLOW", title: "REAP inspection Aug 14 — all MX items must clear first",              detail: "Sacramento city inspection. Open tickets are a violation risk. Resolve HVAC + roof before Aug 14." },
+      ] },
+    ] },
+
+    { id: "tenants", label: "Tenants", blocks: [
+      { type: "kpis", items: [
+        { label: "Total units",       value: "148",    band: "WHITE"  },
+        { label: "Occupied",          value: "142",    band: "GREEN"  },
+        { label: "Section 8 (HUD)",   value: "12",     band: "BLUE"   },
+        { label: "Vacant / marketed", value: "1",      band: "YELLOW" },
+      ] },
+      { type: "bars", title: "Unit composition — all 148 units", items: [
+        { label: "Occupied — standard lease", value: "130", pct: 88,  band: "GREEN"  },
+        { label: "Occupied — Section 8",       value: "12",  pct: 8,   band: "BLUE"   },
+        { label: "Vacant — marketed (116)",    value: "1",   pct: 1,   band: "YELLOW" },
+        { label: "Turnover / make-ready",      value: "1",   pct: 1,   band: "BLUE"   },
+        { label: "Short-term hold / pending",  value: "4",   pct: 3,   band: "WHITE"  },
+      ], note: "95.9% occupied — 1 vacancy actively marketed, 1 make-ready in progress" },
+      { type: "table", title: "Upcoming lease actions — next 90 days",
+        columns: ["Unit", "Lease End", "Action", "Status"],
+        rows: [
+          { band: "YELLOW", cells: ["116",  "Vacant",   "Re-lease",      "Marketed · showing July 9"] },
+          { band: "YELLOW", cells: ["204",  "Aug 1",    "Renewal offer", "60-day notice sent"] },
+          { band: "YELLOW", cells: ["317",  "Aug 15",   "Renewal offer", "60-day notice sent"] },
+          { band: "YELLOW", cells: ["412",  "Sep 1",    "Renewal offer", "Not yet contacted"] },
+          { band: "YELLOW", cells: ["503",  "Sep 15",   "Renewal offer", "Not yet contacted"] },
+          { band: "GREEN",  cells: ["308",  "Oct 31",   "On lease",      "MX open — roof"] },
+        ] },
+    ] },
+
+    { id: "leasing", label: "Leasing", blocks: [
+      { type: "kpis", items: [
+        { label: "Gross rent / mo",   value: "$261,280", band: "GREEN"  },
+        { label: "Avg rent / unit",   value: "$1,840",   band: "WHITE"  },
+        { label: "Renewals due 90d",  value: "12",       band: "YELLOW" },
+        { label: "Vacancy loss / mo", value: "$1,840",   band: "YELLOW" },
+      ] },
+      { type: "bars", title: "Renewal pipeline — Aug/Sep expirations (12 leases)", items: [
+        { label: "Renewal signed",               value: "3",  pct: 25, band: "GREEN"  },
+        { label: "Notice sent — awaiting reply", value: "7",  pct: 58, band: "YELLOW" },
+        { label: "Not yet contacted",            value: "2",  pct: 17, band: "WHITE"  },
+      ], note: "$22,080/mo revenue at risk if all 12 churn — Alex renewal drip active" },
+      { type: "table", title: "Unit 116 vacancy — marketing performance",
+        columns: ["Channel", "Posted", "Inquiries", "Showings", "Applications"],
+        rows: [
+          { band: "GREEN",  cells: ["Google Search",    "June 3", "6", "2", "1"] },
+          { band: "YELLOW", cells: ["Apartments.com",   "June 3", "8", "1", "0"] },
+          { band: "WHITE",  cells: ["Walk-in / phone",  "—",      "—", "1", "0"] },
+        ] },
+    ] },
+
+    { id: "hoa", label: "HOA", blocks: [
+      { type: "map",        address: "4525 Dean Martin Dr, Las Vegas, NV 89103", mapType: "satellite" },
+      { type: "streetview", address: "4525 Dean Martin Dr, Las Vegas, NV 89103", label: "The Meridian at Flamingo — HOA property" },
+      { type: "heroes", items: [
+        { band: "YELLOW", title: "Q3 budget vote — 14 outstanding", detail: "18 / 32 received · closes July 14 · reminder sending July 12" },
+        { band: "YELLOW", title: "Special assessment pending",        detail: "$680 / unit pool resurfacing · vote must pass first" },
+        { band: "GREEN",  title: "Annual meeting July 15",            detail: "10am · Pool deck · agenda distributed" },
+      ] },
+      { type: "bars", title: "Q3 budget vote — unit responses", items: [
+        { label: "Approved", value: "15", pct: 47, band: "GREEN"  },
+        { label: "Denied",   value: "3",  pct: 9,  band: "RED"    },
+        { label: "Pending",  value: "14", pct: 44, band: "WHITE"  },
+      ], note: "Alex sends reminders July 12 — quorum requires 17 of 32" },
+      { type: "table", title: "HOA comms schedule",
+        columns: ["Item", "Date", "Status"],
+        rows: [
+          { band: "GREEN",  cells: ["Q3 Meeting Notice + Agenda",        "Sent July 1",  "Delivered to all 32 units"] },
+          { band: "YELLOW", cells: ["Q3 Budget Vote closes",             "July 14",      "18/32 received"] },
+          { band: "YELLOW", cells: ["Auto-reminder (Alex) sends",        "July 12",      "Scheduled — 14 outstanding"] },
+          { band: "YELLOW", cells: ["Special Assessment Notice (pool)",  "July 15",      "Pending vote result"] },
+          { band: "WHITE",  cells: ["Quarterly maintenance report",      "Due July 20",  "Draft"] },
+        ] },
+    ] },
+
+    { id: "compliance", label: "Compliance", blocks: [
+      { type: "heroes", items: [
+        { band: "YELLOW", title: "OSHA cert expiring — 97 days", detail: "Ray Estevez · OSHA 30 · expires Sep 2, 2026" },
+        { band: "YELLOW", title: "REAP inspection due Aug 14",    detail: "Sacramento rental housing inspection · open MX must clear first" },
+        { band: "GREEN",  title: "0 open violations",             detail: "Last inspection passed · CA license current" },
+      ] },
+      { type: "flags", items: [
+        { band: "YELLOW", title: "Ray Estevez — OSHA 30 expires Sep 2",  detail: "97 days. Enroll in renewal class. Required for on-site work." },
+        { band: "YELLOW", title: "REAP inspection Aug 14",               detail: "City of Sacramento rental inspection. HVAC 214 + roof 308 must resolve first." },
+        { band: "BLUE",   title: "HUD re-cert — 12 Section 8 units",     detail: "Annual HAP contract renewal due Q4 2026. Start 90 days prior (Oct 1)." },
+        { band: "GREEN",  title: "MPG CA RE License #01234567 current",  detail: "Dana Reyes, Principal Broker. Expires Dec 31, 2026." },
+      ] },
+      { type: "kpis", items: [
+        { label: "Open violations",   value: "0",      band: "GREEN"  },
+        { label: "REAP inspection",   value: "Aug 14", band: "YELLOW" },
+        { label: "OSHA cert expires", value: "Sep 2",  band: "YELLOW" },
+        { label: "HUD units current", value: "12/12",  band: "GREEN"  },
+      ] },
+    ] },
+  ],
+};
+
+// ─────────────────── INVESTOR RELATIONS (investor-relations) ─────────────────
+// Domain Point, Austin TX — 24-unit mixed-use development, 8 LP investors,
+// $4.25M committed, 70% construction complete.
+// Tab order: Overview · Investors · Capital · Construction · Documents.
+RE_CANVAS["investor-relations"] = {
+  title: "Investor Relations — Domain Point",
+  subtitle: "300 W 6th St, Austin TX 78701 · 24-unit mixed-use · 8 LPs · $4.25M committed",
+  disclaimer: "Merritt Capital Group, LLC — LP reporting",
+  attomLive: false,
+  cas: { RED: 2, YELLOW: 3, BLUE: 1, WHITE: 2, GREEN: 2 },
+  tabs: [
+    { id: "overview", label: "Overview", blocks: [
+      { type: "map",        address: "300 W 6th St, Austin, TX 78701", mapType: "satellite" },
+      { type: "streetview", address: "300 W 6th St, Austin, TX 78701", label: "Domain Point — 300 W 6th St, Austin TX (active construction)" },
+      { type: "heroes", items: [
+        { band: "RED",    title: "$130K capital call outstanding",  detail: "Nguyen Group + Eaton · July 30 deadline · 21 days" },
+        { band: "YELLOW", title: "GC contract vote — 3 LPs pending", detail: "Westbrook extension · Osman / Eaton / Nguyen Group" },
+        { band: "GREEN",  title: "70% construction complete",        detail: "Structural signed off · MEP 60% · finishes starting Aug" },
+      ] },
+      { type: "kpis", items: [
+        { label: "Construction",    value: "70%",      band: "GREEN"  },
+        { label: "Total committed", value: "$4.25M",   band: "GREEN"  },
+        { label: "Paid in to date", value: "$3.4M",    band: "WHITE"  },
+        { label: "Next call due",   value: "July 30",  band: "YELLOW" },
+      ] },
+    ] },
+
+    { id: "investors", label: "Investors", blocks: [
+      { type: "table", title: "Limited partners — Domain Point LP",
+        columns: ["Investor", "Entity", "Committed", "Paid In", "Remaining", "Last Contact"],
+        rows: [
+          { band: "GREEN",  cells: ["Howard Finch",          "Finch Family Trust",    "$750,000",   "$600,000", "$150,000",  "July 1"] },
+          { band: "GREEN",  cells: ["Diana Park",            "Park Equity LLC",        "$500,000",   "$400,000", "$100,000",  "July 1"] },
+          { band: "GREEN",  cells: ["Robert & Carol Simmons","Simmons Ventures",       "$1,000,000", "$800,000", "$200,000",  "July 1"] },
+          { band: "GREEN",  cells: ["Yusef Osman",           "Osman Holdings",         "$250,000",   "$250,000", "$0",        "June 12"] },
+          { band: "GREEN",  cells: ["Patricia Liang",        "Liang Capital Group",    "$500,000",   "$400,000", "$100,000",  "July 1"] },
+          { band: "YELLOW", cells: ["Marcus Eaton",          "ME Real Assets LLC",     "$300,000",   "$150,000", "$150,000",  "June 28"] },
+          { band: "GREEN",  cells: ["Sunrise Ridge Partners", "(entity)",              "$700,000",   "$700,000", "$0",        "July 1"] },
+          { band: "RED",    cells: ["The Nguyen Group",       "(entity)",              "$250,000",   "$100,000", "$150,000",  "May 30"] },
+        ] },
+      { type: "flags", items: [
+        { band: "RED",    title: "The Nguyen Group — no contact in 40 days", detail: "$150K unfunded · July 30 deadline · Alex draft follow-up ready for approval" },
+        { band: "YELLOW", title: "Marcus Eaton — $150K outstanding",          detail: "Last contact June 28 · July capital call not transferred" },
+        { band: "YELLOW", title: "GC vote — 3 LPs pending (Osman / Eaton / Nguyen)", detail: "Westbrook contract extension vote. Closes July 12." },
+      ] },
+    ] },
+
+    { id: "capital", label: "Capital", blocks: [
+      { type: "kpis", items: [
+        { label: "Total committed", value: "$4,250,000", band: "GREEN"  },
+        { label: "Total paid in",   value: "$3,400,000", band: "GREEN"  },
+        { label: "Outstanding",     value: "$850,000",   band: "YELLOW" },
+        { label: "July 30 call",    value: "$380,000",   band: "YELLOW" },
+      ] },
+      { type: "bars", title: "Capital funded — per LP (% of commitment)", items: [
+        { label: "Sunrise Ridge Partners",  value: "$700K / $700K",   pct: 100, band: "GREEN"  },
+        { label: "Osman Holdings",          value: "$250K / $250K",   pct: 100, band: "GREEN"  },
+        { label: "Simmons Ventures",        value: "$800K / $1M",     pct: 80,  band: "GREEN"  },
+        { label: "Finch Family Trust",      value: "$600K / $750K",   pct: 80,  band: "GREEN"  },
+        { label: "Park Equity LLC",         value: "$400K / $500K",   pct: 80,  band: "GREEN"  },
+        { label: "Liang Capital Group",     value: "$400K / $500K",   pct: 80,  band: "GREEN"  },
+        { label: "ME Real Assets LLC",      value: "$150K / $300K",   pct: 50,  band: "YELLOW" },
+        { label: "The Nguyen Group",        value: "$100K / $250K",   pct: 40,  band: "RED"    },
+      ], note: "$850K remaining to fund · $380K due July 30 · 2 LPs delinquent" },
+      { type: "table", title: "Capital call history",
+        columns: ["Call", "Amount", "Due Date", "Funded", "Status"],
+        rows: [
+          { band: "GREEN",  cells: ["Call 1 — Initial close",  "$1,500,000", "Jan 15 2025", "$1,500,000", "100% funded"] },
+          { band: "GREEN",  cells: ["Call 2 — Foundation",     "$900,000",   "Apr 1 2025",  "$900,000",   "100% funded"] },
+          { band: "GREEN",  cells: ["Call 3 — Framing",        "$1,000,000", "Sep 1 2025",  "$1,000,000", "100% funded"] },
+          { band: "YELLOW", cells: ["Call 4 — MEP + Finishes", "$380,000",   "July 30 2026","$230,000",   "2 LPs outstanding"] },
+        ] },
+    ] },
+
+    { id: "construction", label: "Construction", blocks: [
+      { type: "heroes", items: [
+        { band: "GREEN",  title: "70% complete — on schedule",    detail: "Structural signed off · MEP 60% · finishes start Aug 2026" },
+        { band: "YELLOW", title: "Permit inspection July 3",       detail: "#AUS-2026-004821 · structural sign-off · Derek Cho on-site" },
+        { band: "YELLOW", title: "GC contract ends Oct 1",         detail: "Westbrook GC · extension vote open · 3 LPs pending approval" },
+      ] },
+      { type: "bars", title: "Construction phases — % complete", items: [
+        { label: "Foundation + site work",    value: "Complete",    pct: 100, band: "GREEN"  },
+        { label: "Structural framing",        value: "Complete",    pct: 100, band: "GREEN"  },
+        { label: "MEP rough-in",             value: "60%",         pct: 60,  band: "YELLOW" },
+        { label: "Exterior + facade",         value: "40%",         pct: 40,  band: "YELLOW" },
+        { label: "Interior finishes",         value: "20%",         pct: 20,  band: "YELLOW" },
+        { label: "Final inspections + CO",    value: "Not started", pct: 0,   band: "WHITE"  },
+      ], note: "Projected delivery Oct 2026 — on schedule pending July 3 inspection" },
+      { type: "kpis", items: [
+        { label: "Completion",       value: "70%",      band: "GREEN"  },
+        { label: "Open permits",     value: "2",        band: "YELLOW" },
+        { label: "Delivery target",  value: "Oct 2026", band: "WHITE"  },
+        { label: "Budget remaining", value: "$2.1M",    band: "WHITE"  },
+      ] },
+      { type: "flags", items: [
+        { band: "YELLOW", title: "Structural inspection July 3 — permit #AUS-2026-004821", detail: "Pass required to proceed to finishes phase. Derek Cho (Westbrook) on-site. Sofia tracking." },
+        { band: "YELLOW", title: "MEP permit — pending Austin review (applied June 15)",   detail: "3–4 week turnaround. Due ~July 13. Finishes can't start until MEP sign-off." },
+        { band: "BLUE",   title: "Westbrook GC extension — 5/8 LPs approved, 3 pending",  detail: "Contract ends Oct 1. LP vote closes July 12. Extension needed for finishes + CO." },
+      ] },
+    ] },
+
+    { id: "documents", label: "Documents", blocks: [
+      { type: "heroes", items: [
+        { band: "WHITE",  title: "6 documents in data room",    detail: "PPM · Operating Agreement · financials · construction schedule" },
+        { band: "YELLOW", title: "Q2 Financial Summary — draft", detail: "Elena Marchetti reviewing · due to LPs July 15" },
+        { band: "BLUE",   title: "GC extension contract — vote pending", detail: "Draft in Drive · LP vote open" },
+      ] },
+      { type: "table", title: "Document library — Domain Point LP",
+        columns: ["Document", "Type", "Date", "Access", "Status"],
+        rows: [
+          { band: "GREEN",  cells: ["Private Placement Memorandum",     "Offering",   "Jan 2025",  "All LPs",  "Current"] },
+          { band: "GREEN",  cells: ["Operating Agreement",              "Legal",      "Jan 2025",  "All LPs",  "Executed"] },
+          { band: "GREEN",  cells: ["Q1 2026 Financial Summary",        "Financial",  "Apr 2026",  "All LPs",  "Distributed"] },
+          { band: "YELLOW", cells: ["Q2 2026 Financial Summary",        "Financial",  "July 2026", "All LPs",  "Draft — reviewing"] },
+          { band: "GREEN",  cells: ["Construction Schedule v3",         "Operations", "June 2026", "All LPs",  "Current"] },
+          { band: "YELLOW", cells: ["Westbrook GC Contract Extension",  "Contract",   "July 2026", "MCG only", "Pending LP vote"] },
+        ] },
+    ] },
+  ],
+};
+
 // ───────────────────────── REAL ATTOM ENRICHMENT (S52.50, #34) ──────────────
 // Weave REAL ATTOM parcel data into each RE worker. The subject property — map,
 // Street View photo, a live parcel-facts panel, and the real recorded sale —
@@ -688,6 +949,148 @@ function enrichWithAttom(spec, a) {
 for (const slug of Object.keys(RE_WORKER_ATTOM)) {
   if (RE_CANVAS[slug]) RE_CANVAS[slug] = enrichWithAttom(RE_CANVAS[slug], RE_WORKER_ATTOM[slug]);
 }
+
+// ── RE Marketing ────────────────────────────────────────────────────────────
+RE_CANVAS["re-marketing-001"] = {
+  title: "RE Marketing — Meridian at Flamingo",
+  subtitle: "4525 Dean Martin Dr, Las Vegas NV 89103 · 32-unit HOA · Active listing pipeline",
+  disclaimer: "Merritt Property Group, LLC — brokerage subsidiary",
+  attomLive: false,
+  cas: { RED: 1, YELLOW: 3, BLUE: 1, WHITE: 1, GREEN: 2 },
+  tabs: [
+    { id: "overview", label: "Overview", blocks: [
+      { type: "map",        address: "4525 Dean Martin Dr, Las Vegas, NV 89103", mapType: "satellite" },
+      { type: "heroes", items: [
+        { band: "GREEN",  title: "Unit 704 — offer in negotiation",   detail: "Listing $875K · James Smith offer received · 2.5% commission pending" },
+        { band: "YELLOW", title: "Unit 512 — 28 days on market",      detail: "Listing $695K · 4 showings · 0 offers · recommend price review" },
+        { band: "RED",    title: "2 buyer leads — no contact in 14d", detail: "Keisha Brown + Ryan Torres · auto follow-up paused · needs review" },
+      ] },
+      { type: "kpis", items: [
+        { label: "Active listings",     value: "2",       band: "WHITE"  },
+        { label: "Listings in contract", value: "1",      band: "GREEN"  },
+        { label: "Pending commission",  value: "$21,875", band: "YELLOW" },
+        { label: "Avg DOM",             value: "18 days", band: "GREEN"  },
+      ] },
+    ] },
+
+    { id: "listings", label: "Listings", blocks: [
+      { type: "table", title: "Active listing pipeline — Meridian at Flamingo",
+        columns: ["Unit", "Type", "List Price", "DOM", "Status", "Commission"],
+        rows: [
+          { band: "GREEN",  cells: ["704", "2BR/2BA · 1,080 sq ft", "$875,000", "11", "Offer in negotiation", "$21,875"] },
+          { band: "YELLOW", cells: ["512", "1BR/1BA · 740 sq ft",   "$695,000", "28", "Active — no offers",   "$17,375"] },
+          { band: "BLUE",   cells: ["218", "Studio · 520 sq ft",    "$459,000", "—",  "Coming soon — Aug 1",  "$11,475"] },
+        ] },
+      { type: "flags", items: [
+        { band: "YELLOW", title: "Unit 512: 28 DOM with no offers — price adjustment recommended", detail: "Comp sales past 90 days avg $672K at 18 DOM. $695K is 3.4% above market. Recommend $675K." },
+        { band: "BLUE",   title: "Unit 218: vacating July 31 — pre-market campaign ready", detail: "Professional photos scheduled July 28. Pre-market blast to buyer list." },
+      ] },
+    ] },
+
+    { id: "buyers", label: "Buyers", blocks: [
+      { type: "table", title: "Buyer pipeline — qualified leads",
+        columns: ["Contact", "Criteria", "Budget", "Pre-Approved", "Status"],
+        rows: [
+          { band: "GREEN",  cells: ["James Smith",        "2BR+ · LV Strip / Arts",   "$900K", "Yes · WF $920K",  "Offer submitted — 704"] },
+          { band: "GREEN",  cells: ["Linda Nakamura",     "2BR · LV strip view",       "$850K", "Yes · Chase $850K","Touring July 12"] },
+          { band: "YELLOW", cells: ["Keisha Brown",       "1BR · downtown LV",         "$720K", "Pre-approved",    "No contact 14 days"] },
+          { band: "YELLOW", cells: ["Ryan Torres",        "1BR investment",            "$700K", "Pre-approved",    "No contact 14 days"] },
+          { band: "WHITE",  cells: ["David & Sara Ramos", "2BR+ · family/school dist", "$800K", "In process",      "Application submitted"] },
+          { band: "WHITE",  cells: ["Open House 7/6",     "Various inquiries",         "TBD",   "—",               "6 badge scans — follow-up pending"] },
+        ] },
+    ] },
+
+    { id: "campaigns", label: "Campaigns", blocks: [
+      { type: "kpis", items: [
+        { label: "Email sends (30d)", value: "842",   band: "WHITE"  },
+        { label: "Open rate",         value: "34%",   band: "GREEN"  },
+        { label: "Ad spend (30d)",    value: "$1,240", band: "WHITE"  },
+        { label: "Cost per lead",     value: "$206",  band: "YELLOW" },
+      ] },
+      { type: "bars", title: "Lead sources — active pipeline", items: [
+        { label: "Zillow / Realtor.com",   value: "4 leads",  pct: 40, band: "GREEN"  },
+        { label: "Open house",             value: "3 leads",  pct: 30, band: "GREEN"  },
+        { label: "Referral / agent",       value: "2 leads",  pct: 20, band: "BLUE"   },
+        { label: "Instagram / paid social", value: "1 lead",  pct: 10, band: "WHITE"  },
+      ], note: "$206 cost-per-qualified-lead — Zillow + open house driving volume" },
+    ] },
+  ],
+};
+
+// ── RE Salesperson / Broker ──────────────────────────────────────────────────
+RE_CANVAS["re-salesperson"] = {
+  title: "Real Estate Salesperson — Dana Reyes",
+  subtitle: "Merritt Property Group LLC · Principal Broker · Las Vegas NV",
+  disclaimer: "Brokerage pipeline — Merritt Property Group, LLC",
+  attomLive: false,
+  cas: { RED: 1, YELLOW: 4, BLUE: 1, WHITE: 2, GREEN: 3 },
+  tabs: [
+    { id: "overview", label: "Overview", blocks: [
+      { type: "map", locations: [
+        { address: "4525 Dean Martin Dr, Las Vegas, NV 89103", label: "Meridian at Flamingo (active listings)" },
+        { address: "8600 W Charleston Blvd, Las Vegas, NV 89117", label: "New buyer showing — Queensridge" },
+      ]},
+      { type: "heroes", items: [
+        { band: "GREEN",  title: "Unit 704 offer — respond by July 11",   detail: "James Smith · $857,500 counter pending · 2.5% buy-side · $21,437 commission" },
+        { band: "YELLOW", title: "Unit 512 — price adjustment recommended", detail: "28 DOM · no offers · CMA supports $675K · recommend Monday" },
+        { band: "YELLOW", title: "2 buyer leads gone dark — 14 days",      detail: "Keisha Brown + Ryan Torres · auto re-engage ready for approval" },
+      ] },
+      { type: "kpis", items: [
+        { label: "Active listings",  value: "2",        band: "WHITE"  },
+        { label: "Offers active",    value: "1",        band: "GREEN"  },
+        { label: "Commission (30d)", value: "$21,875",  band: "GREEN"  },
+        { label: "Buyers in funnel", value: "6",        band: "WHITE"  },
+      ] },
+    ] },
+
+    { id: "pipeline", label: "Pipeline", blocks: [
+      { type: "table", title: "Deal pipeline — buy side + sell side",
+        columns: ["Deal", "Side", "Price", "Stage", "Commission", "Deadline"],
+        rows: [
+          { band: "GREEN",  cells: ["Unit 704 — Meridian",    "Sell", "$875K",  "Counter pending",     "$21,875", "July 11"] },
+          { band: "YELLOW", cells: ["8600 W Charleston",      "Buy",  "$1.1M",  "Showing scheduled",   "$27,500", "July 12"] },
+          { band: "YELLOW", cells: ["Unit 512 — Meridian",    "Sell", "$695K",  "Active — no offers",  "$17,375", "—"] },
+          { band: "BLUE",   cells: ["Unit 218 — Meridian",    "Sell", "$459K",  "Pre-market",          "$11,475", "Aug 1"] },
+          { band: "WHITE",  cells: ["Queensridge condo",      "Buy",  "$820K",  "Search / touring",    "$20,500", "—"] },
+        ] },
+      { type: "flags", items: [
+        { band: "GREEN",  title: "704 counter: $857,500 — respond by July 11 5pm", detail: "James Smith via Redfin agent. Earnest $25K. Closing Aug 30. Alex has draft counter ready for approval." },
+        { band: "YELLOW", title: "512: 28 DOM — CMA supports $675K price cut",     detail: "Comparable sales avg $672K at 18 DOM. Current list $695K. Monday deadline to list or reduce before open house competition peaks." },
+      ] },
+    ] },
+
+    { id: "deals", label: "Active Deals", blocks: [
+      { type: "cards", items: [
+        { band: "GREEN",  label: "Counter pending · July 11", title: "Unit 704 — Meridian at Flamingo", detail: "List: $875K · Buyer offer: $840K · Our counter: $857,500 · Buyer agent: Redfin · Close target: Aug 30 · Earnest: $25,000", action: "TXN-2026-0042" },
+        { band: "YELLOW", label: "Showing July 12 · 2pm",    title: "8600 W Charleston #304",          detail: "Buyer: Linda Nakamura · Pre-approved $850K Chase · 2BR · 1,180 sq ft · Agent: Self-rep · HOA $310/mo", action: "TXN-2026-0043" },
+      ] },
+      { type: "table", title: "Contingency calendar — Unit 704",
+        columns: ["Milestone", "Deadline", "Status"],
+        rows: [
+          { band: "GREEN",  cells: ["Offer accepted",         "July 8",   "Complete"] },
+          { band: "YELLOW", cells: ["Counter accepted",       "July 11",  "Pending buyer response"] },
+          { band: "WHITE",  cells: ["Inspection period",      "July 18",  "Pending contract execution"] },
+          { band: "WHITE",  cells: ["Appraisal ordered",      "July 22",  "Pending"] },
+          { band: "WHITE",  cells: ["Loan contingency clears","Aug 5",    "Pending"] },
+          { band: "WHITE",  cells: ["Final walkthrough",      "Aug 28",   "Pending"] },
+          { band: "WHITE",  cells: ["Close of escrow",        "Aug 30",   "Pending"] },
+        ] },
+    ] },
+
+    { id: "schedule", label: "Schedule", blocks: [
+      { type: "table", title: "This week — showings + appointments",
+        columns: ["Date", "Time", "Activity", "Contact", "Property"],
+        rows: [
+          { band: "GREEN",  cells: ["Mon Jul 8",  "9:00am",  "Counter submit — 704",        "James Smith",    "Unit 704 Meridian"] },
+          { band: "GREEN",  cells: ["Mon Jul 8",  "2:00pm",  "Open house prep walk",        "Self",           "Unit 512 Meridian"] },
+          { band: "YELLOW", cells: ["Tue Jul 9",  "10:00am", "Listing photo review — 512",  "Photographer",   "Unit 512 Meridian"] },
+          { band: "WHITE",  cells: ["Wed Jul 10", "1:00pm",  "Buyer consult",               "David Ramos",    "Queensridge area"] },
+          { band: "YELLOW", cells: ["Sat Jul 12", "2:00pm",  "Showing",                     "Linda Nakamura", "8600 W Charleston #304"] },
+          { band: "YELLOW", cells: ["Sun Jul 13", "1:00pm",  "Open house",                  "Public",         "Unit 512 Meridian"] },
+        ] },
+    ] },
+  ],
+};
 
 // S52.46/#34 — fabrication disclosure. cre-analyst + the ATTOM-enriched workers
 // carry REAL parcel data, so they are NOT blanket-"sample" — they show the

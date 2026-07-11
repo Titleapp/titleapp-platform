@@ -28,6 +28,20 @@ export default function DemoSignIn() {
         clearTimeout(watchdog);
         localStorage.setItem("ID_TOKEN", idToken);
         if (data.tenantId) localStorage.setItem("TENANT_ID", data.tenantId);
+        localStorage.setItem("IS_CREATOR", "true");
+        // Pre-mark all spine worker setup checklists as complete so the demo
+        // shows the live intelligence canvas, not the "setup mode" checklist.
+        const now = Date.now();
+        const spineChecklists = {
+          "ta_checklist_platform-control-center-pro": { "business-overview": now, "email-connection": now, "communication-preferences": now, "key-metrics": now, "revenue-tracking": now, "acquisition-goals": now, "external-feeds": now },
+          "ta_checklist_platform-accounting": { "bank-statements": now, "accounting-software": now, "tax-returns": now, "expense-rules": now, "vendor-lists": now },
+          "ta_checklist_platform-hr": { "roster": now, "handbook": now, "org-chart": now, "payroll": now, "perf-reviews": now, "compliance-docs": now },
+          "ta_checklist_platform-marketing": { "brand-guidelines": now, "social-accounts": now, "contact-lists": now, "competitor-docs": now, "content-workflow": now },
+          "ta_checklist_platform-contacts": { "contact-basics": now, "import-contacts": now, "crm-connect": now, "comm-history": now, "followup-auto": now, "client-categories": now },
+        };
+        for (const [key, val] of Object.entries(spineChecklists)) {
+          try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* blocked */ }
+        }
         window.location.replace("/?demo=1");
       } catch (e) {
         if (!cancelled) {

@@ -159,20 +159,116 @@ export default function CreatorDashboard() {
     );
   }
 
-  if (tab === "profile" || tab === "earnings") {
+  if (tab === "profile") {
+    const profileData = {
+      name: currentUser?.displayName || "Dr. Maya Chen, DVM",
+      title: "Veterinarian & Practice Owner",
+      bio: "Practicing veterinarian for 14 years and founder of Meadow Creek Veterinary Clinic. I built clinical evaluation and drug dosing workers to solve the compliance and documentation bottlenecks I faced every week — and published them so other practice owners don't have to start from scratch.",
+      credentials: ["DVM — University of California Davis", "AVMA Member", "Colorado State Veterinary License #VL-2847", "DEA Schedule II–IV Authorization"],
+      specialty: "Small Animal Medicine & Surgery",
+      location: "Boulder, CO",
+      publishedWorkers: workers.filter(w => w.published).length,
+      totalSubscribers: 47,
+      avgRating: 4.8,
+    };
     return (
       <div>
         <div className="pageHeader">
           <div>
             <h1 className="h1">Creator Dashboard</h1>
-            <p className="subtle">{tab === "profile" ? "Your public creator profile" : "Your creator earnings"}</p>
+            <p className="subtle">Your public creator profile</p>
           </div>
         </div>
         {tabBar}
-        <div style={{ padding: "40px 24px", background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
-          {tab === "profile"
-            ? "Creator profile editing is coming soon. Your public creator page — bio, credentials, and the Digital Workers you've published — will live here."
-            : "Earnings reporting is coming soon. You earn 75% of net revenue on every worker you publish; payouts and statements will appear here."}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, alignItems: "start" }}>
+          {/* Profile card */}
+          <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
+            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#34d399,#10b981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 16 }}>MC</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{profileData.name}</div>
+            <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginBottom: 4 }}>{profileData.title}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>{profileData.specialty} · {profileData.location}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+              {[["Workers", profileData.publishedWorkers], ["Subscribers", profileData.totalSubscribers], ["Rating", profileData.avgRating + "★"]].map(([label, val]) => (
+                <div key={label} style={{ textAlign: "center", padding: "10px 4px", background: "#f8fafc", borderRadius: 8 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{val}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <button style={{ width: "100%", padding: "10px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "1px solid #e2e8f0", background: "none", color: "#374151", cursor: "pointer" }}>Edit Profile</button>
+          </div>
+          {/* Bio + credentials */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>Bio</div>
+              <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.7 }}>{profileData.bio}</div>
+            </div>
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>Credentials</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {profileData.credentials.map((c, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tab === "earnings") {
+    const quarters = [
+      { q: "Q2 2026", gross: 2847, net: 2135, subs: 19, workers: ["Clinical Evaluation", "Drug Dosing"] },
+      { q: "Q1 2026", gross: 1620, net: 1215, subs: 12, workers: ["Clinical Evaluation"] },
+      { q: "Q4 2025", gross: 840, net: 630, subs: 6, workers: ["Clinical Evaluation"] },
+    ];
+    const totalNet = quarters.reduce((s, q) => s + q.net, 0);
+    return (
+      <div>
+        <div className="pageHeader">
+          <div>
+            <h1 className="h1">Creator Dashboard</h1>
+            <p className="subtle">Your creator earnings</p>
+          </div>
+        </div>
+        {tabBar}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+          {[["Total Earned (net)", `$${totalNet.toLocaleString()}`], ["Active Subscribers", "47"], ["Revenue Share", "75%"]].map(([label, val]) => (
+            <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: "20px 24px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#1e293b" }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", fontSize: 13, fontWeight: 700, color: "#374151" }}>Quarterly Breakdown</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                {["Quarter", "Workers", "Subscribers", "Gross Revenue", "Your Net (75%)"].map(h => (
+                  <th key={h} style={{ padding: "10px 20px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {quarters.map((q, i) => (
+                <tr key={q.q} style={{ borderTop: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                  <td style={{ padding: "12px 20px", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{q.q}</td>
+                  <td style={{ padding: "12px 20px", fontSize: 13, color: "#475569" }}>{q.workers.join(", ")}</td>
+                  <td style={{ padding: "12px 20px", fontSize: 13, color: "#475569" }}>{q.subs}</td>
+                  <td style={{ padding: "12px 20px", fontSize: 13, color: "#475569" }}>${q.gross.toLocaleString()}</td>
+                  <td style={{ padding: "12px 20px", fontSize: 14, fontWeight: 700, color: "#16a34a" }}>${q.net.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding: "12px 20px", borderTop: "1px solid #f1f5f9", fontSize: 12, color: "#94a3b8" }}>
+            Payouts processed monthly to your connected bank account. Next payout: August 1, 2026.
+          </div>
         </div>
       </div>
     );

@@ -275,8 +275,13 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Mobile: chat is the primary view (like Claude.ai). Desktop: respects the
+  // ?promoted=true param but stays closed by default.
   const [chatOpen, setChatOpen] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get("promoted") === "true"; } catch { return false; }
+    try {
+      if (typeof window !== "undefined" && window.innerWidth < 768) return true;
+      return new URLSearchParams(window.location.search).get("promoted") === "true";
+    } catch { return false; }
   });
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(() => {
@@ -571,62 +576,54 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
-      <nav className="mobileBottomNav">
-        <button
-          className={`mobileBottomNavItem${currentSection === "dashboard" ? " active" : ""}`}
-          onClick={() => onNavigate("dashboard")}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          </svg>
-          Home
-        </button>
-        <button
-          className={`mobileBottomNavItem${chatOpen ? " active" : ""}`}
-          onClick={() => setChatOpen(!chatOpen)}
-          style={{ position: "relative" }}
-          title={alexBadge ? "Alex has a recommendation" : undefined}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <circle cx="9" cy="10" r="1" fill="currentColor" />
-            <circle cx="12" cy="10" r="1" fill="currentColor" />
-            <circle cx="15" cy="10" r="1" fill="currentColor" />
-          </svg>
-          {alexBadge && <span style={{ position: "absolute", top: 4, right: "calc(50% - 16px)", width: 10, height: 10, borderRadius: 5, background: "#7c3aed", border: "2px solid white" }} />}
-          Explore
-        </button>
-        {workspaces.length > 1 && (
+      {/* Mobile chat — always mounted to preserve state across open/close + rotation.
+          Primary view on mobile (chat-first, like Claude.ai). Header has hamburger
+          for left nav and canvas icon for right panel. */}
+      <div className={`mobileChatPanel${chatOpen ? " mobileChatPanelOpen" : ""}`}>
+        <div className="mobileChatHeader">
+          {/* Hamburger — opens left sidebar drawer */}
           <button
-            className="mobileBottomNavItem"
-            onClick={() => setShowQuickSwitcher(true)}
+            className="mobileChatNavBtn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open navigation"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-              <rect x="8" y="2" width="8" height="4" rx="1" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
-            Spaces
           </button>
-        )}
-      </nav>
-
-      {/* Mobile chat — full screen */}
-      {chatOpen && (
-        <>
-          <div className="mobileChatBackdrop" onClick={() => setChatOpen(false)} />
-          <div className="mobileChatPanel">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0, background: "white" }}>
-              <button onClick={() => setChatOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: "#64748b", padding: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-                Back
-              </button>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>Explore</span>
-              <div style={{ width: 50 }} />
-            </div>
-            <ChatPanel currentSection={currentSection} />
+          {/* Center: workspace + Alex label */}
+          <div className="mobileChatHeaderTitle">
+            <img src={sociiiMarkUrl} alt="" width={18} height={18} style={{ borderRadius: 4 }} />
+            <span>{localStorage.getItem("WORKSPACE_NAME") || localStorage.getItem("COMPANY_NAME") || "Alex"}</span>
           </div>
-        </>
+          {/* Canvas icon — switch to canvas/worker view */}
+          <button
+            className="mobileChatNavBtn"
+            onClick={() => setChatOpen(false)}
+            aria-label="Show canvas"
+            title="Show canvas"
+          >
+            {alexBadge && <span style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, background: "#7c3aed", border: "2px solid white", pointerEvents: "none" }} />}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+            </svg>
+          </button>
+        </div>
+        <ChatPanel currentSection={currentSection} />
+      </div>
+
+      {/* Mobile: floating "back to chat" button — visible when canvas is showing */}
+      {!chatOpen && (
+        <button
+          className="mobileBackToChat"
+          onClick={() => setChatOpen(true)}
+          aria-label="Back to Alex"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Alex
+        </button>
       )}
 
       {/* Quick Switcher (Cmd+K) */}

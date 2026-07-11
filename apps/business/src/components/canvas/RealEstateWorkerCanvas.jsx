@@ -273,8 +273,19 @@ export default function RealEstateWorkerCanvas({ worker }) {
         body: JSON.stringify({ address: addr }),
       });
       const j = await resp.json();
-      if (j.ok && j.canvasSpec) setLiveSpec(j.canvasSpec);
-      else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
+      if (j.ok && j.canvasSpec) {
+        // Merge the live parcel data with the base canvas spec so analysis tabs
+        // (Entitlement Roadmap, Citations, etc.) survive the lookup.
+        const liveTabs = j.canvasSpec.tabs || [];
+        const baseTabs = baseData?.tabs || [];
+        const liveIds = new Set(liveTabs.map(t => t.id));
+        const merged = {
+          ...baseData,
+          ...j.canvasSpec,
+          tabs: [...liveTabs, ...baseTabs.filter(t => !liveIds.has(t.id))],
+        };
+        setLiveSpec(merged);
+      } else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
     } catch (_err) {
       setLiveErr("Lookup failed — try again.");
     } finally {

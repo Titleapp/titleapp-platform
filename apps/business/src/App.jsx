@@ -4499,6 +4499,15 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
     if (autoFiredRef.current === worker.slug) return;
     autoFiredRef.current = worker.slug;
     markWorkerVisitedAndCheck(worker.slug); // keep visit bookkeeping (side effect)
+    // Platform/spine workers render their own full dashboard in WORKSPACE_HOME
+    // (WorkerCanvas KPI/intelligence view). Auto-landing on a tab pushes a
+    // WorkProductCard overlay that fights the proper canvas — skip for these.
+    if (worker.slug?.startsWith("platform-") || worker.slug === "chief-of-staff") return;
+    // RE workers (Zoning, CRE Analyst, Title Abstract, etc.) use WorkerCanvas
+    // which has its own internal tab system. Auto-landing via landOnFirstDataTab
+    // fires card:re-map → _isLiveCard = true → bypasses WorkerCanvas → MapCard
+    // appears as a full-screen overlay (the recurring Zoning/CRE overlay bug).
+    if (isREWorker(worker)) return;
     landOnFirstDataTab();
   }, [worker?.slug, tabs, landOnFirstDataTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -5081,6 +5090,8 @@ export default function App() {
   // Standalone Alex Chief of Staff workspace — 3-column layout
   const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
   const isDemo = window.location.pathname === "/demo" || window.location.pathname === "/demo/";
+  const isREDemo = window.location.pathname === "/demo/real-estate" || window.location.pathname === "/demo/real-estate/";
+  const isDPPDemo = window.location.pathname === "/demo/dpp" || window.location.pathname === "/demo/dpp/";
   const isPortal = window.location.pathname === "/portal" || window.location.pathname === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
@@ -5880,6 +5891,18 @@ export default function App() {
     } catch (err) {
       console.error("Failed to create workspace:", err);
     }
+  }
+
+  // ── /demo/real-estate: one-click RE demo (Scott Harrington / Merritt Capital Group) ──
+  if (isREDemo) {
+    const REDemoSignIn = React.lazy(() => import("./pages/REDemoSignIn"));
+    return <React.Suspense fallback={null}><REDemoSignIn /></React.Suspense>;
+  }
+
+  // ── /demo/dpp: one-click TRAITLY demo (Elise / EU Battery Passport) ──
+  if (isDPPDemo) {
+    const TraitlyDemoSignIn = React.lazy(() => import("./pages/TraitlyDemoSignIn"));
+    return <React.Suspense fallback={null}><TraitlyDemoSignIn /></React.Suspense>;
   }
 
   // ── /demo: one-click "View the Demo" auto-sign-in (Dr. Chen / Meadow Creek) ──

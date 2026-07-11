@@ -41,6 +41,9 @@ export default function VaultGate({ children }) {
   const user = auth.currentUser;
 
   const isGoogle = user?.providerData?.some(p => p.providerId === "google.com");
+  // Custom-token demo users have no provider — gate would always block them.
+  // Auto-unlock so the demo can show the Vault without a credential prompt.
+  const isDemo = !user || (user?.providerData?.length === 0);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -82,10 +85,10 @@ export default function VaultGate({ children }) {
     }
   }
 
-  if (unlocked) {
+  if (unlocked || isDemo) {
     return (
       <>
-        {React.cloneElement(children, { onLockVault: () => setUnlocked(false) })}
+        {React.cloneElement(children, { onLockVault: isDemo ? undefined : () => setUnlocked(false) })}
       </>
     );
   }

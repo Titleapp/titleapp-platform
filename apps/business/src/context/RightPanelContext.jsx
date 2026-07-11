@@ -55,6 +55,10 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     // WorkerStateContext.setWorkerOptimistic is the canonical writer — it was
     // already called by Sidebar before ta:select-worker fires. Update local
     // fallback state so WORKSPACE_HOME gate renders if wsc hasn't set data yet.
+    // Clear any stale canvas card from the previous worker so it never bleeds
+    // into the new worker's canvas pane (recurring overlay bug).
+    canvasDataRef.current = null;
+    setCanvasData(null);
     _setLocalWorkerData(workerData);
     if (cousins) setRelatedWorkers(cousins);
     setState("WORKSPACE_HOME");
@@ -68,6 +72,12 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   }, []);
 
   const leaveWorkspace = useCallback(() => {
+    // Clear stale canvas so the next worker (or COS) never inherits a previous
+    // worker's RE map or WorkProductCard. This was the primary source of the
+    // "RE map on Alex" bug — leaveWorkspace() was the only exit path that didn't
+    // wipe canvas, so clicking COS after an RE worker left the map in state.
+    canvasDataRef.current = null;
+    setCanvasData(null);
     _setLocalWorkerData(null);
     setRelatedWorkers([]);
     setState(originRef.current);
@@ -139,7 +149,12 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   // 49.31 — Force the canvas pane open without changing canvasData. Used when
   // ChatPanel receives canvasRenders[] and needs the panel visible immediately.
   // If canvas is already showing, this is a no-op.
+  // GUARD: WORKSPACE_HOME = spine worker's own full canvas is showing.
+  // Switching away from it to reveal stale canvasData causes the "half-second
+  // overlay" bug where the chat greeting reveals a previous worker's card
+  // over the current worker's proper canvas.
   const openIfClosed = useCallback(() => {
+    if (state === "WORKSPACE_HOME") return;
     if (state !== "CANVAS") {
       prevStateRef.current = state;
       setState("CANVAS");

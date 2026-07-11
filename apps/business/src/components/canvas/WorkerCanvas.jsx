@@ -379,6 +379,19 @@ export const WORKER_INTELLIGENCE = {
       { label: "Client report", prompt: "Generate a client activity report showing recent interactions and upcoming follow-ups." },
     ],
   },
+  "chief-of-staff": {
+    kpis: [
+      { id: "tasks-today", label: "Tasks Today", value: "--", unit: "", hint: "Alex surfaces priorities from your feed" },
+      { id: "workers-active", label: "Workers Active", value: "--", unit: "", hint: "Subscribe workers to populate" },
+      { id: "items-pending", label: "Items Pending", value: "--", unit: "", hint: "Driven by your operating feed" },
+      { id: "alerts", label: "Alerts", value: "--", unit: "", hint: "Critical items from your workers" },
+    ],
+    quickActions: [
+      { label: "Morning brief", prompt: "Give me my morning brief — what are the most important things I should focus on today?" },
+      { label: "What needs my attention?", prompt: "What items across my workers are pending my review or approval right now?" },
+      { label: "Weekly digest", prompt: "Summarize what happened this week across my workspace — wins, open items, and priorities for next week." },
+    ],
+  },
 };
 
 // ── 49.17: Map briefing spine data to KPI values ──────────────────

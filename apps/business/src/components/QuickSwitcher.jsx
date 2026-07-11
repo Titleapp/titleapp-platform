@@ -68,7 +68,7 @@ export default function QuickSwitcher({ isOpen, onClose, workspaces, onNavigate,
       type: "workspace",
       label: ws.name,
       sublabel: ws.type === "shared" ? `From ${ws.senderOrgName}` : (ws.vertical || ""),
-      action: () => onSwitchWorkspace(ws),
+      action: () => { onSwitchWorkspace(ws); onClose(); },
     });
   });
 

@@ -227,15 +227,20 @@ async function buildPlatformHrPayload(tabId) {
     const r = await liveApiFetch("/v1/hr:people:list");
     const people = Array.isArray(r?.people) ? r.people : [];
     if (!people.length) return null;
-    const s = r.summary || {};
+    // Backend doesn't return a summary — compute counts from the people array.
+    // "human" covers W2/1099/any real person; "digital_worker" = subscribed worker.
+    const clinicalStaff = people.filter(p => p.type !== "digital_worker" && p.type !== "advisor");
+    const digital = people.filter(p => p.type === "digital_worker");
+    const advisors = people.filter(p => p.type === "advisor" || (p.role || "").toLowerCase().includes("advisor"));
+    const s = r.summary || { total: people.length, humans: clinicalStaff.length, digital: digital.length, advisors: advisors.length };
     return {
       title: "Team Roster",
       subtitle: "Meadow Creek Veterinary Clinic · humans + digital workers",
       fields: [
         { label: "Total",           value: String(s.total ?? people.length) },
-        { label: "Clinical staff",  value: String(s.humans ?? "") },
-        { label: "Digital workers", value: String(s.digital ?? "") },
-        { label: "Advisors",        value: String(s.advisors ?? 0) },
+        { label: "Clinical staff",  value: String(s.humans ?? clinicalStaff.length) },
+        { label: "Digital workers", value: String(s.digital ?? digital.length) },
+        { label: "Advisors",        value: String(s.advisors ?? advisors.length) },
       ],
       people: people.map(p => ({ name: p.name, type: p.type, role: p.role, status: p.status })),
     };

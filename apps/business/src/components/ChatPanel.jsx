@@ -192,6 +192,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [authReady, setAuthReady] = useState(false);
   const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
+  const prevMsgLen = useRef(0);
   const [activeWorkerName, setActiveWorkerName] = useState(null);
   const [activeWorkerSlug, setActiveWorkerSlug] = useState(null);
 
@@ -251,8 +252,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (!panel) return;
       const keyboardHeight = window.innerHeight - vv.height;
       if (keyboardHeight > 100) {
-        panel.style.height = `${vv.height * 0.85}px`;
-        panel.style.bottom = `${keyboardHeight}px`;
+        // Fill exactly the visible viewport above the keyboard — no dead zone
+        panel.style.height = `${vv.height}px`;
+        panel.style.bottom = '';
       } else {
         panel.style.height = '';
         panel.style.bottom = '';
@@ -805,14 +807,26 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   useEffect(() => {
     if (!conversationRef.current) return;
     const lastMsg = messages[messages.length - 1];
+    const isNewMsg = messages.length > prevMsgLen.current;
+    prevMsgLen.current = messages.length;
+
     if (lastMsg?.workerCards?.length > 2) {
-      // Scroll to the start of the worker results so the user sees the bundle card / top result
+      // Worker result cards — scroll to top of the bundle so user sees the first card
       requestAnimationFrame(() => {
         const el = conversationRef.current?.querySelector("[data-worker-results='true']:last-of-type");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
         else conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
       });
+    } else if (isNewMsg && lastMsg?.role === 'assistant') {
+      // New assistant message — scroll to its TOP so the reader sees the beginning
+      requestAnimationFrame(() => {
+        const all = conversationRef.current.querySelectorAll('.chat-message.assistant');
+        const last = all[all.length - 1];
+        if (last) last.scrollIntoView({ behavior: "smooth", block: "start" });
+        else conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+      });
     } else {
+      // User message sent or streaming update — scroll to bottom to track live output
       conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
     }
   }, [messages, isTyping, showDisclaimer]);

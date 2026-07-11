@@ -1888,10 +1888,26 @@ exports.api = onRequest(
     // "View the Demo" link: the frontend /demo route auto-signs-in with this.
     if ((route === "/demo:token" || route === "/demo/token") && method === "GET") {
       try {
-        const DEMO_UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2"; // demo@sociii.ai
-        const DEMO_TENANT = "ws_1781920656122_tl9dhn";   // Meadow Creek Veterinary Clinic
-        const token = await admin.auth().createCustomToken(DEMO_UID, { demo: true });
-        return res.json({ ok: true, token, tenantId: DEMO_TENANT });
+        // Meadow Creek Veterinary Clinic (Dr. Maya Chen) — default persona
+        const DEMO_UID    = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2";
+        const DEMO_TENANT = "ws_1781920656122_tl9dhn";
+        // Merritt Capital Group (Scott Harrington) — RE demo persona
+        const RE_DEMO_UID    = "qJZesWZclFZO0Xwp1l5PxE16Bnj2";
+        const RE_DEMO_TENANT = "ws_1783659066844_o7m1pm";
+        // TRAITLY (Elise) — EU Battery DPP demo persona
+        const TRAITLY_DEMO_UID    = "uWd1bdCVXxf4fIJHCUPGffGJdkZ2";
+        const TRAITLY_DEMO_TENANT = "ws_1783763627546_mv3rpx";
+
+        const persona = req.query.persona || "default";
+        const uid      = persona === "realestate" ? RE_DEMO_UID
+                       : persona === "traitly"    ? TRAITLY_DEMO_UID
+                       : DEMO_UID;
+        const tenantId = persona === "realestate" ? RE_DEMO_TENANT
+                       : persona === "traitly"    ? TRAITLY_DEMO_TENANT
+                       : DEMO_TENANT;
+
+        const token = await admin.auth().createCustomToken(uid, { demo: true });
+        return res.json({ ok: true, token, tenantId });
       } catch (e) {
         console.error("demo:token failed:", e);
         return jsonError(res, 500, "Failed to mint demo token");

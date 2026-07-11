@@ -119,7 +119,7 @@ export default function MapCard({ resolved = {}, context = {}, onDismiss }) {
         title={`Map of ${headline}`}
         src={url}
         width="100%"
-        height="400"
+        height="260"
         style={{ border: 0, display: "block" }}
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"

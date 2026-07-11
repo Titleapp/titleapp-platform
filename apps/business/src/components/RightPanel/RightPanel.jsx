@@ -662,13 +662,12 @@ export default function RightPanel() {
     );
   }
 
-  // S52.46 — RE workers render their static designed canvas here, EXCEPT when a
-  // live card (chat-pushed card:re-map / card:work-product / card:image, e.g. the
-  // real ATTOM Site Recon map) is present — those must reach the CanvasPanel
-  // branch below or the live map gets swallowed by the static canvas (codex H1).
+  // S52.46 — RE workers always render the designed WorkerCanvas. Chat signals
+  // like card:re-map are handled internally by WorkerCanvas tabs (map blocks),
+  // so the full-screen MapCard overlay is suppressed for all RE workers.
   const _liveCardSig = String(canvasData?.resolved?._signal || "");
   const _isLiveCard = state === "CANVAS" && !!canvasData && _liveCardSig.startsWith("card:");
-  if ((state === "CANVAS" || state === "WORKSPACE_HOME") && _reActive && isREWorker(_reActive) && !_isLiveCard) {
+  if ((state === "CANVAS" || state === "WORKSPACE_HOME") && _reActive && isREWorker(_reActive)) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <BetaNotice />
