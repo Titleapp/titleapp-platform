@@ -8,6 +8,7 @@ import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/wor
 import { isDemoMode, clearDemoMode, restoreDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from "./sampleData";
 import PreviewBriefPanel from "./PreviewBriefPanel";
 import RealEstateWorkerCanvas, { isREWorker } from "./RealEstateWorkerCanvas";
+import DPPWorkerCanvas, { isDPPWorker } from "./DPPWorkerCanvas";
 
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -907,6 +908,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const isGame = !!w.gameConfig?.isGame;
   const workerSlug = w.workerId || w.slug;
   const reWorker = isREWorker(w); // S52.44 — RE workers render the shared RE canvas
+  const dppWorker = isDPPWorker(w); // EU Battery DPP worker gets its own canvas
   const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
 
@@ -1297,9 +1299,10 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   verdict heroes + KPI cards + flag stack) in place of the
                   generic chips/intelligence preview. */}
               {reWorker && <RealEstateWorkerCanvas worker={w} />}
+              {dppWorker && <DPPWorkerCanvas worker={w} />}
 
               {/* Quick start chips — hidden in stage 3 for intelligence workers */}
-              {!reWorker && !(hasIntelligence && canvasStage === 3) && (
+              {!reWorker && !dppWorker && !(hasIntelligence && canvasStage === 3) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                 {prompts.map((p, i) => (
                   <button

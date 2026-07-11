@@ -3,7 +3,7 @@
 // correctly. Lands in the TRAITLY workspace with Battlink data pre-seeded.
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 const TRAITLY_EMAIL    = "traitly-demo@sociii.ai";
 const TRAITLY_PASSWORD = "TRAITLY!DPP2026";
@@ -26,6 +26,7 @@ export default function TraitlyDemoSignIn() {
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "Demo is temporarily unavailable.");
 
+        await signOut(auth).catch(() => {});
         const cred = await signInWithEmailAndPassword(auth, TRAITLY_EMAIL, TRAITLY_PASSWORD);
         const idToken = await cred.user.getIdToken(true);
         if (cancelled) return;
@@ -38,11 +39,6 @@ export default function TraitlyDemoSignIn() {
         const now = Date.now();
 
         const spineChecklists = {
-          "ta_checklist_platform-control-center-pro": {
-            "email-connection": now, "communication-preferences": now,
-            "key-metrics": now, "revenue-tracking": now,
-            "acquisition-goals": now, "external-feeds": now,
-          },
           "ta_checklist_platform-accounting": {
             "bank-statements": now, "accounting-software": now,
             "tax-returns": now, "expense-rules": now, "vendor-lists": now,
@@ -54,6 +50,10 @@ export default function TraitlyDemoSignIn() {
           "ta_checklist_platform-contacts": {
             "import-contacts": now, "crm-connect": now,
             "comm-history": now, "followup-auto": now, "client-categories": now,
+          },
+          "ta_checklist_platform-marketing": {
+            "brand-guidelines": now, "social-accounts": now,
+            "contact-lists": now, "competitor-docs": now, "content-workflow": now,
           },
           // DPP worker checklist pre-marked so canvas renders intelligence mode immediately
           "ta_checklist_eu-battery-dpp-001": {
@@ -89,7 +89,7 @@ export default function TraitlyDemoSignIn() {
       background: "#0b0b12", color: "#fff", fontFamily: "system-ui, sans-serif",
     }}>
       <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>SOCIII</div>
-      <div style={{ fontSize: 14, color: "#a78bfa" }}>TRAITLY · EU Battery Passport Advisor · Elise</div>
+      <div style={{ fontSize: 14, color: "#a78bfa" }}>Volta Advisory · EU Battery Passport Compliance</div>
       {err
         ? (
           <div style={{ color: "#f87171", fontSize: 13 }}>

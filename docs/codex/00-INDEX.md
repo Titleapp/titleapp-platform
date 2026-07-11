@@ -71,5 +71,15 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 27. [`27-picture-first-input.md`](27-picture-first-input.md) — ⚪ **spec 2026-07-09** — Visual evidence as first-class audit artifact across all verticals: universal MX ticket lifecycle schema with photo slots (issue/resolution/signoff), AI review step on intake, RE demo Fal.ai image generation list, aviation Hobbs/squawk/logbook photo pattern, Vault DTC typed photo roles, canvas display requirements, Storage path conventions. Includes wearable/IoT sensor stub (Apple Watch, smart leak sensor, EFB Hobbs auto-read) — capability IDs reserved in capabilities.json, wire in CODEX 54 (aviation) or CODEX 28.
 
+29. [`29-elise-dpp-battery-passport.md`](29-elise-dpp-battery-passport.md) — 🟡 **canvas shipped 2026-07-11** — EU Battery Passport Advisor (eu-battery-dpp-001): 5-tab canvas (Dashboard/Passport Builder/Timeline/Client File/Reports), Passport Charge Bar visual, Battlink BV seeded with 6 SKUs at grey/yellow/green charge levels. Demo at /demo/dpp (Volta Advisory workspace). Suite workers 2–5 specced in CODEX 30–33.
+
+30. [`30-eu-passport-builder.md`](30-eu-passport-builder.md) — ⚪ **spec 2026-07-11** — EU Passport Builder (eu-passport-builder-001): JSON-LD Annex XIII generation, format validation, registry submission, dual Vault write, QR code management. Activates when Compliance Auditor reaches 100%. Cluster 3 hard gate.
+
+31. [`31-eu-supply-chain-tracer.md`](31-eu-supply-chain-tracer.md) — ⚪ **spec 2026-07-11** — Supply Chain Tracer (eu-supply-chain-tracer-001): Supplier Data Network — supplier submits once, flows to all passports using that supplier. Catena-X, GBA, SCIP connectors. 3-tier access model (operator/client/supplier). Phase 2.
+
+32. [`32-eu-registry-manager.md`](32-eu-registry-manager.md) — ⚪ **spec 2026-07-11** — EU Registry Manager (eu-registry-manager-001): live relationship with EU DPP Central Registry. Batch submit, amendment lifecycle, QR code manager, renewal alerts. Activates after 19 Jul 2026.
+
+33. [`33-eu-lifecycle-monitor.md`](33-eu-lifecycle-monitor.md) — ⚪ **spec 2026-07-11** — Lifecycle Monitor (eu-lifecycle-monitor-001): BMS direct API integration, real-time SoH tracking, automatic passport amendments on degradation milestones, second-life repurposing workflow. Platform subscription tier.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started
