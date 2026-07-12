@@ -71,7 +71,7 @@ This worker is separate from the Passport Builder because the registry relations
 1. **Allowlist gate** — `POST /v1/dpp:submit` blocked until operator's registry credentials are confirmed valid
 2. **Submission lock** — once registered, passport content is immutable; all changes go through amendment API
 3. **QR integrity check** — after registration, RAAS polls the QR URL to confirm it resolves correctly
-4. **Lifecycle amendment trigger** — when Lifecycle Monitor (Worker 5) records a significant SoH drop, RAAS triggers a registry amendment
+4. **Lifecycle amendment trigger** — when Lifecycle Monitor (Worker 5) records a significant SoH drop, RAAS queues a **draft amendment for advisor review**; the amendment is not submitted until the advisor explicitly approves it (same human-in-the-loop model as status reports in CODEX 29). RAAS does not submit autonomously.
 5. **Client notification on registration** — on successful registration, RAAS sends client a notification with passport ID + QR code
 
 ---
@@ -86,6 +86,7 @@ The EU registry API endpoint and authentication are configured per workspace ope
 ## 6. Build Prerequisites
 
 - EU DPP Central Registry API credentials (government allowlist — apply when registry opens 19 Jul 2026)
+- **EU data residency (Firestore EU-region)** — required before registry submission records are stored; all passport IDs, QR URLs, and registry metadata are EU-regulated data
 - Registry API schema documentation (to be published by EU Commission pre-launch)
 - QR code resolution verification (polling mechanism post-registration)
 - Webhook or polling mechanism for registry confirmation (registry may be async)

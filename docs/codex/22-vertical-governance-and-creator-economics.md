@@ -101,7 +101,7 @@ A suite name like `"Licensing & CE"` can appear in Education, Real Estate, Aviat
 
 ## 4. Creator Economics (Time-Critical — Before UH)
 
-**Current state:** Creator gets 72% of subscription revenue, 25% of data pass-through fees (3-way split with platform and data provider). This is correct and stays. The issue is not the split percentages — those work at every tier. The issue is what happens when scale changes the PRICING SHAPE, not just the revenue amount.
+**Current state:** Creator gets 75% of subscription revenue, 25% of data pass-through fees (3-way split with platform and data provider). This is correct and stays. (Corrected 2026-07-12: earlier draft incorrectly stated 72%; confirmed 75/25 split per Sean + pricing.js `creatorSubscriptionSharePct: 0.75`.) The issue is not the split percentages — those work at every tier. The issue is what happens when scale changes the PRICING SHAPE, not just the revenue amount.
 
 ### 4.1 The Flat-Rate Ceiling Problem
 
@@ -109,19 +109,19 @@ Flat per-seat pricing breaks in two directions:
 
 **Too cheap at enterprise scale:** A 500K-seat Ford deployment at flat per-seat generates a number procurement refuses to sign. Enterprise deals are always negotiated — which means the "price" is now a starting point, not a final number.
 
-**Too unpredictable for creators:** If the platform negotiates a custom price with Ford, and that custom price is 60% of list, Ruthie's 72% of 60% of list is not what she priced into her business model. She has no visibility into what the platform collected, and no input into the deal.
+**Too unpredictable for creators:** If the platform negotiates a custom price with Ford, and that custom price is 60% of list, Ruthie's 75% of 60% of list is not what she priced into her business model. She has no visibility into what the platform collected, and no input into the deal.
 
 ### 4.2 The Fix: Revenue Share on Collected, Not Listed
 
-**Creator payout = 72% of revenue actually collected for that worker, regardless of pricing structure.**
+**Creator payout = 75% of revenue actually collected for that worker, regardless of pricing structure.**
 
 This holds across:
-- Standard marketplace checkout (72% of list price)
-- Volume-discounted enterprise deals (72% of the discounted price)
-- Annual prepay deals (72% of the annual contract value, paid monthly to creator)
-- Negotiated custom contracts (72% of whatever was invoiced and collected)
+- Standard marketplace checkout (75% of list price)
+- Volume-discounted enterprise deals (75% of the discounted price)
+- Annual prepay deals (75% of the annual contract value, paid monthly to creator)
+- Negotiated custom contracts (75% of whatever was invoiced and collected)
 
-The platform collects first, then distributes the creator share. The creator never has to care about the deal structure — they get their 72% of what came in.
+The platform collects first, then distributes the creator share. The creator never has to care about the deal structure — they get their 75% of what came in.
 
 This must be the language in every creator agreement before UH goes live. Ruthie's current agreement (if it references a fixed per-seat number) needs to be updated to reference the percentage of collected revenue instead.
 
@@ -136,9 +136,9 @@ Platform list price follows a volume curve — NOT a flat rate at all scales:
 | Scale | 1,000–9,999 | List × 0.60 | 40% discount, annual prepay option unlocks |
 | Enterprise | 10,000+ | Negotiated | Floor = list × 0.40; custom contract, platform signs |
 
-**Why this exists as a formula (not case-by-case):** If every large deal is a negotiation, the sales team is reinventing pricing for every customer. A formula is better: the customer knows what to expect, the creator knows what to expect (72% of the tier price), and SOCIII has a defensible pricing rationale in every deal.
+**Why this exists as a formula (not case-by-case):** If every large deal is a negotiation, the sales team is reinventing pricing for every customer. A formula is better: the customer knows what to expect, the creator knows what to expect (75% of the tier price), and SOCIII has a defensible pricing rationale in every deal.
 
-Creator's share follows the curve: at the Growth tier, creator gets 72% of list × 0.80 = 57.6% of list. This is disclosed in the creator agreement. At Enterprise tier, creator gets 72% of the negotiated floor (minimum 72% × 0.40 = 28.8% of list) — also disclosed.
+Creator's share follows the curve: at the Growth tier, creator gets 75% of list × 0.80 = 60% of list. This is disclosed in the creator agreement. At Enterprise tier, creator gets 75% of the negotiated floor (minimum 75% × 0.40 = 30% of list) — also disclosed.
 
 ### 4.4 Graduation Threshold (Platform Co-Management)
 
@@ -151,10 +151,10 @@ When a creator worker crosses a usage threshold, it "graduates" — SOCIII takes
 **At graduation:**
 - Creator retains authorship and IP
 - Platform assumes support/SLA obligations (creator no longer on call for enterprise tickets)
-- Revenue split adjusts: creator share drops from 72% to 55% of collected revenue (17-point shift to platform for absorbing operational costs)
+- Revenue split adjusts: creator share drops from 75% to 55% of collected revenue (20-point shift to platform for absorbing operational costs)
 - Creator is notified and must acknowledge in writing — graduation is not silent
 
-**Opt-out rule:** A creator may opt out of graduation — declining platform co-management, keeping the 72% split, and remaining fully responsible for support. **Exception: opt-out is unavailable once a deal crosses the Enterprise tier boundary (10,000+ seats, platform-signed contract).** At Enterprise scale, the platform has contractually committed to the customer. The creator's internal opt-out does not relieve the customer of their SLA expectation. The platform absorbs Enterprise SLA obligations regardless of creator opt-out status; the cost of that absorption is already reflected in the 55% split. Opt-out is a pre-graduation right, not a post-Enterprise-contract right.
+**Opt-out rule:** A creator may opt out of graduation — declining platform co-management, keeping the 75% split, and remaining fully responsible for support. **Exception: opt-out is unavailable once a deal crosses the Enterprise tier boundary (10,000+ seats, platform-signed contract).** At Enterprise scale, the platform has contractually committed to the customer. The creator's internal opt-out does not relieve the customer of their SLA expectation. The platform absorbs Enterprise SLA obligations regardless of creator opt-out status; the cost of that absorption is already reflected in the 55% split. Opt-out is a pre-graduation right, not a post-Enterprise-contract right.
 
 Note: the Enterprise tier boundary (10,000 seats) and the single-tenant graduation threshold (1,000 seats) are different numbers serving different purposes — the graduation threshold triggers the split change, the Enterprise tier triggers the platform-signed contract. A creator with a 1,000-seat single-tenant deal has graduated but may not yet be Enterprise; a creator with 10,000 aggregate seats across small tenants is Enterprise by volume. Both can trigger graduation; the Enterprise opt-out lock applies only when a platform-signed contract exists.
 
@@ -276,12 +276,12 @@ Script: query all `digitalWorkers`, filter where `vertical` not in the canonical
 *Attack:* Workers get tagged "unassigned" and nobody ever promotes them. The staging zone fills up with uncategorized workers that never get reviewed. Marketplace becomes a junk drawer.
 *Mitigation:* Admin review queue has a mandatory monthly review step. Workers in "unassigned" for more than 90 days trigger a Slack/Telegram alert to Sean. Promotion is a deliberate decision — but so is the decision NOT to promote (which should also be explicit: "this worker is intentionally à la carte and not vertical-bound").
 
-**R2: 72% of collected revenue is hard to audit when pricing is negotiated**
+**R2: 75% of collected revenue is hard to audit when pricing is negotiated**
 *Attack:* Enterprise deal closes at a negotiated rate. Creator has no visibility into what was actually collected. Platform has information asymmetry. Creator's payout feels arbitrary.
 *Mitigation:* Creator dashboard shows, for each billing period: total collected for that worker, creator's percentage, and creator's payout. Not a black box. Enterprise deals that include custom pricing trigger a "revenue disclosure" to any creator whose worker is in the deal — exactly the collected amount and the resulting creator share. This is table stakes for creator trust at scale.
 
 **R3: Graduation at 5,000 seats surprises creators who are already in a deal**
-*Attack:* A creator's worker quietly crosses the graduation threshold mid-year. Their revenue split drops from 72% to 55% retroactively. They feel cheated.
+*Attack:* A creator's worker quietly crosses the graduation threshold mid-year. Their revenue split drops from 75% to 55% retroactively. They feel cheated.
 *Mitigation:* Graduation is prospective, not retroactive. The split adjusts at the next billing cycle after the threshold is crossed. Creator is notified 30 days before any split change takes effect. Creator can opt out of the platform co-management (but then loses the SLA backing and is fully on-call again — their choice). The 30-day notice is a contractual obligation, not a best-effort courtesy.
 
 **R4: Tiered pricing creates a "valley of death" at tier boundaries**
@@ -330,7 +330,7 @@ Script: query all `digitalWorkers`, filter where `vertical` not in the canonical
 
 **R15: Scale tier and single-tenant graduation threshold coincide at 1,000 seats**
 *Attack:* A customer crossing 1,000 seats simultaneously triggers a price drop for them (Scale tier starts at 1,000) AND a creator revenue-split drop (single-tenant graduation also fires at 1,000+). Two independent mechanisms landing on the same number. If unintentional, a 1,000-seat customer is a bad day for the creator regardless of which mechanism fires first.
-*Mitigation:* This coincidence is intentional and confirmed — at 1,000 seats in a single tenant, both the volume discount and the graduation threshold apply. The price curve drop (to list × 0.60) reduces total revenue collected; the 72%→55% split change reduces the creator's share of that reduced revenue. The creator's effective take at exactly 1,000 seats is 55% × 0.60 of list, vs. 72% × list below 1,000. This is a meaningful step-down and must be disclosed explicitly in creator agreements — not buried in a pricing footnote. The step-down is the mechanism by which SOCIII recovers margin at the point where operational obligations begin. It is not a coincidence to be fixed; it is a design decision to be disclosed.
+*Mitigation:* This coincidence is intentional and confirmed — at 1,000 seats in a single tenant, both the volume discount and the graduation threshold apply. The price curve drop (to list × 0.60) reduces total revenue collected; the 75%→55% split change reduces the creator's share of that reduced revenue. The creator's effective take at exactly 1,000 seats is 55% × 0.60 of list, vs. 75% × list below 1,000. This is a meaningful step-down and must be disclosed explicitly in creator agreements — not buried in a pricing footnote. The step-down is the mechanism by which SOCIII recovers margin at the point where operational obligations begin. It is not a coincidence to be fixed; it is a design decision to be disclosed.
 
 ---
 
@@ -341,7 +341,7 @@ Script: query all `digitalWorkers`, filter where `vertical` not in the canonical
 - [ ] Run nursing → education reclassification script
 - [ ] Run unassigned backfill script (workers with blank/null vertical)
 - [ ] Rate limit scoping: change to `(tenantId, workerSlug)` before UH launch
-- [ ] Creator agreement template: update to "72% of revenue collected" language; apply to Ruthie's existing agreement
+- [ ] Creator agreement template: update to "75% of revenue collected" language; apply to Ruthie's existing agreement
 - [ ] Revenue transparency dashboard for creators (billing period, collected amount, payout)
 - [ ] Add graduation threshold disclosure to creator onboarding flow (visible before first publish, not buried in ToS)
 - [ ] Education in a Box: build the worker suite (nursing-ce-001 and student-eval-001 are the seeds; UH needs at minimum a professor-facing worker and a student-facing CE worker)

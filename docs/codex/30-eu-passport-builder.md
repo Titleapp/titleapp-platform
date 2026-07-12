@@ -12,7 +12,7 @@
 
 Takes a battery product whose 90 attributes are fully collected (Compliance Auditor = 100%) and generates a registry-ready Digital Battery Passport in the **Annex XIII JSON-LD format** required by the EU DPP Central Registry.
 
-The Compliance Auditor is the data collection layer. The Passport Builder is the export and submission preparation layer. They are separate workers because the compliance advisor role (data validation) must be clearly separated from the registry submission role (legal act) — both for EU AI Act purposes and for client liability reasons.
+The Compliance Auditor is the data collection layer. The Passport Builder is the export and submission preparation layer. They are separate workers because the compliance advisor role (data validation) must be clearly separated from the registry submission role (legal act) — required under EU AI Act 2024/1689 Article 22 (human oversight obligations for AI-assisted compliance outputs) and standard professional liability practice for EU-regulated submissions.
 
 **Key constraint:** Cluster 3 (carbon footprint) must be 100% complete before export is enabled. This is a hard RAAS rule, not a UX suggestion.
 
@@ -50,6 +50,7 @@ For a selected product: rendered view of all 90 attributes in passport format
 - Pre-submission checklist (Cluster 3 verified, DPA signed, EU residency confirmed)
 - **Submit to EU Registry** → calls `POST /v1/dpp:submit` → returns passport ID + QR code
 - QR code display: downloadable PNG for product label
+- **⚠ TEST MODE safeguard:** any QR code generated before registry confirmation (i.e., while `dpp:submit` still returns a mock ID) must display a large, unmissable "TEST MODE — DO NOT PRINT ON PRODUCT LABELS" banner. The download button must be disabled in test mode. A mock QR code on shipped inventory is a concrete product-safety-adjacent failure mode — this safeguard is a build prerequisite, not polish.
 
 ### Tab 4 — Passport Ledger
 - All generated passports for this workspace
@@ -61,7 +62,7 @@ For a selected product: rendered view of all 90 attributes in passport format
 
 ## 4. RAAS Rules
 
-1. **Cluster 3 hard gate** — `POST /v1/dpp:generate` rejected if Cluster 3 completionPct < 100
+1. **Cluster 3 hard gate** — `POST /v1/dpp:generate` (which produces the final submission-ready JSON-LD) is rejected if Cluster 3 completionPct < 100. **Tab 2 (Passport Preview) uses a separate read path** that renders the current attribute record without calling `dpp:generate` — the preview is always available regardless of Cluster 3 status, so advisors can work through earlier clusters productively. Only the export and submit actions are gated.
 2. **Format enforcement** — carbon footprint must be in kg CO₂ eq/kWh; SoH in %; batch IDs in ISO 8601; all validated before export
 3. **Submission lock** — once submitted, passport record is immutable; updates go through `POST /v1/dpp:update` (append-only)
 4. **Dual Vault write** — on registry confirmation, DTC minted in both the advisor's Vault AND the client's Vault (the regulated entity holds their own immutable record)
@@ -92,7 +93,7 @@ For a selected product: rendered view of all 90 attributes in passport format
 1. Implement `POST /v1/dpp:generate` — map 90 Firestore attributes to Annex XIII JSON-LD fields
 2. Add format validation pass (units, date formats, required fields)
 3. Build Passport Preview tab — render the JSON-LD as a readable structured view
-4. Implement `POST /v1/dpp:submit` stub (returns mock registry ID until Jul 2026)
+4. Implement `POST /v1/dpp:submit` stub (returns mock registry ID until Jul 2026) — **simultaneously implement TEST MODE flag**: any response from the stub must set `testMode: true`, and the UI must read this flag and block QR download + display the banner described in Tab 3 above
 5. Build QR code generation and download
 6. Wire dual Vault write on submit confirmation
 7. Build Passport Ledger tab (reads submitted passports from Firestore)

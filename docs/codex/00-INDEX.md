@@ -81,5 +81,11 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 33. [`33-eu-lifecycle-monitor.md`](33-eu-lifecycle-monitor.md) — ⚪ **spec 2026-07-11** — Lifecycle Monitor (eu-lifecycle-monitor-001): BMS direct API integration, real-time SoH tracking, automatic passport amendments on degradation milestones, second-life repurposing workflow. Platform subscription tier.
 
+34. [`34-dpp-suite-localization.md`](34-dpp-suite-localization.md) — ⚪ **spec 2026-07-11** — DPP Suite localization: two scopes (client NL/DE, supplier ZH), i18n string externalization for canvas chrome, Elara chat multilingual via prompt instruction (free), generated reports stay English in demo pass.
+
+35. [`35-dpp-demo-production-readiness.md`](35-dpp-demo-production-readiness.md) — 🔴 **red team before build 2026-07-11** — Post-red-team synthesis: CODEX 29–34 closed items, 2 open decisions (second-life marketplace model, reseller economics), 5 prioritized build items (multilingual prompt=1hr, registry allowlisting=19Jul, localization, supplier auth, live registry API), demo-runner briefing notes.
+
+36. [`36-platform-economics-and-pricing.md`](36-platform-economics-and-pricing.md) — ⚪ **policy spec 2026-07-12** — SOCIII pricing philosophy ("little piggy not a hog"): 3 dimensions (subscription/compute/minting), $10 minimum credits for ALL workers, minting as value-based IP moat, 6 platform rules (no resale, no lockout, pre-funded data, creator holds client risk), Elise/DPP as canonical example, EU patent flag for dual-write DPP minting + snapshot model.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started

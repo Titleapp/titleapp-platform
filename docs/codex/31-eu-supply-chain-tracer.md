@@ -64,11 +64,11 @@ Three-tier access (enforced server-side via Firebase custom claims, never prompt
 
 | Tier | Who | What they see |
 |------|-----|---------------|
-| **Operator** | Elise / Volta Advisory | Full network, all suppliers, all clients, verification controls |
+| **Operator** | Volta Advisory | Full network, all suppliers, all clients, verification controls |
 | **Client** | Battlink etc. | Only their own suppliers and the data that flows to their passports |
 | **Supplier** | Cell manufacturer | Only the specific attributes they are responsible for submitting; cannot see other clients' data |
 
-**Supplier fan-out write:** When a supplier submits a declaration, it is written once to the supplier node and then a compliance event is appended to every passport (across all clients) that uses that supplier's components. No data duplication — each passport just references the shared supplier record.
+**Supplier fan-out write:** When a supplier submits a declaration, it is written once to the supplier node and then a compliance event is appended to every passport (across all clients) that uses that supplier's components. **Data model clarification:** supplier attribute values are **snapshotted into each passport record at the time they are applied** — not held by live reference. This is required to satisfy CODEX 30's immutability invariant: a passport registered with the EU registry cannot be retroactively altered if the supplier later updates their data. The snapshot approach accepts controlled duplication in exchange for correct immutability semantics. Firestore security rules should be written against the snapshot model, not the reference model.
 
 ---
 
@@ -84,10 +84,11 @@ Three-tier access (enforced server-side via Firebase custom claims, never prompt
 ## 6. Build Prerequisites
 
 - Supplier Portal authentication (Firebase custom claims for supplier tier)
+- **EU data residency (Firestore EU-region)** — required before any EU supplier or client data is stored at scale; applies to all supplier nodes and the fan-out compliance events
 - Catena-X connector (connector kit available: catena-x.net/en/offers/connector-kit)
 - GBA Battery Passport API credentials
 - SCIP Database API (ECHA) — publicly available REST API
-- Firestore security rules update: supplier can only write their own node, not read across clients
+- Firestore security rules update: supplier can only write their own node; snapshot writes to client passport records are operator-scoped only (supplier cannot write to passport directly)
 
 ---
 

@@ -63,13 +63,14 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 - Batteries approaching or below 80% SoH (EV second-life threshold per EU Battery Reg)
 - Repurposing workflow: initiate second-life passport (new product identity, new passport ID)
 - Second-life market connections: battery recyclers, second-life integrators, EU-registered refurbishers
+- **Open decision (red team finding):** "second-life market connections" must be scoped before building. Two distinct models: (a) **informational only** — display a curated list of registered refurbishers, no commercial relationship; or (b) **referral/marketplace** — SOCIII receives a fee when a Volta Advisory client connects with a recycler. If (b), this is a new monetization pattern requiring Sean's explicit go-ahead, reseller terms, and its own revenue accounting. Do not build Tab 5's connection layer until this decision is made.
 
 ---
 
 ## 4. RAAS Rules
 
 1. **SoH amendment threshold** — RAAS triggers a passport amendment when SoH drops more than 10% since last registered value
-2. **Repurposing alert** — SoH < 80% for EV-classified batteries fires a mandatory EU compliance alert (repurposing or retirement must be documented)
+2. **Repurposing alert** — SoH < 80% for EV-classified batteries fires a mandatory EU compliance alert (repurposing or retirement must be documented). Regulatory basis: EU Battery Reg 2023/1542, Article 14 (passport update obligations upon "significant change in relevant characteristics") and Annex XIII Cluster 7 (SoH reporting). **Hedge:** the specific 80% SoH threshold as the repurposing trigger is the Battery Pass Consortium's current interpretation; the regulation itself sets the mandatory *reporting* obligation but the precise threshold may evolve via implementing acts before 2027. Monitor ESPR Working Plan updates.
 3. **Data freshness** — if BMS data is >30 days stale, RAAS flags the product as "Stale — passport may be non-compliant"
 4. **Amendment approval gate** — lifecycle amendments are prepared by the worker but require advisor review before submission (same approval model as status reports in the Compliance Auditor)
 5. **End-of-life notification** — when battery reaches manufacturer's rated end-of-life cycle count, RAAS fires a mandatory decommission or repurposing notification
@@ -87,7 +88,8 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 
 ## 6. Build Prerequisites
 
-- BMS API integration per manufacturer (custom per client — no standard BMS API exists; requires manufacturer cooperation)
+- BMS API integration per manufacturer (custom per client — no standard BMS API exists; requires manufacturer cooperation). **Scalability flag (red team finding):** the Platform-tier sales pitch in §8 promises "no manual effort" and implies automated scale, but each BMS integration is bespoke. The pitch is accurate for a single established client (e.g. Battlink after integration is complete), but should not be used with HOPPECKE or FIAMM until a Battlink integration is live and the field-mapping layer has been validated. Do not imply automated BMS connectivity to prospects who haven't yet commissioned their own BMS adapter.
+- **EU data residency (Firestore EU-region)** — required before live battery telemetry is stored; SoH data tied to deployed physical assets is EU-regulated at the product level
 - Field mapping layer: BMS proprietary → Cluster 7 standard attributes
 - `POST /v1/bms:connect` and `GET /v1/bms:pull` route implementations
 - EU registry amendment API (requires Registry Manager to be live first)
@@ -110,8 +112,10 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 
 ## 8. The Platform Subscription Argument
 
-When pitching the Platform tier to Battlink:
+When pitching the Platform tier to Battlink (after BMS integration is live — see §6 scalability flag):
 
 > "The first three workers get you registered by February 2027. The Lifecycle Monitor is why you stay. Every month, your passport automatically reflects your battery's actual performance — no manual effort, no compliance risk from stale data. And when a battery hits 80% SoH, we flag it for second-life repurposing, which is its own revenue stream. The platform pays for itself."
 
 This is the recurring revenue moat. Advisory (Workers 1–4) is a project. Lifecycle monitoring (Worker 5) is a subscription.
+
+**Reseller economics caveat:** The specific pricing for the Platform tier (e.g. €1,490/month referenced in earlier discussions) reflects illustrative positioning only. Revenue split and margin terms between SOCIII and Volta Advisory / Elise are **not yet agreed**. Do not treat any quoted price as settled in proposals to Battlink or other clients until Sean/SOCIII and Elise have confirmed the reseller terms in writing.

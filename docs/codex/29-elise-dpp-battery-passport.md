@@ -154,14 +154,14 @@ Each cluster shows its source alongside charge level: `[Supplier-direct]`, `[Pla
 
 **Dashboard design (Battlink client view):**
 - One row per battery product in scope
-- **Passport Charge Bar**: grey (nothing) → yellow (in progress) → green (fully charged) — uses battery charging visual language intentionally
+- **Passport Charge Bar**: grey (0–15%) → yellow (16–79%) → green (80–100%) — uses battery charging visual language intentionally. **Label constraint (carry-over fix):** green state is always labeled "data complete — ready for advisor review." Never "ready to submit" or "ready for registration" — submission is Elise's act, not the platform's conclusion.
 - Time-in-status indicator: how many days the product has been at its current charge level
 - Hover tooltip: lists missing clusters by name + deeplink directly to the upload zone for that product/cluster
 - Priority flag: Battlink marks high-revenue SKUs for priority charging
 - Document upload zone per product: fallback for data with no digital source yet
 
 **Weekly status report:**
-Auto-generated, held for Elise's review before sending to client. Contains: products in scope, status per product, fully charged count, urgent action items. Never asserts compliance conclusions — data status only. Elise's advisory layer adds the interpretation.
+Auto-generated, held for Elise's review before sending to client. Contains: products in scope, status per product, fully charged count, urgent action items. Never asserts compliance conclusions — data status only. Elise's advisory layer adds the interpretation. **48-hour hold (carry-over fix):** report stays in draft for a minimum 48 hours after generation; the system will not allow sending until Elise has explicitly approved it. This is a RAAS rule, not a UX suggestion — see Rule 6 below.
 
 ## 6. Data Model
 
@@ -186,6 +186,7 @@ All records are append-only (platform invariant).
 3. **Deadline alert** — flag any client with compliance score < 80% within 90 days of 18 Feb 2027
 4. **Format enforcement** — carbon footprint: kg CO₂ eq/kWh; SoH: %; batch IDs: ISO 8601
 5. **Attribution integrity** — every attribute value must carry source (provider, date, certificate reference)
+6. **Report review hold** — auto-generated weekly status report enters a 48-hour advisor review window before the send action is unlocked; no report may be delivered to a client without explicit Elise approval
 
 ---
 
