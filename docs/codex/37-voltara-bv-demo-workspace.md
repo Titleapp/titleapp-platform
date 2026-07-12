@@ -135,47 +135,53 @@ One document per SKU. Fields:
 ```
 {
   sku: "VLT-IND24",
-  name: "24V Industrial Li-ion",
-  application: "forklift",
-  overallPct: 94,
+  name: "Industrial 24V 500Ah",
+  application: "Forklift / warehouse",
+  category: "Industrial",
+  overallPct: 38,              // matches canvas fixture — C3=0% makes it blocked
+  chargeColor: "yellow",
   clusters: {
-    c1: { pct: 100, attributes: { ... } },
-    c2: { pct: 100, attributes: { ... } },
-    c3: { pct: 100, lcaReport: "gs://voltara/lca/ind24.pdf", carbonIntensity: 42.3 },
-    c4: { pct: 90, attributes: { ... } },
-    c5: { pct: 95, attributes: { ... } },
-    c6: { pct: 100, attributes: { ... } },
-    c7: { pct: 95, sohRated: 2000, sohCurrent: 94 }
+    c1: { pct: 90, name: "General battery & manufacturer information", total: 12 },
+    c2: { pct: 75, name: "Compliance, labels & certifications",        total: 8  },
+    c3: { pct: 0,  name: "Battery carbon footprint (LCA)",              total: 15, note: "LCA not initiated — hard gate" },
+    c4: { pct: 30, name: "Supply chain due diligence",                 total: 18 },
+    c5: { pct: 20, name: "Battery materials & composition",            total: 14 },
+    c6: { pct: 0,  name: "Circularity & resource efficiency",          total: 10 },
+    c7: { pct: 0,  name: "Performance & durability (SoH)",             total: 13 },
   },
-  passportStatus: "ready",   // ready | generating | blocked | registered
-  registryId: null,          // populated on registration
-  createdAt: ...,
-  updatedAt: ...
+  passportStatus: "blocked",   // blocked | draft | registered
+  registryId: null,
+  tenantId: "ws_1783763627546_mv3rpx"
 }
 ```
+
+**Enum alignment (CODEX 30 canonical):** `passportStatus` values: `blocked` (C3 < 100% or other hard gate) | `draft` (generation-eligible, C3 complete, not yet submitted) | `registered` (registry ID assigned). The "ready" and "generating" values from earlier drafts are not used.
 
 ### Collection: `dppSuppliers`
 One document per supplier. Fields:
 ```
 {
-  supplierId: "zhenghe-bv-nl",
-  name: "Zhenghe Celltech (Rotterdam)",
-  status: "verified",        // verified | pending | invited | partial
-  submittedAt: ...,
+  supplierId: "hanam-kr-a",
+  name: "Hanam Cell Corp.",
+  country: "KR",
+  language: "KO",
+  status: "invited",           // verified | partial | invited | pending
   products: ["VLT-IND24", "VLT-IND48"],
-  attributes: { ... },       // the actual cluster 4+5 data they submitted
-  certExpiry: "2027-03-15"
+  certExpiry: null,
+  tenantId: "ws_1783763627546_mv3rpx"
 }
 ```
 
+**Enum alignment:** `dppSuppliers.status` values: `verified` (submitted + cert valid) | `partial` (submitted, cert issue) | `invited` (portal access sent, not yet submitted) | `pending` (pre-invitation).
+
 ### Collection: `dppRegistryStatus`
-One document for the workspace. Fields:
+One document per workspace (doc ID = tenantId). Fields:
 ```
 {
-  tenantId: "ws_voltara_demo",
-  allowlistStatus: "applied",   // not_applied | applied | approved
+  tenantId: "ws_1783763627546_mv3rpx",
+  allowlistStatus: "applied",  // not_applied | applied | approved
   registryGoLive: "2026-07-19",
-  submissionQueue: ["VLT-IND24"],
+  submissionQueue: [],         // no SKUs ready to queue yet — all C3-blocked
   registered: [],
   lastSync: null
 }
@@ -186,28 +192,38 @@ One document per SKU in the field. Fields:
 ```
 {
   sku: "VLT-LMT12",
+  name: "LMT Module 12V 100Ah",
+  category: "LMT",
   unitsDeployed: 67,
   sohPct: 79,
   sohColor: "yellow",
-  cycleCount: 1240,
-  ratedCycles: 2000,
-  bmsStatus: "live",         // live | stale | not_connected
-  lastPull: ...,
+  cycleCount: 1103,
+  ratedCycles: 1500,           // LMT rated cycles (not 2000 — that is Industrial/EV)
+  bmsStatus: "live",           // live | stale | Disconnected
+  lastPull: "3 hours ago",
+  sohTrend: "-0.6%/mo",
   amendmentPending: true,
-  amendmentDraft: { ... }    // pre-drafted amendment for advisor approval
+  amendmentNote: "SoH at 79% — approaching 80% repurposing threshold",
+  tenantId: "ws_1783763627546_mv3rpx"
 }
 ```
+
+**⚠ LMT SoH threshold open flag:** The 80% SoH repurposing threshold is confirmed for EV-classified batteries under CODEX 33 Rule 2. Whether this same threshold applies to LMT-classified batteries is **not yet confirmed** — it may differ by regulation. The seed data flags VLT-LMT12 (79%) as "approaching threshold" and VLT-LMT24 (71%) as "second-life" based on the EV rule applied by analogy. Elise should confirm the LMT threshold with her EU regulatory counsel before Worker 5's LMT scenario is built as authoritative. The RAAS ruleset (`eu_battery_dpp_v1.json`, rule `dpp-ev-soh-threshold`) already instructs Elara to flag this uncertainty rather than state it as fact.
 
 ---
 
 ## 7. Build Steps
 
-1. Write `/tmp/seedVoltaraBV.js` — idempotent seed script (same pattern as `seedVault.js`, `createDemoSpace.js`)
-2. Script creates or overwrites: `dppProducts` (6 docs), `dppSuppliers` (4 docs), `dppRegistryStatus` (1 doc), `dppFleet` (6 docs)
-3. Creates workspace tenant record `tenants/ws_voltara_demo` if not present
-4. Adds `ws_voltara_demo` to Sean's demo account workspaces so it's accessible in the app
-5. Wire Workers 1–5 to read from these collections instead of canvas fixtures — RAAS `getCtx` already extracts `tenantId`; the handlers need to query `dppProducts` by `tenantId`
-6. Verify Elara can answer 5 real questions (one per worker) before marking complete
+**✅ DONE (2026-07-12):**
+1. `/tmp/seedVoltaraBV.js` written and executed — idempotent, explicit overwrite (this is a sandbox reset, not an append-only ledger operation). Seeded: `dppProducts` (6 docs), `dppSuppliers` (4 docs), `dppRegistryStatus` (1 doc), `dppFleet` (6 docs) under tenant `ws_1783763627546_mv3rpx`.
+2. Five `workerOwnData.js` builder functions wired — chat reads from Firestore, not fixtures.
+3. RAAS ruleset `eu_battery_dpp_v1.json` deployed — 8 anti-hallucination rules enforced at chat layer.
+4. `BUNDLE_SHAPES` + `WORKER_RULESET_MAP` updated — sibling injection and rule loading active.
+5. DPP workers created in Firestore with `status: "active"` — sibling query now finds them.
+
+**Still open:**
+- Wire Workers 1–5 canvas to read from Firestore instead of `DPPWorkerCanvas.jsx` fixtures (canvas currently uses hardcoded arrays; chat is grounded, canvas is not). Do this after the demo.
+- Verify Elara can answer 5 real questions (one per worker) before marking complete.
 
 ---
 
@@ -217,7 +233,7 @@ One document per SKU in the field. Fields:
 
 **The hard gate (1 minute):** Switch to Worker 2. Click "Generate Passport" on VLT-LMT12. Elara refuses. Shows exactly what Cluster 3 needs. This proves the rules engine is real — AI can't bypass compliance requirements.
 
-**The supply chain story (1 minute):** Switch to Worker 3. Show Zhenghe Celltech as verified, Rheinwerk GmbH as partial, ShinPower as not yet submitted. Ask Elara: "What happens when LG submits?" She explains the fan-out — one submission, two passports satisfied. This is the network effect that makes the platform defensible.
+**The supply chain story (1 minute):** Switch to Worker 3. Show Zhenghe Celltech as verified, Rheinwerk GmbH as partial, Hanam Cell Corp. as invited but not submitted. Ask Elara: "What happens when Hanam submits?" She explains the fan-out — one submission, two passports (VLT-IND24 + VLT-IND48) satisfied automatically. This is the network effect that makes the platform defensible.
 
 **The urgency close (30 seconds):** Switch to Worker 4. Registry opens in 7 days. VLT-IND24 is queued. Everything is real — the date, the readiness status, the submission plan. No theatre.
 
@@ -227,10 +243,27 @@ One document per SKU in the field. Fields:
 
 ## 9. Sign-off Gate
 
-- [ ] Seed script runs idempotently without errors
-- [ ] All 6 SKUs visible in Worker 1 canvas with correct charge states
-- [ ] `dpp:generate` on VLT-LMT12 is rejected by RAAS (Cluster 3 = 0%)
-- [ ] Elara can answer "what's missing for VLT-IND48?" with the Rheinwerk GmbH cert gap
-- [ ] Worker 4 countdown shows a real calculated date, not a hardcoded string
-- [ ] Worker 5 shows LMT12 fleet amendment as pending, not as an empty state
-- [ ] No canvas fixtures remain — all data reads from Firestore
+**Seed + data:**
+- [x] Seed script runs idempotently without errors (executed 2026-07-12)
+- [x] 6 dppProducts, 4 dppSuppliers, 1 dppRegistryStatus, 6 dppFleet seeded under `ws_1783763627546_mv3rpx`
+
+**Chat grounding (Elara must cite real records, not fabricate):**
+- [ ] Elara can answer "what's missing for VLT-IND48?" with the Rheinwerk GmbH conflict minerals cert gap
+- [ ] Elara can answer "what's holding up VLT-IND24?" with Cluster 3 at 0% + Hanam Cell Corp. not submitted
+- [ ] Elara refuses to say VLT-IND24 is "EU compliant" (passportStatus = "blocked", not "registered")
+- [ ] Elara names the LMT12 SoH threshold as "approaching 80%" and flags that the LMT threshold is pending regulatory confirmation (not just states it as fact)
+- [ ] Elara knows Hanam Cell Corp.'s non-submission affects both VLT-IND24 and VLT-IND48
+
+**Canvas:**
+- [ ] All 6 SKUs visible in Worker 1 canvas with correct charge bar states
+- [ ] Worker 2 shows VLT-IND24 as generation-blocked (Cluster 3 = 0%)
+- [ ] Tab 2 Preview renders for Cluster-3-blocked SKUs (shows what passport will look like)
+- [ ] Worker 4 countdown shows a real calculated date (not hardcoded "8 days")
+- [ ] Worker 5 shows LMT12 amendment as pending, not empty state
+
+**Minting + TEST MODE (pre-19 Jul):**
+- [ ] QR code on any submitted passport shows TEST MODE banner + disabled download before 19 Jul 2026
+- [ ] Attempting `dpp:submit` on an eligible SKU shows minting fee (€75) reserved before registry call
+
+**Open gap (post-demo):**
+- [ ] Canvas reads from Firestore instead of `DPPWorkerCanvas.jsx` hardcoded arrays
