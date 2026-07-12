@@ -518,6 +518,12 @@ const WORKER_RULESET_MAP = {
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
   "property-management": "property_manager_v1",
+  // EU Battery DPP suite — all 5 workers share one ruleset
+  "eu-battery-dpp-001": "eu_battery_dpp_v1",
+  "eu-passport-builder-001": "eu_battery_dpp_v1",
+  "eu-supply-chain-tracer-001": "eu_battery_dpp_v1",
+  "eu-registry-manager-001": "eu_battery_dpp_v1",
+  "eu-lifecycle-monitor-001": "eu_battery_dpp_v1",
 };
 
 /** Cache compiled chat rules per ruleset */

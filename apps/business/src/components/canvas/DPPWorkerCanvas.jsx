@@ -135,10 +135,10 @@ const SUPPLY_COVERAGE = [
 ];
 
 const SUPPLIERS = [
-  { id: "catl", name: "CATL",               country: "CN", material: "Cell (EV modules)",       status: "Connected",    skus: ["VLT-EV48","VLT-EV72"],                           lastUpdate: "4d ago", verified: true  },
-  { id: "sdi",  name: "Samsung SDI",        country: "KR", material: "Cell (Industrial)",        status: "Invited",      skus: ["VLT-IND24","VLT-IND48"],                         lastUpdate: "—",      verified: false },
-  { id: "lg",   name: "LG Energy Solution", country: "KR", material: "Cell (LMT modules)",       status: "Connected",    skus: ["VLT-LMT12","VLT-LMT24"],                         lastUpdate: "2d ago", verified: true  },
-  { id: "basf", name: "BASF SE",            country: "DE", material: "Electrolyte + cathode",    status: "Pending",      skus: ["VLT-IND24","VLT-IND48","VLT-LMT12","VLT-LMT24"], lastUpdate: "—",      verified: false },
+  { id: "zhenghe",   name: "Zhenghe Celltech Co.", country: "CN", material: "Cell (EV modules)",    status: "Connected", skus: ["VLT-EV48","VLT-EV72"],                            lastUpdate: "4d ago", verified: true  },
+  { id: "hanam",     name: "Hanam Cell Corp.",      country: "KR", material: "Cell (Industrial)",   status: "Invited",   skus: ["VLT-IND24","VLT-IND48"],                          lastUpdate: "—",      verified: false },
+  { id: "shinpower", name: "ShinPower Corp.",       country: "KR", material: "Cell (LMT modules)",  status: "Connected", skus: ["VLT-LMT12","VLT-LMT24"],                          lastUpdate: "2d ago", verified: true  },
+  { id: "rheinwerk", name: "Rheinwerk GmbH",        country: "DE", material: "Electrolyte + cathode", status: "Pending", skus: ["VLT-IND24","VLT-IND48","VLT-LMT12","VLT-LMT24"], lastUpdate: "—",      verified: false },
 ];
 
 const CONNECTORS = [

@@ -3204,6 +3204,12 @@ END DELIVERY RULES.
                     'av-copilot-001':     { name: 'Aviation CoPilot',       accepts: ['tail number + route'], emits: ['flight-brief/v1'] },
                     'av-mx-001':          { name: 'Aviation Maintenance',   accepts: ['tail number + squawk'], emits: ['mx-record/v1'] },
                     'av-dispatch-001':    { name: 'Aviation Dispatch',      accepts: ['flight-brief/v1', 'mx-record/v1'], emits: ['dispatch-release/v1'] },
+                    // EU Battery DPP suite — linear pipeline: Auditor → Builder → Tracer feeds Builder → Manager submits → Monitor tracks
+                    'eu-battery-dpp-001':      { name: 'DPP Compliance Auditor',  accepts: ['sku + cluster data'], emits: ['dpp-compliance-report/v1', 'cluster-gap-list/v1'] },
+                    'eu-passport-builder-001': { name: 'DPP Passport Builder',    accepts: ['dpp-compliance-report/v1 (Cluster 3 must be 100%)'], emits: ['passport-draft/v1', 'passport-json-ld/v1'] },
+                    'eu-supply-chain-tracer-001': { name: 'DPP Supply Chain Tracer', accepts: ['sku + supplier network'], emits: ['supply-chain-bundle/v1', 'supplier-gap-list/v1'] },
+                    'eu-registry-manager-001': { name: 'DPP Registry Manager',   accepts: ['passport-json-ld/v1', 'dpp-compliance-report/v1'], emits: ['registry-submission/v1', 'qr-code/v1 (post-registration)'] },
+                    'eu-lifecycle-monitor-001':{ name: 'DPP Lifecycle Monitor',  accepts: ['bms-feed/v1', 'qr-code/v1'], emits: ['soh-report/v1', 'amendment-draft/v1'] },
                   };
 
                   // Get tenant's entitled slugs (subscriptions → fallback to memberships.activeWorkers)

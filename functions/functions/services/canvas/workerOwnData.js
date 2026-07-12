@@ -243,6 +243,106 @@ async function titleAbstractBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
+// ── EU Battery DPP — shared product fetch ──────────────────────────────────
+async function _dppProducts(db, tenantId) {
+  const snap = await safe(db.collection("dppProducts").where("tenantId", "==", tenantId).get(), null);
+  return docs(snap);
+}
+
+// DPP Worker 1 — Compliance Auditor
+async function dppComplianceBlock(db, tenantId) {
+  const products = await _dppProducts(db, tenantId);
+  if (!products.length) return "";
+  const skuLine = (p) => {
+    const cls = p.clusters || {};
+    const pcts = [1,2,3,4,5,6,7].map(i => `C${i}:${(cls[`c${i}`]||{}).pct ?? "?"}%`).join(" ");
+    return `- ${p.sku} (${p.name || ""}): overall ${p.overallPct ?? "?"}% | ${pcts} | passport=${p.passportStatus || "unknown"}`;
+  };
+  const ready = products.filter(p => p.passportStatus === "ready");
+  const blocked = products.filter(p => (p.clusters?.c3?.pct ?? 0) === 0);
+  const lines = [`YOUR OWN RECORDS — DPP Compliance Audit (${products.length} SKUs):`];
+  lines.push("ALL SKUs:\n" + products.map(skuLine).join("\n"));
+  if (ready.length) lines.push(`READY TO SUBMIT (${ready.length}): ${ready.map(p => p.sku).join(", ")}`);
+  if (blocked.length) lines.push(`CLUSTER-3-BLOCKED — cannot generate passport (${blocked.length}): ${blocked.map(p => `${p.sku} (LCA at 0%)`).join(", ")}`);
+  return lines.join("\n") + "\n\n";
+}
+
+// DPP Worker 2 — Passport Builder
+async function dppPassportBlock(db, tenantId) {
+  const products = await _dppProducts(db, tenantId);
+  if (!products.length) return "";
+  const lines = [`YOUR OWN RECORDS — Passport Builder (${products.length} SKUs):`];
+  for (const p of products) {
+    const c3 = (p.clusters?.c3?.pct ?? 0);
+    const gatable = c3 === 0 ? "BLOCKED (Cluster 3 = 0% — LCA required)" : c3 < 100 ? `Cluster 3 at ${c3}% — partial` : "GENERATION ELIGIBLE";
+    lines.push(`- ${p.sku}: status=${p.passportStatus || "unknown"} | ${gatable}${p.registryId ? ` | registryId=${p.registryId}` : ""}`);
+  }
+  return lines.join("\n") + "\n\n";
+}
+
+// DPP Worker 3 — Supply Chain Tracer
+async function dppSupplyChainBlock(db, tenantId) {
+  const snap = await safe(db.collection("dppSuppliers").where("tenantId", "==", tenantId).get(), null);
+  const suppliers = docs(snap);
+  if (!suppliers.length) return "";
+  const statusIcon = (s) => ({ verified: "✅", pending: "⏳", invited: "📨", partial: "⚠️" }[s] || "❓");
+  const lines = [`YOUR OWN RECORDS — Supply Chain (${suppliers.length} suppliers):`];
+  for (const s of suppliers) {
+    const products = (s.products || []).join(", ");
+    const cert = s.certExpiry ? ` cert expires ${s.certExpiry}` : "";
+    lines.push(`- ${s.name} (${s.language || "EN"}): ${statusIcon(s.status)} ${s.status}${cert} | supplies: ${products || "unspecified"}`);
+  }
+  const unsubmitted = suppliers.filter(s => s.status === "invited");
+  if (unsubmitted.length) lines.push(`NOT YET SUBMITTED (${unsubmitted.length}): ${unsubmitted.map(s => s.name).join(", ")} — their absence blocks the SKUs they supply.`);
+  return lines.join("\n") + "\n\n";
+}
+
+// DPP Worker 4 — Registry Manager
+async function dppRegistryBlock(db, tenantId) {
+  const [regSnap, prodSnap] = await Promise.all([
+    safe(db.collection("dppRegistryStatus").where("tenantId", "==", tenantId).limit(1).get(), null),
+    safe(db.collection("dppProducts").where("tenantId", "==", tenantId).get(), null),
+  ]);
+  const reg = docs(regSnap)[0] || null;
+  const products = docs(prodSnap);
+  if (!reg && !products.length) return "";
+  const lines = [`YOUR OWN RECORDS — Registry Manager:`];
+  if (reg) {
+    lines.push(`REGISTRY STATUS: allowlist=${reg.allowlistStatus || "unknown"} | goLive=${reg.registryGoLive || "19 Jul 2026"}`);
+    if (reg.submissionQueue?.length) lines.push(`QUEUED FOR SUBMISSION: ${reg.submissionQueue.join(", ")}`);
+    if (reg.registered?.length) lines.push(`REGISTERED: ${reg.registered.join(", ")}`);
+    else lines.push("REGISTERED: none yet.");
+  }
+  const queued = products.filter(p => p.passportStatus === "ready" || p.passportStatus === "submitted");
+  const registered = products.filter(p => p.passportStatus === "registered");
+  if (queued.length) lines.push(`READY/QUEUED SKUs: ${queued.map(p => p.sku).join(", ")}`);
+  if (registered.length) lines.push(`REGISTERED SKUs: ${registered.map(p => `${p.sku} (ID: ${p.registryId || "pending"})`).join(", ")}`);
+  return lines.join("\n") + "\n\n";
+}
+
+// DPP Worker 5 — Lifecycle Monitor
+async function dppLifecycleBlock(db, tenantId) {
+  const snap = await safe(db.collection("dppFleet").where("tenantId", "==", tenantId).get(), null);
+  const fleet = docs(snap);
+  if (!fleet.length) return "";
+  const colorIcon = (c) => ({ green: "🟢", yellow: "🟡", grey: "⬜", red: "🔴" }[c] || "❓");
+  const lines = [`YOUR OWN RECORDS — Lifecycle Monitor (${fleet.length} SKUs in field):`];
+  for (const f of fleet) {
+    const soh = f.bmsStatus === "not_connected" || f.bmsStatus === "Disconnected"
+      ? "BMS not connected — SoH unavailable"
+      : `SoH ${f.sohPct ?? "?"}% ${colorIcon(f.sohColor)}`;
+    const amend = f.amendmentPending ? " | AMENDMENT PENDING" : "";
+    lines.push(`- ${f.sku}: ${f.unitsDeployed ?? "?"} units | ${soh} | cycles ${f.cycleCount ?? "?"}/${f.ratedCycles ?? "?"}${amend}`);
+  }
+  const nearThreshold = fleet.filter(f => f.sohPct && f.sohPct <= 82 && f.bmsStatus !== "not_connected" && f.bmsStatus !== "Disconnected");
+  if (nearThreshold.length) {
+    lines.push(`APPROACHING 80% SoH THRESHOLD (EV repurposing gate): ${nearThreshold.map(f => `${f.sku} at ${f.sohPct}%`).join(", ")}`);
+  }
+  const amendPending = fleet.filter(f => f.amendmentPending);
+  if (amendPending.length) lines.push(`AMENDMENTS PENDING APPROVAL: ${amendPending.map(f => f.sku).join(", ")}`);
+  return lines.join("\n") + "\n\n";
+}
+
 const BUILDERS = {
   "platform-hr": staffCredentialsBlock,
   "title-abstract-001": titleAbstractBlock,
@@ -252,6 +352,12 @@ const BUILDERS = {
   "platform-marketing": marketingBlock,
   "platform-contacts": contactsBlock,
   "platform-accounting": accountingBlock,
+  // EU Battery DPP suite
+  "eu-battery-dpp-001": dppComplianceBlock,
+  "eu-passport-builder-001": dppPassportBlock,
+  "eu-supply-chain-tracer-001": dppSupplyChainBlock,
+  "eu-registry-manager-001": dppRegistryBlock,
+  "eu-lifecycle-monitor-001": dppLifecycleBlock,
 };
 
 /**
