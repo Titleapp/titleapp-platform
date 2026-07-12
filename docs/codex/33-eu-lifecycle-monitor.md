@@ -88,7 +88,7 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 
 ## 6. Build Prerequisites
 
-- BMS API integration per manufacturer (custom per client — no standard BMS API exists; requires manufacturer cooperation). **Scalability flag (red team finding):** the Platform-tier sales pitch in §8 promises "no manual effort" and implies automated scale, but each BMS integration is bespoke. The pitch is accurate for a single established client (e.g. Battlink after integration is complete), but should not be used with HOPPECKE or FIAMM until a Battlink integration is live and the field-mapping layer has been validated. Do not imply automated BMS connectivity to prospects who haven't yet commissioned their own BMS adapter.
+- BMS API integration per manufacturer (custom per client — no standard BMS API exists; requires manufacturer cooperation). **Scalability flag (red team finding):** the Platform-tier sales pitch in §8 promises "no manual effort" and implies automated scale, but each BMS integration is bespoke. The pitch is accurate for a single established client (e.g. Voltara after integration is complete), but should not be used with HOPPECKE or FIAMM until a Voltara integration is live and the field-mapping layer has been validated. Do not imply automated BMS connectivity to prospects who haven't yet commissioned their own BMS adapter.
 - **EU data residency (Firestore EU-region)** — required before live battery telemetry is stored; SoH data tied to deployed physical assets is EU-regulated at the product level
 - Field mapping layer: BMS proprietary → Cluster 7 standard attributes
 - `POST /v1/bms:connect` and `GET /v1/bms:pull` route implementations
@@ -101,7 +101,7 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 
 1. Implement `POST /v1/bms:connect` — store BMS endpoint + credentials per product
 2. Implement `GET /v1/bms:pull` — generic BMS poll with field mapping
-3. Build Battlink-specific BMS adapter (first live integration, proof of concept)
+3. Build Voltara-specific BMS adapter (first live integration, proof of concept)
 4. Build Live Battery Fleet tab — real-time SoH display
 5. Build SoH trend calculation + chart
 6. Wire RAAS amendment threshold alert → Passport Update Queue
@@ -112,10 +112,10 @@ This is the highest-value SOCIII moat in the DPP suite: it transforms the platfo
 
 ## 8. The Platform Subscription Argument
 
-When pitching the Platform tier to Battlink (after BMS integration is live — see §6 scalability flag):
+When pitching the Platform tier to Voltara (after BMS integration is live — see §6 scalability flag):
 
 > "The first three workers get you registered by February 2027. The Lifecycle Monitor is why you stay. Every month, your passport automatically reflects your battery's actual performance — no manual effort, no compliance risk from stale data. And when a battery hits 80% SoH, we flag it for second-life repurposing, which is its own revenue stream. The platform pays for itself."
 
 This is the recurring revenue moat. Advisory (Workers 1–4) is a project. Lifecycle monitoring (Worker 5) is a subscription.
 
-**Reseller economics caveat:** The specific pricing for the Platform tier (e.g. €1,490/month referenced in earlier discussions) reflects illustrative positioning only. Revenue split and margin terms between SOCIII and Volta Advisory / Elise are **not yet agreed**. Do not treat any quoted price as settled in proposals to Battlink or other clients until Sean/SOCIII and Elise have confirmed the reseller terms in writing.
+**Reseller economics caveat:** The specific pricing for the Platform tier (e.g. €1,490/month referenced in earlier discussions) reflects illustrative positioning only. Revenue split and margin terms between SOCIII and Volta Advisory / Elise are **not yet agreed**. Do not treat any quoted price as settled in proposals to Voltara or other clients until Sean/SOCIII and Elise have confirmed the reseller terms in writing.

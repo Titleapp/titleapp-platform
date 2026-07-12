@@ -65,7 +65,7 @@ Three-tier access (enforced server-side via Firebase custom claims, never prompt
 | Tier | Who | What they see |
 |------|-----|---------------|
 | **Operator** | Volta Advisory | Full network, all suppliers, all clients, verification controls |
-| **Client** | Battlink etc. | Only their own suppliers and the data that flows to their passports |
+| **Client** | Voltara etc. | Only their own suppliers and the data that flows to their passports |
 | **Supplier** | Cell manufacturer | Only the specific attributes they are responsible for submitting; cannot see other clients' data |
 
 **Supplier fan-out write:** When a supplier submits a declaration, it is written once to the supplier node and then a compliance event is appended to every passport (across all clients) that uses that supplier's components. **Data model clarification:** supplier attribute values are **snapshotted into each passport record at the time they are applied** — not held by live reference. This is required to satisfy CODEX 30's immutability invariant: a passport registered with the EU registry cannot be retroactively altered if the supplier later updates their data. The snapshot approach accepts controlled duplication in exchange for correct immutability semantics. Firestore security rules should be written against the snapshot model, not the reference model.

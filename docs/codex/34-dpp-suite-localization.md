@@ -13,7 +13,7 @@ Mandarin is not an EU language, which is the tell that this isn't a single flat 
 
 | Scope | Languages | Worker | Audience |
 |---|---|---|---|
-| **Client demo** | Dutch, German, English | CODEX 29 (Compliance Auditor) + CODEX 30 (Passport Builder) | Battlink, HOPPECKE — EU battery manufacturers, client-mode users |
+| **Client demo** | Dutch, German, English | CODEX 29 (Compliance Auditor) + CODEX 30 (Passport Builder) | Voltara, HOPPECKE — EU battery manufacturers, client-mode users |
 | **Supplier demo** | Mandarin, English | CODEX 31 (Supply Chain Tracer) — Supplier Portal | Upstream cell/materials suppliers, typically China-based, supplier-mode users |
 
 Treat these as two separate build tasks with two separate string sets. Do not build one shared translation table across both scopes — the vocabulary is different (client-facing compliance language vs. supplier-facing data-request language) and the access mode is already separately gated per CODEX 30/31's Firebase custom claims.
@@ -49,7 +49,7 @@ Annex XIII attribute names, units, and ISO 8601 dates are standardized structure
 
 Machine-translating compliance/regulatory terminology carries real risk — a mistranslated attribute name or a garbled compliance-status label isn't just an embarrassing demo bug, it's the kind of error that could confuse an actual compliance lead about what their obligation is. Recommend:
 
-- **Dutch and German** (Battlink and HOPPECKE's actual languages, not just demo languages): native-speaker review of every string in category 3a before the demo, especially anything touching compliance status or the charge-bar labels.
+- **Dutch and German** (Voltara and HOPPECKE's actual languages, not just demo languages): native-speaker review of every string in category 3a before the demo, especially anything touching compliance status or the charge-bar labels.
 - **Mandarin**: same standard for Supplier Portal strings — a supplier misreading what data is being requested of them is a real operational failure mode, not just a demo polish issue.
 - Machine translation is fine as a first draft; do not ship untreated MT output for compliance-facing copy.
 

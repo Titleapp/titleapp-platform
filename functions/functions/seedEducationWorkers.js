@@ -125,13 +125,13 @@ const WORKERS = [
   },
 ];
 
-// Patch existing education workers to ensure correct vertical/suite tags
+// Patch existing education workers to ensure correct vertical/suite tags + status
 const EXISTING_PATCHES = [
-  { id: "nursing-ce-001", vertical: "education", suite: "Education" },
-  { id: "clinical-eval-001", vertical: "education", suite: "Education" },
-  { id: "staff-credentials-001", vertical: "education", suite: "Education" },
-  { id: "student-evaluation", vertical: "education", suite: "Education" },
-  { id: "student-transcript-001", vertical: "education", suite: "Education" },
+  { id: "nursing-ce-001", vertical: "education", suite: "Education", status: "live" },
+  { id: "clinical-eval-001", vertical: "education", suite: "Education", status: "live" },
+  { id: "staff-credentials-001", vertical: "education", suite: "Education", status: "live" },
+  { id: "student-evaluation", vertical: "education", suite: "Education", status: "live" },
+  { id: "student-transcript-001", vertical: "education", suite: "Education", status: "live" },
 ];
 
 async function seed() {

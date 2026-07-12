@@ -14,7 +14,7 @@ Elise runs **TRAITLY**, a Netherlands-based EU market entry advisory firm. TRAIT
 
 **Why batteries first:** The EU Battery Regulation (2023/1542) mandates that from 18 February 2027, all EV, industrial (>2kWh), and LMT batteries must have a registered Digital Battery Passport accessible via QR code. The EU DPP Central Registry goes live 19 July 2026. No passport = no EU market access. This is a hard legal requirement, not a voluntary initiative.
 
-**Elise's launch client:** Battlink (NL)  
+**Elise's launch client:** Voltara (NL)  
 **Pipeline:** HOPPECKE (DE), FIAMM (IT), WETAC (NL)
 
 ---
@@ -103,7 +103,7 @@ Export: PDF, Word (client-deliverable)
 - Speculate beyond ESPR Working Plan 2025–2030
 
 **Sample opener:**
-> "I'm tracking your battery compliance for the February 2027 deadline. Your Battlink passport is 67% complete — the main gaps are in Cluster 3 (carbon footprint certification) and Cluster 4 (supply chain due diligence for cobalt). Want to work through those now?"
+> "I'm tracking your battery compliance for the February 2027 deadline. Your Voltara passport is 67% complete — the main gaps are in Cluster 3 (carbon footprint certification) and Cluster 4 (supply chain due diligence for cobalt). Want to work through those now?"
 
 ---
 
@@ -137,7 +137,7 @@ Manual document upload is the starting point, not the ceiling. The goal is data 
 
 | Source | Clusters covered | Mechanism | Phase |
 |--------|-----------------|-----------|-------|
-| **Supplier Portal** | 4 (supply chain), 5 (materials) | Battlink invites their cell manufacturer to a stripped-down TRAITLY account. Supplier submits sourcing declarations and materials data once — flows to every passport using their cells, across all TRAITLY clients sharing that supplier. | Phase 2 |
+| **Supplier Portal** | 4 (supply chain), 5 (materials) | Voltara invites their cell manufacturer to a stripped-down TRAITLY account. Supplier submits sourcing declarations and materials data once — flows to every passport using their cells, across all TRAITLY clients sharing that supplier. | Phase 2 |
 | **Platform connectors** | 2 (certifications), 4, 5 | Direct API connections to Catena-X, GBA Battery Passport framework, SCIP (EU hazardous substances), IEC/CE certification bodies (TÜV, Bureau Veritas, SGS). Data pulled automatically. | Phase 2–3 |
 | **BMS direct** | 7 (SoH, charge cycles, degradation) | API from deployed battery management systems. Passport updates itself throughout operational life — the core of the Platform subscription's ongoing value. | Platform tier |
 
@@ -146,18 +146,18 @@ Each cluster shows its source alongside charge level: `[Supplier-direct]`, `[Pla
 
 **The network effect:** Once multiple TRAITLY clients share common suppliers, each supplier updates data once and satisfies every client simultaneously. This compounds with scale — the data moat that makes TRAITLY defensible and acquisition-attractive beyond the advisory practice itself.
 
-**Battlink year-one trajectory:**
+**Voltara year-one trajectory:**
 - Launch: manual upload for most clusters
 - After Supplier Portal: Clusters 4 + 5 automated for key suppliers
 - After BMS connection: Cluster 7 becomes a live feed
 - Remaining manual: Cluster 3 (carbon footprint — always requires third-party assessor) + one-off certifications
 
-**Dashboard design (Battlink client view):**
+**Dashboard design (Voltara client view):**
 - One row per battery product in scope
 - **Passport Charge Bar**: grey (0–15%) → yellow (16–79%) → green (80–100%) — uses battery charging visual language intentionally. **Label constraint (carry-over fix):** green state is always labeled "data complete — ready for advisor review." Never "ready to submit" or "ready for registration" — submission is Elise's act, not the platform's conclusion.
 - Time-in-status indicator: how many days the product has been at its current charge level
 - Hover tooltip: lists missing clusters by name + deeplink directly to the upload zone for that product/cluster
-- Priority flag: Battlink marks high-revenue SKUs for priority charging
+- Priority flag: Voltara marks high-revenue SKUs for priority charging
 - Document upload zone per product: fallback for data with no digital source yet
 
 **Weekly status report:**
@@ -203,7 +203,7 @@ All records are append-only (platform invariant).
 - **TRAITLY licenses the worker from SOCIII** — inherent in the worker build; creating it on the platform establishes the license
 - **TRAITLY sells to EU battery clients** — advisory fee + reseller spread on top of SOCIII cost
 - BV conversion threshold: €80K revenue (currently Eenmanszaak)
-- EIC Accelerator target: 2027 call, up to €2.5M grant — live Battlink client is the TRL evidence
+- EIC Accelerator target: 2027 call, up to €2.5M grant — live Voltara client is the TRL evidence
 
 ### Key dates to track in the worker
 - 18 Aug 2025 — carbon footprint declarations already in force (some clients may already be non-compliant)
@@ -218,8 +218,8 @@ All records are append-only (platform invariant).
 2. **Define** — Fill worker identity; paste Elara guardrails into behavioral rules
 3. **Knowledge** — Upload this codex + Battery Regulation 2023/1542 Annex XIII summary + Battery Pass Consortium Data Longlist v1.2
 4. **Rules** — Add the 5 RAAS rules above one at a time
-5. **Test** — Use Battlink scenario: industrial Li battery, has CE marking, missing carbon footprint LCA → Elara should flag Cluster 3 as blocker
-6. **Publish** — Share worker link with Battlink as their compliance workspace
+5. **Test** — Use Voltara scenario: industrial Li battery, has CE marking, missing carbon footprint LCA → Elara should flag Cluster 3 as blocker
+6. **Publish** — Share worker link with Voltara as their compliance workspace
 
 ---
 

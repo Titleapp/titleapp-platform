@@ -21,10 +21,10 @@ export function isDPPWorker(w) {
 // ── Shared demo data (matches seedTraitlyDemo.js) ─────────────────────────────
 
 const CLIENT = {
-  name: "Battlink BV",
+  name: "Voltara BV",
   jurisdiction: "Netherlands",
   contact: "Jan van der Berg",
-  email: "jvdberg@battlink.nl",
+  email: "jvdberg@voltara.nl",
   batteryTypes: ["EV", "Industrial", "LMT"],
   dpaSigned: true,
   sccCompliant: true,
@@ -35,37 +35,37 @@ const CLIENT = {
 
 const SKUS = [
   {
-    id: "btl-ev48-001", sku: "BTL-EV48", name: "EV Module 48V 200Ah",
+    id: "btl-ev48-001", sku: "VLT-EV48", name: "EV Module 48V 200Ah",
     category: "EV", pct: 0, color: "grey", daysAtStatus: 14,
     priority: false, status: "Not started",
     gaps: ["All 7 clusters — not yet started"],
   },
   {
-    id: "btl-ev72-001", sku: "BTL-EV72", name: "EV Module 72V 150Ah",
+    id: "btl-ev72-001", sku: "VLT-EV72", name: "EV Module 72V 150Ah",
     category: "EV", pct: 8, color: "grey", daysAtStatus: 7,
     priority: false, status: "Not started",
     gaps: ["Clusters 2–7 not yet started"],
   },
   {
-    id: "btl-ind24-001", sku: "BTL-IND24", name: "Industrial 24V 500Ah",
+    id: "btl-ind24-001", sku: "VLT-IND24", name: "Industrial 24V 500Ah",
     category: "Industrial", pct: 38, color: "yellow", daysAtStatus: 21,
     priority: true, status: "In progress",
     gaps: ["Cluster 3: Carbon footprint LCA not initiated", "Clusters 4+5: Supply chain data awaited from cell supplier"],
   },
   {
-    id: "btl-ind48-001", sku: "BTL-IND48", name: "Industrial 48V 400Ah",
+    id: "btl-ind48-001", sku: "VLT-IND48", name: "Industrial 48V 400Ah",
     category: "Industrial", pct: 64, color: "yellow", daysAtStatus: 35,
     priority: true, status: "In progress",
     gaps: ["Cluster 3: LCA initiated, awaiting third-party assessor report"],
   },
   {
-    id: "btl-lmt12-001", sku: "BTL-LMT12", name: "LMT Module 12V 100Ah",
+    id: "btl-lmt12-001", sku: "VLT-LMT12", name: "LMT Module 12V 100Ah",
     category: "LMT", pct: 87, color: "yellow", daysAtStatus: 8,
     priority: false, status: "In review",
     gaps: ["3 attribute clarifications requested by advisor"],
   },
   {
-    id: "btl-lmt24-001", sku: "BTL-LMT24", name: "LMT Module 24V 80Ah",
+    id: "btl-lmt24-001", sku: "VLT-LMT24", name: "LMT Module 24V 80Ah",
     category: "LMT", pct: 95, color: "green", daysAtStatus: 3,
     priority: false, status: "Data complete",
     gaps: ["Cluster 3: Third-party LCA certificate outstanding — blocks registry submission"],
@@ -135,10 +135,10 @@ const SUPPLY_COVERAGE = [
 ];
 
 const SUPPLIERS = [
-  { id: "catl", name: "CATL",               country: "CN", material: "Cell (EV modules)",       status: "Connected",    skus: ["BTL-EV48","BTL-EV72"],                           lastUpdate: "4d ago", verified: true  },
-  { id: "sdi",  name: "Samsung SDI",        country: "KR", material: "Cell (Industrial)",        status: "Invited",      skus: ["BTL-IND24","BTL-IND48"],                         lastUpdate: "—",      verified: false },
-  { id: "lg",   name: "LG Energy Solution", country: "KR", material: "Cell (LMT modules)",       status: "Connected",    skus: ["BTL-LMT12","BTL-LMT24"],                         lastUpdate: "2d ago", verified: true  },
-  { id: "basf", name: "BASF SE",            country: "DE", material: "Electrolyte + cathode",    status: "Pending",      skus: ["BTL-IND24","BTL-IND48","BTL-LMT12","BTL-LMT24"], lastUpdate: "—",      verified: false },
+  { id: "catl", name: "CATL",               country: "CN", material: "Cell (EV modules)",       status: "Connected",    skus: ["VLT-EV48","VLT-EV72"],                           lastUpdate: "4d ago", verified: true  },
+  { id: "sdi",  name: "Samsung SDI",        country: "KR", material: "Cell (Industrial)",        status: "Invited",      skus: ["VLT-IND24","VLT-IND48"],                         lastUpdate: "—",      verified: false },
+  { id: "lg",   name: "LG Energy Solution", country: "KR", material: "Cell (LMT modules)",       status: "Connected",    skus: ["VLT-LMT12","VLT-LMT24"],                         lastUpdate: "2d ago", verified: true  },
+  { id: "basf", name: "BASF SE",            country: "DE", material: "Electrolyte + cathode",    status: "Pending",      skus: ["VLT-IND24","VLT-IND48","VLT-LMT12","VLT-LMT24"], lastUpdate: "—",      verified: false },
 ];
 
 const CONNECTORS = [
@@ -170,12 +170,12 @@ const REG_STATUS = SKUS.map(s => {
 // ── Worker 5 — Live battery fleet (deployed units with BMS telemetry) ─────────
 
 const FLEET = [
-  { sku: "BTL-IND24", name: "Industrial 24V 500Ah",  cat: "Industrial", units: 23, soh: 94, cycles: 312,  rated: 2000, pull: "2h ago", bmsStatus: "Live",                  color: "green",  trend: "−0.3%/mo", amendPending: false },
-  { sku: "BTL-IND48", name: "Industrial 48V 400Ah",  cat: "Industrial", units: 41, soh: 88, cycles: 587,  rated: 2000, pull: "2h ago", bmsStatus: "Live",                  color: "green",  trend: "−0.4%/mo", amendPending: false },
-  { sku: "BTL-LMT12", name: "LMT Module 12V 100Ah",  cat: "LMT",        units: 67, soh: 79, cycles: 1103, rated: 1500, pull: "3h ago", bmsStatus: "Live — ⚠ near threshold", color: "yellow", trend: "−0.6%/mo", amendPending: true  },
-  { sku: "BTL-LMT24", name: "LMT Module 24V 80Ah",   cat: "LMT",        units: 89, soh: 71, cycles: 1298, rated: 1500, pull: "4h ago", bmsStatus: "Live — ⚠⚠ second-life",   color: "yellow", trend: "−0.7%/mo", amendPending: true  },
-  { sku: "BTL-EV48",  name: "EV Module 48V 200Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
-  { sku: "BTL-EV72",  name: "EV Module 72V 150Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
+  { sku: "VLT-IND24", name: "Industrial 24V 500Ah",  cat: "Industrial", units: 23, soh: 94, cycles: 312,  rated: 2000, pull: "2h ago", bmsStatus: "Live",                  color: "green",  trend: "−0.3%/mo", amendPending: false },
+  { sku: "VLT-IND48", name: "Industrial 48V 400Ah",  cat: "Industrial", units: 41, soh: 88, cycles: 587,  rated: 2000, pull: "2h ago", bmsStatus: "Live",                  color: "green",  trend: "−0.4%/mo", amendPending: false },
+  { sku: "VLT-LMT12", name: "LMT Module 12V 100Ah",  cat: "LMT",        units: 67, soh: 79, cycles: 1103, rated: 1500, pull: "3h ago", bmsStatus: "Live — ⚠ near threshold", color: "yellow", trend: "−0.6%/mo", amendPending: true  },
+  { sku: "VLT-LMT24", name: "LMT Module 24V 80Ah",   cat: "LMT",        units: 89, soh: 71, cycles: 1298, rated: 1500, pull: "4h ago", bmsStatus: "Live — ⚠⚠ second-life",   color: "yellow", trend: "−0.7%/mo", amendPending: true  },
+  { sku: "VLT-EV48",  name: "EV Module 48V 200Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
+  { sku: "VLT-EV72",  name: "EV Module 72V 150Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
 ];
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ function TabDashboard({ onSelectSku }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>
             EU Battery Regulation 2023/1542
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Battlink BV · DPP Compliance</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara BV · DPP Compliance</div>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>6 products in scope · Netherlands</div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -509,7 +509,7 @@ function TabTimeline() {
           </div>
         ))}
       </div>
-      <SectionLabel text="Battlink milestone tracker" />
+      <SectionLabel text="Voltara milestone tracker" />
       <div style={{ display: "flex", gap: 0, marginBottom: 24 }}>
         {clientStages.map((s, i) => (
           <div key={s.stage} style={{ flex: 1, textAlign: "center" }}>
@@ -537,7 +537,7 @@ function TabClientFile() {
   ];
   return (
     <div>
-      <SectionLabel text="Battlink BV" />
+      <SectionLabel text="Voltara BV" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
         {fields.map(([label, value]) => (
           <div key={label} style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
@@ -549,7 +549,7 @@ function TabClientFile() {
       <div style={{ padding: "12px 16px", background: "#fef9c3", borderRadius: 10, border: "1px solid #fde68a" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "#78350f", marginBottom: 4 }}>EU data residency — pending</div>
         <div style={{ fontSize: 11, color: "#92400e" }}>
-          SOCIII Firestore must be migrated to an EU-region before EU client battery attribute data is stored at scale. Currently using US-central. Required before Battlink goes beyond the pilot phase.
+          SOCIII Firestore must be migrated to an EU-region before EU client battery attribute data is stored at scale. Currently using US-central. Required before Voltara goes beyond the pilot phase.
         </div>
       </div>
     </div>
@@ -558,9 +558,9 @@ function TabClientFile() {
 
 function TabReports() {
   const urgent = [
-    "BTL-LMT24: Cluster 3 LCA certificate outstanding — blocks registry submission",
-    "BTL-IND24 + BTL-IND48: Supplier portal not yet accepted by cell manufacturer",
-    "BTL-EV48 + BTL-EV72: Not yet started — kickoff session needed",
+    "VLT-LMT24: Cluster 3 LCA certificate outstanding — blocks registry submission",
+    "VLT-IND24 + VLT-IND48: Supplier portal not yet accepted by cell manufacturer",
+    "VLT-EV48 + VLT-EV72: Not yet started — kickoff session needed",
   ];
   return (
     <div>
@@ -571,7 +571,7 @@ function TabReports() {
           <div style={{ fontSize: 11, color: "#9a3412", marginLeft: "auto" }}>Auto-generated · 48-hour hold · Awaiting Elise approval</div>
         </div>
         <div style={{ fontSize: 12, color: "#7c2d12" }}>
-          This weekly status report is ready for your review. No report is sent to Battlink without your explicit approval.
+          This weekly status report is ready for your review. No report is sent to Voltara without your explicit approval.
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
@@ -642,7 +642,7 @@ function PBTabQueue() {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>Passport Generation Queue</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Battlink BV — 6 Products</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara BV — 6 Products</div>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>0 ready to generate · 2 near-ready (C3 pending) · 4 in progress</div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -653,7 +653,7 @@ function PBTabQueue() {
 
       {noneReady && (
         <div style={{ padding: "10px 14px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, marginBottom: 18, fontSize: 12, color: "#92400e" }}>
-          <strong>Cluster 3 gate is active for all products.</strong> Carbon footprint LCA certificate required before any passport can be exported. BTL-LMT24 is closest at 80% — one certificate away.
+          <strong>Cluster 3 gate is active for all products.</strong> Carbon footprint LCA certificate required before any passport can be exported. VLT-LMT24 is closest at 80% — one certificate away.
         </div>
       )}
 
@@ -711,7 +711,7 @@ function PBTabExport() {
       <SectionLabel text="Pre-submission checklist" />
       {[
         { label: "Cluster 3 (LCA) verified at 100%",  done: false },
-        { label: "DPA signed — Battlink BV",           done: true  },
+        { label: "DPA signed — Voltara BV",           done: true  },
         { label: "SCC compliant — confirmed",          done: true  },
         { label: "EU data residency confirmed",        done: false },
         { label: "Registry allowlisting applied for", done: false },
@@ -776,7 +776,7 @@ function SCTabCoverage() {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>Supplier Data Network</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Battlink BV — Cluster 4+5 Automation</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara BV — Cluster 4+5 Automation</div>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
             {SUPPLIERS.filter(s => s.status === "Connected").length} suppliers connected · {SUPPLIERS.filter(s => s.status !== "Connected").length} pending
           </div>
@@ -832,7 +832,7 @@ function SCTabSuppliers() {
   const statusBg   = { Connected: "#d1fae5", Invited: "#fef3c7", Pending: "#ede9fe" };
   return (
     <div>
-      <SectionLabel text="Supplier network — Battlink BV" />
+      <SectionLabel text="Supplier network — Voltara BV" />
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {SUPPLIERS.map(sup => (
           <div key={sup.id} style={{ padding: "14px 16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
@@ -959,7 +959,7 @@ function RMTabStatus() {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>EU DPP Central Registry</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Battlink BV — Submission Pipeline</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara BV — Submission Pipeline</div>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{queued} passport{queued !== 1 ? "s" : ""} queued · {ready} registered · allowlisting pending</div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -1089,7 +1089,7 @@ function RMTabAlerts() {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {[
           { label: "EU DPP Central Registry opens",    date: "19 Jul 2026", urgency: "soon",     note: `${DAYS_TO_REGISTRY} days. Apply for allowlisting on day one.`, action: "Register for allowlist" },
-          { label: "Full passport mandatory",          date: "18 Feb 2027", urgency: "deadline", note: `${days} days. BTL-LMT24 is closest to ready — prioritize LCA certificate.`, action: null },
+          { label: "Full passport mandatory",          date: "18 Feb 2027", urgency: "deadline", note: `${days} days. VLT-LMT24 is closest to ready — prioritize LCA certificate.`, action: null },
         ].map((a, i) => (
           <div key={i} style={{ padding: "14px 16px", borderRadius: 10, border: "1px solid", borderColor: a.urgency === "deadline" ? "#fca5a5" : "#fde68a", background: a.urgency === "deadline" ? "#fff5f5" : "#fffbeb" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -1144,7 +1144,7 @@ function LMTabFleet() {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>Live Battery Fleet</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Battlink — Deployed Units</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara — Deployed Units</div>
           <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
             {live.reduce((n, f) => n + f.units, 0)} units monitored · {alerts.length} product{alerts.length !== 1 ? "s" : ""} with SoH alerts
           </div>
@@ -1262,7 +1262,7 @@ function LMTabBMS() {
         ))}
       </div>
       <div style={{ padding: "12px 16px", background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 10, fontSize: 12, color: "#78350f" }}>
-        <strong>BMS integration note:</strong> No standard BMS API exists — each product line requires a bespoke integration with Battlink's hardware team. EV48 and EV72 BMS adapters are not yet commissioned. Contact Battlink firmware team to scope the integration.
+        <strong>BMS integration note:</strong> No standard BMS API exists — each product line requires a bespoke integration with Voltara's hardware team. EV48 and EV72 BMS adapters are not yet commissioned. Contact Voltara firmware team to scope the integration.
       </div>
     </div>
   );

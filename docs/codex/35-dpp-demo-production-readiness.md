@@ -42,7 +42,7 @@ Two distinct models:
 2. **Referral / marketplace**: SOCIII receives a fee when a Volta Advisory client connects with a recycler through the platform. Separate monetization pattern with its own revenue accounting, terms, and legal structure.
 
 **Owner:** Sean
-**Urgency:** Not demo-blocking for current Battlink demo. Blocks expansion of Worker 5 and any sales pitch that references second-life revenue.
+**Urgency:** Not demo-blocking for current Voltara demo. Blocks expansion of Worker 5 and any sales pitch that references second-life revenue.
 
 ### Decision B — Reseller Economics (blocks Elise using the Platform-tier sales script)
 **CODEX 33 §8** currently contains a sales pitch for the Platform subscription tier but carries a caveat: "specific pricing and the revenue split between SOCIII and Volta Advisory / Elise are not yet agreed."
@@ -51,7 +51,7 @@ Two distinct models:
 - SOCIII platform fee per client (or per SKU, or per submission)
 - Elise's advisory fee / reseller margin on top
 - Who invoices the client (Elise invoices, then pays SOCIII? Or SOCIII invoices with Elise on a rev-share?)
-- Whether the pricing in CODEX 33 (€1,490/month as an example) is within range of what Battlink would pay
+- Whether the pricing in CODEX 33 (€1,490/month as an example) is within range of what Voltara would pay
 
 **Owner:** Sean + Elise
 **Urgency:** Blocks giving Elise a sales script she can use with HOPPECKE and FIAMM. High priority — registry opens 19 Jul.
@@ -65,7 +65,7 @@ Two distinct models:
 
 > "Respond in the language the user writes in. Default to English if the language is unclear. This applies across Dutch, German, Mandarin, and English."
 
-This gives Elise the ability to demo in Dutch with a Battlink contact, German with HOPPECKE, or hand the Supplier Portal to a Mandarin-speaking CATL contact — all without any engineering beyond a one-line prompt edit.
+This gives Elise the ability to demo in Dutch with a Voltara contact, German with HOPPECKE, or hand the Supplier Portal to a Mandarin-speaking CATL contact — all without any engineering beyond a one-line prompt edit.
 
 **Blocker:** None.
 **Owner:** Engineering. One PR, five minutes.
@@ -86,11 +86,11 @@ This gives Elise the ability to demo in Dutch with a Battlink contact, German wi
 3. Externalize all static UI strings in Workers 1+2 to locale keys (`i18n/en.js`, `i18n/nl.js`, `i18n/de.js`)
 4. Machine-translate the `nl` and `de` tables as a first draft
 5. **Native-speaker review pass — mandatory before demo use.** Focus on: charge-bar labels, compliance-status text, anything that implies a readiness level or a legal obligation.
-6. Supplier scope (Worker 3 Mandarin) is lower priority than client scope — Battlink demo is Dutch/English.
+6. Supplier scope (Worker 3 Mandarin) is lower priority than client scope — Voltara demo is Dutch/English.
 
 **Build estimate:** Steps 1–4 are 1–2 days. Step 5 (native review) takes as long as it takes — schedule this immediately since it's the constraint.
 
-**Blocker for demo:** If Battlink demo is in English, localization is not a blocker. If Elise wants to run the demo in Dutch, this must be done first.
+**Blocker for demo:** If Voltara demo is in English, localization is not a blocker. If Elise wants to run the demo in Dutch, this must be done first.
 
 ### Priority 4 — Supplier Portal Authentication (CODEX 31 — Phase 2)
 **Current state:** Worker 3's Supplier Portal tab displays the supplier list and invite UI, but a supplier cannot actually log in — the Firebase custom claims for the `supplier` tier are not built.
@@ -100,7 +100,7 @@ This gives Elise the ability to demo in Dutch with a Battlink contact, German wi
 - Build supplier invite flow: advisor sends link → supplier creates limited account → supplier-mode canvas renders
 - Firestore security rules: supplier can only write their own node; cannot read across clients
 
-**Urgency:** Not a Battlink demo blocker (Battlink is the client, not the supplier). Becomes a blocker when Elise wants CATL or Samsung SDI to actually submit data.
+**Urgency:** Not a Voltara demo blocker (Voltara is the client, not the supplier). Becomes a blocker when Elise wants CATL or Samsung SDI to actually submit data.
 
 ### Priority 5 — Live Registry API (CODEX 32 — activates 19 Jul 2026)
 **Current state:** `POST /v1/dpp:submit` returns a mock response. The canvas shows TEST MODE banners everywhere.
@@ -124,13 +124,13 @@ This gives Elise the ability to demo in Dutch with a Battlink contact, German wi
 | Worker 3 (Supply Chain Tracer) — 4-tab canvas | ✅ Built + deployed | Yes |
 | Worker 4 (Registry Manager) — 4-tab canvas | ✅ Built + deployed | Yes |
 | Worker 5 (Lifecycle Monitor) — 4-tab canvas | ✅ Built + deployed | Yes |
-| Battlink BV data seeded | ✅ Done | Yes |
+| Voltara BV data seeded | ✅ Done | Yes |
 | Elara chat — English | ✅ Working | Yes |
 | Elara chat — Dutch, German, Mandarin | 🔴 Not configured | No (one-line fix) |
 | Mock QR safeguard (TEST MODE banner) | ✅ Built + deployed | Yes |
 | Charge-bar labels ("ready for advisor review") | ✅ Correct | Yes |
 | EU Registry submission | 🟡 Mock stub (registry not yet live) | Yes — with disclaimer |
-| Supplier portal logins | 🔴 Not built | No (not needed for Battlink demo) |
+| Supplier portal logins | 🔴 Not built | No (not needed for Voltara demo) |
 | Localization (NL/DE/ZH) | 🔴 Not built | Only if demo is in English |
 | Second-life Tab 5 full build | 🟡 Placeholder + open decision | Yes — placeholder is intentional |
 | Reseller pricing agreed | 🔴 Not agreed | Yes for demo, No for real sales |
@@ -149,7 +149,7 @@ Brief Elise explicitly on the following before any client demo:
 
 3. **Registry submissions are mocked until 19 Jul 2026.** If a client clicks "Submit to EU Registry," the worker shows TEST MODE and no submission happens. This is intentional. Frame this proactively: "We're ready to submit — we're waiting for the registry to open in 8 days."
 
-4. **Cluster 3 (carbon footprint) is the blocker for all 6 Battlink SKUs.** No passport can be exported until the LCA certificate is obtained. BTL-LMT24 is closest at 80%. This is the real-world constraint, not a demo limitation — and it's the right opening for the first advisory conversation.
+4. **Cluster 3 (carbon footprint) is the blocker for all 6 Voltara SKUs.** No passport can be exported until the LCA certificate is obtained. VLT-LMT24 is closest at 80%. This is the real-world constraint, not a demo limitation — and it's the right opening for the first advisory conversation.
 
 5. **BMS connections for EV modules are not yet commissioned.** The Lifecycle Monitor shows live data for Industrial and LMT modules. EV48 and EV72 show "BMS not connected" — this is accurate, not missing data.
 

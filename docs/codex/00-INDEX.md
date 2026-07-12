@@ -71,7 +71,7 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 27. [`27-picture-first-input.md`](27-picture-first-input.md) — ⚪ **spec 2026-07-09** — Visual evidence as first-class audit artifact across all verticals: universal MX ticket lifecycle schema with photo slots (issue/resolution/signoff), AI review step on intake, RE demo Fal.ai image generation list, aviation Hobbs/squawk/logbook photo pattern, Vault DTC typed photo roles, canvas display requirements, Storage path conventions. Includes wearable/IoT sensor stub (Apple Watch, smart leak sensor, EFB Hobbs auto-read) — capability IDs reserved in capabilities.json, wire in CODEX 54 (aviation) or CODEX 28.
 
-29. [`29-elise-dpp-battery-passport.md`](29-elise-dpp-battery-passport.md) — 🟡 **canvas shipped 2026-07-11** — EU Battery Passport Advisor (eu-battery-dpp-001): 5-tab canvas (Dashboard/Passport Builder/Timeline/Client File/Reports), Passport Charge Bar visual, Battlink BV seeded with 6 SKUs at grey/yellow/green charge levels. Demo at /demo/dpp (Volta Advisory workspace). Suite workers 2–5 specced in CODEX 30–33.
+29. [`29-elise-dpp-battery-passport.md`](29-elise-dpp-battery-passport.md) — 🟡 **canvas shipped 2026-07-11** — EU Battery Passport Advisor (eu-battery-dpp-001): 5-tab canvas (Dashboard/Passport Builder/Timeline/Client File/Reports), Passport Charge Bar visual, Voltara BV seeded with 6 SKUs at grey/yellow/green charge levels. Demo at /demo/dpp (Volta Advisory workspace). Suite workers 2–5 specced in CODEX 30–33.
 
 30. [`30-eu-passport-builder.md`](30-eu-passport-builder.md) — ⚪ **spec 2026-07-11** — EU Passport Builder (eu-passport-builder-001): JSON-LD Annex XIII generation, format validation, registry submission, dual Vault write, QR code management. Activates when Compliance Auditor reaches 100%. Cluster 3 hard gate.
 
@@ -84,6 +84,8 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 34. [`34-dpp-suite-localization.md`](34-dpp-suite-localization.md) — ⚪ **spec 2026-07-11** — DPP Suite localization: two scopes (client NL/DE, supplier ZH), i18n string externalization for canvas chrome, Elara chat multilingual via prompt instruction (free), generated reports stay English in demo pass.
 
 35. [`35-dpp-demo-production-readiness.md`](35-dpp-demo-production-readiness.md) — 🔴 **red team before build 2026-07-11** — Post-red-team synthesis: CODEX 29–34 closed items, 2 open decisions (second-life marketplace model, reseller economics), 5 prioritized build items (multilingual prompt=1hr, registry allowlisting=19Jul, localization, supplier auth, live registry API), demo-runner briefing notes.
+
+37. [`37-voltara-bv-demo-workspace.md`](37-voltara-bv-demo-workspace.md) — 🔴 **red team before build 2026-07-12** — standalone Voltara BV demo workspace (Amsterdam, industrial/LMT/EV batteries, 6 SKUs): real Firestore records backing all 5 DPP workers; mix of grey/yellow/green charge states; fictional suppliers (ZH/KO/KO/DE); 7-day countdown to 19 Jul registry; idempotent seed script pattern.
 
 36. [`36-platform-economics-and-pricing.md`](36-platform-economics-and-pricing.md) — ⚪ **policy spec 2026-07-12** — SOCIII pricing philosophy ("little piggy not a hog"): 3 dimensions (subscription/compute/minting), $10 minimum credits for ALL workers, minting as value-based IP moat, 6 platform rules (no resale, no lockout, pre-funded data, creator holds client risk), Elise/DPP as canonical example, EU patent flag for dual-write DPP minting + snapshot model.
 

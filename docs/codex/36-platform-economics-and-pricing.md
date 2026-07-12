@@ -159,9 +159,9 @@ SOCIII's long-run economics on this track: **annual creator fee + volume × mint
 
 Creator-led B2B / multi-client creator:
 
-| Dimension | What Battlink pays | Where it goes |
+| Dimension | What Voltara pays | Where it goes |
 |-----------|-------------------|---------------|
-| Creator registration | (Battlink doesn't pay this — Elise does) | Elise pays SOCIII ~$50/year |
+| Creator registration | (Voltara doesn't pay this — Elise does) | Elise pays SOCIII ~$50/year |
 | Compute credits | Pre-funded by Elise (~$200/mo for SCIP + ATTOM + AI inference) | SOCIII debits Elise's credit balance as calls are made |
 | Minting | €75/passport at EU Registry + €5/Vault DTC + $1 for minor attestations | Reserved from Elise's credit balance at submit step |
 | Subscription | Elise-set fee (~$500/mo for 5 workers) | Elise charges this; 100% hers |

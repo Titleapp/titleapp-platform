@@ -1,6 +1,6 @@
 // One-click TRAITLY demo sign-in — Elise / EU Battery Passport compliance.
 // Mounted at /demo/dpp. Signs in with email/password so Vault gate shows
-// correctly. Lands in the TRAITLY workspace with Battlink data pre-seeded.
+// correctly. Lands in the TRAITLY workspace with Voltara data pre-seeded.
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
