@@ -3221,9 +3221,10 @@ END DELIVERY RULES.
                   }
 
                   // Query co-vertical + co-suite siblings from catalog
+                  // Accept "active" (DPP) and "live" (RE/education workers) — status naming is not yet unified
                   let _vsQuery = db.collection("digitalWorkers")
                     .where("vertical", "==", dw.vertical)
-                    .where("status", "==", "active");
+                    .where("status", "in", ["active", "live"]);
                   if (dw.suite) _vsQuery = _vsQuery.where("suite", "==", dw.suite);
                   const _vsSnap = await _vsQuery.get();
 
