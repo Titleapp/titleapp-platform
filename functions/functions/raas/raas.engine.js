@@ -518,15 +518,21 @@ const WORKER_RULESET_MAP = {
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
   "property-management": "property_manager_v1",
-  // Real-estate suite — site-recon has hard_stops/soft_flags (validateOutput path)
-  // chat_rules not yet authored; falls back to DEFAULT_CHAT_RULES for chat injection
+  // Real-estate suite
   "site-recon-001": "site_recon_rules_v1",
+  "feasibility-001": "re_feasibility_v1",
   // EU Battery DPP suite — all 5 workers share one ruleset
   "eu-battery-dpp-001": "eu_battery_dpp_v1",
   "eu-passport-builder-001": "eu_battery_dpp_v1",
   "eu-supply-chain-tracer-001": "eu_battery_dpp_v1",
   "eu-registry-manager-001": "eu_battery_dpp_v1",
   "eu-lifecycle-monitor-001": "eu_battery_dpp_v1",
+  // Makai School of Nursing — Clinical Programs suite (education vertical)
+  "nursing-records-001": "nursing_clinical_v1",
+  "nursing-courses-001": "nursing_clinical_v1",
+  "nursing-tutor-001": "nursing_clinical_v1",
+  "nursing-comms-001": "nursing_clinical_v1",
+  "nursing-accreditation-001": "nursing_clinical_v1",
 };
 
 /** Cache compiled chat rules per ruleset */

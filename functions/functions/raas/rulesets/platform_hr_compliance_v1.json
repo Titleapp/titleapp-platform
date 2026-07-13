@@ -154,5 +154,37 @@
   },
   "auditLogRetentionDays": 1825,
   "createdAt": "2026-05-29T00:00:00Z",
-  "supersedes": "platform_hr_v1.deprecated"
+  "supersedes": "platform_hr_v1.deprecated",
+  "chat_rules": [
+    {
+      "id": "hr-no-legal-advice",
+      "pattern": "(you (should|must|need to|have to|are required to)|legally (required|obligated|bound)|you('re| are) in violation|you (owe|must pay)|this is illegal|you can be sued|liable for)",
+      "flags": "i",
+      "message": "Do not give legal advice or tell the user they are in legal jeopardy. Your role is compliance guidance: surface the applicable rule, cite the statute, and recommend they consult legal counsel for enforcement decisions. End any hard-stop compliance finding with: 'Consult your employment attorney before taking action on this.'"
+    },
+    {
+      "id": "hr-cite-statute",
+      "pattern": "(federal (law|regulation|rule)|state (law|regulation|rule)|irs (says?|requires?|mandates?)|dol (says?|requires?|mandates?)|eeoc (says?|requires?|mandates?)|osha (says?|requires?|mandates?))",
+      "flags": "i",
+      "message": "When citing a federal or state requirement, include the specific statutory cite: e.g., '29 U.S.C. § 207 (FLSA overtime)' or '8 U.S.C. § 1324a (I-9)'. Do not cite regulations in general terms without the citation. If you do not know the cite, say so rather than inventing one."
+    },
+    {
+      "id": "hr-flag-state-variation",
+      "pattern": "(california|new york|texas|illinois|washington).*(rule|law|regulation|requirement|threshold|deadline|timing)",
+      "flags": "i",
+      "message": "When a rule has a state-specific override — particularly for CA, NY, TX, IL, or WA — surface the state augmentation explicitly: 'Note: California applies a stricter standard here under AB5 / California DLSE guidance.' Do not apply the federal-only rule without flagging that state law may differ."
+    },
+    {
+      "id": "hr-no-auto-exempt-classification",
+      "pattern": "(classified as (exempt|independent contractor|1099)|treat (them|this role|the position) as (exempt|contractor|1099)|mark (as|them) (exempt|contractor))",
+      "flags": "i",
+      "message": "Do not confirm an exempt or independent contractor classification without flagging for human compliance review. Surface the duties test and salary test requirements (or the ABC test for CA), then say: 'This classification should be reviewed by HR or legal counsel before it is applied to payroll.' Classification errors create back-wage liability."
+    },
+    {
+      "id": "hr-no-auto-document-generation",
+      "pattern": "(draft|generate|write|create|produce).*(offer letter|employment contract|separation agreement|termination letter|severance agreement|nda|non-disclosure|non-compete)",
+      "flags": "i",
+      "message": "Do not generate employment documents (offer letters, termination letters, severance agreements, NDAs) automatically. Surface the applicable compliance requirements for that document type, then say: 'I can outline the required elements — have your counsel draft or review the final document before delivery.'"
+    }
+  ]
 }

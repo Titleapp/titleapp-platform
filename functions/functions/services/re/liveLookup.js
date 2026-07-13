@@ -80,6 +80,42 @@ async function lookupAddress(address, apiKey) {
   return { ok: true, attom, canvasSpec: buildLiveCanvasSpec(attom) };
 }
 
+function buildDealScreenTab(a) {
+  const s0 = a.sales && a.sales[0];
+  const lastSale = s0 && s0.amount ? Number(s0.amount) : null;
+  const assessed = a.assessedValue ? Number(a.assessedValue) : null;
+
+  const heroes = [];
+  const flags = [];
+  let yellows = 0;
+
+  if (lastSale) heroes.push({ band: "GREEN", title: "Last Sale Price", detail: money(lastSale) + (s0.date ? " · " + s0.date : "") });
+  if (assessed) heroes.push({ band: "WHITE", title: "Assessed Value", detail: money(assessed) });
+  if (a.propType) heroes.push({ band: "WHITE", title: "Property Type", detail: a.propType });
+
+  if (!lastSale && !assessed) {
+    flags.push({ band: "YELLOW", title: "No recorded sale or assessed value", detail: "Basis unknown — pull county tax records before proceeding." });
+    yellows++;
+  }
+  if (assessed && lastSale && assessed < lastSale * 0.55) {
+    flags.push({ band: "RED", title: "Assessed significantly below last sale", detail: `Assessed ${money(assessed)} vs. ${money(lastSale)} last sale — possible value decline or unreported transfer.` });
+  }
+  if (!a.owner) {
+    flags.push({ band: "YELLOW", title: "Owner not on record", detail: "Run a title search to confirm current vesting and any undisclosed liens." });
+    yellows++;
+  }
+
+  return {
+    id: "deal_screen",
+    label: "Deal screen",
+    blocks: [
+      ...(heroes.length ? [{ type: "heroes", items: heroes }] : []),
+      ...(flags.length ? [{ type: "flags", items: flags }] : []),
+      { type: "prose", band: "WHITE", body: `All figures are ATTOM-recorded data for APN ${a.apn || "—"}. Acquisition price, cap stack, and underwriting projections require full diligence and independent appraisal.` },
+    ],
+  };
+}
+
 function buildLiveCanvasSpec(a) {
   const facts = [
     { label: "APN", value: a.apn || "—", band: "WHITE" },
@@ -111,6 +147,7 @@ function buildLiveCanvasSpec(a) {
         { type: "kpis", items: facts },
         ...(chainItems.length ? [{ type: "chain", title: "Recorded sales (ATTOM)", items: chainItems }] : []),
       ] },
+      buildDealScreenTab(a),
     ],
   };
 }

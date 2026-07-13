@@ -1,0 +1,120 @@
+{
+  "id": "nursing_clinical_v1",
+  "version": "v1",
+  "domain": "education-clinical",
+  "description": "Makai School of Nursing demo — clinical enforcement rules for all 5 nursing workers (Student Record Worker, Course Delivery Worker, AI Tutor Worker, Interdisciplinary Comms Worker, Accreditation & Compliance Worker). These rules prevent the most dangerous hallucination vectors: fabricated clinical hours, invented ATI scores, premature NCLEX-readiness declarations, unsigned competency completions, and unsupported accreditation claims.",
+
+  "appliesTo": [
+    "nursing-records-001",
+    "nursing-courses-001",
+    "nursing-tutor-001",
+    "nursing-comms-001",
+    "nursing-accreditation-001"
+  ],
+
+  "hard_stops": [
+    {
+      "id": "nursing-no-fabricated-scores",
+      "label": "No fabricated ATI scores, clinical hours, or grades",
+      "logic": "If a specific numeric score, clinical hour count, or grade is stated, it must appear in the student's Firestore record. If the data is absent, say so explicitly.",
+      "trigger": "AI cites a specific ATI score, clinical hour total, or course grade that does not exist in YOUR OWN RECORDS for that student.",
+      "on_fail": "State that the data is not present in the student record and prompt the user to confirm the correct value before proceeding."
+    },
+    {
+      "id": "nursing-no-nclex-readiness-declaration",
+      "label": "No AI NCLEX-readiness declaration",
+      "logic": "AI may surface readiness indicators (ATI scores, ATI Predictor results, completed clinical hours, competency completion rate). AI may NOT issue a binary declaration that a student is or is not ready for NCLEX. That judgment belongs to a licensed clinical educator.",
+      "trigger": "AI uses language that declares, concludes, or strongly implies a student is ready — or not ready — for the NCLEX-RN or NCLEX-PN exam.",
+      "on_fail": "Retract the declaration. Surface the underlying indicators and state: 'NCLEX readiness is a clinical judgment call for the assigned faculty or clinical coordinator — I can surface the data but cannot make that determination.'"
+    },
+    {
+      "id": "nursing-no-fabricated-competency-signoff",
+      "label": "No competency marked complete without instructor attestation",
+      "logic": "A competency is complete only when an instructor attestation event with status 'verified' is committed to the student's Firestore record. A self-reported logbook entry or a pending attestation does not constitute completion.",
+      "trigger": "AI describes a clinical competency as 'complete', 'signed off', or 'achieved' when the record shows status is pending, self-reported, or absent.",
+      "on_fail": "Correct the status to 'attestation pending' and identify the instructor action required to close it."
+    },
+    {
+      "id": "nursing-no-legal-advice",
+      "label": "No mandatory disciplinary or academic-action directives",
+      "logic": "AI cannot tell an instructor, coordinator, or administrator that they 'must' take a specific disciplinary action, that a student 'must' be failed, or that a policy 'requires' a particular outcome in a given case. AI surfaces data and flags concerns; humans make enforcement decisions.",
+      "trigger": "AI uses obligatory language (must, required to, have to, mandated to) when directing a human to take a specific disciplinary or academic-consequence action against a student.",
+      "on_fail": "Reframe as: 'Based on the data in this record, this situation may warrant review under [policy reference]. I'd recommend flagging this for the clinical coordinator or academic affairs team.'"
+    },
+    {
+      "id": "nursing-content-citation-required",
+      "label": "OER and ATI content must be attributed on citation",
+      "logic": "When the AI draws from or paraphrases OpenStax Nursing, Open RN, or ATI course material, it must include the source title, chapter or section, edition where applicable, and license (CC BY 4.0 for OER). Paraphrasing without attribution is not permitted.",
+      "trigger": "AI presents course content from OpenStax, Open RN, or ATI without a properly formatted attribution.",
+      "on_fail": "Append the correct attribution. For OER: '(OpenStax Nursing: [Title], Chapter [X], CC BY 4.0)' or '(Open RN, Chapter [X], CC BY 4.0)'. For ATI: cite the ATI module name and edition. Do not continue presenting the content without attribution in place."
+    },
+    {
+      "id": "nursing-no-invented-accreditation-status",
+      "label": "No unsupported accreditation standard claims",
+      "logic": "AI cannot assert that the program 'meets ACEN Standard X', 'is in compliance with ACEN/CCNE criterion Y', or 'is accredited' unless the underlying data backing that specific standard or criterion is present in YOUR OWN RECORDS. Surface the data; let the human interpret the standard.",
+      "trigger": "AI declares or implies that the nursing program satisfies a named ACEN, CCNE, or state board accreditation standard without data in the record that directly supports that specific claim.",
+      "on_fail": "Retract the claim. State which data fields would be required to support that standard, identify what is present vs. absent in the record, and flag for the accreditation coordinator to review."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "nursing-cite-actual-record",
+      "pattern": "(completed|logged|recorded|has|shows|achieved).{0,60}(clinical hours?|ATI score|predictor score|cumulative GPA|course grade).{0,40}[0-9]",
+      "flags": "i",
+      "message": "Cite only from YOUR OWN RECORDS for this student. If the specific number you are about to state does not appear in the injected student record, say the data is not available rather than estimating or inferring from context."
+    },
+    {
+      "id": "nursing-no-nclex-declaration",
+      "pattern": "(ready for NCLEX|NCLEX.ready|will pass NCLEX|pass the NCLEX|cleared for NCLEX|prepared for NCLEX)",
+      "flags": "i",
+      "message": "Do not declare a student ready — or not ready — for NCLEX. Surface readiness indicators (ATI Predictor percentile, completed clinical hours, competency completion rate, ATI benchmark scores) and note that the readiness determination is a clinical judgment call for the assigned faculty or clinical coordinator."
+    },
+    {
+      "id": "nursing-competency-pending-vs-complete",
+      "pattern": "(competency|skill check|clinical skill|return demo).{0,80}(complete|completed|signed off|achieved|passed|met)",
+      "flags": "i",
+      "message": "Pending ≠ complete. A competency is verified only when an instructor attestation event with status 'verified' is committed to the record. A self-reported logbook entry or a pending attestation is 'attestation pending' — not complete."
+    },
+    {
+      "id": "nursing-reagan-rule",
+      "pattern": "(student (reports?|said|states?|logged|submitted|entered|claims?)|self.reported|logbook entry)",
+      "flags": "i",
+      "message": "Self-reported logbook entries carry source: student and must be labeled 'attestation pending' until corroborated by an instructor attestation event in the record. Do not present self-reported data as verified fact. Trust but verify — and in this context, verify means an instructor signs the record."
+    },
+    {
+      "id": "nursing-oer-attribution",
+      "pattern": "(OpenStax|Open RN|openstax\\.org|openrn\\.nursing)",
+      "flags": "i",
+      "message": "Always append a properly formatted OER attribution when citing OpenStax or Open RN content: '(OpenStax Nursing: [Title], Chapter [X], CC BY 4.0)' or '(Open RN, Chapter [X], CC BY 4.0)'. Include the chapter or section and the CC BY 4.0 license on every citation. Do not paraphrase without attribution."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "nursing-clinical-hours-threshold-warning",
+      "label": "Clinical hours approaching minimum threshold",
+      "logic": "If a student's completed clinical hours are within 20% of the program minimum, surface a warning to the instructor or coordinator. Do not block; do flag.",
+      "trigger": "completedClinicalHours >= (minimumClinicalHours * 0.80) AND completedClinicalHours < minimumClinicalHours",
+      "message": "This student's clinical hours are within 20% of the program minimum. Surface a heads-up to the assigned clinical coordinator so scheduling can be confirmed before the deadline."
+    },
+    {
+      "id": "nursing-ati-score-below-threshold",
+      "label": "ATI score below 70%",
+      "logic": "If any recorded ATI assessment score for the student is below 70%, flag it for instructor attention. Do not block; do flag.",
+      "trigger": "Any ATI score in the student record is below 70.",
+      "message": "One or more ATI scores for this student are below 70%. Flag for instructor review. Include the assessment name, date taken, and score from YOUR OWN RECORDS."
+    },
+    {
+      "id": "nursing-stale-competency-checkin",
+      "label": "More than 30 days since last competency check-in",
+      "logic": "If the most recent competency event (attestation or self-report) in the student record is older than 30 days, surface a staleness warning. Do not block; do flag.",
+      "trigger": "daysSinceLastCompetencyEvent > 30",
+      "message": "This student has no competency activity recorded in the past 30 days. Surface this as a potential gap and recommend the assigned clinical faculty schedule a check-in or skills lab review."
+    }
+  ],
+
+  "disclaimer": "Clinical data shown here reflects records currently in this workspace. This platform does not constitute medical, legal, or regulatory advice. NCLEX readiness determinations, competency sign-offs, and accreditation conclusions are human clinical and administrative judgments. Verify all critical academic decisions with qualified faculty and program leadership.",
+
+  "system_context": "You operate under the Makai School of Nursing clinical governance rules. All statements about student performance, clinical hours, ATI scores, competency status, and accreditation standing must be grounded in the specific student records injected into your context. The key constraint architecture: (1) NCLEX readiness is a human clinical judgment — surface indicators only, never declare. (2) A competency is complete only when a verified instructor attestation event exists in the record — pending is not complete. (3) ATI scores, clinical hour counts, and grades must come from YOUR OWN RECORDS — if data is absent, say so. (4) OER content (OpenStax Nursing, Open RN) must be attributed with title, chapter, and CC BY 4.0 license on every citation. (5) Accreditation standard claims require supporting data in the record — surface the data, let the human interpret the standard. (6) Self-reported logbook entries carry source: student and are 'attestation pending' until an instructor verifies them in the record."
+}

@@ -343,6 +343,58 @@ async function dppLifecycleBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
+// ── Makai School of Nursing — cohort grounding (all 5 nursing workers) ────────
+async function nursingCohortBlock(db, tenantId) {
+  const tenantRef = db.collection("tenants").doc(tenantId);
+  const [students, courses, competencies, instructors] = await Promise.all([
+    safe(tenantRef.collection("nursingStudents").get(), null),
+    safe(tenantRef.collection("nursingCourses").get(), null),
+    safe(tenantRef.collection("nursingCompetencies").get(), null),
+    safe(tenantRef.collection("nursingInstructors").get(), null),
+  ]);
+
+  const sd = docs(students);
+  const cd = docs(courses);
+  const comp = docs(competencies);
+  const inst = docs(instructors);
+
+  if (!sd.length && !cd.length) return "";
+
+  const lines = ["YOUR OWN RECORDS — Makai School of Nursing\n"];
+
+  if (sd.length) {
+    lines.push(`ENROLLED STUDENTS (${sd.length}):`);
+    sd.forEach(s => {
+      const pct = Math.round((s.clinicalHours / (s.clinicalHoursRequired || 500)) * 100);
+      lines.push(`  ${s.name} [${(s.status || "").toUpperCase()}]: clinical ${s.clinicalHours}/${s.clinicalHoursRequired || 500}h (${pct}%), ATI ${s.atiScore}%, ${s.coursesComplete} courses complete`);
+      if (s.notes) lines.push(`    Note: ${s.notes}`);
+    });
+    lines.push("");
+  }
+
+  if (comp.length) {
+    const pending = comp.filter(c => c.status === "pending");
+    const verified = comp.filter(c => c.status === "verified");
+    lines.push(`COMPETENCIES: ${verified.length} verified, ${pending.length} pending sign-off`);
+    pending.forEach(c => lines.push(`  PENDING: ${c.studentId} — ${c.competency} (waiting: ${c.notes || "instructor"})`));
+    verified.forEach(c => lines.push(`  VERIFIED: ${c.studentId} — ${c.competency} (signed by ${c.attestedBy})`));
+    lines.push("");
+  }
+
+  if (cd.length) {
+    lines.push(`ACTIVE COURSES (${cd.length}):`);
+    cd.forEach(c => lines.push(`  ${c.code} — ${c.name}: Week ${c.currentWeek}/${c.totalWeeks}, ${c.enrolled || 0} enrolled`));
+    lines.push("");
+  }
+
+  if (inst.length) {
+    lines.push(`INSTRUCTORS: ${inst.map(i => `${i.name} (${i.role})`).join(", ")}`);
+    lines.push("");
+  }
+
+  return lines.join("\n") + "\n";
+}
+
 const BUILDERS = {
   "platform-hr": staffCredentialsBlock,
   "title-abstract-001": titleAbstractBlock,
@@ -358,6 +410,12 @@ const BUILDERS = {
   "eu-supply-chain-tracer-001": dppSupplyChainBlock,
   "eu-registry-manager-001": dppRegistryBlock,
   "eu-lifecycle-monitor-001": dppLifecycleBlock,
+  // Makai School of Nursing — all 5 workers share one cohort grounding block
+  "nursing-records-001": nursingCohortBlock,
+  "nursing-courses-001": nursingCohortBlock,
+  "nursing-tutor-001": nursingCohortBlock,
+  "nursing-comms-001": nursingCohortBlock,
+  "nursing-accreditation-001": nursingCohortBlock,
 };
 
 /**

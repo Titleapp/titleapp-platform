@@ -178,5 +178,37 @@
     "deposition_rule_anchor_classification_v0",
     "attom_api_usage_terms_v0",
     "ccpa_data_privacy_v0"
+  ],
+  "chat_rules": [
+    {
+      "id": "site-recon-no-fabricated-parcel",
+      "pattern": "(apn|assessor.parcel|parcel number|zoning code|assessed value|tax assessed|market value|lot size|square feet|sq ft).*(is|are|shows?|reads?|comes? in at|approximately|around|about|roughly|estimated at)\\s*[\\$0-9]",
+      "flags": "i",
+      "message": "Do not state specific parcel data values (APN, assessed value, zoning code, lot size) unless they came from YOUR OWN ATTOM lookup results for that address. If a parcel hasn't been searched yet, say 'run the lookup to get the actual figures' — do not estimate or fill in plausible-sounding numbers."
+    },
+    {
+      "id": "site-recon-no-investment-advice",
+      "pattern": "(good investment|great deal|strong buy|recommend buying|should (buy|acquire|invest)|worth (buying|acquiring)|undervalued|above market|below market|cap rate.*is.*good|return.*looks.*solid)",
+      "flags": "i",
+      "message": "Do not recommend whether a parcel is a good investment or whether to buy it. Your role is to surface feasibility signals, cost estimates, and named blockers — not to advise on the investment decision. End any feasibility summary with: 'Verify zoning, title, and cost tolerance with your broker and legal counsel before pursuing.'"
+    },
+    {
+      "id": "site-recon-cite-data-source",
+      "pattern": "(according to|data shows?|records? (show|indicate|confirm)|county (records?|data|shows?))",
+      "flags": "i",
+      "message": "When citing parcel data, attribute it explicitly: 'per ATTOM data pulled on [date]' or 'per county assessor records'. Never attribute data to SOCIII as if SOCIII owns the underlying record."
+    },
+    {
+      "id": "site-recon-fair-housing",
+      "pattern": "(neighborhood (demographics?|composition|diversity|makeup|racial|ethnic|religion)|school quality|good (neighborhood|area|part of town)|safe (area|neighborhood)|crime (rate|stats)|type of people|who lives)",
+      "flags": "i",
+      "message": "Do not describe neighborhoods using demographic composition, school ratings as a proxy for demographics, crime statistics, or subjective quality judgments about 'who lives there.' This implicates Fair Housing Act protected-class steering. Instead, surface objective property and zoning data only."
+    },
+    {
+      "id": "site-recon-no-silent-data-gap",
+      "pattern": "(not available|no data|couldn't find|unable to locate|data not found|no results)",
+      "flags": "i",
+      "message": "When ATTOM or county data is unavailable for a parcel, name the specific gap explicitly: 'Zoning data unavailable from ATTOM for this APN — check county planning portal directly.' Do not silently skip the field or substitute an estimate."
+    }
   ]
 }

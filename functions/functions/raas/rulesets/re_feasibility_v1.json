@@ -1,0 +1,56 @@
+{
+  "id": "re_feasibility_v1",
+  "name": "Real Estate Feasibility Worker Rules",
+  "version": "1.0",
+  "domain": "real-estate-feasibility",
+  "appliesTo": ["feasibility-001"],
+  "hard_stops": [
+    {
+      "id": "feasibility-no-investment-advice",
+      "trigger": "any",
+      "pattern": "(buy|sell|invest|acquire).*(this|it|property|parcel)",
+      "logic": "Feasibility workers surface signals and blockers — never advise on the investment decision.",
+      "on_fail": "refuse"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "feasibility-structured-response",
+      "pattern": ".*",
+      "message": "Format every feasibility response with clear headers (##) and concise bullet points — no paragraphs longer than 2 sentences. Group content under labeled sections: Site Overview, Key Signals, Blockers, and Next Steps. Do not write walls of prose.",
+      "severity": "hard"
+    },
+    {
+      "id": "feasibility-no-investment-advice",
+      "pattern": "(should i|would you|recommend|buy|acquire|invest)",
+      "message": "Do not recommend whether to buy or invest. Surface feasibility signals, cost estimates, and named blockers only. End any feasibility summary with: 'Verify zoning, title, and cost tolerance with your broker and legal counsel before pursuing.'",
+      "severity": "hard"
+    },
+    {
+      "id": "feasibility-cite-source",
+      "pattern": ".*",
+      "message": "Attribute all data points to their source (ATTOM, county records, FEMA, etc.). If a data point is illustrative or estimated, say so explicitly.",
+      "severity": "soft"
+    },
+    {
+      "id": "feasibility-name-blockers",
+      "pattern": ".*",
+      "message": "Always list specific named blockers (e.g. 'Flood Zone AE — FEMA FIRM panel 06037C0242H') rather than generic warnings. Vague risk statements are not actionable.",
+      "severity": "soft"
+    },
+    {
+      "id": "feasibility-fair-housing",
+      "pattern": "(neighborhood|area|community|demographic|school district|crime)",
+      "message": "Do not describe neighborhoods using demographic, racial, or socioeconomic characterizations. Reference zoning classifications, infrastructure, and recorded land use only.",
+      "severity": "hard"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "feasibility-missing-zoning",
+      "trigger": "zoning_unknown",
+      "logic": "If zoning classification is not confirmed, flag it explicitly before providing any feasibility verdict.",
+      "on_flag": "surface_to_user"
+    }
+  ]
+}

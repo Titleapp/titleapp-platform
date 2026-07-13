@@ -41,9 +41,16 @@ export default function VaultGate({ children }) {
   const user = auth.currentUser;
 
   const isGoogle = user?.providerData?.some(p => p.providerId === "google.com");
-  // Custom-token demo users have no provider — gate would always block them.
-  // Auto-unlock so the demo can show the Vault without a credential prompt.
-  const isDemo = !user || (user?.providerData?.length === 0);
+  // Auto-unlock for: custom-token/no-provider users, ?demo=1 URL sessions,
+  // and known demo workspace tenants (URL param is stripped on SPA nav).
+  const DEMO_TENANTS = new Set([
+    "ws_1781920656122_tl9dhn",  // DEMO SPACE
+    "ws_1783659066844_o7m1pm",  // Merritt Capital Group (RE demo)
+    "ws_1783763627546_mv3rpx",  // TRAITLY demo
+  ]);
+  const storedTenant = typeof window !== "undefined" ? (localStorage.getItem("TENANT_ID") || "") : "";
+  const isDemoUrl = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+  const isDemo = !user || (user?.providerData?.length === 0) || isDemoUrl || DEMO_TENANTS.has(storedTenant);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
