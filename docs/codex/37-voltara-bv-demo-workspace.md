@@ -52,24 +52,24 @@ Each SKU represents a distinct product line at a different compliance stage. Tog
 
 | SKU | Product | Application | Charge State | Cluster 3 (LCA) | Overall % | Demo role |
 |-----|---------|-------------|-------------|-----------------|-----------|-----------|
-| VLT-IND24 | 24V Industrial Li-ion | Forklift / warehouse | 🟢 Green | 100% | 94% | The win — ready to submit day one |
-| VLT-IND48 | 48V Industrial Li-ion | Heavy forklift | 🟡 Yellow | 85% | 78% | Almost there — blocked by one missing supplier cert |
-| VLT-LMT12 | 12V LMT Li-ion | E-cargo bike | 🟡 Yellow | 0% | 62% | Hard gate — Cluster 3 at zero, passport generation blocked |
-| VLT-LMT24 | 24V LMT Li-ion | E-scooter fleet | 🟡 Yellow | 0% | 55% | Hard gate — same Cluster 3 block |
-| VLT-EV48 | 48V EV Li-ion | Light EV / micro-mobility | ⬜ Grey | 0% | 28% | EV line — BMS not connected, LCA not started |
-| VLT-EV72 | 72V EV Li-ion | Full EV | ⬜ Grey | 0% | 14% | EV line — just started, lowest priority |
+| VLT-IND24 | Industrial 24V 500Ah | Forklift / warehouse | 🟡 Yellow | 0% | 38% | Hard gate — C3 not initiated; Hanam Cell Corp. not submitted |
+| VLT-IND48 | Industrial 48V 400Ah | Heavy forklift | 🟡 Yellow | 8% | 64% | Advancing — LCA started, Rheinwerk GmbH cert missing |
+| VLT-LMT12 | LMT Module 12V 100Ah | E-cargo bike | 🟡 Yellow | 60% | 87% | Cluster 3 blocked — third-party LCA cert outstanding |
+| VLT-LMT24 | LMT Module 24V 80Ah | E-scooter fleet | 🟢 Green | 80% | 95% | Most complete — LCA cert still needed to reach 100% |
+| VLT-EV48 | EV Module 48V 200Ah | Light EV / micro-mobility | ⬜ Grey | 0% | 0% | EV line — BMS not connected, not yet started |
+| VLT-EV72 | EV Module 72V 150Ah | Full EV | ⬜ Grey | 0% | 8% | EV line — just started, lowest priority |
 
 **Cluster completion by SKU (the 90 attributes across 7 clusters):**
 
 | Cluster | Topic | IND24 | IND48 | LMT12 | LMT24 | EV48 | EV72 |
 |---------|-------|-------|-------|-------|-------|------|------|
-| 1 | General info + ID | 100% | 100% | 100% | 100% | 100% | 80% |
-| 2 | Cell chemistry + electrochemical | 100% | 95% | 90% | 85% | 70% | 40% |
-| 3 | Carbon footprint (LCA) | 100% | 85% | 0% | 0% | 0% | 0% |
-| 4 | Supply chain due diligence | 90% | 75% | 60% | 55% | 20% | 10% |
-| 5 | Battery materials + composition | 95% | 80% | 65% | 60% | 25% | 10% |
-| 6 | Safety + performance | 100% | 100% | 95% | 90% | 80% | 50% |
-| 7 | SoH + durability (lifecycle) | 95% | 85% | 70% | 65% | 0% | 0% |
+| 1 | General info + ID | 90% | 100% | 100% | 100% | 0% | 55% |
+| 2 | Compliance + certifications | 75% | 100% | 100% | 100% | 0% | 0% |
+| 3 | Carbon footprint (LCA) **hard gate** | **0%** | 8% | 60% | 80% | 0% | 0% |
+| 4 | Supply chain due diligence | 30% | 65% | 95% | 100% | 0% | 0% |
+| 5 | Battery materials + composition | 20% | 70% | 95% | 100% | 0% | 0% |
+| 6 | Circularity + resource efficiency | 0% | 40% | 90% | 100% | 0% | 0% |
+| 7 | SoH + durability (lifecycle) | 0% | 55% | 85% | 100% | 0% | 0% |
 
 ---
 
@@ -79,10 +79,10 @@ Four suppliers cover Voltara's component sourcing. They are at different stages 
 
 | Supplier | HQ | Portal language | Materials covered | Products supplied | Status |
 |----------|-----|----------------|-------------------|-------------------|--------|
-| Zhenghe Celltech Co. | Ningde, China | **Mandarin (ZH)** | Cell chemistry, electrodes | VLT-IND24, VLT-IND48 | ✅ Submitted + verified |
-| Hanam Cell Corp. | Suwon, South Korea | **Korean (KO)** | Cell chemistry, electrolyte | VLT-LMT12, VLT-LMT24 | ✅ Submitted, cert pending renewal |
-| ShinPower Corp. | Seoul, South Korea | **Korean (KO)** | Cell assembly, BMS | VLT-EV48, VLT-EV72 | ⏳ Invited — not yet submitted |
-| Rheinwerk GmbH | Ludwigshafen, Germany | **German (DE)** | Lithium, cobalt, manganese | VLT-IND48 (partial) | ⚠️ Partial — conflict minerals cert missing |
+| Zhenghe Celltech Co. | Ningde, China | **Mandarin (ZH)** | Cell (EV modules) | VLT-EV48, VLT-EV72 | ✅ Connected + verified |
+| Hanam Cell Corp. | Suwon, South Korea | **Korean (KO)** | Cell (Industrial) | VLT-IND24, VLT-IND48 | ⏳ Invited — not yet submitted |
+| ShinPower Corp. | Seoul, South Korea | **Korean (KO)** | Cell (LMT modules) | VLT-LMT12, VLT-LMT24 | ✅ Connected, cert renewal pending Nov 2026 |
+| Rheinwerk GmbH | Ludwigshafen, Germany | **German (DE)** | Electrolyte + cathode | VLT-IND24, VLT-IND48, VLT-LMT12, VLT-LMT24 | ⚠️ Partial — conflict minerals cert missing |
 
 **Voltara BV (the client):** Dutch (NL) — client-facing reports and canvas labels delivered in Dutch.  
 **Platform/Elara interface:** English (EN) — base language for the advisor and platform chrome.
@@ -93,7 +93,7 @@ The supplier portal UI renders in the supplier's language. Elara operates in Eng
 
 **Korean is a new scope not yet in CODEX 34** — Hanam Cell Corp. and ShinPower add KO as a required supplier portal language. CODEX 34 amendment needed before build.
 
-The Rheinwerk GmbH gap is what's holding VLT-IND48 at 78% instead of 100%. The ShinPower Corp. non-submission is what's blocking EV lines from Cluster 4+5 data.
+The Hanam Cell Corp. non-submission is what's holding VLT-IND24 and VLT-IND48 at low Cluster 4+5 coverage. The Rheinwerk GmbH cert gap is holding both IND48 and LMT12 at partial Cluster 3. ShinPower is connected and verified — their submission feeds VLT-LMT12 and VLT-LMT24 data automatically.
 
 ---
 
@@ -101,18 +101,18 @@ The Rheinwerk GmbH gap is what's holding VLT-IND48 at 78% instead of 100%. The S
 
 ### Worker 1 — Compliance Auditor (`eu-battery-dpp-001`)
 **Reads:** `dppProducts/{sku}` with full cluster breakdown per attribute  
-**Can do:** Elara answers "what's missing for VLT-LMT12?" with a specific attribute-level gap list. Answers "which SKUs are ready for registration?" with VLT-IND24 as the answer. Generates a status report on demand.  
-**Demo moment:** Ask Elara why VLT-LMT24 is blocked. She identifies Cluster 3 at 0% and names the specific missing attributes (LCA report, carbon intensity per kWh, recycled content %).
+**Can do:** Elara answers "what's missing for VLT-IND24?" with Cluster 3 not initiated + Hanam Cell Corp. data gap. Answers "which SKU is closest to registration?" with VLT-LMT24 (95%, C3=80%). Generates a full status report on demand.  
+**Demo moment:** Ask Elara which SKU is furthest from compliance. She identifies VLT-EV48/EV72 as not started, and VLT-IND24 as the highest-priority industrial SKU that's blocked — Cluster 3 never initiated, Hanam Cell Corp. hasn't submitted data yet.
 
 ### Worker 2 — Passport Builder (`eu-passport-builder-001`)
 **Reads:** Same `dppProducts` + cluster data  
-**Can do:** Shows VLT-IND24 as generation-ready. Attempts `dpp:generate` on VLT-LMT12 and RAAS hard-gates it (Cluster 3 = 0%). Tab 2 (Passport Preview) is always available even for gated SKUs.  
-**Demo moment:** Try to generate VLT-LMT12's passport. Elara refuses — "Cluster 3 carbon footprint data is required before I can generate this passport" — and shows exactly what's needed to unblock it.
+**Can do:** Shows all 6 SKUs in generation status — VLT-LMT12 and VLT-LMT24 as "Cluster 3 blocked" (C3 at 60% and 80% respectively), IND24 and IND48 as "Data in progress" (C3 at 0% and 8%). Tab 2 (Passport Preview) renders even for blocked SKUs.  
+**Demo moment:** Try to generate VLT-LMT12's passport. Elara refuses — "Cluster 3 is at 60% — I need the third-party LCA certificate to unlock passport generation." She shows exactly what's outstanding. This proves the rules engine is real: not a UI toggle, a hard RAAS enforcement.
 
 ### Worker 3 — Supply Chain Tracer (`eu-supply-chain-tracer-001`)
 **Reads:** `dppSuppliers/` + supplier→product relationships  
-**Can do:** Shows Zhenghe Celltech as fully verified. Flags Rheinwerk GmbH conflict minerals cert as the specific gap blocking VLT-IND48. Shows ShinPower Corp. as invited but not submitted.  
-**Demo moment:** Ask what happens when ShinPower Corp. submits. Elara explains their data will flow automatically to both EV SKU passports — one submission, two passports satisfied.
+**Can do:** Shows all 4 suppliers — Zhenghe Celltech (EV lines, verified), ShinPower Corp. (LMT lines, connected), Hanam Cell Corp. (Industrial lines, invited/not submitted), Rheinwerk GmbH (all lines, partial cert). Flags Rheinwerk conflict minerals cert as the specific gap.  
+**Demo moment:** Ask what happens when Hanam Cell Corp. submits. Elara explains their data flows automatically to both VLT-IND24 and VLT-IND48 passports — one supplier submission, two passports' Clusters 4+5 satisfied. This is the network effect that makes the platform defensible.
 
 ### Worker 4 — Registry Manager (`eu-registry-manager-001`)
 **Reads:** `dppRegistryStatus/` + product readiness  
@@ -233,7 +233,7 @@ One document per SKU in the field. Fields:
 
 **The hard gate (1 minute):** Switch to Worker 2. Click "Generate Passport" on VLT-LMT12. Elara refuses. Shows exactly what Cluster 3 needs. This proves the rules engine is real — AI can't bypass compliance requirements.
 
-**The supply chain story (1 minute):** Switch to Worker 3. Show Zhenghe Celltech as verified, Rheinwerk GmbH as partial, Hanam Cell Corp. as invited but not submitted. Ask Elara: "What happens when Hanam submits?" She explains the fan-out — one submission, two passports (VLT-IND24 + VLT-IND48) satisfied automatically. This is the network effect that makes the platform defensible.
+**The supply chain story (1 minute):** Switch to Worker 3. Show ShinPower Corp. as verified (LMT lines already fed), Hanam Cell Corp. as invited but not submitted (blocking IND lines), Rheinwerk GmbH as partial cert (Cluster 3 blocker across all lines). Ask Elara: "What happens when Hanam submits?" She explains the fan-out — one supplier submission, VLT-IND24 + VLT-IND48 Clusters 4+5 satisfied automatically. This is the network effect that makes the platform defensible.
 
 **The urgency close (30 seconds):** Switch to Worker 4. Registry opens in 7 days. VLT-IND24 is queued. Everything is real — the date, the readiness status, the submission plan. No theatre.
 

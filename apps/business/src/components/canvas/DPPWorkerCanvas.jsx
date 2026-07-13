@@ -150,7 +150,7 @@ const CONNECTORS = [
 
 // ── Worker 4 — Registry submission pipeline ───────────────────────────────────
 
-const DAYS_TO_REGISTRY = 8; // 19 Jul 2026 minus demo date 11 Jul 2026
+const DAYS_TO_REGISTRY = Math.max(0, Math.ceil((new Date("2026-07-19") - new Date()) / (1000 * 60 * 60 * 24)));
 
 const REG_STATUS = SKUS.map(s => {
   let regPct, regStatus, regColor, regNote;
@@ -696,12 +696,21 @@ function PBTabQueue() {
 function PBTabExport() {
   return (
     <div>
-      <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — Registry not yet live</div>
-        <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
-          The EU DPP Central Registry opens in {DAYS_TO_REGISTRY} days (19 July 2026). Any passport ID or QR code generated now is a mock stub. <strong>Do not print QR codes on product labels</strong> before the real registry is live and your passport is officially registered.
+      {DAYS_TO_REGISTRY > 0 ? (
+        <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — Registry not yet live</div>
+          <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
+            The EU DPP Central Registry opens in {DAYS_TO_REGISTRY} day{DAYS_TO_REGISTRY !== 1 ? "s" : ""} (19 July 2026). Any passport ID or QR code generated now is a mock stub. <strong>Do not print QR codes on product labels</strong> before the real registry is live and your passport is officially registered.
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{ padding: "16px", background: "#ecfdf5", border: "2px solid #6ee7b7", borderRadius: 12, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#065f46", marginBottom: 6 }}>✓ Registry is live — 19 Jul 2026</div>
+          <div style={{ fontSize: 12, color: "#064e3b", lineHeight: 1.6 }}>
+            The EU DPP Central Registry is open. Products with completed passports (Cluster 3 at 100%) are eligible for official submission. Submitted passports receive a real registry ID and scannable QR code.
+          </div>
+        </div>
+      )}
 
       <SectionLabel text="Products eligible for export" />
       <div style={{ padding: "24px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", textAlign: "center", color: "#64748b", fontSize: 13, marginBottom: 20 }}>
@@ -1056,12 +1065,14 @@ function RMTabQueue() {
 function RMTabQR() {
   return (
     <div>
-      <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — QR download disabled</div>
-        <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
-          QR codes are mock stubs until passports are registered with the EU DPP Central Registry. QR download is disabled until official registration is confirmed. Do not use test QR codes on product labels.
+      {DAYS_TO_REGISTRY > 0 && (
+        <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — QR download disabled</div>
+          <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
+            QR codes are mock stubs until passports are registered with the EU DPP Central Registry (opens 19 Jul 2026, {DAYS_TO_REGISTRY} day{DAYS_TO_REGISTRY !== 1 ? "s" : ""}). QR download is disabled until official registration is confirmed. Do not use test QR codes on product labels.
+          </div>
         </div>
-      </div>
+      )}
       <SectionLabel text="QR code status by product" />
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {SKUS.map(s => (
