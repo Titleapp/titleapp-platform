@@ -3251,6 +3251,18 @@ END DELIVERY RULES.
                 }
               }
 
+              // Language mirror — respond in the user's language.
+              // DPP workers get the explicit supported-language list (EU/APAC scope).
+              // All other workers get the universal instruction.
+              if (workerPrompt) {
+                const _DPP_SLUGS = new Set(["eu-battery-dpp-001","eu-passport-builder-001","eu-supply-chain-tracer-001","eu-registry-manager-001","eu-lifecycle-monitor-001"]);
+                if (_DPP_SLUGS.has(workerSlug)) {
+                  workerPrompt += `\n\nLANGUAGE RULE: Detect the language the user writes in and respond in that same language throughout your entire reply — do not switch mid-response. Supported languages for this worker: Dutch (NL), German (DE), Spanish (ES), French (FR), Mandarin Chinese (ZH), Korean (KO), Japanese (JA), English (EN). If the user's language is unclear or unsupported, default to English. Regulatory citations (EU Battery Regulation 2023/1542, Annex XIII attribute names, ISO standards) remain in their authoritative form regardless of UI language — do not translate regulation article numbers or standard codes.`;
+                } else {
+                  workerPrompt += `\n\nLANGUAGE RULE: Respond in the same language the user writes in. If unclear, default to English.`;
+                }
+              }
+
               // Load conversation history — strip prior assistant turns that
               // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
