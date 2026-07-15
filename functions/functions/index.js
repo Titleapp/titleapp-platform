@@ -2009,6 +2009,23 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/re:hunt — CODEX 39: Deal Hunt mode. Scans ATTOM for properties
+    // matching deal parameters. Returns ranked list by distress score.
+    if (route === "/re:hunt" && method === "POST") {
+      try {
+        const reAuth = await requireFirebaseUser(req, res);
+        if (reAuth.handled) return reAuth.res;
+        const { markets = [], assetClasses = [], minDistressScore = 0, maxResults = 20 } = body || {};
+        if (!markets.length) return jsonError(res, 400, "markets required");
+        const { huntDeals } = require("./services/re/dealHunt");
+        const result = await huntDeals({ markets, assetClasses, minDistressScore, maxResults }, process.env.ATTOM_API_KEY);
+        return res.json(result);
+      } catch (e) {
+        console.error("re:hunt failed:", e);
+        return jsonError(res, 500, "Hunt failed");
+      }
+    }
+
     // On-demand worker health. ?run=1 runs a live canary pass (alerts
     // suppressed — only the scheduled job texts/emails). Otherwise returns the
     // last recorded status from config/workerHealth.
@@ -3450,7 +3467,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 },
               }];
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
-              if (workerSlug === "cre-analyst") {
+              if (workerSlug === "cre-analyst" || workerSlug === "cre-analyst-001") {
                 businessTools.push({
                   name: "find_distressed_cre",
                   description: "Search LIVE ATTOM data for distressed / underwater / default-risk commercial real estate in a metro (e.g. 'San Francisco', 'Oakland', 'Bay Area', 'Austin', 'Los Angeles'). Call this whenever the user asks to find distressed CRE, underwater office, capital-stack opportunities, or commercial property to buy at a discount in a place. Returns scored candidates that also render on the Map canvas.",
@@ -3751,6 +3768,13 @@ IMAGE & VISUAL RULES (MANDATORY):
 - NEVER say you "created", "generated", "made", "drew", or "added" an image, and never describe images as though they exist, unless you actually called generate_image this turn. Fabricating images is strictly forbidden.
 - You generate ONE image per message. If the user asks for several, generate the FIRST now by calling the tool, then offer to do the next one.
 - You CANNOT generate video. If asked, say so in one plain sentence and offer a script or storyboard instead. Never speculate that another worker or "the platform" can generate video.`;
+
+              // S52.CRE — Inject canvas address context so Alex knows what the user is looking at
+              // when they open the CRE Analyst canvas and then switch to chat.
+              if (workerPrompt && body.creCanvas && body.creCanvas.address) {
+                const creCanvasCtx = `\n\nCURRENT CANVAS CONTEXT:\nThe user is looking at: ${body.creCanvas.address}\nTabs visible: ${(body.creCanvas.tabs || []).map(t => t.label).join(", ")}\n${body.creCanvas.assessedValue ? `Assessed Value: ${body.creCanvas.assessedValue}` : ""}\n${body.creCanvas.lastSale ? `Last Sale: ${body.creCanvas.lastSale}` : ""}\n\nWhen the user asks questions like "what's the NOI?" or "what do you think about this deal?" they are referring to THIS address.`;
+                workerPrompt = workerPrompt + creCanvasCtx;
+              }
 
               workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
               let aiResponse = await anthropic.messages.create({

@@ -80,6 +80,10 @@ async function createBallot(fundraiseId, input, createdBy) {
 
   const snapshot = await snapshotCapTable(fundraiseId);
 
+  if (snapshot.totalShares <= 0) {
+    throw new Error("createBallot: no eligible voters in this fundraise — add investors before creating a ballot");
+  }
+
   const ballotId = `b_${crypto.randomBytes(8).toString("hex")}`;
   const ref = getDb()
     .collection("fundraises").doc(fundraiseId)
@@ -99,6 +103,7 @@ async function createBallot(fundraiseId, input, createdBy) {
     snapshotShares: snapshot.shares,
     snapshotTotalShares: snapshot.totalShares,
     voteCount: 0,
+    dealId: (input.dealId || null),
   });
 
   return {
@@ -179,6 +184,29 @@ async function castVote(fundraiseId, ballotId, investorId, choice) {
 
   if (isNew) {
     await ballotRef.update({ voteCount: admin.firestore.FieldValue.increment(1) });
+  }
+
+  // Store DTC hash as audit artifact if ballot has a dealId and LP has a dtcId
+  let dtcId = null;
+  let dtcHash = null;
+  try {
+    if (ballot.dealId) {
+      const lpSnap = await admin.firestore()
+        .collection("irDeals").doc(ballot.dealId)
+        .collection("investors").doc(investorId).get();
+      if (lpSnap.exists) dtcId = lpSnap.data().dtcId || null;
+      if (dtcId) {
+        dtcHash = crypto.createHash("sha256")
+          .update(`${dtcId}:${investorId}:${ballot.dealId}`)
+          .digest("hex");
+      }
+    }
+  } catch (dtcErr) {
+    console.error("castVote: DTC lookup failed (non-fatal):", dtcErr.message);
+  }
+
+  if (dtcId || dtcHash) {
+    await voteRef.set({ dtcId, dtcHash }, { merge: true });
   }
 
   return { ok: true, ballotId, investorId, choice, sharesWeight, isUpdate: !isNew };

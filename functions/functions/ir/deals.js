@@ -105,6 +105,7 @@ async function createDeal(tenantId, dealData) {
     investorCount: 0,
     waterfallTiers: dealData.waterfallTiers || typeDef.defaultWaterfall || [],
     metadata: dealData.metadata || {},
+    fundraiseId: dealData.fundraiseId || null,
     createdAt: nowServerTs(),
     updatedAt: nowServerTs(),
   };
@@ -234,7 +235,7 @@ async function addDealInvestor(tenantId, dealId, investorData) {
     return { ok: false, error: "Cannot add investors to a closed deal" };
   }
 
-  const { investorId, name, email, commitmentAmount } = investorData;
+  const { investorId, name, email, commitmentAmount, dtcId } = investorData;
   if (!name || !commitmentAmount) {
     return { ok: false, error: "Missing investor name or commitment amount" };
   }
@@ -247,6 +248,7 @@ async function addDealInvestor(tenantId, dealId, investorData) {
     fundedAmount: 0,
     status: "committed",
     accredited: investorData.accredited || false,
+    dtcId: dtcId || null,
     committedAt: nowServerTs(),
   };
 
@@ -259,6 +261,26 @@ async function addDealInvestor(tenantId, dealId, investorData) {
     investorCount: admin.firestore.FieldValue.increment(1),
     updatedAt: nowServerTs(),
   });
+
+  // Dual-write to fundraises/{fundraiseId}/investors if deal has a fundraiseId
+  try {
+    const freshDealDoc = await db.collection("irDeals").doc(dealId).get();
+    const freshDeal = freshDealDoc.data();
+    if (freshDeal && freshDeal.fundraiseId) {
+      await db.collection("fundraises").doc(freshDeal.fundraiseId)
+        .collection("investors").doc(ref.id).set({
+          investorId: ref.id,
+          name,
+          email: email || "",
+          sharesIssued: Number(commitmentAmount),
+          dtcId: dtcId || null,
+          syncedAt: nowServerTs(),
+        });
+    }
+  } catch (syncErr) {
+    console.error("addDealInvestor: fundraises sync failed (non-fatal):", syncErr.message);
+    return { ok: true, dealInvestorId: ref.id, warning: "Governance roster sync failed — contact support to re-sync LP before ballot creation." };
+  }
 
   return { ok: true, dealInvestorId: ref.id };
 }

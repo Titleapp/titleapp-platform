@@ -136,6 +136,10 @@ function Cards({ items }) {
 }
 
 function Table({ title, columns, rows }) {
+  // Normalize rows: support both { band, cells } objects and plain arrays
+  const normalizedRows = (rows || []).map(r =>
+    Array.isArray(r) ? { band: "WHITE", cells: r } : r
+  );
   return (
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
@@ -143,7 +147,7 @@ function Table({ title, columns, rows }) {
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600 }}>
           {columns.map((col, i) => <div key={i} style={{ padding: "8px 10px" }}>{col}</div>)}
         </div>
-        {rows.map((r, i) => { const cc = c(r.band); return (
+        {normalizedRows.map((r, i) => { const cc = c(r.band); return (
           <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, fontSize: 12, borderTop: "1px solid #f1f5f9", borderLeft: `3px solid ${cc.dot}`, background: i % 2 ? "#fafafa" : "#fff" }}>
             {r.cells.map((cell, j) => <div key={j} style={{ padding: "8px 10px", color: j === r.cells.length - 1 ? cc.text : "#334155", fontWeight: j === r.cells.length - 1 ? 600 : 400 }}>{cell}</div>)}
           </div>
@@ -158,15 +162,22 @@ function Bars({ title, items, note }) {
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((b, i) => { const cc = c(b.band); return (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 150, fontSize: 12, color: "#475569", flexShrink: 0 }}>{b.label}</div>
-            <div style={{ flex: 1, height: 16, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ width: `${Math.max(b.pct || 0, 1)}%`, height: "100%", background: cc.dot, opacity: (b.pct || 0) === 0 ? 0.35 : 1, borderRadius: 4 }} />
+        {items.map((b, i) => {
+          const cc = c(b.band);
+          // Support both explicit pct (fixture format) and value/max (live canvas format)
+          const pct = b.pct != null ? b.pct : (b.max ? Math.min(100, (Number(b.value) / Number(b.max)) * 100) : 0);
+          const displayValue = typeof b.value === "number" ? "$" + Number(b.value).toLocaleString() : b.value;
+          const barColor = b.color || cc.dot;
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 150, fontSize: 12, color: "#475569", flexShrink: 0 }}>{b.label}</div>
+              <div style={{ flex: 1, height: 16, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${Math.max(pct, 1)}%`, height: "100%", background: barColor, opacity: pct === 0 ? 0.35 : 1, borderRadius: 4 }} />
+              </div>
+              <div style={{ width: 56, textAlign: "right", fontSize: 12, fontWeight: 600, color: cc.text }}>{displayValue}</div>
             </div>
-            <div style={{ width: 56, textAlign: "right", fontSize: 12, fontWeight: 600, color: cc.text }}>{b.value}</div>
-          </div>
-        ); })}
+          );
+        })}
       </div>
       {note && <div style={{ fontSize: 12, fontWeight: 600, color: "#15803d", marginTop: 8 }}>✓ {note}</div>}
     </div>
@@ -218,6 +229,49 @@ function StreetViewCard({ address, label }) {
   );
 }
 
+function GovernanceBlock({ title, proposals }) {
+  const items = proposals || [];
+  const PURPLE = "#7c3aed";
+  const YELLOW = "#d97706";
+  const GREEN = "#16a34a";
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {title && <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>}
+      {!items.length && (
+        <div style={{ padding: "16px", background: "#f8fafc", borderRadius: 10, fontSize: 13, color: "#94a3b8", textAlign: "center" }}>
+          No open proposals — all governance votes are up to date.
+        </div>
+      )}
+      {items.map((p, i) => {
+        const turnoutPct = p.quorumPct || 0;
+        const voteCount = p.voteCount || 0;
+        return (
+          <div key={p.id || i} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{p.title}</div>
+                {p.deal && <div style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>Deal: {p.deal}</div>}
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: p.status === "open" ? GREEN : "#64748b", background: p.status === "open" ? "#dcfce7" : "#f1f5f9", borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap" }}>
+                {p.status === "open" ? "OPEN" : (p.status || "").toUpperCase()}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+              <span>Closes {p.deadline || "—"}</span>
+              <span>Quorum {p.quorumPct || 0}%</span>
+              <span>{voteCount} vote{voteCount !== 1 ? "s" : ""} cast</span>
+            </div>
+            <div style={{ background: "#e2e8f0", borderRadius: 999, height: 6, overflow: "hidden" }}>
+              <div style={{ background: PURPLE, borderRadius: 999, height: "100%", width: `${Math.min(100, turnoutPct)}%`, transition: "width 0.3s" }} />
+            </div>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Turnout progress toward {p.quorumPct || 0}% quorum</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Block({ block }) {
   switch (block.type) {
     case "heroes": return <Heroes items={block.items} />;
@@ -232,6 +286,7 @@ function Block({ block }) {
     case "map": return <div style={{ marginBottom: 18 }}><MapCard resolved={{ locations: block.locations, region: block.region, address: block.address, mapType: block.mapType }} /></div>;
     case "streetview":
     case "image": return <StreetViewCard address={block.address} label={block.label} />;
+    case "governance": return <GovernanceBlock title={block.title} proposals={block.proposals} />;
     default: return null;
   }
 }
@@ -256,6 +311,36 @@ export default function RealEstateWorkerCanvas({ worker }) {
   // Only show the property search on property/RE workers.
   const ident = `${worker?.vertical || ""} ${slug || ""}`;
   const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
+  const isIRWorker = /ir-worker|investor.relat/i.test(slug || "");
+
+  // IR Worker: fetch live canvas spec from Firestore via ir:canvas route
+  useEffect(() => {
+    if (!isIRWorker) return;
+    let cancelled = false;
+    setLiveBusy(true);
+    setLiveErr(null);
+    (async () => {
+      try {
+        const auth = getAuth();
+        const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const resp = await fetch(`${apiBase}/api?path=/v1/ir:canvas`, {
+          headers: {
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          },
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!cancelled && json.ok && json.canvasSpec) {
+          setLiveSpec(json.canvasSpec);
+        }
+      } catch (e) {
+        if (!cancelled) setLiveErr("Could not load live portfolio data.");
+      } finally {
+        if (!cancelled) setLiveBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isIRWorker]);
 
   async function doLookup(e, addrOverride) {
     if (e) e.preventDefault();
@@ -273,20 +358,9 @@ export default function RealEstateWorkerCanvas({ worker }) {
         body: JSON.stringify({ address: addr }),
       });
       const j = await resp.json();
-      if (j.ok && j.canvasSpec) {
-        // Merge the live parcel data with the base canvas spec so analysis tabs
-        // (Entitlement Roadmap, Citations, etc.) survive the lookup.
-        const liveTabs = j.canvasSpec.tabs || [];
-        const baseTabs = baseData?.tabs || [];
-        const liveIds = new Set(liveTabs.map(t => t.id));
-        const merged = {
-          ...baseData,
-          ...j.canvasSpec,
-          tabs: [...liveTabs, ...baseTabs.filter(t => !liveIds.has(t.id))],
-        };
-        setLiveSpec(merged);
-      } else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
-    } catch (_err) {
+      if (j.ok && j.canvasSpec) setLiveSpec(j.canvasSpec);
+      else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
+    } catch (err) {
       setLiveErr("Lookup failed — try again.");
     } finally {
       setLiveBusy(false);
@@ -355,7 +429,6 @@ export default function RealEstateWorkerCanvas({ worker }) {
 // worker, including freshly-built sandbox workers) OR matches a seed fixture.
 // Name kept as isREWorker to avoid churn across call sites; it's no longer
 // RE-specific.
-// eslint-disable-next-line react-refresh/only-export-components
 export function isREWorker(worker) {
   if (!worker) return false;
   if (isValidCanvasSpec(worker.canvasSpec || worker.canvas)) return true;
