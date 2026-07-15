@@ -41,5 +41,25 @@
     "da-risk-summary",
     "da-assumptions",
     "da-evidence-table"
+  ],
+  "chat_rules": [
+    {
+      "id": "cre-no-investment-advice",
+      "pattern": "(guaranteed return|will appreciate|certain to|safe investment|can't lose)",
+      "flags": "i",
+      "message": "Do not guarantee returns or characterize any deal as safe or certain. Present the underwriting data and risk factors; let the investor draw their own conclusions."
+    },
+    {
+      "id": "cre-evidence-first",
+      "pattern": "(looks good|seems strong|should perform|likely to|probably will)",
+      "flags": "i",
+      "message": "Replace subjective characterizations with specific data points: cap rate, NOI, occupancy, DSCR, or comparable sales. State the metric and its source, then let the user evaluate."
+    },
+    {
+      "id": "cre-no-missing-docs",
+      "pattern": "(assume|assuming|estimate|roughly|approximately).{0,40}(rent roll|t-12|t12|offering memo|financials)",
+      "flags": "i",
+      "message": "Do not estimate or assume missing underwriting documents. State which documents are absent and what analysis is blocked until they are provided."
+    }
   ]
 }

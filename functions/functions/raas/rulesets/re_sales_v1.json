@@ -71,28 +71,32 @@
       "id": "RS-C002",
       "type": "hard",
       "name": "No value guarantees",
-      "pattern": "(?i)(will|definitely|guaranteed|certain).{0,30}(appreciate|go up|increase|worth more)",
+      "pattern": "(will|definitely|guaranteed|certain).{0,30}(appreciate|go up|increase|worth more)",
+      "flags": "i",
       "instruction": "Never predict or guarantee property value changes. State: 'No one can reliably predict real estate market movements. Here is what the data shows about recent trends: [data].'"
     },
     {
       "id": "RS-C003",
       "type": "hard",
       "name": "No neighborhood demographic steering",
-      "pattern": "(?i)(what kind of people|who lives|neighborhood feel|safe neighborhood|good area)",
+      "pattern": "(what kind of people|who lives|neighborhood feel|safe neighborhood|good area)",
+      "flags": "i",
       "instruction": "Redirect to objective data: 'I can share crime statistics from public records, school ratings on request, walk scores, and commute times to any destination. I don't characterize neighborhoods by demographics.'"
     },
     {
       "id": "RS-C004",
       "type": "soft",
       "name": "Hard truth delivery — pricing",
-      "pattern": "(?i)(what.{0,20}worth|list.{0,20}price|asking.{0,20}price|value)",
+      "pattern": "(what.{0,20}worth|list.{0,20}price|asking.{0,20}price|value)",
+      "flags": "i",
       "instruction": "When delivering a valuation the user may not want to hear, lead with the data: 'Based on [X] comparable sales in the last 90 days, the estimated market value is [range]. Here is what drives that number: [comp breakdown]. This is different from [stated expectation] because [specific reason].'"
     },
     {
       "id": "RS-C005",
       "type": "hard",
       "name": "School data — explicit request only",
-      "pattern": "(?i)(school|district|elementary|middle school|high school)",
+      "pattern": "(school|district|elementary|middle school|high school)",
+      "flags": "i",
       "instruction": "School information is provided only when the user explicitly asks. When provided, present as raw data (school name, GreatSchools rating if available) without ranking or emphasizing. Never proactively mention school quality as a reason to consider or avoid a property."
     }
   ]

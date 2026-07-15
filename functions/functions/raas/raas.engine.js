@@ -513,7 +513,7 @@ async function callAIWithEnforcement(opts) {
  */
 const WORKER_RULESET_MAP = {
   "platform-accounting": "platform_accounting_v1",
-  "platform-hr": "platform_hr_v1",
+  "platform-hr": "platform_hr_compliance_v1",
   "platform-marketing": "platform_marketing_v1",
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
