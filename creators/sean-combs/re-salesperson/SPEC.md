@@ -1,4 +1,4 @@
-# Worker: RE Salesperson
+# Worker: Real Estate Advocate
 **Slug:** re-salesperson
 **Vertical:** real-estate
 **Status:** draft

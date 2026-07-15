@@ -531,125 +531,116 @@ export const RE_CANVAS = {
     ],
   },
 
-  // ─────────────────── INVESTOR RELATIONS ─────────────────────────────────────
-  "investor-relations": {
-    title: "Investor Relations — Domain Point",
-    subtitle: "300 W 6th St, Austin TX 78701 · 24-unit mixed-use · 8 LPs · $4.25M committed",
-    disclaimer: "Merritt Capital Group, LLC — LP reporting",
-    attomLive: false,
-    cas: { RED: 2, YELLOW: 3, BLUE: 1, WHITE: 2, GREEN: 2 },
+  // ───────────────────────── REAL ESTATE ADVOCATE ─────────────────────────
+  "re-salesperson": {
+    title: "Real Estate Advocate — SF Bay Area",
+    subtitle: "Pure-fiduciary · no commission · works for you only",
+    disclaimer: "Illustrative sample — tell me an address or search criteria to get started",
+    cas: { RED: 0, YELLOW: 2, BLUE: 1, WHITE: 3, GREEN: 2 },
     tabs: [
-      { id: "overview", label: "Overview", blocks: [
-        { type: "kpis", items: [
-          { label: "Total AUM",         value: "$16.1M", band: "GREEN"  },
-          { label: "Total LPs",         value: "26",     band: "WHITE"  },
-          { label: "Active deals",      value: "2",      band: "GREEN"  },
-          { label: "Open capital call", value: "$130K",  band: "YELLOW" },
+      { id: "search", label: "Search", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "How to search", body: "Tell me what you are looking for — location, price range, beds, baths, and any must-haves. I will pull live listings and run a CMA on any address you want to dig into. I have no commission and no financial interest in which property you choose." },
         ] },
-        { type: "assetlist", title: "Portfolio",
+        { type: "assetlist", title: "Sample listings — SF Bay Area",
           items: [
             {
-              id: "domain-point", band: "YELLOW",
-              name: "Domain Point",
-              address: "300 W 6th St, Austin, TX 78701",
-              meta: "24-unit mixed-use development · 8 LPs",
-              status: "Active — 70% complete",
-              statusBand: "YELLOW",
+              id: "sample-001", band: "GREEN",
+              name: "2142 Ashby Ave, Berkeley, CA 94705",
+              address: "3 bed · 2 bath · 1,420 sqft · 1927",
+              meta: "7 days on market · $695/sqft",
+              status: "Priced at estimate",
+              statusBand: "GREEN",
               kpis: [
-                { label: "AUM",         value: "$4.25M"   },
-                { label: "Paid in",     value: "$3.4M"    },
-                { label: "Outstanding", value: "$850K"    },
-                { label: "Delivery",    value: "Oct 2026" },
+                { label: "List price", value: "$988,000" },
+                { label: "CMA mid", value: "$972,000" },
+                { label: "Diff", value: "+1.6%" },
+                { label: "DOM", value: "7 days" },
               ],
               flags: [
-                { band: "RED",    text: "$130K capital call outstanding — July 30 deadline" },
-                { band: "YELLOW", text: "GC contract vote open — 3 LPs pending" },
+                { band: "GREEN", text: "Priced within CMA range — data supports the ask" },
+                { band: "WHITE", text: "Inspection contingency recommended" },
+              ],
+            },
+            {
+              id: "sample-002", band: "YELLOW",
+              name: "3801 Howe St, Oakland, CA 94611",
+              address: "4 bed · 2.5 bath · 2,100 sqft · 1941",
+              meta: "22 days on market · $571/sqft",
+              status: "Listed above estimate",
+              statusBand: "YELLOW",
+              kpis: [
+                { label: "List price", value: "$1,199,000" },
+                { label: "CMA mid", value: "$1,040,000" },
+                { label: "Diff", value: "+15.3%" },
+                { label: "DOM", value: "22 days" },
+              ],
+              flags: [
+                { band: "YELLOW", text: "Listed 15% above CMA estimate — may be overpriced or have unreported renovations" },
+                { band: "WHITE", text: "Run full CMA before making an offer" },
               ],
             },
           ],
         },
       ] },
-      { id: "investors", label: "Investors", blocks: [
-        { type: "prose", items: [{ band: "BLUE", title: "Deal: Domain Point — 300 W 6th St, Austin TX · 24-unit mixed-use", body: "Investor data below is for Domain Point LP." }] },
-        { type: "table", title: "Limited partners — Domain Point LP",
-          columns: ["Investor", "Committed", "Paid In", "Status", "DTC"],
-          rows: [
-            { band: "GREEN",  cells: ["Howard Finch",          "$750,000",   "$600,000", "funded",     "—"] },
-            { band: "GREEN",  cells: ["Diana Park",            "$500,000",   "$400,000", "funded",     "—"] },
-            { band: "GREEN",  cells: ["Robert & Carol Simmons","$1,000,000", "$800,000", "funded",     "—"] },
-            { band: "YELLOW", cells: ["Marcus Eaton",          "$300,000",   "$150,000", "outstanding","—"] },
-            { band: "RED",    cells: ["The Nguyen Group",      "$250,000",   "$100,000", "delinquent", "—"] },
-          ] },
-      ] },
-      { id: "capital", label: "Capital", blocks: [
-        { type: "prose", items: [{ band: "BLUE", title: "Deal: Domain Point — capital summary", body: "Capital stack and funded percentages below are for Domain Point LP." }] },
+      { id: "analysis", label: "Analysis", blocks: [
         { type: "kpis", items: [
-          { label: "Total committed", value: "$4,250,000", band: "GREEN"  },
-          { label: "Total paid in",   value: "$3,400,000", band: "GREEN"  },
-          { label: "Outstanding",     value: "$850,000",   band: "YELLOW" },
-          { label: "July 30 call",    value: "$380,000",   band: "YELLOW" },
+          { label: "Median price (East Bay)", value: "$1.04M", band: "WHITE" },
+          { label: "Avg days on market", value: "18 days", band: "GREEN" },
+          { label: "List / sale ratio", value: "101.2%", band: "GREEN" },
+          { label: "Inventory (months)", value: "1.4 mo", band: "YELLOW" },
         ] },
-        { type: "bars", title: "Capital funded — per LP (% of commitment)", items: [
-          { label: "Simmons Ventures",    value: "$800K / $1M",   pct: 80,  band: "GREEN"  },
-          { label: "Finch Family Trust",  value: "$600K / $750K", pct: 80,  band: "GREEN"  },
-          { label: "ME Real Assets LLC",  value: "$150K / $300K", pct: 50,  band: "YELLOW" },
-          { label: "The Nguyen Group",    value: "$100K / $250K", pct: 40,  band: "RED"    },
-        ], note: "$850K remaining to fund · $380K due July 30" },
+        { type: "bars", title: "Median sale price — East Bay · Jan–Jun 2026", items: [
+          { label: "Jan", value: "$985K", pct: 81, band: "WHITE" },
+          { label: "Feb", value: "$1.01M", pct: 84, band: "WHITE" },
+          { label: "Mar", value: "$1.05M", pct: 87, band: "GREEN" },
+          { label: "Apr", value: "$1.08M", pct: 89, band: "GREEN" },
+          { label: "May", value: "$1.12M", pct: 93, band: "GREEN" },
+          { label: "Jun", value: "$1.04M", pct: 86, band: "WHITE" },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "Seller's market — low inventory", detail: "1.4 months of supply puts pricing power with sellers. Expect competitive offers on well-priced homes." },
+          { band: "WHITE", title: "List/sale ratio above 100%", detail: "Homes are selling above ask on average — budget for escalation clauses." },
+        ] },
+      ] },
+      { id: "transaction", label: "Transaction", blocks: [
+        { type: "prose", items: [
+          { band: "WHITE", title: "No active transaction", body: "Describe a property you want to buy or sell to get started. I will create a transaction record, track key dates (inspection, financing, appraisal, close of escrow), and flag anything that needs attention." },
+        ] },
+        { type: "assetlist", title: "Active transactions", items: [] },
+      ] },
+      { id: "offer-desk", label: "Offer Desk", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "Offer strategy — how this works", body: "Give me the address, your target price, and any contingencies you are considering. I will compare your offer to the CMA, flag any risk (waived inspection, escalation above estimate), and frame the hard truths before you commit. I have no stake in whether this closes." },
+        ] },
+        { type: "flags", items: [
+          { band: "RED", title: "Waiving inspection contingency", detail: "This removes your right to negotiate repairs or exit based on the inspection. I will flag this every time and require explicit acknowledgment before proceeding." },
+          { band: "YELLOW", title: "Offering above CMA", detail: "Offers more than 10% above the comparable-sales estimate will be flagged with a specific breakdown of what could justify the premium." },
+          { band: "GREEN", title: "Financing contingency", detail: "Keeping your financing contingency protects you if the loan falls through. Waiving it is a significant risk in a rate-volatile environment." },
+        ] },
       ] },
       { id: "documents", label: "Documents", blocks: [
-        { type: "prose", items: [{ band: "BLUE", title: "Deal: Domain Point — data room", body: "Documents below are for Domain Point LP." }] },
-        { type: "table", title: "Document library — Domain Point LP",
-          columns: ["Document", "Type", "Date", "Status"],
-          rows: [
-            { band: "GREEN",  cells: ["Private Placement Memorandum", "Offering",   "Jan 2025",  "Current"] },
-            { band: "GREEN",  cells: ["Operating Agreement",           "Legal",      "Jan 2025",  "Executed"] },
-            { band: "YELLOW", cells: ["Q2 2026 Financial Summary",     "Financial",  "July 2026", "Draft"] },
-            { band: "YELLOW", cells: ["Westbrook GC Contract Ext.",    "Contract",   "July 2026", "Pending LP vote"] },
-          ] },
+        { type: "prose", items: [
+          { band: "WHITE", title: "Document tracking", body: "Once a transaction is active, documents — purchase agreement, disclosures, inspection report, closing disclosure — will appear here with status and any flags." },
+        ] },
+        { type: "table", title: "Document log",
+          columns: ["Document", "Type", "Status", "Executed"],
+          rows: [] },
       ] },
-      { id: "governance", label: "Governance", blocks: [
-        {
-          type: "prose",
-          items: [{ band: "BLUE", title: "SAMPLE DATA — Governance", body: "This tab shows LP voting on active proposals. Connect your deal data to see real governance activity." }],
-        },
-        {
-          type: "governance",
-          title: "Open Proposals",
-          proposals: [
-            {
-              id: "prop_sample_001",
-              title: "GC Contract Extension — Smith Construction Group",
-              type: "gc_extension",
-              deadline: "Jul 25, 2026",
-              status: "open",
-              quorumPct: 51,
-              voteCount: 2,
-              deal: "Domain Point",
-            },
-            {
-              id: "prop_sample_002",
-              title: "Capital Call Authorization — Draw #3",
-              type: "capital_call_auth",
-              deadline: "Aug 1, 2026",
-              status: "open",
-              quorumPct: 66,
-              voteCount: 0,
-              deal: "Domain Point",
-            },
-          ],
-        },
-        {
-          type: "table",
-          title: "LP Voting Status — Domain Point",
-          columns: ["LP Name", "Committed", "DTC", "Vote", "Voted At"],
-          rows: [
-            ["Merritt Capital Group", "$1,500,000", "dtc_ff2a…", "Yes", "Jul 14"],
-            ["Pacific Equity Partners", "$950,000", "dtc_aa9b…", "Yes", "Jul 14"],
-            ["Silverstone Fund I", "$750,000", "dtc_cc3e…", "—", "Pending"],
-            ["Cornerstone RE Trust", "$625,000", "dtc_bb7f…", "—", "Pending"],
-            ["Bridgewater Holdings", "$425,000", "dtc_dd1a…", "—", "Pending"],
-          ],
-        },
+      { id: "market", label: "Market", blocks: [
+        { type: "kpis", items: [
+          { label: "30-yr fixed rate", value: "6.82%", band: "YELLOW" },
+          { label: "YoY price change", value: "+4.1%", band: "GREEN" },
+          { label: "New listings (mo)", value: "1,240", band: "WHITE" },
+          { label: "Foreclosure rate", value: "0.08%", band: "GREEN" },
+        ] },
+        { type: "bars", title: "Days on market by price band — East Bay", items: [
+          { label: "Under $800K", value: "24 days", pct: 60, band: "WHITE" },
+          { label: "$800K–$1.1M", value: "18 days", pct: 45, band: "GREEN" },
+          { label: "$1.1M–$1.5M", value: "28 days", pct: 70, band: "YELLOW" },
+          { label: "$1.5M–$2M", value: "42 days", pct: 100, band: "YELLOW" },
+          { label: "Over $2M", value: "61 days", pct: 100, band: "RED" },
+        ] },
       ] },
     ],
   },
@@ -823,7 +814,7 @@ for (const k of Object.keys(RE_CANVAS)) {
 // Slug aliases — some surfaces (CampaignPage, AddWorkspaceWizard, the catalog
 // JSON) refer to the CRE worker as "cre-deal-analyst"; the live worker + canvas
 // key is "cre-analyst". Alias so the designed canvas resolves either way.
-const RE_CANVAS_ALIASES = { "cre-deal-analyst": "cre-analyst", "ir-worker-001": "investor-relations" };
+const RE_CANVAS_ALIASES = { "cre-deal-analyst": "cre-analyst" };
 
 export function getRECanvas(workerSlug) {
   if (!workerSlug) return null;

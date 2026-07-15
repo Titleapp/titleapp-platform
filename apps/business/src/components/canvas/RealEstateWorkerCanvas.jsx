@@ -136,10 +136,6 @@ function Cards({ items }) {
 }
 
 function Table({ title, columns, rows }) {
-  // Normalize rows: support both { band, cells } objects and plain arrays
-  const normalizedRows = (rows || []).map(r =>
-    Array.isArray(r) ? { band: "WHITE", cells: r } : r
-  );
   return (
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
@@ -147,7 +143,7 @@ function Table({ title, columns, rows }) {
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600 }}>
           {columns.map((col, i) => <div key={i} style={{ padding: "8px 10px" }}>{col}</div>)}
         </div>
-        {normalizedRows.map((r, i) => { const cc = c(r.band); return (
+        {rows.map((r, i) => { const cc = c(r.band); return (
           <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, fontSize: 12, borderTop: "1px solid #f1f5f9", borderLeft: `3px solid ${cc.dot}`, background: i % 2 ? "#fafafa" : "#fff" }}>
             {r.cells.map((cell, j) => <div key={j} style={{ padding: "8px 10px", color: j === r.cells.length - 1 ? cc.text : "#334155", fontWeight: j === r.cells.length - 1 ? 600 : 400 }}>{cell}</div>)}
           </div>
@@ -162,22 +158,15 @@ function Bars({ title, items, note }) {
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((b, i) => {
-          const cc = c(b.band);
-          // Support both explicit pct (fixture format) and value/max (live canvas format)
-          const pct = b.pct != null ? b.pct : (b.max ? Math.min(100, (Number(b.value) / Number(b.max)) * 100) : 0);
-          const displayValue = typeof b.value === "number" ? "$" + Number(b.value).toLocaleString() : b.value;
-          const barColor = b.color || cc.dot;
-          return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 150, fontSize: 12, color: "#475569", flexShrink: 0 }}>{b.label}</div>
-              <div style={{ flex: 1, height: 16, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ width: `${Math.max(pct, 1)}%`, height: "100%", background: barColor, opacity: pct === 0 ? 0.35 : 1, borderRadius: 4 }} />
-              </div>
-              <div style={{ width: 56, textAlign: "right", fontSize: 12, fontWeight: 600, color: cc.text }}>{displayValue}</div>
+        {items.map((b, i) => { const cc = c(b.band); return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 150, fontSize: 12, color: "#475569", flexShrink: 0 }}>{b.label}</div>
+            <div style={{ flex: 1, height: 16, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${Math.max(b.pct || 0, 1)}%`, height: "100%", background: cc.dot, opacity: (b.pct || 0) === 0 ? 0.35 : 1, borderRadius: 4 }} />
             </div>
-          );
-        })}
+            <div style={{ width: 56, textAlign: "right", fontSize: 12, fontWeight: 600, color: cc.text }}>{b.value}</div>
+          </div>
+        ); })}
       </div>
       {note && <div style={{ fontSize: 12, fontWeight: 600, color: "#15803d", marginTop: 8 }}>✓ {note}</div>}
     </div>
@@ -234,12 +223,12 @@ function AssetList({ title, items }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {title && <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>}
-      {!items.length && (
+      {!(items && items.length) && (
         <div style={{ padding: "16px", background: "#f8fafc", borderRadius: 10, fontSize: 13, color: "#94a3b8", textAlign: "center" }}>
-          No deals in portfolio — create your first deal to get started.
+          No items yet.
         </div>
       )}
-      {items.map((asset, i) => (
+      {(items || []).map((asset, i) => (
         <div key={asset.id || i} style={{ background: "#f8fafc", border: `1px solid ${BAND[asset.band] || "#e2e8f0"}22`, borderLeft: `3px solid ${BAND[asset.band] || "#e2e8f0"}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div>
@@ -263,56 +252,13 @@ function AssetList({ title, items }) {
               ))}
             </div>
           )}
-          {asset.flags && asset.flags.map((f, j) => (
+          {(asset.flags || []).map((f, j) => (
             <div key={j} style={{ fontSize: 11, color: BAND[f.band] || "#64748b", marginTop: 3 }}>
               {f.band === "RED" ? "⚠ " : f.band === "YELLOW" ? "● " : "○ "}{f.text}
             </div>
           ))}
         </div>
       ))}
-    </div>
-  );
-}
-
-function GovernanceBlock({ title, proposals }) {
-  const items = proposals || [];
-  const PURPLE = "#7c3aed";
-  const YELLOW = "#d97706";
-  const GREEN = "#16a34a";
-  return (
-    <div style={{ marginBottom: 16 }}>
-      {title && <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>}
-      {!items.length && (
-        <div style={{ padding: "16px", background: "#f8fafc", borderRadius: 10, fontSize: 13, color: "#94a3b8", textAlign: "center" }}>
-          No open proposals — all governance votes are up to date.
-        </div>
-      )}
-      {items.map((p, i) => {
-        const turnoutPct = p.quorumPct || 0;
-        const voteCount = p.voteCount || 0;
-        return (
-          <div key={p.id || i} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{p.title}</div>
-                {p.deal && <div style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>Deal: {p.deal}</div>}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: p.status === "open" ? GREEN : "#64748b", background: p.status === "open" ? "#dcfce7" : "#f1f5f9", borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap" }}>
-                {p.status === "open" ? "OPEN" : (p.status || "").toUpperCase()}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-              <span>Closes {p.deadline || "—"}</span>
-              <span>Quorum {p.quorumPct || 0}%</span>
-              <span>{voteCount} vote{voteCount !== 1 ? "s" : ""} cast</span>
-            </div>
-            <div style={{ background: "#e2e8f0", borderRadius: 999, height: 6, overflow: "hidden" }}>
-              <div style={{ background: PURPLE, borderRadius: 999, height: "100%", width: `${Math.min(100, turnoutPct)}%`, transition: "width 0.3s" }} />
-            </div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Turnout progress toward {p.quorumPct || 0}% quorum</div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -331,7 +277,6 @@ function Block({ block }) {
     case "map": return <div style={{ marginBottom: 18 }}><MapCard resolved={{ locations: block.locations, region: block.region, address: block.address, mapType: block.mapType }} /></div>;
     case "streetview":
     case "image": return <StreetViewCard address={block.address} label={block.label} />;
-    case "governance": return <GovernanceBlock title={block.title} proposals={block.proposals} />;
     case "assetlist": return <AssetList title={block.title} items={block.items || []} />;
     default: return null;
   }
@@ -348,45 +293,74 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const [query, setQuery] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveErr, setLiveErr] = useState(null);
-  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); }, [slug]);
+  // RE Advocate: live transaction list for the Transaction tab.
+  const [liveTransactions, setLiveTransactions] = useState(null);
+
+  const isREAdvocate = slug === "re-salesperson";
+
+  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); }, [slug]);
   useEffect(() => { setActive(0); }, [liveSpec]);
-  const data = liveSpec || baseData;
-  if (!data) return null;
-  const tab = data.tabs[active] || data.tabs[0];
 
-  // Only show the property search on property/RE workers.
-  const ident = `${worker?.vertical || ""} ${slug || ""}`;
-  const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
-  const isIRWorker = /ir-worker|investor.relat/i.test(slug || "");
-
-  // IR Worker: fetch live canvas spec from Firestore via ir:canvas route
   useEffect(() => {
-    if (!isIRWorker) return;
+    if (!isREAdvocate) return;
     let cancelled = false;
-    setLiveBusy(true);
-    setLiveErr(null);
     (async () => {
       try {
         const auth = getAuth();
         const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
         const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-        const resp = await fetch(`${apiBase}/api?path=/v1/ir:canvas`, {
-          headers: {
-            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-          },
+        const resp = await fetch(`${apiBase}/api?path=/v1/re:transaction:list`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         });
         const json = await resp.json().catch(() => ({}));
-        if (!cancelled && json.ok && json.canvasSpec) {
-          setLiveSpec(json.canvasSpec);
+        if (!cancelled && json.ok && Array.isArray(json.transactions)) {
+          setLiveTransactions(json.transactions);
         }
       } catch (e) {
-        if (!cancelled) setLiveErr("Could not load live portfolio data.");
-      } finally {
-        if (!cancelled) setLiveBusy(false);
+        // Non-blocking — fixture data stays visible
       }
     })();
     return () => { cancelled = true; };
-  }, [isIRWorker]);
+  }, [isREAdvocate]);
+
+  const data = liveSpec || baseData;
+  if (!data) return null;
+
+  // Inject live transactions into the Transaction tab when present.
+  const resolvedData = (isREAdvocate && liveTransactions)
+    ? {
+        ...data,
+        tabs: data.tabs.map((t) => {
+          if (t.id !== "transaction") return t;
+          const txItems = liveTransactions.map((tx) => ({
+            id: tx.id,
+            band: tx.alertStatus === "red" ? "RED" : tx.alertStatus === "yellow" ? "YELLOW" : "GREEN",
+            name: tx.propertyAddress || "Unknown property",
+            address: tx.role ? tx.role.charAt(0).toUpperCase() + tx.role.slice(1) : "",
+            meta: tx.status || "",
+            status: tx.status || "",
+            statusBand: tx.status === "under_contract" ? "YELLOW" : tx.status === "closed" ? "GREEN" : "WHITE",
+            kpis: Object.entries(tx.keyDates || {}).filter(([, v]) => v).map(([k, v]) => ({
+              label: k.replace(/([A-Z])/g, " $1").trim(),
+              value: String(v),
+            })),
+            flags: [],
+          }));
+          return {
+            ...t,
+            blocks: t.blocks.map((b) =>
+              b.type === "assetlist" ? { ...b, items: txItems } : b
+            ),
+          };
+        }),
+      }
+    : data;
+
+  const tab = resolvedData.tabs[active] || resolvedData.tabs[0];
+
+  // Only show the property search on property/RE workers.
+  const ident = `${worker?.vertical || ""} ${slug || ""}`;
+  const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
 
   async function doLookup(e, addrOverride) {
     if (e) e.preventDefault();
@@ -444,18 +418,18 @@ export default function RealEstateWorkerCanvas({ worker }) {
       )}
       {liveErr && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{liveErr}</div>}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>{data.subtitle}</div>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>{resolvedData.subtitle}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {data.sample && <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>SAMPLE DATA — illustrative, not a live pull</span>}
-          {data.disclaimer && <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px" }}>{data.disclaimer}</span>}
+          {resolvedData.sample && <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>SAMPLE DATA — illustrative, not a live pull</span>}
+          {resolvedData.disclaimer && <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px" }}>{resolvedData.disclaimer}</span>}
         </div>
       </div>
 
-      <CasInstrumentPanel counts={data.cas} labels={data.casLabels} />
+      <CasInstrumentPanel counts={resolvedData.cas} labels={resolvedData.casLabels} />
 
       {/* Internal tab bar */}
       <div style={{ display: "flex", gap: 2, borderBottom: "1px solid #f1f5f9", marginBottom: 16, overflowX: "auto" }}>
-        {data.tabs.map((t, i) => (
+        {resolvedData.tabs.map((t, i) => (
           <button key={t.id} onClick={() => setActive(i)} style={{
             padding: "8px 14px", fontSize: 13, fontWeight: i === active ? 600 : 500, cursor: "pointer",
             background: "none", border: "none", whiteSpace: "nowrap",

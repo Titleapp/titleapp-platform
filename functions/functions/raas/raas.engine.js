@@ -513,32 +513,11 @@ async function callAIWithEnforcement(opts) {
  */
 const WORKER_RULESET_MAP = {
   "platform-accounting": "platform_accounting_v1",
-  "platform-hr": "platform_hr_compliance_v1",
+  "platform-hr": "platform_hr_v1",
   "platform-marketing": "platform_marketing_v1",
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
-  "property-management": "property_manager_v1",
-  "property-management-001": "property_manager_v1",
-  // Real-estate suite
-  "cre-analyst": "cre_deal_screen_v0",
-  "cre-analyst-001": "cre_deal_screen_v0",
-  "site-recon-001": "site_recon_rules_v1",
-  "feasibility-001": "re_feasibility_v1",
-  "investor-relations": "ir_compliance_v0",
-  "ir-worker-001": "ir_compliance_v0",
-  "title-abstract-001": "esc_003_title_search_commitment_v0",
-  // EU Battery DPP suite — all 5 workers share one ruleset
-  "eu-battery-dpp-001": "eu_battery_dpp_v1",
-  "eu-passport-builder-001": "eu_battery_dpp_v1",
-  "eu-supply-chain-tracer-001": "eu_battery_dpp_v1",
-  "eu-registry-manager-001": "eu_battery_dpp_v1",
-  "eu-lifecycle-monitor-001": "eu_battery_dpp_v1",
-  // Makai School of Nursing — Clinical Programs suite (education vertical)
-  "nursing-records-001": "nursing_clinical_v1",
-  "nursing-courses-001": "nursing_clinical_v1",
-  "nursing-tutor-001": "nursing_clinical_v1",
-  "nursing-comms-001": "nursing_clinical_v1",
-  "nursing-accreditation-001": "nursing_clinical_v1",
+  "re-salesperson": "re_sales_v1",
 };
 
 /** Cache compiled chat rules per ruleset */
