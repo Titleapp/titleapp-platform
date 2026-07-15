@@ -520,9 +520,11 @@ const WORKER_RULESET_MAP = {
   "property-management": "property_manager_v1",
   "property-management-001": "property_manager_v1",
   // Real-estate suite
+  "cre-analyst": "cre_deal_screen_v0",
   "cre-analyst-001": "cre_deal_screen_v0",
   "site-recon-001": "site_recon_rules_v1",
   "feasibility-001": "re_feasibility_v1",
+  "investor-relations": "ir_compliance_v0",
   "ir-worker-001": "ir_compliance_v0",
   "title-abstract-001": "esc_003_title_search_commitment_v0",
   // EU Battery DPP suite — all 5 workers share one ruleset

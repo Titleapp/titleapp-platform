@@ -229,6 +229,51 @@ function StreetViewCard({ address, label }) {
   );
 }
 
+function AssetList({ title, items }) {
+  const BAND = { RED: "#ef4444", YELLOW: "#d97706", GREEN: "#16a34a", BLUE: "#3b82f6", WHITE: "#64748b" };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {title && <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>{title}</div>}
+      {!items.length && (
+        <div style={{ padding: "16px", background: "#f8fafc", borderRadius: 10, fontSize: 13, color: "#94a3b8", textAlign: "center" }}>
+          No deals in portfolio — create your first deal to get started.
+        </div>
+      )}
+      {items.map((asset, i) => (
+        <div key={asset.id || i} style={{ background: "#f8fafc", border: `1px solid ${BAND[asset.band] || "#e2e8f0"}22`, borderLeft: `3px solid ${BAND[asset.band] || "#e2e8f0"}`, borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{asset.name}</div>
+              {asset.address && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{asset.address}</div>}
+              {asset.meta && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{asset.meta}</div>}
+            </div>
+            {asset.status && (
+              <div style={{ fontSize: 10, fontWeight: 700, color: BAND[asset.statusBand] || "#64748b", background: `${BAND[asset.statusBand] || "#64748b"}18`, borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap" }}>
+                {asset.status}
+              </div>
+            )}
+          </div>
+          {asset.kpis && asset.kpis.length > 0 && (
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
+              {asset.kpis.map((k, j) => (
+                <div key={j} style={{ fontSize: 12 }}>
+                  <span style={{ color: "#94a3b8" }}>{k.label}: </span>
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{k.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {asset.flags && asset.flags.map((f, j) => (
+            <div key={j} style={{ fontSize: 11, color: BAND[f.band] || "#64748b", marginTop: 3 }}>
+              {f.band === "RED" ? "⚠ " : f.band === "YELLOW" ? "● " : "○ "}{f.text}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function GovernanceBlock({ title, proposals }) {
   const items = proposals || [];
   const PURPLE = "#7c3aed";
@@ -287,6 +332,7 @@ function Block({ block }) {
     case "streetview":
     case "image": return <StreetViewCard address={block.address} label={block.label} />;
     case "governance": return <GovernanceBlock title={block.title} proposals={block.proposals} />;
+    case "assetlist": return <AssetList title={block.title} items={block.items || []} />;
     default: return null;
   }
 }

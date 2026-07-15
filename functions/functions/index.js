@@ -24949,6 +24949,125 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       }
     }
 
+    // GET /v1/ir:canvas — live canvas spec assembled from irDeals + investors + open ballots
+    if (route === "/ir:canvas" && method === "GET") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      const ctx = getCtx(req, body, user);
+      try {
+        const { listDeals, getDealInvestors } = require("./ir/deals");
+        const { listBallots } = require("./services/ir/voting");
+        const dealsResult = await listDeals(ctx.tenantId, { limit: 20 });
+        const deals = dealsResult.deals || [];
+
+        if (!deals.length) {
+          return res.json({ ok: true, canvasSpec: null });
+        }
+
+        // Fan out: investors + open ballots per deal
+        const enriched = await Promise.all(deals.map(async (deal) => {
+          const [invResult, ballotResult] = await Promise.all([
+            getDealInvestors(ctx.tenantId, deal.id).catch(() => ({ investors: [] })),
+            deal.fundraiseId
+              ? listBallots(deal.fundraiseId, { status: "open" }).catch(() => ({ ballots: [] }))
+              : Promise.resolve({ ballots: [] }),
+          ]);
+          return { ...deal, investors: invResult.investors || [], ballots: ballotResult.ballots || [] };
+        }));
+
+        const totalAUM = enriched.reduce((s, d) => s + (d.committedAmount || 0), 0);
+        const totalLPs = enriched.reduce((s, d) => s + (d.investors || []).length, 0);
+        const activeDeals = enriched.filter(d => d.status === "active").length;
+        const openCallTotal = enriched.reduce((s, d) => {
+          const pending = (d.investors || []).filter(i => i.status === "pending_payment");
+          return s + pending.reduce((ps, i) => ps + (i.commitmentAmount || 0), 0);
+        }, 0);
+
+        const fmtDollars = (n) => n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$${Math.round(n / 1000)}K` : `$${n}`;
+        const bandFor = (d) => d.status === "active" ? "GREEN" : d.status === "closed" ? "WHITE" : "YELLOW";
+
+        const assetItems = enriched.map(deal => ({
+          id: deal.id,
+          band: bandFor(deal),
+          name: deal.name || deal.id,
+          address: deal.location || null,
+          meta: [deal.type, deal.investors.length ? `${deal.investors.length} LPs` : null].filter(Boolean).join(" · "),
+          status: deal.status ? deal.status.charAt(0).toUpperCase() + deal.status.slice(1) : "Unknown",
+          statusBand: bandFor(deal),
+          kpis: [
+            { label: "Target", value: fmtDollars(deal.targetRaise || 0) },
+            { label: "Committed", value: fmtDollars(deal.committedAmount || 0) },
+            { label: "Progress", value: `${Math.round((deal.progress || 0) * 100)}%` },
+          ],
+          flags: deal.ballots && deal.ballots.length
+            ? [{ band: "YELLOW", text: `${deal.ballots.length} open governance vote${deal.ballots.length > 1 ? "s" : ""}` }]
+            : [],
+        }));
+
+        const allInvestors = enriched.flatMap(deal =>
+          (deal.investors || []).map(inv => ({
+            band: "WHITE",
+            cells: [inv.name || inv.email || inv.investorId, deal.name, fmtDollars(inv.commitmentAmount || 0), inv.status || "—"],
+          }))
+        );
+
+        const allBallots = enriched.flatMap(deal =>
+          (deal.ballots || []).map(b => ({
+            id: b.id,
+            title: b.title || b.question || "Open Vote",
+            deal: deal.name,
+            status: "open",
+            deadline: b.votingDeadline || null,
+            quorumPct: b.quorumPct || 51,
+            voteCount: Object.keys(b.votes || {}).length,
+          }))
+        );
+
+        const canvasSpec = {
+          tabs: [
+            {
+              id: "overview", label: "Overview", blocks: [
+                { type: "kpis", items: [
+                  { label: "Total AUM", value: fmtDollars(totalAUM), band: "GREEN" },
+                  { label: "Total LPs", value: String(totalLPs), band: "WHITE" },
+                  { label: "Active deals", value: String(activeDeals), band: activeDeals > 0 ? "GREEN" : "WHITE" },
+                  { label: "Open capital call", value: openCallTotal > 0 ? fmtDollars(openCallTotal) : "None", band: openCallTotal > 0 ? "YELLOW" : "WHITE" },
+                ] },
+                { type: "assetlist", title: "Portfolio", items: assetItems },
+              ],
+            },
+            {
+              id: "investors", label: "Investors", blocks: [
+                { type: "table", title: "All Investors", columns: ["Investor", "Deal", "Commitment", "Status"], rows: allInvestors },
+              ],
+            },
+            {
+              id: "capital", label: "Capital", blocks: [
+                { type: "bars", title: "Raise Progress by Deal", items: enriched.map(d => ({
+                  label: d.name || d.id,
+                  pct: Math.round((d.progress || 0) * 100),
+                  value: fmtDollars(d.committedAmount || 0),
+                  max: fmtDollars(d.targetRaise || 0),
+                  band: d.progress >= 1 ? "GREEN" : d.progress >= 0.5 ? "YELLOW" : "RED",
+                })) },
+              ],
+            },
+            {
+              id: "governance", label: "Governance", blocks: [
+                { type: "governance", title: "Open Votes", proposals: allBallots },
+                { type: "table", title: "LP Registry", columns: ["Investor", "Deal", "Commitment", "Status"], rows: allInvestors },
+              ],
+            },
+          ],
+        };
+
+        return res.json({ ok: true, canvasSpec });
+      } catch (e) {
+        console.error("ir:canvas failed:", e);
+        return jsonError(res, 500, "Failed to build IR canvas");
+      }
+    }
+
     // POST /v1/governance:proposal:create
     if (route === "/governance:proposal:create" && method === "POST") {
       try {
