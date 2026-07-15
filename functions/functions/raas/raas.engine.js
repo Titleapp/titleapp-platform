@@ -518,6 +518,12 @@ const WORKER_RULESET_MAP = {
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
   "re-salesperson": "re_sales_v1",
+  // Makai School of Nursing demo suite — all 5 workers share nursing_clinical_v1
+  "nursing-records-001": "nursing_clinical_v1",
+  "nursing-courses-001": "nursing_clinical_v1",
+  "nursing-tutor-001": "nursing_clinical_v1",
+  "nursing-comms-001": "nursing_clinical_v1",
+  "nursing-accreditation-001": "nursing_clinical_v1",
 };
 
 /** Cache compiled chat rules per ruleset */

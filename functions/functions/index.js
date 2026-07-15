@@ -3403,6 +3403,41 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 });
               }
 
+              // Makai Nursing Demo workers — cohort + student data tools
+              const NURSING_SLUGS = ["nursing-records-001", "nursing-courses-001", "nursing-tutor-001", "nursing-comms-001", "nursing-accreditation-001"];
+              if (NURSING_SLUGS.includes(workerSlug)) {
+                businessTools.push({
+                  name: "get_nursing_cohort",
+                  description: "Load the full Makai School of Nursing cohort — all students with status, clinical hours, ATI scores, and course progress. Call this at the start of any session where the user asks about the cohort, a class, or multiple students. NEVER estimate hours or scores — only cite what this tool returns.",
+                  input_schema: { type: "object", properties: {} },
+                });
+                businessTools.push({
+                  name: "get_nursing_student",
+                  description: "Load a specific student's full record including competencies. Call this whenever the user asks about a named student — Jordan Chen, Maya Kahale, Leilani Akana, Noah Ferreira, Aiko Tanaka, or Marcus Webb. NEVER invent scores or competency status — only cite what this tool returns.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      studentId: { type: "string", description: "Student doc ID: student-jordan-chen, student-maya-kahale, student-leilani-akana, student-noah-ferreira, student-aiko-tanaka, or student-marcus-webb" },
+                    },
+                    required: ["studentId"],
+                  },
+                });
+                businessTools.push({
+                  name: "deliver_ati_score",
+                  description: "Simulate ATI score delivery (LTI AGS grade passback). Call this ONLY when the user explicitly asks to trigger or simulate an ATI score event. Requires studentId, courseId, and score (0-100). Mints a logbook entry in the student's record.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      studentId: { type: "string", description: "Student doc ID" },
+                      courseId: { type: "string", enum: ["nsg-201-fundamentals", "nsg-312-pharmacology"], description: "Course receiving the score" },
+                      assessmentName: { type: "string", description: "Name of the ATI assessment, e.g. 'ATI Fundamentals Proctored'" },
+                      score: { type: "number", description: "Score as a percentage 0–100" },
+                    },
+                    required: ["studentId", "courseId", "score"],
+                  },
+                });
+              }
+
               // 2026-06-26 — image-tool honesty. The Marketing worker was
               // DESCRIBING images it never generated ("I created four images and
               // added them to your canvas") then contradicting itself — a
@@ -3728,6 +3763,54 @@ IMAGE & VISUAL RULES (MANDATORY):
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Transaction started.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] start_transaction failed:`, e.message); }
+              }
+
+              // Nursing — get_nursing_cohort tool.
+              if (toolBlock && toolBlock.name === 'get_nursing_cohort') {
+                try {
+                  const [studentsSnap, coursesSnap] = await Promise.all([
+                    db.collection("tenants").doc("demo-makai-nursing").collection("nursingStudents").get(),
+                    db.collection("tenants").doc("demo-makai-nursing").collection("nursingCourses").get(),
+                  ]);
+                  const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                  const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                  const cohortText = `Makai School of Nursing — BSN Program Class of 2028. ${students.length} students total. At-risk: ${students.filter(s=>s.status==="at-risk").length}. Ready: ${students.filter(s=>s.status==="ready").length}. On track: ${students.filter(s=>s.status==="on-track").length}.\n\nStudents:\n${students.map(s=>`- ${s.name}: ${s.status}, ${s.clinicalHours}/${s.clinicalHoursRequired} clinical hours, ATI ${s.atiScore}%`).join("\n")}\n\nCourses: ${courses.map(c=>`${c.name} (${c.enrolledCount} enrolled, week ${c.currentWeek} of ${c.totalWeeks})`).join("; ")}`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: cohortText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
+                } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_cohort failed:`, e.message); }
+              }
+
+              // Nursing — get_nursing_student tool.
+              if (toolBlock && toolBlock.name === 'get_nursing_student') {
+                try {
+                  const { studentId } = toolBlock.input || {};
+                  const [studentDoc, competenciesSnap] = await Promise.all([
+                    db.collection("tenants").doc("demo-makai-nursing").collection("nursingStudents").doc(studentId).get(),
+                    db.collection("tenants").doc("demo-makai-nursing").collection("nursingCompetencies").where("studentId", "==", studentId).get(),
+                  ]);
+                  let studentText = studentDoc.exists
+                    ? `Student record for ${studentDoc.data().name}:\n${JSON.stringify({ ...studentDoc.data(), id: studentDoc.id }, null, 2)}\n\nCompetencies (${competenciesSnap.size}):\n${competenciesSnap.docs.map(d=>`- ${d.data().name}: ${d.data().status}`).join("\n") || "None recorded"}`
+                    : `Student ${studentId} not found in the Makai demo tenant.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: studentText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
+                } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_student failed:`, e.message); }
+              }
+
+              // Nursing — deliver_ati_score tool.
+              if (toolBlock && toolBlock.name === 'deliver_ati_score') {
+                try {
+                  const { studentId, courseId, assessmentName, score } = toolBlock.input || {};
+                  const eventId = `ati_${Date.now()}_${studentId}`;
+                  const band = score >= 80 ? "GREEN" : score >= 70 ? "YELLOW" : "RED";
+                  await db.collection("tenants").doc("demo-makai-nursing").collection("nursingStudents").doc(studentId)
+                    .collection("atiScores").doc(eventId).set({ type: "ati_score", source: "ati_lti_simulated", studentId, courseId, assessmentName: assessmentName || "ATI Assessment", score: Number(score), band, simulated: true, createdAt: nowServerTs() });
+                  const resultText = `ATI score delivered: ${assessmentName || "ATI Assessment"} — ${score}% (${band}). Logbook entry minted for ${studentId}. If the score is below 70%, surface the gap and recommend targeted review using the OER materials in this workspace.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
+                } catch (e) { console.warn(`[worker:${workerSlug}] deliver_ati_score failed:`, e.message); }
               }
 
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
@@ -25859,6 +25942,113 @@ Analyze now:`;
       } catch (e) {
         console.error("title-abstract:list failed:", e);
         return jsonError(res, 500, "Failed to load title abstracts");
+      }
+    }
+
+    // ── Makai Nursing Demo routes ─────────────────────────────────────────────
+    // GET /v1/nursing:cohort — full cohort overview for the demo tenant
+    if (route === "/nursing:cohort" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const tenantId = "demo-makai-nursing";
+        const [studentsSnap, coursesSnap] = await Promise.all([
+          db.collection("tenants").doc(tenantId).collection("nursingStudents").get(),
+          db.collection("tenants").doc(tenantId).collection("nursingCourses").get(),
+        ]);
+        const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const atRisk = students.filter(s => s.status === "at-risk").length;
+        const ready = students.filter(s => s.status === "ready").length;
+        return res.json({ ok: true, tenantId, cohortSize: students.length, atRisk, ready, onTrack: students.length - atRisk - ready, students, courses });
+      } catch (e) {
+        console.error("nursing:cohort failed:", e);
+        return jsonError(res, 500, "Failed to load nursing cohort");
+      }
+    }
+
+    // GET /v1/nursing:student?id=<studentId> — individual student record
+    if (route === "/nursing:student" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const studentId = req.query && req.query.id;
+        if (!studentId) return jsonError(res, 400, "Missing id");
+        const tenantId = "demo-makai-nursing";
+        const [studentDoc, competenciesSnap] = await Promise.all([
+          db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId).get(),
+          db.collection("tenants").doc(tenantId).collection("nursingCompetencies").where("studentId", "==", studentId).get(),
+        ]);
+        if (!studentDoc.exists) return jsonError(res, 404, "Student not found");
+        const student = { id: studentDoc.id, ...studentDoc.data() };
+        const competencies = competenciesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, student, competencies });
+      } catch (e) {
+        console.error("nursing:student failed:", e);
+        return jsonError(res, 500, "Failed to load student record");
+      }
+    }
+
+    // POST /v1/demo/ati-score-event — simulated AGS 2.0 grade passback (LTI demo)
+    // Processes exactly as a real ATI score would; trigger is synthetic.
+    if (route === "/demo/ati-score-event" && method === "POST") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const { studentId, courseId, assessmentName, score } = body || {};
+        if (!studentId || !courseId || score == null) return jsonError(res, 400, "Missing studentId, courseId, or score");
+        const tenantId = "demo-makai-nursing";
+        const eventId = `ati_${Date.now()}_${studentId}`;
+        const logEntry = {
+          type: "ati_score",
+          source: "ati_lti_simulated",
+          studentId,
+          courseId,
+          assessmentName: assessmentName || "ATI Assessment",
+          score: Number(score),
+          band: Number(score) >= 80 ? "GREEN" : Number(score) >= 70 ? "YELLOW" : "RED",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          simulated: true,
+        };
+        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
+          .collection("atiScores").doc(eventId).set(logEntry);
+        // Also mint a logbook entry into the student's Vault record
+        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
+          .collection("logbook").add({ ...logEntry, entryType: "ati_score_delivered" });
+        return res.json({ ok: true, eventId, score: Number(score), band: logEntry.band, message: `ATI score ${score}% delivered for ${assessmentName || "ATI Assessment"}` });
+      } catch (e) {
+        console.error("demo/ati-score-event failed:", e);
+        return jsonError(res, 500, "Failed to process ATI score event");
+      }
+    }
+
+    // POST /v1/nursing:competency:attest — instructor attests a competency sign-off
+    if (route === "/nursing:competency:attest" && method === "POST") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const { studentId, competencyId, notes } = body || {};
+        if (!studentId || !competencyId) return jsonError(res, 400, "Missing studentId or competencyId");
+        const tenantId = "demo-makai-nursing";
+        const attestation = {
+          studentId,
+          competencyId,
+          attestedBy: nAuth.uid,
+          attestedByEmail: nAuth.email || "instructor",
+          notes: notes || "",
+          status: "verified",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await db.collection("tenants").doc(tenantId).collection("nursingCompetencies").doc(competencyId).set(
+          { status: "verified", lastAttestation: attestation },
+          { merge: true }
+        );
+        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
+          .collection("logbook").add({ type: "competency_attainment", source: "instructor", ...attestation });
+        return res.json({ ok: true, competencyId, status: "verified", attestedBy: nAuth.email || "instructor" });
+      } catch (e) {
+        console.error("nursing:competency:attest failed:", e);
+        return jsonError(res, 500, "Failed to record competency attestation");
       }
     }
 
