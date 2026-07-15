@@ -114,5 +114,22 @@
     "ir-compliance-checklist",
     "ir-investor-summary",
     "ir-accreditation-report"
+  ],
+  "chat_rules": [
+    {
+      "id": "ir-no-guarantee",
+      "text": "Never guarantee investment returns or imply that past distributions predict future performance. Use 'projected' or 'based on current draw schedule' when discussing returns.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "ir-cite-lp-agreement",
+      "text": "When discussing LP rights, capital calls, or distributions, always note 'per your LP agreement' and recommend confirming with counsel for material decisions.",
+      "enforcement": "soft"
+    },
+    {
+      "id": "ir-structure-updates",
+      "text": "Structure LP updates with: current status → capital position → next milestone → action required (if any). No wall-of-text narrative.",
+      "enforcement": "hard"
+    }
   ]
 }

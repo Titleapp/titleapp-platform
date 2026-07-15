@@ -47,6 +47,27 @@ const METROS = {
   "boston": [{ name: "Financial District", lat: 42.3559, lng: -71.0550 }],
   "washington": [{ name: "Downtown DC / K St", lat: 38.9020, lng: -77.0400 }],
   "miami": [{ name: "Brickell", lat: 25.7650, lng: -80.1936 }],
+  "chicago": [{ name: "The Loop", lat: 41.8827, lng: -87.6233 }],
+  "seattle": [{ name: "Downtown Seattle", lat: 47.6062, lng: -122.3321 }],
+  "denver": [{ name: "Downtown Denver", lat: 39.7392, lng: -104.9903 }],
+  "phoenix": [{ name: "Downtown Phoenix", lat: 33.4484, lng: -112.0740 }],
+  "las vegas": [
+    { name: "Las Vegas Strip Corridor", lat: 36.1147, lng: -115.1728 },
+    { name: "Downtown Las Vegas", lat: 36.1699, lng: -115.1398 },
+  ],
+  "nevada": [
+    { name: "Las Vegas Strip Corridor", lat: 36.1147, lng: -115.1728 },
+    { name: "Downtown Las Vegas", lat: 36.1699, lng: -115.1398 },
+  ],
+  "atlanta": [{ name: "Midtown Atlanta", lat: 33.7848, lng: -84.3832 }],
+  "boise": [
+    { name: "Downtown Boise", lat: 43.6150, lng: -116.2023 },
+    { name: "BSU / University District", lat: 43.6042, lng: -116.1985 },
+  ],
+  "portland": [{ name: "Downtown Portland", lat: 45.5231, lng: -122.6765 }],
+  "nashville": [{ name: "Downtown Nashville", lat: 36.1627, lng: -86.7816 }],
+  "charlotte": [{ name: "Uptown Charlotte", lat: 35.2271, lng: -80.8431 }],
+  "san diego": [{ name: "Downtown San Diego", lat: 32.7157, lng: -117.1611 }],
 };
 
 function resolveCenters(metro) {

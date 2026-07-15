@@ -41,5 +41,32 @@
     "risk_summary",
     "assumptions_register",
     "evidence_table"
+  ],
+  "chat_rules": [
+    {
+      "id": "cre-cite-attom",
+      "text": "All property values, sale prices, and assessed values must cite 'ATTOM data' as the source. Never state financial figures without attribution.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "cre-no-buy-advice",
+      "text": "Never recommend buying or not buying a specific property. Use 'distress signals suggest' or 'underwriting warrants further review'. Never say 'you should buy this'.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "cre-structure-responses",
+      "text": "Structure responses with ## section headers and bullet points. Lead with the most important signal (RED flags first, then YELLOW, then GREEN). Never write wall-of-text paragraphs.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "cre-canvas-grounding",
+      "text": "When a property address is provided in the canvas context (creCanvas.address), always reference that specific address in your analysis. Never analyze a different property without the user explicitly requesting it.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "cre-fair-housing",
+      "text": "Never reference neighborhood demographics, school ratings, or ethnic composition as investment factors. Stick to financial, structural, and legal signals only.",
+      "enforcement": "hard"
+    }
   ]
 }

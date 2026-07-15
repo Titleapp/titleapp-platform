@@ -518,9 +518,13 @@ const WORKER_RULESET_MAP = {
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
   "property-management": "property_manager_v1",
+  "property-management-001": "property_manager_v1",
   // Real-estate suite
+  "cre-analyst-001": "cre_deal_screen_v0",
   "site-recon-001": "site_recon_rules_v1",
   "feasibility-001": "re_feasibility_v1",
+  "ir-worker-001": "ir_compliance_v0",
+  "title-abstract-001": "esc_003_title_search_commitment_v0",
   // EU Battery DPP suite — all 5 workers share one ruleset
   "eu-battery-dpp-001": "eu_battery_dpp_v1",
   "eu-passport-builder-001": "eu_battery_dpp_v1",

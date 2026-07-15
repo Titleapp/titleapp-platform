@@ -122,6 +122,156 @@ const VERTICAL_DISCLAIMERS = {
 // whose VERTICAL localStorage key was missing or stale. The model handles these intents
 // directly now using the worker-specific system prompt + canvas state.
 
+// ── Worker Intro System ─────────────────────────────────────────
+
+const WORKER_INTROS = {
+  "cre-analyst": {
+    title: "CRE Analyst",
+    what: "I analyze commercial deals with live property data and distress scoring.",
+    actions: [
+      "Type any commercial address in the lookup above — I'll pull live ATTOM data",
+      "Switch to Deal Hunt mode — set your market and asset class, I'll scan for distressed properties",
+      "Ask me about a deal — cap rates, ownership chain, red flags",
+    ],
+    unlocks: ["Connect Drive to save deal memos to your workspace"],
+  },
+  "ir-worker": {
+    title: "IR Worker",
+    what: "I manage capital raises and LP relationships for your active deals.",
+    actions: [
+      "Select a deal from your portfolio above to see investor status",
+      "Ask me about a capital call, LP update, or distribution waterfall",
+      "Ask me to draft an LP update letter for a specific deal",
+    ],
+    unlocks: ["Connect Drive to access LP agreements and closing documents"],
+  },
+  "site-recon": {
+    title: "Site Recon",
+    what: "I run multi-jurisdiction parcel analysis — zoning, ownership chain, encumbrances.",
+    actions: [
+      "Enter any address in the lookup form to pull parcel and zoning data",
+      "Ask me about a specific APN, easement, or title flag",
+      "Ask me to compare two sites side by side",
+    ],
+    unlocks: [],
+  },
+  "property-management": {
+    title: "Property Manager",
+    what: "I track asset-level operations — occupancy, leases, maintenance, NOI.",
+    actions: [
+      "Enter your property address above to pull its market card",
+      "Ask me about lease expiration dates, open maintenance tickets, or rent roll",
+      "Ask me to draft a tenant communication",
+    ],
+    unlocks: ["Connect Drive to access lease agreements and inspection reports"],
+  },
+  "title-abstract": {
+    title: "Title Abstract",
+    what: "I pull ownership chain, lien history, and title risk signals from public records.",
+    actions: [
+      "Enter any address to get the ownership chain and flag title risks",
+      "Ask me about a specific lien, easement, or chain-of-title gap",
+      "Ask me to summarize title risk for a deal you're evaluating",
+    ],
+    unlocks: [],
+  },
+  "re-salesperson": {
+    title: "RE Salesperson",
+    what: "I support buyer/seller transactions — listing prep, offer analysis, contract review.",
+    actions: [
+      "Tell me about a property you're working — address, price, situation",
+      "Ask me to analyze a buyer's offer or prepare a listing summary",
+      "Ask me about disclosure requirements or negotiation strategy",
+    ],
+    unlocks: ["Connect Drive to access listing documents and contracts"],
+  },
+  "feasibility": {
+    title: "Feasibility Worker",
+    what: "I assess development feasibility — entitlements, costs, market fit, risk flags.",
+    actions: [
+      "Describe your project (site, use, scale) and I'll run a feasibility check",
+      "Enter an address to pull zoning and entitlement context",
+      "Ask me about permitting timelines, construction cost benchmarks, or risk factors",
+    ],
+    unlocks: [],
+  },
+};
+
+function getWorkerIntro(slug) {
+  if (!slug) return null;
+  const s = slug.toLowerCase();
+  for (const key of Object.keys(WORKER_INTROS)) {
+    if (s.includes(key)) return WORKER_INTROS[key];
+  }
+  return null;
+}
+
+function WorkerIntroCard({ intro, onDismiss }) {
+  return (
+    <div style={{
+      background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12,
+      padding: "16px 18px", margin: "8px 14px 16px 14px", fontSize: 13,
+    }}>
+      <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+        {intro.what}
+      </div>
+      <div style={{ color: "#475569", marginBottom: 12, fontSize: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Get started:</div>
+        {intro.actions.map((a, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+            <span style={{ color: "#7c3aed", flexShrink: 0 }}>›</span>
+            <span>{a}</span>
+          </div>
+        ))}
+      </div>
+      {intro.unlocks && intro.unlocks.length > 0 && (
+        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 10, marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Connects more data:</div>
+          {intro.unlocks.map((u, i) => (
+            <div key={i} style={{ fontSize: 11, color: "#64748b", display: "flex", gap: 6 }}>
+              <span style={{ color: "#f59e0b" }}>⚡</span>
+              <span>{u}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={onDismiss} style={{
+        marginTop: 10, fontSize: 11, color: "#94a3b8", background: "none",
+        border: "none", cursor: "pointer", padding: 0,
+      }}>Got it — dismiss</button>
+    </div>
+  );
+}
+
+function AlexIntroCard({ greetName, onDismiss }) {
+  return (
+    <div style={{
+      background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12,
+      padding: "16px 18px", margin: "8px 14px 16px 14px", fontSize: 13,
+    }}>
+      <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+        {greetName ? `Hi ${greetName} — ` : ""}I'm Alex, your Chief of Staff. Here's how to get the most out of me:
+      </div>
+      <div style={{ color: "#475569", fontSize: 12 }}>
+        {[
+          "Ask me to read your inbox, surface priorities, and draft replies",
+          "Ask me about any deal, property, or document — I'll pull context and give you a take",
+          "Hand me files from Drive and I'll analyze, summarize, or route them",
+        ].map((a, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+            <span style={{ color: "#7c3aed", flexShrink: 0 }}>›</span>
+            <span>{a}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={onDismiss} style={{
+        marginTop: 10, fontSize: 11, color: "#94a3b8", background: "none",
+        border: "none", cursor: "pointer", padding: 0,
+      }}>Got it — dismiss</button>
+    </div>
+  );
+}
+
 // ── Component ───────────────────────────────────────────────────
 
 // V25 (Surface 3): inline "Alex fixes the worker" approve card. Renders a pending
@@ -214,6 +364,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [workerSearch, setWorkerSearch] = useState("");
   const [greetingCollapsed, setGreetingCollapsed] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("All");
+  const [introDismissed, setIntroDismissed] = useState(() => {
+    // Intro dismissed state is per-slug, stored in sessionStorage so it resets each session.
+    // Actual check happens at render time using the slug — this flag just tracks if
+    // the user has dismissed in this session (avoids re-reading sessionStorage every render).
+    return false;
+  });
 
   const workerCtx = useWorkerState();
   const panel = useRightPanel();
@@ -226,9 +382,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (propDisclaimerAccepted) return true;
     return localStorage.getItem('DISCLAIMER_ACCEPTED') === 'true';
   });
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(false);
-  const [acceptedLiability, setAcceptedLiability] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(() => isDemoMode());
+  const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(() => isDemoMode());
+  const [acceptedLiability, setAcceptedLiability] = useState(() => isDemoMode());
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   // Celebration state
@@ -304,6 +460,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (!name) return;
       setActiveWorkerName(name);
       setActiveWorkerSlug(slug || null);
+      // Reset intro dismissed flag so the new worker's intro card shows
+      setIntroDismissed(false);
 
       // Persistent worker memory: use a stable sessionId so each worker
       // resumes its own history across page reloads and browser sessions.
@@ -361,6 +519,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     // than the ta:select-worker event.
     setActiveWorkerName(w.name || w.display_name || w.slug);
     setActiveWorkerSlug(workerId);
+    setIntroDismissed(false);
 
     // Prevent duplicate openers for same worker
     if (openerFiredRef.current === workerId) return;
@@ -1452,6 +1611,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           // null-during-init case.
           selectedWorker: (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
+          // CRE canvas grounding: read current address from canvas if present
+          ...(() => { try { const raw = sessionStorage.getItem("ta_re_live"); if (raw) return { creCanvas: JSON.parse(raw) }; } catch (_) {} return {}; })(),
           // 50.27 — Voice mode hint. Backend appends a voice-friendly
           // response style directive to the system prompt: 2-3 sentences,
           // no markdown, conversational tone for hands-free listening.
@@ -2401,6 +2562,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           const wCount = wkrs.length;
           const contextLine = vLabel ? `Last active: ${vLabel}${wCount > 0 ? ` \u2014 ${wCount} worker${wCount !== 1 ? "s" : ""} running` : ""}` : "";
 
+          // Resolve active slug from both context sources (mirrors sendMessage logic)
+          const resolvedSlug = workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug || null;
+          const isCOS = !resolvedSlug || resolvedSlug === 'chief-of-staff';
+          const workerIntro = isCOS ? null : getWorkerIntro(resolvedSlug);
+          const introKey = resolvedSlug ? `ta_intro_dismissed_${resolvedSlug}` : 'ta_intro_dismissed_cos';
+          const introAlreadyDismissed = introDismissed || sessionStorage.getItem(introKey) === '1';
+
+          function handleDismissIntro() {
+            sessionStorage.setItem(introKey, '1');
+            setIntroDismissed(true);
+          }
+
           if (greetingCollapsed) {
             return (
               <div
@@ -2412,14 +2585,22 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             );
           }
           return (
-            <div style={{ padding: "24px 20px", borderBottom: "1px solid #f1f5f9" }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
-                {timeGreeting}{greetName ? ` ${greetName}` : ""}.
+            <div>
+              <div style={{ padding: "24px 20px 12px 20px", borderBottom: !introAlreadyDismissed && (workerIntro || isCOS) ? "none" : "1px solid #f1f5f9" }}>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
+                  {timeGreeting}{greetName ? ` ${greetName}` : ""}.
+                </div>
+                {contextLine && (
+                  <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500, marginBottom: 8 }}>{contextLine}</div>
+                )}
+                <div style={{ fontSize: 14, color: "#6b7280" }}>{isCOS ? "What are we working on today?" : "What do you want to tackle?"}</div>
               </div>
-              {contextLine && (
-                <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500, marginBottom: 8 }}>{contextLine}</div>
+              {!introAlreadyDismissed && workerIntro && (
+                <WorkerIntroCard intro={workerIntro} onDismiss={handleDismissIntro} />
               )}
-              <div style={{ fontSize: 14, color: "#6b7280" }}>What are we working on today?</div>
+              {!introAlreadyDismissed && isCOS && (
+                <AlexIntroCard greetName={greetName} onDismiss={handleDismissIntro} />
+              )}
             </div>
           );
         })()}

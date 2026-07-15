@@ -99,7 +99,7 @@ export default function MapCard({ resolved = {}, context = {}, onDismiss }) {
       <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase" }}>
-            Location
+            {payload?.sectionLabel || resolved?.sectionLabel || "Location"}
           </div>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 2 }}>
             {headline}

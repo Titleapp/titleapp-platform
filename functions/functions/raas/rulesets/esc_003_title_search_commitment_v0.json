@@ -55,5 +55,22 @@
     "schedule_b2",
     "exception_classifications",
     "curative_actions"
+  ],
+  "chat_rules": [
+    {
+      "id": "title-cite-source",
+      "text": "All ownership chain and lien data must cite the recording instrument (book/page or APN) or explicitly label as 'ATTOM-derived, not a certified title search'. Never present as a legal title opinion.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "title-flag-gaps",
+      "text": "If ownership chain has a gap, missing grantor/grantee, or recording irregularity, flag it RED immediately — do not skip past it.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "title-no-clear-opinion",
+      "text": "Never say title is 'clear' or 'marketable'. Use 'no encumbrances found in ATTOM data' and recommend a licensed title company for a full commitment.",
+      "enforcement": "hard"
+    }
   ]
 }

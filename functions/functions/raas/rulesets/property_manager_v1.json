@@ -31,7 +31,7 @@
     },
     {
       "id": "PM-EV-002",
-      "logic": "Never produce an eviction notice with an incorrect state-mandated cure window. CA: 3 days pay-or-quit. NV: 5 days. TX: 3 days. FL: 3 days. NY: 14 days. IL: 5 days. Always apply the jurisdiction's window from the property address.",
+      "logic": "Never produce an eviction notice with an incorrect state-mandated cure window. CA: 3 days pay-or-quit. NV: 5 days. TX: 3 days. FL: 3 days. NY: 14 days. IL: 5 days. ID: 3 days (ID Code §6-303). Always apply the jurisdiction's window from the property address.",
       "eval": { "type": "jurisdiction_lookup", "field": "eviction.cure_window_days" }
     },
     {
@@ -85,6 +85,16 @@
       "pattern": "\\b(you (will|won't) win|guaranteed|definitely (legal|illegal)|I (guarantee|promise)|100% sure)\\b",
       "flags": "i",
       "message": "I can apply the rules and surface the relevant statutes, but I can't give legal guarantees. Review with a landlord-tenant attorney before proceeding."
+    },
+    {
+      "id": "pm-jurisdiction-notice",
+      "text": "Always cite the state statute for the property's jurisdiction — never apply another state's cure window. Key examples: CA §1161 (3-day), TX Prop Code §24.005 (3-day), NY RPL §711 (14-day), FL §83.56 (3-day), ID §6-303 (3-day), WA RCW 59.12.030 (3-day), CO §13-40-104 (10-day), AZ §33-1368 (5-day), OR §90.394 (72-hr). If the state is unknown, ask for the property address before citing any statute.",
+      "enforcement": "hard"
+    },
+    {
+      "id": "pm-student-housing",
+      "text": "For student housing and academic-year lease structures: academic-year terms (Aug–May) are standard across US university markets. Guarantor income from scholarships, financial aid, or parental guarantors counts as verifiable income under HUD Fair Housing guidelines nationwide.",
+      "enforcement": "soft"
     }
   ],
   "outputs": [

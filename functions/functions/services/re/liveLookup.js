@@ -80,6 +80,107 @@ async function lookupAddress(address, apiKey) {
   return { ok: true, attom, canvasSpec: buildLiveCanvasSpec(attom) };
 }
 
+function buildUnderwritingTab(a) {
+  const s0 = a.sales && a.sales[0];
+  const lastSale = s0 && s0.amount ? Number(s0.amount) : null;
+  const assessed = a.assessedValue ? Number(a.assessedValue) : null;
+
+  const heroes = [];
+  if (assessed) heroes.push({ band: "WHITE", title: "Assessed Value", detail: money(assessed) });
+  if (lastSale) heroes.push({ band: "WHITE", title: "Last Sale Price", detail: money(lastSale) + (s0.date ? " · " + s0.date : "") });
+  if (a.yearBuilt) heroes.push({ band: "WHITE", title: "Year Built", detail: String(a.yearBuilt) });
+  if (a.bldgSqft) heroes.push({ band: "WHITE", title: "Building Size", detail: Number(a.bldgSqft).toLocaleString() + " sqft" });
+
+  const flags = [];
+  if (assessed && lastSale && assessed < lastSale * 0.7) {
+    flags.push({ band: "RED", title: "Assessed well below last sale", detail: "Assessed " + money(assessed) + " vs. " + money(lastSale) + " last sale — value compression signal." });
+  }
+  if (!a.bldgSqft) {
+    flags.push({ band: "YELLOW", title: "Building size not on record", detail: "Cannot compute per-sqft basis without building size — pull county records." });
+  }
+  if (a.yearBuilt && (2025 - a.yearBuilt) > 40) {
+    flags.push({ band: "YELLOW", title: "40+ year old asset", detail: "Capital expenditure reserve warranted — assess deferred maintenance and systems lifecycle." });
+  }
+  flags.push({
+    band: "BLUE",
+    title: "ATTOM-derived signals only",
+    detail: "Full underwriting requires rent roll, NOI actuals, and independent appraisal. These are ATTOM-derived signals only.",
+  });
+
+  return {
+    id: "underwriting",
+    label: "Underwriting",
+    blocks: [
+      ...(heroes.length ? [{ type: "heroes", items: heroes }] : []),
+      ...(flags.length ? [{ type: "flags", items: flags }] : []),
+    ],
+  };
+}
+
+function buildSensitivityTab(a) {
+  const s0 = a.sales && a.sales[0];
+  const lastSale = s0 && s0.amount ? Number(s0.amount) : null;
+
+  if (!lastSale) {
+    return {
+      id: "sensitivity",
+      label: "Sensitivity",
+      blocks: [
+        { type: "prose", items: [{ band: "WHITE", title: "No basis available", body: "No recorded sale price — sensitivity analysis requires a known basis." }] },
+      ],
+    };
+  }
+
+  const label = "ATTOM last sale: " + money(lastSale) + (s0.date ? " · " + s0.date : "") + ". Sensitivity ranges are illustrative.";
+  const discounts = [20, 30, 40, 50];
+  const items = discounts.map((pct) => {
+    const val = Math.round(lastSale * (1 - pct / 100));
+    return { band: pct >= 40 ? "RED" : "YELLOW", label: "Entry at " + pct + "% below last sale: " + money(val), value: money(val), pct: 100 - pct };
+  });
+
+  return {
+    id: "sensitivity",
+    label: "Sensitivity",
+    blocks: [
+      { type: "bars", title: label, items },
+    ],
+  };
+}
+
+function buildCapitalStackTab(a) {
+  const s0 = a.sales && a.sales[0];
+  const lastSale = s0 && s0.amount ? Number(s0.amount) : null;
+  const assessed = a.assessedValue ? Number(a.assessedValue) : null;
+
+  const assetValue = assessed || lastSale;
+  const assetLabel = assessed ? "County Assessed Value" : "Last Sale (used as proxy)";
+  const seniorLoan = assetValue ? Math.round(assetValue * 0.6) : null;
+  const equity = assetValue ? Math.round(assetValue * 0.4) : null;
+  const basisReset = lastSale ? Math.round(lastSale * 0.6) : null;
+
+  const heroes = [];
+  if (assetValue) heroes.push({ band: "WHITE", title: "Asset Value Est.", detail: money(assetValue) + " · " + assetLabel });
+  if (seniorLoan) heroes.push({ band: "BLUE", title: "Senior Loan Est. (60% LTV)", detail: money(seniorLoan) });
+  if (equity) heroes.push({ band: "WHITE", title: "Equity Required", detail: money(equity) });
+  if (basisReset && lastSale) heroes.push({ band: "RED", title: "Basis Reset Target (−40% last sale)", detail: money(basisReset) });
+
+  return {
+    id: "capital-stack",
+    label: "Capital stack",
+    blocks: [
+      ...(heroes.length ? [{ type: "heroes", items: heroes }] : []),
+      {
+        type: "prose",
+        items: [{
+          band: "WHITE",
+          title: "Illustrative cap stack",
+          body: "Cap stack is illustrative based on ATTOM " + assetLabel.toLowerCase() + ". Actual loan terms, LTV, and equity split require lender engagement and current appraisal.",
+        }],
+      },
+    ],
+  };
+}
+
 function buildDealScreenTab(a) {
   const s0 = a.sales && a.sales[0];
   const lastSale = s0 && s0.amount ? Number(s0.amount) : null;
@@ -111,7 +212,7 @@ function buildDealScreenTab(a) {
     blocks: [
       ...(heroes.length ? [{ type: "heroes", items: heroes }] : []),
       ...(flags.length ? [{ type: "flags", items: flags }] : []),
-      { type: "prose", band: "WHITE", body: `All figures are ATTOM-recorded data for APN ${a.apn || "—"}. Acquisition price, cap stack, and underwriting projections require full diligence and independent appraisal.` },
+      { type: "prose", items: [{ band: "WHITE", title: "Data source", body: `All figures are ATTOM-recorded data for APN ${a.apn || "—"}. Acquisition price, cap stack, and underwriting projections require full diligence and independent appraisal.` }] },
     ],
   };
 }
@@ -148,6 +249,9 @@ function buildLiveCanvasSpec(a) {
         ...(chainItems.length ? [{ type: "chain", title: "Recorded sales (ATTOM)", items: chainItems }] : []),
       ] },
       buildDealScreenTab(a),
+      buildUnderwritingTab(a),
+      buildSensitivityTab(a),
+      buildCapitalStackTab(a),
     ],
   };
 }

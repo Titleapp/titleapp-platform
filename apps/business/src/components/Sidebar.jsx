@@ -1345,10 +1345,10 @@ export default function Sidebar({
     for (const v in groups) {
       groups[v].sort((a, b) => a.name.localeCompare(b.name));
     }
-    // Sort groups: Spine first, "Other" last, rest alphabetical
+    // Sort groups: vertical workers first (alphabetical), Spine/Back of House last
     const sorted = Object.entries(groups).sort(([a], [b]) => {
-      if (a === "Spine") return -1;
-      if (b === "Spine") return 1;
+      if (a === "Spine") return 1;
+      if (b === "Spine") return -1;
       if (a === "Other") return 1;
       if (b === "Other") return -1;
       return a.localeCompare(b);
@@ -1517,7 +1517,7 @@ export default function Sidebar({
                     onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
                     style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "8px 10px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
                   >
-                    <span>{verticalName} ({workers.length})</span>
+                    <span>{verticalName === "Spine" ? "Back of House" : verticalName} ({workers.length})</span>
                     <span style={{ fontSize: 10, transition: "transform 0.2s", transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
                   </button>
                   {!isCollapsed && workers.map(worker => {
@@ -1948,6 +1948,17 @@ export default function Sidebar({
                 }}
               >
                 <span style={{ color: "#94a3b8" }}>My Vault</span>
+              </button>
+              <button
+                onClick={() => handleNavClick("vault-documents")}
+                className="sidebarLabel"
+                style={{
+                  display: "flex", alignItems: "center",
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: 0, margin: 0, textAlign: "left",
+                }}
+              >
+                <span style={{ color: "#94a3b8" }}>My Drive</span>
               </button>
               {/* Chevron toggles the Academic Record child so it tucks UNDER
                   My Vault instead of floating as its own item (S52.61). */}
