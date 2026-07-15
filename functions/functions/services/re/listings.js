@@ -1,8 +1,8 @@
 // services/re/listings.js — Realtor.com listing search via RapidAPI.
 // Degrades gracefully to ATTOM-only if RAPIDAPI_KEY is missing.
 
-const REALTOR_HOST = "realtor.p.rapidapi.com";
-const REALTOR_BASE = "https://realtor.p.rapidapi.com";
+const REALTOR_HOST = "realtor16.p.rapidapi.com";
+const REALTOR_BASE = "https://realtor16.p.rapidapi.com";
 
 const PROPERTY_TYPE_MAP = {
   "single_family": "single_family",
@@ -68,7 +68,7 @@ async function searchListings(criteria, rapidApiKey) {
   params.set("offset", "0");
 
   try {
-    const resp = await fetch(`${REALTOR_BASE}/properties/v3/list?${params.toString()}`, {
+    const resp = await fetch(`${REALTOR_BASE}/search/forsale?${params.toString()}`, {
       headers: {
         "X-RapidAPI-Key": rapidApiKey,
         "X-RapidAPI-Host": REALTOR_HOST,
@@ -96,7 +96,7 @@ async function getListingDetail(listingId, rapidApiKey) {
   }
 
   try {
-    const resp = await fetch(`${REALTOR_BASE}/properties/v3/detail?property_id=${encodeURIComponent(listingId)}`, {
+    const resp = await fetch(`${REALTOR_BASE}/property/details?property_id=${encodeURIComponent(listingId)}`, {
       headers: {
         "X-RapidAPI-Key": rapidApiKey,
         "X-RapidAPI-Host": REALTOR_HOST,

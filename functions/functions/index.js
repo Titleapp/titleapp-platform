@@ -1525,7 +1525,7 @@ exports.api = onRequest(
   // S52.31c (2026-06-06) — ATTOM_API_KEY restored to secrets array after Sean
   // set the (sandbox) secret in Secret Manager via firebase functions:secrets:set.
   // Live ATTOM calls confirmed on the ATTOM dashboard post-deploy.
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
