@@ -518,6 +518,12 @@ const WORKER_RULESET_MAP = {
   "platform-legal": "platform_legal_v1",
   "platform-contacts": "platform_contacts_v1",
   "re-salesperson": "re_sales_v1",
+  // CRE Analyst — canonical slug + Firestore slug variant
+  "cre-analyst": "cre_deal_screen_v0",
+  "cre-analyst-001": "cre_deal_screen_v0",
+  // Investor Relations — canonical slug + Firestore slug variant
+  "investor-relations": "ir_compliance_v0",
+  "ir-worker-001": "ir_compliance_v0",
   // Makai School of Nursing demo suite — all 5 workers share nursing_clinical_v1
   "nursing-records-001": "nursing_clinical_v1",
   "nursing-courses-001": "nursing_clinical_v1",
