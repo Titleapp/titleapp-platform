@@ -340,7 +340,7 @@
     },
     {
       "id": "RES-001",
-      "name": "Real Estate Salesperson",
+      "name": "Real Estate Advocate",
       "slug": "re-salesperson",
       "suite": "Sales",
       "phase": 3,
@@ -349,16 +349,21 @@
         "monthly": 79
       },
       "status": "live",
-      "capabilitySummary": "Manages buyer and listing pipelines end-to-end. Tracks DOM and recommends price moves; matches MLS to buyer criteria; drafts offers from CMA data; enforces contingency deadlines; runs the post-close cadence.",
+      "capabilitySummary": "Pure-fiduciary buyer and seller representation — no commission, no conflict. Searches listings by criteria, runs CMAs against comparable sales, reviews disclosures, coaches offer strategy, and tracks contingency deadlines. Works for you, not the agent or lender.",
       "tags": [
-        "sales",
-        "buyer-pipeline",
-        "listing-pipeline",
-        "transaction-management"
+        "advocate",
+        "fiduciary",
+        "buyer-representation",
+        "cma",
+        "real-estate",
+        "no-commission",
+        "listing-search",
+        "offer-strategy",
+        "disclosure-review"
       ],
       "valueBucket": [
-        "make_money",
-        "win_more_deals"
+        "save_money",
+        "protect_yourself"
       ],
       "alexRegistration": {
         "priority": "high",
