@@ -176,12 +176,12 @@ const WORKER_INTROS = {
     unlocks: [],
   },
   "re-salesperson": {
-    title: "RE Salesperson",
-    what: "I support buyer/seller transactions — listing prep, offer analysis, contract review.",
+    title: "Real Estate Advocate",
+    what: "I work for you — not the agent, not the seller, not the lender. No commission. No conflict. Tell me what you're trying to buy or sell.",
     actions: [
-      "Tell me about a property you're working — address, price, situation",
-      "Ask me to analyze a buyer's offer or prepare a listing summary",
-      "Ask me about disclosure requirements or negotiation strategy",
+      "Search for homes — tell me location, budget, beds, and must-haves",
+      "Drop an address and I'll run a CMA against recent comparable sales",
+      "Ask me about disclosure requirements, offer strategy, or negotiation",
     ],
     unlocks: ["Connect Drive to access listing documents and contracts"],
   },
