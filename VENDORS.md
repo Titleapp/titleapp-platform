@@ -41,6 +41,19 @@
 
 ---
 
+## Business Operations
+
+### Stable (Virtual Mailbox)
+- **Dashboard:** https://dashboard.usestable.com
+- **Account:** SOCIII, Inc. — Las Vegas, NV (#75942)
+- **Purpose:** Virtual mailbox — receives physical mail at the Las Vegas address, digitizes on request
+- **Las Vegas address:** 1810 E Sahara Ave, Las Vegas, NV 89104 (Suite #75942)
+- **Receives mail for:** SOCIII, Inc. AND Sean Lee Combs personally (same mailbox #)
+- **Billing:** Monthly subscription (see Stable dashboard)
+- **Note:** Default action is "Shred in 30 days" — log in and request scans for anything important
+
+---
+
 ## Payments & Billing
 
 ### Stripe
