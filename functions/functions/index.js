@@ -7974,6 +7974,58 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:aircraftSpec?type=B738  — static specs by ICAO type code
+    if (route === "/aviation:aircraftSpec" && method === "GET") {
+      try {
+        await requireFirebaseUser(req, res);
+        const { handleAircraftSpec } = require("./services/aviation/aircraftData");
+        return await handleAircraftSpec(req, res);
+      } catch (e) {
+        if (e.statusCode === 401) return;
+        console.error("aviation:aircraftSpec failed:", e);
+        return jsonError(res, 500, "Aircraft spec lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:aircraftSearch?q=cessna+172  — free-text aircraft search
+    if (route === "/aviation:aircraftSearch" && method === "GET") {
+      try {
+        await requireFirebaseUser(req, res);
+        const { handleAircraftSearch } = require("./services/aviation/aircraftData");
+        return await handleAircraftSearch(req, res);
+      } catch (e) {
+        if (e.statusCode === 401) return;
+        console.error("aviation:aircraftSearch failed:", e);
+        return jsonError(res, 500, "Aircraft search failed");
+      }
+    }
+
+    // GET /v1/aviation:charts?lat=36.08&lon=-115.15&type=sectional  — FAA chart tiles
+    if (route === "/aviation:charts" && method === "GET") {
+      try {
+        await requireFirebaseUser(req, res);
+        const { handleCharts } = require("./services/aviation/avcharts");
+        return await handleCharts(req, res);
+      } catch (e) {
+        if (e.statusCode === 401) return;
+        console.error("aviation:charts failed:", e);
+        return jsonError(res, 500, "Chart lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:chartSearch?q=KLAX  — search FAA charts by name/ICAO
+    if (route === "/aviation:chartSearch" && method === "GET") {
+      try {
+        await requireFirebaseUser(req, res);
+        const { handleChartSearch } = require("./services/aviation/avcharts");
+        return await handleChartSearch(req, res);
+      } catch (e) {
+        if (e.statusCode === 401) return;
+        console.error("aviation:chartSearch failed:", e);
+        return jsonError(res, 500, "Chart search failed");
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  PLATFORM INVENTORY — UNAUTHENTICATED (token-gated or admin bearer)
     //  PearX S26 Doc 1.4
