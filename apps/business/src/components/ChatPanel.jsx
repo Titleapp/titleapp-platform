@@ -42,6 +42,7 @@ import CanvasResolver from '../services/CanvasResolver';
 import { WORKER_CHECKLISTS, WORKER_INTELLIGENCE } from './canvas/WorkerCanvas';
 import { lookupSignal } from '../config/canvasTypes';
 import { isDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from './canvas/sampleData';
+import SupportEscalationCard from './SupportEscalationCard.jsx';
 
 // WORKER_SUITES computed lazily inside component (useMemo) — workers come
 // from the Firestore-backed useWorkerCatalog hook now (CODEX 50.10 Phase 2).
@@ -1397,33 +1398,22 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       }
     }
 
-    // ── Support escalation: user asks for a human or reports platform-level issue ──
+    // ── Support escalation: show consent gate card, do NOT fire backend yet ──
     const _escalationRe = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(real\s+)?(human|person|agent)\b|\bcontact\s+(support|the\s+team)\b|\bsupport\s+ticket\b|\b(something|the\s+app|this)\s+(is\s+)?(broken|not\s+working|crashed)\b|\b(can't|cannot)\s+(log[\s-]*in|sign[\s-]*in|get\s+in|access)\b|\bneed\s+(human|live|real)\s+(help|support|agent)\b/i;
     if (_escalationRe.test(userMessage)) {
       setIsSending(false);
+      const _escParams = new URLSearchParams(window.location.search);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "I'm looping in the SOCIII support team — someone will follow up with you directly within a few hours.",
+        content: "I can connect you with the SOCIII support team.",
+        structuredData: {
+          type: 'support_escalation_consent',
+          triggerMessage: userMessage,
+          workerSlug: _activeSlug || null,
+          persona: _escParams.get('persona') || null,
+        },
         isSystem: true,
       }]);
-      try {
-        const _escApiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
-        const _escTenantId = localStorage.getItem('TENANT_ID') || '';
-        const _escToken = await liveUser.getIdToken();
-        const _escParams = new URLSearchParams(window.location.search);
-        await fetch(`${_escApiBase}/api?path=/v1/support:escalate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_escToken}`, 'X-Tenant-Id': _escTenantId },
-          body: JSON.stringify({
-            message: userMessage,
-            workerSlug: _activeSlug || null,
-            persona: _escParams.get('persona') || null,
-            sessionId: localStorage.getItem('CHAT_SESSION_ID') || null,
-          }),
-        });
-      } catch (_escErr) {
-        console.warn('Support escalation notify failed:', _escErr.message);
-      }
       return;
     }
 
@@ -2205,6 +2195,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   function renderStructuredData(data) {
     if (!data || typeof data !== 'object') return null;
+
+    if (data.type === 'support_escalation_consent') {
+      return (
+        <SupportEscalationCard
+          triggerMessage={data.triggerMessage}
+          workerSlug={data.workerSlug}
+          persona={data.persona}
+          onDismiss={() => {}}
+        />
+      );
+    }
 
     if (data.type === 'worker_change_proposal') {
       return <WorkerChangeProposalCard proposalId={data.proposalId} slug={data.slug} tenantId={data.tenantId} summary={data.summary} />;

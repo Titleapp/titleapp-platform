@@ -21440,12 +21440,101 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // SUPPORT ESCALATION
     // ----------------------------
 
+    // Shared helpers for support routes
+    // $25/hr billed in 15-min increments = 7 credits/block (1 credit = $1)
+    const SUPPORT_CREDITS_PER_BLOCK = 7;
+
+    // Returns true if the current time is within support hours: Mon-Fri 9am-5pm PT
+    function isSupportHours() {
+      const now = new Date();
+      // Convert to PT (handles DST automatically via toLocaleString)
+      const pt = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+      const dow = pt.getDay(); // 0=Sun,6=Sat
+      const hour = pt.getHours();
+      return dow >= 1 && dow <= 5 && hour >= 9 && hour < 17;
+    }
+
+    // Returns next opening time string (or null if within hours)
+    function nextSupportOpen() {
+      if (isSupportHours()) return null;
+      const now = new Date();
+      const pt = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+      const dow = pt.getDay();
+      let daysUntilMonday = 0;
+      if (dow === 0) daysUntilMonday = 1;       // Sun → Mon
+      else if (dow === 6) daysUntilMonday = 2;  // Sat → Mon
+      else if (pt.getHours() >= 17) daysUntilMonday = (dow === 5) ? 3 : 1; // after 5pm → next day (or Mon if Fri)
+      // For simplicity: just return the label
+      if (daysUntilMonday > 0) return "Monday 9am PT";
+      return "9am PT today";
+    }
+
+    // Check if a tenant is subsidized for human support
+    async function isSupportSubsidized(tenantId) {
+      if (!tenantId) return false;
+      // Code-level prefix check for demo fleet (never needs a manual flag)
+      if (tenantId.startsWith("demo-")) return true;
+      // Explicit institutional flag (Makai, UH, etc.)
+      try {
+        const snap = await db.collection("tenants").doc(tenantId).get();
+        if (!snap.exists) return false;
+        const data = snap.data() || {};
+        if (!data.billing?.humanSupportSubsidized) return false;
+        const until = data.billing?.humanSupportSubsidizedUntil;
+        if (until) {
+          const expiryMs = until.toMillis ? until.toMillis() : new Date(until).getTime();
+          if (Date.now() > expiryMs) return false; // expired
+        }
+        return true;
+      } catch (_) { return false; }
+    }
+
+    // Get tenant's current credit balance (returns 0 on error)
+    async function getTenantCredits(tenantId, userId) {
+      try {
+        // Check by tenantId first, then by userId
+        const snap = await db.collection("dataCredits")
+          .where("tenantId", "==", tenantId)
+          .limit(1)
+          .get();
+        if (!snap.empty) return snap.docs[0].data().balance || 0;
+        // Fallback: user-level credits
+        const uSnap = await db.collection("dataCredits")
+          .where("userId", "==", userId)
+          .limit(1)
+          .get();
+        if (!uSnap.empty) return uSnap.docs[0].data().balance || 0;
+        return 0;
+      } catch (_) { return 0; }
+    }
+
+    // GET /v1/support:status — returns subsidized flag, credit balance, hours status
+    if (route === "/support:status" && method === "GET") {
+      try {
+        const escTenantId = ctx.tenantId || "";
+        const userId = auth.user?.uid || "";
+        const subsidized = await isSupportSubsidized(escTenantId);
+        const creditsAvailable = subsidized ? null : await getTenantCredits(escTenantId, userId);
+        return res.json({
+          ok: true,
+          subsidized,
+          creditsAvailable,
+          withinHours: isSupportHours(),
+          nextOpen: nextSupportOpen(),
+          creditsPerBlock: SUPPORT_CREDITS_PER_BLOCK,
+        });
+      } catch (e) {
+        console.error("❌ support:status failed:", e);
+        return jsonError(res, 500, "Status check failed");
+      }
+    }
+
     // POST /v1/support:escalate
-    // Fired by ChatPanel when user explicitly asks for human support.
-    // Sends email + SMS to Sean and logs to supportEscalations/.
+    // Fired by SupportEscalationCard after user gives explicit consent.
+    // Logs session, sends email + SMS, deducts credits if non-subsidized.
     if (route === "/support:escalate" && method === "POST") {
       try {
-        const { message, workerSlug, persona, sessionId } = body;
+        const { message, workerSlug, persona, sessionId, consentGiven } = body;
         if (!message) return jsonError(res, 400, "message required");
 
         const userId = auth.user?.uid || "anonymous";
@@ -21453,42 +21542,86 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const userName = auth.user?.displayName || userEmail || "a user";
         const escTenantId = ctx.tenantId || "unknown";
 
-        await db.collection("supportEscalations").add({
+        const subsidized = await isSupportSubsidized(escTenantId);
+
+        // Credit deduction for non-subsidized tenants (RT2: hard block on insufficient balance)
+        if (!subsidized && consentGiven) {
+          const balance = await getTenantCredits(escTenantId, userId);
+          if (balance < SUPPORT_CREDITS_PER_BLOCK) {
+            return jsonError(res, 402, "Insufficient credits for human support", {
+              creditsAvailable: balance,
+              creditsRequired: SUPPORT_CREDITS_PER_BLOCK,
+            });
+          }
+          // Reserve the minimum block upfront (reconciled at ticket close)
+          try {
+            const creditSnap = await db.collection("dataCredits")
+              .where("tenantId", "==", escTenantId)
+              .limit(1)
+              .get();
+            if (!creditSnap.empty) {
+              const admin = require("firebase-admin");
+              await creditSnap.docs[0].ref.update({
+                balance: admin.firestore.FieldValue.increment(-SUPPORT_CREDITS_PER_BLOCK),
+                updatedAt: nowServerTs(),
+              });
+            }
+          } catch (creditErr) {
+            console.warn("support:escalate credit deduction failed:", creditErr.message);
+          }
+        }
+
+        // Open a support session doc
+        const sessionRef = await db.collection("supportSessions").add({
           tenantId: escTenantId,
           userId,
           userEmail: userEmail || null,
           workerSlug: workerSlug || null,
           persona: persona || null,
           sessionId: sessionId || null,
-          message,
-          status: "pending",
-          createdAt: nowServerTs(),
+          triggerMessage: message,
+          triggerMethod: "regex",
+          status: "open",
+          subsidized,
+          creditsReserved: subsidized ? 0 : SUPPORT_CREDITS_PER_BLOCK,
+          creditCharged: 0,
+          minutesLogged: null,
+          reopenedFrom: null,
+          skipCharge: false,
+          openedAt: nowServerTs(),
+          respondedAt: null,
+          closedAt: null,
+          resolvedBy: null,
+          resolutionSummary: null,
+          slaMet: null,
         });
 
+        // Notify Sean via email + SMS
         const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
         const safeMsg = message.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+        const hoursNote = isSupportHours() ? "Within business hours." : `Outside hours — next open: ${nextSupportOpen()}.`;
         await sendViaSendGrid({
           to: "sean@sociii.ai",
           subject: `[Support] ${userName} needs help${workerSlug ? ` — ${workerSlug}` : ""}`,
-          htmlBody: `<p><strong>Support escalation received</strong></p>
+          htmlBody: `<p><strong>Support escalation received</strong> · ${hoursNote}</p>
 <p><strong>User:</strong> ${userName}${userEmail ? ` &lt;${userEmail}&gt;` : ""}</p>
-<p><strong>Tenant:</strong> ${escTenantId}</p>
+<p><strong>Tenant:</strong> ${escTenantId}${subsidized ? " <em>(subsidized)</em>" : ""}</p>
 <p><strong>Worker:</strong> ${workerSlug || "General chat"}</p>
 ${persona ? `<p><strong>Persona:</strong> ${persona}</p>` : ""}
 <p><strong>Message:</strong></p>
 <blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:8px 0;color:#444">${safeMsg}</blockquote>
-<p><a href="https://app.sociii.ai/admin">Open Admin Panel →</a></p>`,
+<p><a href="https://app.sociii.ai/admin">Open Admin Panel →</a> · Session ID: ${sessionRef.id}</p>`,
         });
 
         try {
           const { sendSMSDirect } = require("./communications/twilioHelper");
-          const preview = message.slice(0, 120).replace(/\n/g, " ");
-          await sendSMSDirect("+13104300780", `[SOCIII Support] ${userName}: "${preview}"`);
+          const preview = message.slice(0, 100).replace(/\n/g, " ");
+          await sendSMSDirect("+13104300780", `[Support${subsidized ? "/free" : ""}] ${userName}: "${preview}" Session: ${sessionRef.id.slice(0, 8)}`);
         } catch (smsErr) {
           console.warn("support:escalate SMS failed:", smsErr.message);
         }
 
-        return res.json({ ok: true });
+        return res.json({ ok: true, sessionId: sessionRef.id, subsidized, withinHours: isSupportHours() });
       } catch (e) {
         console.error("❌ support:escalate failed:", e);
         return jsonError(res, 500, "Support escalation failed");

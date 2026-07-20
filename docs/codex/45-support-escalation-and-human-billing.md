@@ -1,6 +1,6 @@
 # CODEX 45 — Support Escalation Trigger + Human Support Billing Spec
 
-**Status:** 🟢 Escalation trigger shipped 2026-07-19 · Billing spec in CODEX 44 (pre-build)
+**Status:** 🟢 Escalation trigger + consent gate UI shipped 2026-07-19 · Admin close-ticket panel still pending
 **Owner:** Sean
 **Date:** 2026-07-19
 **Trigger:** Makai School of Nursing pilot — Ruthie's 65+ students + 20 admin/teachers need support coverage without requiring full-time staff
@@ -28,20 +28,41 @@ The existing demo mode overlay (`DEMO MODE RULES`) was updated to include the es
 **Alex core prompt (core.js)**
 Added a `SUPPORT ESCALATION` rule to Alex's master prompt so the COS surface responds correctly even when the two backend layers don't apply.
 
-### 2. Backend Route: `POST /v1/support:escalate`
+### 2. Backend Routes (index.js)
 
-Located just before the Inventory routes in index.js. Authenticated route (Firebase user required). On call:
-- Writes to `supportEscalations/{id}` in Firestore: tenantId, userId, userEmail, workerSlug, persona, sessionId, message, status=pending, createdAt
-- Sends email to sean@sociii.ai via SendGrid with formatted HTML: user name, tenant, worker, message
-- Sends SMS to +13104300780 via Twilio (non-fatal — SMS failure does not block the response)
-- Returns `{ok: true}`
+**`GET /v1/support:status`** — called by `SupportEscalationCard` on mount:
+- Returns `{subsidized, creditsAvailable, withinHours, nextOpen, creditsPerBlock}`
+- Subsidized check: `tenantId.startsWith("demo-")` OR Firestore `billing.humanSupportSubsidized: true` (with expiry check)
+- Business hours check: Mon–Fri 9am–5pm PT using `America/Los_Angeles` timezone
 
-Demo tenants (`demo-*`) and subsidized tenants escalate with no billing — the route logs and notifies regardless.
+**`POST /v1/support:escalate`** — fired after user gives explicit consent in the card:
+- If NOT subsidized: checks credit balance; rejects with 402 if < 7 credits; atomically decrements 7 credits from `dataCredits` doc
+- Opens a `supportSessions/{id}` doc with full lifecycle fields (`status`, `subsidized`, `creditsReserved`, `creditCharged`, `reopenedFrom`, `skipCharge`, `respondedAt`, `slaMet`, etc.)
+- Sends HTML email to sean@sociii.ai (includes business hours note + session ID)
+- Sends SMS to +13104300780 (non-fatal)
+- Returns `{ok: true, sessionId, subsidized, withinHours}`
 
-### 3. CODEX 44 — Human Support Billing Spec (double red-teamed)
+Demo tenants and subsidized tenants: full logging + notification, zero credit deduction.
+
+### 3. Consent Gate UI — `SupportEscalationCard.jsx` (new component)
+
+Replaces the previous plain-text + immediate-fire approach. Injected as structured data into the chat message stream via `renderStructuredData()` in ChatPanel.
+
+Phases:
+- **loading** — fetches `GET /v1/support:status` on mount
+- **subsidized** — "Support is covered for your account — no charge"
+- **outside_hours** — warning banner + "Leave a message →" CTA
+- **no_credits** — shows balance shortfall + "Add credits →" deeplinks to billing
+- **ready** — shows credit balance, "Connect me →" primary, "Keep trying with AI" secondary
+- **confirmed** — green checkmark confirmation state
+- **declined** — renders null
+
+Button-first layout (CODEX 44 RT8). Credit info is secondary disclosure, not gating. "Connect me →" fires `POST /v1/support:escalate` with `consentGiven: true`.
+
+### 4. CODEX 44 — Human Support Billing Spec (double red-teamed)
 
 Full spec for metering human support through the existing credits system. Key decisions locked:
-- $45/hr, 15-minute increments, minimum 12 credits per session
+- **$25/hr**, 15-minute increments, **minimum 7 credits** per session (1 credit = $1)
 - Explicit consent gate before any session opens — button leads, credit disclosure secondary
 - Real credit hold (not bookkeeping) at session open; final charge at close
 - Rate limit per-user (NOT per-tenant — critical for multi-student institutional accounts like Makai)
@@ -50,6 +71,7 @@ Full spec for metering human support through the existing credits system. Key de
 - `reopenedFrom` + `skipCharge` fields on session doc enforce the "no charge on reopen" policy structurally
 - `slaMet` computed off `respondedAt`, not `closedAt`
 - Demo fleet covered by code-level `tenantId.startsWith("demo-")` prefix check, not manual flags
+- **Makai/UH subsidized through 2026-12-31** (set in `scripts/seedMakaiNursingDemo.js`)
 
 Red team surfaced 10+4+2 issues (v1 + second pass). All addressed in CODEX 44 v2.
 
@@ -59,26 +81,26 @@ Red team surfaced 10+4+2 issues (v1 + second pass). All addressed in CODEX 44 v2
 
 | File | Change |
 |------|--------|
-| `apps/business/src/components/ChatPanel.jsx` | Layer 1: escalation regex + local response + API call in `sendMessage()` |
-| `functions/functions/index.js` | `POST /v1/support:escalate` route; universal worker prompt append; demo overlay update |
+| `apps/business/src/components/ChatPanel.jsx` | Layer 1: escalation regex → inject consent card via `structuredData`; import + `renderStructuredData` handler |
+| `apps/business/src/components/SupportEscalationCard.jsx` | **NEW** — consent gate UI (6 phases, credit balance fetch, connect/dismiss buttons) |
+| `functions/functions/index.js` | `GET /v1/support:status` (new); `POST /v1/support:escalate` (updated: session doc, credit deduction, SMS improvements); universal worker prompt append; demo overlay update |
 | `functions/functions/services/alex/prompts/core.js` | `SUPPORT ESCALATION` rule added |
-| `docs/codex/44-human-support-billing.md` | New — full billing spec, double red-teamed, v2 |
+| `scripts/seedMakaiNursingDemo.js` | `billing.humanSupportSubsidized + humanSupportSubsidizedUntil` added to TENANT_DOC |
+| `docs/codex/44-human-support-billing.md` | v2 — full billing spec, double red-teamed, $25/hr + 7 credits |
 | `docs/codex/45-support-escalation-and-human-billing.md` | This file |
 | `docs/codex/00-INDEX.md` | CODEX 44 + 45 indexed |
 
-QA001 ran clean: 0 lint errors, clean production build.
+QA001 ran clean: 0 lint errors, clean production build (prior session).
 
 ---
 
 ## What's NOT Built Yet (CODEX 44 build backlog)
 
-The escalation trigger fires and notifies Sean. The billing layer does not exist yet — no credits are charged for any support session today. Before charging any tenant:
+Consent gate + credit deduction at session open are shipped. Remaining before the full billing loop closes:
 
-1. **Consent gate UI** — structured card in ChatPanel (button leads, credit line secondary), replacing the current plain-text response for non-subsidized tenants
-2. **Credit balance lookup at escalation time** — needed to show balance in the consent gate and enforce the zero-credit hard block
-3. **Real credit hold at session open** — atomically deduct 12 from spendable balance when session opens
-4. **Admin "close ticket" panel** — minutes logged + resolver + skip-charge check + credit debit trigger
-5. **`billing.humanSupportSubsidized: true`** flag set on Makai tenant in Firestore before pilot goes live
+1. **Admin "close ticket" panel** — minutes logged + resolver + skip-charge check + final credit debit trigger
+2. **Subsidy expiry warning emails** — 30-day → 7-day → hard hold notifications (needed before Makai subsidy lapses 2026-12-31)
+3. **Credit reconciliation at close** — if session ran > 15 min, charge additional blocks; refund if < 15 min
 
 ---
 
@@ -86,4 +108,4 @@ The escalation trigger fires and notifies Sean. The billing layer does not exist
 
 1. **Manpreet/Vishal rate card** — $20/hr is an estimate. Lock their per-call rate before margin math is real (CODEX 44 RT3).
 2. **SLA hours** — 4 business hours Mon–Fri Pacific proposed. Confirm, especially for evening Hawaii-timezone escalations from Makai students.
-3. **Subsidized until when for Makai?** — Set a specific date on `humanSupportSubsidizedUntil` so the 30-day warning fires at the right time.
+3. **Makai subsidy end date** — set to 2026-12-31 in seed script. Need to set it live in Firestore before subsidy warning emails are relevant.

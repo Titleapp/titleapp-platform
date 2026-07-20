@@ -43,6 +43,11 @@ const TENANT_DOC = {
   suite: "Clinical Programs",
   createdAt: ts(),
   plan: "demo",
+  billing: {
+    humanSupportSubsidized: true,
+    humanSupportSubsidizedUntil: new Date("2026-12-31"),
+    humanSupportSubsidizedReason: "Makai/UH pilot",
+  },
 };
 
 // ── Digital Workers ───────────────────────────────────────────────────────────
@@ -167,6 +172,17 @@ const STUDENTS = [
     notes:
       "Extended leave; return plan active; needs comprehensive catch-up plan",
   },
+  {
+    id: "student-sara-kahele",
+    name: "Sara Kahele",
+    status: "ready",
+    clinicalHours: 486,
+    clinicalHoursRequired: 500,
+    atiScore: 88,
+    coursesComplete: 5,
+    notes:
+      "Consistently high performer; strong clinical judgment across all rotations; exceeds NCLEX readiness benchmarks; vault record complete",
+  },
 ];
 
 // ── Courses ───────────────────────────────────────────────────────────────────
@@ -248,6 +264,33 @@ const COMPETENCIES = [
     attestedBy: "instructor-kealani-moku",
     attestedAt: "2026-07-01",
     notes: "Demonstrated excellent patient communication",
+  },
+  {
+    id: "comp-sara-2a",
+    studentId: "student-sara-kahele",
+    competency: "2A - Medication administration safety",
+    status: "verified",
+    attestedBy: "instructor-kealani-moku",
+    attestedAt: "2026-06-12",
+    notes: "Perfect 5-rights technique; zero errors across 3 observed administrations",
+  },
+  {
+    id: "comp-sara-4b",
+    studentId: "student-sara-kahele",
+    competency: "4B - IV catheter insertion",
+    status: "verified",
+    attestedBy: "instructor-ana-rodrigues",
+    attestedAt: "2026-06-28",
+    notes: "First-attempt success; demonstrated sterile technique and patient communication",
+  },
+  {
+    id: "comp-sara-5c",
+    studentId: "student-sara-kahele",
+    competency: "5C - Wound care and dressing change",
+    status: "verified",
+    attestedBy: "instructor-kealani-moku",
+    attestedAt: "2026-07-10",
+    notes: "Thorough assessment; clean technique; documented and charted correctly",
   },
 ];
 
