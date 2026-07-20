@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAppCheckHeader } from '../firebase';
 import { getWorkerColor } from '../utils/workerColors';
 import { firstNameFrom } from '../utils/displayName';
 
@@ -177,10 +178,11 @@ const WORKER_INTROS = {
   },
   "re-salesperson": {
     title: "Real Estate Advocate",
-    what: "I work for you — not the agent, not the seller, not the lender. No commission. No conflict. Tell me what you're trying to buy or sell.",
+    what: "I work for you — not the agent, not the seller, not the lender. No commission. No conflict. Tell me what you are looking for — location, price range, beds, baths, and any must-haves. I will pull live listings and run a CMA on any address you want to dig into.",
     actions: [
-      "Search for homes — tell me location, budget, beds, and must-haves",
+      "Search for homes — tell me location, budget, beds, baths, and must-haves",
       "Drop an address and I'll run a CMA against recent comparable sales",
+      "Ask me about financing constraints for a property — flood zone, fire hazard, FHA/VA eligibility, insurance availability — factors that affect what buyers can actually finance and what the property is realistically worth",
       "Ask me about disclosure requirements, offer strategy, or negotiation",
     ],
     unlocks: ["Connect Drive to access listing documents and contracts"],
@@ -279,7 +281,7 @@ function AlexIntroCard({ greetName, onDismiss }) {
 // consent gate, audited); reject discards. Module-scope so it keeps its own state.
 function WorkerChangeProposalCard({ proposalId, tenantId, summary }) {
   const [status, setStatus] = React.useState('pending');
-  const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+  const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
   async function act(action) {
     setStatus('working');
     try {
@@ -391,13 +393,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [celebrationFired, setCelebrationFired] = useState(() => {
     return sessionStorage.getItem('ta_onboarding_celebrated') === 'true';
   });
-
-  // Auto-collapse greeting after 5 seconds
-  useEffect(() => {
-    if (greetingCollapsed || messages.length > 0) return;
-    const timer = setTimeout(() => setGreetingCollapsed(true), 5000);
-    return () => clearTimeout(timer);
-  }, [greetingCollapsed, messages.length]);
 
   // Adjust mobile chat panel when virtual keyboard opens/closes
   useEffect(() => {
@@ -552,6 +547,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // chit-chat. Quick-start prompts attach as suggestion chips.
       const lead = isReturn ? "Back to it." : "Hey —";
       opener = `${lead} I'm your ${tagText}${suffix}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle?`;
+
+      // Slug-specific overrides — replace generic opener with one that immediately
+      // tells the user what to do. Keeps chat and canvas in sync.
+      const SLUG_OPENERS = {
+        "re-salesperson": `${lead} I'm your Real Estate Advocate — no commission, no conflict, I work for you only. Tell me an address to look up, or describe what you're searching for: location, price range, beds, baths, must-haves. I'll pull live listings, run a CMA, and check financing constraints (flood zone, fire hazard, FHA eligibility, loan limits).`,
+      };
+      if (SLUG_OPENERS[workerId]) opener = SLUG_OPENERS[workerId];
     }
 
     setMessages(prev => [...prev, {
@@ -755,15 +757,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         return;
       }
 
-      // Demo URL (?demo=1) — always start with a clean slate. Loading prior
-      // conversation history shows stale messages from the last demo session
-      // and confuses the "Good afternoon, Maya" first-impression moment.
+      // Demo URL (?demo=1) — fresh session + persona-aware welcome greeting.
       if (new URL(window.location.href).searchParams.get("demo") === "1") {
         try {
           const freshSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
           localStorage.setItem("ta_chat_session_id", freshSid);
         } catch { /* ignore */ }
-        return; // start blank — no welcome bubble either; canvas handles the greeting
+        const _persona = new URL(window.location.href).searchParams.get("persona") || "";
+        const DEMO_GREETINGS = {
+          "nursing-student":  "Welcome to SOCIII, Sara. This is your school's platform — your courses, Vault, and academic record all live here. The workers on the left are your specialists. Click any one to get started, or just ask me anything.",
+          "nursing-admin":    "Welcome to SOCIII. This is your school's administrative workspace — student enrollments, course workers, and your institution's record all in one place. Click any worker on the left to explore, or ask me how to get started.",
+          "uh-admin":         "Welcome to SOCIII. You're in the University of Hawaii demo workspace — credentials, student records, and course management all here. Click any worker on the left to see it in action.",
+          "vet-client":       "Welcome to SOCIII, Koa. This is Luna's health portal from Meadow Creek Animal Hospital — visit records, medications, and upcoming care are all here. Click the Pet Health Records worker on the left to get started.",
+          "realestate":       "Welcome to SOCIII. This is your real estate workspace — deal analysis, title research, zoning data, and a full client portal all in one place. Click any worker on the left or tell me what you're working on.",
+          "traitly":          "Welcome to SOCIII. This is the TRAITLY workspace — product passports, compliance tracking, and your DPP registry. Click any worker on the left to see it in action.",
+        };
+        const greeting = DEMO_GREETINGS[_persona] || "Welcome to SOCIII. I'm Alex, your Chief of Staff. The workers on the left are your specialists — each one knows the rules of its domain. Click any worker to see it in action, or ask me what you're looking for.";
+        setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
+        return;
       }
 
       // Usage-triggered portfolio review
@@ -843,7 +854,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     try {
       const token = await currentUser.getIdToken(true);
       const tenantId = localStorage.getItem('TENANT_ID') || '';
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
       await fetch(`${apiBase}/api?path=/v1/workspace:acceptDisclaimer`, {
         method: 'POST',
         headers: {
@@ -1171,7 +1182,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   async function executeAlexCommand(type, payload) {
     const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
-    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
     switch (type) {
       case 'CREATE_WORKSPACE':
         try {
@@ -1216,7 +1227,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // ── Subscribe to a worker via /worker:subscribe ───────────
   async function subscribeToWorker(worker) {
     const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
-    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
     // 49.32 — pass current workspace tenantId so backend creates a tenant-scoped
     // sub when caller is admin in a Business workspace. "vault"/null falls
     // through to user-scope.
@@ -1265,7 +1276,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   async function handleBundleCreateAndSubscribe(bundle, workspaceName, doCreate) {
     setBundleSubscribeModal(null);
-    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
     const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
 
     if (doCreate) {
@@ -1359,7 +1370,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         && /\b(fix|change|update|modify|adjust|tweak|edit|rewrite)\b/i.test(userMessage)
         && /\bworker\b/i.test(userMessage)) {
       try {
-        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
         const tenantId = localStorage.getItem('TENANT_ID') || '';
         const token = await liveUser.getIdToken();
         const r = await fetch(`${apiBase}/api?path=/v1/worker:change:fromChat`, {
@@ -1384,6 +1395,36 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         setMessages(prev => [...prev, { role: 'assistant', content: "I hit an error drafting that change. Try again in a moment." }]);
         return;
       }
+    }
+
+    // ── Support escalation: user asks for a human or reports platform-level issue ──
+    const _escalationRe = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(real\s+)?(human|person|agent)\b|\bcontact\s+(support|the\s+team)\b|\bsupport\s+ticket\b|\b(something|the\s+app|this)\s+(is\s+)?(broken|not\s+working|crashed)\b|\b(can't|cannot)\s+(log[\s-]*in|sign[\s-]*in|get\s+in|access)\b|\bneed\s+(human|live|real)\s+(help|support|agent)\b/i;
+    if (_escalationRe.test(userMessage)) {
+      setIsSending(false);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "I'm looping in the SOCIII support team — someone will follow up with you directly within a few hours.",
+        isSystem: true,
+      }]);
+      try {
+        const _escApiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
+        const _escTenantId = localStorage.getItem('TENANT_ID') || '';
+        const _escToken = await liveUser.getIdToken();
+        const _escParams = new URLSearchParams(window.location.search);
+        await fetch(`${_escApiBase}/api?path=/v1/support:escalate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_escToken}`, 'X-Tenant-Id': _escTenantId },
+          body: JSON.stringify({
+            message: userMessage,
+            workerSlug: _activeSlug || null,
+            persona: _escParams.get('persona') || null,
+            sessionId: localStorage.getItem('CHAT_SESSION_ID') || null,
+          }),
+        });
+      } catch (_escErr) {
+        console.warn('Support escalation notify failed:', _escErr.message);
+      }
+      return;
     }
 
     // Check for local response first (worker discovery + demo-clear guidance only)
@@ -1443,7 +1484,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const uploadToDrive = async (file) => {
           const idToken = localStorage.getItem('ID_TOKEN');
           const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
-          const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+          const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
           const tags = activeWorkerSlug ? [`worker:${activeWorkerSlug}`, 'source:chat'] : ['source:chat'];
           const mime = inferMime(file);
           // Step 1: get signed upload URL + provisional Firestore record
@@ -1572,9 +1613,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const vertical = localStorage.getItem('VERTICAL') || 'consumer';
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';
 
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
       const _chatAbort = new AbortController();
       const _chatTimeout = setTimeout(() => _chatAbort.abort(), 55000);
+      const _appCheckHeader = await getAppCheckHeader();
       const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
         method: 'POST',
         signal: _chatAbort.signal,
@@ -1584,6 +1626,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           'X-Tenant-Id': tenantId,
           'X-Vertical': alexContext?.surface === 'chief-of-staff' ? 'chief-of-staff' : vertical,
           'X-Jurisdiction': jurisdiction,
+          ..._appCheckHeader,
         },
         body: JSON.stringify({
           message: userMessage,
@@ -1612,7 +1655,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           selectedWorker: (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           // CRE canvas grounding: read current address from canvas if present
-          ...(() => { try { const raw = sessionStorage.getItem("ta_re_live"); if (raw) return { creCanvas: JSON.parse(raw) }; } catch (_) {} return {}; })(),
+          ...(() => { try { const raw = sessionStorage.getItem("ta_re_live"); if (raw) return { creCanvas: JSON.parse(raw) }; } catch (_) { /* ignore */ } return {}; })(),
           // 50.27 — Voice mode hint. Backend appends a voice-friendly
           // response style directive to the system prompt: 2-3 sentences,
           // no markdown, conversational tone for hands-free listening.
@@ -1731,8 +1774,63 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       });
 
       clearTimeout(_chatTimeout);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Request failed');
+
+      // CODEX 42 — SSE streaming path (RE Advocate POC). If the server returns
+      // text/event-stream, pump tokens into a live message instead of waiting
+      // for a single JSON blob. All downstream canvas/signal logic still runs
+      // on the assembled `data` object built from the final `done` SSE event.
+      const _isSSE = response.headers.get('content-type')?.includes('text/event-stream');
+      let data;
+
+      if (_isSSE) {
+        if (!response.ok) throw new Error('Streaming request failed');
+        data = await new Promise((resolve, reject) => {
+          let accumulated = '';
+          let donePayload = null;
+          const streamKey = Date.now();
+          setIsTyping(false);
+          if (workerCtx?.completeWork) workerCtx.completeWork();
+          setMessages(prev => [...prev, { role: 'assistant', content: '', _streamKey: streamKey }]);
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let lineBuf = '';
+          const pump = () => reader.read().then(({ done, value }) => {
+            if (done) {
+              setMessages(prev => prev.map(m =>
+                m._streamKey === streamKey ? { ...m, content: accumulated.trim(), _streamKey: undefined } : m
+              ));
+              resolve({
+                ok: true,
+                response: accumulated.trim(),
+                canvasSignal: donePayload?.canvasSignal || null,
+                canvasRenders: donePayload?.canvasRenders || [],
+              });
+              return;
+            }
+            lineBuf += decoder.decode(value, { stream: true });
+            const lines = lineBuf.split('\n');
+            lineBuf = lines.pop() ?? '';
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const parsed = JSON.parse(line.slice(6));
+                if (parsed.token !== undefined) {
+                  accumulated += parsed.token;
+                  setMessages(prev => prev.map(m =>
+                    m._streamKey === streamKey ? { ...m, content: accumulated } : m
+                  ));
+                }
+                if (parsed.done) donePayload = parsed;
+              } catch { /* ignore malformed SSE line */ }
+            }
+            pump();
+          }).catch(reject);
+          pump();
+        });
+      } else {
+        data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Request failed');
+      }
 
       // 50.27 — surface structured failures (INSUFFICIENT_ROLE,
       // INSUFFICIENT_CREDITS, etc.) that come back as HTTP 200 with
@@ -1744,8 +1842,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const friendly = data.message
           || (data.error === 'INSUFFICIENT_ROLE' ? "You don't have permission to send messages in this workspace. Ask the admin to upgrade your role."
               : data.error === 'INSUFFICIENT_CREDITS' ? (data.source === 'tenant'
-                  ? 'This workspace is out of Data Credits. Ask the workspace admin to top up.'
-                  : 'You are out of Data Credits. Top up your account to continue.')
+                  ? 'This workspace is out of Data Credits. Add $10 to get 500 credits — covers ~100 property lookups or NOTAM checks. [Add credits →](/billing)'
+                  : 'You\'ve used your free data allowance. Add $10 to get 500 credits and keep going. [Add credits →](/billing)')
               : `Could not send: ${data.error}`);
         setMessages(prev => [...prev, {
           role: 'assistant',
@@ -1755,9 +1853,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         return;
       }
 
-      setIsTyping(false);
+      if (!_isSSE) setIsTyping(false);
       setDealContext(null);
-      if (workerCtx?.completeWork) workerCtx.completeWork();
+      if (!_isSSE && workerCtx?.completeWork) workerCtx.completeWork();
       // S52.35 — canvas payloads from worker chat-dispatch (e.g. Site Recon
       // results). WRITE-THROUGH first (sessionStorage), then dispatch: if the
       // canvas surface isn't mounted at dispatch instant the event is lost,
@@ -1802,7 +1900,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (!_inWorker) {
         const signal = extractSignal(userMessage);
         if (signal && panel?.showRecommendations) {
-          const searchBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+          const searchBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
           fetch(`${searchBase}/api?path=/v1/marketplace:search&vertical=${signal.vertical}&limit=10`)
             .then(r => r.json())
             .then(searchData => {
@@ -1814,22 +1912,25 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         }
       }
 
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: cleanResponse || 'No response received.',
-        structuredData: data.structuredData,
-        recommendationCard: data.recommendationCard || null,
-        workerCards: data.workerCards || null,
-        emailDraft: data.emailDraft || null,
-        emailCampaign: data.emailCampaign || null,
-        smsDraft: data.smsDraft || null,
-        whatsappDraft: data.whatsappDraft || null,
-        telegramDraft: data.telegramDraft || null,
-        githubIssue: data.githubIssue || null,
-        apolloSearches: data.apolloSearches || null,
-        calendarProposal: data.calendarProposal || null,
-        creditWarning: data.creditWarning || null,
-      }]);
+      // SSE path already wrote the message incrementally — skip the add for streamed responses.
+      if (!_isSSE) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: cleanResponse || 'No response received.',
+          structuredData: data.structuredData,
+          recommendationCard: data.recommendationCard || null,
+          workerCards: data.workerCards || null,
+          emailDraft: data.emailDraft || null,
+          emailCampaign: data.emailCampaign || null,
+          smsDraft: data.smsDraft || null,
+          whatsappDraft: data.whatsappDraft || null,
+          telegramDraft: data.telegramDraft || null,
+          githubIssue: data.githubIssue || null,
+          apolloSearches: data.apolloSearches || null,
+          calendarProposal: data.calendarProposal || null,
+          creditWarning: data.creditWarning || null,
+        }]);
+      }
       // Push structured output to the right-panel artifact view so the canvas
       // becomes a live artifact display instead of inert worker links.
       if (panel?.showArtifact) {
@@ -1961,7 +2062,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     setSavingDraftIdx(idx);
     try {
       const token = localStorage.getItem("ID_TOKEN");
-      const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
       const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/marketing:saveDraft")}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -2059,7 +2160,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setGenerating(true);
       try {
         const token = await getAuth().currentUser?.getIdToken();
-        const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+        const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
         const res = await fetch(`${apiBase}/api?path=/v1/user:generateInvite`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -2465,7 +2566,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       </div>
 
       {/* S52.45 — explicit BETA/in-development warning in the chat surface */}
-      {currentSection !== 'creator-journey' && !isDemoMode() && <BetaNotice />}
+      {currentSection !== 'creator-journey' && !isDemoMode() && new URLSearchParams(window.location.search).get("demo") !== "1" && <BetaNotice />}
 
       {/* Language change toast */}
       {langToast && (
@@ -2751,7 +2852,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                       disabled={state === 'running'}
                       onClick={async () => {
                         setApolloRunState(prev => ({ ...prev, [key]: 'running' }));
-                        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                        const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                         const tenantId = localStorage.getItem("TENANT_ID") || "";
                         const token = await getChatToken();
                         try {
@@ -2814,7 +2915,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                           {att.filename}
                           <button
                             onClick={async () => {
-                              const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                              const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                               const token = await getChatToken();
                               let previewUrl = att.url;
                               if (att.url && att.url.startsWith("gs://")) {
@@ -2855,7 +2956,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           const dtInput = document.getElementById(`email-sched-${idx}`);
@@ -2881,7 +2982,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           setSentEmailDrafts(prev => new Set([...prev, idx]));
@@ -2960,7 +3061,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                             <button onClick={async () => {
                               let url = att.url;
                               if (url.startsWith("gs://")) {
-                                const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                                const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                                 const token = await getChatToken();
                                 const r = await fetch(`${apiBase}/api?path=/v1/email:attachmentUrl`, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ url }) });
                                 const d = await r.json();
@@ -2978,7 +3079,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                   <button
                     disabled={campaignSendState[idx] === "sending" || campaignSendState[idx] === "done"}
                     onClick={async () => {
-                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                       const token = await getChatToken();
                       setCampaignSendState(prev => ({ ...prev, [idx]: "sending" }));
                       try {
@@ -3035,7 +3136,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           const dtInput = document.getElementById(`sms-sched-${idx}`);
@@ -3061,7 +3162,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           setDismissedSmsDrafts(prev => new Set([...prev, idx]));
@@ -3109,7 +3210,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
                   <button
                     onClick={async () => {
-                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                       const tenantId = localStorage.getItem("TENANT_ID") || "";
                       const token = await getChatToken();
                       setDismissedSmsDrafts(prev => new Set([...prev, idx]));
@@ -3154,7 +3255,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           const dtInput = document.getElementById(`tg-sched-${idx}`);
@@ -3180,7 +3281,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <>
                       <button
                         onClick={async () => {
-                          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                          const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                           const tenantId = localStorage.getItem("TENANT_ID") || "";
                           const token = await getChatToken();
                           setDismissedTelegramDrafts(prev => new Set([...prev, idx]));
@@ -3242,7 +3343,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
                   <button
                     onClick={async () => {
-                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                       const tenantId = localStorage.getItem("TENANT_ID") || "";
                       const token = await getChatToken();
                       setDismissedCalendarProposals(prev => new Set([...prev, idx]));
@@ -3338,7 +3439,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderTop: "1px solid #f1f5f9" }}>
                   <button
                     onClick={async () => {
-                      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                      const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
                       const tenantId = localStorage.getItem("TENANT_ID") || "";
                       const token = await getChatToken();
                       setDismissedGithubIssues(prev => new Set([...prev, idx]));

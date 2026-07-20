@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import "./App.css";
 import "./styles/heartbeat.css";
+import DemoWelcomeBanner from "./components/DemoWelcomeBanner";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
@@ -44,7 +45,6 @@ import DealPipeline from "./sections/DealPipeline";
 import VaultDocuments from "./sections/VaultDocuments";
 import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
-import CommandCenter from "./sections/CommandCenter";
 import VaultDTCs from "./sections/VaultDTCs";
 import VaultGate from "./components/VaultGate";
 import LearningRecord from "./sections/LearningRecord";
@@ -103,6 +103,7 @@ import InviteLanding from "./pages/InviteLanding";
 import JoinWorkspace from "./pages/JoinWorkspace";
 import MeetAlex from "./pages/MeetAlex";
 import CoPilotEFB from "./sections/CoPilotEFB";
+import AviationWorkerCanvas from "./components/canvas/AviationWorkerCanvas";
 import { useWorkerState } from "./context/WorkerStateContext";
 import { useRightPanel } from "./context/RightPanelContext";
 import CanvasPanel from "./components/canvas/CanvasPanel";
@@ -4599,10 +4600,6 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
   if (worker?.slug === "platform-accounting") {
     return <Accounting />;
   }
-  if (worker?.slug === "platform-control-center-pro") {
-    return <CommandCenter />;
-  }
-
   // Ruthie Clearwater's nursing-education-001 worker — first reference
   // creator worker. Real data from her Master Config Sheet (5 courses,
   // 45 SLOs, 31 sites, 25 instructors, 6 cohorts) + 8 demo students with
@@ -4879,10 +4876,6 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "invoices":
       case "chart-of-accounts":
         return <Accounting />;
-      case "control-center":
-      case "kpi-builder":
-      case "alerts":
-        return <CommandCenter />;
       case "vault-dtcs":
         return <VaultGate><VaultDTCs /></VaultGate>;
       case "vault-learning-record":
@@ -4932,7 +4925,17 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "pending-signatures":
         return <PendingSignatures />;
       case "av-copilot":
-        return <CoPilotEFB />;
+        return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
+      case "av-dispatch":
+        return <AviationWorkerCanvas workerSlug="av-dispatch-001" />;
+      case "av-fleet":
+      case "av-mx":
+        return <AviationWorkerCanvas workerSlug="av-mx-001" />;
+      case "av-crew":
+      case "av-safety":
+      case "av-scheduling":
+      case "av-compliance":
+        return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
       case "w3-team-roster": {
         const TeamVerification = React.lazy(() => import("./pages/web3/TeamVerification"));
         return <React.Suspense fallback={<div />}><TeamVerification /></React.Suspense>;
@@ -4956,11 +4959,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <ContentCalendar />;
       case "social-media":
         return <SocialMedia />;
-      // S52.46 — removed 5 unreachable duplicate cases (financials / ap-ar /
-      // invoices / chart-of-accounts / kpi-builder). They re-declared sections
-      // already handled above (→ <Accounting/> / <CommandCenter/>); JS first-match
-      // wins so these never ran — a "fix-the-wrong-copy" trap. Live behavior
-      // unchanged.
+      // S52.46 — removed unreachable duplicate cases (financials / ap-ar /
+      // invoices / chart-of-accounts). First-match wins; these never ran.
       // ── Foundation Setup (CODEX 49.4) ──
       case "business-setup":
         return <BusinessSetup onComplete={() => setCurrentSection("dashboard")} />;
@@ -5086,13 +5086,28 @@ class SandboxErrorBoundary extends React.Component {
 
 export default function App() {
   const workerCatalog = useWorkerCatalog();
+
+  // Stamp demo session so the welcome banner knows to appear even after the
+  // ?demo=1 query param is stripped during SPA navigation.
+  if (new URLSearchParams(window.location.search).get("demo") === "1") {
+    sessionStorage.setItem("sociii_is_demo_session", "1");
+  }
+  const isDemoSession = sessionStorage.getItem("sociii_is_demo_session") === "1";
+
   // ── /alex route intercept ────────────────────────────────
   // Standalone Alex Chief of Staff workspace — 3-column layout
   const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
-  const isDemo = window.location.pathname === "/demo" || window.location.pathname === "/demo/";
-  const isREDemo = window.location.pathname === "/demo/real-estate" || window.location.pathname === "/demo/real-estate/";
-  const isDPPDemo = window.location.pathname === "/demo/dpp" || window.location.pathname === "/demo/dpp/";
-  const isPortal = window.location.pathname === "/portal" || window.location.pathname === "/portal/";
+  const _dp = window.location.pathname;
+  const isDemo               = _dp === "/demo" || _dp === "/demo/";
+  const isREDemo             = _dp === "/demo/real-estate" || _dp === "/demo/real-estate/";
+  const isDPPDemo            = _dp === "/demo/dpp" || _dp === "/demo/dpp/";
+  const isNursingAdminDemo   = _dp === "/demo/nursing" || _dp === "/demo/nursing/";
+  const isNursingStudentDemo = _dp === "/demo/nursing/student" || _dp === "/demo/nursing/student/";
+  const isUHAdminDemo        = _dp === "/demo/uh" || _dp === "/demo/uh/";
+  const isUHStudentDemo      = _dp === "/demo/uh/student" || _dp === "/demo/uh/student/";
+  const isVetClientDemo      = _dp === "/demo/vet/client" || _dp === "/demo/vet/client/";
+  const isRETenantDemo       = _dp === "/demo/re/tenant" || _dp === "/demo/re/tenant/";
+  const isPortal             = _dp === "/portal" || _dp === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
@@ -5442,8 +5457,10 @@ export default function App() {
         try {
           const freshToken = await user.getIdToken(true);
           localStorage.setItem("ID_TOKEN", freshToken);
-          if (user.displayName) localStorage.setItem("DISPLAY_NAME", user.displayName);
-          if (user.email) localStorage.setItem("USER_EMAIL", user.email);
+          const _isDemo = new URLSearchParams(window.location.search).get("demo") === "1"
+            || window.location.pathname.startsWith("/demo/");
+          if (user.displayName && !_isDemo) localStorage.setItem("DISPLAY_NAME", user.displayName);
+          if (user.email && !_isDemo) localStorage.setItem("USER_EMAIL", user.email);
           setToken(freshToken);
           setUserName(user.displayName || user.email?.split("@")[0] || "");
         } catch (err) {
@@ -5893,19 +5910,39 @@ export default function App() {
     }
   }
 
-  // ── /demo/real-estate: one-click RE demo (Scott Harrington / Merritt Capital Group) ──
+  // ── Demo routes — all URL-based, open, auto-sign-in ─────────────────────────
+  if (isNursingStudentDemo) {
+    const C = React.lazy(() => import("./pages/NursingStudentDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isNursingAdminDemo) {
+    const C = React.lazy(() => import("./pages/NursingAdminDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isUHStudentDemo) {
+    const C = React.lazy(() => import("./pages/UHStudentDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isUHAdminDemo) {
+    const C = React.lazy(() => import("./pages/UHAdminDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isVetClientDemo) {
+    const C = React.lazy(() => import("./pages/VetClientDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isRETenantDemo) {
+    const C = React.lazy(() => import("./pages/RETenantDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
   if (isREDemo) {
     const REDemoSignIn = React.lazy(() => import("./pages/REDemoSignIn"));
     return <React.Suspense fallback={null}><REDemoSignIn /></React.Suspense>;
   }
-
-  // ── /demo/dpp: one-click TRAITLY demo (Elise / EU Battery Passport) ──
   if (isDPPDemo) {
     const TraitlyDemoSignIn = React.lazy(() => import("./pages/TraitlyDemoSignIn"));
     return <React.Suspense fallback={null}><TraitlyDemoSignIn /></React.Suspense>;
   }
-
-  // ── /demo: one-click "View the Demo" auto-sign-in (Dr. Chen / Meadow Creek) ──
   if (isDemo) {
     const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));
     return <React.Suspense fallback={null}><DemoSignIn /></React.Suspense>;
@@ -6475,7 +6512,14 @@ export default function App() {
     );
   }
 
-  return <AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary>;
+  return (
+    <AppErrorBoundary>
+      <>
+        <AdminShell onBackToHub={handleBackToHub} />
+        {isDemoSession && <DemoWelcomeBanner />}
+      </>
+    </AppErrorBoundary>
+  );
 }
 
 function AddWorkspaceWizardLoader({ onCreated, onCancel, onBuilderStart }) {

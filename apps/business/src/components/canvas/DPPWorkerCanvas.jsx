@@ -14,6 +14,7 @@ const DPP_SLUGS = new Set([
   "eu-lifecycle-monitor-001",
 ]);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function isDPPWorker(w) {
   return DPP_SLUGS.has(w?.workerId || w?.slug || "");
 }

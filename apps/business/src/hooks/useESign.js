@@ -48,6 +48,7 @@ export function useESignStatus() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
   return { status, refresh };
 }

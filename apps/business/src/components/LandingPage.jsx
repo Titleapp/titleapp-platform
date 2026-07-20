@@ -104,7 +104,6 @@ const FEATURED_WORKERS = [
   },
 ];
 
-const PRICE_TIERS = ["Free", "$29", "$49", "$79", "Business in a Box"];
 
 export default function LandingPage() {
   const appBase = window.location.hostname === "localhost"
@@ -177,9 +176,9 @@ export default function LandingPage() {
 
       <main style={S.main}>
         <div style={S.heroInner}>
-          <h1 style={S.heroH1}>Digital Workers for the work that matters.</h1>
+          <h1 style={S.heroH1}>AI workers built by domain experts.</h1>
           <p style={S.heroSub}>
-            Built by the experts in your field. Trained on the rules of your industry. The spine is free.
+            Real estate. Nursing. Aviation. Law. Finance. Each worker knows your industry's rules — not just general AI. Core platform is free. Add specialists as you grow.
           </p>
 
           <div style={S.chatBar}>
@@ -226,36 +225,40 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* ─── Industry vertical strip ─── */}
+        <div style={S.verticalStrip}>
+          {[
+            { label: "Real Estate", demo: "/demo/nursing", emoji: "🏠" },
+            { label: "Education & Nursing", demo: "/demo/nursing", emoji: "🎓" },
+            { label: "Aviation", demo: "/demo/nursing", emoji: "✈️" },
+            { label: "Legal", demo: null, emoji: "⚖️" },
+            { label: "Finance & IR", demo: null, emoji: "📊" },
+            { label: "Retail & DPP", demo: null, emoji: "🛍️" },
+          ].map(({ label }) => (
+            <div key={label} style={S.verticalChip}>
+              {label}
+            </div>
+          ))}
+        </div>
+
         <section style={S.featured}>
           <div style={S.featuredHeading}>
-            <h2 style={S.featuredH2}>Top 10 workers today</h2>
+            <h2 style={S.featuredH2}>Top workers today</h2>
             <p style={S.featuredSub}>
-              The SOCIII spine is free. Specialist workers are discrete products at flat prices.
+              Core workers are free forever. Specialists are flat-rate add-ons — one price, no seats, no contracts.
             </p>
-            <div style={S.tierLadder}>
-              {PRICE_TIERS.map((t) => (
-                <span key={t} style={S.tierChip}>{t}</span>
-              ))}
-            </div>
           </div>
-          <div style={S.workerGrid}>
-            {FEATURED_WORKERS.map((w) => (
-              <a key={w.slug} href={`${appBase}/workers/${w.slug}`} style={S.workerCard}>
-                <div style={{ ...S.workerCardAccent, background: w.color }} />
-                <div style={S.workerCardBody}>
-                  <div style={S.workerHeaderRow}>
-                    <div style={S.workerVertical}>{w.vertical}</div>
-                    <div style={{ ...S.workerPriceBox, ...(w.priceTier === "Free" ? S.workerPriceBoxFree : {}) }}>
-                      {w.priceLabel}
-                    </div>
-                  </div>
-                  <div style={S.workerName}>{w.name}</div>
-                  <div style={S.workerTagline}>{w.tagline}</div>
-                  <div style={S.workerReplaces}>{w.replaces}</div>
-                  <div style={S.workerFooter}>
-                    <span style={S.workerArrow}>Open →</span>
-                  </div>
-                </div>
+          <div style={S.workerList}>
+            {FEATURED_WORKERS.map((w, i) => (
+              <a key={w.slug} href={`${appBase}/workers/${w.slug}`} style={S.workerRow}>
+                <span style={S.workerRowRank}>{i + 1}</span>
+                <span style={{ ...S.workerRowAccent, background: w.color }} />
+                <span style={S.workerRowName}>{w.name}</span>
+                <span style={S.workerRowVertical}>{w.vertical}</span>
+                <span style={{ ...S.workerRowPrice, ...(w.priceTier === "Free" ? S.workerPriceBoxFree : {}) }}>
+                  {w.priceLabel}
+                </span>
+                <span style={S.workerRowArrow}>Open →</span>
               </a>
             ))}
           </div>
@@ -265,16 +268,38 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section style={S.frontDoors}>
-          <div style={S.frontDoorsHeading}>For investors and creators.</div>
-          <div style={S.frontDoorsRow}>
+        {/* ─── Consumer / B2B delivery story ─── */}
+        <section style={{ ...S.frontDoors, maxWidth: 920 }}>
+          <div style={S.frontDoorsHeading}>Workers reach your clients too.</div>
+          <p style={{ textAlign: "center", color: "#6b7280", fontSize: 15, marginBottom: 24, marginTop: -8 }}>
+            When a business enrolls you — your school, your landlord, your vet — their workers show up in your personal space. Your records, on your terms.
+          </p>
+          <div style={{ ...S.frontDoorsRow, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            <a href={`${appBase}/demo/real-estate`} style={S.frontDoorCard}>
+              <div style={S.frontDoorTitle}>Real estate demo →</div>
+              <div style={S.frontDoorSub}>A full brokerage stack — deal analysis, title, zoning, comparable data, and CE credits. Live ATTOM data, not sample fixtures.</div>
+            </a>
+            <a href={`${appBase}/demo/vet/client`} style={S.frontDoorCard}>
+              <div style={S.frontDoorTitle}>Veterinary client demo →</div>
+              <div style={S.frontDoorSub}>See what a pet owner sees when their vet runs on SOCIII — visit records, medications, and upcoming care in their personal Vault.</div>
+            </a>
             <a href={`${appBase}/investors`} style={S.frontDoorCard}>
-              <div style={S.frontDoorTitle}>Investors</div>
+              <div style={S.frontDoorTitle}>Investors →</div>
               <div style={S.frontDoorSub}>Read the whitepaper, complete KYC, enter the data room. The IR worker handles the introduction and follows up.</div>
             </a>
+          </div>
+        </section>
+
+        <section style={{ ...S.frontDoors, maxWidth: 920 }}>
+          <div style={S.frontDoorsHeading}>For creators and builders.</div>
+          <div style={S.frontDoorsRow}>
             <a href={`${appBase}/onboard/creator`} style={S.frontDoorCard}>
               <div style={S.frontDoorTitle}>Become a creator</div>
-              <div style={S.frontDoorSub}>Build your own digital worker on the SDK. Self-service onboarding for domain experts who want to package their expertise into a worker.</div>
+              <div style={S.frontDoorSub}>Package your domain expertise into a worker. Self-service onboarding, your own branding, your own pricing. We handle delivery.</div>
+            </a>
+            <a href={`${appBase}/docs/what-is-sociii`} style={S.frontDoorCard}>
+              <div style={S.frontDoorTitle}>Developer SDK</div>
+              <div style={S.frontDoorSub}>Build on the SOCIII platform. Open SDK, versioned spec contracts, MCP server, and a full capability registry. Ship your first worker in a day.</div>
             </a>
           </div>
         </section>
@@ -427,58 +452,68 @@ const S = {
     fontWeight: 500,
   },
 
+  verticalStrip: {
+    display: "flex",
+    gap: 10,
+    justifyContent: "center",
+    flexWrap: "wrap",
+    maxWidth: 720,
+    margin: "-16px auto 0",
+  },
+  verticalChip: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#4b5563",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 20,
+    padding: "7px 16px",
+    display: "flex",
+    alignItems: "center",
+  },
+
   featured: { width: "100%", maxWidth: 1200, margin: "0 auto" },
   featuredHeading: { textAlign: "center", marginBottom: 28 },
   featuredH2: { fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 8, letterSpacing: "-0.6px" },
   featuredSub: { fontSize: 15, color: "#6b7280", margin: "0 0 16px" },
-  tierLadder: { display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" },
-  tierChip: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: "#374151",
-    background: "#f3f4f6",
-    padding: "6px 14px",
-    borderRadius: 16,
-    border: "1px solid #e5e7eb",
-  },
-  workerGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: 16,
-    marginBottom: 28,
-  },
-  workerCard: {
+  workerList: {
     display: "flex",
-    background: "#ffffff",
+    flexDirection: "column",
+    gap: 0,
+    marginBottom: 28,
     border: "1px solid #e5e7eb",
     borderRadius: 14,
     overflow: "hidden",
+    background: "#fff",
+  },
+  workerRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    padding: "13px 20px",
     textDecoration: "none",
     color: "inherit",
-    transition: "box-shadow 0.15s, transform 0.15s",
+    borderBottom: "1px solid #f3f4f6",
+    transition: "background 0.12s",
   },
-  workerCardAccent: { width: 6 },
-  workerCardBody: { flex: 1, padding: "18px 20px", display: "flex", flexDirection: "column" },
-  workerHeaderRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12 },
-  workerVertical: { fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.5px", textTransform: "uppercase" },
-  workerPriceBox: {
+  workerRowRank: { fontSize: 12, fontWeight: 700, color: "#d1d5db", width: 18, textAlign: "right", flexShrink: 0 },
+  workerRowAccent: { width: 4, height: 28, borderRadius: 3, flexShrink: 0 },
+  workerRowName: { fontSize: 15, fontWeight: 700, color: "#111827", flex: "1 1 180px", minWidth: 0 },
+  workerRowVertical: { fontSize: 11, fontWeight: 600, color: "#9ca3af", letterSpacing: "0.5px", textTransform: "uppercase", flex: "0 0 140px" },
+  workerRowPrice: {
     fontSize: 12,
     fontWeight: 800,
     color: "#7c3aed",
     background: "#ede9fe",
     padding: "4px 10px",
     borderRadius: 8,
-    letterSpacing: "-0.2px",
+    flexShrink: 0,
   },
   workerPriceBoxFree: {
     color: "#15803d",
     background: "#dcfce7",
   },
-  workerName: { fontSize: 17, fontWeight: 700, color: "#111827", marginBottom: 6 },
-  workerTagline: { fontSize: 13, color: "#6b7280", lineHeight: 1.45, marginBottom: 10, minHeight: 56 },
-  workerReplaces: { fontSize: 12, color: "#374151", fontStyle: "italic", marginBottom: 14, lineHeight: 1.4 },
-  workerFooter: { display: "flex", alignItems: "center", justifyContent: "flex-end", marginTop: "auto" },
-  workerArrow: { fontSize: 14, color: "#7c3aed", fontWeight: 600 },
+  workerRowArrow: { fontSize: 13, color: "#7c3aed", fontWeight: 600, flexShrink: 0, marginLeft: "auto" },
   featuredCtaRow: { display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" },
   featuredCtaPrimary: { color: "#7c3aed", fontSize: 15, fontWeight: 600, textDecoration: "none" },
   featuredCtaSecondary: { color: "#6b7280", fontSize: 14, textDecoration: "none" },

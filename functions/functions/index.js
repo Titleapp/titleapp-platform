@@ -186,15 +186,6 @@ function detectCrossWorkerIntent(message, activeWorkerSlug) {
         /\b(staff\s+schedule|coverage\s+roster|shift\s+schedule)\b/,
       ],
     },
-    {
-      slug: "platform-control-center-pro",
-      name: "Control Center Pro",
-      triggers: [
-        /\b(daily\s+brief|morning\s+brief|workspace\s+status)\b/,
-        /\b(launch\s+milestones?|setup\s+progress|fundraise\s+progress)\b/,
-        /\b(cap\s+table|investor\s+roll[\-\s]up)\b/,
-      ],
-    },
   ];
 
   for (const rule of rules) {
@@ -241,7 +232,6 @@ CROSS-WORKER ROUTING (HARD RULE) — This applies ONLY to the specific spine-wor
   • Burn rate, P&L, runway, transactions, expenses, invoices, bills, chart of accounts, reconciliation, tax → Accounting worker — slug: platform-accounting
   • Contacts, leads, prospects, segments, contact import, Apollo, CRM list → Contacts worker — slug: platform-contacts
   • Hiring, payroll, scheduling, time off, employee records, roster, coverage → HR & People worker — slug: platform-hr
-  • Workspace status, milestones, brief, runway/spend roll-up, accountability concerns, cap table, fundraise progress → Control Center Pro — slug: platform-control-center-pro
 
 EXECUTING THE SWITCH (HARD RULE) — When the user agrees to switch ("yes", "switch me", "go ahead", "do it", "ok", "yep", "sure", "please"), you MUST emit the marker [[SWITCH_WORKER:<slug>]] on its own line in your response, using the exact slug from the routing map above. The frontend detects this marker and performs the actual UI switch. Do not describe the switch ("Switching you now…", "In a live deployment this would…"). Do not write a paragraph. Your full response in this case is one short sentence plus the marker, e.g.:
 "Switching you to Marketing & Content now.
@@ -251,7 +241,7 @@ After emitting the marker, STOP. Do not continue drafting the cross-worker outpu
 The ONLY exception to refusing cross-worker work: if the active worker is a Chief-of-Staff worker (Alex, slug contains "chief-of-staff" or equals "alex"), you MAY delegate by emitting the same SWITCH_WORKER marker, but you still do not produce the cross-domain output yourself.
 
 OPERATOR POSTURE (PLATFORM INVARIANT) — These rules apply to EVERY response — including clarification requests, refusals, and follow-ups:
-  1. Do not use markdown bullet lists (lines starting with "-" or "*") or numbered lists in chat responses. If you have multiple possibilities, write them inline in a single sentence separated by " or ".
+  1. FORMATTING — break responses into short paragraphs (2-3 sentences, blank line between distinct points). For actual structured data — line items, steps, properties, comps, checklists — use a numbered or bulleted list, one item per line. NEVER use a bullet list to present options or considerations for the user to choose from: write those inline as a sentence ("You can do X, Y, or Z"). Never write a wall of unbroken text.
   2. Do not respond with a markdown decision tree (e.g. "**File X if:** ... **Skip X if:** ... **For your case:** ...").
   3. When the user names a task or expresses an intent ("I should X", "should I X?", "we need to X", "I want to X"), interpret it as a request for ACTION and respond with an OFFER, not a checklist of considerations. The offer format is: "Want me to <specific action> now?"
   4. Do not end with a list of TODOs for the user. End with one concrete offer or one specific question.
@@ -578,6 +568,81 @@ async function requireFirebaseUser(req, res) {
   }
 }
 
+// Firebase App Check verification.
+// Set ENABLE_APP_CHECK=true env var to reject requests without a valid token.
+// Without it, invalid/missing tokens are logged but allowed through (soft mode).
+async function verifyAppCheck(req) {
+  const token = req.headers['x-firebase-appcheck'];
+  if (!token) {
+    if (process.env.ENABLE_APP_CHECK === 'true') return { ok: false, reason: 'missing' };
+    return { ok: true, skipped: true };
+  }
+  try {
+    await admin.appCheck().verifyToken(token);
+    return { ok: true };
+  } catch (e) {
+    console.warn('[appcheck] invalid token:', e.message);
+    if (process.env.ENABLE_APP_CHECK === 'true') return { ok: false, reason: 'invalid' };
+    return { ok: true, skipped: true };
+  }
+}
+
+// Per-user sliding 1-minute rate counter for chat messages.
+// One doc per user in rateLimits/chat_{uid} — resets when windowMinute changes.
+// Tiers: admin (exempt) → paid (60/min) → free (20/min).
+// Fails open on Firestore errors so a DB hiccup never blocks chat.
+async function checkChatRateLimit(uid) {
+  if (!uid) return { allowed: true };
+
+  const PLATFORM_ADMIN_UIDS = new Set([
+    "WResykI56hW16silsOtvlw1UjJK2", // sean@sociii.ai
+  ]);
+  if (PLATFORM_ADMIN_UIDS.has(uid)) return { allowed: true };
+
+  let limit = 20;
+  try {
+    const userDoc = await db.doc(`users/${uid}`).get();
+    if (userDoc.exists) {
+      const tier = userDoc.data().subscriptionTier || userDoc.data().plan || "free";
+      if (tier !== "free") limit = 60;
+    }
+  } catch (_) {}
+
+  const windowMinute = Math.floor(Date.now() / 60000);
+  const counterRef = db.doc(`rateLimits/chat_${uid}`);
+
+  try {
+    let allowed = true;
+    let current = 0;
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(counterRef);
+      if (!snap.exists || snap.data().windowMinute !== windowMinute) {
+        current = 1;
+        tx.set(counterRef, {
+          uid,
+          windowMinute,
+          count: 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        current = (snap.data().count || 0) + 1;
+        if (current <= limit) {
+          tx.update(counterRef, {
+            count: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          allowed = false;
+        }
+      }
+    });
+    return { allowed, current, limit };
+  } catch (e) {
+    console.warn("[rateLimit] check failed, allowing:", e.message);
+    return { allowed: true };
+  }
+}
+
 async function requireMembershipIfNeeded({ uid, tenantId }, res) {
   console.log("Membership check:", { uid, tenantId });
 
@@ -602,21 +667,22 @@ async function requireMembershipIfNeeded({ uid, tenantId }, res) {
     .get();
 
   if (snap.empty) {
-    // Auto-repair: if tenantId is a workspace that belongs to this user, create the membership
-    if (tenantId.startsWith("ws_")) {
-      const wsDoc = await db.collection("users").doc(uid)
-        .collection("workspaces").doc(tenantId).get();
-      if (wsDoc.exists) {
-        console.log("Auto-creating missing membership for workspace:", tenantId);
-        const memRef = await db.collection("memberships").add({
-          userId: uid,
-          tenantId,
-          role: "admin",
-          status: "active",
-          createdAt: nowServerTs(),
-        });
-        return { ok: true, membership: { id: memRef.id, userId: uid, tenantId, role: "admin", status: "active" } };
-      }
+    // Auto-repair: if user has a workspace doc for this tenant, synthesize the membership.
+    // Covers ws_* tenants (normal orgs) and demo-* tenants that were provisioned via
+    // the demo:token endpoint but whose membership docs may have stale field names.
+    const wsDoc = await db.collection("users").doc(uid)
+      .collection("workspaces").doc(tenantId).get();
+    if (wsDoc.exists) {
+      console.log("Auto-creating missing membership for workspace:", tenantId);
+      const wsRole = wsDoc.data()?.role || "member";
+      const memRef = await db.collection("memberships").add({
+        userId: uid,
+        tenantId,
+        role: wsRole,
+        status: "active",
+        createdAt: nowServerTs(),
+      });
+      return { ok: true, membership: { id: memRef.id, userId: uid, tenantId, role: wsRole, status: "active" } };
     }
     return jsonError(res, 403, "Forbidden", { reason: "No active membership", uid, tenantId });
   }
@@ -908,7 +974,6 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
       { slug: "platform-accounting", name: "Alex Business Accounting" },
       { slug: "platform-hr", name: "Alex HR & People" },
       { slug: "platform-marketing", name: "Alex Marketing & Content" },
-      { slug: "platform-control-center-pro", name: "Control Center Pro" },
       { slug: "platform-contacts", name: "Contacts" },
     ];
     const wpBatch = db.batch();
@@ -1693,6 +1758,16 @@ exports.api = onRequest(
           }
           await userRef.set(userDoc);
 
+          // Free data credits — granted to every new account on signup.
+          // Amount sourced from pricing.freeCreditsOnSignup (currently 100 = ~$2 worth).
+          // freeCreditsGranted tracks that this is the starter allowance, not purchased.
+          const { freeCreditsOnSignup } = require("./config/pricing");
+          await userRef.update({
+            prepaidCredits: freeCreditsOnSignup || 100,
+            freeCreditsGranted: freeCreditsOnSignup || 100,
+            freeCreditsGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
           // Auto-grant Alex entitlement — free for every user from signup
           await db.collection("users").doc(userRecord.uid).collection("entitlements").doc("alex").set({
             grantedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1706,7 +1781,6 @@ exports.api = onRequest(
             { slug: "platform-accounting", name: "Alex Business Accounting" },
             { slug: "platform-hr", name: "Alex HR & People" },
             { slug: "platform-marketing", name: "Alex Marketing & Content" },
-            { slug: "platform-control-center-pro", name: "Control Center Pro" },
             { slug: "platform-contacts", name: "Contacts" },
           ];
           const workerBatch = db.batch();
@@ -1772,10 +1846,203 @@ exports.api = onRequest(
     // "View the Demo" link: the frontend /demo route auto-signs-in with this.
     if ((route === "/demo:token" || route === "/demo/token") && method === "GET") {
       try {
-        const DEMO_UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2"; // demo@sociii.ai
-        const DEMO_TENANT = "ws_1781920656122_tl9dhn";   // Meadow Creek Veterinary Clinic
-        const token = await admin.auth().createCustomToken(DEMO_UID, { demo: true });
-        return res.json({ ok: true, token, tenantId: DEMO_TENANT });
+        const persona = req.query.persona || "vet";
+        const PERSONAS = {
+          vet: {
+            uid:           "NHVBEVFSiBUFUzHUq5a9Xioc3hH2", // demo@sociii.ai
+            tenantId:      "ws_1781920656122_tl9dhn",        // Meadow Creek Veterinary Clinic
+            workspaceName: "Meadow Creek Veterinary Clinic",
+            vertical:      "healthcare",
+            name:          "Dr. Maya Chen, DVM",
+            role:          "admin",
+          },
+          realestate: {
+            uid:           "qJZesWZclFZO0Xwp1l5PxE16Bnj2", // re-demo@sociii.ai / Scott Harrington
+            tenantId:      "ws_1783659066844_o7m1pm",        // Merritt Capital Group
+            workspaceName: "Merritt Capital Group",
+            vertical:      "real-estate",
+            name:          "Scott Harrington",
+            role:          "admin",
+          },
+          // ── Nursing (Makai) ───────────────────────────────────────────────
+          "nursing-admin": {
+            uid:           "demo-nursing-admin-001",
+            tenantId:      "demo-makai-nursing",
+            workspaceName: "Makai School of Nursing",
+            vertical:      "healthcare",
+            name:          "Dr. Kealani Moku",
+            role:          "admin",
+            activeWorkers: ["nursing-education-001"],
+          },
+          "nursing-student": {
+            uid:           "sara-kahele-demo",
+            tenantId:      "demo-makai-nursing",
+            workspaceName: "Makai School of Nursing",
+            vertical:      "healthcare",
+            name:          "Sara Kahele",
+            role:          "member",
+            activeWorkers: ["nursing-education-001", "makai-bio-101"],
+          },
+          // ── UH Mānoa ─────────────────────────────────────────────────────
+          "uh-admin": {
+            uid:           "demo-uh-admin-001",
+            tenantId:      "demo-uh-nursing",
+            workspaceName: "UH Mānoa School of Nursing",
+            vertical:      "healthcare",
+            name:          "Dr. Noa Kahananui",
+            role:          "admin",
+            activeWorkers: ["nursing-education-001"],
+          },
+          "uh-student": {
+            uid:           "sara-kahele-demo",
+            tenantId:      "demo-uh-nursing",
+            workspaceName: "UH Mānoa School of Nursing",
+            vertical:      "healthcare",
+            name:          "Sara Kahele",
+            role:          "member",
+            activeWorkers: ["nursing-education-001"],
+          },
+          // ── Vet client (Sara as pet owner) ────────────────────────────────
+          "vet-client": {
+            uid:           "sara-kahele-demo",
+            tenantId:      "ws_1781920656122_tl9dhn",
+            workspaceName: "Meadow Creek Veterinary Clinic",
+            vertical:      "healthcare",
+            name:          "Sara Kahele",
+            role:          "member",
+            activeWorkers: ["pet-health-client"],
+          },
+          // ── RE tenant (Sara as renter) ────────────────────────────────────
+          "re-tenant": {
+            uid:           "sara-kahele-demo",
+            tenantId:      "ws_1783659066844_o7m1pm",
+            workspaceName: "Merritt Capital Group",
+            vertical:      "real-estate",
+            name:          "Sara Kahele",
+            role:          "member",
+            activeWorkers: ["tenant-portal-001"],
+          },
+        };
+        const p = PERSONAS[persona] || PERSONAS.vet;
+        // Auto-top-up demo tenant to 5000 credits on every sign-in so demos
+        // never hit the "out of credits" wall regardless of how many people run them.
+        db.collection("tenants").doc(p.tenantId).update({
+          prepaidCredits: 5000,
+          _demoTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {}); // fire-and-forget — don't block the token response
+        // Self-provision user + membership + workspace doc on first hit so no seed script is needed.
+        const isNewUid = p.uid.startsWith("demo-") || p.uid === "sara-kahele-demo";
+        if (isNewUid) {
+          const userRef = db.collection("users").doc(p.uid);
+          const memberRef = db.collection("memberships").doc(`${p.uid}_${p.tenantId}`);
+          // Workspace doc under users/{uid}/workspaces/{tenantId} is what
+          // getUserWorkspaces() reads to build the sidebar workspace list.
+          // Without it, the demo tenant never appears as a selectable workspace.
+          const wsRef = db.collection("users").doc(p.uid).collection("workspaces").doc(p.tenantId);
+          const workers = p.activeWorkers || [];
+          // Ensure Firebase Auth user has the correct persona displayName so
+          // the app's onAuthStateChanged doesn't overwrite it with a stale name.
+          await admin.auth().updateUser(p.uid, { displayName: p.name })
+            .catch(async (e) => {
+              if (e.code === "auth/user-not-found") {
+                await admin.auth().createUser({ uid: p.uid, displayName: p.name, email: `${p.uid}@demo.sociii.ai` }).catch(() => {});
+              }
+            });
+          await Promise.all([
+            userRef.set({
+              uid: p.uid,
+              displayName: p.name,
+              email: `${p.uid}@demo.sociii.ai`,
+              isDemo: true,
+            }, { merge: true }),
+            memberRef.set({
+              userId: p.uid,
+              uid: p.uid,
+              tenantId: p.tenantId,
+              role: p.role || "member",
+              status: "active",
+              isDemo: true,
+            }, { merge: true }),
+            wsRef.set({
+              id: p.tenantId,
+              type: "org",
+              vertical: p.vertical || "healthcare",
+              name: p.workspaceName || p.tenantId,
+              tagline: "",
+              status: "active",
+              plan: "business",
+              monthlyPrice: 0,
+              onboardingComplete: true,
+              billingId: null,
+              cosConfig: { name: "Alex", personality: "professional" },
+              config: {},
+              workerGroups: [],
+              activeWorkers: workers,
+              chiefOfStaff: workers.length > 0
+                ? { enabled: true, name: "Alex", unlockedAt: new Date().toISOString() }
+                : null,
+              isDemo: true,
+              role: p.role || "member",
+            }, { merge: true }),
+          ]);
+
+          // For nursing-student (Sara Kahele), also provision her vet + landlord
+          // org memberships so those workers appear in her personal sidebar.
+          // This demonstrates the multi-tenant consumer story: businesses Sara
+          // interacts with push their workers into her personal space.
+          if (persona === "nursing-student") {
+            const SARA_EXTRA_ORGS = [
+              {
+                tenantId:      "ws_1781920656122_tl9dhn",
+                workspaceName: "Meadow Creek Veterinary Clinic",
+                vertical:      "healthcare",
+                role:          "member",
+                activeWorkers: ["pet-health-client"],
+              },
+              {
+                tenantId:      "ws_1783659066844_o7m1pm",
+                workspaceName: "Merritt Capital Group",
+                vertical:      "real-estate",
+                role:          "member",
+                activeWorkers: ["tenant-portal-001"],
+              },
+            ];
+            await Promise.all(SARA_EXTRA_ORGS.flatMap(org => {
+              const extraMemberRef = db.collection("memberships").doc(`${p.uid}_${org.tenantId}`);
+              const extraWsRef = db.collection("users").doc(p.uid).collection("workspaces").doc(org.tenantId);
+              return [
+                extraMemberRef.set({
+                  userId: p.uid,
+                  uid: p.uid,
+                  tenantId: org.tenantId,
+                  role: org.role,
+                  status: "active",
+                  isDemo: true,
+                }, { merge: true }),
+                extraWsRef.set({
+                  id: org.tenantId,
+                  type: "org",
+                  vertical: org.vertical,
+                  name: org.workspaceName,
+                  status: "active",
+                  plan: "business",
+                  onboardingComplete: true,
+                  cosConfig: { name: "Alex", personality: "professional" },
+                  activeWorkers: org.activeWorkers,
+                  chiefOfStaff: { enabled: true, name: "Alex", unlockedAt: new Date().toISOString() },
+                  isDemo: true,
+                  role: org.role,
+                }, { merge: true }),
+                db.collection("tenants").doc(org.tenantId).update({
+                  prepaidCredits: 5000,
+                  _demoTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+                }).catch(() => {}),
+              ];
+            }));
+          }
+        }
+        const token = await admin.auth().createCustomToken(p.uid, { demo: true });
+        return res.json({ ok: true, token, tenantId: p.tenantId, workspaceName: p.workspaceName, vertical: p.vertical, personaName: p.name });
       } catch (e) {
         console.error("demo:token failed:", e);
         return jsonError(res, 500, "Failed to mint demo token");
@@ -1868,6 +2135,24 @@ exports.api = onRequest(
         if (reAuth.handled) return reAuth.res;
         const { address } = body || {};
         if (!address) return jsonError(res, 400, "address required");
+        // Deduct data credits before hitting ATTOM (paid API).
+        const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+        const { dataCreditCosts } = require("./config/pricing");
+        const ctx = await getCtx(req, body, reAuth);
+        const creditResult = await checkAndDeductCredits(
+          reAuth.uid, "re_property_lookup", dataCreditCosts.re_property_lookup,
+          { workerId: "re-salesperson", tenantId: ctx.tenantId }
+        );
+        if (!creditResult.allowed) {
+          const isFree = creditResult.source === "user";
+          return res.json({ ok: false, error: "INSUFFICIENT_CREDITS", source: creditResult.source,
+            message: isFree
+              ? `You've used your free property lookup allowance. Add $10 of data credits to continue — that covers about 100 more lookups.`
+              : `This workspace is out of Data Credits. Add $10 to continue.`,
+            creditsRequired: dataCreditCosts.re_property_lookup,
+            creditsAvailable: creditResult.creditsAvailable,
+          });
+        }
         const { lookupAddress } = require("./services/re/liveLookup");
         const result = await lookupAddress(address, process.env.ATTOM_API_KEY);
         return res.json(result);
@@ -1907,6 +2192,13 @@ exports.api = onRequest(
         if (user.handled) return user.res;
         const { address } = body || {};
         if (!address) return jsonError(res, 400, "address required");
+        const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+        const { dataCreditCosts } = require("./config/pricing");
+        const ctx = await getCtx(req, body, user);
+        const cr = await checkAndDeductCredits(user.uid, "re_cma", dataCreditCosts.re_cma, { workerId: "re-salesperson", tenantId: ctx.tenantId });
+        if (!cr.allowed) return res.json({ ok: false, error: "INSUFFICIENT_CREDITS", source: cr.source,
+          message: "Add $10 of data credits to run a CMA — covers ~50 analyses.",
+          creditsRequired: dataCreditCosts.re_cma, creditsAvailable: cr.creditsAvailable });
         const { runCMA } = require("./services/re/advocate");
         const result = await runCMA(address, process.env.ATTOM_API_KEY);
         return res.json(result);
@@ -1944,6 +2236,89 @@ exports.api = onRequest(
       } catch (e) {
         console.error("re:advocate:disclosure failed:", e);
         return jsonError(res, 500, "Disclosure generation failed");
+      }
+    }
+
+    // POST /v1/re:advocate:financing — Financing constraint analysis for a property.
+    // Sources: FEMA NFHL (flood), CAL FIRE FHSZ (fire, CA only), HUD FHA Condo
+    // (condos only), FHFA 2025 limits (embedded), USDA rural eligibility.
+    // Property-level public data only — no referral arrangements, no area proxies.
+    if (route === "/re:advocate:financing" && method === "POST") {
+      try {
+        const user = await requireFirebaseUser(req, res);
+        if (user.handled) return user.res;
+        const { address, lat, lng, state, county, propertyType } = body || {};
+        if (!address) return jsonError(res, 400, "address required");
+        const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+        const { dataCreditCosts } = require("./config/pricing");
+        const ctx = await getCtx(req, body, user);
+        const cr = await checkAndDeductCredits(user.uid, "re_financing_check", dataCreditCosts.re_financing_check, { workerId: "re-salesperson", tenantId: ctx.tenantId });
+        if (!cr.allowed) return res.json({ ok: false, error: "INSUFFICIENT_CREDITS", source: cr.source,
+          message: "Add data credits to run financing constraint checks.", creditsAvailable: cr.creditsAvailable });
+        const { getFinancingConstraints } = require("./services/re/financing");
+        const result = await getFinancingConstraints({ address, lat, lng, state, county, propertyType });
+        return res.json(result);
+      } catch (e) {
+        console.error("re:advocate:financing failed:", e);
+        return jsonError(res, 500, "Financing constraint lookup failed");
+      }
+    }
+
+    // POST /v1/re:advocate:lease — Lease analysis via Claude AI extraction.
+    if (route === "/re:advocate:lease" && method === "POST") {
+      try {
+        const user = await requireFirebaseUser(req, res);
+        if (user.handled) return user.res;
+        const { leaseText, leaseType } = body || {};
+        if (!leaseText || leaseText.length < 50) return jsonError(res, 400, "leaseText required (minimum 50 chars)");
+        const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+        const { dataCreditCosts } = require("./config/pricing");
+        const ctx = await getCtx(req, body, user);
+        const cr = await checkAndDeductCredits(user.uid, "re_lease_analysis", dataCreditCosts.re_lease_analysis, { workerId: "re-salesperson", tenantId: ctx.tenantId });
+        if (!cr.allowed) return res.json({ ok: false, error: "INSUFFICIENT_CREDITS", source: cr.source,
+          message: "Add data credits to run lease analysis.", creditsAvailable: cr.creditsAvailable });
+        const Anthropic = require("@anthropic-ai/sdk");
+        const ant = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const extractionPrompt = `You are a lease analysis engine. Extract key terms and flags from the lease below. Return ONLY valid JSON — no preamble, no markdown fences.
+
+Required JSON structure:
+{"summary":"2-3 sentence plain English summary","leaseType":"residential|commercial|nnn","terms":[{"key":"Term name","value":"Extracted value","flag":"RED|YELLOW|WHITE|GREEN|BLUE"}],"flags":[{"band":"RED|YELLOW|WHITE|GREEN|BLUE","title":"Flag title","detail":"Why this matters"}]}
+
+Always extract if present: monthly/base rent, lease term dates, security deposit, annual rent escalation, renewal options, early termination clause, personal guarantee, CAM charges, demolition/redevelopment clause, assignment/subletting rights, tenant improvement allowance, option to purchase.
+
+Flag colors: RED=significant risk, YELLOW=review needed, WHITE=neutral/standard, GREEN=favorable to tenant, BLUE=info missing.
+
+LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
+        const extraction = await ant.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, messages: [{ role: "user", content: extractionPrompt }] });
+        let extracted = null;
+        try { extracted = JSON.parse((extraction.content[0]?.text || "{}").replace(/^```json\s*/i, '').replace(/\s*```$/, '')); } catch (_) {}
+        if (!extracted || !Array.isArray(extracted.terms)) return jsonError(res, 500, "Lease extraction failed — text may be too short or unreadable");
+        return res.json({ ok: true, ...extracted, creditsCharged: dataCreditCosts.re_lease_analysis });
+      } catch (e) {
+        console.error("re:advocate:lease failed:", e);
+        return jsonError(res, 500, "Lease analysis failed");
+      }
+    }
+
+    // POST /v1/re:advocate:netsheet — Seller net proceeds estimate (calculation only, no external API).
+    if (route === "/re:advocate:netsheet" && method === "POST") {
+      try {
+        const user = await requireFirebaseUser(req, res);
+        if (user.handled) return user.res;
+        const { salePrice, loanBalance, city, state, sellerCommPct, buyerCommPct } = body || {};
+        if (!salePrice) return jsonError(res, 400, "salePrice required");
+        const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+        const { dataCreditCosts } = require("./config/pricing");
+        const ctx = await getCtx(req, body, user);
+        const cr = await checkAndDeductCredits(user.uid, "re_net_sheet", dataCreditCosts.re_net_sheet, { workerId: "re-salesperson", tenantId: ctx.tenantId });
+        if (!cr.allowed) return res.json({ ok: false, error: "INSUFFICIENT_CREDITS", source: cr.source,
+          message: "Add data credits to run net sheet calculation.", creditsAvailable: cr.creditsAvailable });
+        const { calculateNetSheet } = require("./services/re/advocate");
+        const result = calculateNetSheet({ salePrice, loanBalance: loanBalance || 0, city, state, sellerCommPct, buyerCommPct });
+        return res.json({ ...result, creditsCharged: dataCreditCosts.re_net_sheet });
+      } catch (e) {
+        console.error("re:advocate:netsheet failed:", e);
+        return jsonError(res, 500, "Net sheet calculation failed");
       }
     }
 
@@ -2324,6 +2699,25 @@ exports.api = onRequest(
         }
         console.log("[chatEngine.tick.auth]", { authed: !!authUser, uid: authUser?.uid?.slice(0, 8) });
 
+        // App Check verification (soft mode unless ENABLE_APP_CHECK=true)
+        const _acResult = await verifyAppCheck(req);
+        if (!_acResult.ok) {
+          return res.status(403).json({ ok: false, error: "APP_CHECK_FAILED", reason: _acResult.reason });
+        }
+
+        // Rate limit: 20 req/min free, 60/min paid, admin exempt
+        if (authUser && userInput) {
+          const rl = await checkChatRateLimit(authUser.uid);
+          if (!rl.allowed) {
+            return res.status(429).json({
+              ok: false,
+              error: "RATE_LIMIT_EXCEEDED",
+              message: `You're sending messages too quickly (${rl.current - 1}/${rl.limit} per minute). Please wait a moment.`,
+              retryAfterSeconds: 60,
+            });
+          }
+        }
+
         // Look up or create conversation session in Firestore
         let effectiveSessionId = sessionId;
         let sessionRef = db.collection("chatSessions").doc(sessionId);
@@ -2652,13 +3046,157 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
         }
 
         // ── Worker-specific chat: bypass Alex entirely when a worker is active ──
+        // Inline fallback prompts for demo workers that may not have a digitalWorkers doc.
+        const DEMO_WORKER_FALLBACKS = {
+          "makai-bio-101": {
+            display_name: "Anatomy & Physiology I",
+            headline: "Study assistant for BIOL 201 — Anatomy & Physiology I at Makai School of Nursing.",
+            capabilitySummary: "Help Sara Kahele study and understand course material for BIOL 201, Anatomy & Physiology I, taught by Prof. Hana Miyamoto, PhD. She is currently in Unit 7: The Nervous System with an overall grade of A- (91%). You know her schedule, assignment deadlines, and past unit performance. Answer study questions, explain concepts at a nursing-student level, quiz her on material, and flag upcoming deadlines. You have access to her course map (Units 1-14) and grade record.",
+            systemPrompt: `You are the Anatomy & Physiology I Digital Worker — a study assistant and course guide for BIOL 201 at Makai School of Nursing.
+
+COURSE CONTEXT:
+- Course: BIOL 201 — Anatomy & Physiology I (4 credits, Fall 2026)
+- Instructor: Prof. Hana Miyamoto, PhD
+- Current unit: Unit 7 — The Nervous System (50% complete)
+- Overall grade: A- (91%)
+- Recent scores: Unit 6 Nervous System Quiz 88%, Urinary Lab 95%, Heart Dissection Report 97%
+- Upcoming: Unit 7 Nervous System Exam on Aug 4
+
+WHAT YOU DO:
+- Answer anatomy and physiology questions at a nursing-student level (no jargon without explanation)
+- Quiz the student on current unit material if they ask
+- Explain concepts with clinical relevance — they're training to be a nurse, so always connect to patient care when relevant
+- Help them understand upcoming assignments, deadlines, and what to prioritize
+- Reference the actual grade record and progress when asked "how am I doing"
+
+LANGUAGE RULES:
+- NEVER address the user by name — say "Hi" or start with the answer directly
+- Speak in second person: "you studied", "your next exam", "you're doing well on"
+- Be warm, coaching, and encouraging — not academic or lecturing
+- Keep responses concise: 2-4 sentences or a short bullet list. One thought, then optionally one follow-up question. No walls of text.
+- Never start with "Welcome back" or "Great to see you"
+
+RAAS BOUNDARIES:
+- You handle course content, study guidance, and grade tracking only
+- Do not give clinical advice about real patients — this is academic coursework
+- If asked about a topic outside BIOL 201 scope, say "That's outside this course — want me to help with Unit 7 prep instead?"`,
+          },
+          "tenant-portal-001": {
+            display_name: "Tenant Portal",
+            headline: "Your tenant portal for Kona Gardens Apt 204, managed by Merritt Capital Group.",
+            capabilitySummary: "Help Sara Kahele manage her tenancy at Kona Gardens Apt 204. She pays $1,850/mo via ACH, has a perfect payment record, and her lease expires in 12 days. Help with rent questions, maintenance requests, lease renewal, and connecting to her property manager Lisa Torres.",
+            systemPrompt: `You are the Tenant Portal Digital Worker for a tenant at Kona Gardens Apt 204 managed by Merritt Capital Group.
+
+TENANT FILE — KONA GARDENS APT 204:
+- Unit: Kona Gardens Apt 204, Kailua-Kona, HI 96740 (2 BR / 1 BA, 872 sq ft)
+- Monthly rent: $1,850/mo via ACH — perfect payment record (5 on-time, 0 late)
+- Lease term: Aug 1, 2025 – Jul 31, 2026 (EXPIRES IN 12 DAYS — critical renewal window)
+- Security deposit: $1,850 held
+- Late fee: $75 after the 5th of each month
+- Property Manager: Lisa Torres, Merritt Capital Group — (808) 555-0192
+- Emergency line: (808) 555-0192 (same number, ask for emergency maintenance)
+
+OPEN MAINTENANCE:
+- MR-2026-041: Bathroom faucet dripping (Plumbing) — Scheduled Jul 22, 2026
+
+WHAT YOU DO:
+- Help the tenant understand lease terms, payment history, and upcoming due dates
+- Guide them through submitting maintenance requests (use the Maintenance tab on the canvas)
+- Explain DIY troubleshooting for minor issues (resetting a GFCI outlet, unclogging a drain, resetting a tripped breaker) — always clarify when to call vs. when to DIY
+- Tell them when something is an EMERGENCY and give the emergency number immediately
+- Remind them the lease expires in 12 days — strongly encourage contacting Lisa Torres to discuss renewal
+
+EMERGENCY GUIDANCE (immediate escalation — give the number first):
+If the tenant reports: flooding, sewage backup, no heat in winter, electrical sparks/outage, gas smell, structural damage, or anything affecting habitability → Say: "This is an emergency. Call Lisa Torres at (808) 555-0192 right now. Tell them it's an emergency maintenance request for Apt 204."
+
+DIY GUIDANCE (can suggest self-fix for minor issues):
+- GFCI outlet not working → "Press the RESET button on the outlet itself. It's usually in the bathroom or kitchen near the outlet face."
+- Toilet running constantly → "Jiggle the handle. If that doesn't fix it, the flapper inside the tank may need replacing — a $5 part from any hardware store."
+- Drain slow/clogged → "Try a drain snake or Drano Max Gel first. Pour boiling water after."
+- Breaker tripped → "Check the breaker box (usually in a hallway closet). A tripped breaker sits between ON and OFF — push it fully to OFF then back to ON."
+- Light bulb out → "Sara's responsibility — standard tenant maintenance."
+
+RAAS LIMITS:
+- Do not give legal advice about lease disputes, eviction rights, or habitability claims — direct her to a local tenant rights organization
+- Do not promise specific repair timelines — "Your request is logged as MR-2026-041, scheduled for Jul 22" is the only timeline you can cite
+- Do not process or confirm payment — show her the payment status and direct to the Pay Now button on the canvas
+- Lease renewal terms are negotiated with Lisa Torres, not set by this portal
+
+LANGUAGE RULES:
+- NEVER address the user by name — say "Hi" or lead directly with the answer
+- Keep responses concise: 2-4 sentences or a short bullet list. No walls of text.
+
+FORMATTING:
+- Lead with the answer. If it's an emergency, the phone number comes FIRST.
+- Keep responses under 150 words unless giving step-by-step DIY instructions
+- Use bullet points for multi-step instructions`,
+          },
+          "pet-health-client": {
+            display_name: "Pet Health Records",
+            headline: "Koa's health record tracker. Primary vet: Dr. Maya Chen, DVM at Meadow Creek Veterinary Clinic.",
+            capabilitySummary: "Help Sara Kahele track and manage health records for her dog Koa, a Golden Retriever Mix (4 years, 62 lbs). Show vaccination history, medications, and upcoming appointments. Help her prepare for vet visits and remind her about Koa's preventatives.",
+            systemPrompt: `You are the Pet Health Records Digital Worker, tracking the health records of Koa.
+
+KOA'S PROFILE:
+- Name: Koa
+- Breed: Golden Retriever Mix
+- Age: 4 years
+- Weight: 62 lbs
+- Microchip: 985141004123456
+- Primary Vet: Dr. Maya Chen, DVM — Meadow Creek Veterinary Clinic
+- Clinic phone: [call to book appointments]
+- Next appointment: Annual Wellness Exam — Aug 12, 2026 at 10:30 AM with Dr. Maya Chen
+
+RECENT HEALTH HISTORY:
+- Mar 15, 2026: Annual Wellness Exam — Healthy weight. All vaccinations updated. Dental cleaning recommended within 6 months. Heartworm negative.
+- Nov 2, 2025: Sick Visit — Mild GI upset, prescribed bland diet for 3 days. Resolved completely.
+- Mar 20, 2025: Annual Wellness Exam — Healthy overall. Minor tartar buildup noted. Heartworm negative.
+
+VACCINATIONS (all current except one):
+- Rabies: Given Mar 15, 2026. Due Mar 15, 2027.
+- DHPP: Given Mar 15, 2026. Due Mar 15, 2027.
+- Leptospirosis: Given Mar 15, 2026. Due Mar 15, 2027.
+- Bordetella: Given Sep 10, 2025. Due Sep 10, 2026. (DUE SOON — 2 months away)
+- Canine Influenza: Given Mar 15, 2026. Due Mar 15, 2027.
+
+ACTIVE MEDICATIONS:
+- Heartgard Plus (Heartworm prevention — Monthly): Last Jul 1, 2026. Next due Aug 1, 2026.
+- NexGard (Flea & tick prevention — Monthly): Last Jul 1, 2026. Next due Aug 1, 2026.
+
+WHAT YOU DO:
+- Answer questions about Koa's health history, vaccinations, and medications from the record above
+- Remind about upcoming appointments and preventative due dates
+- Help prepare for vet visits (what to ask, what to bring)
+- Provide general pet care tips (nutrition, exercise, dental care) appropriate for a 4-year-old large-breed dog
+- Flag if a vaccine is coming due (Bordetella due Sep 2026)
+
+LANGUAGE RULES:
+- NEVER address the user by name — say "Hi" or lead directly with the answer
+- Keep responses concise: 2-4 sentences or a short bullet list. No walls of text.
+
+IMPORTANT BOUNDARIES:
+- You can describe what's IN Koa's records. You cannot diagnose conditions or prescribe treatment.
+- If asked about a symptom (limping, vomiting, lethargy, etc.): (1) say whether it sounds urgent or non-urgent, (2) give immediate first-aid guidance if safe, (3) ALWAYS direct to Dr. Maya Chen for anything beyond minor/resolved symptoms.
+- For emergencies (not breathing, ingested something toxic, trauma, seizure): direct to the nearest emergency vet immediately.
+- You are NOT Alex, NOT the Chief of Staff. You are Koa's health record system.`,
+          },
+        };
+
         if (body.selectedWorker && body.selectedWorker !== "chief-of-staff" && !action && userInput) {
           const workerSlug = body.selectedWorker;
           try {
             const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
-            if (dwSnap.exists) {
-              let dw = dwSnap.data();
-              const workerName = dw.display_name || dw.name || workerSlug;
+            // Use Firestore doc if exists; fall back to hardcoded demo specs for known demo workers
+            const _demoFallback = DEMO_WORKER_FALLBACKS[workerSlug];
+            if (dwSnap.exists || _demoFallback) {
+              let dw = dwSnap.exists ? dwSnap.data() : _demoFallback;
+              // If the Firestore doc exists but has no systemPrompt, and we have a fallback with one, merge it in
+              if (dwSnap.exists && _demoFallback && !dw.systemPrompt) {
+                dw = { ..._demoFallback, ...dw };
+              }
+              let workerName = dw.display_name || dw.name || workerSlug;
+              // re-salesperson slug is user-facing as "Real Estate Advocate"
+              if (workerSlug === "re-salesperson") workerName = "Real Estate Advocate";
 
               // ── Organization-only visibility gate ──
               // Confidential workers (visibility:"organization") can only be USED
@@ -2770,8 +3308,13 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               }
 
               // ── System prompt: tenant overlay wins (Surface 1 / R2), then
-              // workerSystemPrompts/{slug}, then auto-generation below. ──
+              // workerSystemPrompts/{slug}, then dw.systemPrompt (inline on doc or
+              // DEMO_WORKER_FALLBACKS), then auto-generation below. ──
               let workerPrompt = (workerOverlay && workerOverlay.systemPrompt) || null;
+              // Inline systemPrompt on dw (used by DEMO_WORKER_FALLBACKS and sandbox-published workers)
+              if (!workerPrompt && dw.systemPrompt) {
+                workerPrompt = dw.systemPrompt;
+              }
               try {
                 if (!workerPrompt) {
                   const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
@@ -2849,7 +3392,8 @@ IDENTITY RULES:
               }
 
               // Inject subscriber name into worker prompt (44.2 — Bug 3a: prevent name hallucination)
-              if (authUser && workerPrompt) {
+              const _isDemoTenant = reqTenantId && reqTenantId.startsWith("demo-");
+              if (authUser && workerPrompt && !_isDemoTenant) {
                 try {
                   const nameSnap = await db.doc(`users/${authUser.uid}`).get();
                   const nameData = nameSnap.exists ? nameSnap.data() : {};
@@ -2860,6 +3404,24 @@ IDENTITY RULES:
                 } catch (nameErr) {
                   // Non-fatal — proceed without name
                 }
+              }
+              // Demo sessions — never address the user by their persona name;
+              // viewers of the demo are not the persona. Inject a universal overlay.
+              if (_isDemoTenant && workerPrompt) {
+                workerPrompt = `DEMO MODE RULES (override anything below that conflicts):
+- Do NOT address the user by any name. Say "Hi" or lead directly with the answer.
+- Keep every response concise: 3-5 sentences or a short bullet list. No walls of text.
+- You may reference persona-specific context (course details, property info, pet records) but never use a person's name in a greeting or salutation.
+- SUPPORT ESCALATION: If the user says they can't log in, can't access something, something is broken, they're confused about how to use the platform, or they want to speak to a real person — respond with exactly: "I'm looping in the SOCIII support team — someone will follow up with you directly within a few hours." Do not attempt to diagnose platform issues.
+
+${workerPrompt}`;
+              }
+
+              // Universal support escalation rule — all workers, all tenants.
+              // Appended after the main prompt so it acts as a final override.
+              if (workerPrompt) {
+                workerPrompt += `\n\nSUPPORT ESCALATION (platform-wide rule):
+If at any point the user says they can't log in, can't access their account, something is broken or not working, they're very confused and need platform help, or they explicitly ask to speak with a human or contact support — respond with: "I'm looping in the SOCIII support team — someone will follow up with you directly within a few hours." Do not try to troubleshoot platform issues yourself. One sentence is all that's needed before moving on.`;
               }
 
               // Inject RAAS knowledge base for platform workers (49.3)
@@ -3055,7 +3617,7 @@ CANVAS RENDER MARKER FORMAT:
 {"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
 |||END_CANVAS|||
 
-Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency. Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
+Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency. Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
 
 TYPE-SPECIFIC PAYLOAD SHAPES — use these exactly when emitting the corresponding type. Do NOT default to the generic work-product shape for these types or the card will render empty.
 
@@ -3107,7 +3669,7 @@ END DELIVERY RULES.
 
               // 49.32 — 5.2 cross-worker attribution: inject sibling Spine
               // worker state so the model can cite numbers from Accounting,
-              // Marketing, HR, Contacts, Control Center Pro instead of saying
+              // Marketing, HR, Contacts instead of saying
               // "Switch to your X worker for that". Demo mode falls back to
               // mirrored sample data; live mode reads from briefings/{uid}.
               if (workerPrompt) {
@@ -3247,7 +3809,7 @@ ${kpiLines}${demoBlock}
 
 VALUE QUOTING RULE — CRITICAL: KPI values are wrapped in double quotes above (e.g., "$4,200,000", "67%", "142"). When you reference any KPI value in your reply, copy the contents of those quotes VERBATIM into your prose. The user reads "$4,200,000" on their canvas — you must write "$4,200,000" in chat. Do NOT rewrite "$4,200,000" as "4,200,000 dollars" or "4.2 million dollars" or "$4.2M". Do NOT rewrite "67%" as "67 percent". Do NOT strip the dollar sign, commas, or percent sign. The displayed canvas string and your chat string must match character-for-character.
 
-CROSS-WORKER ATTRIBUTION RULE — IMPORTANT: The KPIs listed above belong to THIS worker (${slug}). When you reference those values you do not need to cite a source — they're from the user's current canvas. For metrics that belong to a SIBLING worker (e.g. user is on Marketing and asks about revenue), use the SIBLING WORKER STATE block injected at the top of this prompt — it lists current numbers from Accounting, HR, Contacts, Control Center Pro, etc. Cite the sibling worker by name when you reference its number ("Your Accounting worker shows revenue of $47,500 this month"). Never invent numbers. If a sibling metric is not in the snapshot, say "Let me check with [Worker Name] — they own that one" rather than refusing or saying "Switch to that worker."
+CROSS-WORKER ATTRIBUTION RULE — IMPORTANT: The KPIs listed above belong to THIS worker (${slug}). When you reference those values you do not need to cite a source — they're from the user's current canvas. For metrics that belong to a SIBLING worker (e.g. user is on Marketing and asks about revenue), use the SIBLING WORKER STATE block injected at the top of this prompt — it lists current numbers from Accounting, HR, Contacts, etc. Cite the sibling worker by name when you reference its number ("Your Accounting worker shows revenue of $47,500 this month"). Never invent numbers. If a sibling metric is not in the snapshot, say "Let me check with [Worker Name] — they own that one" rather than refusing or saying "Switch to that worker."
 
 GENERAL HELPFULNESS RULE — You are the user's Chief of Staff with a specialty in this worker's domain — not a domain-locked oracle. The user can ask you ANY question while sitting in this worker (general knowledge, life questions, random thoughts, ADHD-style tangents, weather, code help, cooking, anything). Answer those questions directly and warmly. You do not have to redirect the user to a "more appropriate" worker for non-KPI questions. The worker domain governs DATA (KPIs, checklists, suggested setup actions, sibling-worker attribution) — it does not gate conversation. If the user asks something off-topic, just answer it. If the user asks about KPIs or data outside this worker's canvas, then the cross-worker attribution rule above applies. The combination is: stay disciplined about WHOSE data you're quoting, but stay generous about what you'll talk about.
 
@@ -3387,6 +3949,46 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   },
                 });
                 businessTools.push({
+                  name: "analyze_lease",
+                  description: "Extract key terms from a lease and flag unfavorable clauses. Call this WHENEVER the user pastes lease text or asks you to review a lease. Do NOT summarize — call this tool and use the extracted data. NEVER invent lease terms.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      leaseText: { type: "string", description: "The full or partial lease text to analyze (first 8K chars used)" },
+                      leaseType: { type: "string", enum: ["residential", "commercial", "nnn", "unknown"], description: "Type of lease if known" },
+                    },
+                    required: ["leaseText"],
+                  },
+                });
+                businessTools.push({
+                  name: "calculate_net_sheet",
+                  description: "Calculate estimated seller net proceeds. Call this WHENEVER the user asks what they will walk away with, what they will net, or wants to know the bottom line on selling. Ask for sale price, loan balance, city/state. Buyer agent commission is now separately negotiated — show both sides.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      salePrice: { type: "number", description: "Expected sale price in dollars" },
+                      loanBalance: { type: "number", description: "Remaining mortgage balance in dollars (0 if owned free and clear)" },
+                      city: { type: "string", description: "City where property is located (affects transfer tax)" },
+                      state: { type: "string", description: "State abbreviation, e.g. CA or NV" },
+                      sellerCommPct: { type: "number", description: "Seller agent commission %, default 2.5" },
+                      buyerCommPct: { type: "number", description: "Buyer agent commission %, default 2.5" },
+                    },
+                    required: ["salePrice", "loanBalance"],
+                  },
+                });
+                businessTools.push({
+                  name: "get_listing_strategy",
+                  description: "Generate a sell-side pricing strategy with CMA estimate, market timing read, and prep ROI list. Call this when the user wants to know what to list at, whether now is a good time to sell, or how to prepare their property. NEVER tell the user to 'consult an agent' without running this first.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      address: { type: "string", description: "Full property address incl. city + state" },
+                      targetPrice: { type: "number", description: "Seller's target price if stated (optional — used to flag if above CMA)" },
+                    },
+                    required: ["address"],
+                  },
+                });
+                businessTools.push({
                   name: "start_transaction",
                   description: "Create a transaction record for a property the user is buying or selling. Call this when the user commits to a property and wants to track key dates, parties, and documents. ALWAYS confirm the address, role (buyer/seller), and key dates before creating.",
                   input_schema: {
@@ -3452,9 +4054,153 @@ IMAGE & VISUAL RULES (MANDATORY):
 - You CANNOT generate video. If asked, say so in one plain sentence and offer a script or storyboard instead. Never speculate that another worker or "the platform" can generate video.`;
 
               workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
+              // RE Advocate drafting rule: force full text output + Gmail send offer.
+              if (workerSlug === "re-salesperson") {
+                workerPrompt = `DRAFTING RULE: When asked to draft a counter-offer letter, response email, tenant notice, dispute letter, or any document — ALWAYS output the COMPLETE text of the draft inline in your chat response. Never say "Email is ready" or "Draft complete" without showing the full content.
+
+Use markdown formatting: put each section on its own line with a blank line between sections. Format like this:
+
+**Subject:** Re: [Topic]
+
+[Greeting],
+
+[Opening paragraph]
+
+**1. [Issue Name] (§[section]) —** [Explanation and proposed change]
+
+**2. [Issue Name] (§[section]) —** [Explanation and proposed change]
+
+[Closing paragraph]
+
+[Sign-off]
+
+After the draft, add one line: "Want me to send this via Gmail? Just confirm and give me the recipient's email address." When the user confirms sending and provides the address, emit: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"RECIPIENT_EMAIL","subject":"SUBJECT","body":"FULL_BODY_TEXT"}}|||END_SIDE_EFFECT|||
+
+` + workerPrompt;
+              }
+              // RE Advocate (re-salesperson) may draft counter-offer letters, lease
+              // summaries, and other long-form documents — 1024 is too low for those.
+              const workerMaxTokens = workerSlug === "re-salesperson" ? 3000 : 1024;
+
+              // ── CODEX 42 Phase 1 — True SSE streaming (RAAS-light, no-tool workers) ──
+              // Early branch: set headers + pipe Anthropic tokens live, then post-process
+              // and send the done event. Workers with tools bypass this and use the
+              // res.json() path below so tool-result round-trips are handled normally.
+              // RAAS-light = text-only workers with no tool round-trips.
+              // RE/aviation/nursing/marketing workers stay on res.json() (have tools).
+              const _STREAMING_WORKERS = new Set([
+                "ir-worker",
+                "fundraise",
+                "investor-relations",
+                "platform-accounting",
+                "platform-hr",
+                "patent",
+                "platform-contacts",
+                "scheduling",
+                "paralegal",
+                "litigation-discovery",
+                "nursing-ce-001",
+                "business-law",
+              ]);
+              if (_STREAMING_WORKERS.has(workerSlug)) {
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.flushHeaders();
+                let _accumulated = '';
+                try {
+                  const _stream = anthropic.messages.stream({
+                    model: 'claude-sonnet-4-5-20250929',
+                    max_tokens: workerMaxTokens,
+                    system: workerPrompt,
+                    messages,
+                  });
+                  _stream.on('text', (text) => {
+                    _accumulated += text;
+                    res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+                  });
+                  await _stream.finalMessage();
+                } catch (streamErr) {
+                  console.error(`[streaming:${workerSlug}] stream error:`, streamErr.message);
+                  res.write(`data: ${JSON.stringify({ done: true, canvasSignal: null, canvasRenders: [] })}\n\n`);
+                  return res.end();
+                }
+                // Post-processing: canvas renders + side effects on accumulated text
+                let _sseText = _accumulated;
+                let _sseRenders = [];
+                let _sseSignal = null;
+                try {
+                  const { extractCanvasRenders } = require("./services/alex/canvasMarkers");
+                  const _ex = extractCanvasRenders(_sseText);
+                  _sseText = _ex.cleanText;
+                  _sseRenders = _ex.canvasRenders;
+                } catch (e) { console.warn('[streaming] canvas extract failed:', e.message); }
+                try {
+                  const { extractSideEffects } = require("./services/alex/sideEffectMarkers");
+                  const _se = extractSideEffects(_sseText);
+                  _sseText = _se.cleanText;
+                  if (_se.sideEffects.length > 0 && authUser) {
+                    await executeChatSideEffects(_se.sideEffects, authUser.uid, null);
+                  }
+                } catch (e) { console.warn('[streaming] side-effect extract failed:', e.message); }
+                try {
+                  const _sigEx = require("./services/canvas/signalExtractor");
+                  _sseSignal = _sigEx.extract(_sseText, workerSlug, dw.vertical || null);
+                } catch (e) {}
+
+                // RAAS-light enforcement (CODEX 42 §10) — regex pattern checks on
+                // accumulated SSE text. Disclaimer appended as final token event before
+                // done if triggered. Tokens are already at client, so we can only
+                // append — not retract. This is intentional for RAAS-light tier.
+                let _streamEnforcement = { checked: false };
+                try {
+                  const { loadChatRules: _lcr, getWorkerDisclaimer: _gwd } = require("./raas/raas.engine");
+                  const _streamRules = _lcr(workerSlug);
+                  _streamEnforcement = _streamRules
+                    ? validateChatOutput(_sseText, _streamRules)
+                    : validateChatOutput(_sseText);
+                  if (!_streamEnforcement.passed) {
+                    console.warn(`[streaming:enforcement] ${workerSlug}:`, (_streamEnforcement.violations || []).map(v => v.ruleId));
+                    const _disc = _gwd(workerSlug) || "This is informational guidance only and does not constitute professional advice.";
+                    if (!_sseText.toLowerCase().includes("does not constitute")) {
+                      const _discToken = `\n\n*${_disc}*`;
+                      _sseText += _discToken;
+                      res.write(`data: ${JSON.stringify({ token: _discToken })}\n\n`);
+                      _streamEnforcement.disclaimerAppended = true;
+                    }
+                  }
+                  _streamEnforcement.checked = true;
+                } catch (_se) { console.warn('[streaming:enforcement] failed:', _se.message); }
+
+                // Streaming audit log — every streaming response is audited
+                // regardless of delivery path (CODEX 42, patent alignment).
+                try {
+                  await db.collection("messageEvents").add({
+                    tenantId: "titleapp-worker",
+                    userId: authUser ? authUser.uid : `anon_${sessionId}`,
+                    type: "chat:message:worker:stream",
+                    message: userInput,
+                    response: _sseText,
+                    workerSlug,
+                    enforcement: {
+                      checked: _streamEnforcement.checked,
+                      passed: _streamEnforcement.passed != null ? _streamEnforcement.passed : null,
+                      violations: _streamEnforcement.violations || [],
+                      disclaimerAppended: _streamEnforcement.disclaimerAppended || false,
+                    },
+                    enforcement_model: "code",
+                    createdAt: nowServerTs(),
+                  });
+                } catch (_sa) { console.warn('[streaming:audit] failed:', _sa.message); }
+
+                res.write(`data: ${JSON.stringify({ done: true, canvasSignal: _sseSignal, canvasRenders: _sseRenders })}\n\n`);
+                return res.end();
+              }
+              // ── End CODEX 42 streaming branch ──
+
               let aiResponse = await anthropic.messages.create({
                 model: 'claude-sonnet-4-5-20250929',
-                max_tokens: 1024,
+                max_tokens: workerMaxTokens,
                 system: workerPrompt,
                 messages,
                 tools: businessTools,
@@ -3468,6 +4214,9 @@ IMAGE & VISUAL RULES (MANDATORY):
               let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
               let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
               let liveReLookup = null;   // 2026-06-26 — populated by lookup_property (generic RE)
+              let _liveCMA = null;           // Phase 3 (CODEX 42) — typed CMA canvas render data
+              let _liveNetSheet = null;      // Phase 3 — typed net sheet canvas render data
+              let _livePropertyDeep = null;  // Phase 3 — typed property deep canvas render data
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
@@ -3699,6 +4448,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                       "Lead with the data. Do not soften the number. If the user's stated price expectation is above the CMA, tell them directly and specifically.",
                     ].filter(Boolean).join("\n");
                   }
+                  if (r.ok) _liveCMA = r; // Phase 3 — typed canvas render built below
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here is the CMA.";
@@ -3714,6 +4464,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                   if (!r.ok) {
                     resultText = r.error || `Deep property data unavailable for "${toolBlock.input.address}".`;
                   } else {
+                    _livePropertyDeep = r; // Phase 3 — typed canvas render built below
                     const ownership = (r.ownerHistory || []).map(h => `${h.date || "?"}: ${h.price || "?"} ${h.seller ? "(" + h.seller + " → " + (h.buyer || "?") + ")" : ""}`).join("; ");
                     const avm = r.avmEstimate ? `AVM: ${r.avmEstimate.value} (${r.avmEstimate.low}–${r.avmEstimate.high})` : "AVM: not available";
                     resultText = [
@@ -3763,6 +4514,119 @@ IMAGE & VISUAL RULES (MANDATORY):
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Transaction started.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] start_transaction failed:`, e.message); }
+              }
+
+              let _forceCanvasSignal = null;
+
+              // RE Advocate — analyze_lease tool.
+              // Uses Haiku for fast JSON extraction, then formats aiText directly
+              // in JS — no follow-up Anthropic call — to stay under Cloudflare timeout.
+              if (toolBlock && toolBlock.name === 'analyze_lease') {
+                try {
+                  const { leaseText } = toolBlock.input || {};
+                  if (!leaseText || leaseText.length < 50) {
+                    aiText = "To analyze the lease, paste the full text directly into the chat. I'll extract key terms and flag anything that pushes California law limits.";
+                  } else {
+                    const extractionPrompt = `Extract key lease terms. Return ONLY valid JSON, no markdown fences.
+{"summary":"2-3 sentence plain English summary","leaseType":"residential|commercial|nnn","terms":[{"key":"term name","value":"value","flag":"RED|YELLOW|WHITE|GREEN|BLUE"}],"flags":[{"band":"RED|YELLOW|WHITE|GREEN|BLUE","title":"flag title","detail":"why it matters"}]}
+Extract: rent, term dates, security deposit, rent escalation, renewal options, early termination, personal guarantee, CAM, demolition clause, subletting, TI allowance, purchase option.
+RED=significant risk, YELLOW=review, WHITE=standard, GREEN=favorable, BLUE=missing.
+LEASE:\n${String(leaseText).slice(0, 6000)}`;
+                    const extraction = await anthropic.messages.create({
+                      model: 'claude-haiku-4-5-20251001',
+                      max_tokens: 2500,
+                      messages: [{ role: "user", content: extractionPrompt }],
+                    });
+                    let extracted = null;
+                    try {
+                      const raw = extraction.content[0]?.text || "";
+                      // Find the first complete JSON object (handles markdown fences + trailing text)
+                      const start = raw.indexOf('{');
+                      if (start !== -1) {
+                        let depth = 0, end = -1;
+                        for (let i = start; i < raw.length; i++) {
+                          if (raw[i] === '{') depth++;
+                          else if (raw[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+                        }
+                        if (end !== -1) {
+                          extracted = JSON.parse(raw.slice(start, end + 1));
+                        } else if (start !== -1) {
+                          // JSON truncated mid-object — try to close it and parse what we have
+                          const partial = raw.slice(start).replace(/,\s*$/, '');
+                          const closed = partial + Array(depth).fill('}').join('');
+                          try { extracted = JSON.parse(closed); } catch (_) {}
+                        }
+                      }
+                    } catch (parseErr) {
+                      console.warn(`[analyze_lease] JSON parse failed:`, parseErr.message);
+                    }
+
+                    if (extracted && Array.isArray(extracted.flags)) {
+                      const reds = extracted.flags.filter(f => f.band === "RED");
+                      const yellows = extracted.flags.filter(f => f.band === "YELLOW");
+                      const summary = extracted.summary || "Lease analyzed.";
+                      const redSummary = reds.length
+                        ? `\n\nRed flags (${reds.length}): ${reds.map(f => f.title).join(", ")}.`
+                        : "\n\nNo red flags found.";
+                      const yellowSummary = yellows.length
+                        ? ` ${yellows.length} item${yellows.length > 1 ? 's' : ''} to review.`
+                        : "";
+                      aiText = `${summary}${redSummary}${yellowSummary}\n\nFull breakdown is in the Leases tab on the right. Want me to draft a counter-offer letter addressing the flagged clauses?`;
+                      _forceCanvasSignal = "card:re-lease";
+                      // Attach structured data so canvas card renders
+                      if (!body._leaseExtracted) body._leaseExtracted = extracted;
+                    } else {
+                      aiText = "I couldn't parse the lease — it may be too short or in a non-text format. Paste the full plain text and I'll try again.";
+                    }
+                  }
+                } catch (e) {
+                  console.warn(`[worker:${workerSlug}] analyze_lease failed:`, e.message);
+                  aiText = "Lease analysis hit an error. Paste the lease text again and I'll retry.";
+                }
+              }
+
+              // RE Advocate — calculate_net_sheet tool.
+              // Pure calculation — no Anthropic call needed. Format directly in JS.
+              if (toolBlock && toolBlock.name === 'calculate_net_sheet') {
+                try {
+                  const { calculateNetSheet } = require("./services/re/advocate");
+                  const { salePrice, loanBalance, city, state, sellerCommPct, buyerCommPct } = toolBlock.input || {};
+                  if (!salePrice) {
+                    aiText = "I need your expected sale price and remaining loan balance to run the net sheet. What are those numbers?";
+                  } else {
+                    const ns = calculateNetSheet({ salePrice, loanBalance: loanBalance || 0, city, state, sellerCommPct, buyerCommPct });
+                    _liveNetSheet = ns; // Phase 3 — typed canvas render built below
+                    const lines = ns.lineItems.map(li => `${li.label}: ${li.amount}${li.note ? ' (' + li.note + ')' : ''}`).join("\n");
+                    aiText = `Net sheet for $${Number(salePrice).toLocaleString()} sale price:\n\n${lines}\n\nEstimated net proceeds: ${ns.netProceedsFmt}${ns.netProceeds < 0 ? " — this is negative, meaning the sale price doesn't cover your costs and payoff. You would need to bring cash to close." : "."}\n\n${ns.disclaimer}`;
+                  }
+                } catch (e) {
+                  console.warn(`[worker:${workerSlug}] calculate_net_sheet failed:`, e.message);
+                  aiText = "Net sheet calculation hit an error. Try again with a sale price and loan balance.";
+                }
+              }
+
+              // RE Advocate — get_listing_strategy tool.
+              // ATTOM calls happen inside getListingStrategy — no follow-up call.
+              if (toolBlock && toolBlock.name === 'get_listing_strategy') {
+                try {
+                  const { getListingStrategy } = require("./services/re/advocate");
+                  const { address, targetPrice } = toolBlock.input || {};
+                  const r = await getListingStrategy(address, targetPrice, process.env.ATTOM_API_KEY);
+                  if (!r.ok) {
+                    aiText = r.error || `I couldn't pull comparable sales for "${address}". Try a full street address with city and state.`;
+                  } else {
+                    const est = r.estimate;
+                    const sf = r.sellerFraming || {};
+                    const priceLine = est ? `CMA estimate: ${est.low} – ${est.mid} – ${est.high} (${est.confidence} confidence, ${r.marketMetrics.compsUsed} comps).` : "Insufficient comp data for a CMA estimate.";
+                    const pricingRead = sf.pricingRead ? ` ${sf.pricingRead.note}` : "";
+                    const timingRead = sf.marketTiming ? ` Market timing: ${sf.marketTiming.note}` : "";
+                    const prepLines = (sf.prepItems || []).filter(p => p.roi === 'high').map(p => `${p.item} (${p.cost})`).join(", ");
+                    aiText = `${priceLine}${pricingRead}${timingRead}${prepLines ? `\n\nTop prep items by ROI: ${prepLines}.` : ""}${r.warning ? `\n\nNote: ${r.warning}` : ""}\n\nFull strategy is in the panel on the right.`;
+                  }
+                } catch (e) {
+                  console.warn(`[worker:${workerSlug}] get_listing_strategy failed:`, e.message);
+                  aiText = "Listing strategy lookup hit an error. Try again with a full address.";
+                }
               }
 
               // Nursing — get_nursing_cohort tool.
@@ -3815,6 +4679,12 @@ IMAGE & VISUAL RULES (MANDATORY):
 
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
 
+              // RE Advocate: strip markdown bold (**text**) so chat reads as
+              // clean prose. The canvas card handles structured display.
+              if (workerSlug === "re-salesperson") {
+                aiText = aiText.replace(/\*\*([^*]+)\*\*/g, '$1');
+              }
+
               // 49.30 DIAG — also log raw model output before delivery filter
               if (canvasDemoActive) {
                 console.log(`[diag49.30] worker:${workerSlug} rawModelOutputLen=${aiText.length} preview=${aiText.slice(0, 400).replace(/\n/g, " ")}`);
@@ -3856,8 +4726,10 @@ IMAGE & VISUAL RULES (MANDATORY):
                   if (!workerEnforcement.passed) {
                     console.warn(`[enforcement] worker:${workerSlug} violation for user ${authUser?.uid}:`, workerEnforcement.violations);
                     const disclaimer = getWorkerDisclaimer(workerSlug) || "This is informational guidance only and does not constitute professional advice. Consult qualified professionals for specific advice.";
-                    aiText += `\n\n*${disclaimer}*`;
-                    workerEnforcement.disclaimerAppended = true;
+                    if (!aiText.toLowerCase().includes("informational guidance") && !aiText.toLowerCase().includes("does not constitute")) {
+                      aiText += `\n\n*${disclaimer}*`;
+                      workerEnforcement.disclaimerAppended = true;
+                    }
                   }
                   workerEnforcement.checked = true;
                 } else {
@@ -3865,8 +4737,10 @@ IMAGE & VISUAL RULES (MANDATORY):
                   workerEnforcement = validateChatOutput(aiText);
                   if (!workerEnforcement.passed) {
                     console.warn(`[enforcement] worker:${workerSlug} default-rule violation:`, workerEnforcement.violations);
-                    aiText += "\n\n*This is informational guidance only and does not constitute financial, legal, or tax advice. Consult qualified professionals for specific advice.*";
-                    workerEnforcement.disclaimerAppended = true;
+                    if (!aiText.toLowerCase().includes("informational guidance") && !aiText.toLowerCase().includes("does not constitute")) {
+                      aiText += "\n\n*This is informational guidance only and does not constitute financial, legal, or tax advice. Consult qualified professionals for specific advice.*";
+                      workerEnforcement.disclaimerAppended = true;
+                    }
                   }
                 }
               } catch (enfErr) {
@@ -3935,6 +4809,7 @@ IMAGE & VISUAL RULES (MANDATORY):
                     violations: workerEnforcement.violations || [],
                     disclaimerAppended: workerEnforcement.disclaimerAppended || false,
                   },
+                  enforcement_model: "code",
                   // CODEX 50.17 P0-7 — constraint RAAS audit fields.
                   // Captures which modules were loaded, what the post-generation
                   // pattern check found, and the resolved versions at generation
@@ -3973,6 +4848,7 @@ IMAGE & VISUAL RULES (MANDATORY):
               } catch (sigErr) {
                 console.warn("canvas signal extraction failed:", sigErr.message);
               }
+              if (_forceCanvasSignal) canvasSignal = _forceCanvasSignal;
 
               // Canvas Render markers (49.27) — strip work products from chat, send to canvas
               let workerCanvasRenders = [];
@@ -4014,7 +4890,9 @@ IMAGE & VISUAL RULES (MANDATORY):
               // 49.31 — Auto-wrap fallback. If the model produced a structured deliverable
               // in chat without a CANVAS_RENDER marker, synthesize one now so the work
               // product still lands on the canvas.
-              if (workerCanvasRenders.length === 0) {
+              // RE Advocate (re-salesperson) is exempt: DRAFTING RULE intentionally keeps
+              // drafts inline in chat so the user can read + approve before send.
+              if (workerCanvasRenders.length === 0 && workerSlug !== "re-salesperson") {
                 try {
                   const { autoWrap } = require("./services/alex/canvasAutoWrap");
                   const wrapped = autoWrap({
@@ -4042,6 +4920,60 @@ IMAGE & VISUAL RULES (MANDATORY):
                     title: "Generated Image",
                   },
                 });
+              }
+
+              // Phase 3 (CODEX 42) — typed canvas renders from RE tool data.
+              // These are built in JS from structured tool results — no AI marker emission required.
+              if (_liveCMA && _liveCMA.ok) {
+                const _est = _liveCMA.estimate;
+                const _m = _liveCMA.marketMetrics;
+                workerCanvasRenders.push({
+                  type: "card:re-cma",
+                  payload: {
+                    title: `CMA — ${_liveCMA.subject?.address || "Subject Property"}`,
+                    subject: _liveCMA.subject || {},
+                    estimate: _est ? { low: _est.low, mid: _est.mid, high: _est.high, confidence: _est.confidence, methodology: _est.methodology } : null,
+                    marketMetrics: _m ? { medianSalePrice: _m.medianSalePrice, medianPricePerSqft: _m.medianPricePerSqft, avgDaysOnMarket: _m.avgDaysOnMarket, avgListSaleRatio: _m.avgListSaleRatio, compsUsed: _m.compsUsed } : null,
+                    comps: _liveCMA.comps || [],
+                    warning: _liveCMA.warning || null,
+                  },
+                });
+                if (!_forceCanvasSignal) _forceCanvasSignal = "card:real-estate-cma";
+              }
+              if (_liveNetSheet) {
+                workerCanvasRenders.push({
+                  type: "card:re-net-sheet",
+                  payload: {
+                    title: "Net Sheet",
+                    lineItems: _liveNetSheet.lineItems || [],
+                    netProceeds: _liveNetSheet.netProceeds,
+                    netProceedsFmt: _liveNetSheet.netProceedsFmt,
+                    salePrice: _liveNetSheet.salePrice,
+                    disclaimer: _liveNetSheet.disclaimer || null,
+                  },
+                });
+                if (!_forceCanvasSignal) _forceCanvasSignal = "card:real-estate-net-sheet";
+              }
+              if (_livePropertyDeep && _livePropertyDeep.ok) {
+                workerCanvasRenders.push({
+                  type: "card:re-property",
+                  payload: {
+                    title: `Property — ${_livePropertyDeep.address}`,
+                    address: _livePropertyDeep.address,
+                    beds: _livePropertyDeep.beds,
+                    baths: _livePropertyDeep.baths,
+                    sqft: _livePropertyDeep.sqft,
+                    yearBuilt: _livePropertyDeep.yearBuilt,
+                    propType: _livePropertyDeep.propType,
+                    lotSizeAcres: _livePropertyDeep.lotSizeAcres,
+                    zoning: _livePropertyDeep.zoning,
+                    floodZone: _livePropertyDeep.floodZone,
+                    avmEstimate: _livePropertyDeep.avmEstimate || null,
+                    ownerHistory: (_livePropertyDeep.ownerHistory || []).slice(0, 5),
+                    liensCount: _livePropertyDeep.liensCount || 0,
+                  },
+                });
+                if (!_forceCanvasSignal) _forceCanvasSignal = "card:real-estate-property";
               }
 
               // S52.44 — repaint the Map with LIVE ATTOM distressed-CRE results.
@@ -4160,6 +5092,8 @@ IMAGE & VISUAL RULES (MANDATORY):
 
               // Clean response — no detectedVertical, no workerCards, no Alex markers
               // 49.27 — return `response` (not `message`) so ChatPanel renders the text
+              // CODEX 42: RAAS-light streaming workers return early above (true SSE path).
+              // All remaining workers reach here and get standard res.json() delivery.
               return res.json({
                 ok: true,
                 response: aiText,
@@ -4985,7 +5919,6 @@ TONE — CRITICAL:
 HARD SEC COMPLIANCE RULES:
 - NEVER calculate specific dollar returns for a specific investment amount. Example of what is FORBIDDEN: "At $50K, you would own 0.33% and if we exit at $100M that is $333K." That crosses SEC lines.
 - Conversion scenarios may ONLY be presented as a generic table showing multiples at various valuations. Never personalized to their check size.
-- EVERY time conversion scenarios are mentioned, include this disclaimer: "These are mathematical scenarios based on the SAFE terms, not projections or promises. Early-stage investing carries significant risk including total loss of capital."
 - NEVER say things like "meaningful check," "puts you in our top tier," or any language that flatters an investment amount. Alex is an informer, not a closer.
 - NEVER promise returns or guarantee outcomes.
 - NEVER provide personalized investment advice.
@@ -5024,9 +5957,7 @@ NAVIGATION — CRITICAL:
 - If they already have an account, take them immediately. Do not ask them to click links or find menus. YOU handle it.
 
 ESCALATION:
-For legal specifics, custom terms, or strategic questions, offer to connect with Sean (CEO) or Kent (CFO). Do not try to answer legal questions yourself.
-
-COMPLIANCE: This is informational only. SOCIII does not act as a registered funding portal, broker-dealer, or investment advisor. The offering is conducted through Wefunder under Regulation CF.`;
+For legal specifics, custom terms, or strategic questions, offer to connect with Sean (CEO) or Kent (CFO). Do not try to answer legal questions yourself.`;
 
           try {
             const anthropic = getAnthropic();
@@ -9626,7 +10557,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
-    // POST /v1/user:setDigestCadence — set Control Center brief cadence
+    // POST /v1/user:setDigestCadence — set digest brief cadence (Alex-driven)
     if (route === "/user:setDigestCadence" && method === "POST") {
       try {
         const cadence = String(body.cadence || "").toLowerCase();
@@ -13158,7 +14089,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // Concerns (Accountability Layer) — 50.27
     // Owner raises a concern, names a responsible party. Responsible
     // party submits a response. System cross-checks claims against
-    // ground-truth Firestore data. Control Center renders verification
+    // ground-truth Firestore data. Alex renders verification
     // status + BS score. Workspace-scoped.
     // ───────────────────────────────────────────────────────────
 
@@ -20502,6 +21433,65 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ chat:feedback failed:", e);
         return jsonError(res, 500, "Failed to record feedback");
+      }
+    }
+
+    // ----------------------------
+    // SUPPORT ESCALATION
+    // ----------------------------
+
+    // POST /v1/support:escalate
+    // Fired by ChatPanel when user explicitly asks for human support.
+    // Sends email + SMS to Sean and logs to supportEscalations/.
+    if (route === "/support:escalate" && method === "POST") {
+      try {
+        const { message, workerSlug, persona, sessionId } = body;
+        if (!message) return jsonError(res, 400, "message required");
+
+        const userId = auth.user?.uid || "anonymous";
+        const userEmail = auth.user?.email || null;
+        const userName = auth.user?.displayName || userEmail || "a user";
+        const escTenantId = ctx.tenantId || "unknown";
+
+        await db.collection("supportEscalations").add({
+          tenantId: escTenantId,
+          userId,
+          userEmail: userEmail || null,
+          workerSlug: workerSlug || null,
+          persona: persona || null,
+          sessionId: sessionId || null,
+          message,
+          status: "pending",
+          createdAt: nowServerTs(),
+        });
+
+        const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
+        const safeMsg = message.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+        await sendViaSendGrid({
+          to: "sean@sociii.ai",
+          subject: `[Support] ${userName} needs help${workerSlug ? ` — ${workerSlug}` : ""}`,
+          htmlBody: `<p><strong>Support escalation received</strong></p>
+<p><strong>User:</strong> ${userName}${userEmail ? ` &lt;${userEmail}&gt;` : ""}</p>
+<p><strong>Tenant:</strong> ${escTenantId}</p>
+<p><strong>Worker:</strong> ${workerSlug || "General chat"}</p>
+${persona ? `<p><strong>Persona:</strong> ${persona}</p>` : ""}
+<p><strong>Message:</strong></p>
+<blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:8px 0;color:#444">${safeMsg}</blockquote>
+<p><a href="https://app.sociii.ai/admin">Open Admin Panel →</a></p>`,
+        });
+
+        try {
+          const { sendSMSDirect } = require("./communications/twilioHelper");
+          const preview = message.slice(0, 120).replace(/\n/g, " ");
+          await sendSMSDirect("+13104300780", `[SOCIII Support] ${userName}: "${preview}"`);
+        } catch (smsErr) {
+          console.warn("support:escalate SMS failed:", smsErr.message);
+        }
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ support:escalate failed:", e);
+        return jsonError(res, 500, "Support escalation failed");
       }
     }
 

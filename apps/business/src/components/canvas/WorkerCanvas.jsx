@@ -10,9 +10,12 @@ import PreviewBriefPanel from "./PreviewBriefPanel";
 import RealEstateWorkerCanvas, { isREWorker } from "./RealEstateWorkerCanvas";
 import DPPWorkerCanvas, { isDPPWorker } from "./DPPWorkerCanvas";
 import NursingWorkerCanvas, { isNursingWorker } from "./NursingWorkerCanvas";
+import PetHealthCanvas, { isPetHealthWorker } from "./PetHealthCanvas";
+import TenantPortalCanvas, { isTenantPortalWorker } from "./TenantPortalCanvas";
+import BioCourseCanvas, { isBioCourseWorker } from "./BioCourseCanvas";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 // Subset of styles needed by TrialBanner
 const S = {
@@ -225,7 +228,6 @@ const SPINE_CANVAS_ACCENT = {
   "platform-accounting": "#16a34a",          // green
   "platform-marketing": "#ea580c",           // orange
   "platform-hr": "#7c3aed",                  // purple
-  "platform-control-center-pro": "#7c3aed",  // purple
   "platform-contacts": "#0284c7",            // blue
 };
 
@@ -236,7 +238,6 @@ const PLATFORM_DISPLAY_NAMES = {
   "platform-accounting": "Accounting",
   "platform-hr": "HR & People",
   "platform-marketing": "Marketing & Content",
-  "platform-control-center-pro": "Control Center Pro",
   "platform-contacts": "Contacts",
 };
 
@@ -244,20 +245,6 @@ const PLATFORM_DISPLAY_NAMES = {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const WORKER_CHECKLISTS = {
-  "platform-control-center-pro": {
-    heading: "Make Control Center more useful",
-    icon: "\uD83C\uDFAF",
-    unlockText: "Complete {remaining} more items for full executive intelligence",
-    items: [
-      { id: "business-overview", label: "Business overview complete", default: true },
-      { id: "email-connection", label: "Connect primary email for daily/weekly reports", action: "chat", prompt: "Help me connect my primary email so I can receive executive reports and business updates on a schedule." },
-      { id: "communication-preferences", label: "Set communication preferences (daily/weekly/monthly)", action: "chat", prompt: "Help me set up my executive communication preferences. I want to configure how often I receive business updates (daily/weekly/monthly) and what channels to use (email/text)." },
-      { id: "key-metrics", label: "Add key business metrics to track", action: "chat", prompt: "Help me identify and set up the key business metrics I should track in my executive dashboard. I need metrics for revenue, customer acquisition, worker performance, and operational efficiency." },
-      { id: "revenue-tracking", label: "Connect revenue tracking (bank/accounting)", action: "chat", prompt: "Help me connect revenue tracking by linking my bank or accounting data for real-time financial visibility in Control Center." },
-      { id: "acquisition-goals", label: "Set customer acquisition goals", action: "chat", prompt: "Help me set customer acquisition goals and tracking systems. I need realistic targets based on my business model and current performance." },
-      { id: "external-feeds", label: "Add external data feeds (weather, market trends)", action: "chat", prompt: "Help me configure external data feeds for my executive dashboard. I want weather data, market trends, and other relevant external indicators that impact my business." },
-    ],
-  },
   "platform-accounting": {
     heading: "Make Accounting more powerful",
     icon: "\uD83D\uDCCA",
@@ -355,19 +342,6 @@ export const WORKER_INTELLIGENCE = {
       { label: "Team directory", prompt: "Show me my current team directory with roles and contact information." },
     ],
   },
-  "platform-control-center-pro": {
-    kpis: [
-      { id: "revenue", label: "Revenue", value: "--", unit: "$", hint: "Connect tracking to populate" },
-      { id: "active-workers", label: "Active Workers", value: "--", unit: "", hint: "Subscribe workers to populate" },
-      { id: "customer-growth", label: "Customer Growth", value: "--", unit: "%", hint: "Track acquisition to populate" },
-      { id: "tasks-due", label: "Tasks Due", value: "--", unit: "", hint: "Set goals to populate" },
-    ],
-    quickActions: [
-      { label: "Morning brief", prompt: "Give me my morning executive brief with key metrics, pending items, and priorities for today." },
-      { label: "Weekly digest", prompt: "Generate my weekly business digest with performance highlights and action items." },
-      { label: "Performance overview", prompt: "Show me a performance overview across all my active workers and business metrics." },
-    ],
-  },
   "platform-contacts": {
     kpis: [
       { id: "total-contacts", label: "Total Contacts", value: "--", unit: "", hint: "Import contacts to populate" },
@@ -418,12 +392,6 @@ const BRIEFING_KPI_MAP = {
     "open-positions": null,
     "reviews-due": null,
     "compliance-score": { field: "spine.complianceFlags", format: "number" },
-  },
-  "platform-control-center-pro": {
-    "revenue": { field: "spine.incomeMtd", format: "currency" },
-    "active-workers": null, // Count from workspace, not briefing
-    "customer-growth": null,
-    "tasks-due": { field: "spine.pendingTransactions", format: "number" },
   },
   "platform-contacts": {
     "total-contacts": { field: "spine.contacts", format: "number" },
@@ -911,6 +879,10 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const reWorker = isREWorker(w); // S52.44 — RE workers render the shared RE canvas
   const dppWorker = isDPPWorker(w); // EU Battery DPP worker gets its own canvas
   const nursingWorker = isNursingWorker(w); // Makai School of Nursing demo suite
+  const petHealthWorker = isPetHealthWorker(w); // Meadow Creek Vet consumer canvas
+  const tenantPortalWorker = isTenantPortalWorker(w); // Merritt Capital tenant canvas
+  const bioCourseWorker = isBioCourseWorker(w); // Makai BIOL 201 student canvas
+  const consumerWorker = petHealthWorker || tenantPortalWorker || bioCourseWorker;
   const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
 
@@ -1303,9 +1275,12 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               {reWorker && <RealEstateWorkerCanvas worker={w} />}
               {dppWorker && <DPPWorkerCanvas worker={w} />}
               {nursingWorker && <NursingWorkerCanvas worker={w} />}
+              {petHealthWorker && <PetHealthCanvas worker={w} />}
+              {tenantPortalWorker && <TenantPortalCanvas worker={w} />}
+              {bioCourseWorker && <BioCourseCanvas worker={w} />}
 
               {/* Quick start chips — hidden in stage 3 for intelligence workers */}
-              {!reWorker && !dppWorker && !nursingWorker && !(hasIntelligence && canvasStage === 3) && (
+              {!reWorker && !dppWorker && !nursingWorker && !consumerWorker && !(hasIntelligence && canvasStage === 3) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                 {prompts.map((p, i) => (
                   <button
@@ -1335,11 +1310,48 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               </div>
               )}
 
-              {/* Control Center Pro: surface Preview-Brief inline so the
-                  cadence picker + live preview are discoverable from the
-                  worker home (49.32 — fixes "navigation not at all intuitive"). */}
-              {workerSlug === "platform-control-center-pro" && (
-                <PreviewBriefPanel />
+              {/* Power Moves (Guide) — clickable prompts from worker.docs.powerMoves.
+                  Only shown when docs exist; hidden for specialized canvas workers
+                  that already render their own canvas content above. */}
+              {!reWorker && !dppWorker && !nursingWorker && !consumerWorker && w.docs?.powerMoves?.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.35)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+                    Try asking
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {w.docs.powerMoves.slice(0, 3).map((move, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: move.prompt } }));
+                          if (ws?.startWorking) ws.startWorking();
+                        }}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "10px 14px", fontSize: 13, borderRadius: 10, textAlign: "left",
+                          background: "rgba(0,0,0,0.02)", border: `1px solid rgba(0,0,0,0.08)`,
+                          color: "#374151", cursor: "pointer", fontWeight: 500, fontFamily: "inherit",
+                          lineHeight: 1.4, transition: "background 150ms",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = `rgba(0,0,0,0.05)`; e.currentTarget.style.borderColor = "var(--worker-accent)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; }}
+                      >
+                        <span>
+                          <span style={{ fontWeight: 600, color: "var(--worker-accent)", marginRight: 6 }}>{move.title}</span>
+                          <span style={{ color: "#6b7280", fontSize: 12 }}>"{move.prompt}"</span>
+                        </span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--worker-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 8, opacity: 0.6 }}>
+                          <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  {w.docs.canvasDescription && (
+                    <div style={{ marginTop: 12, fontSize: 12, color: "rgba(0,0,0,0.4)", lineHeight: 1.5, borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 10 }}>
+                      {w.docs.canvasDescription}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Substrate badges — stage-aware (49.13) — hidden for RE workers (shared RE canvas above) */}
@@ -1352,7 +1364,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                 }}
               >
-                {hasIntelligence && (
+                {hasIntelligence && !consumerWorker && (
                   <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} verticalKey={verticalKey} />
                 )}
                 {hasIntelligence && canvasStage >= 2 ? (

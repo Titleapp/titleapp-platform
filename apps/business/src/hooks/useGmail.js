@@ -162,6 +162,7 @@ export function useGmailAccounts() {
     setLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, [refresh]);
   return { accounts, loading, refresh };
 }

@@ -3,31 +3,44 @@
 // All 5 workers share this canvas; the active tab set switches by worker slug.
 
 import React, { useState } from "react";
+import TabDescription from "./TabDescription";
+import { getTabDescription } from "./workerTabDescriptions";
+
+const tabToKey = (t) => t.toLowerCase().replace(/ /g, "-");
 
 // ── Slug registry ─────────────────────────────────────────────────────────────
 
 const NURSING_SLUGS = new Set([
+  "nursing-education-001",        // Clearwater Nursing Education (deployed)
   "nursing-records-001",
   "nursing-courses-001",
   "nursing-tutor-001",
   "nursing-comms-001",
   "nursing-accreditation-001",
+  "uh-nursing-records-001",
+  "uh-nursing-courses-001",
+  "uh-nursing-tutor-001",
+  "uh-nursing-comms-001",
+  "uh-nursing-accreditation-001",
 ]);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function isNursingWorker(w) {
   return NURSING_SLUGS.has(w?.workerId || w?.slug || "");
 }
 
 // ── Demo data (matches seedMakaiNursingDemo.js) ───────────────────────────────
 
-const SCHOOL = {
+// ── Makai School of Nursing data ──────────────────────────────────────────────
+
+const MAKAI_SCHOOL = {
   name: "Makai School of Nursing",
   program: "BSN Program",
   cohort: "Class of 2028",
   accreditor: "ACEN",
 };
 
-const STUDENTS = [
+const MAKAI_STUDENTS = [
   {
     id: "student-jordan-chen",
     name: "Jordan Chen",
@@ -99,9 +112,24 @@ const STUDENTS = [
     competencies: [],
     notes: "Extended leave; return plan active",
   },
+  {
+    id: "student-sara-kahele",
+    name: "Sara Kahele",
+    status: "ready",
+    clinicalHours: 486,
+    clinicalHoursRequired: 500,
+    atiScore: 88,
+    coursesComplete: 5,
+    competencies: [
+      { id: "2A", name: "Medication administration safety", status: "verified", attestedBy: "Dr. Kealani Moku" },
+      { id: "4B", name: "IV catheter insertion", status: "verified", attestedBy: "Prof. Ana Rodrigues" },
+      { id: "5C", name: "Wound care and dressing change", status: "verified", attestedBy: "Dr. Kealani Moku" },
+    ],
+    notes: "Consistently high performer; exceeds NCLEX readiness benchmarks; vault record complete",
+  },
 ];
 
-const COURSES = [
+const MAKAI_COURSES = [
   {
     id: "nsg-201",
     code: "NSG 201",
@@ -122,13 +150,13 @@ const COURSES = [
   },
 ];
 
-const PENDING_ATTESTATIONS = [
+const MAKAI_PENDING_ATTESTATIONS = [
   { student: "Jordan Chen", competency: "3A - Sterile field preparation", waitingOn: "Dr. Kealani Moku", daysPending: 8 },
   { student: "Jordan Chen", competency: "4B - IV catheter insertion", waitingOn: "Prof. Ana Rodrigues", daysPending: 12 },
   { student: "Noah Ferreira", competency: "Preceptor evaluation", waitingOn: "Prof. Ana Rodrigues", daysPending: 5 },
 ];
 
-const NCLEX_DOMAINS = [
+const MAKAI_NCLEX_DOMAINS = [
   { domain: "Management of Care", pct: 74, benchmark: 70 },
   { domain: "Safety & Infection Control", pct: 81, benchmark: 70 },
   { domain: "Health Promotion", pct: 68, benchmark: 70 },
@@ -138,6 +166,136 @@ const NCLEX_DOMAINS = [
   { domain: "Reduction of Risk", pct: 77, benchmark: 70 },
   { domain: "Physiological Adaptation", pct: 63, benchmark: 70 },
 ];
+
+// ── University of Hawaiʻi at Mānoa data ───────────────────────────────────────
+
+const UH_SCHOOL = {
+  name: "UH Mānoa · School of Nursing & Dental Hygiene",
+  program: "BSN Program",
+  cohort: "Class of 2027",
+  accreditor: "CCNE",
+};
+
+const UH_STUDENTS = [
+  {
+    id: "student-keala-akana",
+    name: "Keala Akana",
+    status: "ready",
+    clinicalHours: 495,
+    clinicalHoursRequired: 500,
+    atiScore: 92,
+    coursesComplete: 6,
+    competencies: [
+      { id: "3A", name: "Sterile field preparation", status: "verified", attestedBy: "Dr. Noa Kahananui" },
+      { id: "5C", name: "Wound care and dressing change", status: "verified", attestedBy: "Prof. Lani Moku" },
+    ],
+    notes: "Top of cohort; NCLEX readiness benchmarks exceeded across all 8 domains; strong candidate for clinical honors track",
+  },
+  {
+    id: "student-pua-manuia",
+    name: "Pua Manuia",
+    status: "on-track",
+    clinicalHours: 322,
+    clinicalHoursRequired: 500,
+    atiScore: 79,
+    coursesComplete: 3,
+    competencies: [],
+    notes: "Steady progression; NUR 440 Complex Care in progress",
+  },
+  {
+    id: "student-kai-fernandez",
+    name: "Kai Fernandez",
+    status: "on-track",
+    clinicalHours: 288,
+    clinicalHoursRequired: 500,
+    atiScore: 76,
+    coursesComplete: 3,
+    competencies: [],
+    notes: "Preceptor evaluation pending from Prof. Lani Moku",
+  },
+  {
+    id: "student-hana-yoshida",
+    name: "Hana Yoshida",
+    status: "at-risk",
+    clinicalHours: 145,
+    clinicalHoursRequired: 500,
+    atiScore: 62,
+    coursesComplete: 1,
+    competencies: [
+      { id: "2A", name: "Medication verification protocol", status: "pending" },
+    ],
+    notes: "Hours deficit — 355 hours below minimum; competency 2A unsigned; advising appointment scheduled",
+  },
+  {
+    id: "student-mele-kahananui",
+    name: "Mele Kahananui",
+    status: "on-track",
+    clinicalHours: 355,
+    clinicalHoursRequired: 500,
+    atiScore: 83,
+    coursesComplete: 4,
+    competencies: [],
+    notes: "",
+  },
+];
+
+const UH_COURSES = [
+  {
+    id: "nur-280",
+    code: "NUR 280",
+    name: "Foundations of Professional Nursing",
+    source: "OpenStax Nursing: Fundamentals, 2023 · CC BY 4.0",
+    currentWeek: 8,
+    totalWeeks: 16,
+    enrolled: 5,
+  },
+  {
+    id: "nur-440",
+    code: "NUR 440",
+    name: "Complex Care Nursing",
+    source: "OpenStax Nursing: Pharmacology, 2023 · CC BY 4.0",
+    currentWeek: 4,
+    totalWeeks: 14,
+    enrolled: 3,
+  },
+];
+
+const UH_PENDING_ATTESTATIONS = [
+  { student: "Hana Yoshida", competency: "2A - Medication Verification Protocol", waitingOn: "Dr. Noa Kahananui", daysPending: 9 },
+  { student: "Kai Fernandez", competency: "Preceptor Evaluation — Week 8 Clinical", waitingOn: "Prof. Lani Moku", daysPending: 4 },
+];
+
+const UH_NCLEX_DOMAINS = [
+  { domain: "Management of Care", pct: 80, benchmark: 70 },
+  { domain: "Safety & Infection Control", pct: 78, benchmark: 70 },
+  { domain: "Health Promotion", pct: 71, benchmark: 70 },
+  { domain: "Psychosocial Integrity", pct: 66, benchmark: 70 },
+  { domain: "Basic Care & Comfort", pct: 82, benchmark: 70 },
+  { domain: "Pharmacological Therapies", pct: 74, benchmark: 70 },
+  { domain: "Reduction of Risk", pct: 73, benchmark: 70 },
+  { domain: "Physiological Adaptation", pct: 69, benchmark: 70 },
+];
+
+// ── School config lookup ───────────────────────────────────────────────────────
+
+function getSchoolData(slug) {
+  if (slug.startsWith("uh-nursing-")) {
+    return {
+      school: UH_SCHOOL,
+      students: UH_STUDENTS,
+      courses: UH_COURSES,
+      pendingAttestations: UH_PENDING_ATTESTATIONS,
+      nclexDomains: UH_NCLEX_DOMAINS,
+    };
+  }
+  return {
+    school: MAKAI_SCHOOL,
+    students: MAKAI_STUDENTS,
+    courses: MAKAI_COURSES,
+    pendingAttestations: MAKAI_PENDING_ATTESTATIONS,
+    nclexDomains: MAKAI_NCLEX_DOMAINS,
+  };
+}
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
@@ -194,7 +352,8 @@ function DemoBanner() {
 
 // ── Worker 1 — Student Record Worker ─────────────────────────────────────────
 
-function RecordsCanvas() {
+function RecordsCanvas({ slug, schoolData }) {
+  const { students: STUDENTS, school: SCHOOL, pendingAttestations: PENDING_ATTESTATIONS } = schoolData;
   const [tab, setTab] = useState("Cohort Overview");
   const [selected, setSelected] = useState(null);
   const TABS = ["Cohort Overview", "Student Record", "Clinical Hours", "Competency Log", "Vault Export"];
@@ -206,6 +365,7 @@ function RecordsCanvas() {
   return (
     <div>
       <TabBar tabs={TABS} active={tab} onSelect={t => { setTab(t); }} />
+      <TabDescription slug={slug} tabId={tabToKey(tab)} description={getTabDescription(slug, tabToKey(tab))} />
 
       {tab === "Cohort Overview" && (
         <div>
@@ -365,7 +525,8 @@ function RecordsCanvas() {
 
 // ── Worker 2 — Course Delivery Worker ─────────────────────────────────────────
 
-function CoursesCanvas() {
+function CoursesCanvas({ slug, schoolData }) {
+  const { courses: COURSES, students: STUDENTS } = schoolData;
   const [tab, setTab] = useState("Course Roster");
   const [atiFired, setAtiFired] = useState(false);
   const TABS = ["Course Roster", "Module Progress", "ATI Integration", "Gradebook", "Course Content"];
@@ -373,6 +534,7 @@ function CoursesCanvas() {
   return (
     <div>
       <TabBar tabs={TABS} active={tab} onSelect={setTab} />
+      <TabDescription slug={slug} tabId={tabToKey(tab)} description={getTabDescription(slug, tabToKey(tab))} />
 
       {tab === "Course Roster" && (
         <div>
@@ -507,13 +669,15 @@ function CoursesCanvas() {
 
 // ── Worker 3 — AI Tutor Worker ────────────────────────────────────────────────
 
-function TutorCanvas() {
+function TutorCanvas({ slug, schoolData }) {
+  const { nclexDomains: NCLEX_DOMAINS, courses: COURSES } = schoolData;
   const [tab, setTab] = useState("NCLEX Domain Map");
   const TABS = ["NCLEX Domain Map", "Active Sessions", "Tutor Analytics", "Content Coverage"];
 
   return (
     <div>
       <TabBar tabs={TABS} active={tab} onSelect={setTab} />
+      <TabDescription slug={slug} tabId={tabToKey(tab)} description={getTabDescription(slug, tabToKey(tab))} />
 
       {tab === "NCLEX Domain Map" && (
         <div>
@@ -603,7 +767,8 @@ function TutorCanvas() {
 
 // ── Worker 4 — Interdisciplinary Comms Worker ─────────────────────────────────
 
-function CommsCanvas() {
+function CommsCanvas({ slug, schoolData }) {
+  const { pendingAttestations: PENDING_ATTESTATIONS } = schoolData;
   const [tab, setTab] = useState("Faculty Queue");
   const [approved, setApproved] = useState({});
   const TABS = ["Faculty Queue", "Preceptor Portal", "Pending Attestations", "Communication Log"];
@@ -611,6 +776,7 @@ function CommsCanvas() {
   return (
     <div>
       <TabBar tabs={TABS} active={tab} onSelect={setTab} />
+      <TabDescription slug={slug} tabId={tabToKey(tab)} description={getTabDescription(slug, tabToKey(tab))} />
 
       {tab === "Faculty Queue" && (
         <div>
@@ -700,7 +866,8 @@ function CommsCanvas() {
 
 // ── Worker 5 — Accreditation & Compliance Worker ──────────────────────────────
 
-function AccreditationCanvas() {
+function AccreditationCanvas({ slug, schoolData }) {
+  const { students: STUDENTS, nclexDomains: NCLEX_DOMAINS, school: SCHOOL } = schoolData;
   const [tab, setTab] = useState("Cohort Dashboard");
   const TABS = ["Cohort Dashboard", "NCLEX Outcomes", "Clinical Hours Report", "ATI Performance", "Accreditation Export"];
 
@@ -711,6 +878,7 @@ function AccreditationCanvas() {
   return (
     <div>
       <TabBar tabs={TABS} active={tab} onSelect={setTab} />
+      <TabDescription slug={slug} tabId={tabToKey(tab)} description={getTabDescription(slug, tabToKey(tab))} />
 
       {tab === "Cohort Dashboard" && (
         <div>
@@ -851,16 +1019,22 @@ function AccreditationCanvas() {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 const WORKER_CANVAS = {
-  "nursing-records-001": RecordsCanvas,
-  "nursing-courses-001": CoursesCanvas,
-  "nursing-tutor-001": TutorCanvas,
-  "nursing-comms-001": CommsCanvas,
-  "nursing-accreditation-001": AccreditationCanvas,
+  "nursing-records-001":        RecordsCanvas,
+  "nursing-courses-001":        CoursesCanvas,
+  "nursing-tutor-001":          TutorCanvas,
+  "nursing-comms-001":          CommsCanvas,
+  "nursing-accreditation-001":  AccreditationCanvas,
+  "uh-nursing-records-001":     RecordsCanvas,
+  "uh-nursing-courses-001":     CoursesCanvas,
+  "uh-nursing-tutor-001":       TutorCanvas,
+  "uh-nursing-comms-001":       CommsCanvas,
+  "uh-nursing-accreditation-001": AccreditationCanvas,
 };
 
 export default function NursingWorkerCanvas({ worker }) {
   const slug = worker?.workerId || worker?.slug || "";
   const Canvas = WORKER_CANVAS[slug];
+  const schoolData = getSchoolData(slug);
 
   if (!Canvas) return (
     <div style={{ padding: 24, color: "#6b7280", fontSize: 13 }}>
@@ -872,11 +1046,11 @@ export default function NursingWorkerCanvas({ worker }) {
     <div style={{ padding: "12px 16px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-          {SCHOOL.name} · {SCHOOL.program}
+          {schoolData.school.name} · {schoolData.school.program}
         </div>
       </div>
       <DemoBanner />
-      <Canvas />
+      <Canvas slug={slug} schoolData={schoolData} />
     </div>
   );
 }

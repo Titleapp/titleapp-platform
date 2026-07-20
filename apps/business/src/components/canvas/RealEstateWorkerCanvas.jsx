@@ -10,6 +10,7 @@ import React, { useState, useEffect } from "react";
 import { getRECanvas, resolveCanvasSpec, isValidCanvasSpec, CAS, CAS_ORDER, STRATUM_BAND } from "./reCanvasData";
 import MapCard from "./MapCard";
 import { getAuth } from "firebase/auth";
+import TabDescription from "./TabDescription";
 
 const c = (band) => CAS[band] || CAS.WHITE;
 
@@ -295,10 +296,12 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const [liveErr, setLiveErr] = useState(null);
   // RE Advocate: live transaction list for the Transaction tab.
   const [liveTransactions, setLiveTransactions] = useState(null);
+  // RE Advocate: financing constraint data (FEMA flood, CALFIRE, HUD FHA, FHFA, USDA).
+  const [financingData, setFinancingData] = useState(null);
 
   const isREAdvocate = slug === "re-salesperson";
 
-  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); }, [slug]);
+  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); }, [slug]);
   useEffect(() => { setActive(0); }, [liveSpec]);
 
   useEffect(() => {
@@ -316,7 +319,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
         if (!cancelled && json.ok && Array.isArray(json.transactions)) {
           setLiveTransactions(json.transactions);
         }
-      } catch (e) {
+      } catch (_e) {
         // Non-blocking — fixture data stays visible
       }
     })();
@@ -326,11 +329,57 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const data = liveSpec || baseData;
   if (!data) return null;
 
+  // Build financing tab blocks from live API data.
+  function buildFinancingBlocks(f) {
+    const kpis = [];
+    const flags = [];
+    if (f.loanLimit?.available) {
+      const isHigh = f.loanLimit.type === "high-cost" || f.loanLimit.type === "ceiling";
+      kpis.push({ label: "Conforming limit", value: `$${(f.loanLimit.amount / 1000).toFixed(0)}K`, band: isHigh ? "YELLOW" : "GREEN" });
+    }
+    if (f.flood?.available) {
+      const riskBand = { high: "RED", moderate: "YELLOW", minimal: "GREEN", undetermined: "WHITE", unknown: "WHITE" }[f.flood.risk] || "WHITE";
+      kpis.push({ label: "Flood zone", value: f.flood.zone || "—", band: riskBand });
+      flags.push({ band: riskBand, title: f.flood.label || `Flood zone ${f.flood.zone}`, detail: f.flood.isSFHA ? "SFHA — flood insurance required by lenders. Adds to monthly carry cost and narrows resale buyer pool." : "Outside SFHA — standard risk zone. Flood insurance not required but available." });
+    }
+    if (f.fire?.available && f.fire.zone) {
+      const fireBand = f.fire.zone === "3" || /very\s*high/i.test(f.fire.zone) ? "RED" : f.fire.zone === "2" || /^high$/i.test(f.fire.zone) ? "YELLOW" : "WHITE";
+      kpis.push({ label: "Fire hazard zone", value: f.fire.zone, band: fireBand });
+      flags.push({ band: fireBand, title: `CAL FIRE: ${f.fire.label}`, detail: "Verify homeowners insurance availability before making an offer. Some carriers have exited high/very-high severity zones." });
+    } else if (f.fire?.available && !f.fire.zone) {
+      kpis.push({ label: "Fire hazard zone", value: "Not in FHSZ", band: "GREEN" });
+    }
+    if (f.usda?.available) {
+      kpis.push({ label: "USDA eligible", value: f.usda.eligible ? "Yes" : "No", band: f.usda.eligible ? "GREEN" : "WHITE" });
+      if (f.usda.eligible) flags.push({ band: "GREEN", title: "USDA Rural Development eligible", detail: "0% down payment available for income-qualifying buyers. Expands buyer pool in this area." });
+    }
+    if (f.fha?.available) {
+      const fhaBand = f.fha.approved ? "GREEN" : "RED";
+      kpis.push({ label: "FHA condo approved", value: f.fha.approved ? "Yes" : "No", band: fhaBand });
+      if (!f.fha.approved) flags.push({ band: "RED", title: "Condo not on FHA-approved list", detail: "Eliminates FHA buyers — often 20–30% of first-time buyer market. Verify with HUD before finalizing offer strategy." });
+    }
+    const loanFlag = f.loanLimit?.available ? {
+      band: f.loanLimit.type !== "standard" ? "YELLOW" : "GREEN",
+      title: f.loanLimit.label,
+      detail: f.loanLimit.note,
+    } : null;
+    if (loanFlag) flags.push(loanFlag);
+    const sourceNote = [f.flood?.source, f.fire?.source, f.fha?.source, f.loanLimit?.source, f.usda?.source].filter(Boolean).join(" · ");
+    return [
+      ...(kpis.length ? [{ type: "kpis", items: kpis }] : []),
+      ...(flags.length ? [{ type: "flags", items: flags }] : []),
+      { type: "prose", items: [{ band: "WHITE", title: "Sources", body: `${sourceNote} · Data as of lookup date. Verify with your lender before close — FHA project approval status and flood map designations can change.` }] },
+    ];
+  }
+
   // Inject live transactions into the Transaction tab when present.
-  const resolvedData = (isREAdvocate && liveTransactions)
+  const resolvedData = (isREAdvocate && (liveTransactions || financingData))
     ? {
         ...data,
         tabs: data.tabs.map((t) => {
+          if (t.id === "financing" && financingData) {
+            return { ...t, blocks: buildFinancingBlocks(financingData) };
+          }
           if (t.id !== "transaction") return t;
           const txItems = liveTransactions.map((tx) => ({
             id: tx.id,
@@ -367,20 +416,27 @@ export default function RealEstateWorkerCanvas({ worker }) {
     const addr = (addrOverride || query).trim();
     if (!addr) return;
     if (addrOverride) setQuery(addrOverride);
-    setLiveBusy(true); setLiveErr(null);
+    setLiveBusy(true); setLiveErr(null); setFinancingData(null);
     try {
       const auth = getAuth();
       const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
       const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const resp = await fetch(`${apiBase}/api?path=/v1/re:lookup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ address: addr }),
-      });
-      const j = await resp.json();
+      const headers = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+      // Fire canvas lookup + financing constraints in parallel.
+      const [lookupResp, finResp] = await Promise.all([
+        fetch(`${apiBase}/api?path=/v1/re:lookup`, { method: "POST", headers, body: JSON.stringify({ address: addr }) }),
+        isREAdvocate
+          ? fetch(`${apiBase}/api?path=/v1/re:advocate:financing`, { method: "POST", headers, body: JSON.stringify({ address: addr }) })
+          : Promise.resolve(null),
+      ]);
+      const j = await lookupResp.json();
       if (j.ok && j.canvasSpec) setLiveSpec(j.canvasSpec);
       else setLiveErr(j.error || "Couldn't find that property — try a full street address.");
-    } catch (err) {
+      if (finResp) {
+        const fj = await finResp.json().catch(() => null);
+        if (fj && fj.ok) setFinancingData(fj);
+      }
+    } catch (_err) {
       setLiveErr("Lookup failed — try again.");
     } finally {
       setLiveBusy(false);
@@ -439,6 +495,8 @@ export default function RealEstateWorkerCanvas({ worker }) {
         ))}
       </div>
 
+      <TabDescription slug={slug} tabId={tab.id} description={tab.description} />
+
       {tab.blocks.map((b, i) => <Block key={i} block={b} />)}
     </div>
   );
@@ -449,6 +507,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
 // worker, including freshly-built sandbox workers) OR matches a seed fixture.
 // Name kept as isREWorker to avoid churn across call sites; it's no longer
 // RE-specific.
+// eslint-disable-next-line react-refresh/only-export-components
 export function isREWorker(worker) {
   if (!worker) return false;
   if (isValidCanvasSpec(worker.canvasSpec || worker.canvas)) return true;

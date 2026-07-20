@@ -24,7 +24,6 @@ const SLUG_CATEGORY = {
   "platform-accounting": "finance",
   "platform-hr": "platform",
   "platform-marketing": "marketing",
-  "control-center-pro": "platform",
   "alex-chief-of-staff": "platform",
   "chief-of-staff": "platform",
 };

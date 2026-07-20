@@ -240,6 +240,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
     return () => { if (snapUnsub) snapUnsub(); authUnsub(); };
   }, [auth, db]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleResolve = useCallback(async (alertId) => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
@@ -253,8 +254,10 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
         body: JSON.stringify({ alert_id: alertId }),
       });
     } catch (e) { console.warn("alertFeed resolve:", e.message); }
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   }, [auth]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleSnooze = useCallback(async (alertId, hours) => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
@@ -268,6 +271,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
         body: JSON.stringify({ alert_id: alertId, snooze_hours: hours }),
       });
     } catch (e) { console.warn("alertFeed snooze:", e.message); }
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   }, [auth]);
 
   // Fetch Vault net worth (sum of DTC estimatedValue fields)
