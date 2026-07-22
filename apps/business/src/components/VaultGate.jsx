@@ -44,9 +44,11 @@ export default function VaultGate({ children }) {
   // Auto-unlock for: custom-token/no-provider users, ?demo=1 URL sessions,
   // and known demo workspace tenants (URL param is stripped on SPA nav).
   const DEMO_TENANTS = new Set([
-    "ws_1781920656122_tl9dhn",  // DEMO SPACE
+    "ws_1781920656122_tl9dhn",  // DEMO SPACE / Vet
     "ws_1783659066844_o7m1pm",  // Merritt Capital Group (RE demo)
     "ws_1783763627546_mv3rpx",  // TRAITLY demo
+    "demo-makai-nursing",        // Makai School of Nursing
+    "demo-uh-nursing",           // UH Mānoa nursing
   ]);
   const storedTenant = typeof window !== "undefined" ? (localStorage.getItem("TENANT_ID") || "") : "";
   const isDemoUrl = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";

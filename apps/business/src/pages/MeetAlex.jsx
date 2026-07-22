@@ -254,7 +254,7 @@ export default function MeetAlex() {
       } else if (isSignIn) {
         opening = "Welcome back. Sign in below to pick up where you left off.";
       } else if (isSignUp) {
-        opening = "Welcome to SOCIII. Sign up below to get your workspace set up with Accounting, HR, Marketing, Contacts, and Control Center \u2014 included with every account. You can browse other workers after.";
+        opening = "Welcome to SOCIII. Sign up below to get your workspace set up with Accounting, HR, Marketing, and Contacts \u2014 included with every account. You can browse other workers after.";
       } else {
         opening = "Hey \u2014 what's your name?";
       }
@@ -282,7 +282,6 @@ export default function MeetAlex() {
         "platform-hr",
         "platform-marketing",
         "platform-contacts",
-        "platform-control-center-pro",
       ];
       Promise.allSettled(SPINE_SLUGS.map(slug =>
         fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
@@ -328,7 +327,7 @@ export default function MeetAlex() {
     setTimeout(() => {
       setMessages(prev => [...prev, {
         role: "assistant",
-        text: "Setting up your workspace — Accounting, HR, Marketing, Contacts, and Control Center. One moment…",
+        text: "Setting up your workspace — Accounting, HR, Marketing, and Contacts. One moment…",
       }]);
     }, 200);
 

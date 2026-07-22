@@ -13,6 +13,8 @@ import { getLiveDataForTab } from "../canvas/liveData";
 import { getFixtureForTab } from "../canvas/sampleData";
 import { isDiscoveryCanvas } from "../../config/canvasTypes";
 import BetaNotice from "../BetaNotice";
+import TabDescription from "../canvas/TabDescription";
+import { WORKER_TAB_DESCRIPTIONS } from "../canvas/workerTabDescriptions";
 import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -29,7 +31,6 @@ const BUNDLE_WORKERS = [
   { slug: "platform-hr", name: "HR & People", desc: "Hiring, onboarding, team records" },
   { slug: "platform-marketing", name: "Marketing", desc: "Content calendar, campaigns, social" },
   { slug: "platform-contacts", name: "Contacts", desc: "CRM, deals, relationship tracking" },
-  { slug: "platform-control-center-pro", name: "Control Center", desc: "Daily briefings, cross-worker view" },
 ];
 
 function BundlePanel({ onClose }) {
@@ -697,6 +698,10 @@ export default function RightPanel() {
       ? workerState.activeWorkerData.canvasTabs
       : (panel.activeWorkerData?.canvasTabs || []);
     const activeSignal = canvasData?.resolved?._signal;
+    const _w = workerState?.activeWorkerData || panel.activeWorkerData;
+    const _workerSlug = _w?.workerId || _w?.slug || "";
+    const _activeTab = tabs.find(t => t.signal === activeSignal) || tabs.find(t => t.default) || tabs[0];
+    const _tabDesc = WORKER_TAB_DESCRIPTIONS[_workerSlug]?.[_activeTab?.id];
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <BetaNotice />
@@ -715,6 +720,11 @@ export default function RightPanel() {
               panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
             }}
           />
+        )}
+        {_tabDesc && (
+          <div style={{ padding: "12px 16px 0" }}>
+            <TabDescription slug={_workerSlug} tabId={_activeTab?.id} description={_tabDesc} />
+          </div>
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
           <CanvasPanel canvasData={canvasData} onDismiss={dismissCanvas} />

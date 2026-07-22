@@ -11,7 +11,6 @@ const SPINE = [
   "platform-contacts",
   "platform-hr",
   "platform-marketing",
-  "platform-control-center-pro",
 ];
 
 (async () => {

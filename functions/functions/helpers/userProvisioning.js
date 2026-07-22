@@ -18,7 +18,6 @@ const DEFAULT_PLATFORM_WORKERS = [
   { slug: "platform-accounting", name: "Alex Business Accounting" },
   { slug: "platform-hr", name: "Alex HR & People" },
   { slug: "platform-marketing", name: "Alex Marketing & Content" },
-  { slug: "platform-control-center-pro", name: "Control Center Pro" },
   { slug: "platform-contacts", name: "Contacts" },
 ];
 

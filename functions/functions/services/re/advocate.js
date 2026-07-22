@@ -1,5 +1,6 @@
 // services/re/advocate.js — Real Estate Advocate: CMA, deep property dive, disclosure package.
 // All ATTOM calls use the shared attomGet pattern from liveLookup.js.
+// Fallback chain: ATTOM (recorded data) → Realtor.com MLS (listings) → county assessor guidance.
 
 const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
 
@@ -29,7 +30,7 @@ function median(arr) {
 
 // ─── runCMA ──────────────────────────────────────────────────────────────────
 
-async function runCMA(address, apiKey) {
+async function runCMA(address, apiKey, rapidApiKey) {
   if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
   const parsed = splitAddress(address);
   if (!parsed) return { ok: false, error: 'Use "street, city, ST" — e.g. "1234 Oak St, Oakland, CA".' };
@@ -50,7 +51,45 @@ async function runCMA(address, apiKey) {
   }
 
   const p = detailRes.json && detailRes.json.property && detailRes.json.property[0];
-  if (!p) return { ok: false, error: `No property found at "${address}". Check the address and try again.` };
+  if (!p) {
+    // ATTOM has no record — try MLS as fallback before giving up
+    const { searchByAddress } = require("../re/listings");
+    const mlsFallback = await searchByAddress(address, rapidApiKey).catch(() => ({ ok: false }));
+
+    const _addr = String(address).toLowerCase();
+    const _isRural = /\b(ranch|hwy|highway|route|rr\s*\d|county road|cr\s*\d|fm\s*\d)\b/.test(_addr) ||
+      /,\s*(nv|nm|mt|nd|sd|wy|id|ak)\s*\d{5}/.test(_addr);
+    const _county = address.match(/,\s*([A-Za-z\s]+),\s*[A-Z]{2}/)?.[1]?.trim() || null;
+    const _assessorNote = _county
+      ? ` For ${_county} County, check the county assessor's parcel search or recorder's office directly.`
+      : " Check the county assessor's parcel search or recorder's office directly.";
+
+    if (mlsFallback.ok && mlsFallback.listing) {
+      return {
+        ok: false,
+        mlsFallback: true,
+        mlsListing: mlsFallback.listing,
+        error: `No county-recorded title data found for "${address}" in ATTOM.${_isRural ? " This is common for rural parcels, ranch roads, and unincorporated addresses." : " This property may not yet be recorded or may be a new subdivision."} However, there is an active MLS listing for this address — see below. Note: MLS data reflects the listing, not the recorded chain of title.${_assessorNote} Share the APN if you have it.`,
+      };
+    }
+
+    if (mlsFallback.nearbyLand && mlsFallback.nearbyLand.length > 0) {
+      return {
+        ok: false,
+        mlsFallback: true,
+        nearbyLand: mlsFallback.nearbyLand,
+        error: `No county-recorded title data found for "${address}" in ATTOM, and no exact MLS match.${_isRural ? " Rural and ranch addresses in this area often fall outside both ATTOM's and MLS coverage." : ""} Found ${mlsFallback.nearbyLand.length} nearby land listing(s) in the area that may be relevant.${_assessorNote}`,
+      };
+    }
+
+    if (_isRural) {
+      return {
+        ok: false,
+        error: `No recorded property data found for "${address}". Rural, ranch, and highway addresses — especially in Nevada, Montana, Wyoming, and similar states — often fall outside both ATTOM's recorded-data coverage and MLS listings.${_assessorNote} If you have the APN (Assessor's Parcel Number), share it and I can explain what records to request.`,
+      };
+    }
+    return { ok: false, error: `No property found at "${address}". Verify the full street address including city and state — e.g. "123 Main St, Las Vegas, NV". If this is a new subdivision or proposed sale, there may be no recorded title yet — try the county assessor's parcel search.` };
+  }
 
   const subject = {
     address: (p.address && p.address.oneLine) || address,
@@ -138,7 +177,7 @@ async function runCMA(address, apiKey) {
 
 // ─── getPropertyDeep ─────────────────────────────────────────────────────────
 
-async function getPropertyDeep(address, apiKey) {
+async function getPropertyDeep(address, apiKey, rapidApiKey) {
   if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
   const parsed = splitAddress(address);
   if (!parsed) return { ok: false, error: 'Use "street, city, ST" — e.g. "1234 Oak St, Oakland, CA".' };
@@ -155,7 +194,31 @@ async function getPropertyDeep(address, apiKey) {
   }
 
   const p = detailRes.json && detailRes.json.property && detailRes.json.property[0];
-  if (!p) return { ok: false, error: `No property found at "${address}". Check the address and try again.` };
+  if (!p) {
+    const { searchByAddress } = require("../re/listings");
+    const mlsFallback2 = await searchByAddress(address, rapidApiKey).catch(() => ({ ok: false }));
+    const _addr2 = String(address).toLowerCase();
+    const _isRural2 = /\b(ranch|hwy|highway|route|rr\s*\d|county road|cr\s*\d|fm\s*\d)\b/.test(_addr2) ||
+      /,\s*(nv|nm|mt|nd|sd|wy|id|ak)\s*\d{5}/.test(_addr2);
+    const _county2 = address.match(/,\s*([A-Za-z\s]+),\s*[A-Z]{2}/)?.[1]?.trim() || null;
+    const _note2 = _county2 ? ` Try the ${_county2} County assessor's parcel search.` : " Check the county assessor directly.";
+
+    if (mlsFallback2.ok && mlsFallback2.listing) {
+      return {
+        ok: false,
+        mlsFallback: true,
+        mlsListing: mlsFallback2.listing,
+        error: `No recorded title data found for "${address}" in ATTOM.${_isRural2 ? " Common for rural/ranch addresses." : " May be an unrecorded parcel or new subdivision."} Found an active MLS listing — title chain must be verified through the county recorder.${_note2}`,
+      };
+    }
+    if (_isRural2) {
+      return {
+        ok: false,
+        error: `No recorded property data found for "${address}". Rural addresses in Nevada and similar states often fall outside both ATTOM and MLS coverage.${_note2} Share the APN if you have it.`,
+      };
+    }
+    return { ok: false, error: `No property found at "${address}". Verify the full street address. If this is a new subdivision or proposed sale, no recorded title exists yet — try the county assessor's parcel search.` };
+  }
 
   const salesArr = (salesRes.json && salesRes.json.property && salesRes.json.property[0] &&
     (salesRes.json.property[0].salehistory || salesRes.json.property[0].saleHistory)) || [];
@@ -220,6 +283,122 @@ async function getPropertyDeep(address, apiKey) {
     liensCount,
     county: addr.county || addr.countyname || null,
     state: addr.countrySubd || null,
+  };
+}
+
+// ─── calculateNetSheet ────────────────────────────────────────────────────────
+// Seller proceeds estimate. All costs are estimates — clearly labeled as such.
+// Transfer tax rates per $1,000 of sale price (seller typically pays in CA).
+
+const _TRANSFER_TAX = {
+  CA: {
+    default: 1.10,
+    cities: {
+      "san francisco": 6.80, "sf": 6.80,
+      "oakland": 15.00,
+      "berkeley": 15.00,
+      "los angeles": 5.60, "la": 5.60,
+      "santa monica": 6.00,
+      "culver city": 4.50,
+      "pasadena": 4.50,
+    },
+  },
+  NV: { default: 3.90 },   // Clark County ($1.95 per $500)
+};
+
+function _transferTaxRate(state, city) {
+  const st = (state || "CA").toUpperCase();
+  const c = (city || "").toLowerCase().trim();
+  const stData = _TRANSFER_TAX[st] || _TRANSFER_TAX.CA;
+  if (stData.cities && stData.cities[c]) return stData.cities[c];
+  return typeof stData.default === "number" ? stData.default : 1.10;
+}
+
+function calculateNetSheet({ salePrice, loanBalance, city, state, sellerCommPct, buyerCommPct }) {
+  const sp = Number(salePrice) || 0;
+  const lb = Number(loanBalance) || 0;
+  const sellerComm = (Number(sellerCommPct) || 2.5) / 100;
+  const buyerComm = (Number(buyerCommPct) || 2.5) / 100;
+
+  const taxRatePer1000 = _transferTaxRate(state, city);
+  const transferTax = Math.round((sp / 1000) * taxRatePer1000);
+  const sellerCommAmt = Math.round(sp * sellerComm);
+  const buyerCommAmt = Math.round(sp * buyerComm);
+  // Owner's title insurance: ~0.4% (seller pays in CA; varies by state)
+  const titleIns = Math.round(sp * 0.004);
+  // Escrow fee: $1.50 per $1,000, min $1,500
+  const escrowFee = Math.round(Math.max(1500, (sp / 1000) * 1.50));
+  // Recording / misc: flat estimate
+  const recordingFees = 250;
+  // Property tax proration: rough 60-day estimate at 1.25% annual rate
+  const taxProration = Math.round(sp * 0.0125 / 6);
+
+  const totalCosts = sellerCommAmt + buyerCommAmt + transferTax + titleIns + escrowFee + recordingFees + taxProration + lb;
+  const netProceeds = sp - totalCosts;
+
+  const fmt = (n) => "$" + Math.abs(n).toLocaleString();
+
+  return {
+    ok: true,
+    salePrice: sp,
+    lineItems: [
+      { label: "Sale price", amount: fmt(sp), band: "WHITE" },
+      { label: `Seller's agent commission (${(sellerComm * 100).toFixed(1)}%)`, amount: `-${fmt(sellerCommAmt)}`, band: "WHITE" },
+      { label: `Buyer's agent commission (${(buyerComm * 100).toFixed(1)}%) *`, amount: `-${fmt(buyerCommAmt)}`, band: "YELLOW", note: "Separately negotiated under NAR settlement" },
+      { label: `Transfer tax (${taxRatePer1000.toFixed(2)}/$1,000)`, amount: `-${fmt(transferTax)}`, band: "WHITE" },
+      { label: "Owner's title insurance (est.)", amount: `-${fmt(titleIns)}`, band: "WHITE" },
+      { label: "Escrow fee (est.)", amount: `-${fmt(escrowFee)}`, band: "WHITE" },
+      { label: "Recording / misc. fees (est.)", amount: `-${fmt(recordingFees)}`, band: "WHITE" },
+      { label: "Property tax proration (est. 60 days)", amount: `-${fmt(taxProration)}`, band: "WHITE" },
+      ...(lb > 0 ? [{ label: "Mortgage payoff", amount: `-${fmt(lb)}`, band: "RED" }] : []),
+    ],
+    netProceeds,
+    netProceedsFmt: (netProceeds >= 0 ? "" : "-") + fmt(netProceeds),
+    netBand: netProceeds >= 0 ? "GREEN" : "RED",
+    disclaimer: "All figures are estimates. Transfer tax rate may include city/county surcharges for your location. Actual numbers from escrow may differ. Buyer agent commission is now separately negotiated.",
+  };
+}
+
+// ─── getListingStrategy ───────────────────────────────────────────────────────
+// Sell-side wrapper around runCMA — returns CMA plus seller-framed analysis.
+
+async function getListingStrategy(address, targetPrice, apiKey, rapidApiKey) {
+  const cma = await runCMA(address, apiKey, rapidApiKey);
+  if (!cma.ok) return cma;
+
+  const est = cma.estimate;
+  const midVal = est ? parseInt(String(est.mid).replace(/[^0-9]/g, "")) : null;
+  const target = Number(targetPrice) || null;
+
+  let pricingRead = null;
+  if (midVal && target) {
+    const diffPct = ((target - midVal) / midVal) * 100;
+    if (diffPct > 10) pricingRead = { band: "RED", note: `Target price is ${diffPct.toFixed(0)}% above the CMA estimate. Overpriced listings sit and typically close below asking anyway — consider pricing at or slightly below CMA to generate competitive offers.` };
+    else if (diffPct > 3) pricingRead = { band: "YELLOW", note: `Target price is ${diffPct.toFixed(0)}% above the CMA estimate. This is achievable if the property has unreported renovations, but expect longer days on market.` };
+    else if (diffPct < -5) pricingRead = { band: "GREEN", note: `Target price is below the CMA estimate — expect a competitive offer situation within the first weekend.` };
+    else pricingRead = { band: "GREEN", note: `Target price is in line with the CMA estimate.` };
+  }
+
+  const prepItems = [
+    { roi: "high", item: "Deep clean + declutter", cost: "$0–500", note: "Highest ROI item. Buyers walk away from dirty homes." },
+    { roi: "high", item: "Exterior landscaping refresh", cost: "$500–2K", note: "First impression = list photo. Drives click-through rate." },
+    { roi: "high", item: "Interior paint (neutral)", cost: "$2K–6K", note: "Fresh paint photographs well and removes personalization." },
+    { roi: "medium", item: "Professional photography + 3D tour", cost: "$500–1.5K", note: "Listings with professional photos get 2x the online views." },
+    { roi: "medium", item: "Staging (at minimum, key rooms)", cost: "$1K–4K", note: "Staged homes sell faster and typically closer to asking price." },
+    { roi: "low", item: "Appliance upgrades", cost: "$2K–8K", note: "Rarely recover full cost. Do only if existing appliances are failing." },
+  ];
+
+  return {
+    ...cma,
+    sellerFraming: {
+      pricingRead,
+      prepItems,
+      marketTiming: cma.marketMetrics.avgDaysOnMarket != null
+        ? (cma.marketMetrics.avgDaysOnMarket <= 14 ? { band: "GREEN", note: "Strong seller's market — homes moving fast. Price at CMA and let competition drive the price up." }
+          : cma.marketMetrics.avgDaysOnMarket <= 30 ? { band: "YELLOW", note: "Balanced market. Price at CMA; condition and prep will separate your listing." }
+          : { band: "RED", note: "Buyer's market — long average DOM. Price aggressively or expect to sit and reduce." })
+        : null,
+    },
   };
 }
 
@@ -314,4 +493,4 @@ async function generateDisclosure(propertyData, sellerInputs, state) {
   };
 }
 
-module.exports = { runCMA, getPropertyDeep, generateDisclosure };
+module.exports = { runCMA, getPropertyDeep, generateDisclosure, calculateNetSheet, getListingStrategy };

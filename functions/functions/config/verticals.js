@@ -59,7 +59,7 @@ const VERTICALS = {
     emoji: '\u2699\uFE0F',
     catalogFile: 'platform.json',
     firestorePrefix: 'pl-',
-    navItems: ['Accounting', 'HR', 'Marketing', 'Control Center'],
+    navItems: ['Accounting', 'HR', 'Marketing', 'Contacts'],
     defaultSort: 'top10',
   },
   'government': {

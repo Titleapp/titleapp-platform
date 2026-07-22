@@ -268,7 +268,6 @@ const MARKETPLACE_SLUG_MAP = {
   "PLAT-001": "platform-accounting",
   "PLAT-002": "platform-hr",
   "PLAT-003": "platform-marketing",
-  "PLAT-004": "platform-control-center-pro",
   "PLAT-005": "hr-people",
   "PLAT-006": "platform-contacts",
   "PLAT-007": "platform-legal",
@@ -462,7 +461,6 @@ const RULESET_MAP = {
   "platform-accounting": null,
   "platform-hr": null,
   "platform-marketing": null,
-  "platform-control-center-pro": null,
   "hr-people": null,
   "platform-contacts": null,
 };

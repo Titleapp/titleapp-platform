@@ -24,7 +24,6 @@ const WORKER_NAV_MAP = {
     { id: "reporting", label: "Reporting" },
   ],
   "chief-of-staff": [
-    { id: "control-center", label: "Control Center" },
     { id: "pipelines", label: "Pipelines" },
     { id: "task-board", label: "Task Board" },
     { id: "worker-status", label: "Worker Status" },
@@ -897,11 +896,6 @@ const WORKER_NAV_MAP = {
     { id: "invoices", label: "Invoices" },
     { id: "chart-of-accounts", label: "Chart of Accounts" },
   ],
-  "platform-control-center-pro": [
-    { id: "control-center", label: "Control Center" },
-    { id: "kpi-builder", label: "KPI Builder" },
-    { id: "alerts", label: "Alerts" },
-  ],
   "platform-contacts": [
     { id: "contacts-all", label: "All Contacts" },
     { id: "client-list", label: "Clients" },
@@ -957,7 +951,6 @@ const WORKER_DISPLAY_NAMES = {
   "platform-accounting": "Accounting",
   "platform-hr": "HR & People",
   "platform-marketing": "Marketing & Content",
-  "platform-control-center-pro": "Control Center Pro",
   "platform-contacts": "Contacts",
   "market-research": "Market Research",
   "architecture-review": "Architecture & Design Review",
@@ -1079,6 +1072,19 @@ const WORKER_DISPLAY_NAMES = {
   "gov-recorder-audit-readiness": "Recorder Audit Readiness",
   "gov-historical-records-worker": "Historical Records Digitization Worker",
   "gov-alex-recorder": "Alex — Recorder Chief of Staff",
+  // RE vertical
+  "re-salesperson": "Real Estate Advocate",
+  "re-advocate": "Real Estate Advocate",
+  "re-property-manager": "Property Manager",
+  "title-abstract-001": "Title & Abstract",
+  "zoning-001": "Zoning & Land Use",
+  // Healthcare / nursing vertical
+  "nursing-education-001": "Nursing Education",
+  "pet-health-client": "Pet Health Records",
+  // Tenant-facing consumer workers
+  "tenant-portal-001": "Tenant Portal",
+  // Academic / course workers
+  "makai-bio-101": "Anatomy & Physiology I",
 };
 
 const VERTICAL_LABELS = {
@@ -1479,6 +1485,8 @@ export default function Sidebar({
       {/* ── MY WORKERS ── */}
       <div className="sidebarSection" style={{ paddingTop: 8 }}>
         <button
+          data-demo-id="workers-toggle"
+          data-demo-collapsed={workersCollapsed ? "true" : "false"}
           onClick={() => setWorkersCollapsed(!workersCollapsed)}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
         >
@@ -1622,6 +1630,8 @@ export default function Sidebar({
       {/* ── ACCOUNT (collapsible like the other sections) ── */}
       <div className="sidebarSection">
         <button
+          data-demo-id="account-toggle"
+          data-demo-collapsed={accountCollapsed ? "true" : "false"}
           onClick={() => setAccountCollapsed(!accountCollapsed)}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
         >
@@ -2014,13 +2024,14 @@ export default function Sidebar({
           </button>
           {!workspacesCollapsed && (
             <nav className="nav" style={{ marginTop: 4 }}>
-              {workspaces.filter(w => w.type !== "shared").map(ws => {
+              {workspaces.filter(w => w.type !== "shared").map((ws, wsIdx) => {
                 const isCurrent = ws.id === currentWorkspaceId;
                 const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
                 const canInvite = !isPersonalRow && ws.role === "admin";
                 return (
                   <React.Fragment key={`mws-${ws.id}`}>
                   <div
+                    data-demo-id={wsIdx === 0 ? "workspace-row-0" : undefined}
                     onClick={() => {
                       // If we're parked on the /creators route, switching to any
                       // workspace persona must LEAVE that route so the canvas

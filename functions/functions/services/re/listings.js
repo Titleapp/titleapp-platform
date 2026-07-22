@@ -142,4 +142,64 @@ async function getListingDetail(listingId, rapidApiKey) {
   }
 }
 
-module.exports = { searchListings, getListingDetail };
+// ─── searchByAddress ─────────────────────────────────────────────────────────
+// Fallback for when ATTOM has no recorded data (rural parcels, unrecorded
+// subdivisions, proposed land sales). Extracts city+state from a full street
+// address, searches MLS, then filters for the closest address match.
+// Returns { ok, listing, source: "mls" } or { ok: false } — never throws.
+
+async function searchByAddress(address, rapidApiKey) {
+  if (!rapidApiKey) return { ok: false, source: "mls", listing: null };
+
+  // Parse "123 Ranch Rd, Dyer, NV 89010" → city="Dyer", state="NV"
+  const parts = String(address || "").split(",").map(s => s.trim());
+  if (parts.length < 2) return { ok: false, source: "mls", listing: null };
+
+  // Last part may be "NV 89010" or "NV" — extract state code
+  const last = parts[parts.length - 1];
+  const stateMatch = last.match(/\b([A-Z]{2})\b/);
+  const stateCode = stateMatch ? stateMatch[1] : "CA";
+  // City is the second-to-last comma segment
+  const city = parts.length >= 3 ? parts[parts.length - 2] : parts[0];
+  const streetLine = parts[0].toLowerCase().trim();
+
+  try {
+    const params = new URLSearchParams({ city, state_code: stateCode, limit: "20", offset: "0" });
+    const resp = await fetch(`${REALTOR_BASE}/search/forsale?${params.toString()}`, {
+      headers: {
+        "X-RapidAPI-Key": rapidApiKey,
+        "X-RapidAPI-Host": REALTOR_HOST,
+        "accept": "application/json",
+      },
+    });
+    if (!resp.ok) return { ok: false, source: "mls", listing: null };
+
+    const json = await resp.json().catch(() => ({}));
+    const results = (json.data && json.data.results) || json.results || json.properties || [];
+
+    // Fuzzy match: normalize both sides, check if street numbers + first word match
+    const streetNum = streetLine.match(/^\d+/)?.[0] || "";
+    const streetWord = streetLine.replace(/^\d+\s*/, "").split(/\s+/)[0] || "";
+
+    const match = results.find(r => {
+      const rAddr = ((r.location && r.location.address && r.location.address.line) || "").toLowerCase();
+      return (streetNum && rAddr.startsWith(streetNum)) ||
+             (streetWord.length > 2 && rAddr.includes(streetWord));
+    });
+
+    if (!match) {
+      // No direct match — return any nearby land/rural listings as context
+      const landListings = results.filter(r => {
+        const t = ((r.description && r.description.type) || r.type || "").toLowerCase();
+        return t.includes("land") || t.includes("farm") || t.includes("acreage");
+      }).slice(0, 3).map(mapListing).filter(Boolean);
+      return { ok: false, source: "mls", listing: null, nearbyLand: landListings };
+    }
+
+    return { ok: true, source: "mls", listing: mapListing(match) };
+  } catch (e) {
+    return { ok: false, source: "mls", listing: null };
+  }
+}
+
+module.exports = { searchListings, getListingDetail, searchByAddress };

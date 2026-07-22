@@ -207,8 +207,8 @@ export const CAMPAIGN_ROUTES = {
     alexOpening: "Did you like that ad? I get it — I hate my boss too. That's why I'm building this myself. You've already shipped more than YC Brandon has. Let's make it pay.",
   },
   "hate-boss-tech": {
-    workerSlug: "platform-command-center",
-    workerDisplayName: "Control Center",
+    workerSlug: "chief-of-staff",
+    workerDisplayName: "Alex — Chief of Staff",
     bossCharacter: "Priya",
     creatorSlug: "priya",
     campaignFamily: "hate-boss",
@@ -217,8 +217,8 @@ export const CAMPAIGN_ROUTES = {
 
   // ─── Workers Unite ─────────────────────────────────────────────
   "workers-unite": {
-    workerSlug: "platform-command-center",
-    workerDisplayName: "Control Center",
+    workerSlug: "chief-of-staff",
+    workerDisplayName: "Alex — Chief of Staff",
     campaignFamily: "workers-unite",
     alexOpening: "You showed up. That puts you ahead of most. What do you actually know how to do? Let's get you running it.",
   },

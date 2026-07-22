@@ -80,11 +80,6 @@ const SPINE_TABS = {
     { id: "campaigns", label: "Campaigns", signal: "card:marketing-board", order: 1 },
     { id: "creative",  label: "Creative",  signal: "card:marketing-board", order: 2 },
   ],
-  "platform-control-center-pro": [
-    { id: "revenue",     label: "Revenue Dashboard", signal: "card:control-center-revenue", default: true, order: 0 },
-    { id: "mrr",         label: "MRR",               signal: "card:work-product",           order: 1 },
-    { id: "subscribers", label: "Subscribers",       signal: "card:work-product",           order: 2 },
-  ],
 };
 
 // Aviation CoPilot — pilot-operational tab order (Sean's call 2026-05-12).
@@ -162,6 +157,24 @@ const AUTO_TABS = [
   { id: "fi",        label: "F&I",       signal: "card:auto-fi-compliance",    order: 3 },
 ];
 
+// Aviation MX — single-aircraft maintenance record.
+// Airworthiness first (go/no-go status at a glance), then the full history
+// timeline, open squawks, and what's coming due.
+const AVIATION_MX_TABS = [
+  { id: "airworthiness", label: "Airworthiness", signal: "card:work-product", default: true, order: 0 },
+  { id: "timeline",      label: "Timeline",      signal: "card:work-product", order: 1 },
+  { id: "squawks",       label: "Squawks",       signal: "card:work-product", order: 2 },
+  { id: "upcoming",      label: "Upcoming",      signal: "card:work-product", order: 3 },
+];
+
+// Aviation Dispatch / Trip Release — owner-operator trip package flow.
+// Trip release package first, then the FRAT breakdown, then the billing record.
+const AVIATION_DISPATCH_TABS = [
+  { id: "trip-package",  label: "Trip Package",  signal: "card:work-product", default: true, order: 0 },
+  { id: "frat",          label: "FRAT",          signal: "card:work-product", order: 1 },
+  { id: "trip-record",   label: "Trip Record",   signal: "card:work-product", order: 2 },
+];
+
 // Universal long-tail fallback. Every worker without a specific rule above
 // gets these three tabs. All point at card:work-product; the tab label
 // becomes the _title shown by the card's empty-state.
@@ -189,9 +202,21 @@ function generateDefaultTabs(worker) {
   // 1b. Business Law — single slug, vertical-adjacent.
   if (slug === "business-law") return BUSINESS_LAW_TABS.map(t => ({ ...t }));
 
-  // 2. Aviation CoPilots — EFB mirror. Identified by catalogId AV-P01..AV-P11
-  // (the 11 pilot CoPilots; marketplace slugs vary, e.g. av-caravan-208b).
+  // 2. Aviation workers — route by slug first, then catalogId pattern.
   const catalogId = (worker.catalogId || "").toUpperCase();
+
+  // MX (maintenance/airworthiness) — slug or AV-M catalogId prefix
+  if (slug === "av-mx-001" || /^AV-M\d/.test(catalogId)) {
+    return AVIATION_MX_TABS.map(t => ({ ...t }));
+  }
+
+  // Dispatch / Trip Release — slug or AV-D catalogId prefix
+  if (slug === "av-dispatch-001" || /^AV-D\d/.test(catalogId)) {
+    return AVIATION_DISPATCH_TABS.map(t => ({ ...t }));
+  }
+
+  // CoPilots — EFB mirror. Identified by catalogId AV-P01..AV-P11
+  // (the 11 pilot CoPilots; marketplace slugs vary, e.g. av-caravan-208b).
   if (vertical === "aviation" && /^AV-P\d/.test(catalogId)) {
     return AVIATION_COPILOT_TABS.map(t => ({ ...t }));
   }
@@ -233,6 +258,8 @@ module.exports = {
   // Exported for tests / authoring tools
   SPINE_TABS,
   AVIATION_COPILOT_TABS,
+  AVIATION_MX_TABS,
+  AVIATION_DISPATCH_TABS,
   RE_TABS,
   RES_SALESPERSON_TABS,
   GEN_SCHEDULING_TABS,

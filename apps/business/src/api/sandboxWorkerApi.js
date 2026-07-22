@@ -11,7 +11,7 @@
 import { auth as firebaseAuth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 // CODEX 47.4 Phase C-0 fix — auth race.
 //

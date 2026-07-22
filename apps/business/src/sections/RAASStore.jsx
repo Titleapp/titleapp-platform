@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useWorkerCatalog } from "../data/useWorkerCatalog";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
-const _BIAB_SLUGS = ["platform-accounting","platform-hr","platform-marketing","platform-contacts","platform-control-center-pro"];
+const _BIAB_SLUGS = ["platform-accounting","platform-hr","platform-marketing","platform-contacts"];
 const _BIAB_API = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 function BundleHeroCard() {
@@ -55,7 +55,6 @@ function BundleHeroCard() {
     { name: "HR & People", desc: "Hiring, time-off, team records" },
     { name: "Marketing", desc: "Campaigns, social calendar, ad copy" },
     { name: "Contacts", desc: "CRM, leads, relationship tracking" },
-    { name: "Control Center", desc: "Daily briefings, cross-worker view" },
   ];
 
   return (

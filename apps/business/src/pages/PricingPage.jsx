@@ -34,7 +34,7 @@ async function startBoxCheckout(planKey) {
 const TIERS = [
   {
     id: "free",
-    name: "The Spine",
+    name: "Core Platform",
     price: "Free",
     cadence: "forever",
     tagline: "Run your household or your small business on it.",
@@ -44,7 +44,6 @@ const TIERS = [
       "HR (W2 + 1099 + advisors)",
       "Marketing (campaigns + brand voice)",
       "Contacts (relationships + outreach)",
-      "Control Center (daily brief, deadlines)",
       "Your Vault — records on-chain-anchored & permanent (yours even if SOCIII disappears)",
       "Your Drive (cross-worker file management)",
     ],
@@ -121,9 +120,9 @@ const TIERS = [
     art: "/illustrations/business-box.png",
     price: "$99",
     cadence: "/mo + $5 per seat",
-    tagline: "The full company stack. The spine plus a curated set of workers tuned to your industry.",
+    tagline: "The full company stack. Core platform plus a curated set of workers tuned to your industry.",
     workers: [
-      "Everything in the Free spine",
+      "Everything in the free core",
       "First 5 seats included — small teams stay at $99 flat",
       "$5 / active seat beyond 5 — only pay for who's in the box",
       "A curated set of specialist workers for your industry",
@@ -147,7 +146,7 @@ const TIERS = [
     cadence: "/mo + $5 per student",
     tagline: "Business in a Box for education — the student-owned record plus the workers your faculty build.",
     workers: [
-      "Everything in the Free spine",
+      "Everything in the free core",
       "Vault Academic Record — student-owned, hashed, FERPA dual-control",
       "Unlimited Digital Workers your faculty build (evaluation, courses, CE)",
       "First 5 students included; then $5 / active student / mo (or $50/yr)",
@@ -181,9 +180,9 @@ export default function PricingPage() {
 
       <main style={S.main}>
         <div style={S.heroInner}>
-          <h1 style={S.heroH1}>Free spine. Pay per worker.</h1>
+          <h1 style={S.heroH1}>Free core. Pay per worker.</h1>
           <p style={S.heroSub}>
-            The SOCIII spine is free forever — works for households and small businesses. Add specialist workers when you need them at flat per-worker pricing. Or take the Business in a Box bundle when you're ready to run a company.
+            Core platform is free forever — works for households and small businesses. Add specialist workers when you need them at flat per-worker pricing. Or take the Business in a Box bundle when you're ready to run a company.
           </p>
         </div>
 
@@ -229,7 +228,7 @@ export default function PricingPage() {
           <div style={S.faqGrid}>
             <div style={S.faqItem}>
               <div style={S.faqQ}>The spine is really free?</div>
-              <div style={S.faqA}>Yes. Alex, Accounting, HR, Marketing, Contacts, Control Center, your Vault, and your Drive are free forever. Works for a household and works for a small business. You'll do a $2 one-time identity check during onboarding for many workers. No subscription. No credit card to start.</div>
+              <div style={S.faqA}>Yes. Alex, Accounting, HR, Marketing, Contacts, your Vault, and your Drive are free forever. Works for a household and works for a small business. You'll do a $2 one-time identity check during onboarding for many workers. No subscription. No credit card to start.</div>
             </div>
             <div style={S.faqItem}>
               <div style={S.faqQ}>What about data fees?</div>

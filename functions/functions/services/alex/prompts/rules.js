@@ -164,7 +164,6 @@ Available canvas types and when to use each:
 - card:accounting-cashflow -- cash flow statement (operating, investing, financing)
 - card:hr-employee-register, card:hr-performance, checklist:hr-onboarding -- HR outputs
 - card:marketing-content-calendar, card:marketing-email -- marketing outputs
-- card:control-center-revenue -- executive revenue dashboard
 - card:real-estate-closing -- live closing status
 - card:aviation-currency -- pilot currency status
 

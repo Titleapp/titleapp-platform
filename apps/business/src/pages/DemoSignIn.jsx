@@ -27,13 +27,23 @@ export default function DemoSignIn() {
         if (cancelled) return;
         clearTimeout(watchdog);
         localStorage.setItem("ID_TOKEN", idToken);
-        if (data.tenantId) localStorage.setItem("TENANT_ID", data.tenantId);
+        if (data.tenantId) {
+          localStorage.setItem("TENANT_ID", data.tenantId);
+          localStorage.setItem("WORKSPACE_ID", data.tenantId);
+        }
+        if (data.workspaceName) {
+          localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
+          localStorage.setItem("COMPANY_NAME", data.workspaceName);
+          localStorage.setItem("TENANT_NAME", data.workspaceName);
+        }
+        if (data.vertical) localStorage.setItem("VERTICAL", data.vertical);
+        if (data.personaName) localStorage.setItem("DISPLAY_NAME", data.personaName);
+        localStorage.removeItem("USER_EMAIL");
         localStorage.setItem("IS_CREATOR", "true");
         // Pre-mark all spine worker setup checklists as complete so the demo
         // shows the live intelligence canvas, not the "setup mode" checklist.
         const now = Date.now();
         const spineChecklists = {
-          "ta_checklist_platform-control-center-pro": { "business-overview": now, "email-connection": now, "communication-preferences": now, "key-metrics": now, "revenue-tracking": now, "acquisition-goals": now, "external-feeds": now },
           "ta_checklist_platform-accounting": { "bank-statements": now, "accounting-software": now, "tax-returns": now, "expense-rules": now, "vendor-lists": now },
           "ta_checklist_platform-hr": { "roster": now, "handbook": now, "org-chart": now, "payroll": now, "perf-reviews": now, "compliance-docs": now },
           "ta_checklist_platform-marketing": { "brand-guidelines": now, "social-accounts": now, "contact-lists": now, "competitor-docs": now, "content-workflow": now },

@@ -15,7 +15,7 @@ export default function IDVerifyModal({ onVerified, onClose }: IDVerifyModalProp
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       const token = localStorage.getItem("ID_TOKEN");
-      const apiBase = (import.meta as any).env?.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const apiBase = (import.meta as any).env?.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
       await fetch(`${apiBase}/api?path=/v1/me:update`, {
         method: "POST",

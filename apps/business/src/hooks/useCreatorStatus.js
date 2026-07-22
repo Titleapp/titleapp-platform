@@ -23,7 +23,7 @@
 
 import { useState, useEffect } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 let _cache = null; // { status, profile, fetchedAt }
 let _inflight = null;

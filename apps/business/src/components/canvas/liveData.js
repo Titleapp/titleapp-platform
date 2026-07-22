@@ -12,7 +12,7 @@
 
 import { auth } from "../../firebase";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 export async function liveApiFetch(path, opts = {}) {
   let token = null;

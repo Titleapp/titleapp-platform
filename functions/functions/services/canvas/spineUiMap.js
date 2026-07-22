@@ -4,7 +4,7 @@
  * spineUiMap.js — Sweep 2 of the spine-worker chat-quality sweep.
  *
  * Spine workers (platform-accounting, platform-marketing, platform-hr,
- * platform-contacts, platform-control-center-pro) render via bespoke React
+ * platform-contacts) render via bespoke React
  * sections OR through the canvas-tab system. Either way, the model can't
  * see those UIs — it tends to invent buttons ("the orange Clear demo
  * banner"), recommend manual work the section UI automates (CoA line-by-
@@ -77,15 +77,6 @@ Real employee writes happen via the public API (/api/v1/<workspace>/employees) �
 
 There is NO orange demo banner.`,
 
-  "platform-control-center-pro": `WORKER UI MAP — Control Center Pro section (custom UI):
-
-Top: "Refresh" button + purple "Email me this brief" button. The brief is a per-user roll-up across every workspace the user is a member of. If no workspace has a real signal, the email is suppressed (hard rule: no padding with samples).
-
-Workspaces · mode controls panel: per workspace, three pill buttons toggle the workspace mode → Launch | Operations | Dormant. Mode controls which adapter generates the section in the brief.
-
-Below: one card per workspace with at-a-glance KPIs (marketing pulse, worker traction, sandbox, customers in launch mode; contacts/transactions/accounts/cash on hand in operations mode).
-
-There is NO orange demo banner.`,
 };
 
 function getSpineUiMap(slug) {

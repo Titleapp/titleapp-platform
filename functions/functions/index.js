@@ -1922,6 +1922,16 @@ exports.api = onRequest(
             role:          "member",
             activeWorkers: ["tenant-portal-001"],
           },
+          // ── Aviation (Pacific Air Partners) ──────────────────────────────
+          aviation: {
+            uid:           "demo-aviation-alex-001",
+            tenantId:      "demo-pacific-air-001",
+            workspaceName: "Pacific Air Partners",
+            vertical:      "aviation",
+            name:          "Alex Rivera",
+            role:          "admin",
+            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001"],
+          },
         };
         const p = PERSONAS[persona] || PERSONAS.vet;
         // Auto-top-up demo tenant to 5000 credits on every sign-in so demos
@@ -2200,7 +2210,7 @@ exports.api = onRequest(
           message: "Add $10 of data credits to run a CMA — covers ~50 analyses.",
           creditsRequired: dataCreditCosts.re_cma, creditsAvailable: cr.creditsAvailable });
         const { runCMA } = require("./services/re/advocate");
-        const result = await runCMA(address, process.env.ATTOM_API_KEY);
+        const result = await runCMA(address, process.env.ATTOM_API_KEY, process.env.RAPIDAPI_KEY);
         return res.json(result);
       } catch (e) {
         console.error("re:advocate:cma failed:", e);
@@ -2216,7 +2226,7 @@ exports.api = onRequest(
         const { address } = body || {};
         if (!address) return jsonError(res, 400, "address required");
         const { getPropertyDeep } = require("./services/re/advocate");
-        const result = await getPropertyDeep(address, process.env.ATTOM_API_KEY);
+        const result = await getPropertyDeep(address, process.env.ATTOM_API_KEY, process.env.RAPIDAPI_KEY);
         return res.json(result);
       } catch (e) {
         console.error("re:advocate:property failed:", e);
@@ -4159,7 +4169,19 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   _streamEnforcement = _streamRules
                     ? validateChatOutput(_sseText, _streamRules)
                     : validateChatOutput(_sseText);
-                  if (!_streamEnforcement.passed) {
+                  // Fire disclaimer once per session — check prior assistant messages
+                  const _sseHistoryText = (sessionState.salesHistory || [])
+                    .filter(m => m.role === 'assistant' && m.workerSlug === workerSlug)
+                    .map(m => m.content || "").join(" ").toLowerCase();
+                  const _sseDisclaimerSent = _sseHistoryText.includes("informational guidance") ||
+                    _sseHistoryText.includes("does not constitute");
+                  const _sseIsSystemMsg = _sseText.length < 300 && (
+                    _sseText.toLowerCase().includes("no property found") ||
+                    _sseText.toLowerCase().includes("check the address") ||
+                    _sseText.toLowerCase().includes("i don't have a tool") ||
+                    _sseText.toLowerCase().includes("data is temporarily unavailable")
+                  );
+                  if (!_streamEnforcement.passed && !_sseDisclaimerSent && !_sseIsSystemMsg) {
                     console.warn(`[streaming:enforcement] ${workerSlug}:`, (_streamEnforcement.violations || []).map(v => v.ruleId));
                     const _disc = _gwd(workerSlug) || "This is informational guidance only and does not constitute professional advice.";
                     if (!_sseText.toLowerCase().includes("does not constitute")) {
@@ -4433,10 +4455,18 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               if (toolBlock && toolBlock.name === 'run_cma') {
                 try {
                   const { runCMA } = require("./services/re/advocate");
-                  const r = await runCMA(toolBlock.input.address, process.env.ATTOM_API_KEY);
+                  const r = await runCMA(toolBlock.input.address, process.env.ATTOM_API_KEY, process.env.RAPIDAPI_KEY);
                   let resultText;
                   if (!r.ok) {
-                    resultText = r.error || `CMA could not be run for "${toolBlock.input.address}".`;
+                    if (r.mlsFallback && r.mlsListing) {
+                      const l = r.mlsListing;
+                      resultText = `${r.error}\n\nMLS LISTING FOUND: ${l.address} — ${l.price || "?"} · ${l.beds || "?"}bd/${l.baths || "?"}ba · ${l.sqft ? l.sqft.toLocaleString() + " sqft" : "—"} · ${l.daysOnMarket != null ? l.daysOnMarket + " DOM" : ""}${l.status ? " · Status: " + l.status : ""}. Present this MLS data clearly, note it reflects a listing not a recorded title, and direct to county recorder for chain of title.`;
+                    } else if (r.mlsFallback && r.nearbyLand && r.nearbyLand.length > 0) {
+                      const landLines = r.nearbyLand.map(l => `${l.address} — ${l.price || "?"}`).join("; ");
+                      resultText = `${r.error}\n\nNEARBY LAND LISTINGS: ${landLines}. Present these as context for the area — they are not the subject property.`;
+                    } else {
+                      resultText = r.error || `CMA could not be run for "${toolBlock.input.address}".`;
+                    }
                   } else {
                     const est = r.estimate;
                     const m = r.marketMetrics;
@@ -4459,10 +4489,15 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               if (toolBlock && toolBlock.name === 'get_property_deep') {
                 try {
                   const { getPropertyDeep } = require("./services/re/advocate");
-                  const r = await getPropertyDeep(toolBlock.input.address, process.env.ATTOM_API_KEY);
+                  const r = await getPropertyDeep(toolBlock.input.address, process.env.ATTOM_API_KEY, process.env.RAPIDAPI_KEY);
                   let resultText;
                   if (!r.ok) {
-                    resultText = r.error || `Deep property data unavailable for "${toolBlock.input.address}".`;
+                    if (r.mlsFallback && r.mlsListing) {
+                      const l = r.mlsListing;
+                      resultText = `${r.error}\n\nMLS LISTING FOUND: ${l.address} — ${l.price || "?"} · ${l.beds || "?"}bd/${l.baths || "?"}ba · ${l.sqft ? l.sqft.toLocaleString() + " sqft" : "—"} · Status: ${l.status || "unknown"}. No recorded county data exists — present MLS listing as the only available data, clearly labeled, and recommend county recorder/assessor for title research.`;
+                    } else {
+                      resultText = r.error || `Deep property data unavailable for "${toolBlock.input.address}".`;
+                    }
                   } else {
                     _livePropertyDeep = r; // Phase 3 — typed canvas render built below
                     const ownership = (r.ownerHistory || []).map(h => `${h.date || "?"}: ${h.price || "?"} ${h.seller ? "(" + h.seller + " → " + (h.buyer || "?") + ")" : ""}`).join("; ");
@@ -4611,7 +4646,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 try {
                   const { getListingStrategy } = require("./services/re/advocate");
                   const { address, targetPrice } = toolBlock.input || {};
-                  const r = await getListingStrategy(address, targetPrice, process.env.ATTOM_API_KEY);
+                  const r = await getListingStrategy(address, targetPrice, process.env.ATTOM_API_KEY, process.env.RAPIDAPI_KEY);
                   if (!r.ok) {
                     aiText = r.error || `I couldn't pull comparable sales for "${address}". Try a full street address with city and state.`;
                   } else {
@@ -4721,9 +4756,23 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               try {
                 const { loadChatRules: loadWorkerChatRules, getWorkerDisclaimer } = require("./raas/raas.engine");
                 const workerChatRules = loadWorkerChatRules(workerSlug);
+                // Check if disclaimer already appeared earlier in this session (fire once per session)
+                const _priorHistory = (sessionState.salesHistory || [])
+                  .filter(m => m.role === 'assistant' && m.workerSlug === workerSlug)
+                  .map(m => m.content || "").join(" ").toLowerCase();
+                const _disclaimerSentThisSession = _priorHistory.includes("informational guidance") ||
+                  _priorHistory.includes("does not constitute");
+                // Don't append to pure error/system messages (short refusals, "no property found", etc.)
+                const _isSystemMessage = aiText.length < 300 && (
+                  aiText.toLowerCase().includes("no property found") ||
+                  aiText.toLowerCase().includes("check the address") ||
+                  aiText.toLowerCase().includes("i don't have a tool") ||
+                  aiText.toLowerCase().includes("i can't search") ||
+                  aiText.toLowerCase().includes("data is temporarily unavailable")
+                );
                 if (workerChatRules) {
                   workerEnforcement = validateChatOutput(aiText, workerChatRules);
-                  if (!workerEnforcement.passed) {
+                  if (!workerEnforcement.passed && !_disclaimerSentThisSession && !_isSystemMessage) {
                     console.warn(`[enforcement] worker:${workerSlug} violation for user ${authUser?.uid}:`, workerEnforcement.violations);
                     const disclaimer = getWorkerDisclaimer(workerSlug) || "This is informational guidance only and does not constitute professional advice. Consult qualified professionals for specific advice.";
                     if (!aiText.toLowerCase().includes("informational guidance") && !aiText.toLowerCase().includes("does not constitute")) {
@@ -4735,7 +4784,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 } else {
                   // No dedicated ruleset — use default chat rules
                   workerEnforcement = validateChatOutput(aiText);
-                  if (!workerEnforcement.passed) {
+                  if (!workerEnforcement.passed && !_disclaimerSentThisSession && !_isSystemMessage) {
                     console.warn(`[enforcement] worker:${workerSlug} default-rule violation:`, workerEnforcement.violations);
                     if (!aiText.toLowerCase().includes("informational guidance") && !aiText.toLowerCase().includes("does not constitute")) {
                       aiText += "\n\n*This is informational guidance only and does not constitute financial, legal, or tax advice. Consult qualified professionals for specific advice.*";
@@ -21306,6 +21355,134 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/nurse-edu:research-consent — record IRB research consent for a
+    // student and assign them to a study arm. Must be called BEFORE any outcome
+    // data is collected (IRB requirement). Body: { dtcId, studyGroupId, studyArm,
+    // consentForm?, irbProtocol? }. Updates the DTC metadata and appends an
+    // immutable research.consent.recorded logbook event.
+    if (route === "/nurse-edu:research-consent" && method === "POST") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const { dtcId, studyGroupId, studyArm, consentForm, irbProtocol } = body || {};
+        if (!dtcId) return jsonError(res, 400, "dtcId required");
+        if (!studyGroupId) return jsonError(res, 400, "studyGroupId required");
+        if (!["intervention", "control"].includes(studyArm))
+          return jsonError(res, 400, "studyArm must be 'intervention' or 'control'");
+        const dtcRef = db.collection("dtcs").doc(dtcId);
+        const dtcSnap = await dtcRef.get();
+        if (!dtcSnap.exists) return jsonError(res, 404, "Student record not found");
+        const now = new Date().toISOString();
+        // Atomically update the DTC metadata research fields.
+        await dtcRef.update({
+          "metadata.studyArm": studyArm,
+          "metadata.studyGroupId": studyGroupId,
+          "metadata.researchConsent": true,
+          "metadata.researchConsentAt": now,
+        });
+        // Append an immutable logbook event — this is the durable consent record.
+        const { appendEvent } = require("./services/vault/vaultWriter");
+        const { studentRecord } = require("./services/vault/schemas");
+        const shaped = studentRecord.event("research.consent.recorded", {
+          studyGroupId, studyArm, consentForm: consentForm || null,
+          irbProtocol: irbProtocol || null,
+          consentedBy: nAuth.user.email || nAuth.user.uid,
+          date: now.slice(0, 10),
+        });
+        const userId = dtcSnap.data().userId;
+        const appendResult = await appendEvent({
+          userId, dtcId, entryType: shaped.entryType, data: shaped.data,
+          worker: { slug: "nursing-education-001", vault_writes: ["academic_record"] },
+          createdByWorker: "Research Consent",
+        });
+        if (!appendResult.ok) return res.status(400).json(appendResult);
+        return res.json({ ok: true, dtcId, studyArm, studyGroupId, consentAt: now });
+      } catch (e) {
+        console.error("nurse-edu:research-consent failed:", e);
+        return jsonError(res, 500, "Failed to record research consent");
+      }
+    }
+
+    // GET /v1/nurse-edu:export?program=&studyGroupId= — bulk cohort export for
+    // research reporting. Returns all students in a program/study group with
+    // their full structured outcome metrics (ATI scores, clinical hours, competency
+    // levels, SLO observations, course grades). Intended for interim (Mar 2027)
+    // and final (Oct 2027) AACN Faculty Scholars grant reports.
+    // studyGroupId filter is optional — omit to export the whole program cohort.
+    if (route === "/nurse-edu:export" && method === "GET") {
+      try {
+        const nAuth = await requireFirebaseUser(req, res);
+        if (nAuth.handled) return nAuth.res;
+        const program = req.query?.program?.toString() || "clearwater-nursing";
+        const studyGroupId = req.query?.studyGroupId?.toString() || null;
+        // FERPA: caller must have faculty or admin membership in the requested program tenant.
+        const exportMemberSnap = await db.collection("memberships")
+          .where("uid", "==", nAuth.user.uid)
+          .where("tenantId", "==", program)
+          .limit(1)
+          .get();
+        if (exportMemberSnap.empty || !["admin", "faculty"].includes(exportMemberSnap.docs[0].data().role)) {
+          return jsonError(res, 403, "Access denied: faculty or admin role required for cohort export");
+        }
+        const snap = await db.collection("dtcs")
+          .where("tenantId", "==", program)
+          .where("type", "==", "academic_record")
+          .get();
+        const rows = [];
+        for (const d of snap.docs) {
+          const meta = d.data().metadata || {};
+          // Filter by studyGroupId if provided.
+          if (studyGroupId && meta.studyGroupId !== studyGroupId) continue;
+          const evSnap = await db.collection("logbookEntries")
+            .where("dtcId", "==", d.id)
+            .orderBy("createdAt", "asc")
+            .get();
+          const events = evSnap.docs.map(e => e.data());
+          // Aggregate structured outcome metrics from logbook events.
+          const assessments = events.filter(e => e.entryType === "assessment.submitted");
+          const competencies = events.filter(e => e.entryType === "competency.assessed");
+          const sloObs = events.filter(e => e.entryType === "slo.observed");
+          const clinicalHours = events.filter(e => e.entryType === "clinical_hours.logged");
+          const grades = events.filter(e => e.entryType === "course.graded");
+          const avgAssessmentScore = assessments.length
+            ? Math.round(assessments.reduce((s, e) => s + ((e.data?.score || 0) / (e.data?.maxScore || 100) * 100), 0) / assessments.length)
+            : null;
+          const avgCompetencyLevel = competencies.length
+            ? (competencies.reduce((s, e) => s + (Number(e.data?.level) || 0), 0) / competencies.length).toFixed(2)
+            : null;
+          const avgSloLevel = sloObs.length
+            ? (sloObs.reduce((s, e) => s + (Number(e.data?.level) || 0), 0) / sloObs.length).toFixed(2)
+            : null;
+          const totalClinicalHours = clinicalHours.reduce((s, e) => s + (Number(e.data?.hoursWorked) || 0), 0);
+          rows.push({
+            studentId: d.data().userId || null,
+            dtcId: d.id,
+            name: meta.name || null,
+            cohort: meta.cohort || null,
+            program: meta.program || null,
+            studyArm: meta.studyArm || null,
+            studyGroupId: meta.studyGroupId || null,
+            researchConsent: meta.researchConsent || false,
+            researchConsentAt: meta.researchConsentAt || null,
+            enrolled: meta.enrolled || null,
+            // Outcome metrics
+            avgAssessmentScorePct: avgAssessmentScore,
+            avgCompetencyLevel,  // 1=Novice … 5=Expert
+            avgSloLevel,          // 1=Novice … 5=Expert
+            totalClinicalHours,
+            assessmentCount: assessments.length,
+            competencyCount: competencies.length,
+            courseGrades: grades.map(e => ({ course: e.data?.course, grade: e.data?.letterGrade, pct: e.data?.percentageGrade })),
+            eventCount: events.length,
+          });
+        }
+        return res.json({ ok: true, program, studyGroupId, exportedAt: new Date().toISOString(), count: rows.length, students: rows });
+      } catch (e) {
+        console.error("nurse-edu:export failed:", e);
+        return jsonError(res, 500, "Failed to export cohort data");
+      }
+    }
+
     // ----------------------------
     // SPINE-4 — Staff Credential & Training Worker (vet vertical / #70)
     // ----------------------------
@@ -28557,6 +28734,86 @@ exports.onControllerApprovalCreate = onDocumentCreated(
 
 // Accounting — daily heads-up digest of recurring charges hitting in the next
 // 5 days. Schedules at 14:00 UTC = 9 AM ET so Sean gets it first thing.
+// ----------------------------
+// PILOT MODE: Credit Health Scan — 3x/day proactive top-up
+// Scans all users and tenants with low credits and tops them up to 2000.
+// Runs at 8am, 1pm, 6pm PT. Flip PILOT_MODE=false in .env when billing goes live.
+// ----------------------------
+exports.creditHealthScan = onSchedule(
+  { schedule: "0 15,20,1 * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    if (process.env.PILOT_MODE !== "true") {
+      console.log("[creditHealthScan] PILOT_MODE off — skipping");
+      return;
+    }
+    const db = admin.firestore();
+    const TOPUP_TO = 2000;
+    const LOW_THRESHOLD = 500; // top up anyone below this proactively
+    const topped = [];
+
+    // Scan tenants
+    try {
+      const tSnap = await db.collection("tenants")
+        .where("prepaidCredits", "<", LOW_THRESHOLD)
+        .get();
+      for (const doc of tSnap.docs) {
+        const current = doc.data().prepaidCredits ?? 0;
+        const add = TOPUP_TO - current;
+        if (add <= 0) continue;
+        await doc.ref.update({
+          prepaidCredits: admin.firestore.FieldValue.increment(add),
+          lastPilotTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        topped.push({ type: "tenant", id: doc.id, was: current, added: add });
+        console.log(`[creditHealthScan] tenant ${doc.id}: +${add} (was ${current})`);
+      }
+    } catch (e) { console.warn("[creditHealthScan] tenant scan failed:", e.message); }
+
+    // Scan users
+    try {
+      const uSnap = await db.collection("users")
+        .where("prepaidCredits", "<", LOW_THRESHOLD)
+        .get();
+      for (const doc of uSnap.docs) {
+        const data = doc.data();
+        const current = data.prepaidCredits ?? data.billing?.prepaidCredits ?? 0;
+        const add = TOPUP_TO - current;
+        if (add <= 0) continue;
+        await doc.ref.update({
+          prepaidCredits: admin.firestore.FieldValue.increment(add),
+          "billing.prepaidCredits": admin.firestore.FieldValue.increment(add),
+          lastPilotTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        topped.push({ type: "user", id: doc.id, email: data.email || null, was: current, added: add });
+        console.log(`[creditHealthScan] user ${doc.id} (${data.email}): +${add} (was ${current})`);
+      }
+    } catch (e) { console.warn("[creditHealthScan] user scan failed:", e.message); }
+
+    if (topped.length === 0) {
+      console.log("[creditHealthScan] All accounts healthy — no top-ups needed");
+      return;
+    }
+
+    // Notify Sean
+    try {
+      const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
+      const rows = topped.map(t =>
+        `<tr><td>${t.type}</td><td>${t.email || t.id}</td><td>${t.was}</td><td>+${t.added}</td><td>${t.was + t.added}</td></tr>`
+      ).join("");
+      await sendViaSendGrid({
+        to: "sean@sociii.ai",
+        subject: `[Credits] Auto-topped ${topped.length} account${topped.length !== 1 ? "s" : ""}`,
+        htmlBody: `<p><strong>Pilot Mode Credit Scan</strong> — ${new Date().toISOString()}</p>
+<table border="1" cellpadding="6" style="border-collapse:collapse;font-size:13px">
+<tr><th>Type</th><th>Account</th><th>Was</th><th>Added</th><th>Now</th></tr>
+${rows}
+</table>
+<p style="color:#666;font-size:12px">Flip PILOT_MODE=false in .env when billing goes live.</p>`,
+      });
+    } catch (e) { console.warn("[creditHealthScan] email failed:", e.message); }
+  }
+);
+
 exports.recurringChargeDigest = onSchedule(
   { schedule: "0 14 * * *", timeZone: "UTC", region: "us-central1" },
   async () => {

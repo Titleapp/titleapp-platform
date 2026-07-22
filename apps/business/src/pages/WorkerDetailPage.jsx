@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 import DocumentControlTab from "./vault/DocumentControlTab";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
@@ -62,7 +62,7 @@ function DocumentChecklist({ checklist, workerSlug }) {
     setUploading(uploadTarget);
     try {
       const token = localStorage.getItem("ID_TOKEN");
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const apiBase = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
       const signRes = await fetch(`${apiBase}/api?path=/v1/files:sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -392,6 +392,53 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
 
         {worker.documentChecklist && worker.documentChecklist.length > 0 && (
           <DocumentChecklist checklist={worker.documentChecklist} workerSlug={worker.slug} />
+        )}
+
+        {/* How to Use It — reads from worker.docs (Firestore docs field) */}
+        {worker.docs && (worker.docs.whatItDoes || worker.docs.powerMoves?.length > 0) && (
+          <div style={{ marginBottom: 48 }}>
+            <h2 style={S.sectionTitle}>How to Use It</h2>
+            {worker.docs.whatItDoes && (
+              <p style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.7, marginBottom: 24, marginTop: 0 }}>
+                {worker.docs.whatItDoes}
+              </p>
+            )}
+            {worker.docs.powerMoves?.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
+                  Try asking
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                  {worker.docs.powerMoves.map((move, i) => (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "12px 16px", borderRadius: 10,
+                      background: "white", border: "1px solid #e5e7eb",
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{move.title}</div>
+                        <div style={{ fontSize: 13, color: "#6b7280" }}>"{move.prompt}"</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginLeft: 16, flexShrink: 0 }}>
+                        Subscribe to try →
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {worker.docs.canvasDescription && (
+              <div style={{ padding: "14px 16px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e5e7eb" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>The Canvas</div>
+                <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>{worker.docs.canvasDescription}</div>
+              </div>
+            )}
+            {worker.docs.notForThis && (
+              <div style={{ marginTop: 12, fontSize: 13, color: "#9ca3af", lineHeight: 1.5 }}>
+                <strong style={{ color: "#6b7280" }}>Not for:</strong> {worker.docs.notForThis}
+              </div>
+            )}
+          </div>
         )}
 
         <div style={S.pricing}>

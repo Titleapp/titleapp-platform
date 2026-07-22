@@ -38,11 +38,6 @@ const WORKER_SIGNALS = {
     { keywords: ["email", "newsletter", "campaign"], signal: "card:marketing-email" },
   ],
 
-  // Platform — Control Center Pro
-  "platform-control-center-pro": [
-    { keywords: ["revenue", "mrr", "subscribers", "churn"], signal: "card:control-center-revenue" },
-  ],
-
   // Real-estate — Title Abstract worker (renders the abstract, not a closing).
   // Worker-specific rules win over the vertical "card:real-estate-closing" map.
   "title-abstract-001": [

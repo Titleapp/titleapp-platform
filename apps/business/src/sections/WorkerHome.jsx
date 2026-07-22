@@ -11,7 +11,6 @@ const WORKER_NAMES = {
   "platform-accounting": "Accounting",
   "platform-hr": "HR & People",
   "platform-marketing": "Marketing & Content",
-  "platform-control-center-pro": "Control Center Pro",
   "platform-contacts": "Contacts",
   "cre-analyst": "CRE Analyst",
   "investor-relations": "IR Worker",

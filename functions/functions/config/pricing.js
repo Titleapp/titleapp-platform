@@ -98,6 +98,32 @@ module.exports = {
     blockchain_record: 1.00,           // $1 per blockchain record after allowance
   },
 
+  // ── Data Credit Costs — per-call charges for external API lookups ──
+  // 1 credit = $0.02. Free tier = 100 credits (~$2) granted at signup.
+  // Costs here are credits per call. Aviation and RE share the same pool.
+  dataCreditCosts: {
+    // Real Estate (ATTOM is a paid API)
+    re_property_lookup:  5,   // ATTOM property detail   — ~$0.10/call
+    re_cma:             10,   // ATTOM CMA (4 calls)     — ~$0.20/fanout
+    re_financing_check:  2,   // FEMA/HUD/USDA (free APIs, nominal processing)
+    re_lease_analysis:   5,   // Claude AI extraction    — no external API
+    re_net_sheet:        1,   // Calculation only        — no external API
+    re_listing_strategy: 10,  // ATTOM CMA (sell-side)   — ~$0.20/fanout
+
+    // Aviation (Notamify + ADS-B Exchange are metered)
+    notam_report:        3,   // Notamify               — ~$0.06/call
+    adsb_query:          3,   // ADS-B Exchange         — metered per call
+    aviation_weather:    1,   // FAA/NWS (free public)  — nominal
+
+    // Identity verification (KYC gate for real aviation actions)
+    pilot_id_check:     10,   // Stripe Identity check  — one-time per pilot
+  },
+
+  // ── Free Tier ───────────────────────────────────────────────
+  freeCreditsOnSignup:   100,  // granted to every new account (~20 RE lookups or 33 NOTAMs)
+  topUpStarterAmount:     10,  // $ for the default starter top-up
+  topUpStarterCredits:   500,  // credits for $10 = $0.02/credit
+
   // ── Deposit / Prepay ───────────────────────────────────────
   depositAmounts: [100, 500, 1000],    // operator top-up choices
   autoRechargeThresholdDefault: 20,    // trigger recharge at $20

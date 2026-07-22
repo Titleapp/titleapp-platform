@@ -59,6 +59,11 @@ const EVENT_TYPES = {
 
   // ── Legacy (SLO-level grade) — kept for backwards compat ────────────────
   "grade.locked":             { label: "Grade locked",         fields: ["courseId", "course", "sloNumber", "score", "date", "anchored"], required: ["course", "sloNumber", "score", "date"] },
+
+  // ── Research Consent (AACN Faculty Scholars grant, IRB-required) ─────────
+  // Written once at enrollment into the study cohort. studyArm must be set
+  // before any outcome data is collected so analysis is not retroactive.
+  "research.consent.recorded": { label: "Research consent", fields: ["studyGroupId", "studyArm", "consentForm", "irbProtocol", "consentedBy", "date"], required: ["studyGroupId", "studyArm", "date"] },
 };
 
 function mintInput({ student }) {
@@ -73,6 +78,12 @@ function mintInput({ student }) {
       currentCourse: student.currentCourse || null,
       enrolled: student.enrolledISO || student.enrolled || null,
       demo: !!(student.isDemo || student.demo),
+      // Research study fields — null until research.consent.recorded event written.
+      // studyArm must be set BEFORE outcome data collection begins (IRB requirement).
+      studyArm: student.studyArm || null,           // "intervention" | "control" | null
+      studyGroupId: student.studyGroupId || null,   // e.g. "aacn-2026-cohort-1"
+      researchConsent: student.researchConsent || false,
+      researchConsentAt: student.researchConsentAt || null,
     },
   };
 }

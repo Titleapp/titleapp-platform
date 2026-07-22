@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
 
 // CODEX 50.13 Layer C — six-class asset taxonomy. Each Firestore DTC
 // `type` value maps to one user-visible class. Future types added at
@@ -41,8 +41,10 @@ export const ASSET_CLASS_OF = {
   retirement_account: "Money",
   crypto_account: "Money",
   liability: "Money",
-  // Future types (not yet registered as live):
-  // commercial_property: "Real Property", land: "Real Property", lease: "Real Property",
+  lease: "Real Property",
+  pet_health: "Health",
+  // Future types:
+  // commercial_property: "Real Property", land: "Real Property",
   // commercial_fleet: "Vehicles",
   // professional_license: "Credentials", certification: "Credentials",
   // entity_formation: "Business Records", operating_agreement: "Business Records",

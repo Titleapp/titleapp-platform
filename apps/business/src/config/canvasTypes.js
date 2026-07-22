@@ -109,15 +109,6 @@ export const CANVAS_TYPES = {
     emptyPrompt: "Ask Alex about your email campaigns to see them here.",
   },
 
-  // Control Center
-  "card:control-center-revenue": {
-    component: "RevenueDashboardCard",
-    dataSource: "firestore",
-    dismissible: true,
-    mobileFallback: "inline-card",
-    emptyPrompt: null,
-  },
-
   // Aviation
   "card:aviation-currency": {
     component: "AviationCurrencyCard",

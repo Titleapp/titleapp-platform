@@ -530,6 +530,22 @@ const WORKER_RULESET_MAP = {
   "nursing-tutor-001": "nursing_clinical_v1",
   "nursing-comms-001": "nursing_clinical_v1",
   "nursing-accreditation-001": "nursing_clinical_v1",
+  // Aviation workers — Phase 2: RAAS as code (CODEX 42)
+  // All aviation workers share aviation_hard_stops_v1 for chat-level enforcement.
+  // Structural FRAT/duty-time evals (av_009/av_014) are validated separately
+  // via validateOutput() when structured scoring data is available.
+  "av-copilot-001": "aviation_hard_stops_v1",
+  "av-dispatch-001": "aviation_hard_stops_v1",
+  "av-mx-001": "aviation_hard_stops_v1",
+  "av-daily-ops-report": "aviation_hard_stops_v1",
+  "av-dispatch-board": "aviation_hard_stops_v1",
+  "av-flight-duty-enforcer": "aviation_hard_stops_v1",
+  "av-safety-reporting": "aviation_hard_stops_v1",
+  "av-weather-intel": "aviation_hard_stops_v1",
+  "av-notam-intel": "aviation_hard_stops_v1",
+  "av-currency-tracker": "aviation_hard_stops_v1",
+  "av-alex": "aviation_hard_stops_v1",
+  "av-alex-personal": "aviation_hard_stops_v1",
 };
 
 /** Cache compiled chat rules per ruleset */

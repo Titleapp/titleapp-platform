@@ -1,3 +1,5 @@
+import { getAppCheckHeader } from "../firebase";
+
 type Json = any;
 
 function getIdToken(): string {
@@ -43,6 +45,7 @@ async function httpJson(
   url.searchParams.set("path", backendPath);
 
   const tenantId = localStorage.getItem("TENANT_ID") || "public";
+  const appCheckHeader = await getAppCheckHeader();
 
   const res = await fetch(url.toString(), {
     method,
@@ -53,6 +56,7 @@ async function httpJson(
       "X-Tenant-Id": tenantId,
       "X-Vertical": opts.vertical,
       "X-Jurisdiction": opts.jurisdiction,
+      ...appCheckHeader,
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });

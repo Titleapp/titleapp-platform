@@ -834,7 +834,8 @@ function StudentView({ data }) {
 export default function NursingEducationPanel() {
   const [activeTab, setActiveTab] = useState("students");
   const [focusedStudentId, setFocusedStudentId] = useState(null);
-  const [viewMode, setViewMode] = useState("instructor"); // "instructor" | "student"
+  const isStudentPersona = new URLSearchParams(window.location.search).get("persona")?.includes("student");
+  const [viewMode, setViewMode] = useState(isStudentPersona ? "student" : "instructor"); // "instructor" | "student"
   const data = NURSING_DATA;
 
   // Sync viewMode to a localStorage hook the chat picks up, so Alex knows
@@ -856,8 +857,8 @@ export default function NursingEducationPanel() {
 
   return (
     <div style={S.wrap}>
-      {/* View-mode toggle — preview student perspective vs instructor */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+      {/* View-mode toggle — only visible for instructor/admin (not student persona) */}
+      {!isStudentPersona && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
         <div style={{ fontSize: 12, color: "#64748b" }}>
           <b style={{ color: "#334155" }}>View as:</b>
         </div>
@@ -883,7 +884,7 @@ export default function NursingEducationPanel() {
             }}
           >Student (Sarah K.)</button>
         </div>
-      </div>
+      </div>}
 
       {viewMode === "student" ? (
         <StudentView data={data} />

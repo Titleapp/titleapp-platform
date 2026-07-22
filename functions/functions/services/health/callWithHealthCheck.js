@@ -77,6 +77,12 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
   const tenantId = context.tenantId && context.tenantId !== "vault" && context.tenantId !== "personal" && !String(context.tenantId).startsWith("guest-")
     ? context.tenantId : null;
 
+  // PILOT_MODE: auto-top-up accounts instead of blocking when credits run out.
+  // Flip PILOT_MODE=false in .env when billing goes live.
+  const PILOT_MODE = process.env.PILOT_MODE === "true";
+  const PILOT_TOPUP_AMOUNT = 2000;
+  const PILOT_TOPUP_FLOOR = 200; // top up when balance drops below this
+
   try {
     if (tenantId) {
       const tenantRef = db.doc(`tenants/${tenantId}`);
@@ -85,14 +91,29 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
       const currentBalance = tData.prepaidCredits ?? 0;
 
       if (currentBalance < creditCost) {
-        return {
-          allowed: false,
-          error: "INSUFFICIENT_CREDITS",
-          source: "tenant",
-          message: "This workspace is out of Data Credits. Ask the workspace admin to top up.",
-          creditsRequired: creditCost,
-          creditsAvailable: currentBalance,
-        };
+        if (PILOT_MODE) {
+          // Auto-top-up — no charge, no blocking, log the event
+          await tenantRef.update({
+            prepaidCredits: admin.firestore.FieldValue.increment(PILOT_TOPUP_AMOUNT),
+            lastPilotTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          await db.collection(USAGE_EVENTS_COLLECTION).add({
+            userId, tenantId, event_type: "pilot_auto_topup",
+            creditsAdded: PILOT_TOPUP_AMOUNT, triggerBalance: currentBalance,
+            reason: "insufficient_balance_at_call", connectorId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`[pilotMode] Auto-topped tenant ${tenantId} +${PILOT_TOPUP_AMOUNT} credits (was ${currentBalance})`);
+        } else {
+          return {
+            allowed: false,
+            error: "INSUFFICIENT_CREDITS",
+            source: "tenant",
+            message: "This workspace is out of Data Credits. Ask the workspace admin to top up.",
+            creditsRequired: creditCost,
+            creditsAvailable: currentBalance,
+          };
+        }
       }
       await tenantRef.update({
         prepaidCredits: admin.firestore.FieldValue.increment(-creditCost),
@@ -159,14 +180,29 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
     const currentBalance = userData.billing?.prepaidCredits ?? userData.prepaidCredits ?? 0;
 
     if (currentBalance < creditCost) {
-      return {
-        allowed: false,
-        error: "INSUFFICIENT_CREDITS",
-        source: "user",
-        message: "This action requires Data Credits. Top up your account to continue.",
-        creditsRequired: creditCost,
-        creditsAvailable: currentBalance,
-      };
+      if (PILOT_MODE) {
+        await userRef.update({
+          prepaidCredits: admin.firestore.FieldValue.increment(PILOT_TOPUP_AMOUNT),
+          "billing.prepaidCredits": admin.firestore.FieldValue.increment(PILOT_TOPUP_AMOUNT),
+          lastPilotTopUpAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection(USAGE_EVENTS_COLLECTION).add({
+          userId, event_type: "pilot_auto_topup",
+          creditsAdded: PILOT_TOPUP_AMOUNT, triggerBalance: currentBalance,
+          reason: "insufficient_balance_at_call", connectorId,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`[pilotMode] Auto-topped user ${userId} +${PILOT_TOPUP_AMOUNT} credits (was ${currentBalance})`);
+      } else {
+        return {
+          allowed: false,
+          error: "INSUFFICIENT_CREDITS",
+          source: "user",
+          message: "This action requires Data Credits. Top up your account to continue.",
+          creditsRequired: creditCost,
+          creditsAvailable: currentBalance,
+        };
+      }
     }
 
     // Deduct credits — write to both new (root prepaidCredits) and legacy

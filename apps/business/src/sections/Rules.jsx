@@ -335,15 +335,6 @@ const RULES_CONFIGS = {
           { key: "scoreLeads", label: "Score and prioritize leads" },
         ],
       },
-      {
-        key: "controlCenter", title: "Control Center Pro (Spine)", accent: "#0891b2",
-        rows: [
-          { key: "generateBriefs", label: "Generate daily / weekly briefs" },
-          { key: "surfaceAlerts", label: "Surface priority alerts across workers" },
-          { key: "prioritizeWork", label: "Prioritize work across the day" },
-          { key: "crossWorkerHandoffs", label: "Coordinate handoffs between Spine workers" },
-        ],
-      },
       { key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication" },
     ],
     playbookCategories: [

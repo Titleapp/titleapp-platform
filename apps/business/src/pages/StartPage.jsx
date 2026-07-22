@@ -208,7 +208,6 @@ export default function StartPage() {
             <div style={S.pricingPrice}>$99</div>
             <div style={S.pricingPer}>per month — that's $3/day</div>
             <div style={S.pricingFeature}><CheckIcon /> Accounting, Marketing, HR, Contacts</div>
-            <div style={S.pricingFeature}><CheckIcon /> Control Center Pro</div>
             <div style={S.pricingFeature}><CheckIcon /> 15-20 workers included</div>
             <div style={S.pricingFeature}><CheckIcon /> Everything a small business needs</div>
           </div>

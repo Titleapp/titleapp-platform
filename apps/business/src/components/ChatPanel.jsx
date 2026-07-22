@@ -1832,8 +1832,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const friendly = data.message
           || (data.error === 'INSUFFICIENT_ROLE' ? "You don't have permission to send messages in this workspace. Ask the admin to upgrade your role."
               : data.error === 'INSUFFICIENT_CREDITS' ? (data.source === 'tenant'
-                  ? 'This workspace is out of Data Credits. Add $10 to get 500 credits — covers ~100 property lookups or NOTAM checks. [Add credits →](/billing)'
-                  : 'You\'ve used your free data allowance. Add $10 to get 500 credits and keep going. [Add credits →](/billing)')
+                  ? 'Your workspace credits ran low — we\'re topping you up automatically. Try your message again in a moment.'
+                  : 'Your credits ran low — we\'re topping you up automatically. Try your message again in a moment.')
               : `Could not send: ${data.error}`);
         setMessages(prev => [...prev, {
           role: 'assistant',

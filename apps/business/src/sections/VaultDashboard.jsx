@@ -59,7 +59,6 @@ export default function VaultDashboard() {
     "platform-accounting": "Accounting",
     "platform-hr": "HR & People",
     "platform-marketing": "Marketing & Content",
-    "platform-control-center-pro": "Control Center Pro",
     "platform-contacts": "Contacts",
   };
   const myWorkers = workers.filter(w => {

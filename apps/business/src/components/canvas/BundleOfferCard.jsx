@@ -10,13 +10,6 @@ const BUNDLE_CONFIGS = {
     accentColor: "#7c3aed",
     workers: [
       {
-        slug: "platform-control-center-pro",
-        name: "Control Center",
-        icon: "◆",
-        accent: "#7c3aed",
-        description: "Runs your daily brief, surfaces priorities, routes work across every worker.",
-      },
-      {
         slug: "platform-accounting",
         name: "Accounting Pro",
         icon: "📊",

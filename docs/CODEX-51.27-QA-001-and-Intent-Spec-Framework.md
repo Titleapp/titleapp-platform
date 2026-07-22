@@ -130,6 +130,7 @@ intent: {
   canvasNarrative: {
     <tabId>: {
       role:              "One-sentence description of this tab's role in the chat experience",
+      description:       "User-facing tab blurb shown as a dismissible BLUE box at the top of the tab. 1-2 sentences. Explains what this tab shows and what the user can do from here. REQUIRED — QA-001 Family 2 fails if absent or blank.",
       supportsChatAbout: ["topics the user might be discussing when this tab is the right visual"],
       whatUserFeels:     "Emotional reaction when they see this tab in context",
       missingWithoutIt:  "What the chat experience LOSES if this tab is absent"
@@ -241,54 +242,63 @@ Concrete instance of the schema for `platform-hr` (PLAT-005). Demonstrates that 
     "canvasNarrative": {
       "people": {
         "role": "Picture-in-picture of the team while we talk staffing or coverage. Roster always-visible.",
+        "description": "Your full team roster — humans and Digital Workers — with roles and status. Ask Alex to add a new person or pull up anyone's profile.",
         "supportsChatAbout": ["who's on the team", "hiring status", "advisor pipeline", "digital workers in production"],
         "whatUserFeels": "Confidence — I can see everyone at once and nobody is hidden.",
         "missingWithoutIt": "Chat answers become walls of text listing names; user loses ambient awareness."
       },
       "onboarding": {
         "role": "Live pipeline of in-flight invitations across all people types. The 'what's cooking' view.",
+        "description": "In-flight onboardings and their current step. Ask Alex to draft the next onboarding task or send a welcome message.",
         "supportsChatAbout": ["who's onboarding right now", "what's blocked", "what closes this week"],
         "whatUserFeels": "Calm — I know exactly where every invite is and what it's waiting on.",
         "missingWithoutIt": "Founder forgets about invites between meetings; loses candidates to slow follow-up."
       },
       "schedule": {
         "role": "Real-time coverage view — who's on, who's PTO, digital workers always-on.",
+        "description": "Today's coverage: who's on shift, who's out, and which Digital Workers are running 24×7.",
         "supportsChatAbout": ["who's working now", "coverage gaps", "PTO conflicts", "on-call rotations"],
         "whatUserFeels": "Operational clarity — I know we're covered before I leave for vacation.",
         "missingWithoutIt": "User can't trust answers about coverage; falls back to texting humans."
       },
       "compliance": {
         "role": "Open-obligation surface. Threats translated into actions with deadlines.",
+        "description": "Open HR compliance obligations, hard-stops, and upcoming deadlines. Ask Alex to explain any item or draft a resolution.",
         "supportsChatAbout": ["what's overdue", "what triggered this obligation", "how do I close it"],
         "whatUserFeels": "Resolution-oriented anxiety — I see the threat AND the action that kills it.",
         "missingWithoutIt": "Worker becomes a generic compliance chatbot; user ignores threats they don't trust."
       },
       "documents": {
         "role": "Agreement + signed-packet archive scoped to people-management documents.",
+        "description": "Agreements, signed packets, and expiring credentials. Ask Alex to send a signature request or pull any document.",
         "supportsChatAbout": ["pull up advisor X's signed agreement", "what's pending signature"],
         "whatUserFeels": "Audit-ready — everything is here, dated, attributable.",
         "missingWithoutIt": "User searches Drive / Gmail for documents; trust erodes."
       },
       "notices": {
         "role": "Audit log of HR-originated outbound communications (welcome emails, anniversary reminders, compliance digests).",
+        "description": "Recent and queued outbound HR communications — reminders, compliance notices, and onboarding messages.",
         "supportsChatAbout": ["what went out", "to whom", "when"],
         "whatUserFeels": "Visible accountability — I see exactly what my HR worker sent on my behalf.",
         "missingWithoutIt": "User suspects worker is going rogue with emails; trust collapse."
       },
       "my-onboarding": {
         "role": "Member-view: where YOU are in your own onboarding. Status visible at a glance.",
+        "description": "Your personal onboarding status — what's complete and what's waiting on you.",
         "supportsChatAbout": ["what's left for me to do", "what's the next step"],
         "whatUserFeels": "Agency — I see what I need to do and how close I am to done.",
         "missingWithoutIt": "Invitee asks the inviter for status; defeats the point of self-serve onboarding."
       },
       "my-documents": {
         "role": "Member-view: YOUR signed agreements + HR documents, downloadable.",
+        "description": "Your signed HR documents and anything pending your signature.",
         "supportsChatAbout": ["pull up my advisor agreement", "what did I sign"],
         "whatUserFeels": "Ownership — these are mine, I can access them anytime.",
         "missingWithoutIt": "Invitee emails inviter to ask for a copy of what they already signed."
       },
       "my-schedule": {
         "role": "Member-view: YOUR shifts, PTO balance, time-off requests.",
+        "description": "Your PTO balance, sick time, and upcoming time off.",
         "supportsChatAbout": ["how much PTO do I have", "request time off"],
         "whatUserFeels": "In control of my own time.",
         "missingWithoutIt": "Employees can't self-serve; manager fields PTO questions all week."
@@ -350,7 +360,8 @@ QA-001 runs five distinct test families against a target worker. Each family pro
   - Capture `console.log` / `console.error`
   - Screenshot
   - Assert: tab content rendered (DOM selector present), no console errors
-- PASS if all tabs render. FAIL with specific tab + console excerpt.
+  - Assert: tab has a non-empty `description` field (rendered as a BLUE blurb above tab content). FAIL if missing. Every tab must explain itself to a first-time visitor — "the user knows what the tabs are, no one else does."
+- PASS if all tabs render with descriptions. FAIL with specific tab + console excerpt.
 
 #### Family 3 — Endpoint smoke
 

@@ -20,11 +20,10 @@ const PERSONAL_VAULT = {
   chiefOfStaff: null,
 };
 
-// The 5 spine workers every OWNED business workspace gets (the owner's toolkit).
+// The 4 spine workers every OWNED business workspace gets (the owner's toolkit).
 // Members/customers do NOT get these — that's the "every nursing student gets the
 // department Accounting worker" lock.
-// Control Center Pro killed 2026-06-24 (Sean) — Alex runs the show + makes charts
-// in canvas on demand. Spine is now 4 + Alex.
+// Alex (chief-of-staff) is the 5th spine slot — runs the show + makes charts on demand.
 const SPINE_WORKERS = ['platform-accounting', 'platform-contacts', 'platform-hr', 'platform-marketing'];
 const slugOf = (d) => d.data().workerId || d.data().workerSlug || d.data().slug;
 const isPersonalSpace = (ws) => ws.type === 'personal' || ws.id === 'vault';

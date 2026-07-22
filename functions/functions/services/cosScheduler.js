@@ -794,7 +794,7 @@ async function runCosWorkers(runType) {
         ? `Good morning — here is your day`
         : `End of day — here is what happened`;
 
-      // ── Delivery channel routing (44.1 — Control Center Pro) ──
+      // ── Delivery channel routing ──
       let userProfile = {};
       try {
         const userSnap = await db.doc(`users/${sub.userId}`).get();

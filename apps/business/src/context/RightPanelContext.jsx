@@ -1,13 +1,48 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { useWorkerState } from "./WorkerStateContext.jsx";
+
+// Maps workspace.vertical values (stored in Firestore / localStorage) to leaderboard vertical keys.
+// Keeps the RightPanel in sync when the user switches workspaces.
+const WS_VERTICAL_MAP = {
+  "real-estate": "real_estate_development",
+  "Real Estate": "real_estate_development",
+  "re_professional": "real_estate_development",
+  "real_estate_development": "real_estate_development",
+  "auto": "auto_dealer",
+  "auto_dealer": "auto_dealer",
+  "Auto Dealer": "auto_dealer",
+  "aviation": "aviation",
+  "Aviation": "aviation",
+  "healthcare": "healthcare",
+  "Healthcare": "healthcare",
+  "legal": "legal",
+  "Legal": "legal",
+  "government": "government",
+};
 
 const RightPanelContext = createContext(null);
 
 export function RightPanelProvider({ children, initialState, initialVertical, initialVerticalLabel }) {
   const wsc = useWorkerState();
   const [state, setState] = useState(initialState || "STATE-1");
-  const [vertical, setVertical] = useState(initialVertical || null);
-  const [verticalLabel, setVerticalLabel] = useState(initialVerticalLabel || null);
+
+  // Bootstrap vertical from URL param (initialVertical) or localStorage (workspace previously selected).
+  // This ensures the leaderboard shows relevant workers on page load, not the "all" global default.
+  const _bootstrapVertical = () => {
+    if (initialVertical) return initialVertical;
+    const stored = localStorage.getItem("VERTICAL");
+    return (stored && WS_VERTICAL_MAP[stored]) ? WS_VERTICAL_MAP[stored] : null;
+  };
+  const _bootstrapLabel = () => {
+    if (initialVerticalLabel) return initialVerticalLabel;
+    const stored = localStorage.getItem("VERTICAL");
+    if (!stored) return null;
+    const mapped = Object.entries(WS_VERTICAL_MAP).find(([k]) => k === stored);
+    return mapped ? null : null; // label will come from the leaderboard response; null is fine here
+  };
+
+  const [vertical, setVertical] = useState(() => _bootstrapVertical());
+  const [verticalLabel, setVerticalLabel] = useState(() => _bootstrapLabel());
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
   // _localWorkerData: fallback for the brief window before WorkerStateContext is populated.
@@ -21,6 +56,19 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   // Ref mirrors canvasData so dismissCanvas can pass the pre-clear value via
   // the ta:reland-canvas event even after React flushes state synchronously.
   const canvasDataRef = useRef(null);
+
+  // When the user switches workspaces, update the RightPanel vertical so the
+  // leaderboard shows workers relevant to the new workspace, not the "all" global default.
+  useEffect(() => {
+    function onWorkspaceChanged(e) {
+      const wsVertical = e.detail?.vertical;
+      if (!wsVertical) return;
+      const mapped = WS_VERTICAL_MAP[wsVertical];
+      if (mapped) setVertical(mapped);
+    }
+    window.addEventListener("ta:workspace-changed", onWorkspaceChanged);
+    return () => window.removeEventListener("ta:workspace-changed", onWorkspaceChanged);
+  }, []);
 
   const showRecommendations = useCallback((_workerList, _detectedVertical, _detectedLabel) => {
     // S52.45 — DISABLED ENTIRELY. The "<vertical> Workers" recommendation panel

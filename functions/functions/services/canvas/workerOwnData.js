@@ -4,7 +4,7 @@
  * workerOwnData.js — per-worker "YOUR OWN RECORDS" grounding block.
  *
  * The sibling-state snapshot (spineState.js) only models the 5 Spine workers
- * (accounting/marketing/hr/contacts/control-center) and only as KPI COUNTS.
+ * (accounting/marketing/hr/contacts) and only as KPI COUNTS.
  * That left two classes of chat failure:
  *
  *   1. Spine workers had counts but not detail — HR knew "1 credential overdue"

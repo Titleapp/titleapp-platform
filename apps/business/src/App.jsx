@@ -5107,6 +5107,9 @@ export default function App() {
   const isUHStudentDemo      = _dp === "/demo/uh/student" || _dp === "/demo/uh/student/";
   const isVetClientDemo      = _dp === "/demo/vet/client" || _dp === "/demo/vet/client/";
   const isRETenantDemo       = _dp === "/demo/re/tenant" || _dp === "/demo/re/tenant/";
+  const isAviationCoPilotDemo  = _dp === "/demo/av-copilot"  || _dp === "/demo/av-copilot/";
+  const isAviationMXDemo       = _dp === "/demo/av-mx"       || _dp === "/demo/av-mx/";
+  const isAviationDispatchDemo = _dp === "/demo/av-dispatch" || _dp === "/demo/av-dispatch/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
@@ -5560,10 +5563,23 @@ export default function App() {
     // this effect after sessionStorage items have been consumed)
     if (viewResolvedRef.current) return;
 
+    const currentUid = auth.currentUser?.uid;
+
     // Fast-path: returning user with existing workspace — skip API round-trip
+    const storedAuthUid = localStorage.getItem("AUTH_UID");
     const hasExistingTenant = localStorage.getItem("TENANT_ID");
     const hasSessionOverride = sessionStorage.getItem("ta_preselected_tid") || sessionStorage.getItem("ta_redirect_page") || sessionStorage.getItem("ta_discovered_context");
-    if (hasExistingTenant && !hasSessionOverride) {
+
+    // Guard against cross-user localStorage pollution. AUTH_UID is only written by the
+    // real auth resolution flow — REDemoSignIn never sets it — so if TENANT_ID is set
+    // but AUTH_UID is missing or belongs to a different user, wipe workspace keys and
+    // fall through to a fresh API lookup.
+    if (hasExistingTenant && currentUid && storedAuthUid !== currentUid) {
+      ["TENANT_ID", "WORKSPACE_ID", "WORKSPACE_NAME", "COMPANY_NAME", "TENANT_NAME",
+       "VERTICAL", "DISPLAY_NAME", "IS_CREATOR", "IS_DEMO", "AUTH_UID"].forEach(k => localStorage.removeItem(k));
+      // Fall through to resolveView below
+    } else if (hasExistingTenant && !hasSessionOverride) {
+      if (currentUid) localStorage.setItem("AUTH_UID", currentUid);
       viewResolvedRef.current = true;
       transitionTo("app");
       return;
@@ -5577,6 +5593,9 @@ export default function App() {
     }
 
     async function resolveView() {
+      // Stamp current user UID so the fast-path can detect cross-user pollution on
+      // the next visit. Must run before any localStorage workspace keys are written.
+      if (currentUid) localStorage.setItem("AUTH_UID", currentUid);
       try {
         const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -5942,6 +5961,10 @@ export default function App() {
   if (isDPPDemo) {
     const TraitlyDemoSignIn = React.lazy(() => import("./pages/TraitlyDemoSignIn"));
     return <React.Suspense fallback={null}><TraitlyDemoSignIn /></React.Suspense>;
+  }
+  if (isAviationCoPilotDemo || isAviationMXDemo || isAviationDispatchDemo) {
+    const AviationDemoSignIn = React.lazy(() => import("./pages/AviationDemoSignIn"));
+    return <React.Suspense fallback={null}><AviationDemoSignIn /></React.Suspense>;
   }
   if (isDemo) {
     const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));

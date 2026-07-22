@@ -49,14 +49,6 @@ const DEMO_WORKER_SAMPLES = {
       "Compliance Score": "92%",
     },
   },
-  "platform-control-center-pro": {
-    label: "Control Center Pro",
-    kpis: {
-      "Active Workers": 6,
-      "Customer Growth": "18%",
-      "Tasks Due": 7,
-    },
-  },
   "platform-contacts": {
     label: "Contacts",
     kpis: {
@@ -346,19 +338,6 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       };
     }
 
-    // ── Control Center Pro ── rollup. Reads workspace mode + active subs.
-    const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
-    const activeSubs = (subsSnap.docs || []).length;
-    live["platform-control-center-pro"] = {
-      label: "Control Center Pro",
-      kpis: {
-        "Workspace mode":       tenantData.mode || "operations",
-        "Workspace name":       tenantData.name || tenantId,
-        "Active subscriptions": activeSubs,
-        "Spine workers configured": Object.keys(live).length, // updated below after all sections added
-      },
-    };
-
     return Object.keys(live).length ? live : null;
   } catch (err) {
     console.warn("[spineState] tenant live snapshot failed:", err.message);
@@ -420,16 +399,6 @@ async function buildLiveSnapshot(db, uid) {
         },
       };
     }
-    if (spine.complianceFlags != null) {
-      live["platform-control-center-pro"] = {
-        label: "Control Center Pro",
-        kpis: {
-          "Compliance Flags": spine.complianceFlags,
-          "Active Workers": spine.activeWorkers,
-        },
-      };
-    }
-
     // If we only have stubs, fall back to demo so the prompt has something concrete.
     const totalKpis = Object.values(live).reduce((sum, w) => sum + Object.values(w.kpis || {}).filter(v => v != null).length, 0);
     if (totalKpis < 3) return null;
@@ -478,6 +447,48 @@ function renderOwnState(snapshot, currentSlug) {
   return lines.join("\n") + "\n";
 }
 
+// Aviation sibling demo data — mirrors the av-copilot-001 / av-mx-001 / av-dispatch-001
+// canvas specs in aviationCanvasData.js. Injected when the active worker is any
+// av-* slug; spine workers are excluded from this set.
+const AVIATION_DEMO_SAMPLES = {
+  "av-copilot-001": {
+    label: "CoPilot",
+    kpis: {
+      "Pilot": "Alex Rivera ATP",
+      "Medical": "Class 1 · current · Dec 2026",
+      "BFR/IPC": "Current · Feb 2026",
+      "Type recurrent": "Due Oct 2026 · YELLOW",
+      "Next trip": "KTEB → KPBI · Jul 21 · 4 pax",
+      "FRAT score": "8 / 50 Low Risk",
+      "Total logbook time": "4,316.4 hrs",
+    },
+  },
+  "av-mx-001": {
+    label: "Aircraft Record",
+    kpis: {
+      "Aircraft": "N662FW · PC-12/47E · S/N 1847",
+      "Airworthiness status": "AIRWORTHY",
+      "Open MEL items": "1 (Cat C — gear door light, no dispatch restriction)",
+      "Airframe time": "1,847 hrs",
+      "Engine time (SMOH)": "1,847 / 3,600 hrs",
+      "Next 100-hr due": "1,900 hrs (53 hrs remaining)",
+      "Annual due": "Dec 15 2026",
+    },
+  },
+  "av-dispatch-001": {
+    label: "Trip Release",
+    kpis: {
+      "Last trip": "PA26-0721 · KTEB–KPBI–KTEB · Jul 21 2026",
+      "Block time": "4.0 hrs",
+      "FRAT": "8 / 50 Low Risk",
+      "Billing": "$7,627.70 pending",
+      "Release status": "All items verified · Dispatched",
+    },
+  },
+};
+
+const AVIATION_SLUGS = new Set(["av-copilot-001", "av-mx-001", "av-dispatch-001"]);
+
 /**
  * Build the SIBLING WORKER STATE prompt block. Returns "" if no usable state.
  *
@@ -488,6 +499,23 @@ function renderOwnState(snapshot, currentSlug) {
  * @param {boolean} args.demoMode - whether canvas demo mode is on
  */
 async function buildSiblingStatePrompt({ db, uid, currentSlug, demoMode, tenantId }) {
+  // Aviation workers get their own cross-worker sibling set (CoPilot ↔ MX ↔ Dispatch).
+  // They do not receive spine worker (accounting/marketing/HR/contacts) sibling state,
+  // and spine workers do not receive aviation state — the domains don't overlap.
+  if (AVIATION_SLUGS.has(currentSlug)) {
+    const body = renderSnapshot(AVIATION_DEMO_SAMPLES, currentSlug);
+    if (!body) return "";
+    return `SIBLING WORKER STATE (DEMO — aviation suite):
+${body}
+
+Cross-worker attribution rules:
+- Cite the source worker by name when referencing these numbers (e.g. "Your Aircraft Record shows N662FW is airworthy with one Cat C MEL").
+- Do NOT invent figures not in the snapshot. If a specific detail is missing, say "Let me check with the [Worker] — they own that one."
+- Treat these as current readings from the sibling aviation worker.
+
+`;
+  }
+
   let snapshot = null;
   let label = "DEMO";
   if (!demoMode) {
@@ -503,7 +531,7 @@ async function buildSiblingStatePrompt({ db, uid, currentSlug, demoMode, tenantI
     // No tenant data yet, no briefings, not in demo mode — say so plainly.
     // The worker should ask the user instead of inventing numbers.
     return `SIBLING WORKER STATE: empty — no cross-worker data on file for this workspace yet.
-Do not quote numbers for sibling workers. If the user asks about Accounting, Marketing, HR, Contacts, or Control Center metrics, say you don't have a current reading and ask them what they want to look at first.
+Do not quote numbers for sibling workers. If the user asks about Accounting, Marketing, HR, or Contacts metrics, say you don't have a current reading and ask them what they want to look at first.
 
 `;
   }

@@ -180,7 +180,7 @@ const PRESS_RELEASE_BODIES = {
       </p>
       <h2>About SOCIII</h2>
       <p>
-        SOCIII is the Digital Workers platform. Domain experts package their expertise into AI workers that operate under SOCIII's audit-anchored governance substrate. Customers subscribe to discrete workers — a Paralegal worker, a Patent worker, a CRE Deal Analyst, a Mission Builder — at flat per-worker pricing. The free SOCIII spine includes Alex (Chief of Staff), Accounting, HR, Marketing, Contacts, Control Center, and the customer's Vault and Drive.
+        SOCIII is the Digital Workers platform. Domain experts package their expertise into AI workers that operate under SOCIII's audit-anchored governance substrate. Customers subscribe to discrete workers — a Paralegal worker, a Patent worker, a CRE Deal Analyst, a Mission Builder — at flat per-worker pricing. The free SOCIII spine includes Alex (Chief of Staff), Accounting, HR, Marketing, Contacts, and the customer's Vault and Drive.
       </p>
       <p>
         Contact: press@sociii.ai
@@ -204,7 +204,7 @@ const PRESS_RELEASE_BODIES = {
         SOCIII operates a marketplace of Digital Workers — AI agents authored by domain experts in their fields, running on SOCIII's substrate. The substrate includes a five-tier composable rule architecture (RAAS), an identity-anchored audit chain, a creator SDK, and a billing layer that pays creators 75% revenue share on subscriptions.
       </p>
       <p>
-        The platform's free spine — Alex, Accounting, HR, Marketing, Contacts, Control Center, Vault, Drive — works for households and small businesses without subscription. Specialist workers built by domain experts are priced as discrete products at $29, $49, or $79 per month each. A Business in a Box bundle at $99/month is available for established businesses that prefer a curated stack.
+        The platform's free spine — Alex, Accounting, HR, Marketing, Contacts, Vault, Drive — works for households and small businesses without subscription. Specialist workers built by domain experts are priced as discrete products at $29, $49, or $79 per month each. A Business in a Box bundle at $99/month is available for established businesses that prefer a curated stack.
       </p>
       <h2>Leadership</h2>
       <p>
@@ -807,7 +807,7 @@ const ARTICLE_BODIES = {
         That's how SOCIII works. Each specialist worker is a discrete product at a flat price. Add Paralegal for $49 a month. Add Patent Worker for $79. Add Mission Builder for $79. Cancel any one of them from chat without affecting the others. There's no minimum. There's no per-seat trap. Subscribe to one worker, or twelve. Your call.
       </p>
       <p>
-        The free spine — Alex, Accounting, HR, Marketing, Contacts, Control Center, your Vault, and your Drive — is genuinely free. Not free-for-30-days. Not free-for-the-first-2-users. Free forever, for a household and for a small business. We make money on heavy data usage and on specialist worker subscriptions, not on lock-in to a bundle you didn't want.
+        The free spine — Alex, Accounting, HR, Marketing, Contacts, your Vault, and your Drive — is genuinely free. Not free-for-30-days. Not free-for-the-first-2-users. Free forever, for a household and for a small business. We make money on heavy data usage and on specialist worker subscriptions, not on lock-in to a bundle you didn't want.
       </p>
       <h2>Why this works financially</h2>
       <p>
@@ -1125,7 +1125,7 @@ const ALEX_INTERVIEW = [
     q: "Just tell me what SOCIII is — in plain language.",
     a: (<>
       <p>We're a marketplace of digital workers. A digital worker is a packaged AI assistant that helps a professional do one specific job — the paralegal's drafting assistant, the dispatcher's planning assistant, the accountant's reconciliation assistant, the ER nurse's clinical assistant. Each one is built by a person who actually does that job. They get paid a revenue share every time their assistant gets used. Customers subscribe to the assistants they need at flat per-worker prices.</p>
-      <p>The spine — Alex (that's me), Accounting, HR, Marketing, Contacts, Control Center, plus everyone's Vault and Drive — is free. Forever. The way we make money is the platform-level substrate that makes all of this trustworthy: audit ledger, compliance fabric, identity verification, billing. That's the part nobody can easily replicate.</p>
+      <p>The spine — Alex (that's me), Accounting, HR, Marketing, Contacts, plus everyone's Vault and Drive — is free. Forever. The way we make money is the platform-level substrate that makes all of this trustworthy: audit ledger, compliance fabric, identity verification, billing. That's the part nobody can easily replicate.</p>
       <p>The short version: experts build, customers subscribe, the platform earns by being the substrate. Everyone aligned.</p>
     </>),
   },

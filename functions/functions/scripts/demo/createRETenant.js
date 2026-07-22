@@ -13,7 +13,6 @@ const RE_DEMO_UID = process.env.RE_DEMO_UID || "";
 if (!RE_DEMO_UID) throw new Error("Set RE_DEMO_UID env var to the UID printed by createREDemoUser.js");
 
 const RE_WORKERS = [
-  "platform-control-center-pro",
   "platform-accounting",
   "platform-hr",
   "platform-marketing",

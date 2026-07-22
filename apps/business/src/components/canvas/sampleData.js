@@ -221,14 +221,6 @@ export const WORKER_SAMPLES = {
       "compliance-score": 92,
     },
   },
-  "platform-control-center-pro": {
-    kpis: {
-      "revenue": 47500,
-      "active-workers": 6,
-      "customer-growth": 18,
-      "tasks-due": 7,
-    },
-  },
   "platform-contacts": {
     kpis: {
       "total-contacts": 312,
@@ -265,7 +257,6 @@ const SUPPRESS_DEMO_SLUGS = new Set([
   "platform-marketing",
   "platform-hr",
   "platform-contacts",
-  "platform-control-center-pro",
 ]);
 
 /**
@@ -656,35 +647,6 @@ const SPINE_FIXTURES = {
       ],
     },
   },
-  "platform-control-center-pro": {
-    "revenue": {
-      title: "Revenue dashboard",
-      subtitle: "Sample period · current month",
-      fields: [
-        { label: "Revenue (MTD)",   value: "$47,500" },
-        { label: "MRR",             value: "$38,200" },
-        { label: "New customers",   value: "12" },
-        { label: "Churn",           value: "1.4%" },
-      ],
-    },
-    "mrr": {
-      title: "Monthly recurring revenue",
-      summary: "MRR up 18% over the last quarter. New customer growth balanced against modest churn.",
-      sections: [
-        { heading: "MRR breakdown", body: "New MRR · +$4,200\nExpansion MRR · +$1,100\nChurned MRR · -$540\nNet new · +$4,760" },
-      ],
-    },
-    "subscribers": {
-      title: "Subscribers",
-      fields: [
-        { label: "Active",          value: "187" },
-        { label: "New (MTD)",       value: "12" },
-        { label: "Cancelled (MTD)", value: "3" },
-        { label: "Net growth",      value: "+9" },
-      ],
-    },
-  },
-
   // ──────────────────────────────────────────────────────────────
   // SITE-RECON-001 — Sean's first creator worker (S52.29)
   // Oakland Market Street parcel walkthrough across the 3 canvas

@@ -329,7 +329,7 @@ function chainBadge(dtc) {
   );
 }
 
-const HEALTH_TYPES = new Set(["medical_record", "medical_certificate", "immunization", "lab_result", "prescription", "health_visit", "allergy"]);
+const HEALTH_TYPES = new Set(["medical_record", "medical_certificate", "immunization", "lab_result", "prescription", "health_visit", "allergy", "pet_health"]);
 const MONEY_TYPES = new Set(["bank_account", "investment_account", "retirement_account", "crypto_account", "liability"]);
 const EDUCATION_TYPES = new Set(["education_record", "degree", "training_record", "course"]);
 
@@ -400,6 +400,14 @@ function metadataPreview(dtc) {
     if (m.credentialName) lines.push(m.credentialName);
     if (m.issuer) lines.push(`Issuer: ${m.issuer}`);
     if (m.expirationDate) lines.push(`Expires: ${m.expirationDate}`);
+  } else if (dtc.type === "lease") {
+    if (m.address) lines.push(m.address);
+    if (m.monthlyRent) lines.push(`Rent: $${Number(m.monthlyRent).toLocaleString()}/mo`);
+    if (m.leaseEnd) lines.push(`Expires: ${m.leaseEnd}`);
+  } else if (dtc.type === "pet_health") {
+    if (m.name && m.breed) lines.push(`${m.name} — ${m.breed}`);
+    if (m.weight) lines.push(`Weight: ${m.weight}`);
+    if (m.vet) lines.push(m.vet);
   } else if (HEALTH_TYPES.has(dtc.type)) {
     if (dtc.type === "medical_certificate") {
       if (m.class) lines.push(m.class);
@@ -717,75 +725,102 @@ export default function VaultDTCs({ onLockVault }) {
 
       {selectedDtc && <LogbookModal dtc={selectedDtc} onClose={() => setSelectedDtc(null)} />}
 
-      {!loading && !error && activeClass !== "Dashboard" && filtered.length > 0 && (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: 16,
-        }}>
-          {filtered.map((dtc) => {
-            const lines = metadataPreview(dtc);
-            // Per-class accent color + icon (Trump Rule: scannable at a glance)
-            const ACCENTS = {
-              "Real Property":   { color: "#7c3aed", icon: "🏠" },
-              "Vehicles":        { color: "#2563eb", icon: "🚗" },
-              "Personal Assets": { color: "#0891b2", icon: "💎" },
-              "Health":          { color: "#dc2626", icon: "❤️" },
-              "Education":       { color: "#7c3aed", icon: "🎓" },
-              "Money":           { color: "#059669", icon: "💳" },
-              "Credentials":     { color: "#d97706", icon: "🏅" },
-            };
-            const acc = ACCENTS[dtc.assetClass] || { color: "#7c3aed", icon: "📄" };
-            const val = dtcValue(dtc);
-            return (
-              <div
-                key={dtc.id}
-                onClick={() => setSelectedDtc(dtc)}
-                style={{
-                  background: "#fff", borderRadius: 12,
-                  border: "1px solid #f1f5f9",
-                  borderTop: `3px solid ${acc.color}`,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  padding: "16px 20px 20px", display: "flex", flexDirection: "column",
-                  cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>{acc.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: acc.color, letterSpacing: 0.5, textTransform: "uppercase" }}>{dtc.assetClass}</span>
-                  </div>
-                  {chainBadge(dtc)}
+      {!loading && !error && activeClass !== "Dashboard" && filtered.length > 0 && (() => {
+        const ACCENTS = {
+          "Real Property":   { color: "#7c3aed", icon: "🏠" },
+          "Vehicles":        { color: "#2563eb", icon: "🚗" },
+          "Personal Assets": { color: "#0891b2", icon: "💎" },
+          "Health":          { color: "#dc2626", icon: "❤️" },
+          "Education":       { color: "#7c3aed", icon: "🎓" },
+          "Money":           { color: "#059669", icon: "💳" },
+          "Credentials":     { color: "#d97706", icon: "🏅" },
+        };
+
+        const DtcCard = ({ dtc }) => {
+          const lines = metadataPreview(dtc);
+          const acc = ACCENTS[dtc.assetClass] || { color: "#7c3aed", icon: "📄" };
+          const val = dtcValue(dtc);
+          return (
+            <div
+              key={dtc.id}
+              onClick={() => setSelectedDtc(dtc)}
+              style={{
+                background: "#fff", borderRadius: 12,
+                border: "1px solid #f1f5f9",
+                borderTop: `3px solid ${acc.color}`,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                padding: "16px 20px 20px", display: "flex", flexDirection: "column",
+                cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>{acc.icon}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: acc.color, letterSpacing: 0.5, textTransform: "uppercase" }}>{dtc.assetClass}</span>
                 </div>
-
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: val != null ? 6 : 8 }}>
-                  {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
-                </div>
-
-                {val != null && (
-                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 8,
-                    color: val < 0 ? "#dc2626" : acc.color }}>
-                    {fmtUsd(val)}
-                  </div>
-                )}
-
-                {lines.length > 0 && (
-                  <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5, marginBottom: 12 }}>
-                    {lines.map((l, i) => <div key={i}>{l}</div>)}
-                  </div>
-                )}
-
-                <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#94a3b8" }}>
-                  <span>{dtc.logbookCount || 0} logbook {dtc.logbookCount === 1 ? "entry" : "entries"}</span>
-                  <code style={{ fontSize: 10 }}>{(dtc.id || "").slice(0, 8)}</code>
-                </div>
+                {chainBadge(dtc)}
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: val != null ? 6 : 8 }}>
+                {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
+              </div>
+              {val != null && (
+                <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 8, color: val < 0 ? "#dc2626" : acc.color }}>
+                  {fmtUsd(val)}
+                </div>
+              )}
+              {lines.length > 0 && (
+                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5, marginBottom: 12 }}>
+                  {lines.map((l, i) => <div key={i}>{l}</div>)}
+                </div>
+              )}
+              <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#94a3b8" }}>
+                <span>{dtc.logbookCount || 0} logbook {dtc.logbookCount === 1 ? "entry" : "entries"}</span>
+                <code style={{ fontSize: 10 }}>{(dtc.id || "").slice(0, 8)}</code>
+              </div>
+            </div>
+          );
+        };
+
+        const GRID = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 };
+
+        // Health tab: split person records vs dependents (pets, family members)
+        if (activeClass === "Health") {
+          const mine = filtered.filter(d => d.type !== "pet_health");
+          const dependents = filtered.filter(d => d.type === "pet_health");
+          const petName = dependents[0]?.metadata?.name || "Pet";
+
+          return (
+            <div>
+              {mine.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
+                    My Records
+                  </div>
+                  <div style={GRID}>{mine.map(dtc => <DtcCard key={dtc.id} dtc={dtc} />)}</div>
+                </div>
+              )}
+              {dependents.length > 0 && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      Dependents
+                    </div>
+                    <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>· {petName} 🐾</span>
+                  </div>
+                  <div style={GRID}>{dependents.map(dtc => <DtcCard key={dtc.id} dtc={dtc} />)}</div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // All other classes: flat grid
+        return (
+          <div style={GRID}>{filtered.map(dtc => <DtcCard key={dtc.id} dtc={dtc} />)}</div>
+        );
+      })()}
     </div>
   );
 }

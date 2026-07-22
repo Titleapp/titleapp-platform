@@ -37,18 +37,24 @@ export default function REDemoSignIn() {
         clearTimeout(watchdog);
 
         localStorage.setItem("ID_TOKEN", idToken);
-        if (data.tenantId) localStorage.setItem("TENANT_ID", data.tenantId);
+        if (data.tenantId) {
+          localStorage.setItem("TENANT_ID", data.tenantId);
+          localStorage.setItem("WORKSPACE_ID", data.tenantId);
+        }
+        if (data.workspaceName) {
+          localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
+          localStorage.setItem("COMPANY_NAME", data.workspaceName);
+          localStorage.setItem("TENANT_NAME", data.workspaceName);
+        }
+        if (data.vertical) localStorage.setItem("VERTICAL", data.vertical);
+        if (data.personaName) localStorage.setItem("DISPLAY_NAME", data.personaName);
+        localStorage.removeItem("USER_EMAIL");
         localStorage.setItem("IS_CREATOR", "true");
 
         const now = Date.now();
 
         // Spine workers — exact keys from WORKER_CHECKLISTS in WorkerCanvas.jsx
         const spineChecklists = {
-          "ta_checklist_platform-control-center-pro": {
-            "email-connection": now, "communication-preferences": now,
-            "key-metrics": now, "revenue-tracking": now,
-            "acquisition-goals": now, "external-feeds": now,
-          },
           "ta_checklist_platform-accounting": {
             "bank-statements": now, "accounting-software": now,
             "tax-returns": now, "expense-rules": now, "vendor-lists": now,

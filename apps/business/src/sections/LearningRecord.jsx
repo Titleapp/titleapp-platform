@@ -542,7 +542,7 @@ const TABS = [
 export default function LearningRecord() {
   const [tab, setTab] = useState("institutions");
   const [notice, setNotice] = useState(null);
-  const [record, setRecord] = useState(RECORD);
+  const [record, setRecord] = useState(null);
   const [isSample, setIsSample] = useState(true);
 
   useEffect(() => {
@@ -576,6 +576,24 @@ export default function LearningRecord() {
   }, []);
 
   const flash = (m) => { setNotice(m); setTimeout(() => setNotice(null), 2800); };
+
+  if (!record) {
+    return (
+      <div style={{ padding: "32px 16px", maxWidth: 620 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>Academic Record</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>A record you own and carry — append-only, attested, portable across schools, certifications, and into work.</div>
+        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 14, padding: "28px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🎓</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>No academic record yet</div>
+          <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            Your record populates here when you use the Student Record or Continuing Education worker.
+            Every verified credential and course completion is appended — owned by you, portable across institutions.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const entries = allEntries(record);
   const verified = entries.filter((e) => e.v === "verified");
   const pending = entries.filter((e) => e.v === "pending");

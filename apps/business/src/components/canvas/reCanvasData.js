@@ -38,7 +38,7 @@ export const RE_CANVAS = {
     disclaimer: "General information — not certified for closing",
     cas: { RED: 0, YELLOW: 2, BLUE: 1, WHITE: 3, GREEN: 5 },
     tabs: [
-      { id: "ownership-chain", label: "Ownership chain", blocks: [
+      { id: "ownership-chain", label: "Ownership chain", description: "The documented chain of every recorded ownership transfer — who conveyed to whom, at what price, and whether any gaps or red flags appear.", blocks: [
         { type: "map", address: "9708 US Highway 191, Pinedale, WY 82941", mapType: "satellite" },
         { type: "streetview", address: "9708 US Highway 191, Pinedale, WY 82941", label: "9708 US Highway 191, Pinedale WY" },
         { type: "heroes", items: [
@@ -60,7 +60,7 @@ export const RE_CANVAS = {
           { band: "YELLOW", parties: "First WY Land Co. ← Federal patent", meta: "Patent deed · 1978 · SURFACE RIGHTS ONLY — minerals severed · Rec. 1978-00441", tag: "Minerals severed" },
         ] },
       ] },
-      { id: "encumbrances", label: "Encumbrances", blocks: [
+      { id: "encumbrances", label: "Encumbrances", description: "Every financial claim on this title: liens, easements, and deed restrictions. A clear lien stack is required for clean closing — anything open is flagged with a recommended action.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "Lien stack", detail: "Clear — $0 total" },
           { band: "YELLOW", title: "Open easements", detail: "2 — review before close" },
@@ -79,7 +79,7 @@ export const RE_CANVAS = {
           { band: "YELLOW", label: "Review", title: "Easement #2 — Road access", detail: "Recorded Jan 15 2003 · Book 601 Pg 44 · ingress/egress to APN 01-00-10381 · confirm scope + width", action: "Pull recorded doc" },
         ] },
       ] },
-      { id: "recorded-docs", label: "Recorded docs", blocks: [
+      { id: "recorded-docs", label: "Recorded docs", description: "The full archive of recorded instruments filed with the county clerk — deeds, easements, and other documents. Every row links to the underlying recorded document.", blocks: [
         { type: "table", title: "Recorded document archive — 7 instruments · Sublette County Clerk",
           columns: ["Instrument", "Grantor → Grantee", "Recording", "Date", "Status"],
           rows: [
@@ -92,7 +92,7 @@ export const RE_CANVAS = {
             { band: "WHITE", cells: ["Federal patent", "BLM → First WY Land Co. (surface only)", "1978-00441", "1978-01-01", "Minerals severed"] },
           ] },
       ] },
-      { id: "rights-stack", label: "Rights stack", blocks: [
+      { id: "rights-stack", label: "Rights stack", description: "What you actually own — every legal stratum from airspace to minerals. Rights can be severed; the stack shows what transferred with the deed and what didn't.", blocks: [
         { type: "prose", items: [
           { band: "WHITE", title: "Wyoming · prior-appropriation state", body: "Every stratum from above the land to below it. Stratum bands are earth-tone by elevation; the CAS color is on the status badge (green = held, red = severed)." },
         ] },
@@ -107,7 +107,7 @@ export const RE_CANVAS = {
           { elev: "below", name: "Digital rights (fiber/subsurface)", badge: "Not detected", band: "BLUE", detail: "No subsurface fiber easement on record" },
         ] },
       ] },
-      { id: "plain-english", label: "Plain English", blocks: [
+      { id: "plain-english", label: "Plain English", description: "The title picture in plain language — what's clean, what needs review, and what's been severed from the parcel. No legal jargon.", blocks: [
         { type: "prose", hero: { band: "GREEN", label: "Clean · Marketable", headline: "This title is clean. The chain goes back to 1978 with no gaps.", sub: "Two easements to review. No liens. Mineral rights were severed in 1978 — you'd be buying surface only." }, items: [
           { band: "GREEN", title: "Who owns it — confirmed", body: "The Rosenberg Family Trust is the current owner of record; the chain is verified through five transfers back to a 1978 federal patent. No gaps, no breaks — marketable." },
           { band: "YELLOW", title: "What's attached — two easements", body: "A 1987 utility easement and a 2003 road easement both run with the land. Pull the recorded docs before close." },
@@ -124,7 +124,7 @@ export const RE_CANVAS = {
     disclaimer: "General info only — not legal advice",
     cas: { RED: 1, YELLOW: 3, BLUE: 2, WHITE: 1, GREEN: 4 },
     tabs: [
-      { id: "entitlement-roadmap", label: "Entitlement Roadmap", blocks: [
+      { id: "entitlement-roadmap", label: "Entitlement Roadmap", description: "Every approval step this project must clear before a building permit issues — in sequence, with kill points and timelines drawn from comparable case history.", blocks: [
         { type: "map", address: "Front Street, Lahaina, HI 96761", mapType: "satellite" },
         { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "Coastal parcel · Lahaina HI 96761 (illustrative)" },
         { type: "heroes", items: [
@@ -155,7 +155,7 @@ export const RE_CANVAS = {
           { band: "WHITE", title: "Assessor data 4 months old", detail: "Within freshness threshold." },
         ] },
       ] },
-      { id: "citations", label: "Citations", blocks: [
+      { id: "citations", label: "Citations", description: "Every legal authority cited in this analysis — statute sections, county codes, and case law — each pinned to a specific version and hash so nothing drifts.", blocks: [
         { type: "kpis", items: [
           { label: "Verified", value: "3", band: "GREEN" },
           { label: "Unverified", value: "1", band: "YELLOW" },
@@ -169,7 +169,7 @@ export const RE_CANVAS = {
           { band: "BLUE", label: "Unverified", title: "HOA CC&Rs — governing documents", detail: "HOA confirmed from title; CC&Rs not publicly indexed. source: user_supplied · verified: false", action: "Upload CC&Rs to complete" },
         ] },
       ] },
-      { id: "comparable-cases", label: "Comparable cases", blocks: [
+      { id: "comparable-cases", label: "Comparable cases", description: "Real prior decisions for similar projects before the same planning authority — approval rate, denial reasons, and timelines so you know what you're actually facing.", blocks: [
         { type: "kpis", items: [
           { label: "Approved", value: "11 / 14", band: "GREEN" },
           { label: "Approval rate", value: "79%", band: "GREEN" },
@@ -187,7 +187,7 @@ export const RE_CANVAS = {
             { band: "GREEN", cells: ["Like-for-like · expedited · clean title", "Ministerial · 5-0", "2024", "11 mo"] },
           ] },
       ] },
-      { id: "plain-english", label: "Plain English", blocks: [
+      { id: "plain-english", label: "Plain English", description: "The entitlement picture in plain language — what's allowed by right, what needs a permit, and what the SMA coastal overlay means for your project.", blocks: [
         { type: "prose", hero: { band: "GREEN", label: "Cleared", headline: "You can rebuild what burned down.", sub: "Like-for-like is your clearest, fastest, cheapest path. Going bigger is harder. Skipping the SMA permit is not an option." }, items: [
           { band: "RED", title: "The one thing you cannot skip — the SMA permit", body: "Your property is in the Special Management Area. Every rebuild requires an SMA permit — no post-fire exemption. The 2023 disaster declaration gets you the expedited track." },
           { band: "GREEN", title: "Build the same thing — green light", body: "Same footprint, height, and use — state law entitles you. ~9–12 months, $30K–$120K, 70% approval across 14 comparable cases." },
@@ -204,7 +204,7 @@ export const RE_CANVAS = {
     disclaimer: "General info — not legal advice",
     cas: { RED: 1, YELLOW: 2, BLUE: 2, WHITE: 1, GREEN: 3 },
     tabs: [
-      { id: "zoning-verdict", label: "Zoning verdict", blocks: [
+      { id: "zoning-verdict", label: "Zoning verdict", description: "The zoning designation for this parcel and exactly what it allows — by right, with a permit, and not at all. Coded GREEN/YELLOW/RED so you can read it at a glance.", blocks: [
         { type: "map", address: "Front Street, Lahaina, HI 96761", mapType: "satellite" },
         { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "R-2 coastal parcel · Lahaina HI (illustrative)" },
         { type: "heroes", items: [
@@ -232,7 +232,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "4 by-right uses confirmed — no hearing needed", detail: "Single-family, ADU, home office all ministerial." },
         ] },
       ] },
-      { id: "permitted-uses", label: "Permitted uses", blocks: [
+      { id: "permitted-uses", label: "Permitted uses", description: "Every use allowed under this zoning code: what needs no hearing, what requires a conditional use permit, and what's flatly prohibited.", blocks: [
         { type: "cards", items: [
           { band: "GREEN", label: "By-right", title: "Single-family residence", detail: "No hearing. Building permit only. ~60 days · §19.12" },
           { band: "GREEN", label: "By-right", title: "Accessory dwelling unit (ADU)", detail: "State-law ministerial. ~60 days · HRS §46-4" },
@@ -242,7 +242,7 @@ export const RE_CANVAS = {
           { band: "RED", label: "Not permitted", title: "Multi-family 3+ units", detail: "R-2 → R-3 legislative rezone. 12–18 mo · $30–80K · §19.16" },
         ] },
       ] },
-      { id: "overlays", label: "Overlays", blocks: [
+      { id: "overlays", label: "Overlays", description: "Additional regulations layered on top of base zoning — coastal management areas, flood zones, wildfire recovery programs. Each one can add process or open a fast-track.", blocks: [
         { type: "cards", items: [
           { band: "RED", label: "Hard stop", title: "Special Management Area (SMA)", detail: "Maui County Code §19.04.040 · SMA permit required for ANY structure. No post-disaster exemption.", action: "Pull recorded SMA boundary" },
           { band: "YELLOW", label: "Expedites", title: "Post-Disaster Wildfire Recovery Zone (2023)", detail: "Parcel eligible for expedited SMA review. Disaster declared Aug 8 2023.", action: "Confirm eligibility" },
@@ -251,7 +251,7 @@ export const RE_CANVAS = {
           { band: "GREEN", label: "Clear", title: "Historic District", detail: "Not detected · no NRHP listing · no local historic designation." },
         ] },
       ] },
-      { id: "plain-english", label: "Plain English", blocks: [
+      { id: "plain-english", label: "Plain English", description: "What you can build, what you need a permit for, and what requires a rezone — in plain language, without the code citations.", blocks: [
         { type: "prose", hero: { band: "GREEN", label: "Cleared · R-2", headline: "Your parcel is zoned R-2. You can rebuild single-family by right.", sub: "A duplex needs a permit; three units means rezoning (12–18 mo). The SMA coastal permit is required regardless." }, items: [
           { band: "GREEN", title: "Build the same house — you're cleared", body: "R-2 allows a single-family rebuild as a ministerial approval — the county must say yes if you follow the rules. ~60 days, $500–2K. You still need the SMA coastal permit." },
           { band: "YELLOW", title: "Want a duplex — possible, but you need a permit", body: "R-2 allows two-family use with a conditional use permit: planning review + neighbor notice. 60–90 days, $2–5K." },
@@ -268,7 +268,7 @@ export const RE_CANVAS = {
     disclaimer: "General info only — not lender investment advice",
     cas: { RED: 0, YELLOW: 2, BLUE: 3, WHITE: 4, GREEN: 2 },
     tabs: [
-      { id: "demand", label: "Demand", blocks: [
+      { id: "demand", label: "Demand", description: "Market demand signals for the proposed project: household income, employment growth, vacancy rate, and capture probability. Every metric sourced and scored.", blocks: [
         { type: "map", address: "Lahaina, HI 96761", mapType: "satellite" },
         { type: "streetview", address: "Front Street, Lahaina, HI 96761", label: "Proposed 24-unit site · Lahaina HI 96761 (illustrative)" },
         { type: "heroes", items: [
@@ -290,7 +290,7 @@ export const RE_CANVAS = {
           { label: "Supply pressure", value: "7.2", pct: 72, band: "YELLOW" },
         ] },
       ] },
-      { id: "supply", label: "Supply", blocks: [
+      { id: "supply", label: "Supply", description: "Competing projects in the pipeline — units, delivery timeline, and how each one affects absorption of your project.", blocks: [
         { type: "kpis", items: [
           { label: "Units in pipeline", value: "312", band: "YELLOW" },
           { label: "Inventory increase", value: "+7%", band: "YELLOW" },
@@ -307,7 +307,7 @@ export const RE_CANVAS = {
             { band: "GREEN", cells: ["This project — luxury", "24", "Proposed", "M18", "Subject"] },
           ] },
       ] },
-      { id: "comps", label: "Comps", blocks: [
+      { id: "comps", label: "Comps", description: "Verified rent or sale comps for this product type and market. Median, $/sqft, and how your subject compares — with provenance per comp.", blocks: [
         { type: "kpis", items: [
           { label: "Median 2BR", value: "$4,200", band: "GREEN" },
           { label: "Avg $/sqft", value: "$4.20", band: "WHITE" },
@@ -327,7 +327,7 @@ export const RE_CANVAS = {
           { band: "BLUE", title: "CoStar premium required for full comp set", detail: "Current set is MLS-derived (18 comps). CoStar adds ~40% coverage." },
         ] },
       ] },
-      { id: "demographics", label: "Demographics", blocks: [
+      { id: "demographics", label: "Demographics", description: "Household income distribution, age cohorts, and renter share within the trade area. Identifies whether the target renter actually lives here.", blocks: [
         { type: "kpis", items: [
           { label: "Median income", value: "$98K", band: "GREEN" },
           { label: "Target renter band", value: "41%", band: "GREEN" },
@@ -350,7 +350,7 @@ export const RE_CANVAS = {
           { label: "65+", value: "12%", pct: 12, band: "WHITE" },
         ] },
       ] },
-      { id: "sources", label: "Sources", blocks: [
+      { id: "sources", label: "Sources", description: "Every data source cited in this study — with coverage, version, and retrieval date. Deposition-ready audit trail so every number is traceable.", blocks: [
         { type: "prose", items: [
           { band: "GREEN", title: "Deposition-ready source audit", body: "Every data point is traceable to a source, retrieval date, and version pin. Audit receipt PLAT-008-2026-06-07-FS-001 · chain anchored." },
         ] },
@@ -374,7 +374,7 @@ export const RE_CANVAS = {
     disclaimer: "General info only — not investment advice",
     cas: { RED: 2, YELLOW: 4, BLUE: 0, WHITE: 0, GREEN: 6 },
     tabs: [
-      { id: "deal-screen", label: "Deal screen", blocks: [
+      { id: "deal-screen", label: "Deal screen", description: "Distress-scored screening of every candidate property — ranked by ATTOM score. RED = entry target; YELLOW = watch list. Focus on RED first.", blocks: [
         { type: "heroes", items: [
           { band: "RED", title: "2 RED", detail: "Entry targets — cap-stack play" },
           { band: "YELLOW", title: "4 YELLOW", detail: "Watch list — review required" },
@@ -396,7 +396,7 @@ export const RE_CANVAS = {
           { band: "GREEN", cells: ["7", "6 additional assets", "Various", "Mixed", "≤ 38"] },
         ] },
       ] },
-      { id: "underwriting", label: "Underwriting", blocks: [
+      { id: "underwriting", label: "Underwriting", description: "Deep-dive on the top distressed asset: acquisition price vs estimated current value, basis reset opportunity, and the checks required before you sign an LOI.", blocks: [
         { type: "prose", hero: { band: "RED", label: "RED 75", headline: "325 Battery St, SF — distressed", sub: "Peak-era acquisition (Feb 2020, $143M) · rate-shock exposed · ~48% occupancy · senior debt likely underwater. Cap-stack entry opportunity — mezzanine or preferred equity at reset basis." }, items: [] },
         { type: "kpis", items: [
           { label: "Acquisition price", value: "$143M", band: "RED" },
@@ -413,7 +413,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "SF market context — distressed but supply-constrained", detail: "Office fundamentals weak but geography defensible long-term." },
         ] },
       ] },
-      { id: "sensitivity", label: "Sensitivity", blocks: [
+      { id: "sensitivity", label: "Sensitivity", description: "Distress score comparison across the full candidate set — ranked so you can see the delta between entry targets and watch-list properties.", blocks: [
         { type: "heroes", items: [
           { band: "RED", title: "2 RED ≥ 65", detail: "Entry targets · cap-stack play" },
           { band: "YELLOW", title: "4 YELLOW 40–64", detail: "Watch list — monitor" },
@@ -430,7 +430,7 @@ export const RE_CANVAS = {
           { label: "1111 Broadway, Oakland", value: "31", pct: 31, band: "GREEN" },
         ] },
       ] },
-      { id: "capital-stack", label: "Capital stack", blocks: [
+      { id: "capital-stack", label: "Capital stack", description: "The capital stack thesis for the top candidate: senior debt position, your proposed mezzanine or preferred equity entry point, and IRR targets.", blocks: [
         { type: "prose", hero: { band: "WHITE", label: "Thesis", headline: "Control the asset without foreclosing", sub: "Enter at mezzanine or preferred equity · force basis reset ~40% below peak acquisition price *." }, items: [] },
         { type: "kpis", items: [
           { label: "Senior loan *", value: "~$79M", band: "BLUE" },
@@ -445,7 +445,7 @@ export const RE_CANVAS = {
           { band: "WHITE", label: "Common equity", title: "~$0 *", detail: "Current sponsor — basis recovery unlikely at peak." },
         ] },
       ] },
-      { id: "decision", label: "Decision memo", blocks: [
+      { id: "decision", label: "Decision memo", description: "The analyst's recommendation: which assets to pursue, in which order, and the exact next steps required before committing capital.", blocks: [
         { type: "prose", hero: { band: "RED", label: "Recommend", headline: "Pursue 325 Battery St, SF — cap-stack entry", sub: "Mezzanine or preferred equity · basis reset ~40% below peak · secondary target 1333 Broadway Oakland. 12 screened · 2 RED entry targets · 4 YELLOW watch list." }, items: [
           { band: "RED", title: "RED 75 — 325 Battery St, SF", body: "$143M peak (Feb 2020) · ~48% occupancy · senior likely underwater · rate-shock exposed." },
           { band: "RED", title: "RED 71 — 1333 Broadway, Oakland", body: "$115M acquisition (2019) · CBD office · > 40% vacancy · Oakland secondary market." },
@@ -468,7 +468,7 @@ export const RE_CANVAS = {
     disclaimer: "General info only — not legal advice",
     cas: { RED: 2, YELLOW: 3, BLUE: 0, WHITE: 0, GREEN: 3 },
     tabs: [
-      { id: "opportunities", label: "Opportunities", blocks: [
+      { id: "opportunities", label: "Opportunities", description: "All screened parcels in the target radius — mapped and scored GREEN/YELLOW/RED for zoning, access, title, and entitlement risk. Focus on GREEN first.", blocks: [
         { type: "map", address: "Moreno Valley, CA 92551", mapType: "satellite" },
         { type: "streetview", address: "Moreno Valley, CA 92551", label: "Last-mile warehouse site · Riverside County CA (illustrative)" },
         { type: "heroes", items: [
@@ -493,7 +493,7 @@ export const RE_CANVAS = {
           { band: "RED", cells: ["8", "1100 N Perris Blvd, Perris", "3.2 ac", "R-3", "$0.9M '16", "RED"] },
         ] },
       ] },
-      { id: "feasibility", label: "Feasibility", blocks: [
+      { id: "feasibility", label: "Feasibility", description: "Feasibility verdict for the top candidate — every evaluated gate with its status. GREEN is earned by a passing evaluation, never assumed.", blocks: [
         { type: "prose", hero: { band: "GREEN", label: "GREEN", headline: "1450 Hamner Ave, Norco — feasible", sub: "All evaluated gates pass · 12.4 ac · M-2 · by-right warehouse. GREEN is earned by evaluated passes — never granted by missing data." }, items: [] },
         { type: "flags", items: [
           { band: "GREEN", title: "Zoning — cleared", detail: "M-2 Heavy Industrial — by-right warehouse. No CUP required." },
@@ -504,7 +504,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "Entitlement timeline — ~4 months", detail: "By-right — building permit only. No discretionary review required." },
         ] },
       ] },
-      { id: "historical", label: "Historical", blocks: [
+      { id: "historical", label: "Historical", description: "Ownership chain, last recorded sale, implied $/acre, and comparable industrial land sales for the top candidate. Know what the market has paid for comparable parcels.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "$4.1M", detail: "Last sale price · Apr 2018" },
           { band: "GREEN", title: "$330K/ac", detail: "Implied $/acre · in-range" },
@@ -538,9 +538,9 @@ export const RE_CANVAS = {
     disclaimer: "Illustrative sample — tell me an address or search criteria to get started",
     cas: { RED: 0, YELLOW: 2, BLUE: 1, WHITE: 3, GREEN: 2 },
     tabs: [
-      { id: "search", label: "Search", blocks: [
+      { id: "search", label: "Search", description: "Your property search panel. Tell me what you're looking for in the chat — location, price range, beds, baths, must-haves. I'll pull live listings and run a Comparative Market Analysis (CMA) on any address.", blocks: [
         { type: "prose", items: [
-          { band: "BLUE", title: "How to search", body: "Tell me what you are looking for — location, price range, beds, baths, and any must-haves. I will pull live listings and run a CMA on any address you want to dig into. I have no commission and no financial interest in which property you choose." },
+          { band: "BLUE", title: "How to search", body: "Tell me what you are looking for — location, price range, beds, baths, and any must-haves. I will pull live listings and run a Comparative Market Analysis (CMA) on any address you want to dig into. A CMA estimates a property's fair value based on recent nearby sales of similar homes. I have no commission and no financial interest in which property you choose." },
         ] },
         { type: "assetlist", title: "Sample listings — SF Bay Area",
           items: [
@@ -583,7 +583,19 @@ export const RE_CANVAS = {
           ],
         },
       ] },
-      { id: "analysis", label: "Analysis", blocks: [
+      { id: "financing", label: "Financing", description: "Property-level financing facts from public data: flood zone, fire hazard, FHA/VA condo eligibility, conforming loan limits, USDA rural eligibility. Not loan advice — these are constraints that affect who can buy and at what cost.", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "Financing constraints — how this works", body: "Enter any address and I will check flood zone (FEMA), fire hazard zone (CAL FIRE, CA only), FHA condo project eligibility (HUD), conforming loan limits (FHFA), and USDA rural eligibility. These are property facts — not loan advice. They tell you who can finance this property and at what cost, which directly affects what the property is realistically worth." },
+        ] },
+        { type: "flags", items: [
+          { band: "WHITE", title: "Flood zone", detail: "FEMA NFHL data will appear here after you enter an address. Zone AE / VE = flood insurance required (adds to monthly carry and narrows buyer pool)." },
+          { band: "WHITE", title: "Fire hazard zone", detail: "CAL FIRE FHSZ data (California only). Tier 2 / Very High = limited insurer availability. Some markets have become cash-only as carriers exit." },
+          { band: "WHITE", title: "FHA / VA condo eligibility", detail: "HUD project approval status for condos. Non-approved project = eliminates FHA/VA buyers (often 20–30% of first-time buyer market)." },
+          { band: "WHITE", title: "Conforming loan limit", detail: "FHFA 2025 limit for this county. Above limit = jumbo financing required — larger down payment, stricter underwriting, fewer lenders." },
+          { band: "WHITE", title: "USDA rural eligibility", detail: "Whether the property is in a USDA-eligible area. USDA = 0% down option for income-qualifying buyers — expands buyer pool in rural markets." },
+        ] },
+      ] },
+      { id: "analysis", label: "Analysis", description: "Comparable sales within the target area, price-per-sqft trend, days on market, and a fair value range. I have no financial stake in the number — if the ask is too high, I'll say so.", blocks: [
         { type: "kpis", items: [
           { label: "Median price (East Bay)", value: "$1.04M", band: "WHITE" },
           { label: "Avg days on market", value: "18 days", band: "GREEN" },
@@ -603,13 +615,13 @@ export const RE_CANVAS = {
           { band: "WHITE", title: "List/sale ratio above 100%", detail: "Homes are selling above ask on average — budget for escalation clauses." },
         ] },
       ] },
-      { id: "transaction", label: "Transaction", blocks: [
+      { id: "transaction", label: "Transaction", description: "Active transaction tracker — inspection deadline, financing contingency, appraisal, and close of escrow. I'll flag anything approaching or past a hard deadline before it costs you.", blocks: [
         { type: "prose", items: [
           { band: "WHITE", title: "No active transaction", body: "Describe a property you want to buy or sell to get started. I will create a transaction record, track key dates (inspection, financing, appraisal, close of escrow), and flag anything that needs attention." },
         ] },
         { type: "assetlist", title: "Active transactions", items: [] },
       ] },
-      { id: "offer-desk", label: "Offer Desk", blocks: [
+      { id: "offer-desk", label: "Offer Desk", description: "Pre-offer strategy review. Give me the address, your target price, and contingencies. I'll compare to the Comparative Market Analysis (CMA) estimate, flag overpayment risk, and call out anything you might regret. I have no stake in whether this closes.", blocks: [
         { type: "prose", items: [
           { band: "BLUE", title: "Offer strategy — how this works", body: "Give me the address, your target price, and any contingencies you are considering. I will compare your offer to the CMA, flag any risk (waived inspection, escalation above estimate), and frame the hard truths before you commit. I have no stake in whether this closes." },
         ] },
@@ -619,7 +631,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "Financing contingency", detail: "Keeping your financing contingency protects you if the loan falls through. Waiving it is a significant risk in a rate-volatile environment." },
         ] },
       ] },
-      { id: "documents", label: "Documents", blocks: [
+      { id: "documents", label: "Documents", description: "Disclosures, inspection report, preliminary title, HOA docs — stored here with AI-searchable flags. I'll surface anything that needs your attention before you're past your contingency deadline.", blocks: [
         { type: "prose", items: [
           { band: "WHITE", title: "Document tracking", body: "Once a transaction is active, documents — purchase agreement, disclosures, inspection report, closing disclosure — will appear here with status and any flags." },
         ] },
@@ -627,7 +639,7 @@ export const RE_CANVAS = {
           columns: ["Document", "Type", "Status", "Executed"],
           rows: [] },
       ] },
-      { id: "market", label: "Market", blocks: [
+      { id: "market", label: "Market", description: "90-day market context: DOM trend, sale-to-list ratio, inventory levels, and rate environment. Know whether you're in a buyer's or seller's market before you make a move.", blocks: [
         { type: "kpis", items: [
           { label: "30-yr fixed rate", value: "6.82%", band: "YELLOW" },
           { label: "YoY price change", value: "+4.1%", band: "GREEN" },
@@ -640,6 +652,69 @@ export const RE_CANVAS = {
           { label: "$1.1M–$1.5M", value: "28 days", pct: 70, band: "YELLOW" },
           { label: "$1.5M–$2M", value: "42 days", pct: 100, band: "YELLOW" },
           { label: "Over $2M", value: "61 days", pct: 100, band: "RED" },
+        ] },
+      ] },
+      { id: "leases", label: "Leases", signal: "card:re-lease", description: "Paste any residential or commercial lease and I'll identify the key terms, flag unfavorable clauses, and explain what you're actually agreeing to. Not legal advice — but no mystery either.", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "How lease review works", body: "Paste a lease in the chat — or upload a PDF — and I will extract key terms, flag anything unfavorable, and explain plain-English what each clause actually means. I cover residential leases (month-to-month, fixed, Section 8) and commercial leases (NNN, gross, modified gross). This is informational — for complex negotiations or lease modifications, I will tell you when a lawyer adds value." },
+        ] },
+        { type: "flags", items: [
+          { band: "RED", title: "Personal guarantee on commercial lease", detail: "A personal guarantee makes you individually liable for the full lease term if the business fails. Caps, burn-downs, and burn-offs are negotiable — flag before you sign." },
+          { band: "RED", title: "Demolition / redevelopment clause", detail: "Landlord can terminate on short notice for redevelopment. Residential tenants in CA have strong protections; commercial tenants often do not." },
+          { band: "YELLOW", title: "Annual rent escalation", detail: "CPI or fixed-percentage escalations compound. A 4% annual bump on a 5-year lease adds 22% to your base rent by year 5 — model it before committing." },
+          { band: "YELLOW", title: "CAM charges (NNN)", detail: "Triple-net leases pass operating expenses through to the tenant. Uncapped CAM = unpredictable carrying cost. Look for audit rights and expense caps." },
+          { band: "YELLOW", title: "Assignability and subletting rights", detail: "If you sell the business or need to exit, can you assign the lease? Most commercial leases require landlord consent — often withheld to force a lease renegotiation." },
+          { band: "WHITE", title: "Option to renew / right of first refusal", detail: "Renewal options give you certainty of occupancy. ROFR lets you match any competing offer. Neither is guaranteed — they must be negotiated and recorded." },
+          { band: "WHITE", title: "Tenant improvement allowance (TI)", detail: "Landlord contribution to build-out costs. TI is often capped, has a construction timeline requirement, and must be drawn down — unused TI is lost." },
+          { band: "GREEN", title: "Early termination right", detail: "Mutual termination rights with defined notice and fee give you an exit. The fee is typically 1–3 months of base rent — far better than carrying an abandoned space." },
+        ] },
+        { type: "table", title: "Lease term extraction — paste a lease to populate",
+          columns: ["Term", "Value", "Flag"],
+          rows: [] },
+      ] },
+      { id: "list", label: "List", description: "Sell-side listing strategy — pricing, market timing, and prep ranked by ROI. I work for you, not the buyer or a commission. I'll tell you if the market won't support your target price.", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "How listing strategy works", body: "Tell me the address and your target price. I will run a Comparative Market Analysis (CMA) — pulling recent comparable sales within a half-mile — benchmark against current competition, and build a pricing recommendation plus a prep list ranked by return on investment. I have no commission; the right price is the one the market will support." },
+        ] },
+        { type: "flags", items: [
+          { band: "WHITE", title: "Pricing strategy", detail: "Enter an address to generate a CMA and pricing recommendation." },
+          { band: "WHITE", title: "Market timing", detail: "I'll flag whether current DOM trends and inventory favor listing now vs. waiting." },
+          { band: "WHITE", title: "Prep ROI", detail: "Paint, staging, landscaping — ranked by expected return vs. cost before you spend a dollar." },
+          { band: "YELLOW", title: "Competitive set", detail: "Active listings competing for the same buyer will be surfaced so you know exactly what you're up against." },
+        ] },
+      ] },
+      { id: "net-sheet", label: "Net Sheet", description: "Estimated seller proceeds at close — after commissions, transfer taxes, title fees, and any remaining mortgage. Know your actual number before you list.", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "How the net sheet works", body: "Enter the sale price, remaining loan balance, and county. I will estimate your proceeds after agent commissions, title fees, transfer taxes, escrow, and proration. This is an estimate — the final settlement statement from escrow is the authoritative number." },
+        ] },
+        { type: "flags", items: [
+          { band: "WHITE", title: "Sale price", detail: "Enter a price or use the CMA estimate from the List tab." },
+          { band: "YELLOW", title: "Agent commission", detail: "Buyer's agent commission is now separately negotiated under the NAR settlement. The net sheet will show both sides explicitly." },
+          { band: "WHITE", title: "Transfer taxes", detail: "County + city transfer taxes vary by jurisdiction — I will look up the applicable rate." },
+          { band: "WHITE", title: "Title + escrow", detail: "Estimated from market-rate schedules. Actual fees from the title company will differ slightly." },
+          { band: "WHITE", title: "Mortgage payoff", detail: "Your remaining loan balance plus any prepayment penalty or per-diem interest." },
+        ] },
+        { type: "table", title: "Net sheet estimate — enter details to populate",
+          columns: ["Line item", "Amount", "Notes"],
+          rows: [] },
+      ] },
+      { id: "exchange", label: "Exchange & Structure", description: "Alternative deal structures: 1031 exchange, seller financing, sale-leaseback, and land contract. I'll identify which applies to your situation and what each one costs to execute.", blocks: [
+        { type: "prose", items: [
+          { band: "BLUE", title: "Structure options — how this works", body: "A standard sale is one option. Depending on your equity, tax situation, and what the buyer needs, there may be a better structure. Tell me what you own and what you want to do next — I will identify whether a 1031, seller carry, or leaseback is worth exploring, and when you need a CPA or attorney to confirm it." },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "1031 exchange", detail: "Defer capital gains tax by reinvesting in like-kind property within 45/180-day windows. Requires a qualified intermediary. Best when gain is large and you want to stay in real estate." },
+          { band: "GREEN", title: "Seller financing (seller carry)", detail: "You act as the lender. Monthly payments, interest, and a balloon. Generates income, expands the buyer pool, and the note is a marketable asset you can sell later." },
+          { band: "YELLOW", title: "Sale-leaseback", detail: "You sell the property and immediately lease it back. Common for commercial properties and business owners who need capital but want to stay in the space." },
+          { band: "YELLOW", title: "Land contract (contract for deed)", detail: "Buyer pays in installments; title transfers at payoff. You retain title as security. Legal requirements vary significantly by state." },
+          { band: "BLUE", title: "CPA + attorney required for any of the above", detail: "Structure strategy is directional. Tax basis, depreciation recapture, and legal transfer requirements need a CPA and real estate attorney to confirm." },
+        ] },
+      ] },
+      { id: "path", label: "Your Path", description: "Three ways to work with me: full DIY, agent-assisted, or attorney engagement when the deal warrants it. I'll help you pick the right track and know when to escalate.", blocks: [
+        { type: "prose", hero: { band: "BLUE", label: "Choose your track", headline: "Three ways to work with me", sub: "Every transaction is different. Here are the three engagement modes — and how to know which one fits." }, items: [
+          { band: "GREEN", title: "Track 1 — Full DIY (you drive)", body: "I handle search, CMA, offer strategy, contract review, and deadline tracking. You deal directly with the listing agent or seller. I have no license and no commission — everything I tell you is in your interest. Best for experienced buyers or sellers who want fiduciary guidance without an agent layer." },
+          { band: "WHITE", title: "Track 2 — Agent-assisted (you stay smart)", body: "You hire a licensed agent for representation and legal capacity. I work alongside as your independent analyst — so you understand everything the agent recommends before you sign it. The agent earns their commission; I make sure you know when they're right and when to push back." },
+          { band: "YELLOW", title: "Track 3 — Attorney engagement", body: "Some transactions need a real estate attorney: title disputes, complex seller financing, commercial leases, estate sales, or anything with litigation risk. I'll tell you when we've hit that boundary and help you prepare the briefing so the lawyer's time costs less." },
         ] },
       ] },
     ],
@@ -667,11 +742,11 @@ function buildCreCanvas(cre) {
     disclaimer: "General info only — not investment advice",
     cas: { RED: reds.length, YELLOW: yellows.length, BLUE: 0, WHITE: 0, GREEN: greens.length },
     tabs: [
-      { id: "map", label: "Map", blocks: [
+      { id: "map", label: "Map", description: "All screened properties plotted by distress level. RED = entry target; YELLOW = watch list.", blocks: [
         { type: "map", region: "San Francisco, CA",
           locations: cre.filter((p) => p.lat && p.lng).map((p) => ({ address: p.address, label: short(p.address) + " · " + p.distressBand + " " + p.distressScore, lat: p.lat, lng: p.lng })) },
       ] },
-      { id: "deal-screen", label: "Deal screen", blocks: [
+      { id: "deal-screen", label: "Deal screen", description: "Distress-scored screening of every candidate property — ranked by ATTOM score. RED = entry target; YELLOW = watch list. Focus on RED first.", blocks: [
         { type: "heroes", items: [
           { band: "RED", title: reds.length + " RED", detail: "Entry targets — cap-stack play" },
           { band: "YELLOW", title: yellows.length + " YELLOW", detail: "Watch list — review required" },
@@ -687,7 +762,7 @@ function buildCreCanvas(cre) {
           columns: ["Address", "Last sale", "Type", "Band"],
           rows: cre.map((p) => ({ band: p.distressBand, cells: [short(p.address), m(p.lastSale) + " " + yr(p.lastSaleDate), String(p.propType || "").slice(0, 16), (p.distressBand || "") + " " + (p.distressScore ?? "")] })) },
       ] },
-      { id: "underwriting", label: "Underwriting", blocks: [
+      { id: "underwriting", label: "Underwriting", description: "Deep-dive on the top distressed asset: acquisition price vs estimated current value, basis reset opportunity, and the checks required before you sign an LOI.", blocks: [
         { type: "prose", hero: { band: hero.distressBand || "RED", label: (hero.distressBand || "") + " " + (hero.distressScore ?? ""), headline: short(hero.address) + " — distressed", sub: (hero.distressReasons || []).join("; ") + ". Cap-stack entry opportunity — mezzanine or preferred equity at reset basis." }, items: [] },
         { type: "kpis", items: [
           { label: "Acquisition price", value: m(hero.lastSale), band: "RED" },
@@ -703,7 +778,7 @@ function buildCreCanvas(cre) {
           { band: "GREEN", title: "Market context — distressed but supply-constrained", detail: "Office weak; geography defensible long-term." },
         ] },
       ] },
-      { id: "sensitivity", label: "Sensitivity", blocks: [
+      { id: "sensitivity", label: "Sensitivity", description: "Distress score comparison across the full candidate set — ranked so you can see the delta between entry targets and watch-list properties.", blocks: [
         { type: "heroes", items: [
           { band: "RED", title: reds.length + " RED", detail: "Entry targets · cap-stack play" },
           { band: "YELLOW", title: yellows.length + " YELLOW", detail: "Watch list — monitor" },
@@ -712,7 +787,7 @@ function buildCreCanvas(cre) {
         { type: "bars", title: "Distress score by candidate — ATTOM-scored",
           items: cre.slice(0, 10).map((p) => ({ label: short(p.address), value: String(p.distressScore ?? ""), pct: Number(p.distressScore) || 0, band: p.distressBand })) },
       ] },
-      { id: "capital-stack", label: "Capital stack", blocks: [
+      { id: "capital-stack", label: "Capital stack", description: "The capital stack thesis for the top candidate: senior debt position, your proposed mezzanine or preferred equity entry point, and IRR targets.", blocks: [
         { type: "prose", hero: { band: "WHITE", label: "Thesis", headline: "Control the asset without foreclosing", sub: "Enter at mezzanine or preferred equity · force a basis reset ~40% below peak acquisition price *." }, items: [] },
         { type: "kpis", items: [
           { label: "Senior loan *", value: est(0.55), band: "BLUE" },
@@ -727,7 +802,7 @@ function buildCreCanvas(cre) {
           { band: "WHITE", label: "Common equity", title: "~$0 *", detail: "Current sponsor — basis recovery unlikely at peak." },
         ] },
       ] },
-      { id: "decision", label: "Decision memo", blocks: [
+      { id: "decision", label: "Decision memo", description: "The analyst's recommendation: which assets to pursue, in which order, and the exact next steps required before committing capital.", blocks: [
         { type: "prose", hero: { band: "RED", label: "Recommend", headline: "Pursue " + short(hero.address) + " — cap-stack entry", sub: "Mezzanine or preferred equity · basis reset ~40% below peak. " + cre.length + " screened · " + reds.length + " RED entry targets · " + yellows.length + " YELLOW watch list." },
           items: reds.map((p) => ({ band: "RED", title: (p.distressBand || "") + " " + (p.distressScore ?? "") + " — " + short(p.address), body: m(p.lastSale) + " (" + yr(p.lastSaleDate) + ") · " + (p.distressReasons || []).join("; ") })) },
         { type: "flags", items: [
