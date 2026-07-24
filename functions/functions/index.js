@@ -2449,6 +2449,18 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
     // On-demand worker health. ?run=1 runs a live canary pass (alerts
     // suppressed — only the scheduled job texts/emails). Otherwise returns the
     // last recorded status from config/workerHealth.
+    if (route === "/quality:health") {
+      try {
+        if (req.query.run === "1" || (body && body.run === true)) {
+          const { runQualityCanary } = require("./monitoring/qualityCanary");
+          const result = await runQualityCanary({ noAlerts: true });
+          return res.json({ ok: true, ran: true, ...result });
+        }
+        const snap = await db.doc("config/qualityHealth").get();
+        return res.json({ ok: true, ran: false, health: snap.exists ? snap.data() : { status: "unknown" } });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
     if (route === "/worker:health") {
       try {
         if (req.query.run === "1" || (body && body.run === true)) {
@@ -14385,8 +14397,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const opExp  = sumC(t => isExpense(t));
         const finIn  = sumC(t => isFinancing(t) && t.direction === "credit");
         const capEx  = sumC(t => isCapEx(t) && t.direction === "debit");
-        const cashCents = finIn + opRev - opExp - capEx;
         const totalLiabCents = loans.reduce((s, l) => s + (l.principalCents || 0), 0);
+        // Loan proceeds are the authoritative financing source — always drawn from loans collection.
+        // Any duplicate "liability" transactions are gravy; finIn is additive but usually 0.
+        const cashCents = finIn + totalLiabCents + opRev - opExp - capEx;
         const totalAssetsCents = Math.max(0, cashCents) + capEx;
         const totalEquityCents = totalAssetsCents - totalLiabCents;
         const fmt2 = (cents) => Math.round((cents || 0) / 100);
@@ -23863,8 +23877,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         const operatingExpenses = sumC(t => isExpense(t));
         const financingInflows  = sumC(t => isFinancing(t) && t.direction === "credit");
         const capExCents        = sumC(t => isCapEx(t) && t.direction === "debit");
-        const cashCents = financingInflows + operatingRevenue - operatingExpenses - capExCents;
         const loansArr = loanSnap ? loanSnap.docs.map(d => d.data()) : [];
+        const principalIn = loansArr.reduce((s, l) => s + (l.principalCents || 0), 0);
+        const cashCents = financingInflows + principalIn + operatingRevenue - operatingExpenses - capExCents;
         const totalDebt = loansArr.reduce((s, l) => s + (l.principalCents || 0), 0) / 100;
         const totalAssetsCents = Math.max(0, cashCents) + capExCents;
         const bookEquityCents = totalAssetsCents - (totalDebt * 100);
@@ -27598,6 +27613,70 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // GMAIL — OAuth + operations. Same Google OAuth client as Calendar/Drive.
+    // Tokens at users/{uid}/integrations/gmail (primary) and
+    // users/{uid}/gmailAccounts/{accountId} (additional accounts).
+    // ----------------------------
+    if (route && route.startsWith("/gmail:")) {
+      const gmailAction = route.replace("/gmail:", "");
+      try {
+        const gm = require("./services/social/gmail");
+        switch (gmailAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gm.handleGmailAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gm.handleGmailExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gm.handleGmailStatus(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gm.handleGmailDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "listAccounts": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gm.handleGmailListAccounts(req, res, { userId: auth.user.uid });
+        }
+        case "addAccountUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gm.handleGmailAddAccountUrl(req, res, { userId: auth.user.uid });
+        }
+        case "addAccountExchange": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gm.handleGmailAddAccountExchange(req, res, { userId: auth.user.uid });
+        }
+        case "removeAccount": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gm.handleGmailRemoveAccount(req, res, { userId: auth.user.uid });
+        }
+        case "syncContacts": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const ctx = getCtx(req, body, auth.user);
+          const result = await gm.syncContacts(auth.user.uid, ctx.tenantId || body.tenantId, {});
+          return res.json({ ok: true, ...result });
+        }
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments } = body || {};
+          if (!to || !subject) return jsonError(res, 400, "to + subject required");
+          const result = await gm.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
+          return res.json(result);
+        }
+        default:
+          return jsonError(res, 404, "Unknown gmail action: " + gmailAction);
+        }
+      } catch (e) {
+        console.error("gmail action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // YOUTUBE (Google) — connect + upload (#64). Same Google OAuth client
     // as Calendar/Drive; tokens at users/{uid}/integrations/youtube.
     // ----------------------------
@@ -28931,6 +29010,27 @@ exports.workerCanary = onSchedule(
     const { runWorkerCanary } = require("./monitoring/workerCanary");
     const result = await runWorkerCanary();
     console.log("[workerCanary]", result);
+  }
+);
+
+// ----------------------------
+// QUALITY CANARY (every 30 min — chat correctness + canvas data + integration health)
+// (CODEX 47) Sibling to chatCanary (uptime) and workerCanary (catalog integrity).
+// Tests that Alex gives correct answers, that real data flows through canvas, and that
+// integrations are healthy. Alerts SMS+email on new RED; WARN goes to Operating Feed only.
+// On-demand: GET /v1/quality:health (?run=1 for live pass).
+// ----------------------------
+exports.qualityCanary = onSchedule(
+  {
+    schedule: "*/30 * * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"],
+  },
+  async () => {
+    const { runQualityCanary } = require("./monitoring/qualityCanary");
+    const result = await runQualityCanary();
+    console.log("[qualityCanary]", JSON.stringify({ healthy: result.healthy, red: result.redCount, warn: result.warnCount }));
   }
 );
 

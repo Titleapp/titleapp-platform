@@ -99,5 +99,7 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 44. [`44-human-support-billing.md`](44-human-support-billing.md) — ⚪ **spec + red-teamed 2026-07-19** — Human support as a metered credit service: Tier 0 (AI, free) / Tier 1 (Manpreet/Vishal, $45/hr billed in 15-min increments = 12 credits/block) / Tier 2 (Sean, goodwill only). Explicit consent gate before any session opens. Subsidized flag for Makai/UH/demo tenants. 10-issue red team covering: undisclosed billing (RT1), zero-credit hard block (RT2), variable contractor cost (RT3), spam prevention (RT4), manual time-logging risk (RT5), SLA definition gap (RT6), demo tenant billing crash (RT7), consent friction (RT8), unresolved-session credit dispute (RT9), scope creep (RT10). Build blockers: consent gate UI, credit balance lookup at escalation, admin close-ticket panel, credit debit at close, subsidized flag on Makai tenant.
 
+47. [`47-capability-parity-and-canaries.md`](47-capability-parity-and-canaries.md) — ⚪ **spec 2026-07-24** — Capability parity playbook + quality canary system: model update process (env var swap → deploy → canary gate), quarterly capability gap review (web search / doc ingestion / agentic chains / voice), RAAS governance gate for every new capability, three canary probe types beyond uptime (chat correctness every 30min, canvas data every hour, integration health every hour), canary tenant setup, sign-off checklist.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started
