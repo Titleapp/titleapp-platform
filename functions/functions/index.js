@@ -4134,9 +4134,14 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
 
 ` + workerPrompt;
               }
-              // RE Advocate (re-salesperson) may draft counter-offer letters, lease
-              // summaries, and other long-form documents — 1024 is too low for those.
-              const workerMaxTokens = workerSlug === "re-salesperson" ? 3000 : 1024;
+              // RE Advocate and Accounting need more output tokens:
+              // re-salesperson drafts counter-offer letters (long-form text).
+              // platform-accounting emits full financial reports + JSON canvas
+              // payloads — 1024 truncates mid-table every time.
+              const workerMaxTokens =
+                workerSlug === "re-salesperson" ? 3000 :
+                workerSlug === "platform-accounting" ? 6144 :
+                1024;
 
               // ── CODEX 42 Phase 1 — True SSE streaming (RAAS-light, no-tool workers) ──
               // Early branch: set headers + pipe Anthropic tokens live, then post-process
@@ -4199,6 +4204,26 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     await executeChatSideEffects(_se.sideEffects, authUser.uid, null);
                   }
                 } catch (e) { console.warn('[streaming] side-effect extract failed:', e.message); }
+                // __ACCT_PUSH__ — commit Alex-extracted transactions to Firestore.
+                // Same directive as the non-streaming path; accounting worker is
+                // streaming, so it must also be processed here.
+                try {
+                  const _acctMatch = _sseText.match(/__ACCT_PUSH__:(\{[\s\S]*?\})\s*(?:\n|$)/);
+                  if (_acctMatch) {
+                    const _acctPayload = JSON.parse(_acctMatch[1]);
+                    if (Array.isArray(_acctPayload.transactions) && _acctPayload.transactions.length) {
+                      const { commitAlexTransactions } = require("./services/accounting/statementIngest");
+                      const _acctResult = await commitAlexTransactions({
+                        tenantId: reqTenantId,
+                        userId: authUser ? authUser.uid : null,
+                        transactions: _acctPayload.transactions,
+                        note: _acctPayload.note || "Alex AI extraction",
+                      });
+                      console.log(`[acct-push:streaming] wrote ${_acctResult.written} transactions for ${reqTenantId}`);
+                    }
+                    _sseText = _sseText.replace(/__ACCT_PUSH__:(\{[\s\S]*?\})\s*(?:\n|$)/, "").trim();
+                  }
+                } catch (_acctErr) { console.warn('[streaming] acct-push failed:', _acctErr.message); }
                 try {
                   const _sigEx = require("./services/canvas/signalExtractor");
                   _sseSignal = _sigEx.extract(_sseText, workerSlug, dw.vertical || null);
@@ -15274,6 +15299,69 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[accounting:loans] error:", e.message);
         return jsonError(res, 500, "Failed to list loans");
+      }
+    }
+
+    // POST /v1/accounting:loans:upsert — create or update a loan record.
+    // Body: { id?, lender, lenderEntity?, principalCents, interestRatePct,
+    //   originationDate, formalDocsDate?, accruedFrom?, repaymentTrigger?,
+    //   dueDate?, notes?, payments?, status? }
+    // id: stable slug (e.g. "loan_rosenberg_100k"). If omitted, auto-generated.
+    // Append-only at the audit level: all changes are recorded in loanEvents.
+    if (route === "/accounting:loans:upsert" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const {
+          id: loanId,
+          lender, lenderEntity, principalCents, interestRatePct,
+          originationDate, formalDocsDate, accruedFrom,
+          repaymentTrigger, dueDate, notes,
+          payments, contributionSchedule, status,
+          interestPaidCents, interestAdvancedThrough,
+        } = body || {};
+        if (!lender) return jsonError(res, 400, "Missing lender");
+        if (typeof principalCents !== "number" || principalCents < 0) return jsonError(res, 400, "Missing or invalid principalCents");
+        const docId = loanId || `loan_${Date.now()}`;
+        const existing = await db.collection("loans").doc(docId).get();
+        const patch = {
+          tenantId: ctx.tenantId,
+          lender,
+          lenderEntity: lenderEntity || null,
+          principalCents,
+          outstandingPrincipalCents: principalCents,
+          interestRatePct: typeof interestRatePct === "number" ? interestRatePct : 0,
+          originationDate: originationDate || null,
+          formalDocsDate: formalDocsDate || null,
+          accruedFrom: accruedFrom || null,
+          interestPaidCents: typeof interestPaidCents === "number" ? interestPaidCents : 0,
+          interestAdvancedThrough: interestAdvancedThrough || null,
+          repaymentTrigger: repaymentTrigger || null,
+          dueDate: dueDate || null,
+          notes: notes || null,
+          payments: Array.isArray(payments) ? payments : (existing.exists ? undefined : []),
+          contributionSchedule: Array.isArray(contributionSchedule) ? contributionSchedule : undefined,
+          status: status || "active",
+          updatedAt: nowServerTs(),
+          updatedBy: auth.user.uid,
+        };
+        if (!existing.exists) patch.createdAt = nowServerTs();
+        // Remove undefined values to avoid overwriting existing sub-arrays
+        Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k]);
+        await db.collection("loans").doc(docId).set(patch, { merge: true });
+        // Audit event
+        await db.collection("loanEvents").add({
+          loanId: docId,
+          tenantId: ctx.tenantId,
+          action: existing.exists ? "updated" : "created",
+          data: patch,
+          by: auth.user.uid,
+          at: nowServerTs(),
+        });
+        return res.json({ ok: true, id: docId, action: existing.exists ? "updated" : "created" });
+      } catch (e) {
+        console.error("[accounting:loans:upsert] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to upsert loan");
       }
     }
 

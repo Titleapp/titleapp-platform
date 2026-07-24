@@ -282,9 +282,20 @@ async function accountingBlock(db, tenantId) {
   lines.push("- Revenue = classification:revenue only. Loan receipts and equity contributions are FINANCING, never revenue.");
   lines.push("- For Balance Sheet canvas card: use ONLY the pre-computed payload above. Do NOT recompute, round differently, or add numbers. The payload is already correct.");
   lines.push("- NEVER fabricate a bank account balance or checking account amount. If you don't have a real bank balance on file, the cash figure from transactions is the best estimate — say so.");
+  lines.push("- LOANS: The loan register above comes directly from Firestore. NEVER change, estimate, or invent loan amounts — they are fixed facts seeded by the CPA workflow. If a user tells you a loan amount that differs from above, ask them to confirm before updating via accounting:loans:upsert.");
   lines.push("- For P&L canvas card: revenue=operating revenue above, expenses=operating expenses above. Net income will be negative (pre-revenue startup).");
   lines.push("- For Canvas reports: the canvas card already has a ↓ Download button (top-right corner). Tell users to use it — do NOT say exports aren't available.");
   lines.push("- For multiple reports (P&L + Balance Sheet + Cash Flow): generate each as a SEPARATE canvas card in the SAME response. All three will auto-archive to the Reports tab.");
+  lines.push("");
+  lines.push("COMMITTING STATEMENT TRANSACTIONS — how to get PDF statement data into Firestore:");
+  lines.push("When the user shares a bank statement PDF (attached to this chat session):");
+  lines.push("  1. Extract all transactions from the PDF. For each transaction note: date (YYYY-MM-DD), description, amountCents (integer cents, always positive), direction (debit=spend, credit=inflow).");
+  lines.push("  2. Classify each transaction: expense=operating spend, revenue=customer income, internal_transfer=money moving between OWN accounts (card payments, Mercury↔Chime transfers), liability=loan receipt.");
+  lines.push("  3. After extracting ALL transactions from the statement, embed the following directive VERBATIM at the END of your response (the server strips it before display):");
+  lines.push('     __ACCT_PUSH__:{"transactions":[{"date":"YYYY-MM-DD","description":"...","amountCents":1234,"direction":"debit","classification":"expense"},...],"note":"[Institution] statement [period]"}');
+  lines.push("  4. CRITICAL: Internal transfers (card payments from checking to credit, Mercury↔Chime, PayPal Credit autopay) are classification:internal_transfer — they are NOT expenses. The purchase already appears on the credit card statement. Double-counting = wrong books.");
+  lines.push("  5. Process ONE statement per response. Confirm with the user before proceeding to the next file.");
+  lines.push("  6. After ALL statements are committed, emit the Balance Sheet and P&L canvas cards — the server will recompute from the committed data.");
   return lines.join("\n") + "\n\n";
 }
 
