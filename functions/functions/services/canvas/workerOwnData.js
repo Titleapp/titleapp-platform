@@ -165,31 +165,126 @@ async function marketingBlock(db, tenantId, uid) {
 // ("April $98k, May $98k…") and contradicts the canvas's $588.6k YTD. Compute
 // the same figures the canvas does, straight from the transactions.
 async function accountingBlock(db, tenantId) {
-  const snap = await safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get(), null);
-  const txs = docs(snap).filter(t => t.date);
-  if (!txs.length) return "";
+  const [txSnap, loanSnap] = await Promise.all([
+    safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get(), null),
+    safe(db.collection("loans").where("tenantId", "==", tenantId).get(), null),
+  ]);
+  const txs = docs(txSnap).filter(t => t.date);
   const dollars = (cents) => `$${Math.round((cents || 0) / 100).toLocaleString()}`;
+  const fmt2 = (cents) => Math.round((cents || 0) / 100);
   const sumC = (f) => txs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
-  const ytdRev = sumC(t => t.direction === "credit");
-  const ytdExp = sumC(t => t.direction === "debit");
+
+  // CRITICAL: classification drives accounting category — NOT direction alone.
+  // direction:"credit" + classification:"liability" = loan/equity inflow (FINANCING, not revenue).
+  // direction:"credit" + classification:"revenue"   = operating revenue.
+  // direction:"debit"  + classification:"expense"   = operating expense.
+  // direction:"debit"  + classification:"asset"     = CapEx (not expense).
+  // Never lump financing inflows into revenue — that overstates income.
+  const isRevenue  = t => t.direction === "credit"  && (t.classification === "revenue" || (!t.classification && t.direction === "credit" && t.source !== "alex"));
+  const isExpense  = t => t.direction === "debit"   && (t.classification === "expense" || !t.classification);
+  const isFinancing = t => t.classification === "liability" || t.classification === "equity_contribution";
+  const isCapEx    = t => t.classification === "asset";
+
+  // Alex-sourced transactions have explicit classification — always trust it.
+  // PDF-sourced transactions from personal/business statements may not have
+  // classification set; for those, fall back to direction for expense counting only.
+  const operatingRevenue = sumC(t => t.classification === "revenue");
+  const operatingExpenses = sumC(t => isExpense(t));
+  const financingInflows  = sumC(t => isFinancing(t) && t.direction === "credit");
+  const capEx             = sumC(t => isCapEx(t) && t.direction === "debit");
+
   const now = new Date();
   const monthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
-  const mRev = sumC(t => t.direction === "credit" && t.date >= monthStart);
-  const mExp = sumC(t => t.direction === "debit" && t.date >= monthStart);
-  // Per-month revenue/expense so chat can answer "show me each month" with real
-  // figures instead of repeating MTD across every month.
+  const asOfDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  const mExp = sumC(t => isExpense(t) && t.date >= monthStart);
+
+  // Per-month expense view (operating only).
   const byMonth = {};
   for (const t of txs) {
+    if (!isExpense(t)) continue;
     const m = String(t.date).slice(0, 7);
-    if (!byMonth[m]) byMonth[m] = { rev: 0, exp: 0 };
-    byMonth[m][t.direction === "credit" ? "rev" : "exp"] += (t.amountCents || 0);
+    if (!byMonth[m]) byMonth[m] = 0;
+    byMonth[m] += (t.amountCents || 0);
   }
   const months = Object.keys(byMonth).sort();
-  const lines = [`YOUR OWN RECORDS — Accounting (${txs.length} transactions, ${months[0]} → ${months[months.length - 1]}):`];
-  lines.push(`YEAR-TO-DATE: revenue ${dollars(ytdRev)}, expenses ${dollars(ytdExp)}, net income ${dollars(ytdRev - ytdExp)}.`);
-  lines.push(`THIS MONTH (MTD): revenue ${dollars(mRev)}, expenses ${dollars(mExp)}, net ${dollars(mRev - mExp)}.`);
-  lines.push("BY MONTH (revenue / expenses): " + months.map(m => `${m} ${dollars(byMonth[m].rev)}/${dollars(byMonth[m].exp)}`).join("; ") + ".");
-  lines.push("These YTD totals are authoritative and match the Accounting dashboard — never extrapolate or repeat the monthly figure across months.");
+
+  // ── Server-side balance sheet computation ────────────────────────────────
+  // RAAS rule: the rules engine computes financial figures; agents emit them verbatim.
+  // Never use stored balance snapshots as authoritative — they may be stale.
+  // Authoritative sources: transactions collection + loans collection only.
+  //
+  // Cash = all financing inflows + revenue − operating expenses − capEx paid
+  // Non-current assets = CapEx (patents, software)
+  // Liabilities = outstanding loan principals (from loans collection)
+  // Equity = Total Assets − Total Liabilities (= accumulated operating deficit)
+  const loans = docs(loanSnap);
+  const cashCents = financingInflows + operatingRevenue - operatingExpenses - capEx;
+  const totalLiabilitiesCents = loans.reduce((s, l) => s + (l.principalCents || 0), 0);
+  const totalAssetsCents = Math.max(0, cashCents) + capEx;
+  const totalEquityCents = totalAssetsCents - totalLiabilitiesCents;
+
+  // Build the exact canvas payload — Alex must emit this verbatim, no arithmetic.
+  const bsPayload = {
+    asOf: asOfDate,
+    currentAssets: cashCents > 0 ? [{ label: "Cash & Cash Equivalents", amount: fmt2(cashCents) }] : [],
+    nonCurrentAssets: capEx > 0 ? [{ label: "Patents & Software (CapEx)", amount: fmt2(capEx) }] : [],
+    totalCurrentAssets: fmt2(Math.max(0, cashCents)),
+    totalNonCurrentAssets: fmt2(capEx),
+    totalAssets: fmt2(totalAssetsCents),
+    currentLiabilities: [],
+    longTermLiabilities: loans.map(l => {
+      const rate = l.interestRatePct > 0 ? `, ${l.interestRatePct}% interest` : ", 0% interest";
+      const due = l.repaymentTrigger ? `, due ${l.repaymentTrigger}` : "";
+      return { label: `Loan — ${l.lender}${l.lenderEntity ? ` (${l.lenderEntity})` : ""}${rate}${due}`, amount: fmt2(l.principalCents || 0) };
+    }),
+    totalCurrentLiabilities: 0,
+    totalLongTermLiabilities: fmt2(totalLiabilitiesCents),
+    totalLiabilities: fmt2(totalLiabilitiesCents),
+    equity: [{ label: "Retained Earnings (Accumulated Deficit)", amount: fmt2(totalEquityCents) }],
+    totalEquity: fmt2(totalEquityCents),
+  };
+
+  const lines = [`YOUR OWN RECORDS — Accounting (${txs.length} transactions on file):`];
+
+  // Loan register.
+  if (loans.length) {
+    lines.push(`LOANS ON FILE (${loans.length}):`);
+    for (const l of loans) {
+      const rate = l.interestRatePct > 0 ? ` @ ${l.interestRatePct}%` : " @ 0% (no interest)";
+      const trigger = l.repaymentTrigger ? ` · repayable ${l.repaymentTrigger}` : "";
+      lines.push(`  ${l.lender}${l.lenderEntity ? ` (${l.lenderEntity})` : ""}: ${dollars(l.principalCents)} principal${rate}${trigger}`);
+    }
+    lines.push("  These loans are LIABILITIES — never count loan receipts as revenue or income.");
+  }
+
+  // P&L — operating only.
+  lines.push(`P&L — OPERATING (YTD):`);
+  lines.push(`  Operating revenue: ${dollars(operatingRevenue)} (this is a pre-revenue startup — $0 unless explicitly recorded)`);
+  lines.push(`  Operating expenses: ${dollars(operatingExpenses)}`);
+  lines.push(`  Net operating loss: ${dollars(operatingRevenue - operatingExpenses)}`);
+  if (financingInflows) lines.push(`  Financing inflows (loans/equity contributions, NOT revenue): ${dollars(financingInflows)}`);
+  if (capEx) lines.push(`  CapEx / intangible assets (patents, software — not expensed): ${dollars(capEx)}`);
+  if (months.length) {
+    lines.push(`THIS MONTH expenses (MTD): ${dollars(mExp)}.`);
+    lines.push("MONTHLY OPERATING EXPENSES: " + months.map(m => `${m} ${dollars(byMonth[m])}`).join("; ") + ".");
+  }
+
+  // Pre-computed balance sheet — authoritative. Inject as text summary + exact JSON payload.
+  lines.push(`BALANCE SHEET — SERVER-COMPUTED (as of ${asOfDate}):`);
+  lines.push(`  Total Assets:      ${dollars(totalAssetsCents)}`);
+  lines.push(`  Total Liabilities: ${dollars(totalLiabilitiesCents)}`);
+  lines.push(`  Total Equity:      ${dollars(totalEquityCents)}`);
+  lines.push(`  Cash on hand: ${dollars(cashCents)} (financing inflows minus all operating spend)`);
+  lines.push(`BALANCE SHEET CANVAS PAYLOAD — emit this JSON verbatim inside |||CANVAS_RENDER||| for card:accounting-balance-sheet. DO NOT change any number:`);
+  lines.push(JSON.stringify(bsPayload));
+
+  lines.push("ACCOUNTING RULES — FOLLOW EXACTLY:");
+  lines.push("- Revenue = classification:revenue only. Loan receipts and equity contributions are FINANCING, never revenue.");
+  lines.push("- For Balance Sheet canvas card: use ONLY the pre-computed payload above. Do NOT recompute, round differently, or add numbers. The payload is already correct.");
+  lines.push("- NEVER fabricate a bank account balance or checking account amount. If you don't have a real bank balance on file, the cash figure from transactions is the best estimate — say so.");
+  lines.push("- For P&L canvas card: revenue=operating revenue above, expenses=operating expenses above. Net income will be negative (pre-revenue startup).");
+  lines.push("- For Canvas reports: the canvas card already has a ↓ Download button (top-right corner). Tell users to use it — do NOT say exports aren't available.");
+  lines.push("- For multiple reports (P&L + Balance Sheet + Cash Flow): generate each as a SEPARATE canvas card in the SAME response. All three will auto-archive to the Reports tab.");
   return lines.join("\n") + "\n\n";
 }
 
@@ -395,6 +490,110 @@ async function nursingCohortBlock(db, tenantId) {
   return lines.join("\n") + "\n";
 }
 
+async function irBlock(db, tenantId) {
+  const [capTableDoc, txSnap, loanSnap, investorsSnap] = await Promise.all([
+    safe(db.collection("governance").doc("capTable").get(), null),
+    safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get(), null),
+    safe(db.collection("loans").where("tenantId", "==", tenantId).get(), null),
+    safe(db.collection("investors").where("tenantId", "==", tenantId).limit(100).get(), null),
+  ]);
+
+  const ct = capTableDoc?.exists ? capTableDoc.data() : {};
+  // governance/capTable is a platform-level document (SOCIII Inc).
+  // Guard: only use it when it belongs to this tenant. If a customer tenant
+  // activates an IR worker, we must not inject SOCIII's own ownership data
+  // into their workspace. ownerTenantId on the doc identifies the owner;
+  // absent = legacy platform doc (treat as platform-owned, not tenant-owned).
+  const ctOwner = ct.ownerTenantId || null;
+  const ctBelongsHere = !ctOwner || ctOwner === tenantId;
+  const shareholders = ctBelongsHere ? (ct.shareholders || []) : [];
+  const totalShares = ctBelongsHere ? (ct.totalShares || 10000000) : 0;
+
+  // Compute book equity from transactions + loans — never from stale snapshots.
+  const txs = docs(txSnap).filter(t => t.date);
+  const sumC = (f) => txs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
+  const isExpense  = t => t.direction === "debit"  && (t.classification === "expense" || !t.classification);
+  const isFinancing = t => t.classification === "liability" || t.classification === "equity_contribution";
+  const isCapEx    = t => t.classification === "asset";
+  const operatingRevenue  = sumC(t => t.classification === "revenue");
+  const operatingExpenses = sumC(t => isExpense(t));
+  const financingInflows  = sumC(t => isFinancing(t) && t.direction === "credit");
+  const capExCents        = sumC(t => isCapEx(t) && t.direction === "debit");
+  const cashCents = financingInflows + operatingRevenue - operatingExpenses - capExCents;
+  const totalAssetsCents = Math.max(0, cashCents) + capExCents;
+
+  const loans = docs(loanSnap);
+  const totalDebtCents = loans.reduce((s, l) => s + (l.principalCents || 0), 0);
+  const totalDebtDollars = totalDebtCents / 100;
+  // Book equity (negative = accumulated deficit, expected for a pre-revenue startup)
+  const bookEquityCents = totalAssetsCents - totalDebtCents;
+
+  const investors = docs(investorsSnap);
+  const totalRaised = investors.reduce((s, i) => s + (i.amount || 0), 0);
+
+  // 409A — three-approach blend (server-computed, never delegated to the AI).
+  const dr = 0.20;
+  const pv = (fv, yrs) => fv / Math.pow(1 + dr, yrs);
+  // Asset approach: book equity + IP premium (software dev + patent applications)
+  const assetEV = Math.max(0, bookEquityCents / 100 + 60000 + 90000);
+  const marketEV = 2100000; // pre-revenue AI/SaaS seed, working product + active customers
+  const pwermEV = [
+    { ev: 50000000, prob: 0.12, yrs: 4 },
+    { ev: 10000000, prob: 0.30, yrs: 3 },
+    { ev: 3000000,  prob: 0.35, yrs: 5 },
+    { ev: 0,        prob: 0.23, yrs: 0 },
+  ].reduce((s, sc) => s + sc.prob * pv(sc.ev, sc.yrs), 0);
+  const blendedEV = assetEV * 0.10 + marketEV * 0.40 + pwermEV * 0.50;
+  const equityValue = Math.max(0, (blendedEV - totalDebtDollars) * 0.65); // 35% DLOM
+  const fmvPerShare = equityValue / totalShares;
+
+  const shareholderSummary = !ctBelongsHere
+    ? "  - (No cap table on file for this workspace — contact support to set up your cap table)"
+    : shareholders.length > 0
+      ? shareholders.map(s => `  - ${s.name}: ${(s.shares || 0).toLocaleString()} shares`).join("\n")
+      : "  - Sean Combs (Founder): 7,100,000 (71%)\n  - Kent Redwine (CFO): 1,700,000 (17%)\n  - 6 Advisors 2% each: 1,200,000 total";
+
+  const loanLines = loans.length
+    ? loans.map(l => `  - ${l.lender || l.lenderName}: $${Math.round((l.principalCents || 0) / 100).toLocaleString()} @ ${l.interestRatePct || l.annualRatePercent || 0}%`).join("\n")
+    : "  - (No loans on file for this tenant — see accounting worker for loan details)";
+
+  const lines = [
+    "## Investor Relations — Live Workspace Data",
+    "",
+    `### Cap Table (${totalShares.toLocaleString()} total shares outstanding, par $0.00001)`,
+    shareholderSummary,
+    "",
+    `### Loans on Book`,
+    loanLines,
+    `Total Debt: $${Math.round(totalDebtDollars).toLocaleString()}`,
+    "",
+    `### Balance Sheet (server-computed from transactions + loans — not from stale snapshots)`,
+    `Total Assets:  $${Math.round(totalAssetsCents / 100).toLocaleString()}`,
+    `Total Liabilities: $${Math.round(totalDebtCents / 100).toLocaleString()}`,
+    `Book Equity: $${Math.round(bookEquityCents / 100).toLocaleString()} (accumulated deficit expected for pre-revenue startup)`,
+    "",
+    `### 409A Valuation — Computed (AI-indicative, not IRS safe harbor)`,
+    `Asset Approach EV:       $${Math.round(assetEV).toLocaleString()} (book equity + IP premium: software dev + patent applications)`,
+    `Market Comparable EV:    $${Math.round(marketEV).toLocaleString()} (pre-revenue AI/SaaS seed stage, working product + active customers)`,
+    `PWERM Weighted EV:       $${Math.round(pwermEV).toLocaleString()} (exit-scenario probability weighting at 20% discount rate)`,
+    `Blended Enterprise Value: $${Math.round(blendedEV).toLocaleString()} (10% Asset / 40% Market / 50% PWERM)`,
+    `Less: Debt:              ($${Math.round(totalDebtDollars).toLocaleString()})`,
+    `Less: DLOM (35%):        ($${Math.round((blendedEV - totalDebtDollars) * 0.35).toLocaleString()})`,
+    `Equity Value (post-DLOM): $${Math.round(equityValue).toLocaleString()}`,
+    `FMV per Share:            $${fmvPerShare.toFixed(4)}`,
+    "",
+    `### Investor Pipeline`,
+    `External investors on file: ${investors.length}`,
+    `Total raised to date: $${totalRaised.toLocaleString()}`,
+    "",
+    "### Canvas Capabilities",
+    "- To generate a 409A report on canvas: emit card:ir-409a with a payload containing {fmvPerShare, equityValue, blendedEV, assetEV, marketEV, pwermEV, totalShares, totalDebt, shareholders, scenarios, asOf}.",
+    "- The canvas card has a ↓ Download button — do NOT say exports aren't available.",
+    "- Do NOT fabricate cap table percentages or financial figures. Use the numbers above.",
+  ];
+  return lines.join("\n") + "\n\n";
+}
+
 const BUILDERS = {
   "platform-hr": staffCredentialsBlock,
   "title-abstract-001": titleAbstractBlock,
@@ -404,13 +603,16 @@ const BUILDERS = {
   "platform-marketing": marketingBlock,
   "platform-contacts": contactsBlock,
   "platform-accounting": accountingBlock,
+  "fundraise": irBlock,
+  "investor-relations": irBlock,
   // EU Battery DPP suite
   "eu-battery-dpp-001": dppComplianceBlock,
   "eu-passport-builder-001": dppPassportBlock,
   "eu-supply-chain-tracer-001": dppSupplyChainBlock,
   "eu-registry-manager-001": dppRegistryBlock,
   "eu-lifecycle-monitor-001": dppLifecycleBlock,
-  // Makai School of Nursing — all 5 workers share one cohort grounding block
+  // Makai School of Nursing + Clearwater Nursing Education — all share the cohort grounding block
+  "nursing-education-001": nursingCohortBlock,
   "nursing-records-001": nursingCohortBlock,
   "nursing-courses-001": nursingCohortBlock,
   "nursing-tutor-001": nursingCohortBlock,
@@ -426,16 +628,69 @@ const BUILDERS = {
  * @param {string} [args.uid]     authenticated user id (enriches per-user blocks like marketing)
  * @returns {Promise<string>} grounding block ("" if none / no data)
  */
+
+// ── Shared workspace context ─────────────────────────────────────────────────
+// Injected into EVERY worker regardless of type, so siblings have situational
+// awareness of each other's domains. Kept intentionally thin (< 10 lines) so
+// it doesn't crowd out the worker-specific block.
+async function workspaceContextBlock(db, tenantId) {
+  try {
+    const [txSnap, loanSnap] = await Promise.all([
+      safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get(), null),
+      safe(db.collection("loans").where("tenantId", "==", tenantId).get(), null),
+    ]);
+    const txs = docs(txSnap).filter(t => t.date);
+    const loans = docs(loanSnap);
+    if (!txs.length && !loans.length) return "";
+
+    const sumC = (f) => txs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
+    const isExpense   = t => t.direction === "debit"  && (t.classification === "expense" || !t.classification);
+    const isFinancing = t => t.classification === "liability" || t.classification === "equity_contribution";
+    const isCapEx     = t => t.classification === "asset";
+    const opRev  = sumC(t => t.classification === "revenue");
+    const opExp  = sumC(t => isExpense(t));
+    const finIn  = sumC(t => isFinancing(t) && t.direction === "credit");
+    const capEx  = sumC(t => isCapEx(t) && t.direction === "debit");
+    const cash   = Math.max(0, finIn + opRev - opExp - capEx);
+    const totalDebt = loans.reduce((s, l) => s + (l.principalCents || 0), 0);
+    const D = (cents) => `$${Math.round(cents / 100).toLocaleString()}`;
+    // Note: limit(2000) means totals may be approximate for tenants with >2000 transactions.
+    // The accounting worker's own block reads with the same cap; use the Accounting worker
+    // for authoritative figures on large transaction sets.
+    const truncNote = txs.length >= 2000 ? " (snapshot: ≥2000 txns, totals approximate)" : "";
+
+    const lines = [
+      "WORKSPACE CONTEXT (company-wide snapshot — available to all workers):",
+      `  Cash on hand: ${D(cash)}${truncNote} · Operating expenses YTD: ${D(opExp)} · Revenue: ${D(opRev)} · Net loss: ${D(opRev - opExp)}`,
+      `  Financing received: ${D(finIn)} (loans) · CapEx: ${D(capEx)} · Total liabilities: ${D(totalDebt)}`,
+      `  Loans: ${loans.map(l => `${l.lender} ${D(l.principalCents || 0)}`).join("; ")}.`,
+      "  This snapshot is from the same live Firestore data the Accounting worker uses. Cite it when answering cross-worker questions.",
+      "",
+    ];
+    return lines.join("\n");
+  } catch (e) {
+    console.warn("[workerOwnData] workspaceContextBlock failed:", e.message);
+    return "";
+  }
+}
+
 async function buildWorkerOwnData({ db, tenantId, workerSlug, uid }) {
   if (!db || !tenantId || tenantId === "vault" || !workerSlug) return "";
-  const builder = BUILDERS[workerSlug];
-  if (!builder) return "";
   try {
-    const block = await builder(db, tenantId, uid);
-    if (!block) return "";
-    return block + "Ground every answer in YOUR OWN RECORDS above — these are the real records on this workspace's canvas right now. Cite specific names, numbers, and dates from them. Never say you lack access to this data or ask the user to upload it.\n\n";
+    // Workspace context runs for every worker — sibling awareness.
+    const wsBlock = await workspaceContextBlock(db, tenantId);
+
+    const builder = BUILDERS[workerSlug];
+    const workerBlock = builder ? await builder(db, tenantId, uid).catch(e => {
+      console.warn("[workerOwnData] build failed for", workerSlug, e.message);
+      return "";
+    }) : "";
+
+    const combined = (wsBlock + workerBlock).trim();
+    if (!combined) return "";
+    return combined + "\n\nGround every answer in YOUR OWN RECORDS above — these are the real records on this workspace's canvas right now. Cite specific names, numbers, and dates from them. Never say you lack access to this data or ask the user to upload it.\n\n";
   } catch (e) {
-    console.warn("[workerOwnData] build failed for", workerSlug, e.message);
+    console.warn("[workerOwnData] buildWorkerOwnData failed:", e.message);
     return "";
   }
 }

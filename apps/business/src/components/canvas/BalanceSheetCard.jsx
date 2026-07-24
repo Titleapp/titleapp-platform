@@ -1,11 +1,33 @@
 /**
- * BalanceSheetCard.jsx — Balance Sheet canvas card
+ * BalanceSheetCard.jsx — Balance Sheet canvas card (CODEX 43 Pattern B)
  * Signal: card:accounting-balance-sheet
- * Data source: conversation context (AI-pushed)
+ *
+ * Pattern B: always fetches from backend. Never uses AI-supplied payload —
+ * the AI is not trusted to emit financial figures accurately. If the AI
+ * happens to include a payload, it is ignored entirely (the $150K-balance
+ * hallucination happened because the card trusted the AI's numbers).
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
 import CanvasCardShell from "./CanvasCardShell";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function fetchBalanceSheet() {
+  const auth = getAuth();
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) return null;
+  // x-tenant-id MUST be explicit — never inferred from session (red team F1).
+  const tenantId = localStorage.getItem("TENANT_ID") || "";
+  if (!tenantId) return null;
+  const res = await fetch(`${API_BASE}/api?path=/v1/accounting:balance-sheet`, {
+    headers: { Authorization: `Bearer ${token}`, "x-tenant-id": tenantId },
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.balanceSheet || null;
+}
 
 const S = {
   row: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13 },
@@ -17,6 +39,8 @@ const S = {
   subsectionTitle: { fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 8, marginBottom: 4 },
   asOf: { fontSize: 12, color: "#94a3b8", marginBottom: 12 },
   checkRow: { display: "flex", justifyContent: "space-between", padding: "10px 0", marginTop: 8, fontSize: 12, color: "#64748b", fontStyle: "italic" },
+  loading: { fontSize: 13, color: "#94a3b8", padding: "24px 0", textAlign: "center" },
+  error: { fontSize: 13, color: "#dc2626", padding: "12px 0" },
 };
 
 function fmt(n) {
@@ -33,7 +57,20 @@ function renderItems(items) {
 }
 
 export default function BalanceSheetCard({ resolved, context, onDismiss }) {
-  const data = context?.payload?.balanceSheet || context?.payload || null;
+  // Always fetch from backend — never seed from context.payload.
+  // AI payload is intentionally ignored (Pattern B: data-heavy cards must not
+  // trust model-generated numbers; they always self-fetch from the rules engine).
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBalanceSheet()
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, []);
 
   const currentAssets = data?.currentAssets || [];
   const nonCurrentAssets = data?.nonCurrentAssets || [];
@@ -41,27 +78,30 @@ export default function BalanceSheetCard({ resolved, context, onDismiss }) {
   const longTermLiabilities = data?.longTermLiabilities || [];
   const equity = data?.equity || [];
 
-  const totalCurrentAssets = data?.totalCurrentAssets ?? currentAssets.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totalNonCurrentAssets = data?.totalNonCurrentAssets ?? nonCurrentAssets.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totalAssets = data?.totalAssets ?? (totalCurrentAssets + totalNonCurrentAssets);
-
-  const totalCurrentLiabilities = data?.totalCurrentLiabilities ?? currentLiabilities.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totalLongTermLiabilities = data?.totalLongTermLiabilities ?? longTermLiabilities.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totalLiabilities = data?.totalLiabilities ?? (totalCurrentLiabilities + totalLongTermLiabilities);
-
-  const totalEquity = data?.totalEquity ?? equity.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalCurrentAssets = currentAssets.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalNonCurrentAssets = nonCurrentAssets.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalAssets = totalCurrentAssets + totalNonCurrentAssets;
+  const totalCurrentLiabilities = currentLiabilities.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalLongTermLiabilities = longTermLiabilities.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalLiabilities = totalCurrentLiabilities + totalLongTermLiabilities;
+  const totalEquity = equity.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalLiabAndEquity = totalLiabilities + totalEquity;
   const balanced = Math.abs(totalAssets - totalLiabAndEquity) < 0.5;
 
   return (
     <CanvasCardShell
       title="Balance Sheet"
-      emptyPrompt={resolved?.emptyPrompt || "Ask Alex to build a balance sheet to see it here."}
+      emptyPrompt={resolved?.emptyPrompt || "Ask Alex to show the balance sheet."}
       onDismiss={onDismiss}
     >
-      {data && (
+      {loading && <div style={S.loading}>Loading from live data…</div>}
+      {error && <div style={S.error}>Could not load — reload to try again.</div>}
+      {!loading && !error && !data && (
+        <div style={S.loading}>No transaction data on file yet.</div>
+      )}
+      {!loading && data && (
         <>
-          {data.asOf && <div style={S.asOf}>As of {data.asOf}</div>}
+          {data.asOf && <div style={S.asOf}>As of {data.asOf}{data.meta?.truncated ? " (large dataset — figures approximate)" : ""}</div>}
 
           <div style={S.section}>
             <div style={S.sectionTitle}>Assets</div>

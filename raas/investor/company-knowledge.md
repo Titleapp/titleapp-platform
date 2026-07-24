@@ -94,9 +94,13 @@ Manpreet Kaur (Backend Engineer): 8 years experience. Cloud infrastructure, AI i
 
 AI Development: Built on Claude (Anthropic), OpenAI GPT, and Google Gemini -- model-agnostic by design.
 
-Advisors:
-- Scott Eschelman: BUILD SF, over $500M in real estate capital deployed, Stanford.
-- Peggy Liu: World Economic Forum, TIME Magazine Hero of the Environment, MIT.
+Advisors (6 confirmed Fellows, 1 slot remaining):
+- Scott Eschelman: BuildSF, JMA Capital, over $500M in real estate capital deployed, Stanford. CRE vertical lead.
+- Ruthie Clearwater: Nursing educator and clinician. Built the Clearwater Nursing Education Worker. Education vertical lead.
+- Elise van der Bel: Creator and retail technology. HTML/CSS/Liquid/Python background. DPP and retail vertical lead.
+- Peggy Liu: World Economic Forum, TIME Magazine Hero of the Environment, MIT. Global impact and climate advisory.
+- Kim Ellen Bennett: GovTech and real estate. Public sector strategy, government technology partnerships, real estate vertical development.
+- Eric Altshuler: U.S. Navy Top Gun pilot. Aviation vertical lead, Part 135 and medevac market positioning.
 
 ---
 

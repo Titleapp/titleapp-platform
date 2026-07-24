@@ -1,11 +1,29 @@
 /**
- * PLSummaryCard.jsx — P&L Summary canvas card (44.9)
+ * PLSummaryCard.jsx — P&L Summary canvas card (CODEX 43 Pattern B)
  * Signal: card:accounting-pl
- * Data source: conversation context (populated as Alex provides data)
+ *
+ * Pattern B: always fetches from backend. AI payload is ignored.
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
 import CanvasCardShell from "./CanvasCardShell";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function fetchPL() {
+  const auth = getAuth();
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) return null;
+  const tenantId = localStorage.getItem("TENANT_ID") || "";
+  if (!tenantId) return null;
+  const res = await fetch(`${API_BASE}/api?path=/v1/accounting:pl`, {
+    headers: { Authorization: `Bearer ${token}`, "x-tenant-id": tenantId },
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.plData || null;
+}
 
 const S = {
   row: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13 },
@@ -14,11 +32,24 @@ const S = {
   total: { fontWeight: 700, color: "#111827", fontSize: 15 },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 12, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  period: { fontSize: 12, color: "#94a3b8", marginBottom: 12 },
+  loading: { fontSize: 13, color: "#94a3b8", padding: "24px 0", textAlign: "center" },
+  error: { fontSize: 13, color: "#dc2626", padding: "12px 0" },
 };
 
 export default function PLSummaryCard({ resolved, context, onDismiss }) {
-  // 49.31 — payload-first; AI emits the P&L shape directly inside payload.
-  const data = context?.payload?.plData || context?.payload || context?.plData || null;
+  // Always fetch from backend — never seed from context.payload (Pattern B).
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPL()
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
+      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <CanvasCardShell
@@ -26,8 +57,14 @@ export default function PLSummaryCard({ resolved, context, onDismiss }) {
       emptyPrompt={resolved?.emptyPrompt || "Ask Alex about your P&L to see it here."}
       onDismiss={onDismiss}
     >
-      {data && (
+      {loading && <div style={S.loading}>Loading from live data…</div>}
+      {error && <div style={S.error}>Could not load — reload to try again.</div>}
+      {!loading && !error && !data && (
+        <div style={S.loading}>No transaction data on file yet.</div>
+      )}
+      {!loading && data && (
         <>
+          {data.period && <div style={S.period}>{data.period}{data.meta?.truncated ? " (large dataset — figures approximate)" : ""}</div>}
           <div style={S.section}>
             <div style={S.sectionTitle}>Revenue</div>
             {(data.revenue || []).map((item, i) => (

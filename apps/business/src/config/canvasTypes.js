@@ -34,9 +34,11 @@ export const CANVAS_TYPES = {
   },
 
   // Accounting cards
+  // card:accounting-pl and card:accounting-balance-sheet are CODEX 43 Pattern B:
+  // the component self-fetches from the backend; AI emits signal-only (no payload).
   "card:accounting-pl": {
     component: "PLSummaryCard",
-    dataSource: "conversation",
+    dataSource: "api",
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: "Ask Alex about your P&L to see it here.",
@@ -57,7 +59,7 @@ export const CANVAS_TYPES = {
   },
   "card:accounting-balance-sheet": {
     component: "BalanceSheetCard",
-    dataSource: "conversation",
+    dataSource: "api",
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: "Ask Alex to build a balance sheet to see it here.",

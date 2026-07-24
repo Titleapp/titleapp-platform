@@ -1425,7 +1425,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
     const anthropic = getAnthropic();
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 2048,
+      max_tokens: 8192,
       system: systemPrompt,
       messages,
     });
@@ -1448,7 +1448,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
         const violationList = chatEnforcement.violations.map(v => `- ${v.ruleId}: ${v.message}`).join("\n");
         const retryResponse = await anthropic.messages.create({
           model: "claude-sonnet-4-5-20250929",
-          max_tokens: 2048,
+          max_tokens: 8192,
           system: `You are Alex from SOCIII. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
           messages,
         });
@@ -1467,6 +1467,31 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
   } catch (enfErr) {
     // Fail open for chat — log and continue
     console.error("[enforcement] Chat enforcement error (continuing):", enfErr.message);
+  }
+
+  // ── Sibling directive: __ACCT_PUSH__ ───────────────────
+  // Alex can embed __ACCT_PUSH__:{...json...} in its response to push
+  // extracted transactions directly into the Accounting worker's ledger.
+  // The directive is executed server-side and stripped before the user sees it.
+  try {
+    const acctPushMatch = aiResponse.match(/__ACCT_PUSH__:(\{[\s\S]*?\})\s*(?:\n|$)/);
+    if (acctPushMatch) {
+      const payload = JSON.parse(acctPushMatch[1]);
+      if (Array.isArray(payload.transactions) && payload.transactions.length) {
+        const { commitAlexTransactions } = require("./services/accounting/statementIngest");
+        const result = await commitAlexTransactions({
+          tenantId,
+          userId,
+          transactions: payload.transactions,
+          note: payload.note || "Alex AI extraction",
+        });
+        console.log(`[acct-push] wrote ${result.written} transactions for tenant ${tenantId}`);
+      }
+      // Strip the directive from the displayed response
+      aiResponse = aiResponse.replace(/__ACCT_PUSH__:(\{[\s\S]*?\})\s*(?:\n|$)/, "").trim();
+    }
+  } catch (siblingErr) {
+    console.error("[acct-push] sibling directive failed (continuing):", siblingErr.message);
   }
 
   // Event-sourced: log response (with enforcement metadata)
@@ -3696,6 +3721,27 @@ END DELIVERY RULES.
                   if (siblingPrompt) workerPrompt = siblingPrompt + workerPrompt;
                 } catch (siblingErr) {
                   console.warn("worker chat: sibling state inject failed:", siblingErr.message);
+                }
+              }
+
+              // CODEX 43 §5 — vertical sibling injection. Workers in the same
+              // vertical see their siblings and what bundle shapes they produce,
+              // so they can propose handoffs instead of telling users to navigate.
+              // Must run BEFORE own-data grounding so context ordering is correct
+              // (workspace → spine KPIs → vertical siblings → own records → WHO YOU SERVE → system prompt).
+              if (workerPrompt && dw && dw.vertical && dw.vertical !== "platform") {
+                try {
+                  const { buildVerticalSiblingBlock } = require("./services/canvas/verticalSiblings");
+                  const vertBlock = await buildVerticalSiblingBlock({
+                    db,
+                    tenantId: reqTenantId || null,
+                    vertical: dw.vertical,
+                    suite: dw.suite || null,
+                    currentSlug: workerSlug,
+                  });
+                  if (vertBlock) workerPrompt = vertBlock + workerPrompt;
+                } catch (vertSibErr) {
+                  console.warn("worker chat: vertical sibling inject failed:", vertSibErr.message);
                 }
               }
 
@@ -14273,6 +14319,106 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // OAuth follows later this week.
     // ───────────────────────────────────────────────────────────
 
+    // GET /v1/accounting:balance-sheet — CODEX 43 Pattern B.
+    // Returns server-computed balance sheet JSON so BalanceSheetCard can self-fetch.
+    // Tenancy enforced via ctx.tenantId (from x-tenant-id header — always explicit).
+    // AI emits signal-only: |||CANVAS_RENDER|||{"type":"card:accounting-balance-sheet"}|||END_CANVAS|||
+    if (route === "/accounting:balance-sheet" && method === "GET") {
+      try {
+        const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const safe = (p) => p.catch(() => ({ docs: [] }));
+        const docs = (snap) => (snap && snap.docs ? snap.docs.map(d => ({ id: d.id, ...d.data() })) : []);
+        const [txSnap, loanSnap] = await Promise.all([
+          safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get()),
+          safe(db.collection("loans").where("tenantId", "==", tenantId).get()),
+        ]);
+        const txs = docs(txSnap).filter(t => t.date);
+        const loans = docs(loanSnap);
+        const sumC = (f) => txs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
+        const isExpense   = t => t.direction === "debit"  && (t.classification === "expense" || !t.classification);
+        const isFinancing = t => t.classification === "liability" || t.classification === "equity_contribution";
+        const isCapEx     = t => t.classification === "asset";
+        const opRev  = sumC(t => t.classification === "revenue");
+        const opExp  = sumC(t => isExpense(t));
+        const finIn  = sumC(t => isFinancing(t) && t.direction === "credit");
+        const capEx  = sumC(t => isCapEx(t) && t.direction === "debit");
+        const cashCents = finIn + opRev - opExp - capEx;
+        const totalLiabCents = loans.reduce((s, l) => s + (l.principalCents || 0), 0);
+        const totalAssetsCents = Math.max(0, cashCents) + capEx;
+        const totalEquityCents = totalAssetsCents - totalLiabCents;
+        const fmt2 = (cents) => Math.round((cents || 0) / 100);
+        const now = new Date();
+        const asOf = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+        return res.json({
+          ok: true,
+          balanceSheet: {
+            asOf,
+            currentAssets: cashCents > 0 ? [{ label: "Cash & Cash Equivalents", amount: fmt2(cashCents) }] : [],
+            nonCurrentAssets: capEx > 0 ? [{ label: "Patents & Software (CapEx)", amount: fmt2(capEx) }] : [],
+            currentLiabilities: [],
+            longTermLiabilities: loans.map(l => {
+              const rate = l.interestRatePct > 0 ? `, ${l.interestRatePct}% interest` : ", 0% interest";
+              const due = l.repaymentTrigger ? `, due ${l.repaymentTrigger}` : "";
+              return { label: `Loan — ${l.lender}${l.lenderEntity ? ` (${l.lenderEntity})` : ""}${rate}${due}`, amount: fmt2(l.principalCents || 0) };
+            }),
+            equity: [{ label: "Retained Earnings (Accumulated Deficit)", amount: fmt2(totalEquityCents) }],
+            meta: { txCount: txs.length, loanCount: loans.length, truncated: txs.length >= 2000 },
+          },
+        });
+      } catch (e) {
+        console.error("[accounting:balance-sheet] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to compute balance sheet");
+      }
+    }
+
+    // GET /v1/accounting:pl — CODEX 43 Pattern B.
+    // Returns server-computed P&L so PLSummaryCard can self-fetch.
+    if (route === "/accounting:pl" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const safe = (p) => p.catch(() => ({ docs: [] }));
+        const docs = (snap) => (snap && snap.docs ? snap.docs.map(d => ({ id: d.id, ...d.data() })) : []);
+        const txSnap = await safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get());
+        const txs = docs(txSnap).filter(t => t.date);
+        const sumC = (f) => txs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
+        const isExpense = t => t.direction === "debit" && (t.classification === "expense" || !t.classification);
+        const opRev = sumC(t => t.classification === "revenue");
+        const opExp = sumC(t => isExpense(t));
+        const fmt2 = (cents) => Math.round((cents || 0) / 100);
+        // Build expense line items by category/description
+        const expByLabel = {};
+        for (const t of txs) {
+          if (!isExpense(t)) continue;
+          const label = t.coaCategory || t.description?.slice(0, 40) || "Operating Expense";
+          expByLabel[label] = (expByLabel[label] || 0) + (t.amountCents || 0);
+        }
+        const expenseLines = Object.entries(expByLabel)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 20)
+          .map(([label, cents]) => ({ label, amount: fmt2(cents) }));
+        const now = new Date();
+        const yearStart = `${now.getUTCFullYear()}-01-01`;
+        return res.json({
+          ok: true,
+          plData: {
+            period: `YTD ${now.getUTCFullYear()}`,
+            revenue: opRev > 0 ? [{ label: "Operating Revenue", amount: fmt2(opRev) }] : [{ label: "Operating Revenue (pre-revenue startup)", amount: 0 }],
+            totalRevenue: fmt2(opRev),
+            expenses: expenseLines,
+            totalExpenses: fmt2(opExp),
+            netIncome: fmt2(opRev - opExp),
+            meta: { txCount: txs.length, truncated: txs.length >= 2000 },
+          },
+        });
+      } catch (e) {
+        console.error("[accounting:pl] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to compute P&L");
+      }
+    }
+
     // GET /v1/accounting:setupState — read setup checklist progress.
     // Manual clicks live in accountingSetup/{tenantId}.steps. We also AUTO-
     // DETECT completion from actual Firestore state so the checklist stays
@@ -14955,6 +15101,31 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/accounting:transactions:push — Alex pushes extracted transactions
+    // directly into the Accounting worker's ledger without requiring a fileId.
+    // Source is "alex" so these appear in the Accounting inbox as AI-extracted.
+    // Body: { transactions: [{ date, description, amountCents, direction,
+    //   classification?, coaAccountId?, institution?, accountLast4? }], note? }
+    if (route === "/accounting:transactions:push" && method === "POST") {
+      try {
+        const { transactions, note } = body || {};
+        if (!Array.isArray(transactions) || !transactions.length) {
+          return jsonError(res, 400, "Missing or empty transactions array");
+        }
+        const { commitAlexTransactions } = require("./services/accounting/statementIngest");
+        const result = await commitAlexTransactions({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          transactions,
+          note: note || null,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[accounting:transactions:push] error:", e.message);
+        return jsonError(res, 500, "Failed to push transactions");
+      }
+    }
+
     // POST /v1/accounting:transactions:tag — flag a transaction as recurring,
     // set expectedNextDate, or commit. The "Mark recurring" affordance on the
     // Transactions tab calls here; recurringChargeDigest cron reads from this.
@@ -14999,6 +15170,174 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         console.error("[accounting:transactions:list] error:", e.message);
         return jsonError(res, 500, "Failed to list transactions");
       }
+    }
+
+    // GET /v1/accounting:loans — loan register for this workspace.
+    // Returns all active loans with dynamically-computed accrued interest.
+    if (route === "/accounting:loans" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { listLoans } = require("./services/accounting/loans");
+        const result = await listLoans({ tenantId: ctx.tenantId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:loans] error:", e.message);
+        return jsonError(res, 500, "Failed to list loans");
+      }
+    }
+
+    // ----------------------------
+    // CRE DATA CONNECTORS — CoStar + Trepp (bring-your-own credentials)
+    // ----------------------------
+
+    // GET /v1/cre:costar:status — is CoStar connected for this tenant?
+    if (route === "/cre:costar:status" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getConnectionStatus } = require("./services/cre/costar");
+        return res.json({ ok: true, ...(await getConnectionStatus({ db, tenantId: ctx.tenantId })) });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // POST /v1/cre:costar:connect — save CoStar credentials
+    if (route === "/cre:costar:connect" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { apiKey, username, password } = body;
+        const { saveCredentials } = require("./services/cre/costar");
+        return res.json(await saveCredentials({ db, tenantId: ctx.tenantId, apiKey, username, password }));
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // POST /v1/cre:costar:disconnect
+    if (route === "/cre:costar:disconnect" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { disconnectCredentials } = require("./services/cre/costar");
+        return res.json(await disconnectCredentials({ db, tenantId: ctx.tenantId }));
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // GET /v1/cre:costar:properties — search properties
+    if (route === "/cre:costar:properties" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { searchProperties } = require("./services/cre/costar");
+        const q = req.query || {};
+        return res.json(await searchProperties({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, minSqFt: q.minSqFt, maxSqFt: q.maxSqFt, minCapRate: q.minCapRate, maxCapRate: q.maxCapRate, limit: parseInt(q.limit || "25") }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:costar:saleComps
+    if (route === "/cre:costar:saleComps" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getSaleComps } = require("./services/cre/costar");
+        const q = req.query || {};
+        return res.json(await getSaleComps({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, minPrice: q.minPrice, maxPrice: q.maxPrice, fromDate: q.fromDate, limit: parseInt(q.limit || "25") }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:costar:leaseComps
+    if (route === "/cre:costar:leaseComps" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getLeaseComps } = require("./services/cre/costar");
+        const q = req.query || {};
+        return res.json(await getLeaseComps({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, minRent: q.minRent, maxRent: q.maxRent, limit: parseInt(q.limit || "25") }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:costar:marketAnalytics
+    if (route === "/cre:costar:marketAnalytics" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getMarketAnalytics } = require("./services/cre/costar");
+        const q = req.query || {};
+        return res.json(await getMarketAnalytics({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, period: q.period || "quarterly" }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:trepp:status
+    if (route === "/cre:trepp:status" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getConnectionStatus } = require("./services/cre/trepp");
+        return res.json({ ok: true, ...(await getConnectionStatus({ db, tenantId: ctx.tenantId })) });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // POST /v1/cre:trepp:connect
+    if (route === "/cre:trepp:connect" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { saveCredentials } = require("./services/cre/trepp");
+        return res.json(await saveCredentials({ db, tenantId: ctx.tenantId, apiKey: body.apiKey }));
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // POST /v1/cre:trepp:disconnect
+    if (route === "/cre:trepp:disconnect" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { disconnectCredentials } = require("./services/cre/trepp");
+        return res.json(await disconnectCredentials({ db, tenantId: ctx.tenantId }));
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    // GET /v1/cre:trepp:loans — CMBS loan search
+    if (route === "/cre:trepp:loans" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { searchLoans } = require("./services/cre/trepp");
+        const q = req.query || {};
+        return res.json(await searchLoans({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, servicer: q.servicer, status: q.status, minBalance: q.minBalance, maxBalance: q.maxBalance, maturityFrom: q.maturityFrom, maturityTo: q.maturityTo, limit: parseInt(q.limit || "25") }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:trepp:maturityWall
+    if (route === "/cre:trepp:maturityWall" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getMaturityWall } = require("./services/cre/trepp");
+        const q = req.query || {};
+        return res.json(await getMaturityWall({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, fromDate: q.fromDate, toDate: q.toDate, limit: parseInt(q.limit || "50") }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:trepp:delinquency
+    if (route === "/cre:trepp:delinquency" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getDelinquencyTrends } = require("./services/cre/trepp");
+        const q = req.query || {};
+        return res.json(await getDelinquencyTrends({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType, period: q.period || "monthly" }));
+      } catch (e) { return jsonError(res, 400, e.message); }
+    }
+
+    // GET /v1/cre:trepp:servicers
+    if (route === "/cre:trepp:servicers" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const { getServicers } = require("./services/cre/trepp");
+        const q = req.query || {};
+        return res.json(await getServicers({ db, tenantId: ctx.tenantId, market: q.market, propertyType: q.propertyType }));
+      } catch (e) { return jsonError(res, 400, e.message); }
     }
 
     // GET /v1/contacts:list — in-app contacts list, scoped to ctx.tenantId.
@@ -23295,6 +23634,86 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       } catch (e) {
         console.error("governance:cap-table failed:", e);
         return jsonError(res, 500, "Failed to load cap table");
+      }
+    }
+
+    // GET /v1/ir:valuation:409a — AI-computed 409A fair market value
+    if (route === "/ir:valuation:409a" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const [capTableDoc, txSnap, loanSnap, investorsSnap] = await Promise.all([
+          db.collection("governance").doc("capTable").get().catch(() => null),
+          db.collection("transactions").where("tenantId", "==", ctx.tenantId).limit(2000).get().catch(() => null),
+          db.collection("loans").where("tenantId", "==", ctx.tenantId).get().catch(() => null),
+          db.collection("investors").where("tenantId", "==", ctx.tenantId).limit(100).get().catch(() => null),
+        ]);
+        const ct = capTableDoc?.exists ? capTableDoc.data() : {};
+        const shareholders = ct.shareholders || [
+          { name: "Sean Combs (Founder)", shares: 7100000, pct: 71 },
+          { name: "Kent Redwine (CFO)", shares: 1700000, pct: 17 },
+          { name: "Advisors (6 × 2%)", shares: 1200000, pct: 12 },
+        ];
+        const totalShares = ct.totalShares || 10000000;
+        const txDocs = txSnap ? txSnap.docs.map(d => d.data()).filter(t => t.date) : [];
+        const sumC = (f) => txDocs.filter(f).reduce((s, t) => s + (t.amountCents || 0), 0);
+        const isExpense   = t => t.direction === "debit"  && (t.classification === "expense" || !t.classification);
+        const isFinancing = t => t.classification === "liability" || t.classification === "equity_contribution";
+        const isCapEx     = t => t.classification === "asset";
+        const operatingRevenue  = sumC(t => t.classification === "revenue");
+        const operatingExpenses = sumC(t => isExpense(t));
+        const financingInflows  = sumC(t => isFinancing(t) && t.direction === "credit");
+        const capExCents        = sumC(t => isCapEx(t) && t.direction === "debit");
+        const cashCents = financingInflows + operatingRevenue - operatingExpenses - capExCents;
+        const loansArr = loanSnap ? loanSnap.docs.map(d => d.data()) : [];
+        const totalDebt = loansArr.reduce((s, l) => s + (l.principalCents || 0), 0) / 100;
+        const totalAssetsCents = Math.max(0, cashCents) + capExCents;
+        const bookEquityCents = totalAssetsCents - (totalDebt * 100);
+        const investors = investorsSnap ? investorsSnap.docs.map(d => d.data()) : [];
+        const totalRaised = investors.reduce((s, i) => s + (i.amount || 0), 0);
+
+        const dr = 0.20;
+        const pv = (fv, yrs) => fv / Math.pow(1 + dr, yrs);
+        const assetEV = Math.max(0, bookEquityCents / 100 + 60000 + 90000);
+        const marketEV = 2100000;
+        const scenarios = [
+          { label: "Strong exit (IPO / acquisition $50M)", ev: 50000000, prob: 0.12, yrs: 4 },
+          { label: "Moderate acquisition ($10M)", ev: 10000000, prob: 0.30, yrs: 3 },
+          { label: "Slow-growth acqui-hire ($3M)", ev: 3000000,  prob: 0.35, yrs: 5 },
+          { label: "Wind-down", ev: 0,        prob: 0.23, yrs: 0 },
+        ];
+        const pwermEV = scenarios.reduce((s, sc) => s + sc.prob * pv(sc.ev, sc.yrs), 0);
+        const blendedEV = assetEV * 0.10 + marketEV * 0.40 + pwermEV * 0.50;
+        const equityValue = Math.max(0, (blendedEV - totalDebt) * 0.65);
+        const fmvPerShare = equityValue / totalShares;
+
+        return res.json({
+          ok: true,
+          valuation: {
+            fmvPerShare: parseFloat(fmvPerShare.toFixed(6)),
+            equityValue: Math.round(equityValue),
+            blendedEV: Math.round(blendedEV),
+            assetEV: Math.round(assetEV),
+            marketEV,
+            pwermEV: Math.round(pwermEV),
+            totalShares,
+            totalDebt: Math.round(totalDebt),
+            totalRaised,
+            shareholders,
+            scenarios,
+            approaches: [
+              { label: "Asset Approach", ev: Math.round(assetEV), weight: "10%" },
+              { label: "Market Comparable (AI/SaaS Seed)", ev: marketEV, weight: "40%" },
+              { label: "PWERM (Exit Scenarios)", ev: Math.round(pwermEV), weight: "50%" },
+            ],
+            asOf: new Date().toISOString().slice(0, 10),
+            methodology: "Three-approach blend (Asset 10% / Market 40% / PWERM 50%) · 35% DLOM",
+            disclaimer: "AI-generated indicative valuation. For IRS Section 409A safe harbor, requires review by a qualified independent appraiser.",
+          },
+        });
+      } catch (e) {
+        console.error("[ir:valuation:409a] failed:", e.message);
+        return jsonError(res, 500, "Failed to compute valuation");
       }
     }
 

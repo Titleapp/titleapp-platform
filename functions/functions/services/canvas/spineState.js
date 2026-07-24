@@ -130,8 +130,9 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     const txs = txSnap.docs.map(d => d.data());
     const conns = connSnap.docs.map(d => d.data()).filter(a => a.status !== "deleted");
     const mtdTxs = txs.filter(t => t.date && t.date >= monthStart);
-    const revenueMtd = mtdTxs.filter(t => t.direction === "credit").reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
-    const expensesMtd = mtdTxs.filter(t => t.direction === "debit").reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
+    // Use classification, not direction, to avoid counting loan inflows as revenue.
+    const revenueMtd  = mtdTxs.filter(t => t.classification === "revenue").reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
+    const expensesMtd = mtdTxs.filter(t => t.direction === "debit" && (t.classification === "expense" || !t.classification)).reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
     // Forward expense projection from CoA monthly caps — gives the chat
     // enough context to answer "estimate next month's burn" without needing
     // to walk every transaction. Categories with no cap fall through.
