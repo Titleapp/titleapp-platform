@@ -4727,7 +4727,10 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               }
 
               // Nursing — get_nursing_student tool.
-              if (toolBlock && toolBlock.name === 'get_nursing_student') {
+              // FERPA guard: only faculty/admin nursing workers may access individual student records.
+              // nursing-ce-001 is a CE worker with no FERPA relationship to students.
+              const _NURSING_STUDENT_ALLOWED = ["nursing-records-001","nursing-courses-001","nursing-tutor-001","nursing-comms-001","nursing-accreditation-001","nursing-education-001"];
+              if (toolBlock && toolBlock.name === 'get_nursing_student' && _NURSING_STUDENT_ALLOWED.includes(workerSlug)) {
                 try {
                   const { studentId } = toolBlock.input || {};
                   const [studentDoc, competenciesSnap] = await Promise.all([
@@ -14419,6 +14422,80 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ─── alertFeed routes — CODEX 18 ──────────────────────────────────────────
+    // Collection path: alertFeed/{uid}/items
+    // Canonical schema: uid, tenantId, title, detail, severity (red|yellow|green),
+    //   status (active|snoozed|resolved), source, sourceRef, actionHint, horizon,
+    //   snoozedUntil (ISO string|null), resolvedAt (Timestamp|null), createdAt.
+
+    if (route === "/alertFeed" && method === "GET") {
+      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const tenantId = req.headers["x-tenant-id"] || "";
+      if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+      try {
+        const snap = await db.collection("alertFeed").doc(authUser.uid).collection("items")
+          .where("tenantId", "==", tenantId)
+          .where("status", "in", ["active", "snoozed"])
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        return res.json({ items: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    if (route === "/alertFeed:push" && method === "POST") {
+      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
+      if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+      const { title, detail, severity, source, sourceRef, actionHint, horizon } = body;
+      if (!title) return jsonError(res, 400, "title required");
+      try {
+        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc();
+        await ref.set({
+          uid: authUser.uid, tenantId,
+          title, detail: detail || "",
+          severity: ["red","yellow","green"].includes(severity) ? severity : "yellow",
+          status: "active",
+          source: source || "system", sourceRef: sourceRef || null,
+          actionHint: actionHint || null,
+          horizon: ["today","week","month"].includes(horizon) ? horizon : "week",
+          snoozedUntil: null, resolvedAt: null,
+          createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, id: ref.id });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    if (route === "/alertFeed:resolve" && method === "POST") {
+      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
+      const { itemId } = body;
+      if (!tenantId || !itemId) return jsonError(res, 400, "x-tenant-id and itemId required");
+      try {
+        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+        const doc = await ref.get();
+        if (!doc.exists || doc.data().tenantId !== tenantId) return jsonError(res, 404, "item not found");
+        await ref.update({ status: "resolved", resolvedAt: nowServerTs() });
+        return res.json({ ok: true });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
+    if (route === "/alertFeed:snooze" && method === "POST") {
+      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
+      const { itemId, snoozeHours } = body;
+      if (!tenantId || !itemId) return jsonError(res, 400, "x-tenant-id and itemId required");
+      try {
+        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+        const doc = await ref.get();
+        if (!doc.exists || doc.data().tenantId !== tenantId) return jsonError(res, 404, "item not found");
+        const hours = Number(snoozeHours) || 24;
+        const snoozedUntil = new Date(Date.now() + hours * 3600000).toISOString();
+        await ref.update({ status: "snoozed", snoozedUntil });
+        return res.json({ ok: true, snoozedUntil });
+      } catch (e) { return jsonError(res, 500, e.message); }
+    }
+
     // GET /v1/accounting:setupState — read setup checklist progress.
     // Manual clicks live in accountingSetup/{tenantId}.steps. We also AUTO-
     // DETECT completion from actual Firestore state so the checklist stays
@@ -22050,13 +22127,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // Logs session, sends email + SMS, deducts credits if non-subsidized.
     if (route === "/support:escalate" && method === "POST") {
       try {
-        const { message, workerSlug, persona, sessionId, consentGiven } = body;
+        const { message, workerSlug, persona, sessionId, consentGiven, requestId } = body;
         if (!message) return jsonError(res, 400, "message required");
 
         const userId = auth.user?.uid || "anonymous";
         const userEmail = auth.user?.email || null;
         const userName = auth.user?.displayName || userEmail || "a user";
         const escTenantId = ctx.tenantId || "unknown";
+
+        // Idempotency: if client sends a requestId, reject duplicate attempts.
+        if (requestId) {
+          const existingSnap = await db.collection("supportSessions")
+            .where("requestId", "==", requestId).limit(1).get();
+          if (!existingSnap.empty) {
+            return res.json({ ok: true, sessionId: existingSnap.docs[0].id, duplicate: true });
+          }
+        }
+
+        // Prevent duplicate open sessions for same user+tenant.
+        const openSnap = await db.collection("supportSessions")
+          .where("userId", "==", userId)
+          .where("tenantId", "==", escTenantId)
+          .where("status", "in", ["open", "in_progress"])
+          .limit(1).get();
+        if (!openSnap.empty) {
+          return res.json({ ok: true, sessionId: openSnap.docs[0].id, existing: true });
+        }
 
         const subsidized = await isSupportSubsidized(escTenantId);
 
@@ -22095,6 +22191,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           workerSlug: workerSlug || null,
           persona: persona || null,
           sessionId: sessionId || null,
+          requestId: requestId || null,
           triggerMessage: message,
           triggerMethod: "regex",
           status: "open",
@@ -22132,7 +22229,8 @@ ${persona ? `<p><strong>Persona:</strong> ${persona}</p>` : ""}
         try {
           const { sendSMSDirect } = require("./communications/twilioHelper");
           const preview = message.slice(0, 100).replace(/\n/g, " ");
-          await sendSMSDirect("+13104300780", `[Support${subsidized ? "/free" : ""}] ${userName}: "${preview}" Session: ${sessionRef.id.slice(0, 8)}`);
+          const _supportPhone = process.env.SUPPORT_ALERT_PHONE || "+13104300780";
+          await sendSMSDirect(_supportPhone, `[Support${subsidized ? "/free" : ""}] ${userName}: "${preview}" Session: ${sessionRef.id.slice(0, 8)}`);
         } catch (smsErr) {
           console.warn("support:escalate SMS failed:", smsErr.message);
         }

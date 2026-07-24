@@ -344,6 +344,30 @@ The `nursing-education-001` worker is Clearwater Nursing Education (Ruthie's for
 
 ---
 
+## 10. Aviation Sequencing Dependency (2026-07-23)
+
+**Cross-document finding:** CODEX 42 Phase 2 (aviation hard stops — mechanical enforcement) and CODEX 43 Tier 3 (own-data grounding for av-copilot-001, av-mx-001, av-dispatch-001) are two independent backlogs tracked in separate documents. Neither references the other. Today, both gaps exist simultaneously on the same three workers.
+
+**The risk:** An aviation worker answering a duty-time question is currently:
+1. Not grounded in real pilot currency or logbook records (Tier 3 grounding, unbuilt)
+2. Not mechanically rules-enforced on duty time, FRAT, or dispatch (CODEX 42 Phase 2, unbuilt)
+
+That is an LLM producing ungrounded answers to life-safety questions with no enforcement gate — and nothing in either CODEX flags that these two workstreams are coupled.
+
+**Sequencing requirement (non-negotiable):**
+- CODEX 43 Tier 3 grounding and CODEX 42 Phase 2 aviation hard stops MUST ship together as a single release for Part 135 activation
+- Neither gap is individually sufficient: grounding without enforcement still lets the AI ignore what it reads; enforcement without grounding validates hallucinated inputs
+- These are tracked in two CODEXes. The build owner must treat them as one workstream, not two
+
+**Until both land, aviation workers must display this advisory banner in the canvas:**
+> "Training mode: This worker uses AI estimates, not verified flight records. Do not use for operational decisions."
+
+This banner is a code requirement — not a disclaimer tucked in a footer. It must be visible on every aviation canvas tab until both grounding (Tier 3) and enforcement (CODEX 42 Phase 2) are confirmed deployed and passing QA.
+
+**Owner of sequencing:** Whoever picks up CODEX 40 Phase 1 owns both CODEX 43 Tier 3 aviation grounding AND confirming that CODEX 42 Phase 2 aviation enforcement is concurrent. Do not start CODEX 40 Phase 1 without this acknowledged.
+
+---
+
 ## 9. Invariants (non-negotiable)
 
 **R1: Signal-only breaks when the user is offline or API is down**

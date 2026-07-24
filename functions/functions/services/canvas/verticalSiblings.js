@@ -22,13 +22,13 @@
 // Workers without an entry fall back to dw.emits / dw.accepts fields on the doc.
 const BUNDLE_SHAPES = {
   // Real-estate vertical
-  "cre-analyst":            { emits: "parcel-bundle/v1", accepts: "address + deal terms, parcel-bundle/v1" },
+  "cre-analyst":            { emits: "parcel-bundle/v1", accepts: "address + deal terms, parcel-bundle/v1, site-recon-bundle/v1, legal-opinion-bundle/v1, zoning-bundle/v1, feasibility-roadmap/v1" },
   "site-recon-001":         { emits: "site-recon-bundle/v1", accepts: "parcel-bundle/v1" },
   "title-abstract-001":     { emits: "title-abstract-bundle/v1", accepts: "parcel-bundle/v1" },
   "law-landuse-001":        { emits: "legal-opinion-bundle/v1", accepts: "parcel-bundle/v1, zoning-bundle/v1" },
   "zoning-001":             { emits: "zoning-bundle/v1", accepts: "parcel-bundle/v1" },
-  "feasibility-001":        { emits: "feasibility-roadmap/v1", accepts: "parcel-bundle/v1, site-recon-bundle/v1, legal-opinion-bundle/v1" },
-  "re-marketing-001":       { emits: "listing-bundle/v1", accepts: "title-abstract-bundle/v1" },
+  "feasibility-001":        { emits: "feasibility-roadmap/v1", accepts: "parcel-bundle/v1, site-recon-bundle/v1, zoning-bundle/v1, legal-opinion-bundle/v1" },
+  "re-marketing-001":       { emits: "listing-readiness/v1", accepts: "title-abstract-bundle/v1" },
   // Education vertical — nursing
   "nursing-education-001":  { emits: "learning-record/v1", accepts: "student-id, cohort-id" },
   "nursing-records-001":    { emits: "student-record/v1", accepts: "student-id, cohort-id" },

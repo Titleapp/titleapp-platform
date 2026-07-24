@@ -833,9 +833,62 @@ async function runCosWorkers(runType) {
 
       if (sent) totalSent++;
       else totalErrors++;
+
+      // CODEX 18: write morning brief alert to alertFeed for in-app surface.
+      if (runType === "morning") {
+        try {
+          // Resolve the tenant for this subscriber (use first active membership).
+          const mSnap = await db.collection("memberships")
+            .where("userId", "==", sub.userId).where("status", "==", "active").limit(1).get();
+          const subTenantId = mSnap.empty ? null : mSnap.docs[0].data().tenantId;
+          if (subTenantId) {
+            const alertRef = db.collection("alertFeed").doc(sub.userId).collection("items").doc();
+            const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+            await alertRef.set({
+              uid: sub.userId, tenantId: subTenantId,
+              title: `${dayName} morning brief ready`,
+              detail: `Your ${dayName} morning brief has been prepared. Priority: ${priority.level || "normal"}.`,
+              severity: priority.level === "high" ? "yellow" : "green",
+              status: "active",
+              source: "morning_scanner",
+              sourceRef: null,
+              actionHint: "Open your morning brief for full context.",
+              horizon: "today",
+              snoozedUntil: null, resolvedAt: null,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (alertErr) {
+          console.warn(`cosScheduler: alertFeed write failed for ${sub.userId}:`, alertErr.message);
+        }
+      }
     } catch (err) {
       totalErrors++;
       console.error(`cosScheduler: ${runType} failed for ${sub.userId}:`, err.message);
+      // CODEX 18: write error alert to alertFeed.
+      if (runType === "morning") {
+        try {
+          const mSnap = await db.collection("memberships")
+            .where("userId", "==", sub.userId).where("status", "==", "active").limit(1).get();
+          const subTenantId = mSnap.empty ? null : mSnap.docs[0].data().tenantId;
+          if (subTenantId) {
+            const alertRef = db.collection("alertFeed").doc(sub.userId).collection("items").doc();
+            await alertRef.set({
+              uid: sub.userId, tenantId: subTenantId,
+              title: "Morning scan error",
+              detail: `The morning scanner encountered an issue: ${err.message}`,
+              severity: "red",
+              status: "active",
+              source: "morning_scanner",
+              sourceRef: null,
+              actionHint: "Check logs or contact support.",
+              horizon: "today",
+              snoozedUntil: null, resolvedAt: null,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (_) {}
+      }
     }
   }
 
