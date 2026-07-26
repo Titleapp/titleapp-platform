@@ -1,0 +1,40 @@
+{
+  "workerSlug": "re-defect-tracker-001",
+  "version": "1.0.0",
+  "trumpRule": "CODEX 48: Every defect must cite the chain event that contains the supporting fact. P0 = title failure — no commitment issues until cured. Defect log is append-only.",
+  "canvasTabs": [
+    {
+      "id": "open-defects",
+      "label": "Open Defects",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Live defect registry — only open defects (no title.defect_cured event). Sorted by severity: P0 first (RED), P1 (YELLOW), P2 (GREY). Each card: severity chip, one-line description, evidence event IDs (clickable to chain of title), suggested cure, days open, assigned to. P0 count = blocking RED badge. Zero open defects = GREEN 'Title clean — no open defects' hero. Log new defect button (AI-assisted: describe it, AI cites evidence from chain events, submits title.defect_logged)."
+    },
+    {
+      "id": "curative",
+      "label": "Curative",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Curative action tracker. Each open P0/P1 defect has a cure checklist: required documents, responsible party, due date, status. P0 cure examples: IRS lien release from county recorder, heirship affidavit + probate order, corrective deed. P1 cure examples: payoff letter + release, HOA estoppel letter, survey. Upload cure docs here — upload writes a title.defect_cured chain event. Progress bar: X of Y defects cured."
+    },
+    {
+      "id": "history",
+      "label": "Defect History",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Full append-only defect log — all defects including cured ones. Filter: All / P0 / P1 / P2 / Open / Cured. Each entry: severity, description, logged timestamp, evidence, cure action taken, cured timestamp + cure document reference. Export to PDF for the file. Audit trail per TX RAAS rules."
+    },
+    {
+      "id": "risk-summary",
+      "label": "Risk Summary",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "both",
+      "description": "Visual risk dashboard. Gauge: overall title risk score. Defect count by severity (P0/P1/P2 as three stacked bars). Days to estimated cure (based on defect types + typical cure timelines). Risk narrative (plain English: 'This title has one P0 defect — an unreleased IRS lien. Cure time estimate: 5-10 business days.'). Handoff: when all P0s cured → 'Ready for final commitment' button → re-commitment-001."
+    }
+  ]
+}

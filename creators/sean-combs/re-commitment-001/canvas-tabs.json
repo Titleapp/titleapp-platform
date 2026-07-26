@@ -1,0 +1,48 @@
+{
+  "workerSlug": "re-commitment-001",
+  "version": "1.0.0",
+  "trumpRule": "CODEX 48: Commitment is the contract between insurer and insured. Every Schedule exception must reference a real chain event. P0 defects block final commitment — no exceptions.",
+  "canvasTabs": [
+    {
+      "id": "schedule-a",
+      "label": "Schedule A",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "both",
+      "description": "Title commitment Schedule A. Effective date. Policy amounts: Owner's Policy (promulgated TDI rate) + Lender's Policy (simultaneous = $100 flat per TX-T-003). Vesting (how title will be taken). Legal description of the property. Plat reference. Status: DRAFT / ISSUED / FINALIZED. Wet close notice (TX-T-005) displayed in yellow info band."
+    },
+    {
+      "id": "schedule-b1",
+      "label": "Schedule B-1",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "both",
+      "description": "Requirements to be performed before policy is issued. Numbered list: each requirement is a card with status (Pending/Satisfied). Common: (1) seller must sign and deliver deed, (2) pay off existing mortgages, (3) pay taxes current, (4) pay closing costs, (5) wire fraud verification on any wire changes. Each requirement has a checkbox + note field. When all are Satisfied → SATISFIED banner. Direct link to Escrow Manager (re-escrow-001) for funds tracking."
+    },
+    {
+      "id": "schedule-b2",
+      "label": "Schedule B-2",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "both",
+      "description": "Exceptions from coverage. Numbered exception list from chain-of-title bundle. Standard exceptions: taxes for current/prior years, survey exception (auto-added per TX-T-010 until survey received), restrictive covenants of record. Non-standard exceptions: open liens, easements, HOA restrictions. Each exception CAS-coded: GREEN (standard, waivable) / YELLOW (review) / RED (P0 defect — commitment blocked until cured). Survey exception badge: 'Survey exception will be removed when current survey received.'"
+    },
+    {
+      "id": "tdi-rates",
+      "label": "Rate Sheet",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "TDI promulgated rate calculation. Property value input → Owner's Policy premium (from rate schedule) + simultaneous Lender's Policy ($100). Endorsement charges. Total premium. Rate schedule last-verified date (WARN if >365 days per TX-T-004). Footnote: 'Texas title insurance rates are set by the Texas Department of Insurance. No deviation is permitted.' Print rate sheet button."
+    },
+    {
+      "id": "commitment-status",
+      "label": "Status",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "both",
+      "description": "Order timeline: search complete → commitment draft → buyer review → requirements satisfied → final commitment issued → policy issued. Current step highlighted. P0 defect blocker: if any open P0 defects, RED banner 'Final commitment blocked: [N] P0 defects unresolved. Resolve in Defect Tracker.' Actions: Send commitment to buyer (triggers customer portal view), Send to Escrow Manager, Mark requirement satisfied. Signature request status if commitment sent for buyer acknowledgment."
+    }
+  ]
+}

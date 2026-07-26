@@ -1,0 +1,48 @@
+{
+  "workerSlug": "re-escrow-001",
+  "version": "1.0.0",
+  "trumpRule": "CODEX 48: Wet close is the default (TX-T-005). Deed cannot record until funds confirmed. Wire instructions can only be changed with dual-channel verification (TX-T-007). Every disbursement is a chain event.",
+  "canvasTabs": [
+    {
+      "id": "funds-tracker",
+      "label": "Funds",
+      "signal": "card:accounting-cashflow",
+      "order": 1,
+      "default": true,
+      "view": "both",
+      "description": "Escrow fund tracker. Required-to-close amount (from commitment + payoffs). Received vs required progress bar (RED if short, GREEN if met). Each title.funds_received event as a card: amount, source (wire/cashier/certified), bank reference, received timestamp. Wet close gate status: 'Funds NOT confirmed — deed recording blocked' (RED) vs 'Funds confirmed — clear to close' (GREEN). Dry close authorization status if applicable."
+    },
+    {
+      "id": "wire-instructions",
+      "label": "Wire Instructions",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Escrow account wire instructions for buyer. Any change to wire instructions is gated by TX-T-007: dual-channel verification required before new instructions take effect. Change history: each modification shows old→new, verification call log ID, who authorized. Wire fraud warning banner always visible: 'ALWAYS verify wire instructions by calling our published number before sending funds.' Last verified date."
+    },
+    {
+      "id": "closing-disclosure",
+      "label": "Closing Disclosure",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "both",
+      "description": "Closing disclosure / settlement statement. Buyer column: credits (earnest money, seller concessions), debits (purchase price, closing costs, loan fees, title insurance premium). Seller column: credits (purchase price), debits (payoff amounts, commissions, title charges, taxes). Cash to close / cash to seller. TDI promulgated rate for title insurance shown. FIRPTA withholding line if applicable (TX-T-009). Export PDF button. Send to buyer for review."
+    },
+    {
+      "id": "disbursements",
+      "label": "Disbursements",
+      "signal": "card:accounting-cashflow",
+      "order": 4,
+      "view": "operator",
+      "description": "Post-closing disbursements tracker. Each disbursement: payee, amount, method (wire/check), status (Pending/Sent/Confirmed). Payoffs first (lenders, tax authority), then commissions, then other charges, then seller net proceeds. 1031 exchange segregation flag: if exchange in play, exchange proceeds go to Qualified Intermediary account only (TX-T-009). Total disbursed vs total received reconciliation. Every disbursement is a title.funds_disbursed chain event."
+    },
+    {
+      "id": "closing-status",
+      "label": "Close Status",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "both",
+      "description": "Closing timeline: commitment finalized → disclosure sent → funds received → deed recorded → policy issued → order closed. Current step highlighted. Blockers shown in RED. Recording confirmed = title.closing_recorded chain event with county recording number. Policy issued = title.policy_issued chain event. After close: download recorded deed, download title policy. Customer Vault: buyer's copy of deed + title policy auto-added to their SOCIII Vault DTC records after recording."
+    }
+  ]
+}

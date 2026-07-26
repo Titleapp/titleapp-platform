@@ -104,6 +104,41 @@ const WORKER_TABS = {
     { id: "funding",   label: "Funding",          signal: "card:accounting-cashflow", order: 3 },
     { id: "recording", label: "Recording",        signal: "card:work-product",        order: 4 },
   ],
+
+  // CODEX 48 — Title Production Suite (5 workers)
+  "re-title-search-001": [
+    { id: "chain-of-title",     label: "Chain of Title",     signal: "card:work-product",        default: true, order: 0 },
+    { id: "liens-encumbrances", label: "Liens & Encumbrances", signal: "card:work-product",      order: 1 },
+    { id: "tax-status",         label: "Tax Status",         signal: "card:work-product",        order: 2 },
+    { id: "defects",            label: "Defects",            signal: "card:work-product",        order: 3 },
+    { id: "order-summary",      label: "Order Summary",      signal: "card:work-product",        order: 4 },
+  ],
+  "re-commitment-001": [
+    { id: "schedule-a",        label: "Schedule A",    signal: "card:work-product",        default: true, order: 0 },
+    { id: "schedule-b1",       label: "Schedule B-1",  signal: "card:work-product",        order: 1 },
+    { id: "schedule-b2",       label: "Schedule B-2",  signal: "card:work-product",        order: 2 },
+    { id: "tdi-rates",         label: "Rate Sheet",    signal: "card:work-product",        order: 3 },
+    { id: "commitment-status", label: "Status",        signal: "card:work-product",        order: 4 },
+  ],
+  "re-defect-tracker-001": [
+    { id: "open-defects", label: "Open Defects",  signal: "card:work-product", default: true, order: 0 },
+    { id: "curative",     label: "Curative",      signal: "card:work-product", order: 1 },
+    { id: "history",      label: "Defect History", signal: "card:work-product", order: 2 },
+    { id: "risk-summary", label: "Risk Summary",  signal: "card:work-product", order: 3 },
+  ],
+  "re-escrow-001": [
+    { id: "funds-tracker",       label: "Funds",              signal: "card:accounting-cashflow", default: true, order: 0 },
+    { id: "wire-instructions",   label: "Wire Instructions",  signal: "card:work-product",        order: 1 },
+    { id: "closing-disclosure",  label: "Closing Disclosure", signal: "card:work-product",        order: 2 },
+    { id: "disbursements",       label: "Disbursements",      signal: "card:accounting-cashflow", order: 3 },
+    { id: "closing-status",      label: "Close Status",       signal: "card:work-product",        order: 4 },
+  ],
+  "re-underwriting-001": [
+    { id: "uw-review",           label: "UW Review",   signal: "card:work-product", default: true, order: 0 },
+    { id: "policy-terms",        label: "Policy Terms", signal: "card:work-product", order: 1 },
+    { id: "affiliated-disclosure", label: "Disclosure", signal: "card:work-product", order: 2 },
+    { id: "approval-log",        label: "Approval Log", signal: "card:work-product", order: 3 },
+  ],
 };
 
 (async () => {

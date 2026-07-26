@@ -1,0 +1,40 @@
+{
+  "workerSlug": "re-underwriting-001",
+  "version": "1.0.0",
+  "trumpRule": "CODEX 48: Underwriter signs off only when all P0 defects are cured and all B-1 requirements are satisfied. Underwriter approval = title.policy_issued chain event. No shortcutting.",
+  "canvasTabs": [
+    {
+      "id": "uw-review",
+      "label": "UW Review",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Underwriting checklist. Automated gates (all must be GREEN): (1) Zero open P0 defects, (2) All B-1 requirements satisfied, (3) Funds confirmed (wet close), (4) Wire fraud verification on record if wires changed, (5) FIRPTA withholding confirmed if applicable, (6) Survey received or survey exception still on B-2. Manual review items: (1) Legal description matches deed, (2) Vesting matches buyer instruction, (3) Rate calculation verified. Sign-off button: greyed out until all gates GREEN."
+    },
+    {
+      "id": "policy-terms",
+      "label": "Policy Terms",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Policy endorsements and coverage terms. Owner's Policy: ALTA 2021 form, coverage amount, effective date, insured name. Lender's Policy (if applicable): lender name, loan amount, simultaneous issuance discount ($100 TX flat). Endorsements selected: ALTA 9 (restrictions, easements, minerals), ALTA 28 (easements — buildings encroachment), others as applicable. Exclusions carryover from B-2. Issuing agent: name, license number, underwriter appointment."
+    },
+    {
+      "id": "affiliated-disclosure",
+      "label": "Disclosure",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "both",
+      "description": "RESPA affiliated business disclosure status (TX-T-008). If affiliatedOpco=true on tenant config: shows disclosure text, acknowledgment status (title.disclosure_acknowledged chain event), who signed, when. If not yet acknowledged: YELLOW banner 'Buyer must acknowledge affiliated business disclosure before order proceeds.' Send for acknowledgment button. Disclosure is immutable once acknowledged — permanent chain event."
+    },
+    {
+      "id": "approval-log",
+      "label": "Approval Log",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "Full underwriting audit trail. All review decisions with timestamp, reviewer name, role, notes. Policy issuance event (title.policy_issued) with policy number, effective date, premium amount. Title company liability accepted. Underwriter appointment reference. Export full UW package for file retention. SOCIII append-only record = chain of title as a data structure (Patent 64/073,700)."
+    }
+  ]
+}

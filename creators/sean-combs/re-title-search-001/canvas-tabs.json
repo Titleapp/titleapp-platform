@@ -1,0 +1,48 @@
+{
+  "workerSlug": "re-title-search-001",
+  "version": "1.0.0",
+  "trumpRule": "CODEX 48: chain-of-title is the record. Every fact shown here is a pipeline-written chain event. AI synthesizes — pipeline writes. CAS color on every status element. Risk score in 3 seconds before prose.",
+  "canvasTabs": [
+    {
+      "id": "chain-of-title",
+      "label": "Chain of Title",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "Hero band: Risk Score (0-100, RED>50 / YELLOW 20-50 / GREEN<20) + Order ID + address + order type + status. Vertical timeline newest-first: each ownership transfer as a CAS-coded card (grantor→grantee, deed type, instrument no., recording date, amount, status: Verified/Gap/Review). Gaps in chain = RED banner. Right rail: current owner, APN, parcel map with subject parcel highlighted, last recorded price."
+    },
+    {
+      "id": "liens-encumbrances",
+      "label": "Liens & Encumbrances",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Lien stack as horizontal bars (zero height = clear = GREEN). Rows: Mortgage / Tax / Judgment / HOA / Mechanic / IRS — each showing lender/authority, original amount, recording date, status (Open=YELLOW / Released=GREEN / Delinquent=RED). IRS lien = P0 defect auto-flagged in RED. Total lien exposure hero number top-right. Filter: All / Open / Released."
+    },
+    {
+      "id": "tax-status",
+      "label": "Tax Status",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "operator",
+      "description": "Tax year, annual tax amount, assessed value, market value from ATTOM pipeline event (title.tax_status_found). Delinquency flag: RED banner + year if delinquent (P1 defect). Exemptions on file. County assessor parcel link. Tax proration calculator (days to close → buyer/seller split)."
+    },
+    {
+      "id": "defects",
+      "label": "Defects",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "operator",
+      "description": "Defect registry from title.defect_logged chain events. Color-severity chips: P0=RED (blocking — title failure), P1=YELLOW (curative required before close), P2=GREY (advisory/exception). Each defect card: severity badge, description, evidence event IDs, suggested cure, status (Open/Cured). P0 count = RED badge on tab. When 0 defects: GREEN 'Title search clean' hero. Action: Log defect (opens AI-assisted form)."
+    },
+    {
+      "id": "order-summary",
+      "label": "Order Summary",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "both",
+      "description": "Plain-English summary of the title search for the file. Buyer/Seller names. Purchase price + order type. Key dates. Risk score + narrative ('This title has 2 open liens and no ownership gaps. Recommend curative release before commitment.'). Export PDF button. Handoff buttons: 'Send to Commitment Engine' → re-commitment-001, 'Send to Defect Tracker' → re-defect-tracker-001. Chain event count summary."
+    }
+  ]
+}

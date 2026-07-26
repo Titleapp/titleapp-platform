@@ -10,6 +10,8 @@
  *
  * Routes: /portal?company=meadow-vet&persona=petowner
  *         /portal?company=sociii-advisors&persona=advisor
+ *         /portal?company=texas-title&persona=buyer&orderId=xxx
+ *         /portal?company=texas-title&persona=seller&orderId=xxx
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -34,6 +36,13 @@ const SKINS = {
     glyph: "◆",
     tagline: "Advisor onboarding",
   },
+  "texas-title": {
+    name: "Texas Title",
+    short: "Title",
+    accent: "#1e40af", accentSoft: "#eff6ff", border: "#bfdbfe",
+    glyph: "⊞",
+    tagline: "Your title order status",
+  },
 };
 
 // Demo identities — in production these are matched from the operator's CRM
@@ -41,6 +50,8 @@ const SKINS = {
 const PEOPLE = {
   petowner: { name: "Mia", full: "Mia Wright", pet: "Clover", petKind: "Holland Lop rabbit" },
   advisor: { name: "Kent", full: "Kent Maxwell" },
+  buyer: { name: "Alex", full: "Alex Rivera", role: "Buyer" },
+  seller: { name: "Margaret", full: "Margaret Chen", role: "Seller" },
 };
 
 const SCRIPTS = {
@@ -68,6 +79,37 @@ const SCRIPTS = {
     {
       chip: "My documents",
       canvas: { type: "documents" },
+    },
+  ],
+  buyer: [
+    {
+      chip: "Where is my title order?",
+      canvas: { type: "title-order" },
+    },
+    {
+      chip: "What do I need to sign?",
+      reply: "You have **two documents** ready for your review:\n\n1. **Title Commitment** — shows what you're getting clear title to, any exceptions, and what the title company requires before closing. Review the B-2 exceptions carefully.\n\n2. **Closing Disclosure** — your itemized closing costs, cash to close, and the final settlement statement.\n\nI'll surface both on the right so you can review them now.",
+      canvas: { type: "title-docs" },
+    },
+    {
+      chip: "My Vault copies",
+      reply: "After recording, your deed and title policy are permanently anchored in your personal SOCIII Vault — owned by you, yours to keep. I'll send you the link.",
+      canvas: { type: "title-vault" },
+    },
+  ],
+  seller: [
+    {
+      chip: "Where is my title order?",
+      canvas: { type: "title-order" },
+    },
+    {
+      chip: "When do I get my proceeds?",
+      reply: "Your net proceeds are disbursed **after recording** — typically same day or next business day. Texas is a wet close state, which means we confirm funds before we record the deed.\n\n**Estimated proceeds:** $[from settlement statement]\n**Payoffs:** Your Wells Fargo mortgage + any other open liens are paid first.\n**Timeline:** Recording → same day wire to your account on file.\n\nWant to see the full closing disclosure?",
+      canvas: { type: "title-docs" },
+    },
+    {
+      chip: "My signed documents",
+      canvas: { type: "title-vault" },
     },
   ],
 };
@@ -224,6 +266,124 @@ function RecordsCanvasLike({ rows, note }) {
   );
 }
 
+function TitleOrderCanvas({ skin, persona }) {
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get("orderId");
+
+  // Demo order state — in production loaded from /v1/title:order/:id
+  const steps = [
+    { label: "Title Search", done: true,  date: "Jul 25" },
+    { label: "Defect Review", done: true,  date: "Jul 25" },
+    { label: "Commitment Issued", done: true,  date: "Jul 25" },
+    { label: persona === "buyer" ? "Your Review" : "Seller Signature", done: false, date: "Pending" },
+    { label: "Funds Received", done: false, date: "Pending" },
+    { label: "Recording", done: false, date: "Pending" },
+    { label: "Policy Issued", done: false, date: "Pending" },
+  ];
+  const currentStep = steps.find(s => !s.done) || steps[steps.length - 1];
+
+  return (
+    <div>
+      {orderId && (
+        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontFamily: "monospace" }}>Order: {orderId.slice(0, 12)}…</div>
+      )}
+      <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: "#1e40af", fontWeight: 700, marginBottom: 2 }}>CURRENT STEP</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{currentStep.label}</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>1008 W 22nd St, Austin, TX 78705</div>
+      </div>
+      {steps.map((s, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < steps.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+            background: s.done ? "#15803d" : "#e2e8f0",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, color: s.done ? "#fff" : "#94a3b8", fontWeight: 700,
+          }}>{s.done ? "✓" : i + 1}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: s.done ? 500 : 700, color: s.done ? "#64748b" : "#0f172a" }}>{s.label}</div>
+          </div>
+          <div style={{ fontSize: 12, color: s.done ? "#15803d" : "#94a3b8", fontWeight: s.done ? 700 : 400 }}>{s.date}</div>
+        </div>
+      ))}
+      <div style={{ marginTop: 14, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+        Risk Score: <strong style={{ color: "#15803d" }}>15 / 100 — Clean</strong> · No open defects · Title chain verified
+      </div>
+    </div>
+  );
+}
+
+function TitleDocsCanvas({ skin, persona }) {
+  const docs = persona === "buyer"
+    ? [
+        ["Title Commitment", "Issued Jul 25 — review B-2 exceptions", "REVIEW REQUIRED"],
+        ["Closing Disclosure", "Draft — awaiting final payoff figures", "DRAFT"],
+        ["Affiliated Business Disclosure", "Required — please acknowledge", "SIGN REQUIRED"],
+      ]
+    : [
+        ["Seller's Warranty Deed", "Prepared — requires your signature", "SIGN REQUIRED"],
+        ["Payoff Authorization", "Wells Fargo payoff letter on file", "ON FILE"],
+        ["Closing Disclosure (Seller)", "Draft — review your net proceeds", "DRAFT"],
+      ];
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
+        These documents are part of your title order. Signed copies go permanently into your SOCIII Vault — yours to keep after closing.
+      </div>
+      {docs.map(([title, sub, status]) => {
+        const statusColor = status === "SIGN REQUIRED" ? "#b45309" : status === "ON FILE" ? "#15803d" : "#64748b";
+        const statusBg = status === "SIGN REQUIRED" ? "#fef3c7" : status === "ON FILE" ? "#dcfce7" : "#f1f5f9";
+        return (
+          <div key={title} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>📄 {title}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{sub}</div>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: statusColor, background: statusBg, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{status}</span>
+            </div>
+            {status === "SIGN REQUIRED" && (
+              <button style={{
+                marginTop: 10, padding: "9px 14px", background: skin.accent, color: "#fff",
+                border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%",
+              }}>Review & Sign →</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TitleVaultCanvas({ skin }) {
+  const vaultDocs = [
+    ["Recorded Deed", "Recording #: TX-2025-107442 · Jul 25", "HASH ANCHORED"],
+    ["Owner's Title Policy", "ALTA 2021 · $650,000 coverage", "HASH ANCHORED"],
+    ["Closing Disclosure", "Final settlement statement", "IN YOUR VAULT"],
+    ["Title Commitment", "With all exceptions noted", "IN YOUR VAULT"],
+  ];
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
+        These are your permanent copies — tamper-evident, owned by you, not the title company. Share with your lender, attorney, or next buyer in seconds.
+      </div>
+      {vaultDocs.map(([title, sub, badge]) => (
+        <div key={title} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>📄 {title}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{sub}</div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d", background: "#dcfce7", padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{badge}</span>
+        </div>
+      ))}
+      <a href="/" style={{ display: "block", marginTop: 14, textAlign: "center", color: skin.accent, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+        Open my full SOCIII Vault →
+      </a>
+    </div>
+  );
+}
+
 function Confirmed({ title, sub }) {
   return (
     <div style={{ textAlign: "center", padding: "24px 8px" }}>
@@ -237,13 +397,16 @@ function Confirmed({ title, sub }) {
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
-  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : "petowner");
+  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : companyKey === "texas-title" ? "buyer" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
   const person = PEOPLE[persona] || PEOPLE.petowner;
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
+  const isTitlePersona = persona === "buyer" || persona === "seller";
 
   const greeting = persona === "advisor"
     ? `Hi ${person.name} 👋 Your advisor paperwork is ready — let's get it affirmed.`
+    : isTitlePersona
+    ? `Hi ${person.name} 👋 I'm your title order assistant. Your file is in progress — let me show you where things stand and what's needed from you.`
     : `Hi ${person.name} 👋 I'm here for ${person.pet} (${person.petKind}), 24/7. Ask me anything, or book a visit.`;
 
   const [messages, setMessages] = useState([{ from: "them", text: greeting }]);
@@ -322,6 +485,13 @@ export default function ClientPortal() {
         { label: "My documents", icon: I(<><path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"/><path d="M3 7h18l-1.4 11A2 2 0 0 1 17.6 20H6.4A2 2 0 0 1 4.4 18z"/></>), action: () => setCanvas({ type: "documents" }) },
         { label: "My votes", icon: I(<><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>), action: () => say("No board votes pending right now — you're all caught up. I'll surface anything that needs your vote here.") },
       ]
+    : isTitlePersona
+    ? [
+        { label: "Order status", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "title-order" }) },
+        { label: "Documents to sign", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></>), action: () => setCanvas({ type: "title-docs" }) },
+        { label: "My Vault copies", icon: I(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>), action: () => setCanvas({ type: "title-vault" }) },
+        { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
+      ]
     : [
         { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
         { label: `${person.pet || "Pet"}'s records`, icon: I(<><path d="M9 11H5a2 2 0 0 0-2 2v7h6z"/><path d="M9 7h6v13H9z"/><path d="M15 4h4a2 2 0 0 1 2 2v14h-6z"/></>), action: () => setCanvas({ type: "records" }) },
@@ -378,16 +548,20 @@ export default function ClientPortal() {
               alignItems: "flex-start",
               gap: 14,
             }}>
-              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : "🩺"}</div>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? "⊞" : "🩺"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
                   {persona === "advisor"
                     ? "Your advisor papers are ready to affirm"
+                    : isTitlePersona
+                    ? `Your title order is in progress`
                     : `${person.pet}'s health record lives here`}
                 </div>
                 <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
                   {persona === "advisor"
                     ? "Advisor agreement + 83(b) election — secured in your personal Vault, owned by you, forever."
+                    : isTitlePersona
+                    ? `Track your closing, review documents, and sign — everything in one place. After recording, your deed and title policy live in your personal SOCIII Vault.`
                     : `Tamper-evident, owned by you — not the clinic. Share with any vet, boarding, or travel carrier in seconds.`}
                 </div>
               </div>
@@ -442,7 +616,13 @@ export default function ClientPortal() {
           <aside style={{ flex: "1 1 50%", borderLeft: "1px solid #f1f5f9", padding: "18px", overflowY: "auto", background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
-                {canvas.type === "booking" ? "Book a visit" : canvas.type === "records" ? `${person.pet}'s record` : canvas.type === "affirm" ? "Affirm your paperwork" : "Your documents"}
+                {canvas.type === "booking" ? "Book a visit"
+                  : canvas.type === "records" ? `${person.pet}'s record`
+                  : canvas.type === "affirm" ? "Affirm your paperwork"
+                  : canvas.type === "title-order" ? "Your title order"
+                  : canvas.type === "title-docs" ? "Documents"
+                  : canvas.type === "title-vault" ? "Your Vault copies"
+                  : "Your documents"}
               </div>
               <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
             </div>
@@ -450,6 +630,9 @@ export default function ClientPortal() {
             {canvas.type === "records" && <RecordsCanvas skin={skin} />}
             {canvas.type === "affirm" && <AffirmCanvas skin={skin} />}
             {canvas.type === "documents" && <DocumentsCanvas skin={skin} />}
+            {canvas.type === "title-order" && <TitleOrderCanvas skin={skin} persona={persona} />}
+            {canvas.type === "title-docs" && <TitleDocsCanvas skin={skin} persona={persona} />}
+            {canvas.type === "title-vault" && <TitleVaultCanvas skin={skin} />}
           </aside>
         )}
       </div>
