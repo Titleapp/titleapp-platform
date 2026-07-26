@@ -3968,11 +3968,61 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // property spine. Match on vertical, suite, AND slug (Sean, 2026-06-26).
               const _reHay = `${dw.vertical || ""} ${dw.suite || ""} ${workerSlug}`.toLowerCase();
               const _isReWorker = /real[_\s-]?estate|re_professional|\bparcel\b|zoning|appraisal|land[\s_-]?use|\bproperty\b|title[\s_-]?(abstract|escrow|search)|escrow|\bcre[\s_-]/.test(_reHay);
-              if (_isReWorker && workerSlug !== "site-recon-001" && workerSlug !== "title-abstract-001") {
+              const TITLE_SUITE_SLUGS = ["re-title-search-001", "re-commitment-001", "re-defect-tracker-001", "re-escrow-001", "re-underwriting-001"];
+              if (_isReWorker && workerSlug !== "site-recon-001" && workerSlug !== "title-abstract-001" && !TITLE_SUITE_SLUGS.includes(workerSlug)) {
                 businessTools.push({
                   name: "lookup_property",
                   description: "Pull LIVE property data for a street address — assessor/owner facts, APN, year built, lot size, building size, and recorded sale history (real ATTOM data). Call this WHENEVER the user gives or asks about a property address or parcel. NEVER tell the user to look it up at the county recorder/assessor or to upload documents — fetch it yourself; it renders on the canvas.",
                   input_schema: { type: "object", properties: { address: { type: "string", description: "Full street address incl. city + state, e.g. '564 Kaukau St, Hilo, HI 96720'" } }, required: ["address"] },
+                });
+              }
+
+              // Title Production Suite tools (CODEX 48) — richer than lookup_property
+              if (TITLE_SUITE_SLUGS.includes(workerSlug)) {
+                businessTools.push({
+                  name: "open_title_order",
+                  description: "Open a new title order and pull the full chain of title, liens, mortgages, and tax status from ATTOM for a Texas property. Writes immutable chain events to the order. Call this WHENEVER the user gives an address and wants to start a title search or open a new order. Returns orderId, riskScore, and a summary of chain events found. NEVER describe chain events you didn't receive — only report what this tool returns.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      address: { type: "string", description: "Full street address incl. city + state, e.g. '1008 W 22nd St, Austin, TX 78705'" },
+                      buyerName: { type: "string", description: "Buyer's name (if known)" },
+                      sellerName: { type: "string", description: "Seller's name (if known)" },
+                      purchasePrice: { type: "number", description: "Purchase price in dollars (if known)" },
+                      orderType: { type: "string", enum: ["purchase", "refi", "search-only"], description: "Type of title order" },
+                    },
+                    required: ["address"],
+                  },
+                });
+                businessTools.push({
+                  name: "get_title_order",
+                  description: "Load an existing title order and all its chain events. Call this at the start of any session where the user references an orderId or asks about an in-progress title search. Returns order metadata + all chain events in chronological order.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      orderId: { type: "string", description: "Title order ID" },
+                    },
+                    required: ["orderId"],
+                  },
+                });
+                businessTools.push({
+                  name: "log_title_defect",
+                  description: "Log a title defect (P0/P1/P2) against a title order. Call this ONLY when you have identified a real defect and can cite the specific chain event IDs that contain the supporting facts. NEVER log a defect without citing evidence eventIds that already exist in the order — TX-T-001 will reject it. P0 = title failure (forgery, IRS lien, unprobated heir, active lis pendens). P1 = curative required before closing. P2 = advisory/exception only.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      orderId: { type: "string", description: "Title order ID" },
+                      severity: { type: "string", enum: ["P0", "P1", "P2"], description: "P0 = blocking, P1 = curative required, P2 = advisory" },
+                      description: { type: "string", description: "Plain-English description of the defect" },
+                      evidence: {
+                        type: "array",
+                        description: "Chain event IDs that contain the facts supporting this defect",
+                        items: { type: "object", properties: { eventId: { type: "string" }, note: { type: "string" } }, required: ["eventId"] },
+                      },
+                      suggestedCure: { type: "string", description: "Suggested curative action (e.g., 'Obtain release of IRS lien from county recorder')" },
+                    },
+                    required: ["orderId", "severity", "description"],
+                  },
                 });
               }
 
@@ -4512,6 +4562,100 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] lookup_property failed:`, e.message); }
+              }
+
+              // Title Production Suite — open_title_order tool
+              if (toolBlock && toolBlock.name === 'open_title_order') {
+                try {
+                  const { openTitleOrder } = require("./workers/re-title-search-001/handler");
+                  const attomApiKey = process.env.ATTOM_API_KEY;
+                  if (!attomApiKey) throw new Error("ATTOM key not configured");
+                  const titleCtx = getCtx(req, body, authUser);
+                  const result = await openTitleOrder({
+                    address: String(toolBlock.input.address || "").trim(),
+                    tenantId: titleCtx.tenantId,
+                    userId: authUser.uid,
+                    buyerName: toolBlock.input.buyerName || null,
+                    sellerName: toolBlock.input.sellerName || null,
+                    purchasePrice: toolBlock.input.purchasePrice ? Math.round(toolBlock.input.purchasePrice * 100) : null,
+                    orderType: toolBlock.input.orderType || "purchase",
+                    db,
+                    attomApiKey,
+                  });
+                  const ce = result.chainEvents;
+                  const resultText = `Title order opened. Order ID: ${result.orderId}\n` +
+                    `Address: ${result.address}\n` +
+                    `Risk Score: ${result.riskScore}/100\n` +
+                    `Chain events written:\n` +
+                    `  - Ownership records found: ${ce.ownershipEvents}\n` +
+                    `  - Liens / mortgages found: ${ce.lienEvents}\n` +
+                    `  - Tax status records: ${ce.taxEvents}\n` +
+                    `  - Preliminary defects flagged: ${ce.defectCount}\n\n` +
+                    `Present this as the Title Search Summary. State the orderId so the user can reference it. ` +
+                    `If risk score > 30 or defects > 0, flag what needs curative review. ` +
+                    `Offer to pass the chain-of-title bundle to re-commitment-001 to draft the title commitment. ` +
+                    `Do NOT invent facts beyond what is shown here — the chain events are the authoritative record.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Title order opened.";
+                } catch (e) { console.warn(`[worker:${workerSlug}] open_title_order failed:`, e.message); }
+              }
+
+              // Title Production Suite — get_title_order tool
+              if (toolBlock && toolBlock.name === 'get_title_order') {
+                try {
+                  const { getTitleOrder } = require("./workers/re-title-search-001/handler");
+                  const result = await getTitleOrder({ orderId: String(toolBlock.input.orderId || ""), db });
+                  if (!result) {
+                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Title order ${toolBlock.input.orderId} not found.` }] }];
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                    aiText = followUp.content.find(b => b.type === 'text')?.text || "Order not found.";
+                  } else {
+                    const order = result.order;
+                    const events = result.events || [];
+                    const counts = result.eventCounts || {};
+                    const resultText = `Title Order: ${order.id}\n` +
+                      `Address: ${order.address}\nStatus: ${order.status}\nRisk Score: ${order.riskScore || "—"}\n\n` +
+                      `Chain Events (${events.length} total):\n` +
+                      Object.entries(counts).map(([k, v]) => `  ${k}: ${v}`).join("\n") + "\n\n" +
+                      `Defect events:\n` +
+                      events.filter(e => e.type === "title.defect_logged").map(e =>
+                        `  [${e.severity}] ${e.description}`).join("\n") + "\n\n" +
+                      `Present this as the current title order status. Cite only the facts above. ` +
+                      `Flag any open P0/P1 defects. Offer next steps appropriate to ${workerSlug}.`;
+                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
+                    aiText = followUp.content.find(b => b.type === 'text')?.text || "Here's the current title order.";
+                  }
+                } catch (e) { console.warn(`[worker:${workerSlug}] get_title_order failed:`, e.message); }
+              }
+
+              // Title Production Suite — log_title_defect tool
+              if (toolBlock && toolBlock.name === 'log_title_defect') {
+                try {
+                  const { logDefect } = require("./workers/re-title-search-001/handler");
+                  const result = await logDefect({
+                    orderId: String(toolBlock.input.orderId || ""),
+                    severity: toolBlock.input.severity,
+                    description: String(toolBlock.input.description || ""),
+                    evidence: toolBlock.input.evidence || [],
+                    suggestedCure: toolBlock.input.suggestedCure || null,
+                    db,
+                  });
+                  const resultText = `Defect logged. Event ID: ${result.eventId}\nSeverity: ${result.severity}\nDescription: ${result.description}\n\n` +
+                    `The defect is now a permanent chain event in the title order. ` +
+                    `Summarize the defect clearly and state the suggested curative action if provided. ` +
+                    `If severity is P0, remind the user this blocks final commitment until cured.`;
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || "Defect logged.";
+                } catch (e) {
+                  const errMsg = e.message.includes("TX-T-001") ? e.message : `Failed to log defect: ${e.message}`;
+                  console.warn(`[worker:${workerSlug}] log_title_defect failed:`, e.message);
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Error: ${errMsg}` }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 500, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || errMsg;
+                }
               }
 
               // RE Advocate — search_listings tool.
@@ -8319,6 +8463,71 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       const ctx = getCtx(req, body, auth.user);
       const { handoffToTitleAbstract } = require("./workers/site-recon-001/handoffToTitleAbstract");
       return await handoffToTitleAbstract(req, res, { body, ctx, jsonError });
+    }
+
+    // ── TITLE PRODUCTION SUITE (CODEX 48) ────────────────────────────────────
+    // POST /v1/title:order — open a new title order + run initial ATTOM search
+    if (route === "/title:order" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      try {
+        const { openTitleOrder } = require("./workers/re-title-search-001/handler");
+        const attomApiKey = process.env.ATTOM_API_KEY;
+        if (!attomApiKey) return jsonError(res, 503, "ATTOM key not configured");
+        const result = await openTitleOrder({
+          address: body.address,
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          buyerName: body.buyerName || null,
+          sellerName: body.sellerName || null,
+          purchasePrice: body.purchasePrice || null,
+          orderType: body.orderType || "purchase",
+          db,
+          attomApiKey,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[title:order] failed:", e);
+        return jsonError(res, 500, "Failed to open title order", { details: e.message });
+      }
+    }
+
+    // GET /v1/title:order/:orderId — fetch order + chain events
+    if (/^\/title:order\/[^/]+$/.test(route) && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      try {
+        const rawOrderId = route.split("/").pop();
+        const { getTitleOrder } = require("./workers/re-title-search-001/handler");
+        const result = await getTitleOrder({ orderId: rawOrderId, db });
+        if (!result) return jsonError(res, 404, "Title order not found");
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[title:order GET] failed:", e);
+        return jsonError(res, 500, "Failed to load title order", { details: e.message });
+      }
+    }
+
+    // POST /v1/title:defect — AI logs a defect (requires evidence → prior chain events)
+    if (route === "/title:defect" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      try {
+        const { logDefect } = require("./workers/re-title-search-001/handler");
+        const result = await logDefect({
+          orderId: body.orderId,
+          severity: body.severity,
+          description: body.description,
+          evidence: body.evidence || [],
+          suggestedCure: body.suggestedCure || null,
+          db,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[title:defect] failed:", e);
+        return jsonError(res, e.message.includes("TX-T-001") ? 422 : 500, e.message);
+      }
     }
 
     // Step 9 — marketplace review request hook (Forge Reviews queue stub).
