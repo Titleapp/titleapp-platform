@@ -352,4 +352,43 @@ async function commitTransactions({ tenantId, userId, fileId, fileName, institut
   return { written };
 }
 
-module.exports = { parseStatement, commitTransactions, loadCoa };
+// Commit transactions extracted by Alex (no fileId required).
+// Uses source="alex" so the Accounting worker can distinguish these from
+// file-based imports and show them in the correct inbox section.
+async function commitAlexTransactions({ tenantId, userId, transactions, note }) {
+  if (!transactions || !transactions.length) return { written: 0 };
+  const db = getDb();
+  const CHUNK = 400;
+  let written = 0;
+  for (let i = 0; i < transactions.length; i += CHUNK) {
+    const slice = transactions.slice(i, i + CHUNK);
+    const batch = db.batch();
+    slice.forEach(t => {
+      const ref = db.collection("transactions").doc();
+      batch.set(ref, {
+        tenantId,
+        date: t.date || null,
+        description: t.description || null,
+        amountCents: typeof t.amountCents === "number" ? t.amountCents : 0,
+        direction: t.direction || "debit",
+        classification: t.classification || "expense",
+        coaAccountId: t.coaAccountId || null,
+        coaConfidence: typeof t.coaConfidence === "number" ? t.coaConfidence : null,
+        reviewNote: t.reviewNote || note || null,
+        source: "alex",
+        sourceFileId: null,
+        sourceFileName: "Alex AI extraction",
+        institution: t.institution || null,
+        accountLast4: t.accountLast4 || null,
+        status: "review",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: userId,
+      });
+    });
+    await batch.commit();
+    written += slice.length;
+  }
+  return { written };
+}
+
+module.exports = { parseStatement, commitTransactions, commitAlexTransactions, loadCoa };

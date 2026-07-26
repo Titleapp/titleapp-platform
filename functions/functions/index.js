@@ -29025,7 +29025,7 @@ exports.qualityCanary = onSchedule(
     schedule: "*/30 * * * *",
     timeZone: "UTC",
     region: "us-central1",
-    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"],
+    secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "FB_WEB_API_KEY"],
   },
   async () => {
     const { runQualityCanary } = require("./monitoring/qualityCanary");

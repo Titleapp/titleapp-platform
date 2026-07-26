@@ -9,6 +9,7 @@ const TABS = [
   { id: "dashboard",   label: "Dashboard" },
   { id: "accounts",    label: "Connected Accounts" },
   { id: "transactions",label: "Transactions" },
+  { id: "loans",       label: "Loans & Liabilities" },
   { id: "coa",         label: "Chart of Accounts" },
   { id: "approvals",   label: "Approvals" },
   { id: "invoices",    label: "Invoices & Bills" },
@@ -91,6 +92,7 @@ export default function Accounting() {
     getDashboardSummary,
     listObligations, markObligationComplete,
     createFCSession, saveFCAccount, syncFC,
+    listLoans,
     loading,
   } = useAccounting();
 
@@ -368,6 +370,7 @@ export default function Accounting() {
       {tab === "transactions" && (
         <TransactionsPane coa={coa} />
       )}
+      {tab === "loans" && <LoansPane listLoans={listLoans} />}
       {tab === "approvals" && <ApprovalsPane />}
       {tab === "coa" && (
         <ChartOfAccountsPane
@@ -682,24 +685,52 @@ async function ensureStripeJs(publishableKey) {
   return window.Stripe(publishableKey);
 }
 
-function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank: _onConnectBank, onSync: _onSync, connecting: _connecting, syncing: _syncing, fcMessage: _fcMessage }) {
+function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSync, connecting, syncing, fcMessage }) {
+  const hasFCAccounts = accounts.some(a => a.source === "stripe_fc");
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 14, color: "#64748b" }}>
-          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Add manually, or connect a bank via Stripe.
+          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {hasFCAccounts && (
+            <button
+              onClick={onSync}
+              disabled={syncing}
+              className="iconBtn"
+              style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", fontSize: 13 }}
+            >
+              {syncing ? "Syncing…" : "↻ Sync now"}
+            </button>
+          )}
           <button
             onClick={onAdd}
             className="iconBtn"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
+            style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0" }}
           >
             + Add manually
           </button>
+          <button
+            onClick={onConnectBank}
+            disabled={connecting}
+            className="iconBtn"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
+          >
+            {connecting ? "Connecting…" : "⚡ Connect via Stripe"}
+          </button>
         </div>
       </div>
-      {/* fcMessage temporarily hidden while Stripe FC is paused pre-entity-migration */}
+      {fcMessage && (
+        <div style={{
+          padding: "10px 14px", borderRadius: 8, marginBottom: 12, fontSize: 13,
+          background: fcMessage.kind === "error" ? "#fef2f2" : fcMessage.kind === "ok" ? "#f0fdf4" : "#f8fafc",
+          color: fcMessage.kind === "error" ? "#dc2626" : fcMessage.kind === "ok" ? "#16a34a" : "#475569",
+          border: `1px solid ${fcMessage.kind === "error" ? "#fecaca" : fcMessage.kind === "ok" ? "#bbf7d0" : "#e2e8f0"}`,
+        }}>
+          {fcMessage.text}
+        </div>
+      )}
       {loading && <div className="card" style={{ padding: 32, textAlign: "center", color: "#64748b" }}>Loading…</div>}
       {!loading && accounts.length === 0 && (
         <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>
@@ -711,12 +742,24 @@ function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank: _onCo
             </svg>
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>No connected accounts yet</div>
-          <div style={{ fontSize: 14, color: "#64748b", maxWidth: 420, margin: "0 auto 20px", lineHeight: 1.6 }}>
-            Connect your operating bank, credit card, Stripe, or payroll provider. Add manually, or connect a bank via Stripe.
+          <div style={{ fontSize: 14, color: "#64748b", maxWidth: 420, margin: "0 auto 24px", lineHeight: 1.6 }}>
+            Connect Mercury, US Bank, Chime, or any major bank. Transactions sync automatically — no more PDF uploads.
           </div>
-          <button onClick={onAdd} style={{ padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>
-            Add your first account
-          </button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={onConnectBank}
+              disabled={connecting}
+              style={{ padding: "11px 22px", fontSize: 14, fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}
+            >
+              {connecting ? "Connecting…" : "⚡ Connect via Stripe"}
+            </button>
+            <button
+              onClick={onAdd}
+              style={{ padding: "11px 22px", fontSize: 14, fontWeight: 600, background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+            >
+              Add manually
+            </button>
+          </div>
         </div>
       )}
       {!loading && accounts.length > 0 && (
@@ -2259,6 +2302,193 @@ function AddAccountModal({ onClose, onSubmit }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ─── Loans & Liabilities ───────────────────────────────────────────────────
+
+function LoansPane({ listLoans }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await listLoans();
+      if (r?.ok) setData(r);
+    } finally {
+      setLoading(false);
+    }
+  }, [listLoans]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const cents = (n) => (typeof n === "number" ? formatCurrency(n / 100) : "—");
+  const pct = (n) => (typeof n === "number" ? `${n.toFixed(1)}%` : "—");
+
+  if (loading) return <div style={{ fontSize: 13, color: "#64748b", padding: 24 }}>Loading loan register…</div>;
+
+  if (!data?.loans?.length) {
+    return (
+      <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>No loans on file</div>
+        <div style={{ fontSize: 14, color: "#64748b", maxWidth: 480, margin: "0 auto" }}>
+          Ask Alex to record a loan, or seed the loan register from the accounting session.
+        </div>
+      </div>
+    );
+  }
+
+  const { loans, summary } = data;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Summary bar */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+        <KPI label="Total principal outstanding" value={cents(summary?.totalPrincipalCents)} hint={`${summary?.count || 0} active loan${summary?.count === 1 ? "" : "s"}`} />
+        <KPI label="Accrued interest (net)" value={cents(summary?.totalAccruedCents)} hint="Interest earned but not yet paid, after advance payments" />
+        <KPI label="Total owed" value={cents(summary?.totalOwedCents)} hint="Principal + net accrued interest" />
+      </div>
+
+      {/* Loan register */}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 10 }}>Loan Register</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {loans.map(loan => {
+            const isOpen = !!expanded[loan.id];
+            const isFounder = loan.lender === "Sean Lee Combs";
+            const hasPmts = (loan.payments?.length || 0) > 0;
+            const hasContribs = (loan.contributionSchedule?.length || 0) > 0;
+            return (
+              <div key={loan.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                {/* Header row */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(160px,1.5fr) minmax(100px,1fr) minmax(90px,0.8fr) minmax(110px,1fr) minmax(110px,1fr) minmax(120px,1.1fr) 80px",
+                    padding: "12px 16px",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: (hasPmts || hasContribs) ? "pointer" : "default",
+                    background: isOpen ? "#faf5ff" : "white",
+                    borderBottom: isOpen ? "1px solid #e9d5ff" : "none",
+                  }}
+                  onClick={() => (hasPmts || hasContribs) && setExpanded(e => ({ ...e, [loan.id]: !e[loan.id] }))}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{loan.lender}</div>
+                    {loan.lenderEntity && <div style={{ fontSize: 11, color: "#94a3b8" }}>{loan.lenderEntity}</div>}
+                    {isFounder && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "#ede9fe", color: "#6d28d9" }}>Founder</span>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>{cents(loan.principalCents)}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>
+                    {loan.interestRatePct > 0 ? pct(loan.interestRatePct) + " p.a." : "0% (no interest)"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#475569" }}>{loan.formalDocsDate || loan.originationDate || "—"}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: loan.accruedInterestCents > 0 ? "#d97706" : "#16a34a" }}>
+                    {cents(loan.accruedInterestCents)}
+                  </div>
+                  <div>
+                    {loan.repaymentTrigger ? (
+                      <span style={{ fontSize: 11, color: "#475569", wordBreak: "break-word" }}>{loan.repaymentTrigger}</span>
+                    ) : loan.dueDate ? (
+                      <span style={{ fontSize: 13, color: "#dc2626" }}>{loan.dueDate}</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "#94a3b8" }}>No maturity set</span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
+                      background: loan.status === "active" ? "#dcfce7" : "#f1f5f9",
+                      color: loan.status === "active" ? "#166534" : "#64748b",
+                    }}>{loan.status}</span>
+                    {(hasPmts || hasContribs) && (
+                      <span style={{ fontSize: 11, color: "#7c3aed", marginLeft: 6, fontWeight: 600 }}>
+                        {isOpen ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes row */}
+                {loan.notes && !isOpen && (
+                  <div style={{ padding: "6px 16px 10px", fontSize: 12, color: "#64748b", borderTop: "1px solid #f1f5f9" }}>
+                    {loan.notes}
+                  </div>
+                )}
+
+                {/* Expanded detail */}
+                {isOpen && (
+                  <div style={{ padding: "12px 16px 14px", background: "#fdfaff", borderTop: "1px solid #f1f5f9" }}>
+                    {loan.notes && (
+                      <div style={{ fontSize: 12, color: "#475569", marginBottom: 10, padding: "8px 12px", background: "white", border: "1px solid #e9d5ff", borderRadius: 6 }}>
+                        {loan.notes}
+                      </div>
+                    )}
+                    {loan.interestAdvancedThrough && (
+                      <div style={{ fontSize: 12, color: "#16a34a", marginBottom: 8, fontWeight: 600 }}>
+                        Interest advanced through {loan.interestAdvancedThrough} — no immediate obligation
+                      </div>
+                    )}
+                    {hasPmts && (
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#6d28d9", marginBottom: 6 }}>Payment history</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {loan.payments.map((p, i) => (
+                            <div key={i} style={{ display: "flex", gap: 12, fontSize: 12, alignItems: "center" }}>
+                              <span style={{ color: "#64748b", minWidth: 90 }}>{p.date}</span>
+                              <span style={{ fontWeight: 600, color: "#1e293b", minWidth: 80 }}>{cents(p.amountCents)}</span>
+                              <span style={{
+                                fontSize: 10, padding: "1px 6px", borderRadius: 999,
+                                background: p.type === "interest" ? "#fef3c7" : "#dcfce7",
+                                color: p.type === "interest" ? "#92400e" : "#166534", fontWeight: 600,
+                              }}>{p.type || "payment"}</span>
+                              <span style={{ color: "#64748b" }}>{p.note}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {hasContribs && (
+                      <div style={{ marginTop: hasPmts ? 10 : 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#6d28d9", marginBottom: 6 }}>Contribution schedule</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {loan.contributionSchedule.map((c, i) => (
+                            <div key={i} style={{ display: "flex", gap: 12, fontSize: 12, alignItems: "center" }}>
+                              <span style={{ color: "#64748b", minWidth: 90 }}>{c.date}</span>
+                              <span style={{ fontWeight: 600, color: "#1e293b", minWidth: 80 }}>{cents(c.amountCents)}</span>
+                              <span style={{ color: "#64748b" }}>{c.note}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#1e293b" }}>
+                          Total contributed: {cents(loan.principalCents)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Column legend */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) minmax(100px,1fr) minmax(90px,0.8fr) minmax(110px,1fr) minmax(110px,1fr) minmax(120px,1.1fr) 80px", padding: "6px 16px", gap: 8 }}>
+        {["Lender", "Principal", "Rate", "Formal docs date", "Accrued interest", "Repayment trigger", "Status"].map((h, i) => (
+          <div key={i} style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        Accrued interest is computed daily from the formal docs date at the stated annual rate, net of payments already made. As of today.
+      </div>
     </div>
   );
 }

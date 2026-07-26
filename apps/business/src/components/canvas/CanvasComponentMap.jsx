@@ -44,6 +44,7 @@ import ListingScorecardCard from "./ListingScorecardCard";
 import SiteReconCanvas from "./SiteReconCanvas";
 import ShowingScheduleCard from "./ShowingScheduleCard";
 import PropertyManagerCanvas from "./PropertyManagerCanvas";
+import Valuation409ACard from "./Valuation409ACard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -85,6 +86,7 @@ const CANVAS_COMPONENT_MAP = {
   SiteReconCanvas,
   ShowingScheduleCard,
   PropertyManagerCanvas,
+  Valuation409ACard,
 };
 
 /**

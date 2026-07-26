@@ -759,23 +759,39 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       }
 
       // Demo URL (?demo=1) — fresh session + persona-aware welcome greeting.
+      // Only applies to demo accounts (email contains "-demo@"). Real users who land
+      // on a demo URL (e.g. by opening a share link as themselves) get their normal
+      // workspace greeting instead, and the demo params are stripped from the URL.
       if (new URL(window.location.href).searchParams.get("demo") === "1") {
-        try {
-          const freshSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-          localStorage.setItem("ta_chat_session_id", freshSid);
-        } catch { /* ignore */ }
-        const _persona = new URL(window.location.href).searchParams.get("persona") || "";
-        const DEMO_GREETINGS = {
-          "nursing-student":  "Welcome to SOCIII, Sara. This is your school's platform — your courses, Vault, and academic record all live here. The workers on the left are your specialists. Click any one to get started, or just ask me anything.",
-          "nursing-admin":    "Welcome to SOCIII. This is your school's administrative workspace — student enrollments, course workers, and your institution's record all in one place. Click any worker on the left to explore, or ask me how to get started.",
-          "uh-admin":         "Welcome to SOCIII. You're in the University of Hawaii demo workspace — credentials, student records, and course management all here. Click any worker on the left to see it in action.",
-          "vet-client":       "Welcome to SOCIII, Koa. This is Luna's health portal from Meadow Creek Animal Hospital — visit records, medications, and upcoming care are all here. Click the Pet Health Records worker on the left to get started.",
-          "realestate":       "Welcome to SOCIII. This is your real estate workspace — deal analysis, title research, zoning data, and a full client portal all in one place. Click any worker on the left or tell me what you're working on.",
-          "traitly":          "Welcome to SOCIII. This is the TRAITLY workspace — product passports, compliance tracking, and your DPP registry. Click any worker on the left to see it in action.",
-        };
-        const greeting = DEMO_GREETINGS[_persona] || "Welcome to SOCIII. I'm Alex, your Chief of Staff. The workers on the left are your specialists — each one knows the rules of its domain. Click any worker to see it in action, or ask me what you're looking for.";
-        setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
-        return;
+        const _isDemoAccount = currentUser?.email?.includes("-demo@") || currentUser?.email?.endsWith(".demo@sociii.ai");
+        if (!_isDemoAccount) {
+          // Real user — clean the URL and fall through to normal greeting
+          try {
+            const _clean = new URL(window.location.href);
+            _clean.searchParams.delete("demo");
+            _clean.searchParams.delete("persona");
+            window.history.replaceState({}, "", _clean.toString());
+          } catch { /* ignore */ }
+          // fall through
+        } else {
+          // Demo account — show persona-specific greeting
+          try {
+            const freshSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+            localStorage.setItem("ta_chat_session_id", freshSid);
+          } catch { /* ignore */ }
+          const _persona = new URL(window.location.href).searchParams.get("persona") || "";
+          const DEMO_GREETINGS = {
+            "nursing-student":  "Welcome to SOCIII, Sara. This is your school's platform — your courses, Vault, and academic record all live here. The workers on the left are your specialists. Click any one to get started, or just ask me anything.",
+            "nursing-admin":    "Welcome to SOCIII. This is your school's administrative workspace — student enrollments, course workers, and your institution's record all in one place. Click any worker on the left to explore, or ask me how to get started.",
+            "uh-admin":         "Welcome to SOCIII. You're in the University of Hawaii demo workspace — credentials, student records, and course management all here. Click any worker on the left to see it in action.",
+            "vet-client":       "Welcome to SOCIII, Koa. This is Luna's health portal from Meadow Creek Animal Hospital — visit records, medications, and upcoming care are all here. Click the Pet Health Records worker on the left to get started.",
+            "realestate":       "Welcome to SOCIII. This is your real estate workspace — deal analysis, title research, zoning data, and a full client portal all in one place. Click any worker on the left or tell me what you're working on.",
+            "traitly":          "Welcome to SOCIII. This is the TRAITLY workspace — product passports, compliance tracking, and your DPP registry. Click any worker on the left to see it in action.",
+          };
+          const greeting = DEMO_GREETINGS[_persona] || "Welcome to SOCIII. I'm Alex, your Chief of Staff. The workers on the left are your specialists — each one knows the rules of its domain. Click any worker to see it in action, or ask me what you're looking for.";
+          setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
+          return;
+        }
       }
 
       // Usage-triggered portfolio review

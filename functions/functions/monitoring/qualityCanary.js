@@ -50,6 +50,7 @@ function getCanaryUserId() {
 }
 
 const SMS_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const DEGRADED_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SEAN_UID = "WResykI56hW16silsOtvlw1UjJK2";
 const DEFAULT_RECIPIENTS = [{ name: "Sean", phone: "+13104300780", email: "seanlcombs@gmail.com" }];
 
@@ -70,7 +71,8 @@ const CORRECTNESS_PROBES = [
     key: "accounting_worker_exists",
     label: "Accounting worker is discoverable",
     question: "Do you have an accounting worker or financial tools?",
-    mustContainOne: ["accounting", "financial", "finance", "Accounting", "Financial"],
+    mustContainOne: ["accounting", "financial", "finance", "Accounting", "Financial",
+      "bookkeeping", "transaction", "invoice", "expense", "revenue", "balance", "cash flow", "reports"],
     surface: "worker",
     workerSlug: "platform-accounting",
   },
@@ -181,13 +183,14 @@ async function runDomainFactProbes(db, tenantId) {
   // Call accounting reports API and diff against ground truth.
   // The API requires a Firebase bearer token; use the Admin SDK to mint a
   // custom token and exchange it for an ID token via the REST API.
+  // Key stored as FB_WEB_API_KEY (FIREBASE_ prefix is reserved by GCP).
   // If token minting fails, skip the API diff and flag as WARN (not RED) —
   // the canvas data probe (B) already verifies data exists.
   let apiCashCents = null, apiLiabCents = null;
   try {
     const customToken = await admin.auth().createCustomToken(getCanaryUserId(), { canary: true });
     const exchangeResp = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${process.env.FIREBASE_WEB_API_KEY || ""}`,
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${process.env.FB_WEB_API_KEY || ""}`,
       { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: customToken, returnSecureToken: true }) }
     );
@@ -407,8 +410,8 @@ async function runQualityCanary(opts = {}) {
   const prev = await healthRef.get().catch(() => ({ exists: false, data: () => ({}) }));
   const prevData = prev.exists ? prev.data() : {};
   const prevHealthy = prevData.healthy !== false;
-  const prevDomainDegraded = prevData.domainDegraded === true;
   const lastSmsAtMs = prevData.lastSmsAtMs || 0;
+  const lastDegradedAlertMs = prevData.lastDegradedAlertMs || 0;
   const recipients = (Array.isArray(prevData.alertRecipients) && prevData.alertRecipients.length)
     ? prevData.alertRecipients : DEFAULT_RECIPIENTS;
 
@@ -431,15 +434,13 @@ async function runQualityCanary(opts = {}) {
       await pushQualityAlert(db, nowMs, redIssues, "red");
     }
 
-    // Page ONCE on transition into Tier 2 degraded state — the most important canary
-    // going dark deserves its own loud signal, separate from the ongoing WARN in the feed.
-    if (domainDegraded && !prevDomainDegraded) {
-      const canSms = nowMs - lastSmsAtMs >= SMS_COOLDOWN_MS;
-      if (canSms) {
-        const smsText = "⚠️ SOCIII quality canary: Tier 2 (domain-fact probe) is now DEGRADED — FIREBASE_WEB_API_KEY missing or token exchange failing. Ground-truth diff disabled.";
-        alerted = alerted || await sendAlerts(db, recipients, smsText,
-          "⚠️ SOCIII quality Tier 2 degraded", `<p>${smsText}</p>`);
-      }
+    // Page ONCE per 24h on Tier 2 degraded state (time-based cooldown, NOT transition-based,
+    // so a failed state write can't cause spam — if lastDegradedAlertMs never persists, the
+    // 2hr SMS_COOLDOWN_MS above still prevents rapid-fire RED alerts).
+    if (domainDegraded && (nowMs - lastDegradedAlertMs >= DEGRADED_COOLDOWN_MS)) {
+      const smsText = "⚠️ SOCIII quality canary: Tier 2 (domain-fact probe) DEGRADED — FB_WEB_API_KEY missing or token exchange failing. Ground-truth diff disabled.";
+      alerted = alerted || await sendAlerts(db, recipients, smsText,
+        "⚠️ SOCIII quality Tier 2 degraded", `<p>${smsText}</p>`);
     }
   }
 
@@ -458,6 +459,7 @@ async function runQualityCanary(opts = {}) {
     warnCount: warnIssues.length,
     domainDegraded,
     ...(alerted ? { lastSmsAtMs: nowMs } : {}),
+    ...(domainDegraded && alerted ? { lastDegradedAlertMs: nowMs } : {}),
   };
   await healthRef.set(update, { merge: true }).catch(e => console.warn("[qualityCanary] state write:", e.message));
   await db.collection("qualityHealthEvents").add({

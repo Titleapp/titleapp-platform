@@ -890,12 +890,7 @@ const WORKER_NAV_MAP = {
     { id: "onboarding", label: "Onboarding" },
   ],
   "platform-marketing": [],
-  "platform-accounting": [
-    { id: "financials", label: "Financials" },
-    { id: "ap-ar", label: "AP/AR" },
-    { id: "invoices", label: "Invoices" },
-    { id: "chart-of-accounts", label: "Chart of Accounts" },
-  ],
+  "platform-accounting": [], // canvas tabs handle all navigation internally
   "platform-contacts": [
     { id: "contacts-all", label: "All Contacts" },
     { id: "client-list", label: "Clients" },

@@ -101,5 +101,7 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 47. [`47-capability-parity-and-canaries.md`](47-capability-parity-and-canaries.md) — ⚪ **spec 2026-07-24** — Capability parity playbook + quality canary system: model update process (env var swap → deploy → canary gate), quarterly capability gap review (web search / doc ingestion / agentic chains / voice), RAAS governance gate for every new capability, three canary probe types beyond uptime (chat correctness every 30min, canvas data every hour, integration health every hour), canary tenant setup, sign-off checklist.
 
+48. [`48-title-production-suite.md`](48-title-production-suite.md) — ⚪ **spec 2026-07-25** — Title Production Suite ("Title Company OS"): 5 B2B workers (Title Search / Commitment Engine / Defect Tracker / Escrow Manager / Underwriting Review) + RE Advocate ref (CODEX 41) + Home Mortgage Advocate. Texas-specific: TDI promulgated rates, T-7 commitment form, wet close rule, homestead/community property RAAS rules. Data: ATTOM demo → DataTree production → county clerk direct. JV opco structure for Mike Lee opportunity — SOCIII licenses IP, holds equity, retains platform on exit. Stewart Title (NYSE: STC, Houston) as natural strategic acquirer. Append-only chain of title = Patent 64/073,700 in production.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started

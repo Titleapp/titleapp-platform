@@ -217,6 +217,11 @@ export default function useAccounting() {
     catch (e) { setError(e.message); return { ok: false, error: e.message }; }
   }, []);
 
+  const listLoans = useCallback(async () => {
+    try { return await apiFetch("/v1/accounting:loans"); }
+    catch (e) { setError(e.message); return { ok: false, loans: [], summary: {} }; }
+  }, []);
+
   return {
     getSetupState, updateSetupStep,
     getFiscalYear, setFiscalYear,
@@ -226,6 +231,7 @@ export default function useAccounting() {
     listObligations, markObligationComplete,
     createFCSession, saveFCAccount, syncFC, disconnectFC,
     listApprovals, decideApproval,
+    listLoans,
     loading, error,
   };
 }
