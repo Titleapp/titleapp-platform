@@ -81,6 +81,27 @@ Alex will respond, ask any follow-up questions needed, and start working. When A
 
 ---
 
+### How much control do you want to give Alex?
+
+Alex starts conservative — it proposes every action and waits for your approval. As you get comfortable, you can expand its authorization for specific task types. Think of it as a dial from light to full:
+
+**Light — propose and show me everything:**
+Alex drafts the email, shows it to you, and sends only when you tap Approve. Alex runs the title search, shows you the results, and logs them only when you confirm. Every action is visible before it happens.
+
+**Middle — handle the routine stuff, flag the exceptions:**
+> "Alex, you can send routine follow-up emails to referral partners without asking me each time. Flag anything where the amount or counterparty is new."
+
+Alex handles the defined class of task autonomously and surfaces only the exceptions that need your judgment.
+
+**Full — just handle it:**
+> "Alex, manage my title order pipeline. Open orders when a new file comes in, run the title search, and notify me when something needs a decision."
+
+Alex runs the workflow end-to-end, logs everything to the Vault, and brings you in only when a human decision is required. You review a summary, not a queue of approval cards.
+
+Authorization is per-task-type, always logged, and revocable anytime. You set the level that fits how you work — and you can change it at any time by telling Alex.
+
+---
+
 ### What you'll see in the canvas
 
 The panel on the right side of the screen is the canvas — a structured visual display of what your active Digital Worker knows. Each worker has tabs:
@@ -91,6 +112,8 @@ The panel on the right side of the screen is the canvas — a structured visual 
 - An **HR worker** shows your team roster, open roles, and upcoming reviews.
 
 The canvas updates as Alex works. You don't need to refresh it or navigate anywhere — Alex tells you when something new is ready to look at.
+
+**On mobile:** The chat works on any device — open your browser, sign in, and start talking. The canvas (the structured visual panel) is optimized for desktop and tablet. On a phone, it shifts to a card summary below your conversation so the key results are still visible. If you're doing detailed review work — reading a title report, reviewing a pro forma — a larger screen is worth it. For quick questions, checking status, or approving actions, your phone is fine.
 
 ---
 
@@ -122,7 +145,7 @@ You can keep it private, share it with your organization, or publish it to the S
 ### Common first questions
 
 **"Can Alex access my email without me knowing?"**
-No. Alex can read your email when you've connected Gmail or Outlook and asked Alex to check it. Alex will show you what it found and ask before taking any action.
+No. Alex can read your email when you've connected Gmail or Outlook and asked Alex to check it. Alex will show you what it found and ask before taking any action — unless you've explicitly authorized it to handle a specific type of email autonomously.
 
 **"What happens to my data?"**
 Your workspace data — records, conversations, connected accounts — is stored in your tenant. It is not used to train AI models. It is not shared with other tenants.
@@ -133,6 +156,9 @@ Tell it. Say "that's not right" or "the address is different" and Alex will corr
 **"How do I get my team on it?"**
 From your workspace settings, invite team members by email. Each person signs in with their own Google account. You control their role (admin vs. member) and which workers they can access.
 
+**"Does it work on my phone?"**
+Yes. Open sociii.ai in any mobile browser and sign in. The chat is fully functional on mobile. The structured canvas panels are better on a larger screen — for reviewing detailed reports or working through a deal, a desktop or tablet is the better experience. The quick stuff — checking status, approving an action, asking Alex a question — works great on a phone.
+
 ---
 
 ### Need help?
@@ -141,7 +167,7 @@ Talk to Alex: *"I'm not sure how to get started with the title workers."*
 
 Alex knows the product and will walk you through it.
 
-Or email: **sean@sociii.ai**
+Or email: **alex@sociii.ai**
 
 ---
 
