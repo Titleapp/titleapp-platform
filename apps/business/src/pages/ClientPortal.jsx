@@ -46,8 +46,8 @@ const SKINS = {
     tagline: "Your title order status",
   },
   "attorneys-title": {
-    name: "Attorneys Title Company of Henderson County",
-    short: "Attorneys Title",
+    name: "ABC Title Company",
+    short: "ABC Title",
     accent: "#1e3a5f", accentSoft: "#f0f4f8", border: "#b0c4de",
     glyph: "⚖",
     tagline: "Henderson County, Texas — Athens, TX",
@@ -59,8 +59,8 @@ const SKINS = {
 const PEOPLE = {
   petowner: { name: "Mia", full: "Mia Wright", pet: "Clover", petKind: "Holland Lop rabbit" },
   advisor: { name: "Kent", full: "Kent Maxwell" },
-  buyer: { name: "Alex", full: "Alex Rivera", role: "Buyer" },
-  seller: { name: "Margaret", full: "Margaret Chen", role: "Seller" },
+  buyer: { name: "Sara", full: "Sara Kahele", role: "Buyer" },
+  seller: { name: "Troy", full: "Troy Garris", role: "Seller" },
 };
 
 const SCRIPTS = {
@@ -113,8 +113,8 @@ const SCRIPTS = {
     },
     {
       chip: "When do I get my proceeds?",
-      reply: "Your net proceeds are disbursed **after recording** — typically same day or next business day. Texas is a wet close state, which means we confirm funds before we record the deed.\n\n**Estimated proceeds:** $[from settlement statement]\n**Payoffs:** Your Wells Fargo mortgage + any other open liens are paid first.\n**Timeline:** Recording → same day wire to your account on file.\n\nWant to see the full closing disclosure?",
-      canvas: { type: "title-docs" },
+      reply: "Your net proceeds are **$278,540**, disbursed same-day after recording. Texas is a wet-close state — all funds are confirmed before we record the deed, then proceeds wire immediately.\n\n**Steps remaining:** Seller signature → recording → wire.\n\nLet me show you where the closing stands.",
+      canvas: { type: "title-order" },
     },
     {
       chip: "My signed documents",
@@ -299,7 +299,7 @@ function TitleOrderCanvas({ skin, persona }) {
       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: "#1e40af", fontWeight: 700, marginBottom: 2 }}>CURRENT STEP</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{currentStep.label}</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>1008 W 22nd St, Austin, TX 78705</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>313 Mayfair Dr, Athens, TX 75751</div>
       </div>
       {steps.map((s, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < steps.length - 1 ? "1px solid #f1f5f9" : "none" }}>
@@ -386,7 +386,7 @@ function TitleVaultCanvas({ skin }) {
           <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d", background: "#dcfce7", padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{badge}</span>
         </div>
       ))}
-      <a href="/" style={{ display: "block", marginTop: 14, textAlign: "center", color: skin.accent, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+      <a href="/" target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 14, textAlign: "center", color: skin.accent, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
         Open my full SOCIII Vault →
       </a>
     </div>
@@ -438,6 +438,17 @@ export default function ClientPortal() {
       if (/vault|record|document|file/.test(t)) return "Your signed documents (Advisor Agreement + 83(b) copy + W-9) are in your personal SOCIII Vault — owned by you, not SOCIII, for life.";
       if (/pay|compensat|earn/.test(t)) return "Advisors earn on equity value appreciation. No cash comp in the advisor program — the upside is your stake in SOCIII growing with the platform.";
       return "I can help with your advisor paperwork, equity details, and Vault documents. What would you like to know?";
+    }
+    // title persona — buyer or seller
+    if (isTitlePersona) {
+      if (/where.*order|status|progress|stand|step/.test(t)) { setTimeout(() => setCanvas({ type: "title-order" }), 200); return "Opened your order status. Steps 1–3 are complete — you're at the review step now."; }
+      if (/sign|document|deed|commit/.test(t)) { setTimeout(() => setCanvas({ type: "title-docs" }), 200); return persona === "buyer" ? "You have documents ready — your Title Commitment and Affiliated Business Disclosure both need attention. Tap **What do I need to sign?** or I'll open them now." : "Your Seller's Warranty Deed is ready for your signature. I've opened it on the right — tap **Review & Sign** to complete it."; }
+      if (/vault|record|deed|policy|copies|permanent/.test(t)) { setTimeout(() => setCanvas({ type: "title-vault" }), 200); return "Here are your permanent copies — tamper-evident, yours to keep forever. The Recorded Deed and Owner's Title Policy are hash-anchored on the SOCIII chain."; }
+      if (/mineral|right|sever|oil|gas|subsurface/.test(t)) return "The mineral rights for 313 Mayfair Dr were severed in 1978 — Garris Family LP retains subsurface oil, gas, and mineral rights. **You are buying surface rights only.** This is disclosed in Schedule B-2 Exception 7 of your Title Commitment.";
+      if (/record|county|filed|when.*done|how long/.test(t)) return "Recording was submitted to Henderson County Clerk today. Typical turnaround is 2–4 hours. Once the county confirms the recording number, proceeds release automatically.";
+      if (/proceeds|money|wire|pay|disburs|net/.test(t)) return persona === "seller" ? "Your net proceeds are **$278,540**, wired same-day after recording. Troy, you should receive it by end of business today." : "The wire of $289,450 was confirmed received and cleared. You're all set on funds — we're in the recording step now.";
+      if (/wire.*fraud|fraud|impersonat|scam|email.*change/.test(t)) return "**Important:** We will NEVER change wire instructions by email. If you receive any email asking you to send funds to a different account, call us at (903) 675-2100 before doing anything. Wire fraud is the #1 threat in real estate closings.";
+      return "I'm your title order assistant for file ATH-2026-0743 — 313 Mayfair Dr, Athens TX. Ask me where your order stands, what you need to sign, or when proceeds are released.";
     }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";

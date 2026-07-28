@@ -1948,15 +1948,15 @@ exports.api = onRequest(
             role:          "member",
             activeWorkers: ["tenant-portal-001"],
           },
-          // ── Title (Attorneys Title Henderson County) ─────────────────────
+          // ── Title (ABC Title Company) ─────────────────────────────────────
           title: {
             uid:           "demo-title-admin-001",
             tenantId:      "demo-attorneys-title-001",
-            workspaceName: "Attorneys Title Henderson County",
+            workspaceName: "ABC Title Company",
             vertical:      "real-estate",
             name:          "Sarah Garris",
             role:          "admin",
-            activeWorkers: ["re-escrow-001", "re-title-search-001", "re-commitment-001", "re-defect-tracker-001"],
+            activeWorkers: ["re-escrow-001", "re-title-search-001"],
           },
           // ── Aviation (Pacific Air Partners) ──────────────────────────────
           aviation: {

@@ -531,6 +531,107 @@ export const RE_CANVAS = {
     ],
   },
 
+  // ───────────────────────── TITLE SEARCH ─────────────────────────
+  "re-title-search-001": {
+    title: "Title Search — 313 Mayfair Dr, Athens TX 75751",
+    subtitle: "File ATH-2026-0743 · Henderson County · Chain search complete · ATTOM data",
+    disclaimer: "General information — not certified legal advice",
+    cas: { RED: 0, YELLOW: 2, BLUE: 3, WHITE: 2, GREEN: 6 },
+    tabs: [
+      { id: "chain-of-title", label: "Chain of Title", description: "Every recorded ownership transfer for this parcel — who conveyed to whom, at what price, with any gaps flagged. A clean chain is the foundation of marketable title.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Title chain — clean · 4 transfers", detail: "No gaps · marketable title confirmed" },
+          { band: "YELLOW", title: "Mineral rights severed", detail: "1978 federal conveyance — surface rights only" },
+          { band: "BLUE", title: "Search period: 1978–2026", detail: "48-year statutory search · Henderson County records" },
+        ] },
+        { type: "map", sectionLabel: "313 Mayfair Dr, Athens TX 75751", locations: [
+          { address: "313 Mayfair Dr, Athens, TX 75751", label: "SUBJECT PARCEL" },
+        ], mapType: "satellite" },
+        { type: "chain", title: "Chain of title — newest first", items: [
+          { band: "BLUE", parties: "Troy Garris Trust → Sara Kahele", meta: "Warranty deed · Pending · $285,000 · File ATH-2026-0743 · Henderson County · In progress", tag: "In progress" },
+          { band: "GREEN", parties: "Edward Garris → Troy Garris Trust", meta: "Trustee deed · Jun 3 2014 · $0 · Rec. 2014-06031 · Inter vivos trust transfer" },
+          { band: "GREEN", parties: "Garris Family LP → Edward Garris", meta: "Warranty deed · Apr 18 2001 · $95,000 · Rec. 2001-04188" },
+          { band: "YELLOW", parties: "Henderson County → Garris Family LP", meta: "Special warranty deed · Oct 12 1988 · $42,500 · Rec. 1988-10121 · Tax sale redemption", tag: "Verify" },
+          { band: "YELLOW", parties: "Federal conveyance — surface rights only", meta: "Surface deed · 1978 · MINERAL RIGHTS RESERVED · Rec. 1978-00882", tag: "Minerals severed" },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "1988 tax sale deed — confirm no redemption period issues", detail: "Henderson County issued a special warranty deed after tax sale redemption. Stewart Title indemnity obtained to clear any residual redemption risk." },
+          { band: "YELLOW", title: "Mineral rights severed 1978 — Schedule B-2 exception required", detail: "Surface rights only conveyed from 1978 forward. Garris Family LP retains all subsurface mineral rights. Mandatory Schedule B-2 exception — buyer signed mineral disclosure." },
+          { band: "GREEN", title: "No probate issues · trust documentation verified", detail: "Edward Garris → Troy Garris Trust is a proper inter vivos transfer. Trust certification on file. No probate required." },
+          { band: "GREEN", title: "No gaps in chain · 48-year search complete", detail: "Continuous chain verified from 1978 federal conveyance to present. No breaks or unrecorded interests detected." },
+        ] },
+      ] },
+      { id: "liens", label: "Liens & Encumbrances", description: "All recorded mortgages, liens, judgments, and encumbrances — everything that must be cleared before title can transfer.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "No open mortgages", detail: "Cash purchase — no payoff required" },
+          { band: "GREEN", title: "No tax delinquency", detail: "Henderson County taxes current" },
+          { band: "YELLOW", title: "1 utility easement", detail: "10-ft strip NE boundary — runs with land" },
+        ] },
+        { type: "table", header: ["Type", "Holder", "Amount", "Status"], rows: [
+          { band: "GREEN", cells: ["Mortgage / DOT", "None", "N/A", "Cash purchase"] },
+          { band: "GREEN", cells: ["IRS tax lien", "IRS", "$0", "No lien found"] },
+          { band: "GREEN", cells: ["County tax lien", "Henderson County", "$0", "Current — paid 2026-01-15"] },
+          { band: "GREEN", cells: ["HOA lien", "None", "N/A", "No HOA recorded"] },
+          { band: "GREEN", cells: ["Mechanics' lien", "None", "N/A", "None recorded"] },
+          { band: "YELLOW", cells: ["Utility easement", "Henderson Co-op Electric", "N/A", "Active — 10 ft NE boundary"] },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "Utility easement — 10-ft strip NE boundary · Doc #89-04412", detail: "Henderson County Electric Co-op. Easement runs with the land. No active infrastructure dispute. Disclosed in Schedule B-2." },
+          { band: "GREEN", title: "Lien search complete — no open liens to clear", detail: "No mortgages, judgments, IRS liens, HOA arrears, or mechanics' liens found. File is clear to close on the title side." },
+        ] },
+      ] },
+      { id: "tax-status", label: "Tax Status", description: "Current and historical property tax status — delinquency, proration amounts, and pending assessments that transfer with the property.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Taxes current", detail: "No delinquency · paid through 2025" },
+          { band: "BLUE", title: "2026 proration", detail: "Seller owes $528 (Jan–Jul 28)" },
+          { band: "GREEN", title: "No special assessments", detail: "No MUD, SID, or bond assessments" },
+        ] },
+        { type: "kpis", items: [
+          { label: "2025 annual tax", value: "$1,082", band: "GREEN" },
+          { label: "Last paid", value: "Jan 15 2026", band: "GREEN" },
+          { label: "2026 proration (seller)", value: "$528", band: "BLUE" },
+          { label: "Homestead exemption", value: "Yes · $40K", band: "GREEN" },
+        ] },
+        { type: "flags", items: [
+          { band: "BLUE", title: "2026 tax proration: seller owes $528 (Jan 1 – Jul 28)", detail: "Prorated to closing date. Reflected as buyer credit in Closing Disclosure. Based on 2025 Henderson County rate of $1,082." },
+          { band: "GREEN", title: "No delinquent taxes · no tax lien", detail: "Henderson County Tax Assessor confirms taxes current through 2025. No delinquency or tax sale risk." },
+          { band: "GREEN", title: "No MUD, SID, or special district bonds", detail: "Parcel is not in a Municipal Utility District. No bond assessment transfers with the deed." },
+        ] },
+      ] },
+      { id: "defects", label: "Defects", description: "All P0 (blocking), P1 (curative required), and P2 (advisory) title defects found during search — with cure steps for each.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "P0 defects — 0", detail: "No blocking defects · clear to commit" },
+          { band: "YELLOW", title: "P1 defects — 2", detail: "Curative required — both resolved" },
+          { band: "BLUE", title: "P2 advisory — 1", detail: "Noted · no curative action required" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "P1 RESOLVED · Mineral severance disclosure — Schedule B-2 Exception 7", detail: "Exception language inserted. Buyer signed separate Texas Real Estate Commission mineral rights disclosure. Curative complete." },
+          { band: "GREEN", title: "P1 RESOLVED · 1988 tax sale deed — Stewart Title indemnity obtained", detail: "Search confirms no active redemption claim. Stewart Title Guaranty endorsement on file. Underwriter approved." },
+          { band: "BLUE", title: "P2 Advisory · Shared fence NW corner — no recorded boundary agreement", detail: "Physical fence at NW corner appears to follow lot line. No recorded agreement. Survey recommended but not required for this cash purchase close." },
+        ] },
+      ] },
+      { id: "order-summary", label: "Order Summary", description: "Commitment readiness, exception summary, and handoff status.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Ready for commitment", detail: "0 P0 defects · all P1s resolved" },
+          { band: "GREEN", title: "Underwriter approved", detail: "Stewart Title Guaranty · $285,000 coverage" },
+          { band: "BLUE", title: "Commitment issued 07/18/2026", detail: "Schedule A + B-1 + B-2 attached" },
+        ] },
+        { type: "kpis", items: [
+          { label: "File number", value: "ATH-2026-0743", band: "WHITE" },
+          { label: "Commitment date", value: "07/18/2026", band: "GREEN" },
+          { label: "Underwriter", value: "Stewart Title", band: "GREEN" },
+          { label: "Policy type", value: "ALTA 2021 Owner's", band: "WHITE" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Schedule A — legal description verified", detail: "Lot 14, Block 6, Mayfair Addition, Henderson County, TX. Legal description matches deed and plat. 0.34 acres." },
+          { band: "YELLOW", title: "Schedule B-2 Exception 7 — mineral severance", detail: "'Minerals and mineral rights, including but not limited to oil, gas and other minerals, as reserved in the Federal Patent recorded 1978.' Included in commitment." },
+          { band: "BLUE", title: "Schedule B-2 Exception 8 — utility easement NE boundary", detail: "Henderson County Electric Co-op easement, 10-ft strip, recorded 1989 Doc #89-04412. Standard exception." },
+          { band: "GREEN", title: "All curative steps complete — file clear to close", detail: "Mineral disclosure signed. Tax sale indemnity obtained. No blocking defects outstanding." },
+        ] },
+      ] },
+    ],
+  },
+
   // ───────────────────────── TITLE ADVOCATE (ESCROW) ─────────────────────────
   "re-escrow-001": {
     title: "Title Advocate — 313 Mayfair Dr, Athens TX 75751",
@@ -573,7 +674,7 @@ export const RE_CANVAS = {
         { type: "strata", items: [
           { elev: "above", name: "Airspace rights", badge: "Held", band: "GREEN", detail: "No TDR severance · FAA Part 77 clear at 512 ft MSL · no view easement recorded" },
           { elev: "above", name: "Solar / wind rights", badge: "Unverified", band: "BLUE", detail: "No solar easement or wind turbine lease on record · verify TX PUC if commercial use" },
-          { elev: "surface", name: "Surface rights — fee simple", badge: "Held · conveyed", band: "GREEN", detail: "Troy Garris Trust → Michael & Sarah Chen · Henderson County Deed Book 214 · marketable" },
+          { elev: "surface", name: "Surface rights — fee simple", badge: "Held · conveyed", band: "GREEN", detail: "Troy Garris Trust → Sara Kahele · Henderson County Deed Book 214 · marketable" },
           { elev: "surface", name: "Water rights — surface", badge: "Municipal supply", band: "GREEN", detail: "City of Athens water service · no private well · no riparian claim" },
           { elev: "surface", name: "Carbon / sequestration credits", badge: "Not detected", band: "BLUE", detail: "No registered carbon credit program on record for this parcel · 0.34 ac residential" },
           { elev: "below", name: "Mineral rights — oil & gas", badge: "SEVERED — 1978", band: "RED", detail: "Henderson County Mineral Deed Book 41 pg 188 · minerals reserved to Garris Family LP · NOT conveyed · verify active lease status with TX RRC" },
@@ -615,7 +716,7 @@ export const RE_CANVAS = {
       ] },
       { id: "wire-instructions", label: "Wire Instructions", description: "Verified escrow wire instructions for this file. Always call to verify before sending funds. We will never change wire instructions by email.", blocks: [
         { type: "heroes", items: [
-          { band: "GREEN", title: "Escrow account active", detail: "Attorneys Title Henderson County IOLTA" },
+          { band: "GREEN", title: "Escrow account active", detail: "ABC Title Company IOLTA" },
           { band: "YELLOW", title: "Last verified 07/28/2026", detail: "Phone verification required before any change" },
           { band: "RED", title: "Never share by email — always call to verify", detail: "(903) 675-2100" },
         ] },
@@ -629,7 +730,7 @@ export const RE_CANVAS = {
           rows: [
             { band: "WHITE", cells: ["Beneficiary Bank", "First Bank of Texas — Athens"] },
             { band: "WHITE", cells: ["ABA Routing", "111900659"] },
-            { band: "WHITE", cells: ["Account Name", "Attorneys Title Henderson County IOLTA"] },
+            { band: "WHITE", cells: ["Account Name", "ABC Title Company IOLTA"] },
             { band: "WHITE", cells: ["Account Number", "XXXXXXX4821 (provided verbally only)"] },
             { band: "WHITE", cells: ["Reference", "File #ATH-2026-0743 — 313 Mayfair Dr"] },
           ] },
@@ -701,7 +802,7 @@ export const RE_CANVAS = {
           { band: "WHITE", title: "Policy issue — pending", detail: "Awaiting recording number" },
         ] },
         { type: "chain", title: "Chain of title — ATH-2026-0743 (append-only · SOCIII ledger)", items: [
-          { band: "GREEN", parties: "Search opened — 313 Mayfair Dr, Athens TX 75751 · Examiner: Attorneys Title Henderson County", meta: "title.search_opened · Block 0 · 07/14/2026", tag: "Anchored" },
+          { band: "GREEN", parties: "Search opened — 313 Mayfair Dr, Athens TX 75751 · Examiner: ABC Title Company", meta: "title.search_opened · Block 0 · 07/14/2026", tag: "Anchored" },
           { band: "GREEN", parties: "Title commitment issued — Stewart Title Guaranty · Schedule A + B exceptions attached", meta: "title.commitment_issued · Block 1 · 07/18/2026", tag: "Anchored" },
           { band: "GREEN", parties: "Adjacency scan — 9 parcels · 1 utility easement flagged · no undisclosed access claims", meta: "title.adjacency_scan · Block 2 · 07/18/2026", tag: "Anchored" },
           { band: "GREEN", parties: "Wire instructions verified — dual-channel phone verification · Sarah Garris · VC-20260728-001", meta: "title.wire_verified · Block 3 · 07/28/2026 9:05 AM", tag: "Anchored" },
