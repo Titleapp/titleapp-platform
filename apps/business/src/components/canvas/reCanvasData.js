@@ -536,8 +536,59 @@ export const RE_CANVAS = {
     title: "Title Advocate — 313 Mayfair Dr, Athens TX 75751",
     subtitle: "File ATH-2026-0743 · Henderson County · Cash purchase · Wet close · ATTOM data",
     disclaimer: "General information — not certified legal advice",
-    cas: { RED: 0, YELLOW: 3, BLUE: 4, WHITE: 2, GREEN: 6 },
+    cas: { RED: 0, YELLOW: 3, BLUE: 5, WHITE: 2, GREEN: 7 },
     tabs: [
+      { id: "parcel-map", label: "Parcel Map", description: "Subject parcel + all adjacent properties in a 2-lot radius. Easements, adjacency issues, and mineral-rights flags surface here. SOCIII pulls title on every neighbor — not just the subject — so boundary conflicts and access easements are caught before close.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Subject parcel — clear boundaries", detail: "313 Mayfair Dr · 0.34 ac · Lot 14 Block 6" },
+          { band: "YELLOW", title: "1 adjacency note", detail: "Utility easement crosses NE boundary" },
+          { band: "BLUE", title: "9 parcels analyzed", detail: "Subject + 8 adjacent (2-lot radius)" },
+        ] },
+        { type: "map", sectionLabel: "Subject + adjacent parcels · Henderson County TX", locations: [
+          { address: "313 Mayfair Dr, Athens, TX 75751", label: "SUBJECT — 313 Mayfair" },
+          { address: "309 Mayfair Dr, Athens, TX 75751", label: "Adjacent W" },
+          { address: "317 Mayfair Dr, Athens, TX 75751", label: "Adjacent E" },
+          { address: "312 Elmwood St, Athens, TX 75751", label: "Adjacent N" },
+          { address: "314 Elmwood St, Athens, TX 75751", label: "Adjacent NE" },
+          { address: "310 Elmwood St, Athens, TX 75751", label: "Adjacent NW" },
+          { address: "311 Mayfair Dr, Athens, TX 75751", label: "2nd W" },
+          { address: "315 Mayfair Dr, Athens, TX 75751", label: "2nd E" },
+          { address: "316 Elmwood St, Athens, TX 75751", label: "2nd NE" },
+        ], mapType: "satellite" },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Lot 14 Block 6 boundaries confirmed — no encroachment detected", detail: "All 4 boundary lines verified against plat. No structure encroachment from adjacent parcels." },
+          { band: "YELLOW", title: "Utility easement: 10-ft strip along NE boundary — recorded 1989 Doc #89-04412", detail: "Henderson County Electric Co-op. Easement runs with the land and transfers with title. No active infrastructure dispute." },
+          { band: "BLUE", title: "Adjacent parcel 309 Mayfair: access easement over rear 20 ft — recorded 2001 Doc #2001-11887", detail: "Neighbor's driveway easement. Disclosed in commitment. Buyer acknowledged." },
+          { band: "BLUE", title: "Adjacent parcel 312 Elmwood: shared fence — no recorded boundary agreement", detail: "Physical fence on NW corner appears to follow lot line. No recorded fence agreement. Survey recommended." },
+          { band: "GREEN", title: "All 8 adjacent parcels checked — no undisclosed access claims", detail: "SOCIII adjacency scan complete. No adverse claims detected on any adjacent title." },
+        ] },
+        { type: "prose", items: [
+          { band: "BLUE", title: "Why SOCIII pulls adjacent titles — and why incumbents don't", body: "Traditional title companies run one search: the subject parcel. SOCIII runs every parcel within a 2-lot radius. That catches cross-boundary easements, shared-well agreements, access strips, and mineral severances recorded on the neighbor's deed — not yours. This is the adjacency moat: a title company running SOCIII catches issues before close that competitors miss entirely." },
+        ] },
+      ] },
+      { id: "rights-stack", label: "Rights Stack", description: "What the buyer actually owns — every legal stratum from airspace to mineral depth. Texas is a prior-appropriation mineral state. Rights can be severed, leased, or encumbered independently; this stack shows what transferred with the deed and what didn't.", blocks: [
+        { type: "prose", items: [
+          { band: "WHITE", title: "Texas mineral law — prior appropriation state", body: "Texas severed mineral rights are extremely common. Every conveyance must be checked. Surface rights and mineral rights can transfer independently. The stack below shows what this deed conveys." },
+        ] },
+        { type: "strata", items: [
+          { elev: "above", name: "Airspace rights", badge: "Held", band: "GREEN", detail: "No TDR severance · FAA Part 77 clear at 512 ft MSL · no view easement recorded" },
+          { elev: "above", name: "Solar / wind rights", badge: "Unverified", band: "BLUE", detail: "No solar easement or wind turbine lease on record · verify TX PUC if commercial use" },
+          { elev: "surface", name: "Surface rights — fee simple", badge: "Held · conveyed", band: "GREEN", detail: "Troy Garris Trust → Michael & Sarah Chen · Henderson County Deed Book 214 · marketable" },
+          { elev: "surface", name: "Water rights — surface", badge: "Municipal supply", band: "GREEN", detail: "City of Athens water service · no private well · no riparian claim" },
+          { elev: "surface", name: "Carbon / sequestration credits", badge: "Not detected", band: "BLUE", detail: "No registered carbon credit program on record for this parcel · 0.34 ac residential" },
+          { elev: "below", name: "Mineral rights — oil & gas", badge: "SEVERED — 1978", band: "RED", detail: "Henderson County Mineral Deed Book 41 pg 188 · minerals reserved to Garris Family LP · NOT conveyed · verify active lease status with TX RRC" },
+          { elev: "below", name: "Mineral rights — coal / other", badge: "SEVERED — 1978", band: "RED", detail: "Follows 1978 mineral severance · same reservation · no active mining lease detected" },
+          { elev: "below", name: "Subsurface easements (utilities/fiber)", badge: "Active — TXU", band: "YELLOW", detail: "TXU gas distribution line recorded 1992 Doc #92-07741 · 5-ft bore easement along east lot line · transfers with land" },
+        ] },
+        { type: "flags", items: [
+          { band: "RED", title: "MINERAL RIGHTS SEVERED 1978 — buyer does not receive oil, gas, or mineral rights", detail: "Henderson County Mineral Deed Book 41 pg 188. This is disclosed in the commitment. Garris Family LP retains all subsurface mineral rights. A surface owner cannot prevent mineral owner from reasonable access under TX law." },
+          { band: "YELLOW", title: "TX Railroad Commission: no active drilling permit on this parcel or within 1,000 ft", detail: "ATTOM data as of search date. Verify with TX RRC for current status — permits can be filed at any time." },
+          { band: "BLUE", title: "Recommend: mineral rights disclosure acknowledged in writing by buyer at close", detail: "Buyer should sign separate mineral rights disclosure per TX Real Estate Commission guidance." },
+        ] },
+        { type: "prose", items: [
+          { band: "YELLOW", title: "Texas mineral rights — what this means for the buyer", body: "The buyer is purchasing surface rights only. The 1978 Garris mineral severance means oil, gas, coal, and any other minerals beneath 313 Mayfair Dr belong to Garris Family LP — not the new owner. Under Texas law, the mineral owner has the right of 'reasonable' surface access to extract those minerals. No active drilling operations are detected within 1,000 feet. This is disclosed in Commitment Exception 7." },
+        ] },
+      ] },
       { id: "funds-tracker", label: "Funds", description: "Real-time confirmation of all funds received and cleared for this closing. Every wire event is logged to the chain.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "Funds confirmed — clear to close", detail: "Wire confirmed by trace" },
@@ -643,29 +694,34 @@ export const RE_CANVAS = {
           { band: "YELLOW", title: "Disbursement hold", body: "All disbursements are held pending county recording confirmation. Every disbursement will be logged as a title.funds_disbursed chain event on the SOCIII ledger." },
         ] },
       ] },
-      { id: "closing-status", label: "Close Status", description: "Milestone-by-milestone closing status for File ATH-2026-0743. Recording is in progress; policy issue and final Vault delivery are pending.", blocks: [
+      { id: "closing-status", label: "Close Status", description: "Milestone-by-milestone closing status for File ATH-2026-0743. Recording is in progress; every event is appended to the SOCIII chain — an immutable private ledger that exists in parallel to the county recorder. Title companies with SOCIII know about a close within seconds. The county recorder takes hours or days.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "Funds confirmed", detail: "Wire trace WR-20260728-4891" },
           { band: "YELLOW", title: "Recording in progress", detail: "Henderson County Clerk — submitted 07/28/2026 2:30 PM" },
           { band: "WHITE", title: "Policy issue — pending", detail: "Awaiting recording number" },
         ] },
-        { type: "chain", title: "Closing milestone timeline", items: [
-          { band: "GREEN", parties: "Commitment finalized · 07/18/2026", meta: "", tag: "Done" },
-          { band: "GREEN", parties: "Disclosure sent to buyer · 07/25/2026", meta: "", tag: "Done" },
-          { band: "GREEN", parties: "3-day waiting period complete · 07/28/2026", meta: "", tag: "Done" },
-          { band: "GREEN", parties: "Funds received and confirmed · 07/28/2026 10:02 AM", meta: "", tag: "Done" },
-          { band: "YELLOW", parties: "Deed submitted for recording — Henderson County Clerk · 07/28/2026 2:30 PM", meta: "", tag: "In progress" },
-          { band: "WHITE", parties: "Recording confirmed — county recording number", meta: "", tag: "Pending" },
-          { band: "WHITE", parties: "Title policy issued", meta: "", tag: "Pending" },
-          { band: "WHITE", parties: "Order closed — Vault records delivered to buyer", meta: "", tag: "Pending" },
+        { type: "chain", title: "Chain of title — ATH-2026-0743 (append-only · SOCIII ledger)", items: [
+          { band: "GREEN", parties: "Search opened — 313 Mayfair Dr, Athens TX 75751 · Examiner: Attorneys Title Henderson County", meta: "title.search_opened · Block 0 · 07/14/2026", tag: "Anchored" },
+          { band: "GREEN", parties: "Title commitment issued — Stewart Title Guaranty · Schedule A + B exceptions attached", meta: "title.commitment_issued · Block 1 · 07/18/2026", tag: "Anchored" },
+          { band: "GREEN", parties: "Adjacency scan — 9 parcels · 1 utility easement flagged · no undisclosed access claims", meta: "title.adjacency_scan · Block 2 · 07/18/2026", tag: "Anchored" },
+          { band: "GREEN", parties: "Wire instructions verified — dual-channel phone verification · Sarah Garris · VC-20260728-001", meta: "title.wire_verified · Block 3 · 07/28/2026 9:05 AM", tag: "Anchored" },
+          { band: "GREEN", parties: "Closing disclosure sent to buyer · 3-day RESPA waiting period started", meta: "title.disclosure_sent · Block 4 · 07/25/2026", tag: "Anchored" },
+          { band: "GREEN", parties: "3-day waiting period complete · buyer cleared to sign", meta: "title.waiting_period_cleared · Block 5 · 07/28/2026 8:00 AM", tag: "Anchored" },
+          { band: "GREEN", parties: "Wire received $289,450 · Chase Private Client · Ref WR-20260728-4891", meta: "title.funds_received · Block 6 · 07/28/2026 9:14 AM", tag: "Anchored" },
+          { band: "GREEN", parties: "Wet close gate OPEN — all funds confirmed, recording authorized per TX-T-005", meta: "title.wet_close_authorized · Block 7 · 07/28/2026 10:02 AM", tag: "Anchored" },
+          { band: "YELLOW", parties: "Deed submitted for recording — Henderson County Clerk · File ATH-2026-0743", meta: "title.deed_submitted · Block 8 · 07/28/2026 2:30 PM — PENDING county confirmation", tag: "Pending" },
+          { band: "WHITE", parties: "County recording number confirmed — SOCIII chain event auto-triggered", meta: "title.deed_recorded · Block 9 · pending", tag: "Pending" },
+          { band: "WHITE", parties: "Title policy issued — Stewart Title Guaranty · owner's policy $285,000", meta: "title.policy_issued · Block 10 · pending", tag: "Pending" },
+          { band: "WHITE", parties: "Vault delivery — deed + policy auto-added to buyer's SOCIII Vault DTC records", meta: "title.vault_delivered · Block 11 · pending", tag: "Pending" },
         ] },
         { type: "flags", items: [
-          { band: "YELLOW", title: "Recording pending — expected same day", detail: "Henderson County typical turnaround 2-4 hours." },
-          { band: "BLUE", title: "After recording: buyer's deed + title policy will auto-add to their SOCIII Vault DTC records", detail: "Vault delivery triggered on recording confirmation." },
-          { band: "BLUE", title: "File: ATH-2026-0743 · Buyer: Michael & Sarah Chen · Seller: Troy Garris Trust · 313 Mayfair Dr Athens TX 75751", detail: "" },
+          { band: "YELLOW", title: "County recording pending — Henderson County typical turnaround 2–4 hours", detail: "Once the county confirms the recording number, Block 9 closes and disbursements release automatically." },
+          { band: "BLUE", title: "SOCIII vs. county recorder: why this matters", detail: "The county recorder is authoritative but slow — 2-4 hours to days depending on jurisdiction. SOCIII's append-only chain records every event within seconds of it happening. A title company running SOCIII can see 100% of its own closings in real time. If every title company in Henderson County ran SOCIII, real estate activity would be visible within seconds — not after the county records it." },
+          { band: "BLUE", title: "After recording: deed + policy auto-deliver to buyer's SOCIII Vault", detail: "Michael & Sarah Chen will receive their deed and owner's policy as permanent DTC records in their personal Vault — accessible forever, from any device." },
         ] },
         { type: "prose", items: [
-          { band: "WHITE", title: "Data source note — ATTOM vs FirstAm", body: "Data source: ATTOM Property Data (AVM, ownership, tax). First American data tree would additionally provide: recorded document PDFs, plat maps, exception documents. Currently unavailable via ATTOM — obtain physical copies from Henderson County Clerk for commitment exceptions." },
+          { band: "BLUE", title: "The chain-of-title moat — why this is defensive IP", body: "Every event in this file — from search open to vault delivery — is appended to an immutable SOCIII ledger and anchored externally (Patent 64/073,700). That ledger is the chain of title. A title company running SOCIII owns the most current, most granular private record of real estate activity in their county. When the county recorder finally catches up, SOCIII already knows. This is not a workflow tool. This is title plant infrastructure." },
+          { band: "WHITE", title: "Data source note — ATTOM vs FirstAm", body: "Current data source: ATTOM Property Data (ownership, AVM, tax, lien flags, recording dates). Phase 2 upgrade to First American DataTree would additionally provide: recorded document PDFs, plat maps, exception document images. Currently unavailable via ATTOM — obtain physical copies from Henderson County Clerk for commitment exceptions." },
         ] },
       ] },
     ],
