@@ -88,6 +88,38 @@ $99/month base plus $5/active student. A cohort of 70 students costs $449/month 
 
 ---
 
+## The Financial Case
+
+A 70-student nursing program at ATI's standard licensing rate spends $28,000–$42,000 per year on test prep. Add the staff time consumed by manual accreditation assembly — typically two to four months of a program director's and coordinator's effort before each review cycle — and the true cost of "just running the program" is significantly higher than the ATI invoice suggests. Programs don't track that labor cost as a line item. It's invisible until someone asks how many hours the last accreditation visit actually consumed.
+
+SOCIII costs $5,388/year for that same cohort. The accreditation evidence doesn't need to be assembled — it exists continuously as a byproduct of the platform running. The clinical hours are already logged. The competency records are already structured. The review preparation collapses from months to days.
+
+For programs already running ATI or HESI: SOCIII integrates via LTI. The test prep infrastructure you've invested in stays in place. SOCIII adds the governance layer, the adaptive tutoring that ATI doesn't provide, and the immutable record infrastructure that makes accreditation a query rather than a project.
+
+---
+
+## Small Programs, Same Infrastructure
+
+The large university nursing systems — those with ten or fifteen faculty, a dedicated accreditation coordinator, and a clinical placement office — have an infrastructure advantage that compounds over time. They can run more students, track more data, and respond to accreditation requirements faster because they have the people to do it.
+
+A 70-student program in a mid-size city cannot hire its way to that infrastructure. The faculty shortage that is the root cause of the nursing pipeline crisis is the same constraint that prevents small programs from expanding — and the same constraint that makes hiring additional administrative staff to manage documentation feel untenable.
+
+SOCIII is the infrastructure answer for programs that cannot hire their way to scale. The adaptive tutoring, the immutable clinical record, the real-time at-risk monitoring, the accreditation evidence system — it runs for $449/month regardless of whether the program has one administrative coordinator or ten. The small program competes on student outcomes with programs three times its size, because the infrastructure advantage is no longer gated by headcount.
+
+---
+
+## Just Talk to It
+
+There is no implementation project. There is no IT ticket. There is no consultant standing between you and the thing working.
+
+Open a browser. Sign in with Google. Tell Alex: *"I have 70 nursing students and my biggest accreditation problem is tracking clinical hours."* Alex configures the cohort, sets up clinical hour logging, and starts tracking. The conversation that would take 18 months of enterprise LMS procurement takes 90 seconds.
+
+When a faculty member wants to know which students are underperforming on NextGen clinical reasoning scenarios before the next NCLEX cycle, they ask Alex directly: *"Show me which second-semester students are below 70% on clinical judgment scenarios and haven't had a tutoring session this week."* Alex pulls it from the live record — not from a month-end report, but from the continuous data the platform maintains as a natural byproduct of students learning. The intervention happens before the student fails, not after.
+
+No manual. No training week. No systems integrator. The infrastructure that was previously available only to well-resourced programs, operated entirely by having a conversation with Alex.
+
+---
+
 ## Conclusion
 
 The nursing shortage is an infrastructure problem disguised as a supply problem. The supply of people who want to become nurses is not the constraint. The capacity to train, assess, document, and graduate them is. AI that accelerates instruction, governs assessment, and produces portable verified records is the infrastructure answer — not as a replacement for faculty, but as the tool that makes each faculty member's time go further.

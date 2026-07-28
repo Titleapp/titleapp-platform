@@ -112,6 +112,38 @@ $99/month base plus $5/active student. A cohort of 70 students costs $449/month 
 
 ---
 
+## The Financial Case Is Straightforward
+
+A 70-student nursing program paying ATI's standard licensing rate spends $28,000–$42,000 per year on test prep alone — before counting the staff hours spent manually assembling accreditation evidence each review cycle. The accreditation assembly process alone typically consumes two to four months of a program director's time. That time has a cost.
+
+SOCIII costs $449/month for the same 70-student cohort. That is $5,388/year — against a conservative $30,000–$50,000 in combined ATI fees and documentation labor. The question is not whether the economics work. It is whether the program wants to move.
+
+For programs already running ATI or HESI contracts: SOCIII integrates via LTI. You keep the test prep relationships you have. SOCIII adds the adaptive instruction layer, the real-time clinical hour tracking, and the accreditation evidence infrastructure that ATI does not provide. You are not choosing between them. You are adding the piece ATI cannot sell you.
+
+---
+
+## The Little Guy Gets the Big Guy's Tools
+
+Harvard, Stanford, and Johns Hopkins have the faculty bandwidth, the testing infrastructure, and the accreditation staff to produce documented competency evidence at scale. Those programs can afford dedicated clinical placement coordinators, a full accreditation team that runs continuously between review cycles, and faculty-to-student ratios that make personalized attention financially viable.
+
+A 70-student program in a mid-size city cannot afford any of that. Until now, that gap was simply the structural disadvantage of being small.
+
+SOCIII closes it. The same adaptive tutoring infrastructure, the same immutable clinical hour records, the same real-time cohort monitoring, and the same accreditation evidence system that a well-resourced program builds over years — available for $449/month. Not a consumer version. The same architecture. A small program running SOCIII competes on student outcomes with programs three times its size, because the infrastructure advantage that used to belong only to the well-funded is no longer exclusive.
+
+---
+
+## Just Talk to It
+
+There is no LMS implementation. There is no IT project. There is no consultant standing between you and the thing working.
+
+Open a browser. Sign in with Google. Tell Alex: *"I have 70 nursing students and my biggest accreditation problem is tracking clinical hours."* Alex sets up the cohort, configures the clinical hour logging, and starts tracking. Done. The same conversation that takes 18 months with an enterprise LMS vendor takes 90 seconds with Alex.
+
+A faculty member who wants to know which students are at risk before midterm says: *"Show me which students have had fewer than three tutoring sessions this week and are below 75% on clinical reasoning scenarios."* Alex pulls it in seconds — not from a report that runs at the end of the month, but from the live record that the platform maintains continuously. The faculty member uses that information to send a targeted intervention before the student falls behind, not after they fail.
+
+That is the whole experience. No manual. No training week. No systems integrator. The most powerful nursing education infrastructure available, operated by having a conversation.
+
+---
+
 ## Conclusion
 
 The constraint in education has never been the supply of students who want to learn. It has been the supply of individualized attention — the thing that actually moves outcomes. AI makes individualized attention economically viable at scale. For the first time, every student in a program can have a tutor that knows them specifically, is available whenever they need it, and generates exactly the practice they need to close the gap between where they are and where they need to be.

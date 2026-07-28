@@ -114,6 +114,36 @@ This is not a proof of concept. It is a running deployment on a real portfolio.
 
 ---
 
+## The Financial Case
+
+A mid-size CRE operator running $200M AUM typically carries a management team — a Director of Asset Management, a property manager per building, a financial analyst, and a leasing coordinator — plus six to ten software subscriptions that don't talk to each other. Conservative fully-loaded cost: $400,000–$500,000/year in management salaries plus $50,000–$80,000/year in PropTech tools. That's before the consultants who get called in for each feasibility study.
+
+SOCIII runs at $499–$2,499/month depending on portfolio size. That is $6,000–$30,000/year. The deal analysis that previously required a 4–6 week consultant engagement happens in days. The property management layer that previously required a person-per-building handles routine operations and tenant communications automatically. The operator pays for intelligence. The operational overhead that delivered that intelligence is no longer a headcount problem.
+
+---
+
+## The Little Guy Gets Goldman's Research Team
+
+Goldman Sachs has a 40-person real estate research division. It produces deal analysis on every market in the country — submarket comps, NOI benchmarks, cap rate trends, tenant credit profiles, lease comparables — with a depth and speed that a mid-market developer running a $50M portfolio simply cannot replicate by hiring analysts.
+
+That research advantage has always been available exclusively to the firms that could afford to build or buy it. The mid-market developer making a site acquisition decision in a market they don't cover deeply had two options: pay $30,000–$80,000 for a one-off consulting engagement, or make the decision with less information than the competition.
+
+SOCIII's Site Reconnaissance, Feasibility, and CRE Analyst workers run that same analytical depth on any deal, in any market, in days — not weeks, and not at consulting rates. The mid-market developer competing against a larger institutional buyer gets the same analytical stack for $499/month. The institutional buyer's information advantage was always a resource advantage. SOCIII makes it a platform subscription.
+
+---
+
+## Just Talk to It
+
+There is no systems integrator. There is no implementation project. There is no six-month onboarding with a Yardi consultant who bills $300/hour and schedules calls two weeks out.
+
+Open a browser. Sign in with Google. Tell Alex: *"I have a 5-building portfolio and I want to know which leases are expiring in the next 18 months."* Alex pulls the lease roll, surfaces the expiration dates, and flags the ones where market comps suggest the renewal conversation should start now. It takes seconds, not a report cycle.
+
+When a broker sends an offering memorandum on a prospective acquisition, forward it to Alex: *"Run a feasibility on this. I need the pro forma, comparable sales, and a go/no-go recommendation by end of day."* The Site Recon, Feasibility, and CRE Analyst workers run concurrently. Alex assembles the deal memo. You review a structured recommendation with sourced data points — not a stack of consultant deliverables — before the competing bidder has finished their first call with their financial analyst.
+
+No manual. No training week. No IT ticket. The full analytical and operational stack, operated by having a conversation.
+
+---
+
 ## Market Size
 
 The US commercial real estate market has $20T in total asset value and approximately 100,000 operators who manage more than $1M AUM. At $499–$2,499/month depending on portfolio size, the addressable market for a SOCIII CRE subscription is $6–30B/year. The mid-market segment — operators with $10M–$500M AUM who are too small for enterprise PropTech and too sophisticated for consumer tools — is 40,000 firms and almost entirely unserved by AI-native software.

@@ -80,6 +80,38 @@ SOCIII runs on Claude (Anthropic) today. It can run on GPT-4, Gemini, or any fut
 
 ---
 
+## The Financial Case
+
+A title office handling 100 orders per month typically runs with two to four closers, a transaction coordinator, and a dedicated staff member managing the documentation trail across each file. Fully-loaded, that team costs $180,000–$280,000/year — before the five disconnected software subscriptions that don't talk to each other and the consultant who gets called in when something falls through the cracks.
+
+SOCIII costs $99–$499/month depending on order volume. That is $1,200–$6,000/year. Alex tracks every order, every outstanding document, and every deadline simultaneously — the coordination overhead that previously required a dedicated coordinator is handled by the platform. One closer handles ten or more active orders. The same office runs more volume without adding headcount.
+
+For title companies already using docuware, ResWare, or SoftPro: SOCIII integrates alongside existing systems. The append-only record layer adds the audit trail and AI coordination on top of your existing workflow — not instead of it. And every property record written into the SOCIII database compounds in value as the network grows: the next order on that property is faster and cheaper because the prior search is already in the ledger.
+
+---
+
+## The Little Guy Gets the Big Company's Infrastructure
+
+The major title underwriters — Fidelity National, First American, Stewart Title — run national networks with thousands of closers, proprietary data pipelines, and enterprise software built over decades. They can open an order on almost any property in the country and know within hours what the title chain looks like.
+
+An independent title company or small agency doesn't have that infrastructure. They have ResWare or SoftPro, a file cabinet, and a coordinator who juggles too many orders at once. When a complex commercial deal comes across the desk with a messy chain of title, the independent operator either sends it to a larger underwriter or spends staff hours on research that a major firm would have in its database already.
+
+SOCIII is the infrastructure layer that gives the independent operator what the majors built over decades — an append-only record that grows denser with every order, AI workers that coordinate the transaction from intake through closing, and a national property record that compounds in depth and speed as more companies join the network. The independent title company that joins SOCIII in 2026 will have two years of accumulated property history by 2028. The one that waits will be starting from zero when the network effects are already established.
+
+---
+
+## Just Talk to It
+
+There is no implementation project. There is no ResWare consultant billing $300/hour to configure your workflow. There is no 90-day onboarding timeline.
+
+Open a browser. Sign in with Google. Tell Alex: *"I'm a title agent in Henderson County TX. I have three active orders. Help me track them."* Alex pulls the files, maps the open items on each order, flags the ones with outstanding documents, and surfaces the deadlines. Done. You are tracking your orders — not through a dashboard you had to learn, but through a conversation you just had.
+
+When a new commercial order arrives with a complex ownership history, you don't start from scratch. You give Alex the address and say: *"Pull what we have on this property and flag any title issues worth looking at before I open the order."* Alex searches the SOCIII ledger, surfaces the relevant history from prior searches, and produces a preliminary findings summary — before you've opened a county recorder database. The research that used to take hours starts in seconds.
+
+No manual. No training week. No systems integrator. The full title coordination and research stack, operated by having a conversation.
+
+---
+
 ## Conclusion
 
 The real estate transaction is a $2 trillion/year event mediated by information asymmetry and process friction. Both are being automated. The companies that own the infrastructure layer — the rules, the records, the data rails — will capture the economics of that transition.
