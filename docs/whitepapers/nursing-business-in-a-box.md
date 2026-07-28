@@ -11,13 +11,13 @@ The United States needs 200,000 new registered nurses every year through 2030. N
 
 ---
 
-## Wave 1: The Pipeline Is Broken at the Education Layer, Not the Supply Layer (Now)
+## Wave 1: The Pipeline Is Broken at the Faculty Layer, Not the Student Layer (Now)
 
 The American Association of Colleges of Nursing reports that nursing schools turned away 91,938 qualified applicants in 2021 — the most recent year with full data, and the number has grown since. The reason is not inadequate interest in nursing as a career. It is a faculty shortage that creates a cascade: no faculty means smaller cohorts, smaller cohorts mean longer waitlists, longer waitlists mean students choose other careers, and the nursing shortage deepens.
 
-The faculty shortage itself has a root cause: the nursing faculty pipeline requires a graduate degree (MSN or DNP), years of clinical experience, and compensation that competes with clinical practice — where a bedside nurse typically earns more than a nursing professor. Institutions cannot hire their way out of this constraint in any reasonable timeframe.
+The nursing faculty pipeline has a structural constraint that cannot be solved by pay raises alone. Faculty candidates must hold a graduate degree (MSN or DNP), have years of clinical experience, and accept compensation that often sits below what a bedside nurse earns in practice. The pool of people who qualify and are willing to make that trade is finite — and shrinking. Institutions cannot hire their way out of this constraint in any reasonable timeframe.
 
-**The SOCIII answer is not a replacement for faculty.** It is a force multiplier. A faculty member who spends 40% of their time on individualized tutoring, progress tracking, and documentation assembly is a faculty member who can supervise 20 students. A faculty member whose AI worker handles adaptive tutoring, flags at-risk students automatically, and assembles clinical documentation continuously is a faculty member who can supervise 40. The pipeline doubles without adding a single faculty line.
+**The SOCIII answer is not a replacement for nursing faculty.** It is a force multiplier. A faculty member who spends 40% of their time on individualized tutoring, clinical reasoning coaching, and documentation assembly is a faculty member who can supervise 20 students safely. A faculty member whose AI worker handles adaptive NCLEX tutoring, flags at-risk students automatically, and assembles clinical competency documentation continuously is a faculty member who can supervise 40 — with the same quality of oversight. The pipeline doubles without adding a single faculty line.
 
 ---
 
@@ -37,11 +37,11 @@ This is the same problem that AI assessment disrupted in general education — t
 
 The Accreditation Commission for Education in Nursing (ACEN) has been tightening its evidence requirements for a decade. Programs must now demonstrate — with documented, traceable evidence — that every graduate met every program outcome. Clinical hours must be logged, verified, and tied to specific competency domains. Faculty evaluations must be consistent, retrievable, and auditable.
 
-Most nursing programs are meeting these requirements with a combination of paper logs, spreadsheets, and ATI/HESI exports assembled manually before each accreditation review. The process typically takes months of staff time, produces document packages that are difficult to navigate, and is not actually connected to real-time program improvement.
+Most nursing programs are meeting these requirements with a combination of paper clinical logs, spreadsheets, and ATI/HESI exports assembled manually in the weeks before each review cycle. The process typically consumes months of a program director's and coordinator's time, produces binders that are difficult to navigate, and is entirely disconnected from real-time program improvement. When an ACEN site visitor asks for documentation of how a specific student's clinical reasoning deficiencies were identified and addressed, the answer is often "let me pull that together" — which is not the answer programs want to give.
 
-The direction of travel is clear: ACEN will require electronic clinical documentation, digital competency maps, and real-time outcome tracking. Programs that build this infrastructure now will pass reviews with less staff time and more confidence. Programs that wait will scramble.
+The direction of travel is clear: ACEN will require electronic clinical documentation, digital competency maps, and real-time outcome tracking. Programs that build this infrastructure now will pass reviews with less staff time and more confidence. Programs that wait will scramble when the standards tighten — or when an adverse event triggers a focused review that no one was prepared for.
 
-**The SOCIII answer:** Clinical hours logged in the Vault are an immutable, timestamped record. Every assessment produces a structured competency outcome. Every faculty evaluation is an append-only event. ACEN review becomes a query against a database, not a manual assembly exercise. The program always has its evidence because the evidence is produced continuously as students learn.
+**The SOCIII answer:** Clinical hours logged in the Vault are an immutable, timestamped record tied to the specific competency domain they addressed. Every assessment produces a structured competency outcome. Every faculty evaluation of clinical performance is an append-only event. ACEN review becomes a query against a database, not a manual assembly exercise. The program always has its evidence because the evidence is produced continuously as students learn — not assembled in a panic before the site visit.
 
 ---
 

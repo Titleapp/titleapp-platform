@@ -1,159 +1,163 @@
-# The Best Teacher in the Room Is Available 24 Hours a Day
+# The Teacher Shortage Isn't Going Away. The Administrative Burden Can.
 
 **SOCIII Inc. — Education Vertical White Paper**
+*K-12, Community College, Trade School, and Professional Programs*
 *July 2026 · Patent pending (USPTO filings May 2026) · sean@sociii.ai*
 
 ---
 
 ## Abstract
 
-The most expensive thing in education is personalized attention. A faculty member who truly knows each student — their specific knowledge gaps, their learning pace, the exact moment they're starting to fall behind — can change outcomes. But a faculty member with 40 students can't give each of them that level of attention. The economics don't allow it. The hours don't exist. AI changes this equation in a way that textbooks, LMS platforms, and test-prep vendors never could: every student gets a tutor that knows them specifically, is available at 2am before the exam, generates unlimited practice material targeting their exact weaknesses, and never gets tired, impatient, or distracted by the student who's easier to teach. This paper describes the three converging forces that make this the right moment for AI in education — and why SOCIII's RAAS-governed platform is the infrastructure that makes it safe, verifiable, and built to last.
+The United States has a teacher shortage, a tutoring gap, and a documentation crisis — and they share a common root. Teachers spend a shrinking fraction of their day actually teaching. IEP paperwork, parent communication, assessment assembly, intervention reports, standards alignment documentation, and attendance tracking consume hours that were supposed to go to students. Simultaneously, personalized tutoring — the single intervention with the strongest evidence base for improving student outcomes — remains available only to families who can afford $50 to $150 an hour. AI changes both of these constraints at once: it returns documented time to teachers, and it makes personalized instruction available to every student regardless of zip code. This paper describes why this moment is the right one, what the infrastructure looks like when it's built correctly, and why SOCIII's RAAS-governed platform is the right foundation — not a chatbot, but a governed AI system where every record is verifiable and the AI cannot fabricate what wasn't learned.
 
 ---
 
-## Wave 1: AI Didn't Just Break the Old Assessment Model — It Created a Better One (Now)
+## Wave 1: AI Is Already in Every Classroom — Governed or Not (Now)
 
-When ChatGPT launched in 2022, every academic integrity office declared a crisis. Essays that took students three hours to write could be generated in 45 seconds. Multiple-choice tests submitted through an LMS were suddenly gameable by anyone with a browser open. The institutional response — detection tools, honor code amendments, return to handwritten exams — was understandable and almost entirely ineffective.
+ChatGPT is already in every classroom. Students are using it for essays, homework, test prep, and homework they didn't finish. The institutional response — AI detection tools, honor code updates, return to handwritten assignments — is understandable and almost entirely ineffective. A 2024 Stanford study found that AI detection software misidentifies human-written text as AI-generated at rates between 12% and 60% depending on the tool. The detection arms race is unwinnable.
 
-But the dominant narrative missed the more important half of the story: AI didn't just disrupt the old assessment model. It made a better one possible.
+The more important question is not whether AI will be used in classrooms. It will be. The question is whether it is governed.
 
-The old model measured proxies for learning — the ability to produce a document or select an answer under controlled conditions. A student who could score 85% on a standardized test wasn't necessarily a student who could apply the underlying knowledge in a clinical, legal, or operational context. The proxy was fragile. AI exposed that. But AI also created the alternative.
+An AI tutor with no rules can tell a student their work is excellent when it isn't. It can generate practice material that teaches the wrong concept. It can produce "progress" that looks like learning and isn't. If a student uses an uncontrolled AI to complete an assignment, the grade that results does not reflect what the student knows. If a teacher uses an uncontrolled AI to draft IEP documentation, the record that results may not reflect the student's actual accommodation needs. The tool is fast. The record is wrong.
 
-A tutor powered by AI can generate unlimited adaptive scenarios — not a fixed question bank, but novel situations targeting the exact concept a specific student is struggling with. It can present a case, watch how the student reasons through it, identify exactly where the reasoning breaks down, and immediately generate a follow-up scenario designed to address that specific gap. No human tutor can do this at the speed, scale, and consistency that AI can. The student who works with an AI tutor for 30 minutes gets a more targeted learning intervention than most students get in a week of traditional prep.
+**RAAS governance solves this.** Every output from a SOCIII AI worker passes through a rules engine before it becomes a record. The AI tutor cannot generate a readiness score that isn't derived from actual session performance. It cannot log a tutoring session that didn't occur. It cannot produce an IEP accommodation note for an accommodation that wasn't reviewed and flagged by a qualified professional. The rules define what the AI can do in an educational context — and those rules are set by the institution, not the model provider.
 
-**The SOCIII answer:** RAAS-governed AI that cannot fabricate credentials or inflate results. The rules engine controls what the AI worker can output — a student's record reflects only what was actually demonstrated, in a session that was logged and timestamped. The AI accelerates learning. The rules engine ensures the record is real. You get the benefit of AI instruction without the liability of AI-generated performance that doesn't reflect actual competency.
-
----
-
-## Wave 2: Every Student Gets a Tutor That Knows Them Specifically (Now — Ongoing)
-
-For most of educational history, every student in a cohort got the same curriculum. The same lecture. The same textbook. The same midterm. A faculty member with 40 students taught to the middle — the students at the top were bored, the students at the bottom were lost, and the ones in the middle got something approximating what they needed.
-
-AI makes the one-to-one model economically viable at scale. Not a substitute for a great teacher — a force multiplier for one.
-
-Here is what an AI teaching assistant can do that a human TA cannot:
-
-**It knows every student's exact gap.** Not "Sarah is weak in pharmacology" — "Sarah gets cardiovascular drug mechanisms right but consistently misapplies renal dosing adjustments when the patient has concurrent liver disease." The AI has seen every answer Sarah gave in every session. It knows precisely where her reasoning holds and where it doesn't.
-
-**It is available at 2am the night before the NCLEX.** The student who is anxious at midnight, who needs one more run through acid-base compensation, who wants to talk through a confusing case scenario — that student currently has no one. With SOCIII, they have a tutor that knows their history, pulls the type of scenario that targets their specific gap, and walks them through it as many times as they need.
-
-**It generates unlimited practice material.** A human instructor creates a question bank once and reuses it. The AI generates fresh scenarios on demand — different patient presentations, different clinical contexts, same underlying concept — so students can't memorize answers and must actually develop the reasoning.
-
-**It flags the student who is quietly falling behind before they fail.** A faculty member with 40 students cannot monitor each student's daily engagement pattern, response time, and accuracy trajectory. The AI can. When a student's performance on clinical reasoning scenarios starts declining two weeks before an exam, the system surfaces an alert. The faculty member gets a notification — not after the student fails, but while there's still time to intervene.
-
-This is the superhero teaching assistant: not a replacement for the faculty member, but the thing that makes the faculty member's limited time go toward the work only a human can do — mentorship, clinical judgment coaching, the relationships that turn a good student into a great practitioner.
-
-**The SOCIII answer:** The Tutor worker generates adaptive scenarios from a student's actual performance history. Alex monitors cohort-wide progress and surfaces at-risk students before they fall behind. Faculty members see a dashboard of where every student is — and spend their time on the students who need them, not on the students who are fine.
+The result is AI that schools can actually stand behind: instruction that accelerates learning, with records that reflect what was actually learned. The institution doesn't have to choose between the benefits of AI and the integrity of the record. SOCIII's architecture gives them both.
 
 ---
 
-## Wave 3: Accreditors Are Demanding Evidence — and AI Produces It as a Byproduct (12 – 36 Months)
+## Wave 2: The Teacher Shortage Has the Same Root Cause Everywhere — and It Isn't Pay Alone (Now — 3 Years)
 
-Regional and specialty accreditation bodies have been tightening their evidence requirements for a decade. Programs must now demonstrate — not just assert — that every graduate met every program outcome. Clinical hours must be logged, verified, and tied to specific competency domains. Faculty evaluations must be consistent, retrievable, and auditable.
+The statistics are consistent across studies: approximately 50% of new teachers leave the profession within five years. When researchers ask why, the most common answer is not compensation — it is workload. Specifically, administrative workload that has nothing to do with teaching.
 
-Most programs are meeting these requirements with a combination of paper logs, spreadsheets, and vendor exports assembled manually before each review cycle. The process takes months of staff time and is not connected to real-time program improvement.
+A typical teacher's week includes: IEP documentation for students with disabilities, parent communication drafts and responses, standards alignment paperwork, lesson plan documentation required for administrative review, attendance tracking and intervention reporting, assessment assembly and grading that goes beyond the learning itself, and professional development logging. Studies from the Gates Foundation and RAND Corporation have consistently found that teachers spend between 10 and 15 hours per week on tasks that are not instruction — in a profession that rarely has more than 45 workable hours in a week.
 
-Here is the part the accreditation conversation usually misses: when AI is doing the instruction and the tutoring, the evidence is produced as a natural byproduct of the learning. Every session the Tutor worker runs is a logged event. Every scenario completed is a structured competency outcome. Every clinical hour is an immutable Vault record. The program doesn't collect evidence for accreditation review — the evidence exists because the learning happened on a platform that records it by design.
+A teacher who spends 40% of their time on documentation and communication is a teacher who is giving 28 students a fraction of what they came to the profession to give. That fraction is unsatisfying for the teacher and insufficient for the students. The burnout follows.
 
-Accreditation review becomes a query against a database, not a manual assembly exercise. The program director doesn't spend two months before the site visit assembling binders. The evidence is there because it was always there — produced continuously as students learned, timestamped and tamper-evident.
+A teacher whose AI handles documentation, drafts parent communications, flags at-risk students before they fall behind, and tracks IEP accommodations automatically has 40% more time. That 40% goes back to the classroom — to the student who is quietly struggling but won't ask for help, to the conversation that makes the difference, to the mentorship that a spreadsheet cannot provide.
 
-The direction of travel is clear: ACEN, SACSCOC, and HLC are all moving toward real-time outcome tracking. Programs that build this infrastructure now will pass reviews faster and with more confidence. The ones that wait will be scrambling when the standards tighten.
+The force multiplier is not a metaphor. It is 12 extra hours per week returned to teaching — returned to the work the teacher trained for and came to do.
 
-**The SOCIII answer:** Clinical hours logged in the Vault are an immutable record. Every assessment produces a structured competency outcome. Accreditation evidence is a query, not a project. The record infrastructure that serves students and faculty every day is the same infrastructure that satisfies accreditors every cycle.
+**The SOCIII answer:** The Comms worker drafts parent communication from the actual student record — no starting from scratch, no manually pulling grades and attendance from three different systems. The Student Records worker tracks IEP accommodations and flags documentation gaps automatically. Alex monitors attendance and performance patterns across all students simultaneously and surfaces the ones who need attention before the problem compounds. The teacher's time goes where a teacher's time should go.
 
 ---
 
-## What the AI Does. What the Human Does.
+## Wave 3: Federal Accountability Requirements Are Creating a Documentation Burden Schools Cannot Meet With Current Infrastructure (12 – 36 Months)
 
-The distinction matters. SOCIII is not a replacement for faculty. It is a precision reallocation of where faculty time goes.
+IDEA — the Individuals with Disabilities Education Act — requires documented accommodations for every student on an IEP. When IEP disputes reach due process hearings, the cost to a district can reach $40,000 to $100,000 per case in legal fees and staff time, and districts that cannot produce adequate documentation of the accommodations they provided routinely lose. Title I funding requires documented evidence that intervention resources were deployed and tracked. Every state accountability system under ESSA requires longitudinal performance tracking that can survive a federal audit.
 
-| The AI handles | The faculty member handles |
+The documentation infrastructure most schools rely on is inadequate for the scrutiny that is coming: a combination of the district SIS, a binder in the special education coordinator's office, and institutional memory that walks out the door when the coordinator leaves.
+
+The direction of travel is not ambiguous. Federal oversight of IEP compliance has increased every year since 2015. State accountability reporting requirements under ESSA have expanded. AI-generated records that cannot be audited are a liability, not an asset. The institutions that will survive that scrutiny are the ones that built their documentation infrastructure on a foundation where the record is created when the event happens — not assembled the week before the audit.
+
+AI that produces immutable records as a natural byproduct of instruction is the infrastructure answer. The IEP accommodation is tracked when it is applied, not reconstructed afterward. The intervention is logged when it happens, not compiled from memory at the end of the quarter. The student's performance record is built continuously, timestamped, and tamper-evident — so when a due process hearing asks whether the district provided documented accommodations for a specific student on a specific date, the answer is a query, not a manual search.
+
+**The SOCIII answer:** Every tutoring session, accommodation application, and intervention is an append-only record in the Vault — immutable, timestamped, and portable. Alex flags IEP documentation gaps before they become compliance findings. Accreditation and reporting packages are not assembled — they are queries against a database that has been building continuously since the school year began.
+
+---
+
+## The Democratization Argument
+
+The gap in American education is not a gap in student potential. It is a gap in access to personalized instruction.
+
+A student in Palo Alto, California, has access to $150-per-hour SAT tutors, AP exam prep courses, a school counselor who knows their name, and parents who work from home and can help with homework at 8pm. A student in rural Kentucky, or in a Title I school in Chicago, has a 35-student classroom, a teacher managing 34 other students simultaneously, and no tutor. The outcomes that follow from that difference are not a function of what these students are capable of. They are a function of what resources were allocated to them based on their address.
+
+Private tutoring is the single most evidence-backed intervention for improving student outcomes. The effect sizes for individualized, targeted instruction are the highest of any intervention that has been rigorously studied. The problem is that private tutoring costs $50 to $150 per hour — and access to it is almost perfectly correlated with household income.
+
+SOCIII costs $5 per student per month. That is the same personalized tutor — one that knows the specific student's knowledge gap, is available at 10pm before the test, and generates unlimited targeted practice material — available to every student in a district, not just the ones whose parents can pay.
+
+The zip code stops mattering when every student has access to the same quality of personalized instruction. That is the promise. SOCIII's education infrastructure is proven in nursing education programs — where documentation standards, accreditation requirements, and the consequences of error are higher than in any other education context. The same architecture that governs clinical competency records in nursing is available for K-12 and post-secondary programs. Active pilots in progress.
+
+---
+
+## What the AI Does. What the Teacher Does.
+
+The distinction matters. SOCIII is not a replacement for teachers. It is a precision reallocation of where teacher time goes.
+
+| The AI handles | The teacher handles |
 |---|---|
-| Generating practice scenarios at any hour | Clinical judgment mentorship |
-| Tracking each student's specific gap | Building the student relationship |
-| Flagging at-risk students early | Deciding how to intervene |
-| Logging clinical hours and competency records | Leading the practicum experience |
-| Assembling accreditation evidence | Representing the program to accreditors |
-| Answering content questions at 2am | Answering the questions only experience can answer |
-| Adapting difficulty to each student's level | Coaching students through the hard parts |
+| Drafting parent communication from the student record | Relationship-building conversations with families |
+| Generating targeted practice material at any hour | Explaining the concept the student can't quite get |
+| Flagging at-risk students before they fall behind | Deciding how and when to intervene |
+| Tracking IEP accommodations and flagging gaps | Making professional judgment on accommodation design |
+| Logging tutoring sessions and building the performance record | Mentorship and the human parts of teaching |
+| Assembling standards-aligned reporting | Representing student progress to parents and administration |
 
-The faculty member who is not spending 40% of their time on individualized tutoring, progress tracking, and documentation assembly is the faculty member who has time to do the things only a human can do. That's the offer.
-
----
-
-## The Research Validation: An Academic Study in Progress
-
-SOCIII is currently partnering with a nursing school program director and researcher on a controlled academic study testing whether AI-augmented instruction — governed by RAAS rules — produces measurably better NCLEX outcomes than traditional ATI-only preparation.
-
-This is not a case study or a marketing claim. It is an IRB-approved study with pre/post measurement and a methodology designed for peer-reviewed publication. The study is running on the SOCIII platform now, with real students in a real program.
-
-If the results confirm what early indicators suggest, SOCIII will have what no competitor in this space has: peer-reviewed evidence that RAAS-governed AI instruction improves outcomes. That result would change the conversation with every program director, accreditor, and licensing board in the country.
+The teacher who is not spending 12 hours a week on documentation is the teacher who has time to do the things only a human can do. That is the offer.
 
 ---
 
 ## The SOCIII Education Stack
 
-| Worker | What it does | Record it creates |
+| Worker | What it does | Record type |
 |---|---|---|
-| **Tutor** | Adaptive instruction — generates targeted scenarios from each student's gap profile | `tutoring-session/v1` — logged, timestamped, competency-mapped |
-| **Student Evaluation** | Competency assessment, NCLEX readiness scoring, progress tracking | `learning-record/v1` — immutable, portable |
-| **Course Manager** | Curriculum delivery, schedule management, clinical placement coordination | `course-record/v1` |
-| **Student Records** | Enrollment status, clinical hours, credential tracking | `student-record/v1` — portable across institutions |
-| **Accreditation** | Evidence aggregation, competency mapping, outcome report generation | `accreditation-report/v1` |
-| **Comms** | Student and faculty communications, intervention alerts, announcements | `comms-bundle/v1` |
+| **Tutor** | Adaptive instruction — personalized practice targeting each student's specific knowledge gap | `tutoring-session/v1` |
+| **Student Records** | Grades, attendance, IEP accommodation tracking, assessment history, enrollment status | `student-record/v1` |
+| **Course Manager** | Curriculum delivery, standards alignment, unit planning, assignment distribution | `course-record/v1` |
+| **Comms** | Parent-teacher communication drafts, intervention notices, progress reports, announcements | `comms-bundle/v1` |
+| **HR** | Teacher onboarding, professional development tracking, staff evaluations | (spine worker) |
 
-**Alex, the Chief of Staff**, monitors cohort progress in real time — surfacing at-risk students before they fail, flagging documentation gaps before they become accreditation findings, and making sure the faculty member's attention goes where it matters most.
-
----
-
-## Pricing
-
-$99/month base plus $5/active student. A cohort of 70 students costs $449/month — less than the cost of one hour of outside consultant time per accreditation cycle. For programs already paying $400–$600/student/year for ATI or HESI, SOCIII integrates via LTI and adds the adaptive instruction and governance layer on top of existing investments, not instead of them.
+**Alex, the Chief of Staff**, monitors student progress continuously — surfacing at-risk students before they fall behind, flagging IEP documentation gaps before they become compliance issues, and making sure teacher time goes toward the students who need it, not the paperwork.
 
 ---
 
-## The Financial Case Is Straightforward
+## The Financial Case
 
-A 70-student nursing program paying ATI's standard licensing rate spends $28,000–$42,000 per year on test prep alone — before counting the staff hours spent manually assembling accreditation evidence each review cycle. The accreditation assembly process alone typically consumes two to four months of a program director's time. That time has a cost.
+| What schools pay today | SOCIII |
+|---|---|
+| Private tutoring: $50–150/hour per student — accessible only to families who can pay | $5/student/month — same personalized tutor for every student |
+| Curriculum specialists and instructional coordinators: $65–90K/year salary | Included in platform |
+| Per-student state test prep platforms: $200–400/student/year | Included in the Tutor worker |
+| IEP coordination overhead: 15–20% of a special education coordinator's time on paperwork alone | Alex automates documentation; the coordinator handles decisions |
 
-SOCIII costs $449/month for the same 70-student cohort. That is $5,388/year — against a conservative $30,000–$50,000 in combined ATI fees and documentation labor. The question is not whether the economics work. It is whether the program wants to move.
+SOCIII pricing: $99/month base plus $5/active student.
 
-For programs already running ATI or HESI contracts: SOCIII integrates via LTI. You keep the test prep relationships you have. SOCIII adds the adaptive instruction layer, the real-time clinical hour tracking, and the accreditation evidence infrastructure that ATI does not provide. You are not choosing between them. You are adding the piece ATI cannot sell you.
+- A classroom pilot of 30 students: **$249/month**
+- A school of 500 students: **$2,599/month**
+- A district of 3,000 students: **$15,099/month**
 
----
-
-## The Little Guy Gets the Big Guy's Tools
-
-Harvard, Stanford, and Johns Hopkins have the faculty bandwidth, the testing infrastructure, and the accreditation staff to produce documented competency evidence at scale. Those programs can afford dedicated clinical placement coordinators, a full accreditation team that runs continuously between review cycles, and faculty-to-student ratios that make personalized attention financially viable.
-
-A 70-student program in a mid-size city cannot afford any of that. Until now, that gap was simply the structural disadvantage of being small.
-
-SOCIII closes it. The same adaptive tutoring infrastructure, the same immutable clinical hour records, the same real-time cohort monitoring, and the same accreditation evidence system that a well-resourced program builds over years — available for $449/month. Not a consumer version. The same architecture. A small program running SOCIII competes on student outcomes with programs three times its size, because the infrastructure advantage that used to belong only to the well-funded is no longer exclusive.
+A school of 500 students currently paying a per-student test prep platform at $200/student/year is spending $100,000 annually — before counting the staff hours consumed by IEP documentation, parent communication drafts, and standards alignment paperwork. SOCIII replaces the test prep spend and eliminates the documentation labor, at a cost of $31,188/year. The question is not whether the economics work. It is whether the institution is ready to move.
 
 ---
 
 ## Just Talk to It
 
-There is no LMS implementation. There is no IT project. There is no consultant standing between you and the thing working.
+There is no IT implementation project. There is no RFP process with a 90-day vendor evaluation. There is no consultant standing between you and the thing working.
 
-Open a browser. Sign in with Google. Tell Alex: *"I have 70 nursing students and my biggest accreditation problem is tracking clinical hours."* Alex sets up the cohort, configures the clinical hour logging, and starts tracking. Done. The same conversation that takes 18 months with an enterprise LMS vendor takes 90 seconds with Alex.
+Open a browser. Sign in with Google. Tell Alex what you need.
 
-A faculty member who wants to know which students are at risk before midterm says: *"Show me which students have had fewer than three tutoring sessions this week and are below 75% on clinical reasoning scenarios."* Alex pulls it in seconds — not from a report that runs at the end of the month, but from the live record that the platform maintains continuously. The faculty member uses that information to send a targeted intervention before the student falls behind, not after they fail.
+*"I have 28 fifth-graders. Three of them are reading two grade levels below. Show me which ones haven't had a tutoring session this week."*
+Alex pulls it immediately from the live student record.
 
-That is the whole experience. No manual. No training week. No systems integrator. The most powerful nursing education infrastructure available, operated by having a conversation.
+*"My students are taking the state test in six weeks. Which students need the most attention right now based on their tutoring session performance?"*
+Alex surfaces the ranked list with specific gap profiles — not from a month-end report, but from the continuous data the platform maintains as a natural byproduct of students learning.
+
+*"Draft a parent conference summary for the Martinez family based on Carlos's performance over the last month."*
+Alex drafts from the actual student record, not from memory. The teacher reviews, adjusts the tone if needed, and sends. What used to take 45 minutes takes four.
+
+That is the entire experience. No manual. No training week. No systems integrator. The infrastructure that used to be available only to well-resourced districts — operated entirely by having a conversation with Alex.
+
+---
+
+## Small Schools, Same Infrastructure
+
+A large urban district has the administrative bandwidth to run separate curriculum specialists, instructional coaches, IEP coordinators, and a documentation team that assembles compliance reports. That infrastructure compounds over time — it makes the district faster to respond to accountability requirements and better at deploying resources to students who need them.
+
+A 300-student rural school or a 12-person trade school program cannot hire its way to that infrastructure. The funding doesn't exist and the labor market doesn't either.
+
+SOCIII is the infrastructure answer for schools that cannot scale by adding headcount. The adaptive tutoring, the immutable student record, the real-time at-risk monitoring, the IEP documentation system — it all runs for the same cost regardless of whether the school has one administrative coordinator or ten. The small school competes on student outcomes with institutions three times its size, because the infrastructure advantage is no longer gated by how many specialists are on the payroll.
 
 ---
 
 ## Conclusion
 
-The constraint in education has never been the supply of students who want to learn. It has been the supply of individualized attention — the thing that actually moves outcomes. AI makes individualized attention economically viable at scale. For the first time, every student in a program can have a tutor that knows them specifically, is available whenever they need it, and generates exactly the practice they need to close the gap between where they are and where they need to be.
+The constraint in American education has never been student potential. It has been access — to personalized instruction, to documented support, and to the administrative infrastructure that makes accountability systems survivable. AI closes the access gap at the tutoring layer and reduces the administrative burden that is driving teachers out of the profession.
 
-SOCIII is that tutor — governed by rules that make the record verifiable, backed by a research study that will prove it works, and built on the same append-only architecture that handles chain-of-title in real estate and operational records in aviation.
+SOCIII is the governed version of that AI: instruction that accelerates learning, records that reflect what was actually learned, and a Chief of Staff that monitors every student so the teacher can focus on the ones who need them most.
 
-The wave is here. The infrastructure is built.
+The infrastructure is built. The economics work. Every student deserves a tutor that knows them specifically — not just the ones whose families can afford it.
 
 ---
 
-*SOCIII Inc. · Education vertical — pilot partner: University of Hawai'i / Makai School of Nursing*
-*Academic research partnership — active study Q2–Q4 2026*
+*SOCIII Inc. · Education vertical — K-12, community college, trade school, and professional programs*
 *Patent pending (USPTO filings May 2026) · sean@sociii.ai · sociii.ai*
