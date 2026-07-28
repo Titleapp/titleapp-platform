@@ -495,6 +495,13 @@ export default function RealEstateWorkerCanvas({ worker }) {
         ))}
       </div>
 
+      {(slug === "law-landuse-001" || slug === "zoning-001" || slug === "landuse-advocate-001") && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "#92400e" }}>
+          <span style={{ fontSize: 14 }}>⚖️</span>
+          <span><strong>Not legal advice.</strong> This analysis is for informational purposes only. It does not constitute legal advice, create an attorney-client relationship, or substitute for consultation with a licensed attorney. Zoning and land use regulations are subject to change — confirm all findings with the applicable jurisdiction before relying on them for any decision.</span>
+        </div>
+      )}
+
       <TabDescription slug={slug} tabId={tab.id} description={tab.description} />
 
       {tab.blocks.map((b, i) => <Block key={i} block={b} />)}
