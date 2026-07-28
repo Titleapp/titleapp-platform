@@ -1,14 +1,12 @@
-# Clinical Education Cannot Scale the Way It Used to
+# Nursing Programs Are Turning Away Qualified Applicants. The Infrastructure Is the Constraint.
 
-The ratio problem in nursing education is not a staffing problem — the margin is not there to hire your way out of it. Faculty time that should go to teaching goes to tracking: clinical hours, competency documentation, accreditation evidence assembly. NCLEX pass rates are a proxy for curriculum quality, but they are also an accreditation lever. Programs that cannot produce documented competency evidence at scale are programs at risk.
+91,938 qualified applicants were turned away from US nursing programs in 2021. The shortage is not students who want to become nurses. It is faculty hours — specifically the ratio problem. One faculty member can safely supervise 20 students. With the right infrastructure, that same faculty member can supervise 40. The gap between those two numbers is not a policy question or a hiring question. It is an infrastructure question.
 
 ---
 
-## Why This Is Happening Now
+## The Wave
 
-Accreditation standards have not relaxed. NCLEX difficulty has increased. The incoming student cohort expects more individualized support than 1:20 faculty ratios can provide. The tools that exist — ATI, spreadsheets, LMS gradebooks — do not talk to each other, do not produce audit-ready documentation automatically, and do not scale with cohort size. The programs that grow and maintain accreditation will be the ones that solve the documentation and tutoring infrastructure problem without proportionally increasing faculty headcount.
-
-Harvard and Johns Hopkins have the faculty bandwidth, the testing infrastructure, and the accreditation staff to produce documented competency evidence at scale. A 70-student nursing program in a mid-size city gets the same infrastructure from SOCIII for $449/month.
+The NextGen NCLEX increased in difficulty in 2023. ACEN accreditation standards keep tightening. Incoming cohorts expect individualized support that 1:20 ratios cannot provide. Programs that cannot document competency evidence at scale are programs at risk in their next review cycle. Harvard and Johns Hopkins have dedicated accreditation staff, faculty bandwidth, and clinical infrastructure to absorb all of this. A 70-student program in a mid-size city does not — until now.
 
 ---
 

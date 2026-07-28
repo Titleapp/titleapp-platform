@@ -6,9 +6,9 @@ The three options in front of most compliance teams right now: (1) engage a Big 
 
 ---
 
-## Why This Is Happening Now
+## The Wave
 
-The EU Battery Regulation (2023/1542) is the first of a wave of mandatory DPP frameworks. Ecodesign for Sustainable Products Regulation follows. Batteries were chosen as the first category because supply chains are global, the carbon footprint data is complex, and the enforcement mechanism is import control — noncompliant products do not clear customs. The window for orderly implementation is closing. Companies that begin the structured data work in Q3 2026 can meet the deadline. Companies that begin in Q4 cannot.
+The EU Battery Regulation is the first in a wave of mandatory DPP frameworks. Ecodesign for Sustainable Products Regulation follows, extending requirements to textiles, electronics, and construction products through 2030. The enforcement mechanism is import control — noncompliant products do not clear customs. There is no warning letter, no cure period, no negotiation. The window for orderly implementation is closing now. Companies that have structured data work underway by Q3 2026 can meet the deadline. Companies that begin in Q4 cannot.
 
 ---
 

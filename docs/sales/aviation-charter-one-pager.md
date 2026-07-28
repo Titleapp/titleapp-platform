@@ -1,12 +1,14 @@
-# Your Chief Pilot Should Not Be Running the Training Records
+# The FAA Does Not Issue Second Chances
 
-In a 5–10 aircraft charter operation, the Chief Pilot is also the Director of Operations, the de facto Training Director, and the person who knows where every currency date lives. That is not a staffing problem you can hire away — the margin is not there. It is a structural problem. One missed currency check exposes the certificate.
+One missed currency check. One maintenance discrepancy handled informally. One training record that was "somewhere in email." These are the events that end Part 135 certificates — not fraud, not mechanical failure, but coordination gaps in operations that were running fine until they weren't.
+
+In a 5–15 aircraft charter operation, the person keeping your certificate intact is your Chief Pilot. He is tracking it in his head, across CAMP Systems, a spreadsheet, and his own calendar. He is also your Director of Operations. He is also your de facto Training Director. When he has a bad week — or takes another job — the institutional knowledge that kept you compliant goes with him.
 
 ---
 
-## Why This Is Happening Now
+## The Wave
 
-The FAA does not accept "we were busy." Currency lapses, maintenance discrepancies, and training record gaps are certificate events. The tools that exist — CAMP Systems, spreadsheets, email — require a human being to synthesize them. That human being is expensive, overloaded, and will eventually miss something. The Part 135 operators who scale past 10 aircraft are the ones who solve the coordination problem before it becomes a violation.
+The FAA's Part 135 enforcement posture is not softening. Certificate actions for documentation failures — currency lapses, training record gaps, maintenance discrepancies — are increasing. The operators who scale past 15 aircraft without a coordination system are not being careful. They are being lucky. Luck is not a compliance strategy.
 
 Palantir charges the DoD hundreds of millions of dollars for governed AI over operational data with an append-only audit trail. A 10-aircraft charter operator gets the same architecture from SOCIII for $3,600/year. The pending patent application on this architecture covers operators at every scale — not just the ones with government budgets.
 

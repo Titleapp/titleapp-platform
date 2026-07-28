@@ -1,14 +1,12 @@
-# The Title Closer's Workload Has Outgrown the Tools
+# Title Operations Have a Coordination Problem. It Gets Worse Every Year.
 
-Every active order touches five or more systems — title search software, email, spreadsheets, the county portal, and your phone. None of them talk to each other. Deadlines live in your head. Audits require rebuilding the file from paper. And when something falls through, there is no record showing it was ever tracked.
+The US title industry pays out hundreds of millions in claims annually. A significant portion traces back not to fraud or legal error — but to process failure: missed deadlines, overlooked encumbrances, documents that fell through the gap between five disconnected tools. Your closers are not careless. They are managing 5–7 active files across software that was never designed to work together, tracking deadlines from memory and email, and rebuilding audit files from paper when something goes wrong.
 
 ---
 
-## Why This Is Happening Now
+## The Wave
 
-Title operations have not changed structurally since the early 2000s. The volume has increased. The compliance requirements have increased. The tools have proliferated. But the coordination layer — the thing that connects the tools, monitors the deadlines, and drafts the next action — is still a human being working from memory and inbox.
-
-The closers who survive the next wave of consolidation will not be the ones working harder. They will be the ones who figured out how to run more orders at the same quality, with the same number of people.
+Title company consolidation is accelerating. The operations that scale past 20 orders per closer will not do it by hiring more staff. They will do it by solving the coordination problem that currently caps every closer at 5–7 active files. The window to build that infrastructure before the consolidation wave reaches your market is now.
 
 ---
 

@@ -1,12 +1,14 @@
-# The Post-NAR Settlement Agent Problem Is a Leverage Problem
+# The Agents Who Will Win This Market Are Already Pulling Away
 
-The commission structure changed. Buyer's agent compensation is now explicitly negotiated, line-itemed, and visible. Zillow and Redfin closed the information asymmetry that used to justify the fee. The agents who entered the business for the brand recognition — not the service depth — are already leaving. What is left is a quality problem: the agents who survive will run more transactions at higher quality with the same number of hours in the day. That requires a leverage problem to be solved, not a harder-work problem.
+As of August 2024, every buyer's agent commission is explicitly negotiated and visible to the client before the first showing. The agents who built their value proposition on information access are now defending that fee to a buyer holding Zillow on their phone. That information advantage is gone. It was gone before the settlement. The settlement just made buyers ask the question out loud.
+
+The agents who can answer that question — who close faster, know more, and protect their clients better than anyone else in the market — are entering a period where the top 10% of producers will capture a disproportionate share of every transaction market. AI is the variable that determines how far ahead they get.
 
 ---
 
-## Why This Is Happening Now
+## The Wave
 
-The NAR settlement did not create the squeeze — it accelerated it. Institutional buyers already had analytical depth that solo agents could not match. Data platforms democratized market information. The gap that remains is execution: contingency tracking, deadline management, offer analysis, and transaction coordination. A transaction coordinator costs $45,000–65,000/year and works one transaction at a time. SOCIII handles the coordination layer for every active file simultaneously.
+The top-producing agents in every market are not working harder than everyone else. They have a coordination infrastructure that lets one person run what used to require a team. The gap between them and the field is widening — not because they have more hours, but because their hours produce more. The window to be on the right side of that gap is closing.
 
 ---
 

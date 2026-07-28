@@ -1,12 +1,24 @@
-# By the Time the Feasibility Study Is Done, the Deal Is Gone
+# Mid-Market Developers Are Losing Deals They Should Win
 
-A 4–6 week feasibility study is not caution — it is a structural disadvantage. Institutional capital runs proprietary analytical stacks that turn around preliminary underwriting in 48–72 hours. The mid-market developer competing on the same sites does not have a Goldman Sachs research division or a Blackstone asset management bench. The deals go to whoever can underwrite faster at equivalent depth. That is a tools problem, and it is solvable.
+A broker sends an offering memorandum at 9am.
+
+*"Run a feasibility on this. I need the pro forma, comparable sales, and a go/no-go by end of day."*
+
+Alex coordinates three workers in parallel. By noon you are reviewing a structured deal memo. The competing bidder is still scheduling their analyst call.
 
 ---
 
-## Why This Is Happening Now
+## The Problem
 
-The convergence of AI, parcel-level data infrastructure, and governance tooling has closed the analytical gap between institutional and mid-market operators — for the first time. Goldman Sachs' real estate research division produces deal analysis on every market in the country. A $50M portfolio developer gets the same analytical depth from SOCIII's Site Recon and Feasibility workers for $499/month. The issue is no longer access to the analysis. It is whether the mid-market operator has the system to run it.
+Institutional capital — Goldman Sachs, Blackstone, large REITs — runs proprietary analytical stacks. They turn preliminary underwriting in 48–72 hours. The mid-market developer competing on the same sites takes 4–6 weeks. That is not caution. That is a structural disadvantage. The deals go to whoever underwrites faster at equivalent depth.
+
+The same gap exists in asset operations. Lease expirations, CAM reconciliations, maintenance escalations, and lender covenant thresholds are tracked across 6–10 disconnected tools. The analysis lives in a person's head. When that person is sick or leaves, the oversight gap goes with them.
+
+---
+
+## The Wave
+
+AI has closed the analytical gap between institutional and mid-market CRE — for the first time. The tools that give Goldman Sachs research depth on every US submarket are now available at the platform subscription level. The operators who build the AI-augmented workflow now are the ones who win deals in 2026 and own the market in 2028. The ones who wait will find themselves outbid by operators carrying a fraction of their overhead.
 
 ---
 
