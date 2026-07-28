@@ -1889,6 +1889,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Scott Harrington",
             role:          "admin",
+            activeWorkers: ["re-salesperson", "cre-analyst", "site-recon-001", "feasibility-001", "law-landuse-001"],
           },
           // ── Nursing (Makai) ───────────────────────────────────────────────
           "nursing-admin": {
@@ -1956,7 +1957,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Sarah Garris",
             role:          "admin",
-            activeWorkers: ["re-escrow-001", "re-title-search-001"],
+            activeWorkers: ["re-title-search-001", "re-escrow-001", "re-salesperson", "law-landuse-001", "cre-analyst"],
           },
           // ── Aviation (Pacific Air Partners) ──────────────────────────────
           aviation: {
@@ -4027,7 +4028,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               // property spine. Match on vertical, suite, AND slug (Sean, 2026-06-26).
               const _reHay = `${dw.vertical || ""} ${dw.suite || ""} ${workerSlug}`.toLowerCase();
               const _isReWorker = /real[_\s-]?estate|re_professional|\bparcel\b|zoning|appraisal|land[\s_-]?use|\bproperty\b|title[\s_-]?(abstract|escrow|search)|escrow|\bcre[\s_-]/.test(_reHay);
-              const TITLE_SUITE_SLUGS = ["re-title-search-001", "re-commitment-001", "re-defect-tracker-001", "re-escrow-001", "re-underwriting-001"];
+              const TITLE_SUITE_SLUGS = ["re-title-search-001", "re-escrow-001"];
               if (_isReWorker && workerSlug !== "site-recon-001" && workerSlug !== "title-abstract-001" && !TITLE_SUITE_SLUGS.includes(workerSlug)) {
                 businessTools.push({
                   name: "lookup_property",

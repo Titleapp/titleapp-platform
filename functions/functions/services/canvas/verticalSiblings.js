@@ -31,10 +31,7 @@ const BUNDLE_SHAPES = {
   "re-marketing-001":       { emits: "listing-readiness/v1", accepts: "title-abstract-bundle/v1" },
   // Title Production Suite (CODEX 48) — real-estate / title suite
   "re-title-search-001":    { emits: "chain-of-title/v1", accepts: "address, parcel-bundle/v1" },
-  "re-commitment-001":      { emits: "title-commitment/v1", accepts: "chain-of-title/v1" },
-  "re-defect-tracker-001":  { emits: "defect-report/v1", accepts: "chain-of-title/v1, title-commitment/v1" },
-  "re-escrow-001":          { emits: "settlement-statement/v1", accepts: "title-commitment/v1" },
-  "re-underwriting-001":    { emits: "underwriting-approval/v1", accepts: "title-commitment/v1, defect-report/v1" },
+  "re-escrow-001":          { emits: "settlement-statement/v1", accepts: "chain-of-title/v1" },
   // Education vertical — nursing
   "nursing-education-001":  { emits: "learning-record/v1", accepts: "student-id, cohort-id" },
   "nursing-records-001":    { emits: "student-record/v1", accepts: "student-id, cohort-id" },
@@ -65,10 +62,7 @@ const HANDOFF_LINES = {
   "re-marketing-001":       "They create the listing, showing calendar, and buyer communications.",
   // Title Production Suite
   "re-title-search-001":    "They pull the full chain of title, liens, and judgments for the parcel and open a title order.",
-  "re-commitment-001":      "They issue the title commitment (Schedule A + B-1 + B-2) from the chain-of-title bundle.",
-  "re-defect-tracker-001":  "They log, classify, and track title defects (P0/P1/P2) with curative action steps.",
   "re-escrow-001":          "They manage escrow, wire instructions, funds tracking, and the closing disclosure.",
-  "re-underwriting-001":    "They underwrite the title policy and sign off on final commitment after defects are cured.",
   // Education — nursing
   "nursing-education-001":  "They manage the full student learning record from enrollment through licensure.",
   "nursing-records-001":    "They track student enrollment status, clinical hours, and ATI scores.",

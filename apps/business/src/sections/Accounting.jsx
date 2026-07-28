@@ -7,6 +7,7 @@ import CanvasPanel from "../components/canvas/CanvasPanel";
 
 const TABS = [
   { id: "dashboard",   label: "Dashboard" },
+  { id: "company",     label: "Company Profile" },
   { id: "accounts",    label: "Connected Accounts" },
   { id: "transactions",label: "Transactions" },
   { id: "loans",       label: "Loans & Liabilities" },
@@ -387,6 +388,7 @@ export default function Accounting() {
           onDelete={async (id) => { const r = await deleteCoa(id); if (r?.ok) { refreshCoa(); window.dispatchEvent(new Event("ta:accounting-changed")); } return r; }}
         />
       )}
+      {tab === "company" && <CompanyProfilePane />}
       {tab === "invoices" && <ComingSoonPane title="Invoices & Bills" body="Two-pane view: invoices you've issued (AR) on one side, bills you owe (AP) on the other. Coming after Transactions." />}
       {tab === "reports" && <ReportsPane fiscalYear={selectedYear} />}
       {tab === "tax" && <ComingSoonPane title="Tax & Filing" body="1099 prep, quarterly estimates, accountant handoff packet. Ships once categorized transactions exist." />}
@@ -1187,6 +1189,209 @@ function ComingSoonPane({ title, body }) {
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>{title}</div>
       <div style={{ fontSize: 14, color: "#64748b", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>{body}</div>
+    </div>
+  );
+}
+
+function CompanyProfilePane() {
+  const EQUITY = [
+    { name: "Sean Combs", role: "Founder / CEO", type: "Common", shares: "10,000,000", pct: "~85%", vesting: "N/A — founder shares", status: "83(b) filed 5/23/26", notes: "Par $0.00001 · Stripe Atlas" },
+    { name: "Ruthie Clearwater", role: "Education Advisor", type: "RSPA (2%)", shares: "—", pct: "2%", vesting: "2-yr / 6-mo cliff", status: "Pending signature", notes: "Dropbox Sign sent 6/18/26 · void+reissue with signing date" },
+    { name: "Scott Eschelman", role: "RE Advisor", type: "RSPA", shares: "—", pct: "TBD", vesting: "TBD", status: "Advisor fee earned 7/13/26", notes: "RSPA being drafted — Stanford RE club, JMA Capital" },
+    { name: "Mike Lee", role: "Title Co. Advisor", type: "2% equity (proposed)", shares: "—", pct: "2%", vesting: "TBD", status: "Pending escrow deal", notes: "Subject to formal RSPA — Attorneys Title opportunity" },
+  ];
+
+  const NOTES = [
+    { lender: "Robert Rosenberg", principal: "$100,000", rate: "4.00%", terms: "Interest-only, quarterly", status: "Current", accrued: "$0", nextDue: "Q3 — Sep 30, 2026", notes: "Venmo Q1 + Q2 paid" },
+    { lender: "Mike (Loan)", principal: "$15,000", rate: "4.00%", terms: "Deferred until $500K raise", status: "Deferred", accrued: "~$350", nextDue: "At $500K milestone", notes: "Interest accruing $50/mo" },
+    { lender: "Chris (Loan)", principal: "$15,000", rate: "4.00%", terms: "Deferred until $500K raise", status: "Deferred", accrued: "~$350", nextDue: "At $500K milestone", notes: "Interest accruing $50/mo" },
+    { lender: "Sean Lee Combe", principal: "TBD", rate: "TBD", terms: "Deferred until acquisition/$2MM", status: "Deferred", accrued: "TBD", nextDue: "At acquisition/$2MM", notes: "CPA: obtain promissory note" },
+  ];
+
+  const CPA_FLAGS = [
+    { item: "Barcelona LABTWENTYTWO $761.71 (7/9)", action: "Confirm hotel vs. event receipt", priority: "HIGH" },
+    { item: "Squarespace $61.45/mo", action: "Confirm SOCIII site vs. personal", priority: "MEDIUM" },
+    { item: "Apple.com/Bill (multiple)", action: "Split business vs. personal", priority: "MEDIUM" },
+    { item: "Kent Redwine $1,029.30 (6/16)", action: "Classify: advisor fee, salary, or other?", priority: "HIGH" },
+    { item: "Sean Lee Combe promissory note", action: "Obtain to confirm principal + rate", priority: "HIGH" },
+    { item: "Founder capital contribution", action: "Confirm Sean Combs opening balance", priority: "HIGH" },
+    { item: "Patent filings ($780) — capitalize or expense?", action: "CPA review under ASC 350", priority: "MEDIUM" },
+  ];
+
+  const S = {
+    section: { marginBottom: 28 },
+    sectionTitle: { fontSize: 13, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 },
+    card: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "16px 20px" },
+    infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", fontSize: 13 },
+    infoRow: { display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f1f5f9" },
+    label: { color: "#64748b", fontWeight: 500 },
+    value: { color: "#1e293b", fontWeight: 600 },
+    th: { textAlign: "left", padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", background: "#f8fafc" },
+    td: { padding: "10px 12px", fontSize: 13, color: "#1e293b", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" },
+    badge: (color) => ({ display: "inline-block", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, ...color }),
+  };
+
+  const statusBadge = (s) => {
+    if (s === "Current" || s?.includes("filed")) return S.badge({ background: "#dcfce7", color: "#166534" });
+    if (s === "Deferred" || s?.includes("Pending")) return S.badge({ background: "#fef3c7", color: "#92400e" });
+    return S.badge({ background: "#f1f5f9", color: "#475569" });
+  };
+
+  const priorityBadge = (p) => {
+    if (p === "HIGH") return S.badge({ background: "#fee2e2", color: "#991b1b" });
+    if (p === "MEDIUM") return S.badge({ background: "#fef3c7", color: "#92400e" });
+    return S.badge({ background: "#f1f5f9", color: "#64748b" });
+  };
+
+  return (
+    <div>
+      <div className="pageHeader">
+        <div>
+          <h1 className="h1">Company Profile</h1>
+          <p className="subtle">Entity information, cap table, and notes payable · Confidential — CPA use</p>
+        </div>
+      </div>
+
+      {/* Company Info */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Entity Information</div>
+        <div style={S.card}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 40px" }}>
+            {[
+              ["Legal name", "SOCIII, Inc."],
+              ["Entity type", "C-Corporation (Delaware)"],
+              ["Formation", "May 19, 2026 · Stripe Atlas"],
+              ["Delaware File No.", "10629231"],
+              ["EIN / Federal Tax ID", "42-2675951"],
+              ["D-U-N-S Number", "145031310"],
+              ["Address", "1810 E Sahara Ave STE 75942, Las Vegas NV 89104"],
+              ["Phone", "(707) 654-9864"],
+              ["Registered agent", "Stripe Atlas / Stripe Legal"],
+              ["Fiscal year", "Calendar year (Jan 1 – Dec 31)"],
+              ["Stage", "Pre-revenue development stage"],
+              ["Accounting basis", "Cash basis"],
+              ["Revenue recognition", "ASC 606 structure established"],
+            ].map(([label, value]) => (
+              <div key={label} style={S.infoRow}>
+                <span style={S.label}>{label}</span>
+                <span style={S.value}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Snapshot */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Financial Snapshot — Feb–Jul 2026</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {[
+            { label: "Total Revenue", value: "$0", note: "Pre-revenue stage", color: "#64748b" },
+            { label: "Total Operating Expenses", value: "$12,412.94", note: "Feb–Jul 2026", color: "#dc2626" },
+            { label: "Net Loss", value: "($14,412.94)", note: "Incl. loan interest", color: "#dc2626" },
+            { label: "Est. Cash Balance", value: "~$2,925", note: "As of Jul 27, 2026", color: "#166534" },
+          ].map(({ label, value, note, color }) => (
+            <div key={label} style={{ ...S.card, textAlign: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{note}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Cap Table */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Cap Table — Equity Holders</div>
+        <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Shareholder", "Role", "Type", "Shares", "Ownership", "Vesting", "Status", "Notes"].map(h => (
+                  <th key={h} style={S.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {EQUITY.map((r, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ ...S.td, fontWeight: 600 }}>{r.name}</td>
+                  <td style={{ ...S.td, color: "#475569" }}>{r.role}</td>
+                  <td style={S.td}><span style={S.badge({ background: "#f3e8ff", color: "#7c3aed" })}>{r.type}</span></td>
+                  <td style={{ ...S.td, textAlign: "right" }}>{r.shares}</td>
+                  <td style={{ ...S.td, fontWeight: 700, color: "#7c3aed" }}>{r.pct}</td>
+                  <td style={{ ...S.td, color: "#475569", fontSize: 12 }}>{r.vesting}</td>
+                  <td style={S.td}><span style={statusBadge(r.status)}>{r.status}</span></td>
+                  <td style={{ ...S.td, color: "#64748b", fontSize: 11 }}>{r.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding: "10px 16px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", fontSize: 11, color: "#94a3b8" }}>
+            * Shares authorized TBD — confirm with Stripe Atlas docs. RSPA advisors receive % of fully-diluted shares at time of grant.
+            Total fully-diluted ownership including all pending grants: ~89% Sean + ~11% advisors/pending.
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Payable */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Notes Payable — Financing (Not Operating Expenses)</div>
+        <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Lender", "Principal", "Rate", "Terms", "Status", "Accrued Int.", "Next Due", "Notes"].map(h => (
+                  <th key={h} style={S.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {NOTES.map((r, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ ...S.td, fontWeight: 600 }}>{r.lender}</td>
+                  <td style={{ ...S.td, fontWeight: 600 }}>{r.principal}</td>
+                  <td style={S.td}>{r.rate}</td>
+                  <td style={{ ...S.td, color: "#475569", fontSize: 12 }}>{r.terms}</td>
+                  <td style={S.td}><span style={statusBadge(r.status)}>{r.status}</span></td>
+                  <td style={{ ...S.td, color: "#64748b" }}>{r.accrued}</td>
+                  <td style={{ ...S.td, fontSize: 12 }}>{r.nextDue}</td>
+                  <td style={{ ...S.td, color: "#64748b", fontSize: 11 }}>{r.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding: "10px 16px", background: "#fef9ec", borderTop: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+            Minimum total debt obligation: $130,000+ · All loan interest payments are financing activities, NOT operating expenses.
+            Q3 interest ($1,000) due Robert Rosenberg Sep 30, 2026.
+          </div>
+        </div>
+      </div>
+
+      {/* CPA Action Items */}
+      <div style={S.section}>
+        <div style={S.sectionTitle}>CPA Action Items</div>
+        <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Item", "Action Required", "Priority"].map(h => (
+                  <th key={h} style={S.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {CPA_FLAGS.map((r, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ ...S.td, fontWeight: 500 }}>{r.item}</td>
+                  <td style={{ ...S.td, color: "#475569" }}>{r.action}</td>
+                  <td style={S.td}><span style={priorityBadge(r.priority)}>{r.priority}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

@@ -37,9 +37,9 @@ function findHandoffWorker(vertical, subscribedWorkers, triggerDescription) {
       "title order": { slug: "re-title-search-001", name: "Title Search" },
       "escrow question": { slug: "re-escrow-001", name: "Escrow Manager" },
       "escrow": { slug: "re-escrow-001", name: "Escrow Manager" },
-      "title commitment": { slug: "re-commitment-001", name: "Commitment Engine" },
-      "title defect": { slug: "re-defect-tracker-001", name: "Defect Tracker" },
-      "underwriting": { slug: "re-underwriting-001", name: "Underwriting Review" },
+      "title commitment": { slug: "re-escrow-001", name: "Escrow Manager" },
+      "title defect": { slug: "re-title-search-001", name: "Title Search" },
+      "underwriting": { slug: "re-escrow-001", name: "Escrow Manager" },
       _default: { slug: "re-title-search-001", name: "Title Search" },
     },
     healthcare: {
