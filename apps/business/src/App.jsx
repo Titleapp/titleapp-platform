@@ -5113,6 +5113,7 @@ export default function App() {
   const isAviationCoPilotDemo  = _dp === "/demo/av-copilot"  || _dp === "/demo/av-copilot/";
   const isAviationMXDemo       = _dp === "/demo/av-mx"       || _dp === "/demo/av-mx/";
   const isAviationDispatchDemo = _dp === "/demo/av-dispatch" || _dp === "/demo/av-dispatch/";
+  const isTitleDemo          = _dp === "/demo/title" || _dp === "/demo/title/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
@@ -5947,6 +5948,10 @@ export default function App() {
   }
   if (isUHAdminDemo) {
     const C = React.lazy(() => import("./pages/UHAdminDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isTitleDemo) {
+    const C = React.lazy(() => import("./pages/TitleDemoSignIn"));
     return <React.Suspense fallback={null}><C /></React.Suspense>;
   }
   if (isVetClientDemo) {
