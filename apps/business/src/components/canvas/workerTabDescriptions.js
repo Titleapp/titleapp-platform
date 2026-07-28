@@ -69,6 +69,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "progress":      "Capital raise progress toward your target: committed, received, and remaining.",
     "data-room":     "Data room documents and access log — who's viewed what, and when.",
     "cap-table":     "Fully diluted cap table with shareholder positions and 83(b) election status.",
+    "valuation":     "AI-computed 409A fair market value — real-time, three-approach blend. Use as the strike price for any option grants issued today.",
     "governance":    "Open ballots, board observer status, and upcoming quarterly cadence.",
     "notices":       "Outbound investor communications — updates, KYC reminders, and quarterly reports.",
     "communication": "Company updates and announcements visible to your investor network.",

@@ -17,6 +17,11 @@
 - **OpenAI (GPT)** — Secondary model; embeddings (text-embedding-3-small)
 - **Fal.ai** — Image generation (FLUX; marketing creatives, logo, mockup)
 
+### Search
+- **Brave Search** — Web search for Alex (COS) and all worker chats; `api.search.brave.com`
+  - Plan: Search · $25/mo spending cap · 50 req/sec · unlimited queries/month
+  - Account: titleapp.core@gmail.com · Key name: SOCIII KEY 1 · Env var: `BRAVE_SEARCH_API_KEY`
+
 ### Data & Enrichment
 - **ATTOM** — Real estate property data (detail, sales history, parcel); metered per lookup
 - **Apollo.io** — B2B contact enrichment + outreach sequences; monthly credit budget

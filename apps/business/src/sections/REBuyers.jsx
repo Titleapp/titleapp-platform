@@ -241,7 +241,7 @@ export default function REBuyers() {
           position: "fixed",
           top: 0,
           right: 0,
-          width: "400px",
+          width: "min(400px, 100vw)",
           height: "100vh",
           background: "white",
           boxShadow: "-4px 0 24px rgba(0,0,0,0.12)",

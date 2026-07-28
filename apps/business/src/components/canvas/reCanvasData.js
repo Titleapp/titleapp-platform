@@ -531,6 +531,146 @@ export const RE_CANVAS = {
     ],
   },
 
+  // ───────────────────────── TITLE ADVOCATE (ESCROW) ─────────────────────────
+  "re-escrow-001": {
+    title: "Title Advocate — 313 Mayfair Dr, Athens TX 75751",
+    subtitle: "File ATH-2026-0743 · Henderson County · Cash purchase · Wet close · ATTOM data",
+    disclaimer: "General information — not certified legal advice",
+    cas: { RED: 0, YELLOW: 3, BLUE: 4, WHITE: 2, GREEN: 6 },
+    tabs: [
+      { id: "funds-tracker", label: "Funds", description: "Real-time confirmation of all funds received and cleared for this closing. Every wire event is logged to the chain.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Funds confirmed — clear to close", detail: "Wire confirmed by trace" },
+          { band: "GREEN", title: "Required: $289,450", detail: "Total cash to close" },
+          { band: "GREEN", title: "Received: $289,450", detail: "Confirmed received" },
+        ] },
+        { type: "kpis", items: [
+          { label: "Purchase price", value: "$285,000", band: "WHITE" },
+          { label: "Cash to close (buyer)", value: "$31,240", band: "WHITE" },
+          { label: "Payoff — First National", value: "$0", band: "GREEN" },
+          { label: "Recording + fees", value: "$1,210", band: "WHITE" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Wet close gate — CLEAR: All funds received and confirmed", detail: "All required funds on deposit and confirmed. Recording authorized per TX-T-005." },
+          { band: "BLUE", title: "Fund receipt 1: Wire $289,450 · Chase Bank · Ref WR-20260728-4891 · Received 07/28/2026 9:14am", detail: "Wire trace confirmed. Chase Private Client." },
+        ] },
+        { type: "chain", title: "Fund event log", items: [
+          { band: "GREEN", parties: "Wire received — $289,450 · Chase Private Client · Ref WR-20260728-4891 · 07/28/2026 9:14 AM CST", meta: "", tag: "Confirmed" },
+          { band: "GREEN", parties: "Funds confirmed — cleared for recording · 07/28/2026 10:02 AM CST", meta: "", tag: "Clear to close" },
+        ] },
+        { type: "prose", items: [
+          { band: "GREEN", title: "Wet close gate: OPEN FOR RECORDING", body: "Funds confirmed by wire trace WR-20260728-4891. Deed may record per TX-T-005." },
+        ] },
+      ] },
+      { id: "wire-instructions", label: "Wire Instructions", description: "Verified escrow wire instructions for this file. Always call to verify before sending funds. We will never change wire instructions by email.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Escrow account active", detail: "Attorneys Title Henderson County IOLTA" },
+          { band: "YELLOW", title: "Last verified 07/28/2026", detail: "Phone verification required before any change" },
+          { band: "RED", title: "Never share by email — always call to verify", detail: "(903) 675-2100" },
+        ] },
+        { type: "flags", items: [
+          { band: "RED", title: "WIRE FRAUD WARNING: Criminals impersonate title companies to redirect wire funds.", detail: "ALWAYS call our published number (903) 675-2100 before sending any funds. We will NEVER change wire instructions by email." },
+          { band: "BLUE", title: "Dual-channel verification required before any change (TX-T-007)", detail: "Any modification to wire instructions requires a new dual-channel verification call before taking effect." },
+          { band: "GREEN", title: "Last verification call: 07/28/2026 9:05 AM · Authorized by: Sarah Garris · Call log ID: VC-20260728-001", detail: "Verification on file." },
+        ] },
+        { type: "table", title: "Wire instructions — File ATH-2026-0743",
+          columns: ["Field", "Value"],
+          rows: [
+            { band: "WHITE", cells: ["Beneficiary Bank", "First Bank of Texas — Athens"] },
+            { band: "WHITE", cells: ["ABA Routing", "111900659"] },
+            { band: "WHITE", cells: ["Account Name", "Attorneys Title Henderson County IOLTA"] },
+            { band: "WHITE", cells: ["Account Number", "XXXXXXX4821 (provided verbally only)"] },
+            { band: "WHITE", cells: ["Reference", "File #ATH-2026-0743 — 313 Mayfair Dr"] },
+          ] },
+        { type: "prose", items: [
+          { band: "YELLOW", title: "Verification status", body: "Instructions above were verified via phone on 07/28/2026. Any future change requires a new dual-channel verification call per TX-T-007 before the new instructions take effect." },
+        ] },
+      ] },
+      { id: "closing-disclosure", label: "Closing Disclosure", description: "Final settlement statement showing all debits, credits, and net proceeds. TDI promulgated rates applied. 3-day waiting period complete.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Disclosure sent 07/25/2026", detail: "Delivered to buyer per RESPA" },
+          { band: "BLUE", title: "3-day waiting period complete 07/28/2026", detail: "Clear to sign per federal rule" },
+          { band: "GREEN", title: "Clear to sign", detail: "All conditions satisfied" },
+        ] },
+        { type: "kpis", items: [
+          { label: "Purchase price", value: "$285,000", band: "WHITE" },
+          { label: "Seller net proceeds", value: "$278,540", band: "GREEN" },
+          { label: "Buyer cash to close", value: "$31,240", band: "WHITE" },
+          { label: "Title insurance (TDI)", value: "$1,650", band: "WHITE" },
+        ] },
+        { type: "table", title: "Closing disclosure — File ATH-2026-0743",
+          columns: ["Line Item", "Buyer Debit", "Seller Credit/Debit"],
+          rows: [
+            { band: "WHITE", cells: ["Purchase price", "$285,000", "$285,000 CR"] },
+            { band: "GREEN", cells: ["Earnest money deposit", "($5,000 CR)", ""] },
+            { band: "WHITE", cells: ["Title insurance — owner", "$1,650", ""] },
+            { band: "WHITE", cells: ["Title insurance — lender", "N/A (cash)", ""] },
+            { band: "WHITE", cells: ["State deed tax", "$285", ""] },
+            { band: "WHITE", cells: ["Recording fees", "$127", ""] },
+            { band: "WHITE", cells: ["Attorney/escrow fee", "$550 / $550", "$550"] },
+            { band: "GREEN", cells: ["Property taxes — proration", "$528 CR", "$528"] },
+            { band: "WHITE", cells: ["Commission — listing (3%)", "", "$8,550"] },
+            { band: "WHITE", cells: ["Commission — buyer (3%)", "", "$8,550"] },
+            { band: "GREEN", cells: ["Payoff", "N/A (cash)", ""] },
+            { band: "GREEN", cells: ["Net to seller", "", "$278,540 CR"] },
+          ] },
+        { type: "prose", items: [
+          { band: "BLUE", title: "TDI promulgated rate · FIRPTA", body: "TDI promulgated rate applied. Owner's policy $1,650 per Henderson County rate schedule. No lender policy required (cash purchase). FIRPTA: seller confirmed US person; no withholding required (TX-T-009)." },
+        ] },
+      ] },
+      { id: "disbursements", label: "Disbursements", description: "All post-close disbursements held pending county recording confirmation. Every disbursement will log as a title.funds_disbursed chain event.", blocks: [
+        { type: "heroes", items: [
+          { band: "YELLOW", title: "Post-close — disbursements pending", detail: "Held pending recording confirmation" },
+          { band: "WHITE", title: "Total received: $289,450", detail: "Confirmed on deposit" },
+          { band: "WHITE", title: "Total disbursed: $0", detail: "Held for recording" },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "Deed not yet recorded — disbursements held until recording confirmed (TX-T-005)", detail: "No funds will be released until Henderson County confirms recording." },
+          { band: "BLUE", title: "1031 exchange: not applicable for this transaction", detail: "Seller confirmed this is not a 1031 exchange." },
+        ] },
+        { type: "table", title: "Disbursement schedule — File ATH-2026-0743",
+          columns: ["Payee", "Amount", "Method", "Status"],
+          rows: [
+            { band: "YELLOW", cells: ["Listing agent commission (Garris Realty)", "$8,550", "Check", "Pending — held for recording"] },
+            { band: "YELLOW", cells: ["Buyer's agent commission (Henderson Real Estate)", "$8,550", "Check", "Pending — held for recording"] },
+            { band: "GREEN", cells: ["Henderson County tax authority", "$0", "N/A", "Current — no delinquency"] },
+            { band: "YELLOW", cells: ["Attorney/escrow fee — Garris Horn LLP", "$550", "Check", "Pending"] },
+            { band: "YELLOW", cells: ["Seller net proceeds — Troy Garris Trust", "$278,540", "Wire", "Pending — held for recording"] },
+            { band: "YELLOW", cells: ["Recording fees — Henderson County Clerk", "$127", "Check", "Pending"] },
+            { band: "YELLOW", cells: ["Title insurance premium — remit to underwriter", "$1,650", "ACH", "Pending"] },
+          ] },
+        { type: "prose", items: [
+          { band: "YELLOW", title: "Disbursement hold", body: "All disbursements are held pending county recording confirmation. Every disbursement will be logged as a title.funds_disbursed chain event on the SOCIII ledger." },
+        ] },
+      ] },
+      { id: "closing-status", label: "Close Status", description: "Milestone-by-milestone closing status for File ATH-2026-0743. Recording is in progress; policy issue and final Vault delivery are pending.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Funds confirmed", detail: "Wire trace WR-20260728-4891" },
+          { band: "YELLOW", title: "Recording in progress", detail: "Henderson County Clerk — submitted 07/28/2026 2:30 PM" },
+          { band: "WHITE", title: "Policy issue — pending", detail: "Awaiting recording number" },
+        ] },
+        { type: "chain", title: "Closing milestone timeline", items: [
+          { band: "GREEN", parties: "Commitment finalized · 07/18/2026", meta: "", tag: "Done" },
+          { band: "GREEN", parties: "Disclosure sent to buyer · 07/25/2026", meta: "", tag: "Done" },
+          { band: "GREEN", parties: "3-day waiting period complete · 07/28/2026", meta: "", tag: "Done" },
+          { band: "GREEN", parties: "Funds received and confirmed · 07/28/2026 10:02 AM", meta: "", tag: "Done" },
+          { band: "YELLOW", parties: "Deed submitted for recording — Henderson County Clerk · 07/28/2026 2:30 PM", meta: "", tag: "In progress" },
+          { band: "WHITE", parties: "Recording confirmed — county recording number", meta: "", tag: "Pending" },
+          { band: "WHITE", parties: "Title policy issued", meta: "", tag: "Pending" },
+          { band: "WHITE", parties: "Order closed — Vault records delivered to buyer", meta: "", tag: "Pending" },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "Recording pending — expected same day", detail: "Henderson County typical turnaround 2-4 hours." },
+          { band: "BLUE", title: "After recording: buyer's deed + title policy will auto-add to their SOCIII Vault DTC records", detail: "Vault delivery triggered on recording confirmation." },
+          { band: "BLUE", title: "File: ATH-2026-0743 · Buyer: Michael & Sarah Chen · Seller: Troy Garris Trust · 313 Mayfair Dr Athens TX 75751", detail: "" },
+        ] },
+        { type: "prose", items: [
+          { band: "WHITE", title: "Data source note — ATTOM vs FirstAm", body: "Data source: ATTOM Property Data (AVM, ownership, tax). First American data tree would additionally provide: recorded document PDFs, plat maps, exception documents. Currently unavailable via ATTOM — obtain physical copies from Henderson County Clerk for commitment exceptions." },
+        ] },
+      ] },
+    ],
+  },
+
   // ───────────────────────── REAL ESTATE ADVOCATE ─────────────────────────
   "re-salesperson": {
     title: "Real Estate Advocate — SF Bay Area",
@@ -889,7 +1029,8 @@ for (const k of Object.keys(RE_CANVAS)) {
 // Slug aliases — some surfaces (CampaignPage, AddWorkspaceWizard, the catalog
 // JSON) refer to the CRE worker as "cre-deal-analyst"; the live worker + canvas
 // key is "cre-analyst". Alias so the designed canvas resolves either way.
-const RE_CANVAS_ALIASES = { "cre-deal-analyst": "cre-analyst" };
+// "title-advocate-001" is the user-facing name alias for "re-escrow-001".
+const RE_CANVAS_ALIASES = { "cre-deal-analyst": "cre-analyst", "title-advocate-001": "re-escrow-001" };
 
 export function getRECanvas(workerSlug) {
   if (!workerSlug) return null;

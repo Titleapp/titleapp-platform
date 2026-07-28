@@ -36,3 +36,10 @@ firebase-debug.log
 .firebase/
 !.env.example
 investor_blast_preview.csv
+
+# Claude Code internal state
+.claude/
+
+# Capacitor native app dirs (generated — not source)
+apps/business/android/
+apps/business/ios/

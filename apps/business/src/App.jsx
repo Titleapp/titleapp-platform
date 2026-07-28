@@ -64,6 +64,7 @@ import CreatorDashboard from "./sections/CreatorDashboard";
 import InvestorDataRoom from "./sections/InvestorDataRoom";
 import InvestorCapTable from "./sections/InvestorCapTable";
 import InvestorPipeline from "./sections/InvestorPipeline";
+import Valuation409A from "./sections/Valuation409A";
 import VaultTools from "./sections/VaultTools";
 import B2BAnalytics from "./sections/B2BAnalytics";
 import PendingSignatures from "./sections/PendingSignatures";
@@ -4908,6 +4909,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <InvestorDataRoom />;
       case "investor-cap-table":
         return <InvestorCapTable />;
+      case "investor-409a":
+        return <Valuation409A />;
       case "investor-pipeline":
         return <InvestorPipeline />;
       case "vault-tools":
@@ -5371,7 +5374,7 @@ export default function App() {
     }
     if (redirectPage) {
       // Map generic page names to business app section IDs
-      const pageMap = { dataroom: "investor-data-room", "investor-data-room": "investor-data-room", "cap-table": "investor-cap-table", pipeline: "investor-pipeline" };
+      const pageMap = { dataroom: "investor-data-room", "investor-data-room": "investor-data-room", "cap-table": "investor-cap-table", "valuation": "investor-409a", pipeline: "investor-pipeline" };
       sessionStorage.setItem("ta_redirect_page", pageMap[redirectPage] || redirectPage);
     }
 

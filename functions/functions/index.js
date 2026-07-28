@@ -350,7 +350,8 @@ function getStripe() {
 // models fall back to OPUS pricing so we never UNDER-estimate.
 const ANTHROPIC_PRICING_PER_MTOK = {
   // Sonnet 4.5 (default for chat surfaces today)
-  "claude-sonnet-4-5-20250929": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
+  "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
+  "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
   "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
   // Opus 4.x
   "claude-opus-4-7": { input: 15, output: 75, cacheRead: 1.50, cacheWrite: 18.75 },
@@ -1424,7 +1425,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
 
     const anthropic = getAnthropic();
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-sonnet-4-6",
       max_tokens: 8192,
       system: systemPrompt,
       messages,
@@ -1447,7 +1448,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
         const anthropic = getAnthropic();
         const violationList = chatEnforcement.violations.map(v => `- ${v.ruleId}: ${v.message}`).join("\n");
         const retryResponse = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250929",
+          model: "claude-sonnet-4-6",
           max_tokens: 8192,
           system: `You are Alex from SOCIII. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
           messages,
@@ -2324,7 +2325,7 @@ Always extract if present: monthly/base rent, lease term dates, security deposit
 Flag colors: RED=significant risk, YELLOW=review needed, WHITE=neutral/standard, GREEN=favorable to tenant, BLUE=info missing.
 
 LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
-        const extraction = await ant.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, messages: [{ role: "user", content: extractionPrompt }] });
+        const extraction = await ant.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, messages: [{ role: "user", content: extractionPrompt }] });
         let extracted = null;
         try { extracted = JSON.parse((extraction.content[0]?.text || "{}").replace(/^```json\s*/i, '').replace(/\s*```$/, '')); } catch (_) {}
         if (!extracted || !Array.isArray(extracted.terms)) return jsonError(res, 500, "Lease extraction failed — text may be too short or unreadable");
@@ -2585,7 +2586,7 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
           }
           const anthropic = getAnthropic();
           const completion = await anthropic.messages.create({
-            model: "claude-sonnet-4-5-20250929",
+            model: "claude-sonnet-4-6",
             max_tokens: 1024,
             system: String(body.context.systemPrompt),
             messages,
@@ -2957,7 +2958,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
             // pastes (long Code report-backs blow 25s easily; function declares
             // 300s).
             const aiResp = await anthropic.messages.create({
-              model: 'claude-sonnet-4-5-20250929',
+              model: 'claude-sonnet-4-6',
               max_tokens: 1024,
               system: authoringSystemPrompt,
               messages: sessionState.creatorAuthoringHistory,
@@ -3931,6 +3932,54 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   required: ["prompt"],
                 },
               }];
+
+              // CODEX 91 — generate_document: available to ALL workers.
+              // All four generators (pdf/docx/pptx/xlsx) + 14 templates are already
+              // deployed in functions/documents/. This tool is the missing wire.
+              businessTools.push({
+                name: "web_search",
+                description: "Search the web for current information. Use when the user asks about something that requires real-world knowledge, current news, competitor data, pricing, regulations, or market information. Returns top web search results.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "The search query" },
+                  },
+                  required: ["query"],
+                },
+              });
+              businessTools.push({
+                name: "fetch_url",
+                description: "Read the full content of any public web page including React/JavaScript apps. Use when the user provides a URL. Returns up to 10000 characters of clean text.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    url: { type: "string", description: "The full URL to read" },
+                  },
+                  required: ["url"],
+                },
+              });
+              businessTools.push({
+                name: "generate_document",
+                description: "Generate a downloadable document and return a download URL. Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template. Returns a real download URL the user can click.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    templateId: {
+                      type: "string",
+                      enum: ["report-standard","memo-executive","agreement-standard","deck-standard","model-cashflow","model-proforma","one-pager","letter-formal","ir-deal-memo","ir-quarterly-report","ir-capital-call","ir-waterfall-report","ir-investor-summary","ir-subscription-agreement"],
+                      description: "Template to use. report-standard=multi-section PDF/Word report. memo-executive=exec memo. agreement-standard=contract/agreement. deck-standard=PowerPoint deck. model-cashflow=Excel cash flow. model-proforma=Excel pro forma. one-pager=single-page PDF summary. letter-formal=business letter. ir-*=investor relations documents.",
+                    },
+                    format: { type: "string", enum: ["pdf","docx","pptx","xlsx"], description: "Output format. Omit to use the template's default (report→pdf, agreement→docx, deck→pptx, model→xlsx)." },
+                    title: { type: "string", description: "Document title shown to user." },
+                    content: {
+                      type: "object",
+                      description: "Document content keyed by section. report-standard: {coverPage:{title,subtitle,date}, executiveSummary:{text}, sections:[{heading,body}], appendix:{items:[{label,text}]}}. memo-executive: {header:{to,from,date,re}, body:{text}, recommendation:{text}}. deck-standard: {slides:[{title,body,layout:'title'|'content'|'two-column',notes}]}. one-pager: {header:{title,tagline}, metrics:[{label,value}], body:{text}, callToAction:{text,url}}. letter-formal: {sender:{name,title,address,date}, recipient:{name,title,address}, body:{paragraphs:[string]}, closing:{text,name,title}}. agreement-standard: {header:{title,date}, parties:[{name,address,role}], terms:[{heading,text}], signatures:[{name,title,party}]}. model-cashflow: {assumptions:{items:[{label,value,notes}]}, projections:{months:[string], rows:[{label,values:[number]}]}}. ir-deal-memo: {dealOverview:{name,type,location,summary}, financialAnalysis:{metrics:[{label,value}], text}, riskFactors:[{title,description}], recommendation:{text}}.",
+                    },
+                  },
+                  required: ["templateId", "title", "content"],
+                },
+              });
+
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
               if (workerSlug === "cre-analyst") {
                 businessTools.push({
@@ -4201,9 +4250,9 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // platform-accounting emits full financial reports + JSON canvas
               // payloads — 1024 truncates mid-table every time.
               const workerMaxTokens =
-                workerSlug === "re-salesperson" ? 3000 :
-                workerSlug === "platform-accounting" ? 6144 :
-                1024;
+                workerSlug === "re-salesperson" ? 4096 :
+                workerSlug === "platform-accounting" ? 8192 :
+                2048;
 
               // ── CODEX 42 Phase 1 — True SSE streaming (RAAS-light, no-tool workers) ──
               // Early branch: set headers + pipe Anthropic tokens live, then post-process
@@ -4233,7 +4282,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                 let _accumulated = '';
                 try {
                   const _stream = anthropic.messages.stream({
-                    model: 'claude-sonnet-4-5-20250929',
+                    model: 'claude-sonnet-4-6',
                     max_tokens: workerMaxTokens,
                     system: workerPrompt,
                     messages,
@@ -4354,7 +4403,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // ── End CODEX 42 streaming branch ──
 
               let aiResponse = await anthropic.messages.create({
-                model: 'claude-sonnet-4-5-20250929',
+                model: 'claude-sonnet-4-6',
                 max_tokens: workerMaxTokens,
                 system: workerPrompt,
                 messages,
@@ -4365,6 +4414,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               let workerImageUrl = null;
               let workerImgErrMsg = null; // S52.46 — guidance from a blocked/failed image gen, forwarded to the model
               let workerImgCharge = null; // S52.46 — "charged $X" note for a successful gen
+              let workerGeneratedDoc = null; // CODEX 91 — populated by generate_document tool
               let liveDistressed = null; // S52.44 — populated by find_distressed_cre tool
               let liveContacts = null;   // S52.45 — populated by find_cre_contacts (Apollo)
               let liveSiteRecon = null;  // S52.46 — populated by site_recon_lookup (real ATTOM)
@@ -4409,7 +4459,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _imgToolResult }] },
                 ];
                 const followUp = await anthropic.messages.create({
-                  model: 'claude-sonnet-4-5-20250929',
+                  model: 'claude-sonnet-4-6',
                   max_tokens: 512,
                   system: workerPrompt,
                   messages: followUpMessages,
@@ -4435,7 +4485,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   // tool_use eating the token budget mid-sentence) + higher cap
                   // so the answer doesn't clip ("...now staring" bug).
                   const followUp = await anthropic.messages.create({
-                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                    model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages,
                   });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the distressed candidates.";
                 } catch (creErr) {
@@ -4470,7 +4520,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                   ];
                   const followUp = await anthropic.messages.create({
-                    model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                    model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages,
                   });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the contacts.";
                 } catch (apErr) {
@@ -4530,7 +4580,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                         { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                       ];
                       const followUp = await anthropic.messages.create({
-                        model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages,
+                        model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages,
                       });
                       aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
                     }
@@ -4558,7 +4608,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     liveReLookup = { address: a.address, lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null, facts };
                     const toolResultText = `Live ATTOM pull for ${addr}. Present these REAL facts in plain English, framed through THIS worker's specialty (e.g. a title worker reads the ownership/lien picture from them and flags what still needs a deeper paid title search). Be specific with the numbers below; do NOT tell the user to go research it themselves — you already pulled it:\n${facts}`;
                     const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
-                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] lookup_property failed:`, e.message); }
@@ -4596,7 +4646,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     `Offer to pass the chain-of-title bundle to re-commitment-001 to draft the title commitment. ` +
                     `Do NOT invent facts beyond what is shown here — the chain events are the authoritative record.`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Title order opened.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] open_title_order failed:`, e.message); }
               }
@@ -4608,7 +4658,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   const result = await getTitleOrder({ orderId: String(toolBlock.input.orderId || ""), db });
                   if (!result) {
                     const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Title order ${toolBlock.input.orderId} not found.` }] }];
-                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || "Order not found.";
                   } else {
                     const order = result.order;
@@ -4624,7 +4674,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                       `Present this as the current title order status. Cite only the facts above. ` +
                       `Flag any open P0/P1 defects. Offer next steps appropriate to ${workerSlug}.`;
                     const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
+                    const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || "Here's the current title order.";
                   }
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_title_order failed:`, e.message); }
@@ -4647,13 +4697,13 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     `Summarize the defect clearly and state the suggested curative action if provided. ` +
                     `If severity is P0, remind the user this blocks final commitment until cured.`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || "Defect logged.";
                 } catch (e) {
                   const errMsg = e.message.includes("TX-T-001") ? e.message : `Failed to log defect: ${e.message}`;
                   console.warn(`[worker:${workerSlug}] log_title_defect failed:`, e.message);
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Error: ${errMsg}` }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 500, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 500, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || errMsg;
                 }
               }
@@ -4673,7 +4723,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     resultText = `Live listings in ${toolBlock.input.location} (${r.count} results). Present each with price, beds/baths, days on market. Flag any listed significantly above the CMA if you have that data. NEVER say these look like good deals — present facts, let the user decide:\n${lines}`;
                   }
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the listings.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] search_listings failed:`, e.message); }
               }
@@ -4707,7 +4757,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   }
                   if (r.ok) _liveCMA = r; // Phase 3 — typed canvas render built below
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here is the CMA.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] run_cma failed:`, e.message); }
               }
@@ -4740,7 +4790,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     ].filter(Boolean).join("\n");
                   }
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1500, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here is the property detail.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_property_deep failed:`, e.message); }
               }
@@ -4773,7 +4823,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     ? `Transaction created (ID: ${txId}) for ${propertyAddress}. Role: ${role}. Key dates saved: ${Object.keys(keyDates || {}).join(", ") || "none yet"}. Confirm to the user and offer to track next steps, key dates, and documents.`
                     : `Transaction record could not be saved (missing tenantId or uid). Confirm the details verbally and ask the user to try again.`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Transaction started.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] start_transaction failed:`, e.message); }
               }
@@ -4902,7 +4952,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                   const cohortText = `Makai School of Nursing — BSN Program Class of 2028. ${students.length} students total. At-risk: ${students.filter(s=>s.status==="at-risk").length}. Ready: ${students.filter(s=>s.status==="ready").length}. On track: ${students.filter(s=>s.status==="on-track").length}.\n\nStudents:\n${students.map(s=>`- ${s.name}: ${s.status}, ${s.clinicalHours}/${s.clinicalHoursRequired} clinical hours, ATI ${s.atiScore}%`).join("\n")}\n\nCourses: ${courses.map(c=>`${c.name} (${c.enrolledCount} enrolled, week ${c.currentWeek} of ${c.totalWeeks})`).join("; ")}`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: cohortText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_cohort failed:`, e.message); }
               }
@@ -4922,7 +4972,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     ? `Student record for ${studentDoc.data().name}:\n${JSON.stringify({ ...studentDoc.data(), id: studentDoc.id }, null, 2)}\n\nCompetencies (${competenciesSnap.size}):\n${competenciesSnap.docs.map(d=>`- ${d.data().name}: ${d.data().status}`).join("\n") || "None recorded"}`
                     : `Student ${studentId} not found in the Makai demo tenant.`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: studentText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_student failed:`, e.message); }
               }
@@ -4937,9 +4987,113 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     .collection("atiScores").doc(eventId).set({ type: "ati_score", source: "ati_lti_simulated", studentId, courseId, assessmentName: assessmentName || "ATI Assessment", score: Number(score), band, simulated: true, createdAt: nowServerTs() });
                   const resultText = `ATI score delivered: ${assessmentName || "ATI Assessment"} — ${score}% (${band}). Logbook entry minted for ${studentId}. If the score is below 70%, surface the gap and recommend targeted review using the OER materials in this workspace.`;
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
-                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-5-20250929', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] deliver_ati_score failed:`, e.message); }
+              }
+
+              // web_search + fetch_url handlers (all workers)
+              if (toolBlock && toolBlock.name === 'web_search') {
+                let _workerSearchText;
+                try {
+                  const _wq = encodeURIComponent(toolBlock.input.query);
+                  const _wParts = [];
+                  // Brave Search — primary (fresh live web index, no geo-blocking)
+                  if (process.env.BRAVE_SEARCH_API_KEY) {
+                    try {
+                      const _braveRes = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${_wq}&count=10&freshness=pw`, { signal: AbortSignal.timeout(8000), headers: { "Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": process.env.BRAVE_SEARCH_API_KEY } });
+                      if (!_braveRes.ok) {
+                        console.error(`[BRAVE_DOWN] worker web_search HTTP ${_braveRes.status} — check spending cap at api.search.brave.com`);
+                      } else {
+                        const _braveJson = await _braveRes.json();
+                        (_braveJson.web?.results || []).slice(0, 8).forEach(r => {
+                          _wParts.push(`${r.title}${r.description ? "\n" + r.description : ""}${r.url ? "\n" + r.url : ""}`);
+                        });
+                      }
+                    } catch (_be) { console.error("[BRAVE_DOWN] worker web_search network err:", _be.message); }
+                  }
+                  // Wikipedia — fallback (encyclopedic background, always available)
+                  if (_wParts.length < 3) {
+                    try {
+                      const _wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${_wq}&srlimit=4&format=json&origin=*`, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "SOCIII/1.0 (https://sociii.ai)" } });
+                      const _wikiJson = await _wikiRes.json();
+                      (_wikiJson.query?.search || []).forEach(s => {
+                        const snippet = s.snippet ? s.snippet.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim() : "";
+                        if (s.title) _wParts.push(`${s.title}${snippet ? "\n" + snippet : ""}`);
+                      });
+                    } catch (_we) { console.warn("[web_search] wikipedia err:", _we.message); }
+                  }
+                  // HN Algolia — recent tech/startup discussion
+                  try {
+                    const _hnRes = await fetch(`https://hn.algolia.com/api/v1/search?query=${_wq}&tags=story&hitsPerPage=5`, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "Mozilla/5.0 (compatible; SOCIII/1.0)" } });
+                    const _hnJson = await _hnRes.json();
+                    (_hnJson.hits || []).filter(h => h.title).slice(0, 3).forEach(h => {
+                      _wParts.push(`[HN] ${h.title}${h.url ? " — " + h.url : ""}`);
+                    });
+                  } catch (_he) { console.warn("[web_search] hn err:", _he.message); }
+                  _workerSearchText = _wParts.length > 0
+                    ? `LIVE WEB SEARCH RESULTS for "${toolBlock.input.query}":\n\nRule: Base your answer ONLY on the results below. Do not supplement with training data. If the results don't fully answer the question, say exactly what you found and acknowledge the gap.\n\n${_wParts.join("\n\n")}`
+                    : `No web search results were returned for "${toolBlock.input.query}". Do NOT answer from training data. Tell the user plainly: you searched but found no current results, and direct them to a relevant primary source (e.g. nhc.noaa.gov for hurricanes, FAA.gov for aviation, etc.).`;
+                } catch (_wsErr) {
+                  _workerSearchText = `Search failed: ${_wsErr.message}`;
+                }
+                const _wsFollowUp = await anthropic.messages.create({
+                  model: 'claude-sonnet-4-6', max_tokens: 4096, system: workerPrompt,
+                  messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _workerSearchText }] }],
+                  tools: businessTools, tool_choice: { type: "auto" },
+                });
+                aiText = _wsFollowUp.content.find(b => b.type === 'text')?.text || aiText;
+              }
+              if (toolBlock && toolBlock.name === 'fetch_url') {
+                let _workerFetchText;
+                try {
+                  const _wfRes = await fetch(toolBlock.input.url, { signal: AbortSignal.timeout(10000), headers: { "User-Agent": "Mozilla/5.0 (compatible; SOCIII/1.0)" } });
+                  const _wfHtml = await _wfRes.text();
+                  _workerFetchText = _wfHtml
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+                    .replace(/\s+/g, " ").trim().slice(0, 8000);
+                  if (!_workerFetchText || _workerFetchText.length < 50) _workerFetchText = `Page at ${toolBlock.input.url} is a JavaScript app — content not available via fetch.`;
+                } catch (_wfErr) {
+                  _workerFetchText = `Could not fetch ${toolBlock.input.url}: ${_wfErr.message}`;
+                }
+                const _wfFollowUp = await anthropic.messages.create({
+                  model: 'claude-sonnet-4-6', max_tokens: 4096, system: workerPrompt,
+                  messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _workerFetchText }] }],
+                  tools: businessTools, tool_choice: { type: "auto" },
+                });
+                aiText = _wfFollowUp.content.find(b => b.type === 'text')?.text || aiText;
+              }
+
+              // CODEX 91 — generate_document tool handler (all workers)
+              if (toolBlock && toolBlock.name === 'generate_document') {
+                try {
+                  const { generateDocument } = require("./documents");
+                  const docResult = await generateDocument({
+                    tenantId: reqTenantId || ctx.tenantId,
+                    userId: authUser ? authUser.uid : "anonymous",
+                    templateId: toolBlock.input.templateId,
+                    format: toolBlock.input.format || null,
+                    content: toolBlock.input.content,
+                    title: toolBlock.input.title,
+                    metadata: { workerSlug, surface: 'worker' },
+                  });
+                  let docToolResult;
+                  if (docResult.ok) {
+                    workerGeneratedDoc = { title: toolBlock.input.title, format: docResult.format || toolBlock.input.format || "pdf", downloadUrl: docResult.downloadUrl, docId: docResult.docId };
+                    docToolResult = `Document generated successfully. Title: "${toolBlock.input.title}". Format: ${workerGeneratedDoc.format.toUpperCase()}. Download URL: ${docResult.downloadUrl}. Tell the user their document is ready and provide a brief summary of what it contains. Do not repeat the URL — the UI will show a download button automatically.`;
+                  } else {
+                    console.warn(`[worker:${workerSlug}] generate_document ok:false`, { error: docResult.error, templateId: toolBlock.input.templateId, contentKeys: Object.keys(toolBlock.input.content || {}) });
+                    docToolResult = `Document generation failed: ${docResult.error || "unknown error"}. Apologize briefly and offer to try again or provide the content as text instead.`;
+                  }
+                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: docToolResult }] }];
+                  const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1024, system: workerPrompt, messages: followUpMessages });
+                  aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
+                } catch (docErr) {
+                  console.warn(`[worker:${workerSlug}] generate_document failed:`, docErr.message);
+                }
               }
 
               if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
@@ -4969,7 +5123,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     { role: "user", content: `${dr.retryHint}\n\nRegenerate your response now, following the DELIVERY RULES.` },
                   ];
                   const retry = await anthropic.messages.create({
-                    model: 'claude-sonnet-4-5-20250929',
+                    model: 'claude-sonnet-4-6',
                     max_tokens: 1500,
                     system: workerPrompt,
                     messages: retryMessages,
@@ -5379,6 +5533,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 conversationState: 'worker_active',
                 canvasSignal,
                 canvasRenders: workerCanvasRenders,
+                ...(workerGeneratedDoc ? { generatedDocument: workerGeneratedDoc } : {}),
               });
             }
           } catch (workerErr) {
@@ -5593,8 +5748,8 @@ IDENTITY RULES:
           try {
             const anthropic = getAnthropic();
             const aiResponse = await anthropic.messages.create({
-              model: 'claude-sonnet-4-5-20250929',
-              max_tokens: 1024,
+              model: 'claude-sonnet-4-6',
+              max_tokens: 2048,
               system: selectedSystemPrompt,
               messages,
             });
@@ -6241,7 +6396,7 @@ For legal specifics, custom terms, or strategic questions, offer to connect with
           try {
             const anthropic = getAnthropic();
             const aiResponse = await anthropic.messages.create({
-              model: 'claude-sonnet-4-5-20250929',
+              model: 'claude-sonnet-4-6',
               max_tokens: 250,
               system: investSystemPrompt,
               messages,
@@ -6358,12 +6513,17 @@ ${_ws.ownerName ? `You are talking to ${_ws.ownerName}${_ws.ownerRole ? `, ${_ws
 
 WHO YOU ARE: The owner's Chief of Staff. You orchestrate their Digital Workers (Accounting, Contacts, HR & People, Marketing, plus their specialist workers) and give them a real, grounded answer about their business.
 
+SOCIII PLATFORM KNOWLEDGE (canonical — always use these facts, never invent):
+SOCIII is a platform for building, governing, and scaling AI workers in regulated professions. The core tech is RAAS (Rules + AI as a Service) — a four-tier rules engine (Platform Safety → Industry Regulations → Operator Policies → User Preferences) that governs every AI output before it commits. Every decision is recorded in an append-only, cryptographically anchored audit trail. In production across Aviation, Real Estate, Auto, Title & Escrow, Health/EMS, Government, Solar, Web3. Sean Combs is the founder. Delaware C-Corp, Las Vegas NV.
+PRICING (accurate): Free tier available for students and individual pilots (basic access). Individual workers $29/$49/$79/mo. Business in a Box (full vertical suite) $99/mo. All Workers $299/mo. Data Credits metered above baseline. Creator License: creators earn majority of each subscription they author. Education/school plans: $99/mo + $5/active student.
+If asked for more detail about products, the whitepaper, or the platform, call fetch_url("https://sociii.ai/whitepaper") to get the canonical source.
+
 HARD RULES:
 1. This is a logged-in, fully-onboarded owner — NOT a sales prospect or a new visitor. NEVER ask their name, what business/industry they're in, what they do, or for contact info. You already know.
 2. Never run an intake or discovery script. Never pitch signup or mention creating an account.
 3. Use the REAL workspace data below. When you cite a number, use the figure provided verbatim. If a fact isn't in your context, say you don't have it yet or ask ONE specific question — never invent data (no made-up addresses, names, or numbers).
 4. When a request belongs to a specific worker, you can answer from the sibling data below and offer to open that worker.
-5. Keep replies under 250 words, warm and direct. Plain text — no emojis. Light markdown only if it aids clarity.${_sib ? "\n\n" + _sib : ""}${_brief}
+5. Keep replies under 250 words for normal questions, warm and direct. For document generation, analysis, or structured reports: write as long as the task requires — completeness matters more than brevity. Plain text — no emojis. Light markdown only if it aids clarity.${_sib ? "\n\n" + _sib : ""}${_brief}
 
 OPERATING FEED — YOUR PROACTIVE ALERT SURFACE:
 The Operating Feed is the user's real-time notification center. Use these three directives proactively — do not wait to be asked. Append them at the END of your response, after your human-readable message.
@@ -6375,6 +6535,9 @@ snooze_alert — defer an alert: __ALERT_SNOOZE__:{"itemId":"<id>","snoozeHours"
 Severity guide: RED=urgent, action required today. YELLOW=notable, act this week. GREEN=informational or good news.
 Only you (Alex) may push alerts. Domain workers cannot write to the Operating Feed.
 
+DOCUMENT GENERATION:
+You have a generate_document tool. A document exists ONLY if you call that tool. When the user asks for a one-pager, summary, report, brief, deck, whitepaper, memo, letter, or any written deliverable — call generate_document immediately with the full content populated. Do not describe what you are about to do. Do not say "Generating now." Just call the tool. If you say you will generate something and don't call the tool, nothing is produced.
+
 CAMPAIGN STATUS AWARENESS:
 Call get_campaigns before proposing a new email campaign. Campaigns move: proposed → approved → sending → sent → paused. Never duplicate an active campaign. Do not suggest pausing a sending campaign unless the user asks.`; // end cosPrompt
 
@@ -6385,14 +6548,178 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                 const _msgs = [..._cosHist, { role: 'user', content: userInput }];
 
                 const anthropic = getAnthropic();
+                const _isDocRequest = /whitepaper|white paper|deck|slide|rewrite|draft|document|report|analysis|brief|outline|proposal|strategy|plan|summary|generate|create a|write a|write the/i.test(userInput);
+                const _cosDocTool = {
+                  name: "generate_document",
+                  description: "Generate a downloadable document and return a download URL. Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template. Returns a real download URL the user can click.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      templateId: { type: "string", enum: ["report-standard","memo-executive","agreement-standard","deck-standard","model-cashflow","model-proforma","one-pager","letter-formal","ir-deal-memo","ir-quarterly-report","ir-capital-call","ir-waterfall-report","ir-investor-summary","ir-subscription-agreement"], description: "Template to use. report-standard=multi-section PDF/Word report. memo-executive=exec memo. agreement-standard=contract/agreement. deck-standard=PowerPoint deck. model-cashflow=Excel cash flow. model-proforma=Excel pro forma. one-pager=single-page PDF summary. letter-formal=business letter. ir-*=investor relations documents." },
+                      format: { type: "string", enum: ["pdf","docx","pptx","xlsx"], description: "Output format. Omit to use the template's default (report→pdf, agreement→docx, deck→pptx, model→xlsx)." },
+                      title: { type: "string", description: "Document title shown to user." },
+                      content: {
+                        type: "object",
+                        description: "Document content keyed by section. REQUIRED sections must be present or generation will fail. report-standard: {coverPage:{title,subtitle,date}, executiveSummary:{text}, sections:[{heading,content}]}. memo-executive: {header:{to,from,date,re}, body:\"string\", recommendation:\"string\"}. deck-standard: {slides:[{title,body,layout:\"title\"|\"content\"|\"two-column\",notes}]}. one-pager: {header:{title,subtitle}, metrics:[{label,value}], body:\"string\", callToAction:\"string\"}. letter-formal: {sender:{name,title,address}, recipient:{name,title,address}, body:\"string\", closing:{text}}. agreement-standard: {header:{title,effectiveDate}, parties:[{name,role,address}], terms:[{heading,content}], signatures:[{name,role}]}. ir-deal-memo: {dealOverview:{title,dealType,summary,keyTerms:{}}, financialAnalysis:{narrative:\"string\",table:{headers:[],rows:[]}}, riskFactors:[{risk,mitigation}], recommendation:\"string\"}. model-cashflow: {assumptions:{items:[{label,value}]}, projections:{months:[\"Jan\",\"Feb\",...], rows:[{label,values:[0,0,...]}]}}.",
+                      },
+                    },
+                    required: ["templateId", "title", "content"],
+                  },
+                };
+                const _cosFetchTool = {
+                  name: "fetch_url",
+                  description: "Fetch and read the full content of any public web page, including React/JavaScript apps. Use when the user provides a URL and wants you to read, summarize, or analyze the page. Returns up to 8000 characters of clean text.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      url: { type: "string", description: "The full URL to read, e.g. https://sociii.ai/whitepaper" },
+                    },
+                    required: ["url"],
+                  },
+                };
+                const _cosSearchTool = {
+                  name: "web_search",
+                  description: "Search the web for current information. Use when the user asks about something that requires real-world knowledge, current news, competitor data, pricing, market information, or any topic where live web results would help. Returns top search results.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "The search query, e.g. 'SOCIII AI platform competitors 2025'" },
+                    },
+                    required: ["query"],
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool];
                 const _resp = await anthropic.messages.create({
-                  model: 'claude-sonnet-4-5-20250929',
-                  max_tokens: 1024,
+                  model: 'claude-sonnet-4-6',
+                  max_tokens: _isDocRequest ? 8192 : 2048,
                   system: cosPrompt,
                   messages: _msgs,
+                  tools: _cosTools,
+                  tool_choice: { type: "auto" },
                 });
-                let _txt = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim()
-                  || "Let me pull that together for you.";
+                let _txt = "";
+                let _cosGeneratedDoc = null;
+                if (_resp.stop_reason === "tool_use") {
+                  const _cosTool = _resp.content.find(b => b.type === "tool_use");
+                  if (_cosTool && _cosTool.name === "generate_document") {
+                    try {
+                      const { generateDocument } = require("./documents");
+                      const _docResult = await generateDocument({
+                        tenantId: _cosTenantId || authUser.uid,
+                        userId: authUser.uid,
+                        templateId: _cosTool.input.templateId,
+                        format: _cosTool.input.format || null,
+                        content: _cosTool.input.content,
+                        title: _cosTool.input.title,
+                        metadata: { workerSlug: "chief-of-staff", surface: "cos" },
+                      });
+                      let _docToolResult;
+                      if (_docResult.ok) {
+                        _cosGeneratedDoc = { title: _cosTool.input.title, format: _docResult.format || _cosTool.input.format || "pdf", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId };
+                        _docToolResult = `Document generated. Title: "${_cosTool.input.title}". Format: ${_cosGeneratedDoc.format.toUpperCase()}. Download URL: ${_docResult.downloadUrl}. Tell the user their document is ready with a brief summary. Do not repeat the URL.`;
+                      } else {
+                        console.warn("[COS] generate_document ok:false", { error: _docResult.error, templateId: _cosTool.input.templateId, contentKeys: Object.keys(_cosTool.input.content || {}) });
+                        _docToolResult = `Document generation failed: ${_docResult.error || "unknown error"}. Apologize and offer to provide the content as text.`;
+                      }
+                      const _cosFollowUp = await anthropic.messages.create({
+                        model: "claude-sonnet-4-6",
+                        max_tokens: 1024,
+                        system: cosPrompt,
+                        messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _docToolResult }] }],
+                        tools: _cosTools,
+                        tool_choice: { type: "auto" },
+                      });
+                      _txt = _cosFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Your document is ready.";
+                    } catch (_cosDocErr) {
+                      console.warn("[COS] generate_document exception:", _cosDocErr.message);
+                      _txt = "I ran into an issue generating the document. Let me give you the content as text instead.";
+                    }
+                  } else if (_cosTool && _cosTool.name === "fetch_url") {
+                    let _fetchedText;
+                    try {
+                      const _fetchRes = await fetch(_cosTool.input.url, {
+                        signal: AbortSignal.timeout(10000),
+                        headers: { "User-Agent": "Mozilla/5.0 (compatible; SOCIII/1.0)" },
+                      });
+                      const _html = await _fetchRes.text();
+                      _fetchedText = _html
+                        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+                        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+                        .replace(/<[^>]+>/g, " ")
+                        .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+                        .replace(/\s+/g, " ").trim().slice(0, 8000);
+                      if (!_fetchedText || _fetchedText.length < 50) _fetchedText = `Page at ${_cosTool.input.url} is a JavaScript app — content not available via fetch. Use canonical sources instead.`;
+                    } catch (_fetchErr) {
+                      _fetchedText = `Could not fetch ${_cosTool.input.url}: ${_fetchErr.message}`;
+                    }
+                    const _fetchFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6",
+                      max_tokens: 4096,
+                      system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _fetchedText }] }],
+                      tools: _cosTools,
+                      tool_choice: { type: "auto" },
+                    });
+                    _txt = _fetchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the page but couldn't summarize it.";
+                  } else if (_cosTool && _cosTool.name === "web_search") {
+                    let _searchText;
+                    try {
+                      const _q = encodeURIComponent(_cosTool.input.query);
+                      const _cParts = [];
+                      // Brave Search — primary (fresh live web index)
+                      if (process.env.BRAVE_SEARCH_API_KEY) {
+                        try {
+                          const _braveRes = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${_q}&count=10&freshness=pw`, { signal: AbortSignal.timeout(8000), headers: { "Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": process.env.BRAVE_SEARCH_API_KEY } });
+                          if (!_braveRes.ok) {
+                            console.error(`[BRAVE_DOWN] cos web_search HTTP ${_braveRes.status} — check spending cap at api.search.brave.com`);
+                          } else {
+                            const _braveJson = await _braveRes.json();
+                            (_braveJson.web?.results || []).slice(0, 8).forEach(r => {
+                              _cParts.push(`${r.title}${r.description ? "\n" + r.description : ""}${r.url ? "\n" + r.url : ""}`);
+                            });
+                          }
+                        } catch (_cbe) { console.error("[BRAVE_DOWN] cos web_search network err:", _cbe.message); }
+                      }
+                      // Wikipedia — fallback
+                      if (_cParts.length < 3) {
+                        try {
+                          const _wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${_q}&srlimit=4&format=json&origin=*`, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "SOCIII/1.0 (https://sociii.ai)" } });
+                          const _wikiJson = await _wikiRes.json();
+                          (_wikiJson.query?.search || []).forEach(s => {
+                            const snippet = s.snippet ? s.snippet.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim() : "";
+                            if (s.title) _cParts.push(`${s.title}${snippet ? "\n" + snippet : ""}`);
+                          });
+                        } catch (_cwe) { console.warn("[cos:web_search] wikipedia err:", _cwe.message); }
+                      }
+                      // HN Algolia — recent tech/startup discussion
+                      try {
+                        const _hnRes = await fetch(`https://hn.algolia.com/api/v1/search?query=${_q}&tags=story&hitsPerPage=5`, { signal: AbortSignal.timeout(6000), headers: { "User-Agent": "Mozilla/5.0 (compatible; SOCIII/1.0)" } });
+                        const _hnJson = await _hnRes.json();
+                        (_hnJson.hits || []).filter(h => h.title).slice(0, 3).forEach(h => {
+                          _cParts.push(`[HN] ${h.title}${h.url ? " — " + h.url : ""}`);
+                        });
+                      } catch (_che) { console.warn("[cos:web_search] hn err:", _che.message); }
+                      _searchText = _cParts.length > 0
+                        ? `LIVE WEB SEARCH RESULTS for "${_cosTool.input.query}":\n\nRule: Base your answer ONLY on the results below. Do not supplement with training data. If the results don't fully answer the question, say exactly what you found and acknowledge the gap.\n\n${_cParts.join("\n\n")}`
+                        : `No web search results were returned for "${_cosTool.input.query}". Do NOT answer from training data. Tell the user plainly: you searched but found no current results, and direct them to a relevant primary source (e.g. nhc.noaa.gov for hurricanes, FAA.gov for aviation, etc.).`;
+                    } catch (_searchErr) {
+                      _searchText = `Search failed: ${_searchErr.message}`;
+                    }
+                    const _searchFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6",
+                      max_tokens: 4096,
+                      system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _searchText }] }],
+                      tools: _cosTools,
+                      tool_choice: { type: "auto" },
+                    });
+                    _txt = _searchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I searched but couldn't summarize the results.";
+                  }
+                }
+                if (!_txt) {
+                  _txt = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim()
+                    || "Let me pull that together for you.";
+                }
 
                 sessionState.salesHistory.push({ role: 'user', content: userInput, workerSlug: "chief-of-staff" });
                 sessionState.salesHistory.push({ role: 'assistant', content: _txt, workerSlug: "chief-of-staff" });
@@ -6407,7 +6734,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                   updatedAt: nowServerTs(),
                 }, { merge: true });
 
-                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active' });
+                return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active', ...(_cosGeneratedDoc ? { generatedDocument: _cosGeneratedDoc } : {}) });
               } catch (cosErr) {
                 console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
               }
@@ -6487,7 +6814,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           try {
             const anthropic = getAnthropic();
             const aiResponse = await anthropic.messages.create({
-              model: 'claude-sonnet-4-5-20250929',
+              model: 'claude-sonnet-4-6',
               max_tokens: 300,
               system: discoverySystemPrompt,
               messages,
@@ -7215,7 +7542,7 @@ ${nameGuidance}${authGuidance}`;
                 }
                 try {
                   return await anthropic.messages.create({
-                    model: "claude-sonnet-4-5-20250929",
+                    model: "claude-sonnet-4-6",
                     max_tokens: 2048,
                     system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
                     messages,
@@ -7287,8 +7614,8 @@ ${nameGuidance}${authGuidance}`;
                   content: imageUrl ? `Image generated successfully: ${imageUrl}` : 'Image generation failed. Tell the creator you will try again.',
                 }] });
                 const followUp = await anthropic.messages.create({
-                  model: "claude-sonnet-4-5-20250929",
-                  max_tokens: 1024,
+                  model: "claude-sonnet-4-6",
+                  max_tokens: 2048,
                   system: sandboxSystemPrompt,
                   messages,
                   tools: sandboxTools,
@@ -7667,7 +7994,7 @@ CONVERSATION STYLE:
           try {
             const anthropic = getAnthropic();
             const aiResp = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+              model: "claude-sonnet-4-6",
               max_tokens: 2048,
               system: privacySystemPrompt,
               messages,
@@ -7794,7 +8121,7 @@ ${messageGuidance}`;
           try {
             const anthropic = getAnthropic();
             const aiResp = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+              model: "claude-sonnet-4-6",
               max_tokens: 2048,
               system: contactSystemPrompt,
               messages,
@@ -7939,7 +8266,7 @@ ${messageGuidance}`;
           try {
             const anthropic = getAnthropic();
             const classifyResponse = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+              model: "claude-sonnet-4-6",
               max_tokens: 512,
               system: `You are SOCIII's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
 
@@ -8051,7 +8378,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
             try {
               const anthropic = getAnthropic();
               const qResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-5-20250929",
+                model: "claude-sonnet-4-6",
                 max_tokens: 512,
                 system: `You are helping build a custom Digital Worker configuration for a business. Based on their description: "${ctx.companyDescription}". Company: ${ctx.companyName}. Ask them the first of 3-5 questions that would help you understand their key record types, compliance requirements, and workflows. Ask one question at a time. Keep questions conversational and specific to their industry. Respond with ONLY the question text, nothing else.`,
                 messages: [{ role: "user", content: "What should I ask first?" }],
@@ -8069,7 +8396,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const anthropic = getAnthropic();
               const answersText = (ctx.answers || []).map((a, i) => `Q${i+1}: ${a.question}\nA${i+1}: ${a.answer}`).join("\n\n");
               const qResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-5-20250929",
+                model: "claude-sonnet-4-6",
                 max_tokens: 512,
                 system: `You are helping build a custom Digital Worker configuration for "${ctx.companyName}" (${ctx.companyDescription}). Here are the questions asked and answers so far:\n\n${answersText}\n\nAsk the next question to understand their record types, compliance requirements, or workflows. Keep it conversational and specific to their industry. Respond with ONLY the question text.`,
                 messages: [{ role: "user", content: "What should I ask next?" }],
@@ -8087,7 +8414,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const anthropic = getAnthropic();
               const answersText = (ctx.answers || []).map((a, i) => `Q${i+1}: ${a.question}\nA${i+1}: ${a.answer}`).join("\n\n");
               const sResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-5-20250929",
+                model: "claude-sonnet-4-6",
                 max_tokens: 1024,
                 system: `You are Alex from SOCIII. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
                 messages: [{ role: "user", content: answersText }],
@@ -8106,7 +8433,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
             try {
               const anthropic = getAnthropic();
               const raasResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-5-20250929",
+                model: "claude-sonnet-4-6",
                 max_tokens: 1024,
                 system: `You are Alex from SOCIII helping onboard a new business. The user has described their business. Based on their description, determine:
 
@@ -8201,7 +8528,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
               : `You are Alex from SOCIII. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
 
             const promiseResponse = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+              model: "claude-sonnet-4-6",
               max_tokens: 150,
               system: systemPrompt,
               messages: [{ role: "user", content: "Generate the onboarding message." }],
@@ -8276,7 +8603,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
           try {
             const anthropic = getAnthropic();
             const milestoneResponse = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+              model: "claude-sonnet-4-6",
               max_tokens: 512,
               system: `You are Alex from SOCIII. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
 
@@ -8378,6 +8705,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
       } catch (e) {
         console.error("chatEngine error:", e);
+        if (e && e.code === 'anthropic_timeout') {
+          return res.json({ ok: true, response: "Taking a bit longer than usual — please try again.", message: "Taking a bit longer than usual — please try again.", cards: [], promptChips: [] });
+        }
         return jsonError(res, 500, "Chat engine failed", { details: e.message });
       }
     }
@@ -11727,7 +12057,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         const anthropic = getAnthropic();
         const aiResp = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250929",
+          model: "claude-sonnet-4-6",
           max_tokens: 1024,
           system: testSystemPrompt,
           messages,
@@ -12759,7 +13089,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         const anthropic = getAnthropic();
         const aiResp = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250929",
+          model: "claude-sonnet-4-6",
           max_tokens: 4096,
           system: "You are a regulatory research AI. Return only valid JSON.",
           messages: [{ role: "user", content: researchPrompt }],
@@ -13253,7 +13583,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const userMsg = `CURRENT CONFIG:\n${JSON.stringify(currentConfig, null, 2)}\n\nOWNER REQUEST:\n"${instruction}"`;
         const anthropic = getAnthropic();
         const aiResp = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250929",
+          model: "claude-sonnet-4-6",
           max_tokens: 1500,
           system: sys,
           messages: [{ role: "user", content: userMsg }],
@@ -24099,6 +24429,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         const pv = (fv, yrs) => fv / Math.pow(1 + dr, yrs);
         const assetEV = Math.max(0, bookEquityCents / 100 + 60000 + 90000);
         const marketEV = 2100000;
+        // PWERM SCENARIOS — must match services/canvas/workerOwnData.js ~line 551
+        // Fingerprint: [50M@0.12@4y, 10M@0.30@3y, 3M@0.35@5y, 0@0.23@0y]
+        // Changing any ev/prob/yrs here without updating that file will silently diverge the 409A route.
         const scenarios = [
           { label: "Strong exit (IPO / acquisition $50M)", ev: 50000000, prob: 0.12, yrs: 4 },
           { label: "Moderate acquisition ($10M)", ev: 10000000, prob: 0.30, yrs: 3 },

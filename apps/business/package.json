@@ -8,9 +8,16 @@
     "build": "vite build",
     "lint": "eslint .",
     "knip": "knip",
-    "preview": "vite preview --port 4174"
+    "preview": "vite preview --port 4174",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "cap:android": "npm run build && npx cap sync android && npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
     "canvas-confetti": "^1.9.4",
     "firebase": "^12.8.0",
     "qrcode": "^1.5.4",
@@ -32,6 +39,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "knip": "^6.25.0",
+    "typescript": "^7.0.2",
     "vite": "npm:rolldown-vite@7.2.5"
   },
   "overrides": {

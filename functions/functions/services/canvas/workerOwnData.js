@@ -548,6 +548,9 @@ async function irBlock(db, tenantId) {
   // Asset approach: book equity + IP premium (software dev + patent applications)
   const assetEV = Math.max(0, bookEquityCents / 100 + 60000 + 90000);
   const marketEV = 2100000; // pre-revenue AI/SaaS seed, working product + active customers
+  // PWERM SCENARIOS — must match index.js ~line 24105
+  // Fingerprint: [50M@0.12@4y, 10M@0.30@3y, 3M@0.35@5y, 0@0.23@0y]
+  // Changing any ev/prob/yrs here without updating that file will silently diverge the 409A route.
   const pwermEV = [
     { ev: 50000000, prob: 0.12, yrs: 4 },
     { ev: 10000000, prob: 0.30, yrs: 3 },

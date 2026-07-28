@@ -12,6 +12,8 @@
  *         /portal?company=sociii-advisors&persona=advisor
  *         /portal?company=texas-title&persona=buyer&orderId=xxx
  *         /portal?company=texas-title&persona=seller&orderId=xxx
+ *         /portal?company=attorneys-title&persona=buyer&orderId=xxx   (Henderson County TX demo)
+ *         /portal?company=attorneys-title&persona=seller&orderId=xxx
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -42,6 +44,13 @@ const SKINS = {
     accent: "#1e40af", accentSoft: "#eff6ff", border: "#bfdbfe",
     glyph: "⊞",
     tagline: "Your title order status",
+  },
+  "attorneys-title": {
+    name: "Attorneys Title Company of Henderson County",
+    short: "Attorneys Title",
+    accent: "#1e3a5f", accentSoft: "#f0f4f8", border: "#b0c4de",
+    glyph: "⚖",
+    tagline: "Henderson County, Texas — Athens, TX",
   },
 };
 
@@ -397,7 +406,7 @@ function Confirmed({ title, sub }) {
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
-  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : companyKey === "texas-title" ? "buyer" : "petowner");
+  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
   const person = PEOPLE[persona] || PEOPLE.petowner;
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
@@ -548,7 +557,7 @@ export default function ClientPortal() {
               alignItems: "flex-start",
               gap: 14,
             }}>
-              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? "⊞" : "🩺"}</div>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : "🩺"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
                   {persona === "advisor"

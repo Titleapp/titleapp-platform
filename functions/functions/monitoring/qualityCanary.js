@@ -434,13 +434,12 @@ async function runQualityCanary(opts = {}) {
       await pushQualityAlert(db, nowMs, redIssues, "red");
     }
 
-    // Page ONCE per 24h on Tier 2 degraded state (time-based cooldown, NOT transition-based,
-    // so a failed state write can't cause spam — if lastDegradedAlertMs never persists, the
-    // 2hr SMS_COOLDOWN_MS above still prevents rapid-fire RED alerts).
+    // Tier 2 degraded = WARN only (Operating Feed, no SMS/email spam).
+    // Token exchange failures are chronic infrastructure issues, not on-call pages.
     if (domainDegraded && (nowMs - lastDegradedAlertMs >= DEGRADED_COOLDOWN_MS)) {
-      const smsText = "⚠️ SOCIII quality canary: Tier 2 (domain-fact probe) DEGRADED — FB_WEB_API_KEY missing or token exchange failing. Ground-truth diff disabled.";
-      alerted = alerted || await sendAlerts(db, recipients, smsText,
-        "⚠️ SOCIII quality Tier 2 degraded", `<p>${smsText}</p>`);
+      await pushQualityAlert(db, nowMs,
+        [{ key: "tier2_degraded", label: "Tier 2 domain probe degraded", reason: "Token exchange failing — ground-truth diff disabled" }],
+        "warn");
     }
   }
 

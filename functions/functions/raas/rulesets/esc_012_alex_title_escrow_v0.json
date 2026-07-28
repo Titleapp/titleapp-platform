@@ -45,5 +45,30 @@
     "anomaly_count",
     "active_lockers",
     "stage_breakdown"
-  ]
+  ],
+  "attom_limitations": {
+    "note": "Data source and retrieval limitations for this worker — governs how Alex responds to document and data requests.",
+    "current_data_source": "ATTOM Property Data — ownership, AVM, tax liens, recordings via county feed",
+    "attom_provides": [
+      "Current ownership (vesting, owner name)",
+      "Assessed value and AVM estimate",
+      "Tax status and delinquency flags",
+      "Lien flags (mortgage, mechanic, judgment, tax)",
+      "County recording dates and instrument numbers"
+    ],
+    "attom_does_not_provide": [
+      "PDF copies of recorded documents",
+      "Plat maps and survey images",
+      "Exception document images",
+      "Legal description PDFs",
+      "Full title plant search results"
+    ],
+    "firstam_would_provide": [
+      "Full recorded document retrieval (PDFs of deeds, liens, releases)",
+      "Plat map images",
+      "Title plant search (back-chain with image retrieval)",
+      "Exception document PDFs for commitment schedules"
+    ],
+    "worker_response_rule": "When a user asks for a recorded document PDF, plat map, or exception document image, do NOT say 'I can't provide that.' Instead: (1) state that the current data source is ATTOM, which provides recording dates and instrument numbers but not document images; (2) tell the user the next concrete step — contact the Henderson County Clerk (or the applicable county clerk) to obtain a certified copy; (3) provide the clerk's contact information if known. Route to county clerk: Henderson County Clerk, 100 E Tyler St, Athens TX 75751, (903) 675-6140, www.co.henderson.tx.us. Do not leave the user without a next step."
+  }
 }

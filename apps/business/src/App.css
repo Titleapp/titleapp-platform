@@ -885,6 +885,12 @@ body{
 /* ══ GLOBAL MOBILE SAFETY ══ */
 body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 
+/* mobileChatPanel is a mobile-only full-screen overlay — never show on desktop */
+@media (min-width:769px){
+  .mobileChatPanel,
+  .mobileChatPanel.mobileChatPanelOpen{ display:none !important; }
+}
+
 /* ══ DASHBOARD RESPONSIVE GRID CLASSES ══ */
 .trackGrid4{
   display:grid;
@@ -1125,4 +1131,28 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 @media (max-width: 767px) {
   .sidebarCollapseToggle { display: none; }
   .sidebar.collapsed { width: auto !important; min-width: 0 !important; overflow: visible; }
+}
+
+/* ── CODEX 57 P1+P2 mobile responsive fixes ── */
+@media (max-width: 768px) {
+  /* P1: Grid layouts → 2-col on mobile */
+  .trackGrid4 { grid-template-columns: 1fr 1fr; }
+  .valueTrackerGrid { grid-template-columns: 1fr 1fr; }
+  .consumerRow3 { grid-template-columns: 1fr 1fr; }
+  .consumerRow2 { grid-template-columns: 1fr; }
+
+  /* P1: Data tables — horizontal scroll instead of overflow-clip */
+  .main table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+
+  /* P2: Chat bubbles — wider on mobile (less wasted space) */
+  .chatBubble, [class*="chatBubble"] { max-width: 85% !important; }
+
+  /* P2: Minimum body font size (prevents tiny text below 13px) */
+  .main p, .main li, .main td, .main span { font-size: max(13px, 0.875rem); }
+}
+
+@media (max-width: 480px) {
+  /* Tightest breakpoint: single-column everything */
+  .trackGrid4, .valueTrackerGrid, .consumerRow3, .consumerRow2 { grid-template-columns: 1fr; }
+  .kpiRow { grid-template-columns: 1fr 1fr; }
 }

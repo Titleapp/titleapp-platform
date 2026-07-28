@@ -1,7 +1,7 @@
 # CODEX 48 — Title Production Suite
 ## The Title Company OS — From Search to Policy, Append-Only
 
-**Status:** ⚪ spec · **Owner:** Sean · **Created:** 2026-07-25
+**Status:** 🟡 in-progress · **Owner:** Sean · **Created:** 2026-07-25 · **Updated:** 2026-07-27
 **Vertical:** `real-estate` · **Suite:** Title Production (new)
 **Trigger:** Mike Lee opportunity — Texas title company, AI-powered scale play
 **Strategic frame:** SOCIII is not a title company. SOCIII is the OS that title companies run on.
@@ -821,3 +821,32 @@ Phase 3 — Consumer layer + opco expansion:
 *SOCIII is not a title insurer. SOCIII provides the platform; the licensed title agent and appointed underwriter bear the risk.*
 *All TX title rules are per TDI and TIRBM — not negotiable.*
 *Patent 64/073,700 covers the append-only anchored record model this suite runs on.*
+
+---
+
+## Ship Log
+
+### 2026-07-27 — Title Advocate canvas shipped (Phase 1, Mike Lee demo)
+
+**Shipped:**
+- `re-escrow-001` worker renamed → **"Title Advocate"** in Firestore; `visible: true`, `status: active`
+- Canvas spec added to `reCanvasData.js` under key `re-escrow-001` (5 tabs):
+  - **Funds Tracker** — sources/uses grid, wire verification status, CAS-banded alerts
+  - **Wire Instructions** — verified bank details, fraud prevention flags, confirmation log
+  - **Closing Disclosure** — ALTA settlement statement, line-item breakdown, CAS codes
+  - **Disbursements** — post-close fund routing, payoff confirmation, recording fees
+  - **Close Status** — recording status, policy issuance gate, chain-of-custody events
+- Demo address: 313 Mayfair Dr, Athens TX 75751 · File ATH-2026-0743 · $285K cash purchase
+- ATTOM limitations documented in `esc_012_alex_title_escrow_v0.json` under `attom_limitations`:
+  - ATTOM provides: ownership, AVM, tax, lien flags, recording dates
+  - ATTOM does NOT provide: recorded document PDFs, plat maps, exception images
+  - FirstAm / DataTree would add those — noted as Phase 2 dependency
+- Alias `"title-advocate-001" → "re-escrow-001"` added to `RE_CANVAS_ALIASES`
+- Deployed to Firebase Hosting
+
+**Not yet done (Phase 2):**
+- DataTree / FirstAm connector
+- Real ATTOM live pull for Title Advocate (currently fixture data)
+- Wet-close gate wired in `raasEngine.validate()`
+- Seven-gate policy issuance check (deterministic Firestore queries)
+- Chain anchor on policy issuance

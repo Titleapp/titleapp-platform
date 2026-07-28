@@ -49,7 +49,7 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
         flexShrink: 0,
       }}
     >
-      <div style={{ display: "flex", flexWrap: "wrap", flex: 1, rowGap: 0 }}>
+      <div style={{ display: "flex", flexWrap: "nowrap", flex: 1, overflowX: "auto", WebkitOverflowScrolling: "touch", rowGap: 0 }}>
         {sorted.map(t => {
           const active = t.id === activeId;
           return (

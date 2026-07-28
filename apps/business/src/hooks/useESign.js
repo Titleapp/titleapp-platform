@@ -22,9 +22,10 @@ async function esignApi(action, method = "GET", body = null) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   const token = await user.getIdToken();
+  const tenantId = localStorage.getItem("CURRENT_TENANT_ID") || localStorage.getItem("TENANT_ID") || "";
   const opts = {
     method,
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...(tenantId ? { "x-tenant-id": tenantId } : {}) },
   };
   if (body && method !== "GET") opts.body = JSON.stringify(body);
   const res = await fetch(`${API_BASE}/v1/esign:${action}`, opts);

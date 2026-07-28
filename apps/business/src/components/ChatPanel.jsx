@@ -1935,6 +1935,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           apolloSearches: data.apolloSearches || null,
           calendarProposal: data.calendarProposal || null,
           creditWarning: data.creditWarning || null,
+          generatedDocument: data.generatedDocument || null,
         }]);
       }
       // Push structured output to the right-panel artifact view so the canvas
@@ -2063,6 +2064,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
   const [campaignSendState, setCampaignSendState] = useState({}); // { idx: "sending"|"done"|"error" }
   const [bundleSubscribeModal, setBundleSubscribeModal] = useState(null); // { bundle, workspaceName }
+  const [docPreview, setDocPreview] = useState(null); // { url, title, format }
 
   async function handleSaveDraft(content, idx) {
     setSavingDraftIdx(idx);
@@ -2761,6 +2763,35 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               {(msg.structuredData || embeddedDoc) && (
                 <div className="chat-structured-data">
                   {renderStructuredData(msg.structuredData || embeddedDoc)}
+                </div>
+              )}
+              {msg.generatedDocument && (
+                <div style={{ marginTop: 8, padding: "12px 14px", background: "#f8faff", border: "1px solid #e2e8f0", borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 22 }}>
+                    {msg.generatedDocument.format === "pptx" ? "📊" : msg.generatedDocument.format === "xlsx" ? "📈" : msg.generatedDocument.format === "docx" ? "📄" : "📋"}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{msg.generatedDocument.title}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>{(msg.generatedDocument.format || "pdf").toUpperCase()} document</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    {msg.generatedDocument.format === "pdf" && (
+                      <button
+                        onClick={() => setDocPreview({ url: msg.generatedDocument.downloadUrl, title: msg.generatedDocument.title, format: msg.generatedDocument.format })}
+                        style={{ padding: "7px 14px", background: "#f1f5f9", color: "#7c3aed", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Preview
+                      </button>
+                    )}
+                    <a
+                      href={msg.generatedDocument.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: "7px 14px", background: "#7c3aed", color: "#fff", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
+                    >
+                      Download
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
@@ -3706,6 +3737,44 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             >
               Skip — add to my current workspace
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* PDF document preview overlay */}
+      {docPreview && (
+        <div
+          onClick={() => setDocPreview(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "stretch" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 900, height: "100%", margin: "0 auto", padding: "16px" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{docPreview.title}</div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                <a
+                  href={docPreview.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: "7px 16px", background: "#7c3aed", color: "#fff", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none" }}
+                >
+                  Download
+                </a>
+                <button
+                  onClick={() => setDocPreview(null)}
+                  style={{ padding: "7px 14px", background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={docPreview.url}
+              style={{ flex: 1, width: "100%", border: "none", borderRadius: 8, background: "#fff" }}
+              title={docPreview.title}
+            />
           </div>
         </div>
       )}
