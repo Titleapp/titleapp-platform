@@ -1120,10 +1120,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (/\bthis worker\b|how (do|does|to) (i |you )?(use|work)|what (is|are|does|can) (this|it|you)\b/i.test(message)) return null;
 
     // "show me X workers" / "X workers" / "workers for X" / "browse X" / "find X worker"
+    // NOTE: browse pattern is anchored to start of message — mid-sentence "browse" (e.g.
+    // "you can browse the internet") must NOT trigger worker search.
     const patterns = [
       /show\s+me\s+(.+?)\s+workers?/i,
       /find\s+(.+?)\s+workers?/i,
-      /browse\s+(.+)/i,
+      /^(?:please\s+|can\s+you\s+)?browse\s+(.+)/i,
       /workers?\s+for\s+(.+)/i,
       /what\s+(.+?)\s+workers?\s+do\s+you\s+have/i,
     ];

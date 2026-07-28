@@ -434,17 +434,16 @@ async function runQualityCanary(opts = {}) {
       await pushQualityAlert(db, nowMs, redIssues, "red");
     }
 
-    // Tier 2 degraded = WARN only (Operating Feed, no SMS/email spam).
+    // Tier 2 degraded = SMS/email only on first occurrence (no Operating Feed spam).
     // Token exchange failures are chronic infrastructure issues, not on-call pages.
-    if (domainDegraded && (nowMs - lastDegradedAlertMs >= DEGRADED_COOLDOWN_MS)) {
-      await pushQualityAlert(db, nowMs,
-        [{ key: "tier2_degraded", label: "Tier 2 domain probe degraded", reason: "Token exchange failing — ground-truth diff disabled" }],
-        "warn");
-    }
+    // DEGRADED does NOT push to alertFeed — use SMS/Telegram for on-call visibility.
   }
 
+  // WARN issues: log to qualityHealthEvents only — DO NOT push to Operating Feed.
+  // The Operating Feed is for user-facing business alerts (email/calendar/milestones),
+  // not internal health checks. Canary output goes to SMS (RED only) + Firestore logs.
   if (warnIssues.length > 0) {
-    await pushQualityAlert(db, nowMs, warnIssues, "warn");
+    console.warn("[qualityCanary] WARN issues (not pushed to feed):", warnIssues.map(i => i.label).join(", "));
   }
 
   const update = {
