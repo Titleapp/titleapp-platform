@@ -9,7 +9,7 @@ SOCIII is an AI-powered operations platform. The short version: instead of loggi
 
 There are two parts to the product:
 
-1. **Alex** — your AI operations coordinator. You talk to Alex in plain English. Alex reads your context, answers questions, takes actions you approve, and routes work to the right Digital Worker.
+1. **Alex** — your Chief of Staff. You talk to Alex in plain English. Alex reads your context, answers questions, takes actions you approve, and routes work to the right Digital Worker.
 
 2. **Digital Workers** — specialized AI agents for specific jobs: title search, zoning analysis, student records, flight briefings, product compliance. Each one has a canvas (the visual panel on the right) that shows structured results, and a chat panel where Alex coordinates.
 

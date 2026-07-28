@@ -7,7 +7,7 @@
 
 ## Abstract
 
-OpenAI, Goldman Sachs, and McKinsey have all published the same list. Real estate brokers — residential and commercial — are among the professions most likely to be structurally displaced by AI within this decade. This is not a fringe view. It is the mainstream consensus of the firms doing the most serious analysis of what AI does to labor markets. This paper does not dispute that conclusion. It refines it. The coming disruption is not uniform. The vast majority of brokers — those whose value proposition rests on information access, transaction coordination, and market presence — will be competed away by AI that does all three things faster and cheaper. But a small cohort — the ones who recognize this early and use AI to do what they do at 10x the scale — will dominate the market in a way that was never previously possible. The difference between those two outcomes is a decision. This paper explains why the disruption is real, what the super-winner thesis looks like in practice, and why SOCIII is the platform that gets agents to the right side of it.
+Leading AI research firms and investment banks have identified real estate brokerage among the professions most exposed to AI displacement within this decade. This paper does not dispute that conclusion. It refines it. The coming disruption is not uniform. The vast majority of brokers — those whose value proposition rests on information access, transaction coordination, and market presence — will be competed away by AI that does all three things faster and cheaper. But a small cohort — the ones who recognize this early and use AI to do what they do at 10x the scale — will dominate the market in a way that was never previously possible. The difference between those two outcomes is a decision. This paper explains why the disruption is real, what the super-winner thesis looks like in practice, and why SOCIII is the platform that gets agents to the right side of it.
 
 ---
 
@@ -35,9 +35,9 @@ The settlement also exposed something about the industry's self-image. The NAR's
 
 ---
 
-## Wave 3: The Selling Sunset Generation Is the Wrong Business Model for This Moment (Now)
+## Wave 3: The Content-First Generation Is the Wrong Business Model for This Moment (Now)
 
-Over the last decade, real estate became a content category. "Million Dollar Listing." "Selling Sunset." "Property Brothers." The cultural image of a real estate agent shifted from trusted local advisor to personal brand, lifestyle influencer, and luxury product placement vehicle. Licensing exam enrollment spiked. The NAR membership hit historic highs. A generation entered the industry whose primary goal was the aesthetic of the career, not the substance of the service.
+Over the last decade, real estate became a content category. The cultural image of a real estate agent shifted from trusted local advisor to personal brand, lifestyle influencer, and luxury product placement vehicle. Licensing exam enrollment spiked. The NAR membership hit historic highs. A cohort entered the industry whose primary goal was the aesthetic of the career — the content, the personal brand, the lifestyle — not the substance of the service.
 
 That model does not survive what is coming.
 
@@ -105,7 +105,9 @@ This is not a comfortable message for an industry that spent the last decade arg
 | **Title Search** | Chain-of-title, lien search, ownership verification | `chain-of-title/v1` |
 | **Accounting** | Commission tracking, expense management, business P&L | `accounting-bundle/v1` |
 
-**Alex, the chief of staff**, manages the pipeline, monitors contingency deadlines, drafts client communications, and ensures that no transaction falls through a crack — across every active deal simultaneously.
+**Alex, the Chief of Staff**, manages the pipeline, monitors contingency deadlines, drafts client communications, and ensures that no transaction falls through a crack — across every active deal simultaneously.
+
+SOCIII is currently deploying with a two-agent residential team operating in a competitive resort market — building AI-augmented workflows in an environment where average transaction values and client expectations are both high. Early results are being tracked and will be published when the deployment reaches sufficient volume for meaningful comparison.
 
 ---
 

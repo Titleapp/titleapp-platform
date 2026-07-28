@@ -19,7 +19,7 @@ The net effect is that a leasing manager who wants to know whether a prospective
 
 The PropTech market tried to solve this through consolidation, but consolidation produced pricing power, not integration. The data is still siloed. The analysis still lives in a person's spreadsheet.
 
-**The SOCIII answer:** A single AI coordinator — Alex — that reads across all connected data sources and produces synthesized analysis on demand. The operator does not need to integrate CoStar with Argus with MRI. Alex reads the inputs, runs the analysis through RAAS-governed workers, and returns a structured output the operator can act on. The synthesis layer is the product.
+**The SOCIII answer:** Alex — Chief of Staff — reads across all connected data sources and produces synthesized analysis on demand. The operator does not need to integrate CoStar with Argus with MRI. Alex reads the inputs, runs the analysis through RAAS-governed workers, and returns a structured output the operator can act on. The synthesis layer is the product.
 
 ---
 
@@ -51,15 +51,15 @@ When a lease is 18 months from expiration, Alex initiates the renewal sequence a
 
 When rent variance reports show a 200-basis-point occupancy drop across two buildings, Alex surfaces the pattern, identifies the common factors (same leasing agent, same vintage of tenant, same HVAC vendor), and flags the operations manager with a recommendation — not just a data report.
 
-This is what coordinated asset operations looks like when leasing, maintenance, financing, legal, and tenant relations live in a single platform with a single AI coordinator.
+This is what coordinated asset operations looks like when leasing, maintenance, financing, legal, and tenant relations live in a single platform with a single Chief of Staff — Alex.
 
 **The SOCIII operations stack:**
-- **Leasing** — tenant qualification, lease term modeling, renewal management, vacancy forecasting
-- **MX (Maintenance)** — work order management, vendor scheduling, capital planning, AD compliance tracking
+- **Salesperson / Leasing** — tenant qualification, lease term modeling, renewal management, vacancy forecasting (`lease-bundle/v1`)
+- **MX (Maintenance)** — work order management, vendor scheduling, capital planning, AD compliance tracking (`mx-report/v1`)
 - **Accounting** — NOI tracking, expense variance alerts, capital call scheduling, lender covenant monitoring, investor reporting
 - **Legal** — lease abstract, tenant notice drafting, dispute documentation, compliance flag tracking
 - **HR** — property staff management, contractor roster, commission tracking
-- **Operations** — CAM reconciliation, insurance renewals, utility contract management, inspection scheduling
+- **Asset Operations** — CAM reconciliation, insurance renewals, utility contract management, inspection scheduling (`ops-bundle/v1`)
 
 All of these feed into a single canvas that shows the operator where every asset stands — right now, not at the end of the month when the report comes out.
 
@@ -72,12 +72,12 @@ All of these feed into a single canvas that shows the operator where every asset
 2. Site Recon worker pulls comps, demographics, traffic patterns, and market data.
 3. Feasibility worker builds the pro forma with current financing assumptions, sensitivity table, and IRR range.
 4. CRE Analyst worker cross-references comparable sales and positions the deal against recent transactions.
-5. Alex presents the deal memo: go/conditional/no-go with supporting analysis. Every data point is sourced. Every assumption is visible.
+5. Alex presents the deal memo: go/conditional/no-go with supporting analysis. Every assumption is visible. Data sourcing for property-specific figures requires connecting ATTOM or your preferred data provider — the Feasibility worker will clearly flag any figure that relies on a data connection that hasn't been made yet.
 
 **Lease Execution:**
-1. Tenant inquiry arrives. Leasing worker runs credit check, reviews comparable leases, models the rent structure.
-2. Land Use worker confirms permitted use for the tenant's business category.
-3. Leasing worker drafts the LOI. Alex routes it to legal for review.
+1. Tenant inquiry arrives. Salesperson / Leasing worker runs credit check, reviews comparable leases, models the rent structure.
+2. Land Use / Zoning worker confirms permitted use for the tenant's business category.
+3. Salesperson / Leasing worker drafts the LOI. Alex routes it to legal for review.
 4. Upon execution, the lease event is written as an immutable Vault record. Alex schedules rent commencement, option windows, and CAM reconciliation dates automatically.
 
 **Daily Operations:**
@@ -110,7 +110,7 @@ This is not a proof of concept. It is a running deployment on a real portfolio.
 
 **RAAS governance means AI you can show investors.** When the Feasibility worker produces a pro forma, every assumption is rule-validated. The model cannot produce an IRR that requires a cap rate assumption outside the market range. The operator can show the model to a lender or investor because the governance layer makes it auditable.
 
-**Patent-protected architecture.** The append-only record with AI governance is protected by USPTO filings from May 2026. A competitor can build a CRE dashboard. They cannot replicate the record architecture without building around the patent.
+**Pending patent application.** The append-only record with AI governance is covered by a pending patent application — USPTO filings from May 2026. A competitor can build a CRE dashboard. They cannot replicate the record architecture without building around the pending patent application.
 
 ---
 
@@ -154,7 +154,7 @@ The US commercial real estate market has $20T in total asset value and approxima
 
 The commercial real estate operator's edge has always been information synthesis and operational execution. The tools that exist today require human capital to do both. AI changes the equation — but only if the AI is governed, auditable, and connected to the deal and operational data that makes the analysis real.
 
-SOCIII is the platform that closes that gap. The workers exist. The architecture is patented. The deployment is live.
+SOCIII is the platform that closes that gap. The workers exist. The architecture is the subject of a pending USPTO filing. The deployment is live.
 
 ---
 

@@ -42,7 +42,7 @@ These laws converge on a single requirement: **companies must be able to produce
 
 This is architecturally identical to chain-of-title in real estate. The chain of custody of a product — from raw material extraction through manufacturing, distribution, and eventual end-of-life — is a record of events. Every event has a timestamp, a source, and a handler. The record must be immutable: you cannot go back and change what a supplier attested in 2024 when an audit arrives in 2027.
 
-**The architecture is the same. The patent covers both.**
+**The architecture is the same. The pending patent application covers both.**
 
 ---
 
@@ -70,7 +70,7 @@ The model that works is simpler: a QR code on the product links to an append-onl
 | **Registry Manager** | Submits and manages records in the EU DPP registry | `registry-record/v1` |
 | **Lifecycle Monitor** | Tracks battery state of health, incident reports, end-of-life events | `lifecycle-alert/v1` |
 
-**Alex, the operations coordinator**, monitors compliance deadlines across the entire product catalog — alerting when a product's DPP needs updating, when a supplier's certification is expiring, or when a new product category falls under ESPR scope.
+**Alex, the Chief of Staff**, monitors compliance deadlines across the entire product catalog — alerting when a product's DPP needs updating, when a supplier's certification is expiring, or when a new product category falls under ESPR scope.
 
 ---
 
@@ -90,9 +90,9 @@ Most DPP solutions being proposed are one of two things: (1) a centralized datab
 
 SOCIII's append-only record is neither.
 
-**What the patent actually protects.** The SOCIII architecture is an append-only, event-sourced record with AI governance. Here is what that means in plain language: every product event — a supplier's raw material attestation, a carbon footprint calculation, a certification renewal, an end-of-life disposition — is written as an immutable log entry. Each entry references the one that came before it, forming a chain. No one can go back and change what a supplier attested in 2024 when an audit arrives in 2027, because the 2024 entry is not a field in a database that can be edited — it is a permanent event in the chain. The AI validates each new entry against the regulatory requirements before it becomes a record. The governance layer ensures the data meets the DPP specification. The chain ensures it can't be altered after the fact.
+**What the pending patent application covers.** The SOCIII architecture is an append-only, event-sourced record with AI governance. Here is what that means in plain language: every product event — a supplier's raw material attestation, a carbon footprint calculation, a certification renewal, an end-of-life disposition — is written as an immutable log entry. Each entry references the one that came before it, forming a chain. No one can go back and change what a supplier attested in 2024 when an audit arrives in 2027, because the 2024 entry is not a field in a database that can be edited — it is a permanent event in the chain. The AI validates each new entry against the regulatory requirements before it becomes a record. The governance layer ensures the data meets the DPP specification. The chain ensures it can't be altered after the fact.
 
-This is the same architecture as chain-of-title in real estate — the append-only record of ownership transfers that underlies every property transaction in the US. SOCIII applied that architecture to product provenance and filed the patent before the DPP market fully formed. The defensive perimeter is established.
+This is the same architecture as chain-of-title in real estate — the append-only record of ownership transfers that underlies every property transaction in the US. SOCIII applied that architecture to product provenance and filed the patent application before the DPP market fully formed. The defensive perimeter is established.
 
 **Immutable by design.** A carbon footprint attestation written in 2025 cannot be retroactively changed when the regulation tightens in 2027. The audit trail is complete and tamper-evident.
 
@@ -126,7 +126,7 @@ The pilot establishes the record architecture, the supplier attestation workflow
 
 The EU Battery Regulation alone affects an estimated 1.2 billion battery units/year. At $10–50 per DPP per product lifecycle (a conservative estimate for compliance documentation and registry management), the addressable revenue from battery DPP alone is $12–60 billion/year globally. ESPR expansion to other product categories multiplies this by 5–10x.
 
-The compliance deadline is January 2027 — 18 months from the publication of this paper. Companies that are not building their DPP infrastructure now will be scrambling in 2026. The implementation timeline for a supply-chain-compliant DPP system, including supplier onboarding, data integration, and registry testing, is 6–12 months minimum.
+The compliance deadline for industrial batteries is February 2027 — less than 12 months away. Companies that are not building their DPP infrastructure now will be scrambling to meet the deadline. The implementation timeline for a supply-chain-compliant DPP system, including supplier onboarding, data integration, and registry testing, is 6–12 months minimum.
 
 **The window to build and capture the early-mover position is now.**
 
@@ -136,7 +136,7 @@ The compliance deadline is January 2027 — 18 months from the publication of th
 
 Product provenance documentation has been a voluntary best practice for decades. It is now mandatory law in the world's largest single market, with hard deadlines, clear penalties, and a regulatory trajectory that extends to most durable goods categories by 2030.
 
-The infrastructure answer is an append-only provenance record with AI-governed data validation and a standardized registry interface. That infrastructure is SOCIII — built on the same patented architecture that handles chain-of-title in real estate, operational records in aviation, and learning records in education. It is available today at a cost that makes the McKinsey alternative look like a bad joke.
+The infrastructure answer is an append-only provenance record with AI-governed data validation and a standardized registry interface. That infrastructure is SOCIII — built on the same architecture, subject to a pending USPTO filing, that handles chain-of-title in real estate, operational records in aviation, and learning records in education. It is available today at a cost that makes the McKinsey alternative look like a bad joke.
 
 The wave is mandatory. The deadline is visible. The architecture exists. The price is $99/month.
 

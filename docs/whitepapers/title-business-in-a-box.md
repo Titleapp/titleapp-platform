@@ -7,7 +7,7 @@
 
 ## Abstract
 
-The residential and commercial real estate transaction — the largest single financial event in most people's lives — is currently mediated by a chain of intermediaries whose primary value proposition is information access and process coordination. Both of those things are being automated. This paper describes the three waves of disruption now underway, SOCIII's position at the infrastructure layer, and the 36-month path to a private on-chain title database that becomes the de facto standard before any government body can react.
+The residential and commercial real estate transaction — the largest single financial event in most people's lives — is currently mediated by a chain of intermediaries whose primary value proposition is information access and process coordination. Both of those things are being automated. This paper describes the three waves of disruption now underway, SOCIII's position at the infrastructure layer, and the 36-month path to a private append-only title database that becomes the de facto standard before any government body can react.
 
 ---
 
@@ -33,7 +33,7 @@ The math is simple: at cost of compute, an AI system that handles intake, disclo
 
 ---
 
-## Wave 3: The On-Chain Title Database (24 – 60 Months)
+## Wave 3: The Append-Only, Blockchain-Anchored Title Database (24 – 60 Months)
 
 This is the structural moat.
 
@@ -41,7 +41,7 @@ Current title search requires going back to original source documents — county
 
 SOCIII's core architecture is an **append-only, event-sourced property record** — a ledger where every ownership transfer, lien attachment, release, judgment, and easement is written as an immutable event with a timestamp, a hash, and an AI-verifiable source citation. Once a property's full history is in that ledger, the next search doesn't start from county records — it starts from the last verified state and checks only for new events.
 
-This is not a blockchain product. It is an append-only database with the same guarantee properties as a blockchain — immutability, auditability, non-repudiation — without the overhead. **The architecture is patented (USPTO filings, May 2026).**
+SOCIII records are stored in an append-only event ledger — each event is written once and never overwritten. By default, a cryptographic hash of each record is anchored to the Base blockchain, providing publicly verifiable tamper-evidence. Operators can configure anchoring to any compatible chain in Account Settings. This is not a consumer crypto product — it is a professional records platform with blockchain-grade tamper-evidence available out of the box. **The architecture is the subject of a pending USPTO filing (May 2026).**
 
 **The 36-month path:**
 
@@ -56,11 +56,20 @@ This is not a blockchain product. It is an append-only database with the same gu
 
 | Layer | What it does | Why it matters |
 |---|---|---|
-| **Alex (AI coordinator)** | Reads email, assigns tasks, tracks open items, coordinates across workers | Removes the process management burden from humans |
-| **Digital Workers** | Domain-specific AI agents (Title Search, Escrow, Zoning, CRE Analyst, HR, Marketing) | Each worker is governed by portable, tenant-configurable rules — not hard-coded prompts |
+| **Alex (Chief of Staff)** | Reads email, assigns tasks, tracks open items, coordinates across workers | Removes the process management burden from humans |
+| **Digital Workers** | Domain-specific AI agents — see worker detail table below | Each worker is governed by portable, tenant-configurable rules — not hard-coded prompts |
 | **RAAS Rules Engine** | Validates every AI output against a ruleset before any action is taken | Business logic lives in rules, not in models — switch AI providers without rewriting your workflows |
 | **Append-Only Ledger** | Every property event is an immutable, timestamped record | Chain-of-title is the natural output of the system — not a byproduct |
 | **Data Sources** | ATTOM (current) + CoStar (partner integration) + First American DataTree (planned) | Multiple sources, honest about gaps — Alex says "data unavailable" rather than fabricating |
+
+| Worker | What it does | Record it creates |
+|---|---|---|
+| **Title Search** | Chain-of-title research, lien search, ownership verification | `chain-of-title/v1` |
+| **Escrow** | Escrow coordination, disbursement tracking, closing management | `escrow-bundle/v1` |
+| **Land Use / Zoning** | Permitted uses, overlay districts, variance history | `land-use-bundle/v1` |
+| **CRE Analyst** | Deal screening, comp analysis, market positioning | `deal-analysis/v1` |
+| **HR** | Staff records, scheduling, contract management | `staff-record/v1` |
+| **Marketing** | Listing coordination, client communications, pipeline management | `marketing-bundle/v1` |
 
 ---
 
@@ -70,7 +79,7 @@ The incumbents — Fidelity National Title, First American, Stewart Title — ar
 
 That is SOCIII's window: 24–36 months before the incumbents can deploy something comparable, and 36–60 months before any regulatory response creates a new standard. In that window, the companies that build on SOCIII rails accumulate the property record density that makes the database self-reinforcing.
 
-The patents on the append-only architecture cover the defensive perimeter. The data density is the offensive moat.
+The pending patent application on the append-only architecture covers the defensive perimeter. The data density is the offensive moat.
 
 ---
 

@@ -51,7 +51,7 @@ SOCIII is currently partnering with a nursing school program director and resear
 
 This is not a case study. It is a controlled academic study with pre/post measurement, institutional IRB oversight, and a methodology designed for peer-reviewed publication. The study is running on the SOCIII platform now, with real students in a real program.
 
-**Why this matters:** Every AI company claims their tool improves learning outcomes. Almost none of them have published academic evidence. When this study publishes, SOCIII will have what no competitor in the AI-in-nursing-education space has: a peer-reviewed result showing that RAAS-governed AI instruction improves NCLEX pass rates. That result changes the conversation with every nursing school administrator and accreditor in the country.
+**Why this matters:** Every AI company claims their tool improves learning outcomes. Almost none of them have published academic evidence. If the results confirm what early indicators suggest, SOCIII will have what no competitor in this space has: peer-reviewed evidence that RAAS-governed AI instruction improves outcomes. That result would change the conversation with every program director, accreditor, and licensing board in the country.
 
 ---
 
@@ -71,14 +71,14 @@ The students who use AI well will be better nurses. The programs that integrate 
 
 | Worker | What it does | Record it creates |
 |---|---|---|
-| **Nursing Education** | Full student lifecycle management — enrollment through licensure application | `learning-record/v1` |
+| **Student Evaluation** | Full student lifecycle management — enrollment through licensure application | `learning-record/v1` |
 | **Student Records** | Clinical hours tracking, ATI/HESI score integration, cohort management | `student-record/v1` |
 | **Tutor** | Adaptive NCLEX prep using NextGen clinical judgment scenarios | `tutoring-session/v1` |
-| **Courses** | Curriculum delivery, weekly progress, clinical placement coordination | `course-record/v1` |
+| **Course Manager** | Curriculum delivery, weekly progress, clinical placement coordination | `course-record/v1` |
 | **Accreditation** | ACEN evidence aggregation, competency map, outcome report generation | `accreditation-report/v1` |
 | **Comms** | Faculty-student communications, clinical site coordination, intervention alerts | `comms-bundle/v1` |
 
-**Alex, the operations coordinator**, surfaces at-risk students before they fail, flags documentation gaps before they become accreditation findings, and coordinates clinical placement paperwork across all students simultaneously.
+**Alex, the Chief of Staff**, surfaces at-risk students before they fail, flags documentation gaps before they become accreditation findings, and coordinates clinical placement paperwork across all students simultaneously.
 
 ---
 

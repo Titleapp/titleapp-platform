@@ -49,7 +49,7 @@ The FAA's AI roadmap (2023) acknowledges that human-only information processing 
 
 ---
 
-## The Palantir Parallel — Except SOCIII Owns the Patent and Palantir Doesn't
+## The Palantir Parallel — Except SOCIII Filed the Patent Application First
 
 Palantir Technologies built its business on a single insight: if you put governed AI over operational data — with a rules engine that validates every output before it becomes an action and an append-only audit trail that makes every decision traceable — you get an operational intelligence platform that changes how organizations operate. The Department of Defense pays Palantir hundreds of millions of dollars per year for exactly this capability. The intelligence community, major defense contractors, and large commercial enterprises pay accordingly.
 
@@ -59,9 +59,9 @@ The difference is not the architecture. The differences are two:
 
 **First: SOCIII costs $300/month for a 10-aircraft operator. Palantir costs hundreds of millions per year for the DOD.** The same category of operational intelligence capability that is reserved for the world's largest defense budgets is now accessible to a 5-aircraft medevac program, a Part 91 owner-operator, and a flight school. Not a consumer-grade approximation — the same governed AI, append-only record architecture, rules-validated decision layer.
 
-**Second: SOCIII holds the patent. Palantir does not.** The append-only, event-sourced record with AI governance is covered by SOCIII's USPTO filings from May 2026. Palantir built its platform for defense and intelligence clients under government contracts. It does not hold a patent on the underlying record architecture. SOCIII does. Any competitor — including a defense contractor trying to enter the commercial aviation market — is building around a patent that SOCIII established before the market formed.
+**Second: SOCIII holds the pending patent application. Palantir does not.** The append-only, event-sourced record with AI governance is the subject of SOCIII's USPTO filings from May 2026. Palantir built its platform for defense and intelligence clients under government contracts. It does not hold a patent on the underlying record architecture. SOCIII filed the patent application first. Any competitor — including a defense contractor trying to enter the commercial aviation market — is building around a pending patent application that SOCIII established before the market formed.
 
-This is not a feature comparison. It is a category statement: the most powerful operational intelligence architecture in the world, purpose-built for FAA compliance and aviation workflows, available to any operator at a price that was previously unimaginable, protected by intellectual property that no incumbent holds.
+This is not a feature comparison. It is a category statement: the most powerful operational intelligence architecture in the world, purpose-built for FAA compliance and aviation workflows, available to any operator at a price that was previously unimaginable, covered by a pending patent application that no incumbent holds.
 
 ---
 
@@ -158,17 +158,17 @@ The savings are not incremental. They are structural. The business model of a sm
 | **CoPilot** | Pre-flight briefing, currency check, NOTAM digest, route weather | `flight-brief/v1` — timestamped, signed |
 | **MX** | Squawk logging, AD compliance, maintenance-due calendar, vendor coordination | `mx-report/v1` — append-only maintenance history |
 | **Dispatch** | Full dispatch release — weather, NOTAMs, W&B, currency cleared | `dispatch-release/v1` — complete pre-flight audit trail |
-| **Training** | Certificate tracking, training records, check ride scheduling, recency management | Portable pilot record — verifiable by any operator |
-| **HR** | Crew scheduling, rest tracking, contract management | Portable staff record |
-| **Accounting** | Flight hour billing, fuel cost tracking, charter revenue, cost-per-tail | Operator P&L by tail number |
+| **Training** | Certificate tracking, training records, check ride scheduling, recency management | `training-record/v1` — portable pilot record, verifiable by any operator |
+| **HR** | Crew scheduling, rest tracking, contract management | `staff-record/v1` — portable staff record |
+| **Accounting** | Flight hour billing, fuel cost tracking, charter revenue, cost-per-tail | `accounting-bundle/v1` — operator P&L by tail number |
 
-**Alex, the operations coordinator**, monitors the fleet in real time — alerting on approaching currency expirations, maintenance-due items, dispatch release anomalies, and weather holds before they become operational surprises. Available 24 hours a day, 7 days a week, without a vacation or a lunch break.
+**Alex, the Chief of Staff**, monitors the fleet in real time — alerting on approaching currency expirations, maintenance-due items, dispatch release anomalies, and weather holds before they become operational surprises. Available 24 hours a day, 7 days a week, without a vacation or a lunch break.
 
 ---
 
 ## Pricing
 
-**Student pilots and trainees: free.** Sign in, verify ID, start logging. Your record is on-chain forever, portable to any employer, instantly auditable. Show up to your regional interview with a QR code, not a milk crate.
+**Student pilots and trainees: free to start.** Sign in, complete a one-time ID verification (~$2), and begin logging. Every flight is a permanent, tamper-evident record anchored to the Base blockchain — written once, never altered. Data fees for weather and NOTAM briefings run approximately $1 per flight. CoPilot type ratings for specific aircraft (737, PC-12, Cessna 182, etc.) are available free when SOCIII builds them, or at a creator-set fee when built by third-party creators. **Full CoPilot capability for any aircraft requires uploading that aircraft's Pilot Operating Handbook.** Without the POH, the CoPilot runs in demo mode — it can answer general questions but cannot give you the aircraft-specific performance data, MEL items, or systems information for the exact airframe you're flying. That's a feature, not a limitation: it means when Alex answers a question about your PC-12, the answer comes from your actual handbook, not a generic recitation.
 
 **Commercial operators:** $99/month base, plus $5/seat per month for your crew and staff (a 10-aircraft operator with 15 users is $174/month), plus compute charges for AI-intensive tasks like weather analysis and document generation — typically modest unless running high-resolution meteorological rendering at scale.
 
@@ -183,11 +183,11 @@ SOCIII is not a cheaper version of those systems. It is a different business mod
 
 ## Where This Is Going: Autonomous Operations and the DOD Parallel
 
-The near-term roadmap for aviation is visible and it is moving fast. Autonomous cargo operations are already in FAA certification pipelines — Wing, Reliable Robotics, and Xwing are operating under Part 135 exemptions today. The logical progression from autonomous cargo to autonomous medevac to reduced-crew commercial operations is not speculative. It is the direction the FAA's own roadmap points.
+The near-term roadmap for aviation is visible and it is moving fast. Autonomous cargo operations are already in FAA certification pipelines — Multiple autonomous cargo programs are operating under FAA exemptions today. The logical progression from autonomous cargo to autonomous medevac to reduced-crew commercial operations is not speculative. It is the direction the FAA's own roadmap points.
 
 When a fleet of autonomous cargo drones is operating 200 missions a day across a logistics network, there is no "pilot" to make judgment calls. There is an operations platform — governing each mission, validating each dispatch release against weather and airspace, logging every event as an immutable record, and surfacing the anomalies that require a human decision. That operations platform is SOCIII. The architecture that works for a 5-aircraft Part 135 medevac operator today scales directly to a 500-unit autonomous cargo fleet tomorrow. The same rules engine, the same append-only record, the same AI coordination layer.
 
-The military dimension follows directly. The DOD's appetite for AI-governed operational platforms — command coordination, logistics, maintenance, training records — is essentially unlimited, and the existing vendors charge accordingly. SOCIII's architecture is directly applicable, and the patent position means any defense contractor trying to enter the commercial market is building around IP that SOCIII already holds.
+The military dimension follows directly. The DOD's appetite for AI-governed operational platforms — command coordination, logistics, maintenance, training records — is essentially unlimited, and the existing vendors charge accordingly. SOCIII's architecture is directly applicable, and the pending patent application means any defense contractor trying to enter the commercial market is building around IP that SOCIII already holds.
 
 The operators who build on SOCIII now are not just solving today's operational problems. They are on the right infrastructure for where the entire industry is going — and they got there at $300/month instead of $300 million.
 
@@ -203,6 +203,6 @@ The FAA will eventually require this. The autonomous operators will need it. The
 
 ---
 
-*SOCIII Inc. · Aviation vertical — pilot partners: Pacific Air Partners + medevac operator network*
+*SOCIII Inc. · Aviation vertical — pilot partners: Western US charter operator + medevac operator network*
 *Student pilots: free forever · Commercial operators: from $99/month*
 *Patent pending (USPTO filings May 2026) · sean@sociii.ai · sociii.ai*

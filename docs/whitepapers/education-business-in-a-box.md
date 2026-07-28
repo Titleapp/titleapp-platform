@@ -87,7 +87,7 @@ SOCIII is currently partnering with a nursing school program director and resear
 
 This is not a case study or a marketing claim. It is an IRB-approved study with pre/post measurement and a methodology designed for peer-reviewed publication. The study is running on the SOCIII platform now, with real students in a real program.
 
-When this study publishes, SOCIII will have what no competitor in the AI-in-education space has: peer-reviewed evidence that RAAS-governed AI instruction improves outcomes. That result changes the conversation with every program director, accreditor, and board of nursing in the country.
+If the results confirm what early indicators suggest, SOCIII will have what no competitor in this space has: peer-reviewed evidence that RAAS-governed AI instruction improves outcomes. That result would change the conversation with every program director, accreditor, and licensing board in the country.
 
 ---
 
@@ -102,7 +102,7 @@ When this study publishes, SOCIII will have what no competitor in the AI-in-educ
 | **Accreditation** | Evidence aggregation, competency mapping, outcome report generation | `accreditation-report/v1` |
 | **Comms** | Student and faculty communications, intervention alerts, announcements | `comms-bundle/v1` |
 
-**Alex, the operations coordinator**, monitors cohort progress in real time — surfacing at-risk students before they fail, flagging documentation gaps before they become accreditation findings, and making sure the faculty member's attention goes where it matters most.
+**Alex, the Chief of Staff**, monitors cohort progress in real time — surfacing at-risk students before they fail, flagging documentation gaps before they become accreditation findings, and making sure the faculty member's attention goes where it matters most.
 
 ---
 

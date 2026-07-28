@@ -16,7 +16,7 @@ The cost of the incumbent solution — whether that's a consulting firm, an ente
 | Vertical | Incumbent cost | SOCIII cost |
 |---|---|---|
 | **Aviation** (Part 135, 10 aircraft) | $400,000–500,000/year in management salaries + $50,000–200,000/year CAMP Systems | ~$3,600/year |
-| **Aviation** (student pilot) | Paper logbooks, manual tracking, lost records | Free |
+| **Aviation** (student pilot) | Paper logbooks, manual tracking, lost records | Free to start; ~$1/flight for wx/NOTAM data; POH upload required for full CoPilot |
 | **DPP / Product Compliance** | $2–5M McKinsey engagement to study the problem, then $3–10M to implement a solution that isn't live before the deadline | $99–$900/month |
 | **Real Estate Brokerage** | $45,000–65,000/year transaction coordinator + $15,000–40,000/year marketing overhead | $150–250/month |
 | **CRE Development** | $400,000–500,000/year management team + $50,000–80,000/year PropTech subscriptions that don't talk to each other | $499–2,499/month |
@@ -62,7 +62,7 @@ SOCIII changes this. Not a watered-down consumer version. The same architecture.
 
 - **McKinsey charges $2–5 million** to study a compliance problem, produce a report, and recommend a solution. A small manufacturer facing EU Battery Regulation compliance gets the running system — not the report — from SOCIII for $99/month.
 
-SOCIII owns the patent on this architecture. The incumbents — Palantir, CAMP Systems, the enterprise PropTech stack — do not. The capability that used to require a government budget or a Fortune 500 balance sheet is now accessible to any operator who signs up.
+SOCIII holds the pending patent application on this architecture. The incumbents — Palantir, CAMP Systems, the enterprise PropTech stack — do not. The capability that used to require a government budget or a Fortune 500 balance sheet is now accessible to any operator who signs up.
 
 ---
 
@@ -84,7 +84,7 @@ Done. Alex knows your pilots' currency status.
 
 Done. Alex has your cohort and is monitoring their hours.
 
-The entire product experience is: open a browser, sign in with Google, tell Alex what you do. Alex sets up your workspace, suggests the right workers, and starts working. Nothing requires a procurement process, an IT ticket, or a systems integrator. Nothing requires you to understand the underlying architecture. The underlying architecture is patented and governs everything Alex does — you do not need to know how it works to benefit from it working.
+The entire product experience is: open a browser, sign in with Google, tell Alex what you do. Alex sets up your workspace, suggests the right workers, and starts working. Nothing requires a procurement process, an IT ticket, or a systems integrator. Nothing requires you to understand the underlying architecture. The underlying architecture is the subject of a pending patent application and governs everything Alex does — you do not need to know how it works to benefit from it working.
 
 This is not a simplification of a complex system. It is the design goal: the most powerful operational intelligence architecture available, operated by having a conversation.
 
@@ -92,7 +92,7 @@ This is not a simplification of a complex system. It is the design goal: the mos
 
 ### The Window
 
-The patent is filed. The architecture is in production. The deployments are live — in title, in aviation, in education, in brokerage, in product compliance, in commercial real estate.
+The patent application is filed. The architecture is in production. The deployments are live — in title, in aviation, in education, in brokerage, in product compliance, in commercial real estate.
 
 The window to build on this before the market fully forms is open right now. In three years, the operators who moved early will have years of operational history, customer relationships built on AI-enhanced service, and a competitive moat that late movers cannot close quickly.
 
@@ -105,5 +105,5 @@ That is the thesis. It applies to every vertical. It is the same argument every 
 ---
 
 *SOCIII Inc. · sociii.ai · Patent pending (USPTO filings May 2026)*
-*Deployments live: title · aviation · education · brokerage · DPP · commercial real estate*
+*Active pilots and deployments: title · aviation · education · DPP · commercial real estate · brokerage onboarding*
 *Contact: alex@sociii.ai*
