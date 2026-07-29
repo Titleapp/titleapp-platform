@@ -106,7 +106,7 @@ This is not a proof of concept. It is a running deployment on a real portfolio.
 
 ## Why the SOCIII Architecture Wins for CRE
 
-**No custom integrations required.** SOCIII connects to ATTOM data feeds, standard property data exports from Yardi/MRI, and DocuSign via OAuth. The operator does not hire a systems integrator.
+**No custom integrations required.** SOCIII connects to ATTOM data feeds. Standard property data formats from Yardi/MRI are supported without custom development; DocuSign connects via OAuth. The operator does not hire a systems integrator.
 
 **RAAS governance means AI you can show investors.** When the Feasibility worker produces a pro forma, every assumption is rule-validated. The model cannot produce an IRR that requires a cap rate assumption outside the market range. The operator can show the model to a lender or investor because the governance layer makes it auditable.
 

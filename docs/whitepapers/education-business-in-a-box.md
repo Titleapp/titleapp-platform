@@ -101,6 +101,18 @@ The teacher who is not spending 12 hours a week on documentation is the teacher 
 
 ---
 
+## Data Privacy and FERPA
+
+Student data in SOCIII is stored in a dedicated tenant owned and controlled entirely by the institution. No student data is used to train AI models — ever. Student records are encrypted at rest and in transit. The append-only record model means no record is silently deleted or altered; every access event is logged.
+
+FERPA-covered records are accessible only to authorized personnel at the institution. Parents and eligible students can request access through the institution's standard process; the records exist continuously and are retrievable on demand rather than requiring manual assembly.
+
+For districts that require a Data Processing Agreement or a signed FERPA acknowledgment, standard templates are available on request. Institutions operating under state student privacy laws (SOPIPA, NY Ed Law 2-d, etc.) should confirm their specific requirements with counsel; SOCIII's architecture is designed to support compliant deployment under these frameworks.
+
+A Business Associate Agreement (BAA) is available for any deployment that touches health-related records alongside student records.
+
+---
+
 ## The Financial Case
 
 | What schools pay today | SOCIII |

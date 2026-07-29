@@ -92,9 +92,11 @@ $99/month base plus $5/active student. A cohort of 70 students costs $449/month 
 
 A 70-student nursing program at ATI's standard licensing rate spends $28,000–$42,000 per year on test prep. Add the staff time consumed by manual accreditation assembly — typically two to four months of a program director's and coordinator's effort before each review cycle — and the true cost of "just running the program" is significantly higher than the ATI invoice suggests. Programs don't track that labor cost as a line item. It's invisible until someone asks how many hours the last accreditation visit actually consumed.
 
-SOCIII costs $5,388/year for that same cohort. The accreditation evidence doesn't need to be assembled — it exists continuously as a byproduct of the platform running. The clinical hours are already logged. The competency records are already structured. The review preparation collapses from months to days.
+Two scenarios, both favorable.
 
-For programs already running ATI or HESI: SOCIII integrates via LTI. The test prep infrastructure you've invested in stays in place. SOCIII adds the governance layer, the adaptive tutoring that ATI doesn't provide, and the immutable record infrastructure that makes accreditation a query rather than a project.
+**Replacing ATI:** SOCIII costs $5,388/year for that same 70-student cohort, compared to $28,000–$42,000/year for ATI alone. The SOCIII Tutor worker covers adaptive NCLEX prep; the Student Evaluation and Accreditation workers handle what ATI cannot — clinical hour tracking, competency mapping, and accreditation-ready reporting. The review preparation collapses from months to days.
+
+**Adding SOCIII on top of ATI:** For programs with an existing ATI or HESI investment they intend to keep, SOCIII integrates via LTI. The test prep infrastructure stays in place. SOCIII adds the governance layer, the immutable clinical record, and the accreditation evidence infrastructure that ATI does not provide — for $5,388/year. The comparison is not ATI vs. SOCIII. It is the current total cost (ATI + months of manual accreditation assembly + disconnected tools) versus ATI + SOCIII, where the manual assembly cost disappears entirely.
 
 ---
 
