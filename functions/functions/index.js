@@ -6630,11 +6630,14 @@ YOUR TOOLS — what you can actually do (never deny these capabilities):
 - search_emails: search the user's connected Gmail inboxes. Call this when the user asks to find an email, check inbox, look for a message, or needs email context (investor reply, legal notice, payment, etc.). Searches all connected accounts.
 - send_email: send an email on behalf of the user via connected Gmail. Always confirm the email content with the user BEFORE calling this — show them what you plan to send and get explicit approval.
 - list_events: list upcoming Google Calendar events. Call this when the user asks about their schedule, upcoming meetings, what's on their calendar, or needs to plan around existing commitments.
+- search_apollo: search Apollo.io for people or companies by title, seniority, company, industry, or location. Call this when the user wants to find contacts, build a prospect list, research a company's leadership team, or run outreach. Returns names, titles, emails (when available), and LinkedIn URLs.
+- enrich_contact: look up a specific person in Apollo.io to get their current title, direct email, phone, and LinkedIn. Use when the user names a specific person and wants their contact details.
 If a user asks whether you can browse the web, search the internet, look something up, or get current data — the answer is YES. Call web_search.
 If a user asks you to read a spreadsheet, a Google Sheet, a file in their Drive, or says "check my [filename]" — call search_drive then read_drive_file. Do NOT use fetch_url for Drive files.
 If a user shares financial data and wants it recorded in accounting — call write_accounting_transactions immediately. Do NOT tell them to open the Accounting worker to enter it themselves.
 If a user asks to check their email, find a message, or search their inbox — call search_emails. Do NOT say you can't access their email.
 If a user asks about their schedule, upcoming meetings, or calendar — call list_events. Do NOT say you can't access their calendar.
+If a user asks to find contacts, prospect for leads, search Apollo, enrich a person, build an outreach list, or get someone's email or title — call search_apollo or enrich_contact. Do NOT say you don't have Apollo access.
 
 CREATOR & SDK KNOWLEDGE (authoritative — use when anyone asks about building workers, the SDK, creator docs, or platform capabilities):
 Creators build Digital Workers using the SOCIII Creator SDK. Key resources:
@@ -6832,7 +6835,37 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     },
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool];
+                const _cosApolloSearchTool = {
+                  name: "search_apollo",
+                  description: "Search Apollo.io for people or companies. Call this when the user wants to find contacts, prospect for leads, research a company's team, build an outreach list, or enrich a target account. Works for any ICP: job titles, seniority, company, industry, location. Returns names, titles, companies, emails (when available), and LinkedIn URLs.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      person_titles: { type: "array", items: { type: "string" }, description: "Job titles to target, e.g. ['CEO', 'VP of Engineering', 'Head of AI']" },
+                      person_seniorities: { type: "array", items: { type: "string" }, description: "Seniority levels: 'c_suite', 'vp', 'director', 'manager', 'senior', 'entry'" },
+                      organization_names: { type: "array", items: { type: "string" }, description: "Specific company names to search within, e.g. ['OpenAI', 'Anthropic', 'Google']" },
+                      q_organization_industries: { type: "array", items: { type: "string" }, description: "Industries, e.g. ['artificial intelligence', 'software', 'real estate', 'healthcare']" },
+                      person_locations: { type: "array", items: { type: "string" }, description: "Locations, e.g. ['San Francisco, CA', 'New York, NY', 'Remote']" },
+                      keywords: { type: "string", description: "Free-text keywords to include in the search" },
+                      per_page: { type: "number", description: "Results to return, default 10, max 25" },
+                    },
+                  },
+                };
+                const _cosEnrichContactTool = {
+                  name: "enrich_contact",
+                  description: "Enrich a specific person in Apollo.io by name and company (or email). Returns their current title, direct email, phone, LinkedIn, employment history, and company details. Use when the user has a specific person they want contact info for.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      first_name: { type: "string" },
+                      last_name: { type: "string" },
+                      organization_name: { type: "string", description: "Company name" },
+                      email: { type: "string", description: "Email if known — dramatically improves match accuracy" },
+                      domain: { type: "string", description: "Company domain, e.g. 'openai.com'" },
+                    },
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool];
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-6',
                   max_tokens: _isDocRequest ? 8192 : 2048,
@@ -7194,6 +7227,71 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _calFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _calResult;
+                  } else if (_cosTool && _cosTool.name === "search_apollo") {
+                    let _apolloResult;
+                    try {
+                      const { searchPeople, searchOrganizations } = require("./services/marketingService/apollo");
+                      const input = _cosTool.input || {};
+                      const criteria = {};
+                      if (input.person_titles?.length) criteria.person_titles = input.person_titles;
+                      if (input.person_seniorities?.length) criteria.person_seniorities = input.person_seniorities;
+                      if (input.organization_names?.length) criteria.organization_names = input.organization_names;
+                      if (input.q_organization_industries?.length) criteria.q_organization_industries = input.q_organization_industries;
+                      if (input.person_locations?.length) criteria.person_locations = input.person_locations;
+                      if (input.keywords) criteria.q_keywords = input.keywords;
+                      criteria.per_page = Math.min(input.per_page || 10, 25);
+                      const { people } = await searchPeople(criteria, { tenantId, userId: authUser.uid, requestedBy: "cos" });
+                      if (!people.length) {
+                        _apolloResult = "No matching contacts found in Apollo for those criteria. Try broadening the search.";
+                      } else {
+                        _apolloResult = `APOLLO SEARCH — ${people.length} result(s):\n\n` +
+                          people.map((p, i) => {
+                            const co = p.organization?.name || p.account?.name || "";
+                            const email = p.email || "(email not shown — enrich to reveal)";
+                            const li = p.linkedin_url ? ` | LinkedIn: ${p.linkedin_url}` : "";
+                            return `${i + 1}. ${p.first_name || ""} ${p.last_name || ""} — ${p.title || ""}${co ? ` @ ${co}` : ""}\n   Email: ${email}${li}`;
+                          }).join("\n\n");
+                      }
+                    } catch (_apolloErr) {
+                      _apolloResult = `Apollo search failed: ${_apolloErr.message}. Check that APOLLO_API_KEY is configured in Firebase secrets.`;
+                    }
+                    const _apolloFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _apolloResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _apolloFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _apolloResult;
+                  } else if (_cosTool && _cosTool.name === "enrich_contact") {
+                    let _enrichResult;
+                    try {
+                      const { enrichPerson } = require("./services/marketingService/apollo");
+                      const input = _cosTool.input || {};
+                      const person = await enrichPerson(input, { tenantId, userId: authUser.uid, requestedBy: "cos" });
+                      if (!person) {
+                        _enrichResult = "Could not find a match for that person in Apollo. Try adding their email or company domain.";
+                      } else {
+                        const co = person.organization?.name || person.account?.name || "";
+                        const phone = person.phone_numbers?.[0]?.sanitized_number || person.phone_numbers?.[0]?.raw_number || "";
+                        const li = person.linkedin_url || "";
+                        _enrichResult = `ENRICHED CONTACT:\n` +
+                          `Name: ${person.first_name || ""} ${person.last_name || ""}\n` +
+                          `Title: ${person.title || ""}\n` +
+                          `Company: ${co}\n` +
+                          `Email: ${person.email || "(not available)"}\n` +
+                          `Phone: ${phone || "(not available)"}\n` +
+                          `LinkedIn: ${li || "(not available)"}\n` +
+                          `Seniority: ${person.seniority || ""}\n` +
+                          `Location: ${[person.city, person.state, person.country].filter(Boolean).join(", ")}`;
+                      }
+                    } catch (_enrichErr) {
+                      _enrichResult = `Contact enrichment failed: ${_enrichErr.message}. Check that APOLLO_API_KEY is configured.`;
+                    }
+                    const _enrichFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _enrichResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 30000 });
+                    _txt = _enrichFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _enrichResult;
                   }
                 }
                 if (!_txt) {
