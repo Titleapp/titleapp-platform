@@ -6616,28 +6616,36 @@ WHEN NOT TO PUSH — never push alerts for:
 Severity guide: RED=urgent, action required today. YELLOW=notable, act this week. GREEN=informational or good news.
 Only you (Alex) may push alerts. Domain workers cannot write to the Operating Feed.
 
-YOUR TOOLS — what you can actually do (never deny these capabilities):
-- web_search: search the live internet for current data, market stats, regulations, competitor info, pricing — call it any time current facts are needed. You have Brave Search wired in.
-- fetch_url: fetch a specific URL and read its content (whitepapers, public pages, docs).
-- generate_document: produce a PDF one-pager, brief, deck, report, or memo — caller receives a downloadable file.
-- generate_image: create an image via AI (Fal.ai) — caller sees the image inline.
-- recall_notes / store_note: read/write Alex memory across sessions.
-- push_alert / resolve_alert / snooze_alert: manage the Operating Feed.
-- query_contacts / propose_email_campaign / send_email_campaign: manage and send campaigns.
-- search_drive: find files in the user's connected Google Drive by name or content. Call this when the user asks you to find a file, read a spreadsheet, or access their Drive.
-- read_drive_file: read the content of a Google Drive file — Google Sheets (returns CSV), Google Docs (returns text), Excel files, CSV, and plain text. Pass file_id from search_drive results, or file_name to auto-search. NEVER tell the user to download the file themselves — fetch it directly.
-- write_accounting_transactions: write transactions directly into the Accounting worker's ledger from this chat — no need to open the Accounting worker. Use when the user shares financial data (spreadsheet rows, expenses, income, Drive file content) and wants it recorded. Transactions land in review status so the user can confirm. Each transaction needs: date (YYYY-MM-DD), description, amountCents (integer cents, $12.50=1250), direction (debit=expense/payment out, credit=revenue/deposit in).
-- search_emails: search the user's connected Gmail inboxes. Call this when the user asks to find an email, check inbox, look for a message, or needs email context (investor reply, legal notice, payment, etc.). Searches all connected accounts.
-- send_email: send an email on behalf of the user via connected Gmail. Always confirm the email content with the user BEFORE calling this — show them what you plan to send and get explicit approval.
-- list_events: list upcoming Google Calendar events. Call this when the user asks about their schedule, upcoming meetings, what's on their calendar, or needs to plan around existing commitments.
-- search_apollo: search Apollo.io for people or companies by title, seniority, company, industry, or location. Call this when the user wants to find contacts, build a prospect list, research a company's leadership team, or run outreach. Returns names, titles, emails (when available), and LinkedIn URLs.
-- enrich_contact: look up a specific person in Apollo.io to get their current title, direct email, phone, and LinkedIn. Use when the user names a specific person and wants their contact details.
-If a user asks whether you can browse the web, search the internet, look something up, or get current data — the answer is YES. Call web_search.
-If a user asks you to read a spreadsheet, a Google Sheet, a file in their Drive, or says "check my [filename]" — call search_drive then read_drive_file. Do NOT use fetch_url for Drive files.
-If a user shares financial data and wants it recorded in accounting — call write_accounting_transactions immediately. Do NOT tell them to open the Accounting worker to enter it themselves.
-If a user asks to check their email, find a message, or search their inbox — call search_emails. Do NOT say you can't access their email.
-If a user asks about their schedule, upcoming meetings, or calendar — call list_events. Do NOT say you can't access their calendar.
-If a user asks to find contacts, prospect for leads, search Apollo, enrich a person, build an outreach list, or get someone's email or title — call search_apollo or enrich_contact. Do NOT say you don't have Apollo access.
+YOUR TOOLS — the complete list of what you can actually call. Never claim a tool exists that is not on this list. Never deny a tool that is on this list.
+- web_search: search the live internet. Call any time current facts, competitor data, pricing, or regulations are needed.
+- fetch_url: fetch and read any public web page.
+- generate_document: produce a PDF, Word doc, Excel model, or PowerPoint deck — user gets a download link.
+- generate_image: generate an image, logo, illustration, or visual via Fal.ai — renders inline in chat.
+- search_drive: find files in the user's connected Google Drive by name or keywords.
+- read_drive_file: read a Google Drive file (Sheets→CSV, Docs→text, Excel, CSV, plain text). NEVER tell the user to download it themselves — read it directly.
+- write_accounting_transactions: write transactions into the Accounting ledger from chat. Use when the user shares financial data. Transactions land in review status for confirmation.
+- search_emails: search the user's connected Gmail inboxes across all connected accounts.
+- send_email: send an email via connected Gmail. Always show the user what you plan to send and get explicit approval before calling this.
+- list_events: list upcoming Google Calendar events.
+- search_apollo: search Apollo.io for people or companies by title, seniority, company, industry, or location. Returns names, titles, emails (when available), LinkedIn URLs.
+- enrich_contact: look up a specific person in Apollo.io. Returns current title, direct email, phone, LinkedIn.
+- push_alert / resolve_alert / snooze_alert: manage the Operating Feed (see rules above).
+
+TOOL ENFORCEMENT — read before every response:
+If a user asks to browse the web, search the internet, or look something up — call web_search. Answer is YES, you can.
+If a user asks to read a spreadsheet, Drive file, or says "check my [filename]" — call search_drive then read_drive_file.
+If a user shares financial data and wants it recorded — call write_accounting_transactions immediately.
+If a user asks to check email, find a message, or search their inbox — call search_emails.
+If a user asks about their schedule or calendar — call list_events.
+If a user wants to find contacts, prospect, search Apollo, enrich someone, or get an email/title — call search_apollo or enrich_contact.
+If a user asks you to generate an image, logo, visual, or illustration — call generate_image.
+
+BEHAVIORAL RULES — non-negotiable:
+1. Never present numbered options (1/2/3) or ask the user to choose an approach. Pick the best path and execute it. If you need a clarification, ask ONE specific question in plain prose.
+2. Never refer to "the dev team", "whoever built this", "the engineers", or imply that someone else is responsible for your capabilities. You are the platform. If something is broken, say "that is not working right now" — not "the dev team needs to fix this."
+3. Never say "I don't have access to X" or "X is not wired in" before attempting to use it. Try the tool. If it fails, report the actual error message. Speculating about missing tools mid-conversation is always wrong.
+4. When the user provides a file, list, or data — start working on it immediately. Do not ask what they want to do with it unless genuinely ambiguous.
+5. Never claim capabilities you don't have. Never deny capabilities you do have. The list above is authoritative.
 
 CREATOR & SDK KNOWLEDGE (authoritative — use when anyone asks about building workers, the SDK, creator docs, or platform capabilities):
 Creators build Digital Workers using the SOCIII Creator SDK. Key resources:
@@ -6835,6 +6843,19 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     },
                   },
                 };
+                const _cosImageTool = {
+                  name: "generate_image",
+                  description: "Generate an image, illustration, logo, mockup, or visual asset. Call this when the user asks for any image, creative visual, chart illustration, or artwork. Returns an image URL rendered inline.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      prompt: { type: "string", description: "Descriptive prompt for the image" },
+                      aspect_ratio: { type: "string", enum: ["1:1", "16:9", "9:16"], description: "Aspect ratio, default 1:1" },
+                      style: { type: "string", enum: ["minimal", "realistic", "cartoon", "diagram"], description: "Visual style, default minimal" },
+                    },
+                    required: ["prompt"],
+                  },
+                };
                 const _cosApolloSearchTool = {
                   name: "search_apollo",
                   description: "Search Apollo.io for people or companies. Call this when the user wants to find contacts, prospect for leads, research a company's team, build an outreach list, or enrich a target account. Works for any ICP: job titles, seniority, company, industry, location. Returns names, titles, companies, emails (when available), and LinkedIn URLs.",
@@ -6865,7 +6886,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     },
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool];
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool];
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-6',
                   max_tokens: _isDocRequest ? 8192 : 2048,
@@ -7292,6 +7313,40 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
                     _txt = _enrichFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _enrichResult;
+                  } else if (_cosTool && _cosTool.name === "generate_image") {
+                    let _imgResult = "";
+                    let _imgUrl = null;
+                    try {
+                      const { generateImage } = require("./services/image");
+                      const ar = _cosTool.input.aspect_ratio || "1:1";
+                      const sizeForAr = ar === "16:9" ? "landscape_4_3" : ar === "9:16" ? "portrait_3_4" : "square";
+                      const imgOut = await generateImage({
+                        prompt: _cosTool.input.prompt,
+                        style: _cosTool.input.style || "minimal",
+                        size: sizeForAr,
+                        workerId: "chief-of-staff",
+                        creatorId: authUser.uid,
+                        vertical: _ws?.vertical || "business",
+                        tenantId,
+                      });
+                      if (imgOut.imageUrl) {
+                        _imgUrl = imgOut.imageUrl;
+                        _imgResult = `Image generated: ${imgOut.imageUrl}${imgOut.chargedCredits ? `. Charged ${imgOut.chargedCredits} Data Credit.` : ""}`;
+                      } else {
+                        _imgResult = imgOut.message || "Image generation failed.";
+                      }
+                    } catch (_imgErr) {
+                      _imgResult = `Image generation failed: ${_imgErr.message}`;
+                    }
+                    const _imgFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _imgResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _imgFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Image ready.";
+                    if (_imgUrl) {
+                      return res.json({ ok: true, message: _txt, structuredData: { imageUrl: _imgUrl }, sessionId });
+                    }
                   }
                 }
                 if (!_txt) {
