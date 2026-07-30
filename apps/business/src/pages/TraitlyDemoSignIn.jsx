@@ -1,12 +1,10 @@
-// One-click TRAITLY demo sign-in — Elise / EU Battery Passport compliance.
-// Mounted at /demo/dpp. Signs in with email/password so Vault gate shows
-// correctly. Lands in the TRAITLY workspace with Voltara data pre-seeded.
+// One-click TRAITLY demo sign-in — Elise Moreau / Volta Advisory / EU Battery DPP.
+// Mounted at /demo/dpp. Uses the demo:token custom-token flow (self-provisioning —
+// no pre-seeded email/password account required). Lands in the Volta Advisory
+// workspace with the 5 EU DPP workers active.
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-
-const TRAITLY_EMAIL    = "traitly-demo@sociii.ai";
-const TRAITLY_PASSWORD = "TRAITLY!DPP2026";
+import { signInWithCustomToken, signOut } from "firebase/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -27,13 +25,24 @@ export default function TraitlyDemoSignIn() {
         if (!data.ok) throw new Error(data.error || "Demo is temporarily unavailable.");
 
         await signOut(auth).catch(() => {});
-        const cred = await signInWithEmailAndPassword(auth, TRAITLY_EMAIL, TRAITLY_PASSWORD);
+        const cred = await signInWithCustomToken(auth, data.token);
         const idToken = await cred.user.getIdToken(true);
         if (cancelled) return;
         clearTimeout(watchdog);
 
         localStorage.setItem("ID_TOKEN", idToken);
-        if (data.tenantId) localStorage.setItem("TENANT_ID", data.tenantId);
+        if (data.tenantId) {
+          localStorage.setItem("TENANT_ID", data.tenantId);
+          localStorage.setItem("WORKSPACE_ID", data.tenantId);
+        }
+        if (data.workspaceName) {
+          localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
+          localStorage.setItem("COMPANY_NAME", data.workspaceName);
+          localStorage.setItem("TENANT_NAME", data.workspaceName);
+        }
+        if (data.vertical)     localStorage.setItem("VERTICAL", data.vertical);
+        if (data.personaName)  localStorage.setItem("DISPLAY_NAME", data.personaName);
+        localStorage.removeItem("USER_EMAIL");
         localStorage.setItem("IS_CREATOR", "true");
 
         const now = Date.now();
@@ -63,7 +72,7 @@ export default function TraitlyDemoSignIn() {
         };
 
         for (const [key, val] of Object.entries(spineChecklists)) {
-          try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* quota blocked */ }
+          try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* quota */ }
         }
 
         window.location.replace("/?demo=1&persona=traitly");

@@ -600,7 +600,7 @@ function ESignRow() {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600 }}>Document Signing</div>
           <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-            Alex can send documents for e-signature via BoldSign. Signers receive an email link — no account required. $0.75 per document.
+            Alex can send documents for e-signature via BoldSign. Signers receive an email link — no account required. $1.50 per document.
           </div>
         </div>
       </div>

@@ -1080,6 +1080,12 @@ const WORKER_DISPLAY_NAMES = {
   "tenant-portal-001": "Tenant Portal",
   // Academic / course workers
   "makai-bio-101": "Anatomy & Physiology I",
+  // EU Battery DPP Suite
+  "eu-battery-dpp-001":        "DPP Compliance Tracker",
+  "eu-passport-builder-001":   "EU Passport Builder",
+  "eu-supply-chain-tracer-001":"Supply Chain Tracer",
+  "eu-registry-manager-001":   "EU Registry Manager",
+  "eu-lifecycle-monitor-001":  "Lifecycle Monitor",
 };
 
 const VERTICAL_LABELS = {
@@ -1104,6 +1110,7 @@ function normalizeVertical(slug) {
   if (slug.startsWith("platform-")) return "Spine";
   if (slug.startsWith("av-")) return "Aviation";
   if (slug.startsWith("ad-")) return "Auto Dealer";
+  if (slug.startsWith("eu-")) return "EU DPP";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
   if (slug.startsWith("gov-")) return "Government";
   if (slug.startsWith("solar")) return "Solar";

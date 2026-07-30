@@ -1989,6 +1989,22 @@ exports.api = onRequest(
             role:          "admin",
             activeWorkers: ["nursing-education-001"],
           },
+          // ── TRAITLY / EU Battery DPP (Volta Advisory) ─────────────────────
+          traitly: {
+            uid:           "demo-traitly-elise-001",
+            tenantId:      "demo-volta-advisory-001",
+            workspaceName: "Volta Advisory",
+            vertical:      "retail",
+            name:          "Elise Moreau",
+            role:          "admin",
+            activeWorkers: [
+              "eu-battery-dpp-001",
+              "eu-passport-builder-001",
+              "eu-supply-chain-tracer-001",
+              "eu-registry-manager-001",
+              "eu-lifecycle-monitor-001",
+            ],
+          },
         };
         const p = PERSONAS[persona] || PERSONAS.vet;
         // Auto-top-up demo tenant to 5000 credits on every sign-in so demos
@@ -6992,9 +7008,62 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     const _driveReadFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 8192, system: cosPrompt,
                       messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }],
-                      tools: _cosTools, tool_choice: { type: "none" },
+                      tools: _cosTools, tool_choice: { type: "auto" },
                     }, { timeoutMs: 90000 });
-                    _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but couldn't summarize it.";
+                    // Allow one terminal tool call (generate_document or write_accounting_transactions)
+                    // from the drive-read follow-up — this is the "read file → build spreadsheet" pattern.
+                    const _driveFollowTool = _driveReadFollowUp.content.find(b => b.type === "tool_use");
+                    if (_driveFollowTool && _driveFollowTool.name === "generate_document") {
+                      try {
+                        const { generateDocument } = require("./documents");
+                        const _docResult = await generateDocument({
+                          tenantId: _cosTenantId || authUser.uid,
+                          userId: authUser.uid,
+                          templateId: _driveFollowTool.input.templateId,
+                          format: _driveFollowTool.input.format || null,
+                          content: _driveFollowTool.input.content,
+                          title: _driveFollowTool.input.title,
+                          metadata: { workerSlug: "chief-of-staff", surface: "cos" },
+                        });
+                        if (_docResult.ok) {
+                          _cosGeneratedDoc = { title: _driveFollowTool.input.title, format: _docResult.format || _driveFollowTool.input.format || "xlsx", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId };
+                        }
+                        const _docToolResult = _docResult.ok
+                          ? `Document generated. Title: "${_driveFollowTool.input.title}". Format: ${(_docResult.format||"xlsx").toUpperCase()}. Download URL: ${_docResult.downloadUrl}. Tell the user their document is ready with a brief summary. Do not repeat the URL.`
+                          : `Document generation failed: ${_docResult.error || "unknown error"}.`;
+                        const _docFollowUp = await anthropic.messages.create({
+                          model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
+                          messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }, { role: "assistant", content: _driveReadFollowUp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _driveFollowTool.id, content: _docToolResult }] }],
+                          tools: _cosTools, tool_choice: { type: "none" },
+                        }, { timeoutMs: 60000 });
+                        _txt = _docFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Your document is ready.";
+                      } catch (_driveDocErr) {
+                        console.warn("[COS] drive→generate_document exception:", _driveDocErr.message);
+                        _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but hit an error generating the document.";
+                      }
+                    } else if (_driveFollowTool && _driveFollowTool.name === "write_accounting_transactions") {
+                      try {
+                        const { commitAlexTransactions } = require("./services/accounting/statementIngest");
+                        const { transactions, note } = _driveFollowTool.input || {};
+                        let _acctResult;
+                        if (!Array.isArray(transactions) || !transactions.length) {
+                          _acctResult = "No transactions provided.";
+                        } else {
+                          const result = await commitAlexTransactions({ tenantId: _cosTenantId, userId: authUser.uid, transactions, note: note || "Written by Alex from file" });
+                          _acctResult = `Wrote ${result.written} transaction${result.written !== 1 ? "s" : ""} to the Accounting worker (status: review).`;
+                        }
+                        const _acctDocFollowUp = await anthropic.messages.create({
+                          model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                          messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }, { role: "assistant", content: _driveReadFollowUp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _driveFollowTool.id, content: _acctResult }] }],
+                          tools: _cosTools, tool_choice: { type: "none" },
+                        }, { timeoutMs: 60000 });
+                        _txt = _acctDocFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
+                      } catch (_acctErr) {
+                        _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Read the file but couldn't write transactions.";
+                      }
+                    } else {
+                      _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but couldn't summarize it.";
+                    }
                   } else if (_cosTool && _cosTool.name === "write_accounting_transactions") {
                     let _acctResult;
                     try {
