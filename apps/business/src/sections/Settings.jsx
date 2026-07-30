@@ -4,7 +4,6 @@ import FormModal from "../components/FormModal";
 import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks/useCalendar";
 import { useGmailStatus, connectGmail, disconnectGmail, syncGmailContacts, useGmailAccounts, addGmailAccount, removeGmailAccount } from "../hooks/useGmail";
 import { useDriveStatus, connectDrive, disconnectDrive } from "../hooks/useDrive";
-import { useESignStatus, connectESign, disconnectESign } from "../hooks/useESign";
 import { useShopifyStatus, connectShopify, disconnectShopify } from "../hooks/useShopify";
 
 const _API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -566,83 +565,46 @@ function DriveRow() {
         <BrandIcon name="google-drive" />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600 }}>Google Drive</div>
-          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+          <div style={{ fontSize: "13px", color: status.tokenExpired ? "#b91c1c" : "var(--textMuted)" }}>
             {status.loading
               ? "Checking…"
-              : status.connected
-                ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
-                : "Connect so workers can read documents, contracts, and files from your Drive."}
+              : status.tokenExpired
+                ? `Token expired${status.email ? ` (${status.email})` : ""} — reconnect to restore Drive access.`
+                : status.connected
+                  ? `Connected as ${status.email || "Google account"}. Workers can browse and import your Drive files.`
+                  : "Connect so workers can read documents, contracts, and files from your Drive."}
           </div>
           {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
       </div>
-      {status.connected ? (
+      {status.connected && !status.tokenExpired ? (
         <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
           {busy ? "…" : "Disconnect"}
         </button>
       ) : (
-        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
-          {busy ? "Connecting…" : "Connect"}
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect}
+          style={{ whiteSpace: "nowrap", flexShrink: 0, ...(status.tokenExpired ? { borderColor: "#b91c1c", color: "#b91c1c" } : {}) }}>
+          {busy ? "Connecting…" : status.tokenExpired ? "Reconnect" : "Connect"}
         </button>
       )}
     </div>
   );
 }
 
-// ── Google eSignature connector ───────────────────────────────────
-function GoogleESignRow() {
-  const { status, refresh } = useESignStatus();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(null);
-
-  async function handleConnect() {
-    setBusy(true); setErr(null);
-    try {
-      await connectESign();
-      await refresh();
-    } catch (e) {
-      setErr(e?.message || "Connection failed");
-    }
-    setBusy(false);
-  }
-
-  async function handleDisconnect() {
-    if (!window.confirm("Disconnect Google eSignature? You can reconnect any time.")) return;
-    setBusy(true); setErr(null);
-    try {
-      await disconnectESign();
-      await refresh();
-    } catch (e) {
-      setErr(e?.message || "Disconnect failed");
-    }
-    setBusy(false);
-  }
-
+// ── Document Signing (BoldSign — platform account) ────────────────
+function ESignRow() {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         <BrandIcon name="google-drive" />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600 }}>Google eSignature</div>
+          <div style={{ fontWeight: 600 }}>Document Signing</div>
           <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-            {status.loading
-              ? "Checking…"
-              : status.connected
-                ? `Connected as ${status.email || "Google account"}. Alex can send documents for signature and track completions.`
-                : "Connect so Alex can send documents for signature via Google eSign (free with Workspace)."}
+            Alex can send documents for e-signature via BoldSign. Signers receive an email link — no account required. $0.75 per document.
           </div>
-          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
         </div>
       </div>
-      {status.connected ? (
-        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
-          {busy ? "…" : "Disconnect"}
-        </button>
-      ) : (
-        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
-          {busy ? "Connecting…" : "Connect"}
-        </button>
-      )}
+      <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#eff6ff", color: "#2563eb", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0 }}>Platform account</span>
     </div>
   );
 }
@@ -1870,7 +1832,7 @@ function BusinessSettings() {
           <GmailRow />
           <GoogleCalendarRow />
           <DriveRow />
-          <GoogleESignRow />
+          <ESignRow />
           <IntRow icon="microsoft-onedrive" name="Microsoft OneDrive" desc="Sync files and documents from OneDrive" badge="Coming Soon" />
           <IntRow icon="microsoft-outlook" name="Microsoft Outlook" desc="Sync email and calendar from Outlook" badge="Coming Soon" />
           <IntRow icon="quickbooks" name="QuickBooks" desc="Sync financial data and invoices" badge="Coming Soon" />

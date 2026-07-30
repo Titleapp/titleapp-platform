@@ -69,8 +69,22 @@ async function generateXlsx(templateDef, content, branding) {
   }
 
   if (templateId === "model-cashflow") {
-    // Assumptions sheet
-    const assumptions = content.assumptions || {};
+    // Normalize assumptions — Claude sometimes sends { items: "[{label,value}]" } instead of a flat object
+    let assumptions = content.assumptions || {};
+    if (assumptions.items) {
+      try {
+        const parsed = typeof assumptions.items === "string" ? JSON.parse(assumptions.items) : assumptions.items;
+        if (Array.isArray(parsed) && parsed[0] && "label" in parsed[0]) {
+          assumptions = {};
+          for (const { label, value } of parsed) {
+            if (label && label !== "---" && !label.startsWith("---")) {
+              assumptions[label] = value || "";
+            }
+          }
+        }
+      } catch (_) { /* leave as-is */ }
+    }
+
     if (Object.keys(assumptions).length > 0) {
       const ws = workbook.addWorksheet("Assumptions");
       ws.addRow(["Parameter", "Value"]);
@@ -84,18 +98,41 @@ async function generateXlsx(templateDef, content, branding) {
       autoWidth(ws);
     }
 
-    // Projections sheet
-    const projections = content.projections || [];
-    if (projections.length > 0) {
+    // Projections — accepts two shapes:
+    //   Shape A (pivot/matrix): { months: ["Aug","Sep",...], rows: [{label, values:[v1,v2,...]}] }
+    //   Shape B (flat array):   [{Month:"Aug",Revenue:"$x",Expenses:"$y",...}]
+    let rawProjections = content.projections || [];
+    if (typeof rawProjections === "string") {
+      try { rawProjections = JSON.parse(rawProjections); } catch (_) { rawProjections = []; }
+    }
+
+    let projectionRows = []; // normalized to Shape B
+    if (!Array.isArray(rawProjections) && rawProjections.months && rawProjections.rows) {
+      // Shape A → pivot into Shape B
+      const months = rawProjections.months;
+      const dataRows = Array.isArray(rawProjections.rows) ? rawProjections.rows : [];
+      // Build one column-oriented object per month
+      projectionRows = months.map((month, mi) => {
+        const obj = { Month: month };
+        for (const r of dataRows) {
+          obj[r.label] = Array.isArray(r.values) ? r.values[mi] : "";
+        }
+        return obj;
+      });
+    } else if (Array.isArray(rawProjections) && rawProjections.length > 0) {
+      projectionRows = rawProjections;
+    }
+
+    if (projectionRows.length > 0) {
       const ws = workbook.addWorksheet("Projections");
-      const headers = Object.keys(projections[0] || {});
+      const headers = Object.keys(projectionRows[0] || {});
       ws.addRow(headers);
       applyHeaderRow(ws, 1);
-      for (const period of projections) {
+      for (const period of projectionRows) {
         const vals = headers.map((h) => parseNumericValue(period[h]));
         const row = ws.addRow(vals);
         headers.forEach((h, i) => {
-          const fmt = detectFormat(period[h]);
+          const fmt = detectFormat(String(period[h] || ""));
           if (fmt === "currency") row.getCell(i + 1).numFmt = currencyFormat;
           if (fmt === "percent") row.getCell(i + 1).numFmt = percentFormat;
         });
@@ -103,8 +140,11 @@ async function generateXlsx(templateDef, content, branding) {
       autoWidth(ws);
     }
 
-    // Summary sheet
-    const summary = content.summary || {};
+    // Summary
+    let summary = content.summary || {};
+    if (typeof summary === "string") {
+      try { summary = JSON.parse(summary); } catch (_) { summary = {}; }
+    }
     if (Object.keys(summary).length > 0) {
       const ws = workbook.addWorksheet("Summary");
       ws.addRow(["Metric", "Value"]);

@@ -400,7 +400,7 @@ function getAnthropic() {
       console.log("[anthropic.sanitize] dropped", params.messages.length - clean.length, "of", params.messages.length, "messages");
       return { ...params, messages: clean };
     })();
-    const timeoutMs = (opts && opts.timeoutMs) || 30000;
+    const timeoutMs = (opts && opts.timeoutMs) || 60000;
     // S52.31a — context for AI cost telemetry. Callers can pass
     // opts.context = { tenantId, userId, workerSlug, surface } so the
     // aiUsage row carries attribution. Calls without context still
@@ -1616,7 +1616,7 @@ exports.api = onRequest(
   // S52.31c (2026-06-06) — ATTOM_API_KEY restored to secrets array after Sean
   // set the (sandbox) secret in Secret Manager via firebase functions:secrets:set.
   // Live ATTOM calls confirmed on the ATTOM dashboard post-deploy.
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY", "BOLDSIGN_API_KEY"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1968,6 +1968,26 @@ exports.api = onRequest(
             name:          "Alex Rivera",
             role:          "admin",
             activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001"],
+          },
+          // ── Brokerage (Summit Realty Group) ──────────────────────────────
+          brokerage: {
+            uid:           "demo-brokerage-jordan-001",
+            tenantId:      "demo-summit-realty",
+            workspaceName: "Summit Realty Group",
+            vertical:      "real-estate",
+            name:          "Jordan Blake",
+            role:          "admin",
+            activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001"],
+          },
+          // ── Education K-12 (Westview Elementary) ─────────────────────────
+          education: {
+            uid:           "demo-education-patricia-001",
+            tenantId:      "demo-westview-education",
+            workspaceName: "Westview Elementary School",
+            vertical:      "education",
+            name:          "Dr. Patricia Wells",
+            role:          "admin",
+            activeWorkers: ["nursing-education-001"],
           },
         };
         const p = PERSONAS[persona] || PERSONAS.vet;
@@ -2717,7 +2737,20 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
                 extractedText = "[DOCX uploaded — text extraction failed]";
               }
             } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
-              extractedText = `[Spreadsheet uploaded: ${f.name} — stored for reference]`;
+              try {
+                const XLSX = require("xlsx");
+                const _wb = XLSX.read(buffer, { type: "buffer" });
+                const _csvParts = _wb.SheetNames.map(sn => {
+                  const csv = XLSX.utils.sheet_to_csv(_wb.Sheets[sn]);
+                  return `=== Sheet: ${sn} ===\n${csv}`;
+                });
+                extractedText = _csvParts.join("\n\n");
+                if (extractedText.length > 20000) extractedText = extractedText.substring(0, 20000) + "\n... [truncated]";
+                console.log("[chatEngine] XLSX extracted", extractedText.length, "chars from", f.name, _wb.SheetNames.length, "sheets");
+              } catch (xlsxErr) {
+                console.error("[chatEngine] XLSX parse error:", f.name, xlsxErr.message);
+                extractedText = `[Spreadsheet uploaded: ${f.name} — parse failed: ${xlsxErr.message}]`;
+              }
             } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
               extractedText = `[Presentation uploaded: ${f.name} — stored for reference]`;
             } else if (/\.(png|jpg|jpeg|gif|webp|svg)$/.test(lowerName)) {
@@ -6504,7 +6537,15 @@ For legal specifics, custom terms, or strategic questions, offer to connect with
           if (_isCos && !action && userInput && authUser && _cosTenantId && _cosTenantId !== "vault") {
             let _ws = null;
             try { _ws = (await db.collection("users").doc(authUser.uid).collection("workspaces").doc(_cosTenantId).get()).data() || null; } catch (_) {}
-            if (_ws && (_ws.onboardingComplete || _ws.vertical)) {
+            // Fallback: if the per-user workspace sub-doc doesn't exist or lacks key fields,
+            // read from the canonical tenants/ collection (same fix that restored Alex memory 2026-06-28).
+            if (!_ws || (!_ws.onboardingComplete && !_ws.vertical)) {
+              try {
+                const _tenantDoc = (await db.collection("tenants").doc(_cosTenantId).get()).data() || null;
+                if (_tenantDoc) _ws = { ..._tenantDoc, ...(_ws || {}) };
+              } catch (_) {}
+            }
+            if (_ws && (_ws.onboardingComplete || _ws.vertical || _ws.name)) {
               try {
                 if (!sessionState.salesHistory) sessionState.salesHistory = [];
                 // Real workspace data — same sources the worker chats use.
@@ -6526,7 +6567,7 @@ WHO YOU ARE: The owner's Chief of Staff. You orchestrate their Digital Workers (
 
 SOCIII PLATFORM KNOWLEDGE (canonical — always use these facts, never invent):
 SOCIII is a platform for building, governing, and scaling AI workers in regulated professions. The core tech is RAAS (Rules + AI as a Service) — a four-tier rules engine (Platform Safety → Industry Regulations → Operator Policies → User Preferences) that governs every AI output before it commits. Every decision is recorded in an append-only, cryptographically anchored audit trail. In production across Aviation, Real Estate, Auto, Title & Escrow, Health/EMS, Government, Solar, Web3. Sean Combs is the founder. Delaware C-Corp, Las Vegas NV.
-PRICING (accurate): Free tier available for students and individual pilots (basic access). Individual workers $29/$49/$79/mo. Business in a Box (full vertical suite) $99/mo. All Workers $299/mo. Data Credits metered above baseline. Creator License: creators earn majority of each subscription they author. Education/school plans: $99/mo + $5/active student.
+PRICING (accurate): Plans start at $99/mo base + per-seat or per-student pricing. Vertical Business-in-a-Box bundles: Education $99/mo + $5/student, Nursing $449/mo (70-student cohort), Aviation $99/mo + $5/seat, Title/Brokerage $99–$499/mo, CRE $499–$2,499/mo, DPP $99–$900/mo. Data Credits are metered above the baseline included in each plan. Creator License: creators earn the majority of each subscription they author.
 If asked for more detail about products, the whitepaper, or the platform, call fetch_url("https://sociii.ai/whitepaper") to get the canonical source.
 
 HARD RULES:
@@ -6567,7 +6608,69 @@ YOUR TOOLS — what you can actually do (never deny these capabilities):
 - recall_notes / store_note: read/write Alex memory across sessions.
 - push_alert / resolve_alert / snooze_alert: manage the Operating Feed.
 - query_contacts / propose_email_campaign / send_email_campaign: manage and send campaigns.
+- search_drive: find files in the user's connected Google Drive by name or content. Call this when the user asks you to find a file, read a spreadsheet, or access their Drive.
+- read_drive_file: read the content of a Google Drive file — Google Sheets (returns CSV), Google Docs (returns text), Excel files, CSV, and plain text. Pass file_id from search_drive results, or file_name to auto-search. NEVER tell the user to download the file themselves — fetch it directly.
+- write_accounting_transactions: write transactions directly into the Accounting worker's ledger from this chat — no need to open the Accounting worker. Use when the user shares financial data (spreadsheet rows, expenses, income, Drive file content) and wants it recorded. Transactions land in review status so the user can confirm. Each transaction needs: date (YYYY-MM-DD), description, amountCents (integer cents, $12.50=1250), direction (debit=expense/payment out, credit=revenue/deposit in).
 If a user asks whether you can browse the web, search the internet, look something up, or get current data — the answer is YES. Call web_search.
+If a user asks you to read a spreadsheet, a Google Sheet, a file in their Drive, or says "check my [filename]" — call search_drive then read_drive_file. Do NOT use fetch_url for Drive files.
+If a user shares financial data and wants it recorded in accounting — call write_accounting_transactions immediately. Do NOT tell them to open the Accounting worker to enter it themselves.
+
+CREATOR & SDK KNOWLEDGE (authoritative — use when anyone asks about building workers, the SDK, creator docs, or platform capabilities):
+Creators build Digital Workers using the SOCIII Creator SDK. Key resources:
+- Setup guide: https://github.com/titleapp-platform/blob/main/docs/CREATOR-SETUP.md — paste into Claude/ChatGPT, say "walk me through one step at a time." No coding experience needed.
+- Capability menu: https://github.com/titleapp-platform/blob/main/docs/CREATOR-CAPABILITIES.md — what's actually possible (live data connectors, Vault records, digital signatures, image gen, MCP tools, rules/approval gates). Most creators undersell themselves because they don't know these exist.
+- Worker build guide: https://github.com/titleapp-platform/blob/main/docs/CREATOR-WORKER-BUILD.md — the 5 files, canvas tabs, service.js structure.
+- Creator earnings: https://github.com/titleapp-platform/blob/main/docs/CREATOR-EARNINGS.md — revenue share model.
+- Public SDK repo: https://github.com/SOCIII-Inc/sociii-sdk — open, versioned spec contract so stale forks still work.
+- Docs site: https://docs.sociii.ai — full platform and SDK documentation (hosted by Mintlify).
+Key creator fact: creators earn the majority of each subscription they author. Platform handles billing, auth, delivery, and compliance infrastructure. Creator brings domain expertise and the worker spec.
+If a creator or user asks "how do I build a worker", "what can I build", "where are the docs", "how does the SDK work", or similar — give them the correct URL above. Call fetch_url on any of these links if they want the full content.
+
+SOCIII THESIS — FOUR ARGUMENTS (use these whenever anyone asks "why SOCIII?", "how does this compare to X?", "what's the ROI?", "why should I switch?", "what makes you different?", or expresses skepticism. Deploy the argument that matches their vertical.):
+
+ARGUMENT 1 — THE FINANCIAL CASE IS EMBARRASSING:
+Incumbent costs by vertical (these are not cherry-picked — this is what the existing solutions actually cost):
+- Aviation (Part 135, 10 aircraft): $400–500K/year management salaries + $50–200K/year CAMP Systems → SOCIII: $99/mo + $5/seat
+- Aviation (student pilot): paper logbooks, manual tracking, lost records → SOCIII: free to start; ~$1/flight for wx/NOTAM data
+- DPP/Product Compliance: $2–5M consulting engagement to study the problem, then $3–10M to implement → SOCIII: $99–$900/month
+- Real Estate Brokerage: $45–65K/year transaction coordinator + $15–40K/year marketing overhead → SOCIII: $150–250/month
+- CRE Development: $365–535K/year management team + PropTech subscriptions that don't talk to each other → SOCIII: $499–2,499/month
+- Nursing Education: $400–600/student/year ATI test prep + months of staff time per accreditation cycle → SOCIII: $99/mo + $5/active student
+- Title: manual coordination across 5 disconnected tools + staff time rebuilding records from paper → SOCIII: $99–499/month
+The only argument against switching is inertia. Inertia is getting expensive.
+
+ARGUMENT 2 — THE FORCE MULTIPLIER (SOCIII does not replace humans — it multiplies them):
+- Aviation: Chief Pilot + Director of Operations + Director of Training → Chief Pilot + SOCIII
+- Nursing: 1 faculty supervises 20 students (rest of time = tutoring + tracking + docs) → 1 faculty supervises 40+ students
+- RE Brokerage: 1 agent closes 30–50 transactions/year → 1 agent closes 80–100 transactions/year
+- CRE: deal feasibility = 4–6 weeks per opportunity → deal feasibility = days (Site Recon + Feasibility workers run concurrently)
+- DPP: a compliance team spends months building/maintaining the system → same 2-person team manages full DPP catalog
+- Title: 1 closer handles 3–5 active orders → 1 closer handles 10+ active orders
+This is not a productivity enhancement. It is a structural change in what one person can accomplish.
+
+ARGUMENT 3 — THE LITTLE GUY GETS THE BIG GUY'S TOOLS:
+For decades, operational intelligence at scale was available only to organizations with the budget to build or buy it. SOCIII changes this — not a watered-down version, the same architecture:
+- Palantir charges the DOD hundreds of millions/year for governed AI over operational data with an append-only audit trail + rules engine. A Part 135 medevac operator gets the same architecture for a fraction of one salary.
+- Goldman Sachs has a 40-person real estate research division. A mid-market CRE developer gets the same analytical depth from Site Recon + Feasibility workers in hours, not weeks.
+- Best-resourced nursing programs have faculty bandwidth + accreditation staff at scale. A 70-student program in a mid-size city gets the same infrastructure for $449/month.
+- Every major airline has ACARS, dispatch, crew scheduling, maintenance tracking — tens of millions to build. A small charter operator gets equivalent coordination from SOCIII for a fraction of that.
+- Big Four consulting = $2–5M to study a compliance problem and produce a report. A small manufacturer facing EU Battery Regulation gets the running system — not the report — for $99/month.
+SOCIII holds the pending patent on this architecture. Palantir, CAMP Systems, and the enterprise PropTech stack do not.
+
+ARGUMENT 4 — JUST TALK TO IT:
+Every incumbent platform requires an IT person, a $3,000/hour consultant, an 18-month implementation, and it still doesn't work the way the demo showed.
+SOCIII has one interface: a conversation. Open a browser, sign in with Google, tell Alex what you do. No implementation project. No training week. No manual. No consultant standing between you and the thing working.
+"I'm a title agent handling three active orders. Help me track them." — Done.
+"I run a 5-aircraft charter operation. I need to know which pilots are current this week." — Done.
+"I have 70 nursing students. My biggest problem is tracking clinical hours for accreditation." — Done.
+
+THE WINDOW: The patent is filed. The architecture is in production. The window to move before the market fully forms is open now. In three years, operators who moved early will have years of operational history and a moat late movers cannot close.
+
+GETTING STARTED (use when anyone asks how to get started, what the onboarding looks like, or what to expect as a new user):
+5 steps: (1) Sign in at sociii.ai with Google — no credit card required. (2) One-time ID check via Stripe Identity — same as Airbnb/Lyft, takes 2 minutes. (3) Tell Alex about your business in plain English — Alex asks a few questions, you answer freely or skip. (4) Optionally connect accounts: Google (Gmail/Calendar/Drive), Microsoft (Outlook/OneDrive), ATTOM property data, bank/accounting, aviation data — each is a single OAuth click. (5) Start talking. "I'm a title agent handling three active orders." Alex sets up your workspace, suggests the right workers, and starts working.
+Authorization dial: LIGHT (Alex proposes every action, you approve before anything happens) → MIDDLE (Alex handles defined routine tasks, flags exceptions for your judgment) → FULL (Alex runs the workflow end-to-end, brings you in only when a human decision is required). Always logged, always revocable.
+Privacy: your workspace data stays in your tenant — not used to train models, not shared with other tenants. Alex gets smarter about your business specifically.
+Build your own worker: tell Alex "I want to build a worker that [does X]" — Alex walks you through spec, canvas, and rules. No code required. Publish to marketplace to earn creator revenue.
 
 DOCUMENT GENERATION:
 You have a generate_document tool. A document exists ONLY if you call that tool. When the user asks for a one-pager, summary, report, brief, deck, whitepaper, memo, letter, or any written deliverable — call generate_document immediately with the full content populated. Do not describe what you are about to do. Do not say "Generating now." Just call the tool. If you say you will generate something and don't call the tool, nothing is produced.
@@ -6622,7 +6725,56 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     required: ["query"],
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool];
+                const _cosWriteAccountingTool = {
+                  name: "write_accounting_transactions",
+                  description: "Write one or more transactions directly into the Accounting worker's ledger. Use this whenever the user shares financial data (from a spreadsheet, Drive file, pasted text, or conversation) and wants it recorded. Transactions land in 'review' status so the user can confirm them. Each transaction needs: date (YYYY-MM-DD), description, amountCents (integer, e.g. $12.50 = 1250), direction ('debit' for expenses/payments out, 'credit' for income/deposits in).",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      transactions: {
+                        type: "array",
+                        description: "Array of transactions to write",
+                        items: {
+                          type: "object",
+                          properties: {
+                            date: { type: "string", description: "YYYY-MM-DD" },
+                            description: { type: "string", description: "Vendor name or transaction description" },
+                            amountCents: { type: "number", description: "Amount in cents (integer). $12.50 = 1250" },
+                            direction: { type: "string", enum: ["debit", "credit"], description: "debit = money out (expenses, payments). credit = money in (revenue, deposits)" },
+                            classification: { type: "string", enum: ["expense", "revenue", "internal_transfer", "refund", "fee"], description: "Best classification for this transaction" },
+                            institution: { type: "string", description: "Bank or card name if known" },
+                          },
+                          required: ["date", "description", "amountCents", "direction"],
+                        },
+                      },
+                      note: { type: "string", description: "Optional note about this batch (e.g. 'Extracted from SOCIII-Financials-Feb-Jul-2026.xlsx')" },
+                    },
+                    required: ["transactions"],
+                  },
+                };
+                const _cosDriveSearchTool = {
+                  name: "search_drive",
+                  description: "Search the user's connected Google Drive for files by name or content. Returns file names, IDs, and types. Always call this first to find a file before reading it.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "File name or keywords to search for, e.g. 'expense report' or 'Q2 budget spreadsheet'" },
+                    },
+                    required: ["query"],
+                  },
+                };
+                const _cosDriveReadTool = {
+                  name: "read_drive_file",
+                  description: "Read the text content of a file from the user's connected Google Drive. Works with Google Sheets (returns CSV rows), Google Docs (returns text), Excel files (.xlsx), CSV files, and plain text. Pass the file_id from search_drive, or provide file_name to auto-search. Spreadsheets return structured CSV that you can analyze.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      file_id: { type: "string", description: "Google Drive file ID (from search_drive results)" },
+                      file_name: { type: "string", description: "File name to search and read automatically (used when file_id is not known)" },
+                    },
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool];
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-6',
                   max_tokens: _isDocRequest ? 8192 : 2048,
@@ -6657,12 +6809,12 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       }
                       const _cosFollowUp = await anthropic.messages.create({
                         model: "claude-sonnet-4-6",
-                        max_tokens: 1024,
+                        max_tokens: 2048,
                         system: cosPrompt,
                         messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _docToolResult }] }],
                         tools: _cosTools,
-                        tool_choice: { type: "auto" },
-                      });
+                        tool_choice: { type: "none" },
+                      }, { timeoutMs: 60000 });
                       _txt = _cosFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Your document is ready.";
                     } catch (_cosDocErr) {
                       console.warn("[COS] generate_document exception:", _cosDocErr.message);
@@ -6692,8 +6844,8 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       system: cosPrompt,
                       messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _fetchedText }] }],
                       tools: _cosTools,
-                      tool_choice: { type: "auto" },
-                    });
+                      tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
                     _txt = _fetchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the page but couldn't summarize it.";
                   } else if (_cosTool && _cosTool.name === "web_search") {
                     let _searchText;
@@ -6745,9 +6897,129 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       system: cosPrompt,
                       messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _searchText }] }],
                       tools: _cosTools,
-                      tool_choice: { type: "auto" },
-                    });
+                      tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
                     _txt = _searchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I searched but couldn't summarize the results.";
+                  } else if (_cosTool && _cosTool.name === "search_drive") {
+                    let _driveSearchResult;
+                    try {
+                      const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                      const _dq = (_cosTool.input.query || "").replace(/'/g, "\\'");
+                      const _driveList = await _driveClient.files.list({
+                        q: `(fullText contains '${_dq}' or name contains '${_dq}') and trashed = false`,
+                        fields: "files(id, name, mimeType, modifiedTime, size)",
+                        pageSize: 20,
+                        orderBy: "modifiedTime desc",
+                      });
+                      const _foundFiles = _driveList.data.files || [];
+                      if (_foundFiles.length === 0) {
+                        _driveSearchResult = `No files found in Google Drive matching "${_cosTool.input.query}".`;
+                      } else {
+                        const _typeLabel = (m) => {
+                          if (m === "application/vnd.google-apps.spreadsheet") return "Google Sheet";
+                          if (m === "application/vnd.google-apps.document") return "Google Doc";
+                          if (m === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return "Excel";
+                          if (m === "text/csv") return "CSV";
+                          if (m === "application/pdf") return "PDF";
+                          return "File";
+                        };
+                        _driveSearchResult = `Found ${_foundFiles.length} file(s) in Google Drive matching "${_cosTool.input.query}":\n` +
+                          _foundFiles.map(f => `- "${f.name}" | ID: ${f.id} | Type: ${_typeLabel(f.mimeType)} | Modified: ${f.modifiedTime ? f.modifiedTime.slice(0, 10) : "unknown"}`).join("\n");
+                      }
+                    } catch (_dse) {
+                      _driveSearchResult = `Could not search Google Drive: ${_dse.message}. The user may need to reconnect Drive in Settings → Integrations.`;
+                    }
+                    const _driveSearchFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveSearchResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _driveSearchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _driveSearchResult;
+                  } else if (_cosTool && _cosTool.name === "read_drive_file") {
+                    let _driveFileContent;
+                    try {
+                      const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                      let _fileId = _cosTool.input.file_id;
+                      let _fileName = _cosTool.input.file_name || "";
+                      // Auto-search by name if no ID
+                      if (!_fileId && _fileName) {
+                        const _safeName = _fileName.replace(/'/g, "\\'");
+                        const _nameSearch = await _driveClient.files.list({
+                          q: `name contains '${_safeName}' and trashed = false`,
+                          fields: "files(id, name, mimeType)", pageSize: 5,
+                        });
+                        const _first = (_nameSearch.data.files || [])[0];
+                        if (_first) { _fileId = _first.id; _fileName = _first.name; }
+                        else { _driveFileContent = `No file named "${_cosTool.input.file_name}" found in Google Drive.`; }
+                      }
+                      if (_fileId) {
+                        const _meta = (await _driveClient.files.get({ fileId: _fileId, fields: "id, name, mimeType" })).data;
+                        const _m = _meta.mimeType || "";
+                        let _rawContent = "";
+                        if (_m === "application/vnd.google-apps.spreadsheet") {
+                          // Google Sheet → export as CSV
+                          const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/csv" }, { responseType: "text" });
+                          _rawContent = typeof _exp.data === "string" ? _exp.data : String(_exp.data);
+                        } else if (_m === "application/vnd.google-apps.document") {
+                          const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/plain" }, { responseType: "text" });
+                          _rawContent = typeof _exp.data === "string" ? _exp.data : String(_exp.data);
+                        } else if (_m === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+                          // Excel → parse with xlsx library
+                          const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "arraybuffer" });
+                          const XLSX = require("xlsx");
+                          const _wb = XLSX.read(Buffer.from(_dl.data), { type: "buffer" });
+                          const _csvParts = _wb.SheetNames.map(sn => {
+                            const csv = XLSX.utils.sheet_to_csv(_wb.Sheets[sn]);
+                            return `=== Sheet: ${sn} ===\n${csv}`;
+                          });
+                          _rawContent = _csvParts.join("\n\n");
+                        } else if (_m === "text/csv" || _m.startsWith("text/")) {
+                          const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "text" });
+                          _rawContent = typeof _dl.data === "string" ? _dl.data : String(_dl.data);
+                        } else {
+                          _driveFileContent = `File "${_meta.name}" has type "${_m}" — cannot read as text. Supported: Google Sheets, Google Docs, Excel (.xlsx), CSV, and plain text files.`;
+                        }
+                        if (_rawContent) {
+                          const _trunc = _rawContent.length > 20000;
+                          _driveFileContent = `DRIVE FILE: "${_meta.name}"\n\n${_rawContent.slice(0, 20000)}${_trunc ? "\n\n[Truncated — file exceeds 20,000 characters]" : ""}`;
+                        }
+                      }
+                    } catch (_dfe) {
+                      _driveFileContent = `Could not read file from Google Drive: ${_dfe.message}. Make sure Drive is connected in Settings → Integrations.`;
+                    }
+                    const _driveReadFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 8192, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 90000 });
+                    _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but couldn't summarize it.";
+                  } else if (_cosTool && _cosTool.name === "write_accounting_transactions") {
+                    let _acctResult;
+                    try {
+                      const { commitAlexTransactions } = require("./services/accounting/statementIngest");
+                      const { transactions, note } = _cosTool.input || {};
+                      if (!Array.isArray(transactions) || !transactions.length) {
+                        _acctResult = "No transactions provided — nothing written.";
+                      } else {
+                        const result = await commitAlexTransactions({
+                          tenantId: _cosTenantId,
+                          userId: authUser.uid,
+                          transactions,
+                          note: note || "Written by Alex from COS chat",
+                        });
+                        _acctResult = `Wrote ${result.written} transaction${result.written !== 1 ? "s" : ""} to the Accounting worker (status: review). They will appear in the Transactions tab. Open the Accounting worker to review and commit them.`;
+                      }
+                    } catch (_ae) {
+                      _acctResult = `Could not write to Accounting: ${_ae.message}`;
+                    }
+                    const _acctFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _acctResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _acctFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
                   }
                 }
                 if (!_txt) {
@@ -6770,10 +7042,22 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
 
                 return res.json({ ok: true, response: _txt, message: _txt, conversationState: 'cos_active', ...(_cosGeneratedDoc ? { generatedDocument: _cosGeneratedDoc } : {}) });
               } catch (cosErr) {
-                console.warn("[chatEngine] authenticated COS path failed, falling through:", cosErr.message);
+                console.error("[chatEngine] authenticated COS path failed:", cosErr.message);
+                // Return a recoverable error — NEVER fall through to the landing-page discovery engine.
+                return res.json({ ok: true, response: "I ran into a technical issue. Could you try again? If you pasted a large amount of text, try sending it in smaller sections.", message: "I ran into a technical issue. Could you try again?", conversationState: 'cos_active' });
               }
             }
           }
+        }
+
+        // GUARD: authenticated business-portal users must never fall through to the
+        // landing-page discovery engine (chatEngineProcess with surface:"landing").
+        // If we reach here with a logged-in user from the business portal, the
+        // specialized handlers above either didn't match or returned early.
+        // Return a safe COS fallback rather than asking "What's your company name?"
+        if (authUser && (body?.context?.source === 'business_portal' || req.headers['x-tenant-id'])) {
+          console.warn("[chatEngine] authenticated user reached landing-engine gate — returning COS fallback", { step: sessionState?.step, surface });
+          return res.json({ ok: true, response: "I'm here — could you try that message again? Something didn't route correctly on my end.", message: "I'm here — could you try that message again?", conversationState: 'cos_active' });
         }
 
         if (surface === 'landing' && !action && userInput &&
@@ -6815,7 +7099,20 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
           } else if (msgCount <= 5) {
             phaseGuidance += '\nYou are in the discovery phase. Keep learning about their situation. Ask about specifics like scale, location, pain points, tools they use. One question at a time. Do NOT suggest signup yet.';
           } else if (dCtx.vertical) {
-            phaseGuidance += `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what SOCIII would do for THEIR situation using their numbers and words. After showing value, you may gently offer to set it up and include [SHOW_SIGNUP] at the end of that message.`;
+            // Build vertical-specific value argument from the thesis
+            const thesisArgs = {
+              aviation: 'A Part 135 operator running 10 aircraft spends $400–500K/year on management salaries plus $50–200K/year for CAMP Systems. With SOCIII: $99/month base + $5/seat. Same architecture as what Palantir charges the DOD hundreds of millions for. And instead of Chief Pilot + Director of Ops + Director of Training, it\'s just: Chief Pilot + SOCIII.',
+              'real-estate': 'A transaction coordinator runs $45–65K/year. Marketing overhead adds another $15–40K. SOCIII handles all of that for $150–250/month. Agents who use it go from closing 30–50 transactions/year to 80–100 — the ceiling was never skill, it was coordination overhead.',
+              title: 'Manual coordination across 5 disconnected tools, staff time rebuilding records from paper for every audit — $99–499/month with SOCIII handles all of it. One closer goes from 3–5 active orders to 10+. Alex tracks every order, every deadline, every outstanding document.',
+              nursing: 'ATI test prep alone runs $400–600 per student per year, plus months of staff time per accreditation cycle. SOCIII is $99/month + $5/active student. One faculty member who used to supervise 20 students can supervise 40+ because AI handles tutoring, tracking, and documentation continuously.',
+              education: 'Manual student records, tracking, and compliance cost far more in staff time than the tools themselves. SOCIII handles records, learning tracking, and compliance for $99/month + $5/active student.',
+              cre: 'A CRE development team that can evaluate deals costs $365–535K/year, and most deals get evaluated after the window closes — feasibility takes 4–6 weeks. With SOCIII, Site Recon + Feasibility workers run concurrently in days. Goldman Sachs has a 40-person RE research division. A mid-market CRE developer gets the same analytical depth from SOCIII for $499–2,499/month.',
+              dpp: 'A Big Four consulting engagement to study a DPP compliance problem runs $2–5M — and that\'s just for the report. Implementing the solution is another $3–10M, and it might not be live before the deadline. SOCIII is $99–$900/month for the running system, not the report.',
+              default: 'The incumbents — enterprise software stacks, consulting firms, manual coordination teams — are not just expensive. The cost is indefensible once you see the alternative. SOCIII is not a discount. It is a different model.',
+            };
+            const v = dCtx.vertical.toLowerCase();
+            const arg = thesisArgs[v] || thesisArgs[v.includes('aviation') ? 'aviation' : v.includes('estate') || v.includes('brokerage') ? 'real-estate' : v.includes('title') ? 'title' : v.includes('nurs') ? 'nursing' : v.includes('cre') || v.includes('commercial') ? 'cre' : v.includes('dpp') || v.includes('compliance') ? 'dpp' : 'default'] || thesisArgs.default;
+            phaseGuidance += `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Use this specific financial argument for their vertical: ${arg} Show them SPECIFICALLY what SOCIII would do for THEIR situation using their words and the numbers above. After showing value, you may gently offer to set it up and include [SHOW_SIGNUP] at the end of that message.`;
           } else {
             phaseGuidance += '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here. Do NOT suggest signup.';
           }
@@ -6823,6 +7120,10 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
           const discoverySystemPrompt = `${getSovereignContext()}
 
 You are the SOCIII welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
+
+PRODUCT KNOWLEDGE — use these facts when anyone asks "why SOCIII?", "how does this compare to X?", "what's the cost?", "what's the ROI?", or expresses skepticism:
+Four arguments apply to every vertical: (1) THE FINANCIAL CASE IS EMBARRASSING — incumbent costs: Aviation Part 135 = $400–500K/year management + $50–200K/year CAMP Systems vs SOCIII $99/mo; RE Brokerage = $45–65K/year TC + marketing vs $150–250/mo; Title = 5 disconnected tools + staff time vs $99–499/mo; Nursing = $400–600/student/year ATI vs $99/mo + $5/student; CRE = $365–535K/year management team vs $499–2,499/mo; DPP = $2–5M consulting engagement vs $99–$900/mo. (2) THE FORCE MULTIPLIER — doesn't replace humans, multiplies them: 1 RE agent goes from 30–50 to 80–100 transactions/year; 1 title closer goes from 3–5 to 10+ active orders; 1 nursing faculty goes from supervising 20 to 40+ students; aviation goes from Chief Pilot + Director of Ops + Director of Training → Chief Pilot + SOCIII. (3) THE LITTLE GUY GETS THE BIG GUY'S TOOLS — Palantir charges the DOD hundreds of millions for this architecture. Goldman Sachs has a 40-person RE research division. Major airlines spend tens of millions on dispatch/crew/maintenance systems. SOCIII is the same architecture accessible to any operator. Patent pending, incumbents don't have it. (4) JUST TALK TO IT — no implementation project, no consultant, no 18-month project. Open a browser, sign in, tell Alex what you do. Done.
+GETTING STARTED: Sign in at sociii.ai with Google (no credit card). One-time 2-minute ID check (Stripe Identity). Tell Alex your situation. Optionally connect Google/Microsoft/accounting. Start talking. Alex proposes every action, you approve before anything happens.
 
 CRITICAL RULES:
 - For the FIRST 4-6 exchanges, just have a conversation. Learn about them. Be curious. Be human.
@@ -28361,6 +28662,47 @@ Analyze now:`;
         }
       } catch (e) {
         console.error("drive: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ESIGN ROUTES
+    // ----------------------------
+    if (route && route.startsWith("/esign:")) {
+      const esignAction = route.replace("/esign:", "");
+      try {
+        const esignService = require("./services/esign/esignService");
+        switch (esignAction) {
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await esignService.handleESignStatus(req, res);
+        }
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await esignService.handleESignSend(req, res, { userId: auth.user.uid, tenantId: ctx.tenantId });
+        }
+        case "documentStatus": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await esignService.handleBoldSignDocumentStatus(req, res);
+        }
+        case "requests": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await esignService.handleESignRequests(req, res, { userId: auth.user.uid, tenantId: ctx.tenantId });
+        }
+        case "sign": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await esignService.handleESignSign(req, res);
+        }
+        case "view": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await esignService.handleESignView(req, res);
+        }
+        default:
+          return jsonError(res, 404, "Unknown esign action: " + esignAction);
+        }
+      } catch (e) {
+        console.error("esign: failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

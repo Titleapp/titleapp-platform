@@ -209,6 +209,61 @@ function getWorkerIntro(slug) {
   return null;
 }
 
+function DocPreviewModal({ docPreview, onClose }) {
+  const [activeSheet, setActiveSheet] = React.useState(0);
+  React.useEffect(() => setActiveSheet(0), [docPreview]);
+
+  if (!docPreview) return null;
+  const isXlsx = docPreview.format === "xlsx" && Array.isArray(docPreview.sheets);
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "stretch" }}>
+      <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: isXlsx ? 1100 : 900, height: "100%", margin: "0 auto", padding: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{docPreview.title}</div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+            <a href={docPreview.url} target="_blank" rel="noopener noreferrer" style={{ padding: "7px 16px", background: "#7c3aed", color: "#fff", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Download</a>
+            <button onClick={onClose} style={{ padding: "7px 14px", background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Close</button>
+          </div>
+        </div>
+        {isXlsx ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff", borderRadius: 8, overflow: "hidden" }}>
+            {docPreview.sheets.length > 1 && (
+              <div style={{ display: "flex", gap: 2, padding: "8px 12px 0", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", flexShrink: 0 }}>
+                {docPreview.sheets.map((s, i) => (
+                  <button key={i} onClick={() => setActiveSheet(i)} style={{ padding: "6px 14px", borderRadius: "6px 6px 0 0", border: "1px solid", borderBottom: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: activeSheet === i ? "#fff" : "#f1f5f9", borderColor: activeSheet === i ? "#e2e8f0" : "transparent", color: activeSheet === i ? "#7c3aed" : "#64748b" }}>{s.name}</button>
+                ))}
+              </div>
+            )}
+            <div style={{ flex: 1, overflow: "auto", padding: 0 }}>
+              {(() => {
+                const sheet = docPreview.sheets[activeSheet];
+                if (!sheet || !sheet.rows.length) return <div style={{ padding: 24, color: "#94a3b8", fontSize: 13 }}>No data in this sheet.</div>;
+                return (
+                  <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12, fontFamily: "monospace" }}>
+                    <tbody>
+                      {sheet.rows.map((row, ri) => (
+                        <tr key={ri} style={{ background: ri === 0 ? "#7c3aed" : ri % 2 === 0 ? "#f8fafc" : "#fff" }}>
+                          {row.map((cell, ci) => {
+                            const Tag = ri === 0 ? "th" : "td";
+                            return <Tag key={ci} style={{ padding: "5px 10px", border: "1px solid #e2e8f0", color: ri === 0 ? "#fff" : "#1e293b", fontWeight: ri === 0 ? 600 : 400, textAlign: typeof cell === "number" ? "right" : "left", whiteSpace: "nowrap" }}>{cell === null || cell === undefined ? "" : String(cell)}</Tag>;
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          </div>
+        ) : (
+          <iframe src={docPreview.url} style={{ flex: 1, width: "100%", border: "none", borderRadius: 8, background: "#fff" }} title={docPreview.title} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WorkerIntroCard({ intro, onDismiss }) {
   return (
     <div style={{
@@ -364,6 +419,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // Kept fresh every render (below) so window-event handlers always call the
   // latest sendMessage without stale-closure state. Used by the Drive→chat handoff.
   const sendMessageRef = useRef(null);
+  const chatAbortRef = useRef(null); // lifted so stop button can cancel in-flight request
+  const [copiedIdx, setCopiedIdx] = useState(null);
   const [workerSearch, setWorkerSearch] = useState("");
   const [greetingCollapsed, setGreetingCollapsed] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("All");
@@ -787,6 +844,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             "vet-client":       "Welcome to SOCIII, Koa. This is Luna's health portal from Meadow Creek Animal Hospital — visit records, medications, and upcoming care are all here. Click the Pet Health Records worker on the left to get started.",
             "realestate":       "Welcome to SOCIII. This is your real estate workspace — deal analysis, title research, zoning data, and a full client portal all in one place. Click any worker on the left or tell me what you're working on.",
             "traitly":          "Welcome to SOCIII. This is the TRAITLY workspace — product passports, compliance tracking, and your DPP registry. Click any worker on the left to see it in action.",
+            "title":            "Welcome to SOCIII. This is your title and escrow operations workspace — Title Search, Escrow, and your client portal all in one place. You're signed in as Sarah Garris, Escrow Officer. Open Title Search to run a live ATTOM chain-of-title pull on any Texas address, or open Escrow to see the active order queue. Ask me anything.",
+            "aviation":         "Welcome to SOCIII. This is your aviation operations workspace — CoPilot, Maintenance, and Dispatch all in one place. You're signed in as Alex Rivera at Pacific Air Partners. Click CoPilot to see currency tracking and flight planning, or Maintenance to see the fleet MX queue. Ask me anything.",
+            "brokerage":        "Welcome to SOCIII. This is your residential brokerage workspace — Real Estate Advocate, Land Use, and Site Recon all in one place. You're signed in as Jordan Blake at Summit Realty Group. Open Real Estate Advocate to run a CMA or buyer analysis, or Site Recon to pull comps and data on any address. Ask me anything.",
+            "education":        "Welcome to SOCIII. This is your school's platform — student records, adaptive tutoring, and your compliance evidence all in one place. You're signed in as Dr. Patricia Wells at Westview Elementary School. Click the Education worker on the left to see student progress and course outcomes. Ask me anything.",
           };
           const greeting = DEMO_GREETINGS[_persona] || "Welcome to SOCIII. I'm Alex, your Chief of Staff. The workers on the left are your specialists — each one knows the rules of its domain. Click any worker to see it in action, or ask me what you're looking for.";
           setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
@@ -1623,7 +1684,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
       const _chatAbort = new AbortController();
-      const _chatTimeout = setTimeout(() => _chatAbort.abort(), 55000);
+      chatAbortRef.current = _chatAbort;
+      const _chatTimeout = setTimeout(() => _chatAbort.abort(), 120000);
       const _appCheckHeader = await getAppCheckHeader();
       const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
         method: 'POST',
@@ -2066,7 +2128,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [apolloRunState, setApolloRunState] = useState({}); // { "idx-searchIdx": "running"|"done"|"error" }
   const [campaignSendState, setCampaignSendState] = useState({}); // { idx: "sending"|"done"|"error" }
   const [bundleSubscribeModal, setBundleSubscribeModal] = useState(null); // { bundle, workspaceName }
-  const [docPreview, setDocPreview] = useState(null); // { url, title, format }
+  const [docPreview, setDocPreview] = useState(null); // { url, title, format, sheets? }
+  const [xlsxLoading, setXlsxLoading] = useState(false);
 
   async function handleSaveDraft(content, idx) {
     setSavingDraftIdx(idx);
@@ -2785,6 +2848,29 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                         Preview
                       </button>
                     )}
+                    {msg.generatedDocument.format === "xlsx" && (
+                      <button
+                        disabled={xlsxLoading}
+                        onClick={async () => {
+                          setXlsxLoading(true);
+                          try {
+                            const { read, utils } = await import("xlsx");
+                            const res = await fetch(msg.generatedDocument.downloadUrl);
+                            const buf = await res.arrayBuffer();
+                            const wb = read(buf, { type: "array" });
+                            const sheets = wb.SheetNames.map(name => ({
+                              name,
+                              rows: utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: "" }),
+                            }));
+                            setDocPreview({ url: msg.generatedDocument.downloadUrl, title: msg.generatedDocument.title, format: "xlsx", sheets });
+                          } catch (e) { console.error("xlsx preview failed", e); }
+                          finally { setXlsxLoading(false); }
+                        }}
+                        style={{ padding: "7px 14px", background: "#f1f5f9", color: "#7c3aed", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: xlsxLoading ? "default" : "pointer", whiteSpace: "nowrap", opacity: xlsxLoading ? 0.6 : 1 }}
+                      >
+                        {xlsxLoading ? "Loading…" : "Preview"}
+                      </button>
+                    )}
                     <a
                       href={msg.generatedDocument.downloadUrl}
                       target="_blank"
@@ -2803,7 +2889,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 non-trivial content length). Feedback events go to
                 workerFeedback/ via /v1/chat:feedback. */}
             {msg.role === "assistant" && !msg.isSystem && !msg.isError && typeof displayContent === "string" && displayContent.length > 30 && (
-              <MessageFeedback messageIndex={idx} workerSlug={activeWorkerSlug || null} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                <MessageFeedback messageIndex={idx} workerSlug={activeWorkerSlug || null} />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(typeof msg.content === "string" ? msg.content : displayContent).then(() => {
+                      setCopiedIdx(idx);
+                      setTimeout(() => setCopiedIdx(c => c === idx ? null : c), 2000);
+                    });
+                  }}
+                  title="Copy"
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 6px", borderRadius: 6, color: copiedIdx === idx ? "#16a34a" : "#94a3b8", display: "flex", alignItems: "center", transition: "color 0.15s" }}
+                >
+                  {copiedIdx === idx
+                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  }
+                </button>
+              </div>
             )}
 
             {/* Save as Draft — only for platform-marketing assistant messages (49.2) */}
@@ -3692,16 +3795,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             disabled={chatDisabled}
             style={{ opacity: disclaimerAccepted ? 1 : 0.5 }}
           />
-          <button
-            type="submit"
-            disabled={chatDisabled || !input.trim()}
-            aria-label="Send message"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
+          {isSending ? (
+            <button
+              type="button"
+              onClick={() => { chatAbortRef.current?.abort(); }}
+              aria-label="Stop response"
+              style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", color: "#ef4444" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={chatDisabled || !input.trim()}
+              aria-label="Send message"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          )}
         </div>
       </form>
 
@@ -3745,40 +3859,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       {/* PDF document preview overlay */}
       {docPreview && (
-        <div
-          onClick={() => setDocPreview(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "stretch" }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 900, height: "100%", margin: "0 auto", padding: "16px" }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{docPreview.title}</div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-                <a
-                  href={docPreview.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ padding: "7px 16px", background: "#7c3aed", color: "#fff", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none" }}
-                >
-                  Download
-                </a>
-                <button
-                  onClick={() => setDocPreview(null)}
-                  style={{ padding: "7px 14px", background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-            <iframe
-              src={docPreview.url}
-              style={{ flex: 1, width: "100%", border: "none", borderRadius: 8, background: "#fff" }}
-              title={docPreview.title}
-            />
-          </div>
-        </div>
+        <DocPreviewModal docPreview={docPreview} onClose={() => setDocPreview(null)} />
       )}
 
       {/* Draft save toast (49.2) */}

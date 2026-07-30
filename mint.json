@@ -1,0 +1,103 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "SOCIII",
+  "logo": {
+    "light": "/logo/sociii-mark-dark.svg",
+    "dark": "/logo/sociii-mark-light.svg"
+  },
+  "favicon": "/favicon.ico",
+  "colors": {
+    "primary": "#7c3aed",
+    "light": "#a78bfa",
+    "dark": "#5b21b6",
+    "anchors": {
+      "from": "#7c3aed",
+      "to": "#5b21b6"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "App",
+      "url": "https://sociii.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Start free",
+    "url": "https://sociii.ai/meet-alex?action=signup"
+  },
+  "tabs": [
+    {
+      "name": "Platform",
+      "url": "docs"
+    },
+    {
+      "name": "Creator SDK",
+      "url": "sdk"
+    },
+    {
+      "name": "API",
+      "url": "api"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/SOCIII-Inc/sociii-sdk"
+    },
+    {
+      "name": "Whitepapers",
+      "icon": "file-lines",
+      "url": "https://sociii.ai/whitepaper"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": [
+        "docs/index",
+        "docs/what-is-raas",
+        "docs/architecture",
+        "docs/pricing"
+      ]
+    },
+    {
+      "group": "Verticals",
+      "pages": [
+        "docs/verticals/real-estate",
+        "docs/verticals/title-escrow",
+        "docs/verticals/nursing",
+        "docs/verticals/education-k12",
+        "docs/verticals/aviation",
+        "docs/verticals/commercial-real-estate",
+        "docs/verticals/digital-product-passport"
+      ]
+    },
+    {
+      "group": "Creator SDK",
+      "pages": [
+        "sdk/index",
+        "sdk/setup",
+        "sdk/capabilities",
+        "sdk/worker-build",
+        "sdk/earnings",
+        "sdk/install"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api/overview",
+        "api/authentication",
+        "api/workers",
+        "api/vault",
+        "api/mcp"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/sociiiai",
+    "github": "https://github.com/SOCIII-Inc",
+    "linkedin": "https://linkedin.com/company/sociii-inc/"
+  }
+}

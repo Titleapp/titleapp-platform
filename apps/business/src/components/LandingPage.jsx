@@ -166,6 +166,7 @@ export default function LandingPage() {
         </div>
         <div style={S.headerRight}>
           <a href={`${appBase}/workers`} style={S.headerLink}>Workers</a>
+          <a href="#verticals" style={S.headerLink}>Verticals</a>
           <a href={`${appBase}/pricing`} style={S.headerLink}>Pricing</a>
           <a href={`${appBase}/work`} target="_blank" rel="noopener" style={S.headerLink}>OF for Smart People ↗</a>
           <a href={`${appBase}/investors`} style={S.headerLink}>Investors</a>
@@ -225,21 +226,88 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* ─── Industry vertical strip ─── */}
-        <div style={S.verticalStrip}>
-          {[
-            { label: "Real Estate", demo: "/demo/nursing", emoji: "🏠" },
-            { label: "Education & Nursing", demo: "/demo/nursing", emoji: "🎓" },
-            { label: "Aviation", demo: "/demo/nursing", emoji: "✈️" },
-            { label: "Legal", demo: null, emoji: "⚖️" },
-            { label: "Finance & IR", demo: null, emoji: "📊" },
-            { label: "Retail & DPP", demo: null, emoji: "🛍️" },
-          ].map(({ label }) => (
-            <div key={label} style={S.verticalChip}>
-              {label}
-            </div>
-          ))}
-        </div>
+        {/* ─── Verticals section ─── */}
+        <section id="verticals" style={S.verticals}>
+          <div style={S.verticalsHeading}>
+            <h2 style={S.verticalsH2}>Built for your industry.</h2>
+            <p style={S.verticalsSub}>
+              Each vertical is a pre-built suite of workers — domain rules already loaded, ready to run. Add the ones you need. Skip the ones you don't.
+            </p>
+          </div>
+          <div style={S.verticalsGrid}>
+            {[
+              {
+                name: "Real Estate — Brokerage",
+                pitch: "Full transaction stack for residential teams. CMA, buyer analysis, site recon, land use, and comparable data in one place.",
+                workers: ["Real Estate Advocate", "Site Recon", "Land Use"],
+                price: "$99–$499/mo",
+                demo: "/demo/brokerage",
+              },
+              {
+                name: "Title & Escrow",
+                pitch: "Chain-of-title pulls, escrow order management, and a client portal — all with an append-only audit trail.",
+                workers: ["Title Search", "Escrow"],
+                price: "$99–$499/mo",
+                demo: "/demo/title",
+              },
+              {
+                name: "Nursing Education",
+                pitch: "Clinical hour tracking, competency mapping, and accreditation-ready reporting. Replaces months of manual assembly.",
+                workers: ["Student Evaluation", "Tutor", "Accreditation"],
+                price: "$449/mo (70-student cohort)",
+                demo: "/demo/nursing/admin",
+              },
+              {
+                name: "K-12 Education",
+                pitch: "Adaptive tutoring for every student, IEP documentation that builds itself, and compliance reporting on demand.",
+                workers: ["Tutor", "Student Records", "Comms"],
+                price: "$99/mo + $5/student",
+                demo: "/demo/education",
+              },
+              {
+                name: "Aviation",
+                pitch: "Currency tracking, fleet maintenance queue, and NOTAM-aware flight planning — purpose-built for Part 91 and 135 ops.",
+                workers: ["CoPilot", "Maintenance", "Dispatch"],
+                price: "$99/mo + $5/seat",
+                demo: "/demo/aviation",
+              },
+              {
+                name: "Commercial Real Estate",
+                pitch: "Deal screening, ATTOM data, zoning analysis, and special-servicer contact lookup for acquisitions and workouts.",
+                workers: ["CRE Analyst", "Site Recon", "Feasibility"],
+                price: "$499–$2,499/mo",
+                demo: null,
+              },
+              {
+                name: "Digital Product Passport",
+                pitch: "EU Battery Regulation compliance, tamper-evident product records, and chain-of-custody for retail and manufacturing.",
+                workers: ["Product Passport", "Compliance"],
+                price: "$99–$900/mo",
+                demo: null,
+              },
+            ].map(({ name, pitch, workers, price, demo }) => (
+              <div key={name} style={S.verticalCard}>
+                <div style={S.verticalCardAccent} />
+                <div style={S.verticalCardBody}>
+                  <div style={S.verticalCardName}>{name}</div>
+                  <div style={S.verticalCardPitch}>{pitch}</div>
+                  <div style={S.verticalCardWorkers}>
+                    {workers.map(w => (
+                      <span key={w} style={S.verticalCardWorkerPill}>{w}</span>
+                    ))}
+                  </div>
+                  <div style={S.verticalCardFooter}>
+                    <span style={S.verticalCardPrice}>{price}</span>
+                    {demo
+                      ? <a href={`${appBase}${demo}`} style={S.verticalCardCta}>See demo →</a>
+                      : <a href={`${appBase}/meet-alex`} style={S.verticalCardCtaGhost}>Talk to Alex →</a>
+                    }
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <section style={S.featured}>
           <div style={S.featuredHeading}>
@@ -452,24 +520,69 @@ const S = {
     fontWeight: 500,
   },
 
-  verticalStrip: {
-    display: "flex",
-    gap: 10,
-    justifyContent: "center",
-    flexWrap: "wrap",
-    maxWidth: 720,
-    margin: "-16px auto 0",
+  verticals: { width: "100%", maxWidth: 1160, margin: "0 auto" },
+  verticalsHeading: { textAlign: "center", marginBottom: 36 },
+  verticalsH2: { fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 10, letterSpacing: "-0.6px" },
+  verticalsSub: { fontSize: 15, color: "#6b7280", margin: "0 auto", maxWidth: 540, lineHeight: 1.6 },
+  verticalsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+    gap: 16,
   },
-  verticalChip: {
-    fontSize: 13,
+  verticalCard: {
+    display: "flex",
+    flexDirection: "row",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    background: "#fff",
+    overflow: "hidden",
+    transition: "box-shadow 0.15s",
+  },
+  verticalCardAccent: {
+    width: 4,
+    flexShrink: 0,
+    background: "#7c3aed",
+  },
+  verticalCardBody: {
+    flex: 1,
+    padding: "20px 20px 18px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  verticalCardName: { fontSize: 15, fontWeight: 700, color: "#111827", letterSpacing: "-0.2px" },
+  verticalCardPitch: { fontSize: 13, color: "#6b7280", lineHeight: 1.55, flex: 1 },
+  verticalCardWorkers: { display: "flex", gap: 6, flexWrap: "wrap" },
+  verticalCardWorkerPill: {
+    fontSize: 11,
     fontWeight: 600,
     color: "#4b5563",
-    background: "#f9fafb",
+    background: "#f3f4f6",
     border: "1px solid #e5e7eb",
-    borderRadius: 20,
-    padding: "7px 16px",
+    borderRadius: 6,
+    padding: "3px 8px",
+  },
+  verticalCardFooter: {
     display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  verticalCardPrice: { fontSize: 12, fontWeight: 600, color: "#9ca3af" },
+  verticalCardCta: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#7c3aed",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+  },
+  verticalCardCtaGhost: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: "#9ca3af",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
   },
 
   featured: { width: "100%", maxWidth: 1200, margin: "0 auto" },

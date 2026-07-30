@@ -5113,7 +5113,9 @@ export default function App() {
   const isAviationCoPilotDemo  = _dp === "/demo/av-copilot"  || _dp === "/demo/av-copilot/";
   const isAviationMXDemo       = _dp === "/demo/av-mx"       || _dp === "/demo/av-mx/";
   const isAviationDispatchDemo = _dp === "/demo/av-dispatch" || _dp === "/demo/av-dispatch/";
-  const isTitleDemo          = _dp.startsWith("/demo/title");
+  const isTitleDemo            = _dp.startsWith("/demo/title");
+  const isBrokerageDemo        = _dp === "/demo/brokerage"   || _dp === "/demo/brokerage/";
+  const isEducationDemo        = _dp === "/demo/education"   || _dp === "/demo/education/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
 
   // ── /invest/room route intercept ──────────────────────────
@@ -5973,6 +5975,14 @@ export default function App() {
   if (isAviationCoPilotDemo || isAviationMXDemo || isAviationDispatchDemo) {
     const AviationDemoSignIn = React.lazy(() => import("./pages/AviationDemoSignIn"));
     return <React.Suspense fallback={null}><AviationDemoSignIn /></React.Suspense>;
+  }
+  if (isBrokerageDemo) {
+    const BrokerageDemoSignIn = React.lazy(() => import("./pages/BrokerageDemoSignIn"));
+    return <React.Suspense fallback={null}><BrokerageDemoSignIn /></React.Suspense>;
+  }
+  if (isEducationDemo) {
+    const EducationDemoSignIn = React.lazy(() => import("./pages/EducationDemoSignIn"));
+    return <React.Suspense fallback={null}><EducationDemoSignIn /></React.Suspense>;
   }
   if (isDemo) {
     const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));

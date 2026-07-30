@@ -48,6 +48,7 @@ export function useDriveStatus() {
         connected: !!res.connected,
         email: res.email || null,
         connectedAt: res.connectedAt || null,
+        tokenExpired: !!res.tokenExpired,
         loading: false,
       });
     } catch {

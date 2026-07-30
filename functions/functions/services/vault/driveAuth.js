@@ -133,6 +133,7 @@ async function handleDriveExchangeCode(req, res, { userId }) {
       email,
       encryptedRefreshToken,
       scopes: SCOPES,
+      tokenInvalid: false,
       connectedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastUsedAt: null,
     });
@@ -181,6 +182,9 @@ async function handleDriveStatus(req, res, { userId }) {
   }
 
   const data = snap.data();
+  if (data.tokenInvalid) {
+    return res.json({ ok: true, connected: false, tokenExpired: true, email: data.email || null });
+  }
   return res.json({
     ok: true,
     connected: data.connected || false,
@@ -202,30 +206,69 @@ async function handleDriveStatus(req, res, { userId }) {
  */
 async function getAuthenticatedDriveClient(userId) {
   const db = getDb();
-  const snap = await db.collection("users").doc(userId)
-    .collection("integrations").doc("googleDrive").get();
+  const docRef = db.collection("users").doc(userId)
+    .collection("integrations").doc("googleDrive");
+  const snap = await docRef.get();
 
   if (!snap.exists || !snap.data().connected) {
-    throw new Error("Google Drive not connected. Please connect in Settings.");
+    throw new Error("Google Drive not connected. Please connect in Settings → Integrations → Google Drive.");
   }
 
   const data = snap.data();
+  if (data.tokenInvalid) {
+    throw new Error("Google Drive token expired. Please reconnect in Settings → Integrations → Google Drive.");
+  }
   if (!data.encryptedRefreshToken) {
-    throw new Error("No stored Drive token. Please reconnect Google Drive.");
+    throw new Error("No stored Drive token. Please reconnect Google Drive in Settings.");
   }
 
   const refreshToken = decrypt(data.encryptedRefreshToken);
   const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-  // Update lastUsedAt
-  db.collection("users").doc(userId)
-    .collection("integrations").doc("googleDrive")
-    .update({ lastUsedAt: admin.firestore.FieldValue.serverTimestamp() })
-    .catch(() => {}); // Non-blocking
+  // Save any newly-refreshed access tokens back to Firestore
+  oauth2Client.on("tokens", (newTokens) => {
+    if (newTokens.refresh_token) {
+      try {
+        const encryptedNew = encrypt(newTokens.refresh_token);
+        docRef.update({ encryptedRefreshToken: encryptedNew, tokenInvalid: false }).catch(() => {});
+      } catch (_) {}
+    }
+  });
+
+  // Update lastUsedAt and clear any previous invalid flag
+  docRef.update({ lastUsedAt: admin.firestore.FieldValue.serverTimestamp(), tokenInvalid: false })
+    .catch(() => {});
 
   const google = getGoogle();
-  return google.drive({ version: "v3", auth: oauth2Client });
+  const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+  // Wrap the drive client to catch invalid_grant and mark token as expired
+  return new Proxy(drive, {
+    get(target, prop) {
+      const val = target[prop];
+      if (typeof val !== "object" || val === null) return val;
+      // Wrap each resource (files, about, etc.)
+      return new Proxy(val, {
+        get(res, method) {
+          const fn = res[method];
+          if (typeof fn !== "function") return fn;
+          return async (...args) => {
+            try {
+              return await fn.apply(res, args);
+            } catch (err) {
+              const msg = err.message || "";
+              if (msg.includes("invalid_grant") || msg.includes("Token has been expired or revoked")) {
+                docRef.update({ tokenInvalid: true, connected: false }).catch(() => {});
+                throw new Error("Google Drive token expired. Please go to Settings → Integrations → Google Drive and reconnect.");
+              }
+              throw err;
+            }
+          };
+        },
+      });
+    },
+  });
 }
 
 module.exports = {

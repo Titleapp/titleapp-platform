@@ -15,9 +15,12 @@ const { getAuthenticatedDriveClient } = require("./driveAuth");
 const SUPPORTED_MIME_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // Excel
   "text/plain",
+  "text/csv",
   "text/markdown",
-  "application/vnd.google-apps.document", // Google Docs — exported as DOCX
+  "application/vnd.google-apps.document",     // Google Docs
+  "application/vnd.google-apps.spreadsheet",  // Google Sheets
 ]);
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -28,9 +31,12 @@ function getDisplayType(mimeType) {
   if (mimeType === FOLDER_MIME) return "folder";
   if (mimeType === "application/pdf") return "PDF";
   if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOCX";
+  if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return "Excel";
   if (mimeType === "text/plain") return "TXT";
+  if (mimeType === "text/csv") return "CSV";
   if (mimeType === "text/markdown") return "MD";
   if (mimeType === "application/vnd.google-apps.document") return "Google Doc";
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return "Google Sheet";
   return "Other";
 }
 
