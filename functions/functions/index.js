@@ -6627,9 +6627,14 @@ YOUR TOOLS — what you can actually do (never deny these capabilities):
 - search_drive: find files in the user's connected Google Drive by name or content. Call this when the user asks you to find a file, read a spreadsheet, or access their Drive.
 - read_drive_file: read the content of a Google Drive file — Google Sheets (returns CSV), Google Docs (returns text), Excel files, CSV, and plain text. Pass file_id from search_drive results, or file_name to auto-search. NEVER tell the user to download the file themselves — fetch it directly.
 - write_accounting_transactions: write transactions directly into the Accounting worker's ledger from this chat — no need to open the Accounting worker. Use when the user shares financial data (spreadsheet rows, expenses, income, Drive file content) and wants it recorded. Transactions land in review status so the user can confirm. Each transaction needs: date (YYYY-MM-DD), description, amountCents (integer cents, $12.50=1250), direction (debit=expense/payment out, credit=revenue/deposit in).
+- search_emails: search the user's connected Gmail inboxes. Call this when the user asks to find an email, check inbox, look for a message, or needs email context (investor reply, legal notice, payment, etc.). Searches all connected accounts.
+- send_email: send an email on behalf of the user via connected Gmail. Always confirm the email content with the user BEFORE calling this — show them what you plan to send and get explicit approval.
+- list_events: list upcoming Google Calendar events. Call this when the user asks about their schedule, upcoming meetings, what's on their calendar, or needs to plan around existing commitments.
 If a user asks whether you can browse the web, search the internet, look something up, or get current data — the answer is YES. Call web_search.
 If a user asks you to read a spreadsheet, a Google Sheet, a file in their Drive, or says "check my [filename]" — call search_drive then read_drive_file. Do NOT use fetch_url for Drive files.
 If a user shares financial data and wants it recorded in accounting — call write_accounting_transactions immediately. Do NOT tell them to open the Accounting worker to enter it themselves.
+If a user asks to check their email, find a message, or search their inbox — call search_emails. Do NOT say you can't access their email.
+If a user asks about their schedule, upcoming meetings, or calendar — call list_events. Do NOT say you can't access their calendar.
 
 CREATOR & SDK KNOWLEDGE (authoritative — use when anyone asks about building workers, the SDK, creator docs, or platform capabilities):
 Creators build Digital Workers using the SOCIII Creator SDK. Key resources:
@@ -6790,7 +6795,44 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     },
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool];
+                const _cosSearchEmailTool = {
+                  name: "search_emails",
+                  description: "Search the user's connected Gmail inboxes for emails. Call this whenever the user asks to find an email, check their inbox, look for a message from someone, or references email context (investor reply, legal notice, payment confirmation, etc.). Searches all connected accounts. Returns subjects, senders, snippets, and dates.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "Gmail search query, e.g. 'from:investor RE: agreement' or 'subject:invoice Q3' or 'RegCF offering'" },
+                      maxResults: { type: "number", description: "Max emails to return, default 10, max 20" },
+                    },
+                    required: ["query"],
+                  },
+                };
+                const _cosSendEmailTool = {
+                  name: "send_email",
+                  description: "Send an email on behalf of the user via their connected Gmail account. Only call this after the user has explicitly approved the email content. Use for sending follow-ups, replies, outreach, or notifications.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      to: { type: "string", description: "Recipient email address(es), comma-separated if multiple" },
+                      subject: { type: "string", description: "Email subject line" },
+                      body: { type: "string", description: "Email body text (plain text, use \\n for line breaks)" },
+                      cc: { type: "string", description: "CC recipients, comma-separated (optional)" },
+                    },
+                    required: ["to", "subject", "body"],
+                  },
+                };
+                const _cosListEventsTool = {
+                  name: "list_events",
+                  description: "List upcoming Google Calendar events. Call this when the user asks about their schedule, upcoming meetings, what's on their calendar, or wants to plan around existing commitments.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      days: { type: "number", description: "Number of days ahead to look, default 7" },
+                      maxResults: { type: "number", description: "Max events to return, default 15" },
+                    },
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool];
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-6',
                   max_tokens: _isDocRequest ? 8192 : 2048,
@@ -7089,6 +7131,69 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _acctFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
+                  } else if (_cosTool && _cosTool.name === "search_emails") {
+                    let _emailResults;
+                    try {
+                      const { searchEmailsAllAccounts } = require("./services/social/gmail");
+                      const results = await searchEmailsAllAccounts(authUser.uid, _cosTool.input.query, { maxResults: Math.min(_cosTool.input.maxResults || 10, 20) });
+                      if (!results.length) {
+                        _emailResults = `No emails found matching "${_cosTool.input.query}".`;
+                      } else {
+                        _emailResults = `GMAIL SEARCH: "${_cosTool.input.query}" — ${results.length} result(s)\n\n` +
+                          results.map((m, i) => `${i + 1}. From: ${m.from}\n   Subject: ${m.subject}\n   Date: ${m.date}\n   Account: ${m.account || "primary"}\n   Snippet: ${m.snippet}`).join("\n\n");
+                      }
+                    } catch (_emailErr) {
+                      _emailResults = `Could not search Gmail: ${_emailErr.message}. Make sure Gmail is connected in Settings → Integrations.`;
+                    }
+                    const _emailFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _emailResults }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _emailFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _emailResults;
+                  } else if (_cosTool && _cosTool.name === "send_email") {
+                    let _sendResult;
+                    try {
+                      const { sendEmail } = require("./services/social/gmail");
+                      const { to, subject, body, cc } = _cosTool.input;
+                      const sent = await sendEmail(authUser.uid, { to, subject, body, cc });
+                      _sendResult = sent.ok
+                        ? `Email sent to ${Array.isArray(to) ? to.join(", ") : to}. Subject: "${subject}". Confirm to the user it was sent.`
+                        : `Email send failed. Let the user know and suggest they check Gmail is connected in Settings.`;
+                    } catch (_sendErr) {
+                      _sendResult = `Could not send email: ${_sendErr.message}. Make sure Gmail is connected in Settings → Integrations.`;
+                    }
+                    const _sendFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _sendResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 30000 });
+                    _txt = _sendFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _sendResult;
+                  } else if (_cosTool && _cosTool.name === "list_events") {
+                    let _calResult;
+                    try {
+                      const { listUpcomingEvents } = require("./services/calendar/googleCalendarService");
+                      const days = Math.min(_cosTool.input.days || 7, 30);
+                      const maxResults = Math.min(_cosTool.input.maxResults || 15, 30);
+                      const events = await listUpcomingEvents(authUser.uid, { days, maxResults });
+                      if (!events.length) {
+                        _calResult = `No upcoming events in the next ${days} days.`;
+                      } else {
+                        _calResult = `CALENDAR — next ${days} day(s), ${events.length} event(s):\n\n` +
+                          events.map(e => {
+                            const start = e.start?.dateTime || e.start?.date || "";
+                            return `• ${start} — ${e.summary || "(untitled)"}${e.location ? ` @ ${e.location}` : ""}`;
+                          }).join("\n");
+                      }
+                    } catch (_calErr) {
+                      _calResult = `Could not read calendar: ${_calErr.message}. Make sure Google Calendar is connected in Settings → Integrations.`;
+                    }
+                    const _calFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
+                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _calResult }] }],
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 60000 });
+                    _txt = _calFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _calResult;
                   }
                 }
                 if (!_txt) {
