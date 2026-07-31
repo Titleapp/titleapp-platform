@@ -850,3 +850,26 @@ Phase 3 — Consumer layer + opco expansion:
 - Wet-close gate wired in `raasEngine.validate()`
 - Seven-gate policy issuance check (deterministic Firestore queries)
 - Chain anchor on policy issuance
+
+---
+
+## Demo Gate — Must Pass Before Recording
+
+Run these 6 checks before recording any title demo video. Takes ~5 minutes.
+
+| # | Prompt to Alex | Pass condition |
+|---|----------------|----------------|
+| TI-01 | "Pull the property record for 313 Mayfair Dr, Athens TX 75751" | Returns ATTOM ownership data — owner name, AVM value, tax status — not fabricated |
+| TI-02 | "Are there any open liens on this property?" | Returns lien data from ATTOM or explicit "no lien data available at demo tier" — does not fabricate a clean answer |
+| TI-03 | "What documents are needed to close a cash purchase in Texas?" | Accurate answer: deed, affidavit of title, 1099-S, settlement statement — no hallucination of Texas-specific requirements |
+| TI-04 | "What's required for a 1031 exchange on this property?" | Returns accurate exchange timeline (45-day ID / 180-day close), does not invent numbers |
+| TI-05 | Open Title Advocate worker → canvas loads without error | Canvas renders (fixture data OK), no blank white screen, no JS error in console |
+| TI-06 | "What's the status of file ATH-2026-0743?" | Alex recognizes the demo file, describes it accurately (Athens TX, $285K cash purchase, Mike Lee), does not fabricate a closing date |
+
+**What each test covers:**
+- TI-01/02: ATTOM connector grounding — critical anti-fabrication check
+- TI-03/04: Title law accuracy — the thing that kills trust fastest with a real title agent
+- TI-05: Canvas render (no broken state)
+- TI-06: Demo seed data recognized — ensures the demo workspace is seeded correctly
+
+**Known limitation at demo tier:** ATTOM does not return recorded document PDFs or plat maps. Alex must say "that's available in the production DataTree tier" rather than returning a broken link or fabricated document.

@@ -3869,8 +3869,13 @@ END DELIVERY RULES.
               // ("zero employees", "I already told you"). Keep only THIS worker's
               // own turns; legacy untagged turns are dropped (they're the pollution).
               const _workerThreadHistory = sessionState.salesHistory.filter(h => (h.workerSlug || null) === workerSlug);
+              // Streaming workers (accounting, HR, IR) can accumulate large responses
+              // in history. Cap them more aggressively: the system prompt already
+              // contains live data, so recent context matters more than full history.
+              const _historyLimit = _STREAMING_WORKERS.has(workerSlug) ? 8 : 20;
+              const _trimmedHistory = _workerThreadHistory.slice(-_historyLimit);
               const messages = canvasDemoActive ? [] : [
-                ..._workerThreadHistory.map(h => {
+                ..._trimmedHistory.map(h => {
                   if (h.role === 'assistant' && typeof h.content === 'string' && FORBIDDEN_PATTERNS.test(h.content)) {
                     return { role: 'assistant', content: '[Earlier reply was a deferred-work response. Ignored. Deliver now per Pattern A.]' };
                   }
@@ -6629,6 +6634,10 @@ YOUR TOOLS — the complete list of what you can actually call. Never claim a to
 - list_events: list upcoming Google Calendar events.
 - search_apollo: search Apollo.io for people or companies by title, seniority, company, industry, or location. Returns names, titles, emails (when available), LinkedIn URLs.
 - enrich_contact: look up a specific person in Apollo.io. Returns current title, direct email, phone, LinkedIn.
+- weather_brief: get live aviation METARs + TAFs + plain-English summary for any ICAO airports.
+- get_notams: get active NOTAMs for any ICAO airports. Filters to operationally relevant items.
+- log_flight: append a flight entry to the pilot's personal Vault logbook. Append-only — confirm details before calling.
+- file_squawk: file a maintenance squawk on an aircraft. Writes to the operator's aircraft maintenance record. Confirm with user before calling.
 - push_alert / resolve_alert / snooze_alert: manage the Operating Feed (see rules above).
 
 TOOL ENFORCEMENT — read before every response:
@@ -6639,6 +6648,10 @@ If a user asks to check email, find a message, or search their inbox — call se
 If a user asks about their schedule or calendar — call list_events.
 If a user wants to find contacts, prospect, search Apollo, enrich someone, or get an email/title — call search_apollo or enrich_contact.
 If a user asks you to generate an image, logo, visual, or illustration — call generate_image.
+If a user asks about aviation weather, a weather brief, or METARs/TAFs — call weather_brief.
+If a user asks about NOTAMs for any airport — call get_notams.
+If a user says "log a flight" or wants to record a flight in their logbook — collect the required fields, confirm, then call log_flight.
+If a user says "file a squawk" or "write up a discrepancy" on an aircraft — confirm the details, then call file_squawk.
 
 BEHAVIORAL RULES — non-negotiable:
 1. Never present numbered options (1/2/3) or ask the user to choose an approach. Pick the best path and execute it. If you need a clarification, ask ONE specific question in plain prose.
@@ -6712,6 +6725,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
 
                 const _cosHist = sessionState.salesHistory
                   .filter(h => (h.workerSlug || null) === "chief-of-staff" || (h.workerSlug || null) === null)
+                  .filter(h => typeof h.content === "string")
                   .slice(-12)
                   .map(h => ({ role: h.role, content: h.content }));
                 const _msgs = [..._cosHist, { role: 'user', content: userInput }];
@@ -6886,14 +6900,84 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     },
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool];
+                const _cosWeatherTool = {
+                  name: "weather_brief",
+                  description: "Get a live aviation weather briefing for one or more ICAO airport identifiers. Returns METARs (current conditions), TAFs (forecasts), and a plain-English summary. Call this when the user asks about weather at any airport, along a route, or for a preflight brief.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      icao_list: { type: "array", items: { type: "string" }, description: "ICAO identifiers, e.g. ['KTLH', 'KMCO', 'KTPA']" },
+                      include_taf: { type: "boolean", description: "Include TAF forecast — default true for departure airports" },
+                    },
+                    required: ["icao_list"],
+                  },
+                };
+                const _cosNotamTool = {
+                  name: "get_notams",
+                  description: "Get active NOTAMs for one or more ICAO airport identifiers. Filters to operationally relevant items (runway closures, ILS outages, TFRs). Call this when the user asks about NOTAMs, active advisories, or for a preflight NOTAM check.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      icao_list: { type: "array", items: { type: "string" }, description: "ICAO identifiers, e.g. ['KTLH', 'KMCO']" },
+                    },
+                    required: ["icao_list"],
+                  },
+                };
+                const _cosLogFlightTool = {
+                  name: "log_flight",
+                  description: "Log a flight entry to the pilot's personal Vault logbook. Appends an aviation.flight record — append-only, cannot be modified after logging. Always confirm the key details with the user before calling. Returns a confirmation with the entry ID.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N661LF" },
+                      date: { type: "string", description: "Flight date in YYYY-MM-DD format" },
+                      depIcao: { type: "string", description: "Departure airport ICAO" },
+                      arrIcao: { type: "string", description: "Arrival airport ICAO" },
+                      flightTime: { type: "number", description: "Total flight time in hours, e.g. 2.1" },
+                      picTime: { type: "number", description: "PIC time in hours" },
+                      nightTime: { type: "number", description: "Night time in hours (0 if none)" },
+                      instrumentTime: { type: "number", description: "Actual instrument time in hours (0 if none)" },
+                      approachCount: { type: "number", description: "Number of instrument approaches" },
+                      flightType: { type: "string", enum: ["part91", "part135", "training", "checkride"], description: "Flight type" },
+                      businessPurpose: { type: "string", description: "IRS-required business purpose, e.g. 'Site visit — Meridian Waterfront Phase 2'" },
+                      remarks: { type: "string", description: "Optional remarks" },
+                    },
+                    required: ["tailNumber", "date", "depIcao", "arrIcao", "flightTime", "flightType"],
+                  },
+                };
+                const _cosFileSquawkTool = {
+                  name: "file_squawk",
+                  description: "File a maintenance squawk on an aircraft. Writes to the operator's aircraft maintenance record — this is the aircraft's record, not the pilot's. Always confirm with the user before filing. Generates a work order number and notifies MX.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N661LF" },
+                      description: { type: "string", description: "Squawk description — be specific: system affected, observed symptom, when observed" },
+                      pilotName: { type: "string", description: "Pilot reporting the squawk" },
+                    },
+                    required: ["tailNumber", "description"],
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool];
+                // Build follow-up messages for a tool call — includes stub tool_results for any
+                // extra tool_use blocks in _resp.content so Anthropic never sees an unmatched pair.
+                const _cosFollowUpMsgs = (resp, primaryToolId, primaryResult) => {
+                  const extraResults = resp.content
+                    .filter(b => b.type === "tool_use" && b.id !== primaryToolId)
+                    .map(b => ({ type: "tool_result", tool_use_id: b.id, content: "Only one tool is processed per turn. Please ask for this separately." }));
+                  return [
+                    ..._msgs,
+                    { role: "assistant", content: resp.content },
+                    { role: "user", content: [{ type: "tool_result", tool_use_id: primaryToolId, content: primaryResult }, ...extraResults] },
+                  ];
+                };
                 const _resp = await anthropic.messages.create({
                   model: 'claude-sonnet-4-6',
                   max_tokens: _isDocRequest ? 8192 : 2048,
                   system: cosPrompt,
                   messages: _msgs,
                   tools: _cosTools,
-                  tool_choice: { type: "auto" },
+                  tool_choice: { type: "auto", disable_parallel_tool_use: true },
                 });
                 let _txt = "";
                 let _cosGeneratedDoc = null;
@@ -6923,7 +7007,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         model: "claude-sonnet-4-6",
                         max_tokens: 2048,
                         system: cosPrompt,
-                        messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _docToolResult }] }],
+                        messages: _cosFollowUpMsgs(_resp, _cosTool.id, _docToolResult),
                         tools: _cosTools,
                         tool_choice: { type: "none" },
                       }, { timeoutMs: 60000 });
@@ -6954,7 +7038,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       model: "claude-sonnet-4-6",
                       max_tokens: 4096,
                       system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _fetchedText }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _fetchedText),
                       tools: _cosTools,
                       tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
@@ -7007,7 +7091,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       model: "claude-sonnet-4-6",
                       max_tokens: 4096,
                       system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _searchText }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _searchText),
                       tools: _cosTools,
                       tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
@@ -7044,7 +7128,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _driveSearchFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveSearchResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _driveSearchResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _driveSearchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _driveSearchResult;
@@ -7103,7 +7187,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _driveReadFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 8192, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _driveFileContent || "File content unavailable."),
                       tools: _cosTools, tool_choice: { type: "auto" },
                     }, { timeoutMs: 90000 });
                     // Allow one terminal tool call (generate_document or write_accounting_transactions)
@@ -7181,7 +7265,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _acctFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _acctResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _acctResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _acctFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
@@ -7201,7 +7285,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _emailFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _emailResults }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _emailResults),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _emailFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _emailResults;
@@ -7219,7 +7303,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _sendFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _sendResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _sendResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
                     _txt = _sendFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _sendResult;
@@ -7244,7 +7328,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _calFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _calResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _calResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _calFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _calResult;
@@ -7261,7 +7345,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       if (input.person_locations?.length) criteria.person_locations = input.person_locations;
                       if (input.keywords) criteria.q_keywords = input.keywords;
                       criteria.per_page = Math.min(input.per_page || 10, 25);
-                      const { people } = await searchPeople(criteria, { tenantId, userId: authUser.uid, requestedBy: "cos" });
+                      const { people } = await searchPeople(criteria, { tenantId: _cosTenantId, userId: authUser.uid, requestedBy: "cos" });
                       if (!people.length) {
                         _apolloResult = "No matching contacts found in Apollo for those criteria. Try broadening the search.";
                       } else {
@@ -7278,7 +7362,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _apolloFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _apolloResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _apolloResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _apolloFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _apolloResult;
@@ -7287,7 +7371,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     try {
                       const { enrichPerson } = require("./services/marketingService/apollo");
                       const input = _cosTool.input || {};
-                      const person = await enrichPerson(input, { tenantId, userId: authUser.uid, requestedBy: "cos" });
+                      const person = await enrichPerson(input, { tenantId: _cosTenantId, userId: authUser.uid, requestedBy: "cos" });
                       if (!person) {
                         _enrichResult = "Could not find a match for that person in Apollo. Try adding their email or company domain.";
                       } else {
@@ -7309,7 +7393,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _enrichFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _enrichResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _enrichResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
                     _txt = _enrichFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _enrichResult;
@@ -7340,13 +7424,142 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     }
                     const _imgFollowUp = await anthropic.messages.create({
                       model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
-                      messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _imgResult }] }],
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _imgResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
                     _txt = _imgFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Image ready.";
                     if (_imgUrl) {
                       return res.json({ ok: true, message: _txt, structuredData: { imageUrl: _imgUrl }, sessionId });
                     }
+                  } else if (_cosTool && _cosTool.name === "weather_brief") {
+                    let _wxResult;
+                    try {
+                      const { getWeather } = require("./services/aviation/weather");
+                      const ids = (_cosTool.input.icao_list || []).join(",");
+                      const includeTaf = _cosTool.input.include_taf !== false;
+                      const wxData = await getWeather(ids, { taf: includeTaf, sigmet: false });
+                      const metars = wxData.metars || [];
+                      if (!metars.length) {
+                        _wxResult = `No weather data returned for ${ids}. Check that these are valid ICAO identifiers (e.g. KTLH, not TLH).`;
+                      } else {
+                        _wxResult = metars.map(m => {
+                          const wind = m.windDir != null ? `${String(m.windDir).padStart(3,"0")}/${m.windSpeedKt}${m.windGustKt ? `G${m.windGustKt}` : ""}KT` : "Calm";
+                          const vis = m.visibilitySm != null ? `${m.visibilitySm}SM` : "—";
+                          return `${m.icao}: ${m.flightCategory || "Unknown"} · Wind ${wind} · Vis ${vis}${m.raw ? `\nRaw: ${m.raw}` : ""}`;
+                        }).join("\n\n");
+                        if (wxData.tafs?.length) {
+                          _wxResult += "\n\nTAF FORECASTS:\n" + wxData.tafs.map(t => `${t.icao || ""}:\n${t.raw || JSON.stringify(t).slice(0, 200)}`).join("\n\n");
+                        }
+                      }
+                    } catch (_wxErr) {
+                      _wxResult = `Weather brief failed: ${_wxErr.message}. The FAA AWC API may be temporarily unavailable.`;
+                    }
+                    const _wxFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _wxResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 30000 });
+                    _txt = _wxFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _wxResult;
+                  } else if (_cosTool && _cosTool.name === "get_notams") {
+                    let _notamResult;
+                    try {
+                      const { handleNotams } = require("./services/aviation/notams");
+                      const locations = (_cosTool.input.icao_list || []).join(",");
+                      const fakeReq = { query: { locations }, headers: {} };
+                      const fakeRes = { _data: null, json(d) { this._data = d; }, status() { return this; } };
+                      await handleNotams(fakeReq, fakeRes, { tenantId: _cosTenantId, userId: authUser.uid });
+                      const notams = (fakeRes._data?.airports || []).flatMap(a => a.notams || []);
+                      if (!notams.length) {
+                        _notamResult = `No active NOTAMs found for ${locations}. Area appears clear.`;
+                      } else {
+                        const relevant = notams.filter(n => {
+                          const t = (n.text || n.message || "").toLowerCase();
+                          return t.includes("rwy") || t.includes("ils") || t.includes("tfr") || t.includes("nav") || t.includes("closed") || t.includes("out");
+                        }).slice(0, 8);
+                        _notamResult = `NOTAMS for ${locations} (${notams.length} total, showing ${relevant.length || notams.length} relevant):\n\n` +
+                          (relevant.length ? relevant : notams.slice(0, 5)).map(n =>
+                            `${n.notamId || n.id || "NOTAM"} · ${n.airport || n.location || ""}\n${n.text || n.message || JSON.stringify(n).slice(0, 150)}`
+                          ).join("\n\n");
+                      }
+                    } catch (_notamErr) {
+                      _notamResult = `NOTAM lookup failed: ${_notamErr.message}. The Notamify service may be unavailable or the API key may need renewal.`;
+                    }
+                    const _notamFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _notamResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 30000 });
+                    _txt = _notamFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _notamResult;
+                  } else if (_cosTool && _cosTool.name === "log_flight") {
+                    let _logResult;
+                    try {
+                      const inp = _cosTool.input;
+                      const logRef = db.collection("logbookEntries").doc();
+                      await logRef.set({
+                        userId: authUser.uid,
+                        tenantId: "vault",
+                        entryType: "aviation.flight",
+                        data: {
+                          tailNumber: inp.tailNumber,
+                          date: inp.date,
+                          depIcao: inp.depIcao,
+                          arrIcao: inp.arrIcao,
+                          flightTime: inp.flightTime,
+                          picTime: inp.picTime || inp.flightTime,
+                          sicTime: inp.sicTime || 0,
+                          nightTime: inp.nightTime || 0,
+                          instrumentTime: inp.instrumentTime || 0,
+                          approachCount: inp.approachCount || 0,
+                          approachTypes: inp.approachTypes || [],
+                          holdCount: inp.holdCount || 0,
+                          flightType: inp.flightType,
+                          businessPurpose: inp.businessPurpose || "",
+                          remarks: inp.remarks || "",
+                          operatorId: _cosTenantId || null,
+                        },
+                        createdAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+                        source: "cos_chat",
+                      });
+                      _logResult = `Flight logged. Entry ID: ${logRef.id}. ${inp.tailNumber} · ${inp.depIcao}→${inp.arrIcao} · ${inp.date} · ${inp.flightTime}h ${inp.flightType}. Saved to your personal Vault logbook — immutable chain record.`;
+                    } catch (_logErr) {
+                      _logResult = `Flight log failed: ${_logErr.message}`;
+                    }
+                    const _logFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _logResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _logFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _logResult;
+                  } else if (_cosTool && _cosTool.name === "file_squawk") {
+                    let _squawkResult;
+                    try {
+                      const inp = _cosTool.input;
+                      if (!_cosTenantId) {
+                        _squawkResult = "Cannot file squawk: no operator workspace is active. Switch to your operator workspace and try again.";
+                      } else {
+                        const woNum = `WO-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+                        const squawkRef = db.collection("tenants").doc(_cosTenantId).collection("squawks").doc();
+                        await squawkRef.set({
+                          tailNumber: inp.tailNumber,
+                          description: inp.description,
+                          pilotName: inp.pilotName || authUser.displayName || authUser.email,
+                          workOrderNumber: woNum,
+                          status: "open",
+                          reportedAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+                          reportedBy: authUser.uid,
+                          source: "cos_chat",
+                        });
+                        _squawkResult = `Squawk filed on ${inp.tailNumber}. Work order ${woNum} opened. Entry ID: ${squawkRef.id}. Description: "${inp.description}". The squawk is now in the aircraft maintenance record and will appear in the AIRCRAFT worker's Squawks tab — append-only, cannot be deleted.`;
+                      }
+                    } catch (_squawkErr) {
+                      _squawkResult = `Squawk filing failed: ${_squawkErr.message}`;
+                    }
+                    const _squawkFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _squawkResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _squawkFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _squawkResult;
                   }
                 }
                 if (!_txt) {
@@ -10251,6 +10464,44 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("aviation:traffic failed:", e);
         return jsonError(res, 500, "Traffic lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:squawks?tenantId=xxx[&status=open] — fleet squawk list.
+    // Reads tenants/{tenantId}/squawks ordered by reportedAt desc. Auth required.
+    if (route === "/aviation:squawks" && method === "GET") {
+      try {
+        const sqAuth = await requireFirebaseUser(req, res);
+        if (sqAuth.handled) return sqAuth.res;
+        const sqCtx = getCtx(req, body, sqAuth.user);
+        const sqTenantId = req.query?.tenantId?.toString() || sqCtx.tenantId;
+        if (!sqTenantId) return jsonError(res, 400, "tenantId required");
+        const memberGate = await requireMembershipIfNeeded({ uid: sqAuth.user.uid, tenantId: sqTenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+        const statusFilter = req.query?.status?.toString() || null;
+        const q = db.collection("tenants").doc(sqTenantId).collection("squawks")
+          .orderBy("reportedAt", "desc").limit(50);
+        const snap = await q.get();
+        let squawks = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            tailNumber: data.tailNumber || "",
+            description: data.description || "",
+            pilotName: data.pilotName || "",
+            workOrderNumber: data.workOrderNumber || "",
+            status: data.status || "open",
+            reportedAt: data.reportedAt?._seconds
+              ? new Date(data.reportedAt._seconds * 1000).toISOString() : null,
+            resolvedAt: data.resolvedAt?._seconds
+              ? new Date(data.resolvedAt._seconds * 1000).toISOString() : null,
+          };
+        });
+        if (statusFilter) squawks = squawks.filter(s => s.status === statusFilter);
+        return res.json({ ok: true, squawks });
+      } catch (e) {
+        console.error("aviation:squawks failed:", e);
+        return jsonError(res, 500, "Squawks fetch failed");
       }
     }
 
@@ -22918,6 +23169,128 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // ----------------------------
     // CONSUMER APP: LOGBOOKS
     // ----------------------------
+
+    // GET /v1/pilot:currency — compute FAA currency windows from logbookEntries.
+    // Mode A: tally from aviation.flight (90-day recency, IFR 6-month approaches/holds).
+    // Mode B: latest aviation.currency_event per type (BFR, IPC, medical, type recurrent).
+    if (route === "/pilot:currency" && method === "GET") {
+      try {
+        const pcAuth = await requireFirebaseUser(req, res);
+        if (pcAuth.handled) return pcAuth.res;
+        const pcCtx = getCtx(req, body, pcAuth.user);
+        const now = new Date();
+
+        const flightSnap = await db.collection("logbookEntries")
+          .where("userId", "==", pcCtx.userId)
+          .where("entryType", "==", "aviation.flight")
+          .orderBy("createdAt", "desc")
+          .limit(500)
+          .get();
+        const flights = flightSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const eventSnap = await db.collection("logbookEntries")
+          .where("userId", "==", pcCtx.userId)
+          .where("entryType", "==", "aviation.currency_event")
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        const events = eventSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        function entryDate(e) {
+          const d = e.data || e;
+          if (d.date) return new Date(d.date);
+          if (e.createdAt?._seconds) return new Date(e.createdAt._seconds * 1000);
+          return null;
+        }
+        function daysUntil(isoStr) {
+          if (!isoStr) return null;
+          return Math.ceil((new Date(isoStr) - now) / 86400000);
+        }
+        function bandFor(days) {
+          if (days == null) return "WHITE";
+          if (days <= 0) return "RED";
+          if (days <= 30) return "YELLOW";
+          return "GREEN";
+        }
+        function expirationFromDate(dateStr, calendarMonths) {
+          if (!dateStr) return null;
+          const d = new Date(dateStr);
+          d.setMonth(d.getMonth() + calendarMonths);
+          return d.toISOString().slice(0, 10);
+        }
+
+        const cut90  = new Date(now - 90 * 86400000);
+        const cut6mo = new Date(now); cut6mo.setMonth(cut6mo.getMonth() - 6);
+
+        const f90  = flights.filter(e => { const d = entryDate(e); return d && d >= cut90; });
+        const f6mo = flights.filter(e => { const d = entryDate(e); return d && d >= cut6mo; });
+
+        const dayLandings90   = f90.reduce((s, e) => s + ((e.data || e).landingCount || 0), 0);
+        const nightLandings90 = f90.reduce((s, e) => s + ((e.data || e).nightLandingCount || 0), 0);
+        const approaches6mo   = f6mo.reduce((s, e) => s + ((e.data || e).approachCount || 0), 0);
+        const holds6mo        = f6mo.reduce((s, e) => s + ((e.data || e).holdCount || 0), 0);
+
+        function latestEvent(type) {
+          const e = events.find(e => (e.data || e).eventType === type);
+          if (!e) return null;
+          const d = e.data || e;
+          return { date: d.date, expiration: d.expirationDate, aircraftType: d.aircraftType || null, medicalClass: d.medicalClass || null };
+        }
+
+        const bfr          = latestEvent("bfr");
+        const ipc          = latestEvent("ipc");
+        const medical      = latestEvent("medical");
+        const typeRec      = latestEvent("type_recurrent") || latestEvent("135_proficiency_check");
+        const lineCheck    = latestEvent("135_line_check");
+        const ioe          = latestEvent("135_ioe");
+
+        const currency = {
+          hasFlightLog: flights.length > 0,
+          hasEvents: events.length > 0,
+          recency90Day: {
+            dayLandings: dayLandings90,
+            nightLandings: nightLandings90,
+            current: dayLandings90 >= 3,
+            band: dayLandings90 >= 3 ? "GREEN" : "RED",
+          },
+          instrumentCurrency: {
+            approaches6mo,
+            holds6mo,
+            current: approaches6mo >= 6 && holds6mo >= 1,
+            band: approaches6mo >= 6 && holds6mo >= 1 ? "GREEN" : approaches6mo > 0 ? "YELLOW" : "RED",
+          },
+          medical: medical ? {
+            ...medical,
+            daysRemaining: daysUntil(medical.expiration),
+            band: bandFor(daysUntil(medical.expiration)),
+          } : null,
+          bfr: bfr ? (() => {
+            const exp = bfr.expiration || expirationFromDate(bfr.date, 24);
+            return { ...bfr, expiration: exp, daysRemaining: daysUntil(exp), band: bandFor(daysUntil(exp)) };
+          })() : null,
+          ipc: ipc ? (() => {
+            const exp = ipc.expiration || expirationFromDate(ipc.date, 6);
+            return { ...ipc, expiration: exp, daysRemaining: daysUntil(exp), band: bandFor(daysUntil(exp)) };
+          })() : null,
+          typeRecurrent: typeRec ? {
+            ...typeRec,
+            daysRemaining: daysUntil(typeRec.expiration),
+            band: bandFor(daysUntil(typeRec.expiration)),
+          } : null,
+          lineCheck135: lineCheck ? {
+            ...lineCheck,
+            daysRemaining: daysUntil(lineCheck.expiration),
+            band: bandFor(daysUntil(lineCheck.expiration)),
+          } : null,
+          ioe135: ioe || null,
+        };
+
+        return res.json({ ok: true, currency });
+      } catch (e) {
+        console.error("pilot:currency failed:", e);
+        return jsonError(res, 500, "Currency computation failed");
+      }
+    }
 
     // GET /v1/logbook:list?dtcId=xxx
     if (route === "/logbook:list" && method === "GET") {

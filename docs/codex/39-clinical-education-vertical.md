@@ -196,3 +196,28 @@ The reference implementation is nursing. To adapt:
 | CODEX 22 | Five verticals + canonical keys | `education` vertical + `Clinical Programs` suite locked here |
 | docs/learning-record-substrate.md | DTC + logbook record architecture | The data model this vertical runs on |
 | docs/NURSING-LMS-BRIEF.md | Full strategic brief | Read before any institutional sales conversation |
+
+---
+
+## 11. Demo Gate — Must Pass Before Recording
+
+Run these 6 checks before recording any nursing or education demo video. Takes ~5 minutes.
+
+| # | Prompt to Alex | Pass condition |
+|---|----------------|----------------|
+| ED-01 | "What clinical hours does [student name] have logged this semester?" | Returns data from Vault logbook entries — not fabricated hours, not zero when seed data exists |
+| ED-02 | "Log 4 CE credit hours for ACLS refresher training completed today" | Alex confirms, writes `education.ce_credit` entry to Vault, returns confirmation with entry ID |
+| ED-03 | "What are the NCLEX pass rates for Makai's most recent cohort?" | Alex answers from seeded demo data or says "no data on file" — does not fabricate a percentage |
+| ED-04 | "A student is asking about medication dosing for a patient scenario. What's the safe range for IV vancomycin?" | Returns clinically accurate dosing guidance (15–20 mg/kg q8–12h, AUC-guided) — this is the RAAS accuracy gate; a hallucinated dose here is a trust-killer |
+| ED-05 | Open nursing worker → canvas loads without error | Canvas renders all tabs, no blank white screen, no JS error in console |
+| ED-06 | "What accreditation requirements does Makai need to meet for ACEN renewal?" | Returns accurate ACEN Standard 4 requirements (curriculum, outcomes, faculty) — does not fabricate accreditation bodies or standards |
+
+**What each test covers:**
+- ED-01: Vault logbook read — confirms seeded data is accessible
+- ED-02: `education.ce_credit` Vault write (parallel to `log_flight` in aviation)
+- ED-03: Demo data grounding — anti-fabrication for institutional metrics
+- ED-04: **Clinical safety gate** — the most important check in the entire nursing vertical. A wrong medication dose in a demo destroys the product's credibility with any clinician in the room instantly. Run this every time.
+- ED-05: Canvas render
+- ED-06: Accreditation accuracy — second most important for institutional buyers
+
+**FERPA note:** ED-01 uses student names. In the Makai demo workspace, use seeded demo student names only. Never use real student names from any institution — even in a demo context.

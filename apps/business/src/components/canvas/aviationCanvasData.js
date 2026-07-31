@@ -325,7 +325,668 @@ export const AV_CANVAS = {
       },
     ],
   },
+
+  // ─────────────────────────────── AIRCRAFT ─────────────────────────────────
+  "av-aircraft": {
+    title: "AIRCRAFT",
+    subtitle: "Pacific Air Partners · 3 tails · Part 91/135",
+    disclaimer: "Airworthiness status is advisory — verify with A&P before dispatch",
+    cas: { RED: 1, YELLOW: 1, BLUE: 0, WHITE: 1, GREEN: 1 },
+    tabs: [
+      {
+        id: "fleet-map",
+        label: "Fleet Map",
+        description: "All tails at a glance — status, TTSN, next inspection due, and any open items.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "N662LF — Airworthy",    detail: "2,301 TTSN · 890 TSMOH · Next inspection: Apr 2027" },
+            { band: "GREEN",  title: "N663LF — Airworthy",    detail: "1,847 TTSN · 412 TSMOH · Next inspection: Nov 2026" },
+            { band: "RED",    title: "N661LF — OOS",          detail: "FCU squawk open · Pilot write-up 2026-07-30 · MX in progress" },
+          ] },
+          { type: "table", title: "Fleet status", cols: ["Tail", "TTSN", "TSMOH", "Next Due", "Status"], rows: [
+            ["N661LF", "2,847", "1,240", "Annual Feb 2027", "GROUNDED"],
+            ["N662LF", "2,301", "890",   "Annual Apr 2027", "Airworthy"],
+            ["N663LF", "1,847", "412",   "Annual Nov 2026", "Airworthy"],
+          ] },
+          { type: "flags", items: [
+            { band: "RED",    title: "N661LF — FCU squawk open",          detail: "Pilot Martinez · 2026-07-30 14:23Z · MX triage in progress · Est return 48h" },
+            { band: "YELLOW", title: "N663LF — Annual due in 76 days",    detail: "Due Nov 2026 · Schedule now to avoid AOG at inspection time" },
+            { band: "WHITE",  title: "N661LF — Fuel cap MEL not applicable", detail: "MX confirmed: not MEL-deferrable. Aircraft OOS until repaired." },
+          ] },
+        ],
+      },
+      {
+        id: "tail-detail",
+        label: "Tail Detail",
+        description: "N661LF complete record — specs, configuration, open items, and document status.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "RED",    title: "OOS — FCU squawk",      detail: "Open since 2026-07-30 · MX in triage · Not MEL-deferrable" },
+            { band: "WHITE",  title: "2,847 TTSN",            detail: "PT6A-67P · 1,240 TSMOH · OH interval 3,600h" },
+            { band: "GREEN",  title: "AFM uploaded",          detail: "PC-12/47E AFM Rev 12 · W&B and performance tabs unlocked" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Registration",   value: "N661LF", band: "WHITE" },
+            { label: "Model",          value: "PC-12/47E", band: "WHITE" },
+            { label: "Serial",         value: "1661", band: "WHITE" },
+            { label: "Year",           value: "2018", band: "WHITE" },
+            { label: "Engine TSMOH",   value: "1,240 / 3,600 hrs", band: "GREEN" },
+            { label: "Next annual",    value: "Feb 2027", band: "GREEN" },
+            { label: "Seats",          value: "8 pax", band: "WHITE" },
+            { label: "Avionics",       value: "Honeywell Primus Apex", band: "WHITE" },
+          ] },
+          { type: "cards", items: [
+            { band: "RED",  label: "OPEN SQUAWK", title: "FCU anomaly — fuel cap left wing", detail: "Pilot Martinez 2026-07-30 14:23Z: Left wing fuel cap missing post-fueling. MX triage: parts on hand, est 4h labor. Work order #WO-2026-047 open.", action: "View work order" },
+          ] },
+        ],
+      },
+      {
+        id: "squawks",
+        label: "Squawks",
+        description: "All open squawks across the fleet — write-up, triage status, and resolution track.",
+        blocks: [
+          { type: "flags", items: [
+            { band: "RED",   title: "N661LF · WO-2026-047 · FCU / fuel cap — left wing",  detail: "Pilot Martinez 2026-07-30 · MX Chen in triage · Parts on hand · Est 4h repair · WO open" },
+            { band: "GREEN", title: "N663LF · Resolved · Nav light inoperative — 2026-07-18", detail: "Pilot Thompson 2026-07-18 · A&P Davis replaced nav light assembly 2026-07-19 · Signed off · Aircraft returned to service" },
+          ] },
+          { type: "table", title: "Squawk log — last 30 days", cols: ["Tail", "Date", "Description", "Status", "MX"], rows: [
+            ["N661LF", "2026-07-30", "FCU / left fuel cap missing",     "OPEN",     "Chen K."],
+            ["N663LF", "2026-07-18", "Nav light inoperative",            "CLOSED",   "Davis R."],
+            ["N662LF", "2026-07-12", "Autopilot disconnect caution",     "CLOSED",   "Chen K."],
+            ["N661LF", "2026-07-01", "Ice detector test fail — left",   "CLOSED",   "Davis R."],
+          ] },
+        ],
+      },
+      {
+        id: "ads-sbs",
+        label: "ADs/SBs",
+        description: "Airworthiness directive and service bulletin compliance matrix for the PC-12 fleet.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "23 ADs complied",       detail: "All applicable ADs current as of last annual" },
+            { band: "YELLOW", title: "2 SBs open",            detail: "Non-mandatory — review recommended before next annual" },
+            { band: "GREEN",  title: "No emergency ADs",      detail: "No SAIB or emergency airworthiness directive outstanding" },
+          ] },
+          { type: "table", title: "Open SBs", cols: ["SB Number", "Subject", "Priority", "Compliance Date", "Status"], rows: [
+            ["PC12-25-027", "Cabin door seal replacement",     "Non-mandatory", "At next maintenance",   "Open"],
+            ["PC12-71-014", "Engine inlet de-ice inspection",  "Non-mandatory", "Before winter ops",      "Open"],
+          ] },
+        ],
+      },
+      {
+        id: "documents",
+        label: "Documents",
+        description: "Aircraft documents — AFM, 337s, weight and balance data, and registration.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "GREEN",  label: "AFM / POH",        title: "PC-12/47E AFM Rev 12", detail: "Uploaded 2026-02-15 · Authoritative for W&B and performance computation · 387 pages", action: "View" },
+            { band: "GREEN",  label: "REGISTRATION",     title: "N661LF FAA Registration", detail: "Expires 2028-12-31 · Class: Airplane · Category: Standard", action: "View" },
+            { band: "GREEN",  label: "AIRWORTHINESS",    title: "Standard Airworthiness Certificate", detail: "Issued 2018-03-22 · No expiration · Aircraft remains airworthy while maintained per Part 91", action: "View" },
+            { band: "YELLOW", label: "337 — STC",        title: "No STC 337s on file", detail: "No field approvals or STC modifications recorded. Upload if applicable.", action: "Upload" },
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────── MX (FLEET) ───────────────────────────────
+  "av-mx": {
+    title: "MX",
+    subtitle: "N661LF · Pacific Air Partners · Maintenance Record",
+    disclaimer: "All entries are append-only and require A&P or IA signature",
+    cas: { RED: 1, YELLOW: 1, BLUE: 0, WHITE: 2, GREEN: 2 },
+    tabs: [
+      {
+        id: "work-orders",
+        label: "Work Orders",
+        description: "Open and recent work orders — every job from squawk to sign-off, append-only.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "RED",    title: "1 open — WO-2026-047", detail: "FCU / fuel cap · N661LF · Est 4h · Parts on hand" },
+            { band: "GREEN",  title: "Closed this month: 3",  detail: "Nav light, autopilot caution, ice detector — all signed off" },
+            { band: "GREEN",  title: "Parts on hand",         detail: "PC12-FUELCAP-LH in stock · No AOG parts order required" },
+          ] },
+          { type: "table", title: "Work orders", cols: ["WO #", "Tail", "Description", "A&P", "Status", "Hours"], rows: [
+            ["WO-2026-047", "N661LF", "FCU / fuel cap — left wing",   "Chen K.",  "OPEN",     "4 est"],
+            ["WO-2026-044", "N663LF", "Nav light assembly replacement", "Davis R.", "CLOSED",   "1.5"],
+            ["WO-2026-041", "N662LF", "Autopilot disconnect — AHRS reset", "Chen K.", "CLOSED",  "0.5"],
+            ["WO-2026-038", "N661LF", "Ice detector — left sensor R&R",   "Davis R.", "CLOSED",   "2.0"],
+          ] },
+        ],
+      },
+      {
+        id: "component-life",
+        label: "Component Life",
+        description: "Time-limited component status across the fleet — engine, props, and life-limited parts.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "N661LF engine — 1,240 / 3,600 TSMOH",  detail: "2,360 hrs remaining · 65% life used" },
+            { band: "GREEN",  title: "N662LF engine — 890 / 3,600 TSMOH",    detail: "2,710 hrs remaining · 25% life used" },
+            { band: "YELLOW", title: "N663LF prop — 412 / 2,400 TSMOH",      detail: "Approaching mid-life — 17% life remaining · Next O/H within 6 months" },
+          ] },
+          { type: "table", title: "Life-limited components", cols: ["Tail", "Component", "TTSN", "Interval", "Remaining", "Status"], rows: [
+            ["N661LF", "PT6A-67P engine",   "1,240", "3,600h",  "2,360h",  "GREEN"],
+            ["N661LF", "Propeller",          "1,240", "2,400h",  "1,160h",  "GREEN"],
+            ["N662LF", "PT6A-67P engine",    "890",  "3,600h",   "2,710h",  "GREEN"],
+            ["N662LF", "Propeller",           "890",  "2,400h",   "1,510h",  "GREEN"],
+            ["N663LF", "PT6A-67P engine",    "412",  "3,600h",   "3,188h",  "GREEN"],
+            ["N663LF", "Propeller",           "412",  "2,400h",   "412h",    "YELLOW"],
+          ] },
+        ],
+      },
+      {
+        id: "ad-compliance",
+        label: "AD Compliance",
+        description: "Airworthiness directive compliance matrix — all applicable ADs, compliance dates, and next due.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN", title: "23 ADs applicable",    detail: "All complied — last verified at annual 2026-02-15" },
+            { band: "GREEN", title: "No recurring ADs due",  detail: "Next recurring AD check at 3,000 TTSN · 153 hrs remaining" },
+            { band: "GREEN", title: "No emergency ADs",      detail: "SAIB check current as of 2026-07-30" },
+          ] },
+        ],
+      },
+      {
+        id: "parts",
+        label: "Parts",
+        description: "Parts inventory for open work orders and upcoming scheduled maintenance.",
+        blocks: [
+          { type: "table", title: "Parts on hand — open WOs", cols: ["Part #", "Description", "Qty", "WO", "Status"], rows: [
+            ["PC12-FUELCAP-LH", "Left wing fuel cap assembly", "1", "WO-2026-047", "On hand"],
+          ] },
+          { type: "cards", items: [
+            { band: "GREEN", label: "PARTS STATUS", title: "All open WO parts on hand", detail: "No AOG parts orders outstanding. Next maintenance visit parts TBD pending inspection scope.", action: "Order parts" },
+          ] },
+        ],
+      },
+      {
+        id: "schedule",
+        label: "Schedule",
+        description: "Upcoming maintenance events — inspections, component overhauls, and scheduled checks.",
+        blocks: [
+          { type: "table", title: "Upcoming 12 months", cols: ["Tail", "Event", "Due Date", "Due Hours", "Days Out", "Status"], rows: [
+            ["N661LF", "WO-2026-047 FCU repair",  "2026-08-01", "—",     "2 days",  "OPEN"],
+            ["N663LF", "Annual inspection",         "2026-11-15", "2,000h", "108 days", "Schedule"],
+            ["N661LF", "Annual inspection",         "2027-02-15", "3,000h", "200 days", "OK"],
+            ["N662LF", "Annual inspection",         "2027-04-15", "2,600h", "259 days", "OK"],
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ──────────────────────────── DISPATCH (FLEET) ────────────────────────────
+  "av-dispatch": {
+    title: "DISPATCH",
+    subtitle: "Pacific Air Partners · Trip Release · Part 91/135",
+    disclaimer: "Formal release required before departure — crew and aircraft legality verified at dispatch time",
+    cas: { RED: 1, YELLOW: 2, BLUE: 0, WHITE: 0, GREEN: 2 },
+    tabs: [
+      {
+        id: "dispatch-board",
+        label: "Dispatch Board",
+        description: "Today's trips — tail assignments, crew legality, and release status.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "RED",    title: "N661LF — OOS",          detail: "FCU squawk · No dispatch until cleared by MX · WO-2026-047 open" },
+            { band: "YELLOW", title: "Martinez — 6h duty remaining", detail: "Current duty period: 12h · 6h used · 6h remaining" },
+            { band: "GREEN",  title: "N662LF — Released",     detail: "Combs / Thompson · KTLH → KMCO · Departs 14:00Z · Package complete" },
+          ] },
+          { type: "table", title: "Today's dispatch board", cols: ["Trip", "Tail", "Crew PIC", "Route", "Depart", "Legality", "Status"], rows: [
+            ["PAP-2026-112", "N662LF", "Combs S.",   "KTLH→KMCO", "14:00Z", "Legal", "Released"],
+            ["PAP-2026-113", "N661LF", "Martinez J.", "KMCO→KTPA", "16:00Z", "Legal", "Blocked — OOS"],
+            ["PAP-2026-114", "N663LF", "Thompson K.", "KTPA→KEYW", "18:00Z", "Legal", "Pending"],
+          ] },
+        ],
+      },
+      {
+        id: "weather-map",
+        label: "Weather",
+        description: "Route weather snapshot — current METARs, TAFs, and SIGMET activity.",
+        blocks: [
+          { type: "table", title: "Route weather — PAP-2026-112 KTLH→KMCO", cols: ["Station", "Category", "Ceiling", "Vis", "Wind"], rows: [
+            ["KTLH", "VFR",   "SCT060",   "10SM",  "270/08"],
+            ["KGNV", "VFR",   "BKN080",   "10SM",  "260/10"],
+            ["KMCO", "VFR",   "SCT100",   "10SM",  "250/12"],
+          ] },
+          { type: "kpis", items: [
+            { label: "SIGMET", value: "None active", band: "GREEN" },
+            { label: "AIRMET",  value: "Sierra (mountain obscuration)", band: "YELLOW" },
+            { label: "TFR",     value: "None on route", band: "GREEN" },
+          ] },
+        ],
+      },
+      {
+        id: "wb",
+        label: "W&B",
+        description: "Weight and balance computation — uses N662LF operator-uploaded AFM data.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN", title: "W&B within limits",  detail: "9,124 lbs · Max 10,450 lbs · CG 154.2 in · Limit 150–160 in" },
+            { band: "GREEN", title: "Fuel 280 gal",        detail: "Required 195 gal · Reserve 85 gal · Max 402 gal" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Basic empty weight", value: "6,220 lbs", band: "WHITE" },
+            { label: "Crew + pax",         value: "1,240 lbs (4 pax)", band: "WHITE" },
+            { label: "Fuel",               value: "1,680 lbs (280 gal)", band: "WHITE" },
+            { label: "Baggage",            value: "184 lbs", band: "WHITE" },
+            { label: "Gross weight",       value: "9,124 / 10,450 lbs", band: "GREEN" },
+            { label: "CG",                 value: "154.2 in (limit 150–160)", band: "GREEN" },
+          ] },
+        ],
+      },
+      {
+        id: "notam",
+        label: "NOTAMs",
+        description: "Relevant NOTAMs for PAP-2026-112 KTLH→KMCO departure.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "YELLOW", label: "KTLH", title: "Taxiway Bravo closed — 06:00–14:00Z", detail: "NOTAM 07/30/26 · Use Taxiway Charlie via Echo · Confirm with ground prior to taxi", action: "Noted" },
+            { band: "GREEN",  label: "KMCO", title: "No relevant NOTAMs", detail: "All runways and taxiways operational · ILS all runways serviceable", action: "Confirm" },
+          ] },
+        ],
+      },
+      {
+        id: "flight-following",
+        label: "Flight Following",
+        description: "Live ADS-B position for Pacific Air Partners fleet.",
+        blocks: [
+          { type: "table", title: "Fleet position — live", cols: ["Tail", "Flight", "From", "To", "Status", "ETA"], rows: [
+            ["N662LF", "PAP-112", "KTLH", "KMCO", "En route", "15:52Z"],
+            ["N663LF", "Ground",  "KTPA", "—",    "Airworthy", "—"],
+            ["N661LF", "Ground",  "KTLH", "—",    "GROUNDED",  "—"],
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ──────────────────────────── TRAINING (FLEET) ────────────────────────────
+  "av-training": {
+    title: "TRAINING",
+    subtitle: "Pacific Air Partners · Crew Records · Part 135.293",
+    disclaimer: "Currency checks are advisory — DISPATCH queries the crew legality engine at release time",
+    cas: { RED: 0, YELLOW: 2, BLUE: 0, WHITE: 1, GREEN: 3 },
+    tabs: [
+      {
+        id: "crew-currency",
+        label: "Crew Currency",
+        description: "All-pilots currency matrix — medical, BFR, IFR, type recurrent, and 135 checks.",
+        blocks: [
+          { type: "table", title: "Crew currency matrix", cols: ["Pilot", "Medical", "BFR", "IPC", "Type Recurrent", "135 Check", "Status"], rows: [
+            ["Combs S. (ATP)",     "Class 1 — Dec 2026",  "Feb 2026", "Feb 2026", "Nov 2026 ⚠",  "Jun 2027", "YELLOW"],
+            ["Martinez J. (ATP)",   "Class 1 — Aug 2026",  "Jan 2026", "Jan 2026", "Sep 2027",     "Sep 2027", "GREEN"],
+            ["Thompson K. (CPL)",   "Class 2 — Mar 2027",  "Mar 2026", "Mar 2026", "N/A",          "Mar 2027", "GREEN"],
+          ] },
+          { type: "flags", items: [
+            { band: "YELLOW", title: "Combs S. — PC-12 type recurrent due Nov 2026", detail: "71 days · Schedule FSI/SimuFlite simulator now to avoid gap in schedule" },
+            { band: "YELLOW", title: "Martinez J. — Class 1 medical due Aug 2026",   detail: "32 days · Schedule AME appointment this week" },
+          ] },
+        ],
+      },
+      {
+        id: "cert-ladder",
+        label: "Certificate Ladder",
+        description: "Pilot certificate progression and qualification status.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "GREEN",  label: "COMBS S.",   title: "ATP · PC-12/47E Type Rating · MEI · CFII", detail: "All certificates current · Part 135 qualified · Chief Pilot", action: "View records" },
+            { band: "GREEN",  label: "MARTINEZ J.", title: "ATP · PC-12/47E Type Rating",              detail: "All certificates current · Part 135 qualified · SIC qualified", action: "View records" },
+            { band: "GREEN",  label: "THOMPSON K.", title: "CPL · Instrument · Multi-Engine",            detail: "Non-type-rated — right seat B100/C90 only · Part 135 SIC qualified", action: "View records" },
+          ] },
+        ],
+      },
+      {
+        id: "expirations",
+        label: "Upcoming",
+        description: "Currency and certificate expirations in the next 90 days.",
+        blocks: [
+          { type: "table", title: "90-day expiration calendar", cols: ["Pilot", "Item", "Expires", "Days Out", "Action"], rows: [
+            ["Martinez J.", "Class 1 Medical",      "Aug 2026", "32 days", "Schedule AME"],
+            ["Combs S.",    "PC-12 Type Recurrent", "Nov 2026", "71 days", "Schedule simulator"],
+          ] },
+        ],
+      },
+      {
+        id: "schedule",
+        label: "Schedule",
+        description: "Upcoming training events — simulator slots, checkrides, and ground training.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "YELLOW", label: "UPCOMING", title: "Combs S. — PC-12 type recurrent", detail: "Due Nov 2026 · FSI Scottsdale preferred · Contact: 480-555-0131 · 2-day course + sim session", action: "Schedule" },
+            { band: "YELLOW", label: "UPCOMING", title: "Martinez J. — Class 1 AME appointment", detail: "Due Aug 2026 · FAA-designated AME required · Schedule with Dr. Chen, KLAS", action: "Schedule" },
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ──────────────────────────── OPERATIONS (FLEET) ──────────────────────────
+  "av-operations": {
+    title: "OPERATIONS",
+    subtitle: "Pacific Air Partners · Crew Scheduling · Duty Time",
+    disclaimer: "Crew legality is computed at dispatch time — this board is a live preview only",
+    cas: { RED: 1, YELLOW: 1, BLUE: 0, WHITE: 1, GREEN: 2 },
+    tabs: [
+      {
+        id: "crew-schedule",
+        label: "Crew Schedule",
+        description: "This week's crew schedule — trips, duty periods, and rest blocks.",
+        blocks: [
+          { type: "table", title: "Week of 2026-07-28", cols: ["Pilot", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], rows: [
+            ["Combs S.",    "PAP-110", "PAP-112", "Rest", "Rest",    "PAP-116", "Rest",    "Rest"],
+            ["Martinez J.", "Rest",    "PAP-113", "Standby", "Rest",  "Rest",    "PAP-118", "Rest"],
+            ["Thompson K.", "PAP-111", "Rest",    "PAP-114", "Rest", "PAP-117", "Rest",    "Rest"],
+          ] },
+        ],
+      },
+      {
+        id: "crew-legality",
+        label: "Crew Legality",
+        description: "Duty time and currency status per pilot — queried by DISPATCH before every release.",
+        blocks: [
+          { type: "table", title: "Crew legality — current duty period", cols: ["Pilot", "Duty Used", "Duty Remaining", "Currency", "Medical", "Legality"], rows: [
+            ["Combs S.",    "4h",  "10h",  "Current",  "Current (Dec)", "GREEN"],
+            ["Martinez J.", "6h",  "6h",   "Current",  "Due 32 days",  "YELLOW"],
+            ["Thompson K.", "0h",  "14h",  "Current",  "Current (Mar)", "GREEN"],
+          ] },
+          { type: "flags", items: [
+            { band: "YELLOW", title: "Martinez J. — medical approaching expiration", detail: "32 days to Class 1 renewal · Legal to fly now · Flag at 30-day threshold" },
+            { band: "RED",    title: "N661LF OOS — Martinez PAP-2026-113 blocked",  detail: "Assigned aircraft out of service · DISPATCH blocked release · Coordinate tail substitution" },
+          ] },
+        ],
+      },
+      {
+        id: "reserve-pool",
+        label: "Reserve Pool",
+        description: "Reserve crew availability — duty-legal pilots available for substitution or coverage.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "WHITE", label: "RESERVE", title: "No reserve crew on standby today", detail: "Contact Combs S. (off duty, rest period complete) or Martinez J. (on duty, 6h remaining) for any coverage needs.", action: "Contact crew" },
+          ] },
+        ],
+      },
+      {
+        id: "conflicts",
+        label: "Conflicts",
+        description: "Scheduling conflicts — duty time, rest violations, or double-booking flags.",
+        blocks: [
+          { type: "flags", items: [
+            { band: "RED",    title: "PAP-2026-113 — tail conflict", detail: "N661LF assigned but OOS. Reassign to N663LF (airworthy, Thompson K. available) or cancel trip." },
+            { band: "GREEN",  title: "No duty time violations this week", detail: "All crew within Part 135.265 limits for the rolling 24h, 7-day, and 30-day windows." },
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ──────────────────────────── SAFETY (FLEET) ──────────────────────────────
+  "av-safety": {
+    title: "SAFETY",
+    subtitle: "Pacific Air Partners · SMS · Part 135 Safety Management",
+    disclaimer: "Safety reports are confidential — SMS coordinator has independent reporting chain",
+    cas: { RED: 0, YELLOW: 1, BLUE: 0, WHITE: 2, GREEN: 3 },
+    tabs: [
+      {
+        id: "safety-board",
+        label: "Safety Board",
+        description: "Open safety reports — incidents, hazards, and near-misses. All reports are append-only.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "0 open incidents",     detail: "No open incidents requiring investigation" },
+            { band: "YELLOW", title: "1 open hazard",        detail: "Taxiway Bravo closure at KTLH — crew awareness" },
+            { band: "GREEN",  title: "SMS current",          detail: "Last SMS review Jul 2026 · Next review Jan 2027" },
+          ] },
+          { type: "table", title: "Recent safety reports", cols: ["Date", "Type", "Description", "Risk", "Status"], rows: [
+            ["2026-07-30", "Hazard",    "KTLH Taxiway Bravo closure",          "Low",    "Open"],
+            ["2026-07-18", "Incident",  "Nav light inoperative on preflight",  "Low",    "Closed"],
+            ["2026-06-30", "Near-miss", "Traffic conflict KMCO class B",        "Medium", "Closed"],
+          ] },
+        ],
+      },
+      {
+        id: "hazard-register",
+        label: "Hazard Register",
+        description: "Operational hazard register — risk matrix and mitigation status.",
+        blocks: [
+          { type: "table", title: "Active hazards", cols: ["Hazard", "Likelihood", "Severity", "Risk", "Mitigation", "Owner"], rows: [
+            ["Summer thunderstorm exposure (Florida corridor)", "High", "High", "HIGH", "Go/no-go criteria in GOM Section 4", "Combs S."],
+            ["Single-engine exposure — long overwater legs",    "Low",  "High", "MED",  "Alternate fuel planning requirement",  "Combs S."],
+            ["Fatigue — multi-day trips away from base",        "Med",  "Med",  "MED",  "Trip duty limits in GOM Section 7",   "Martinez J."],
+          ] },
+        ],
+      },
+      {
+        id: "drug-alcohol",
+        label: "Drug & Alcohol",
+        description: "DOT/FAA drug and alcohol testing program — testing schedule and compliance status.",
+        blocks: [
+          { type: "kpis", items: [
+            { label: "Program status",     value: "Compliant — DOT Part 40", band: "GREEN" },
+            { label: "Last random",        value: "Combs S. — Jun 2026",     band: "GREEN" },
+            { label: "Pre-employment",     value: "All crew clear",           band: "GREEN" },
+            { label: "Next random pool",   value: "Q3 2026 — Aug",           band: "YELLOW" },
+          ] },
+        ],
+      },
+      {
+        id: "foqa",
+        label: "FOQA",
+        description: "Flight data analysis — exceedance trends and safety performance indicators.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN", title: "0 exceedances this month", detail: "No FOQA events exceeding established thresholds · 23 flights analyzed" },
+            { band: "GREEN", title: "SPI trend — positive",     detail: "3-month rolling trend: approach stabilization improving, hard landing frequency down" },
+          ] },
+        ],
+      },
+      {
+        id: "erp",
+        label: "ERP",
+        description: "Emergency response plan — plan status, drill history, and contact tree.",
+        blocks: [
+          { type: "kpis", items: [
+            { label: "ERP status",     value: "Current — Rev 3 Jul 2026", band: "GREEN" },
+            { label: "Last drill",     value: "Jun 15 2026",              band: "GREEN" },
+            { label: "Next drill",     value: "Dec 2026",                 band: "GREEN" },
+            { label: "POC current",    value: "Yes — all contacts verified", band: "GREEN" },
+          ] },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────── COPILOT (PERSONAL) ───────────────────────────
+  "av-copilot": {
+    title: "CoPilot",
+    subtitle: "Combs, Sean · ATP · PC-12/47E",
+    disclaimer: "Advisory only — go/no-go authority rests with the PIC",
+    cas: { RED: 0, YELLOW: 2, BLUE: 0, WHITE: 1, GREEN: 4 },
+    tabs: [
+      {
+        id: "logbook",
+        label: "My Logbook",
+        description: "Your digital pilot logbook — append-only, chain-signed, portable. Every entry includes business purpose for IRS documentation.",
+        blocks: [
+          { type: "kpis", items: [
+            { label: "Total time",      value: "4,847 hrs",    band: "WHITE" },
+            { label: "PC-12 time",      value: "1,623 hrs",    band: "WHITE" },
+            { label: "Multi-engine",    value: "3,201 hrs",    band: "WHITE" },
+            { label: "Instrument",      value: "1,847 hrs",    band: "WHITE" },
+            { label: "Night",           value: "623 hrs",      band: "WHITE" },
+            { label: "Last 30 days",    value: "47 hrs",       band: "WHITE" },
+          ] },
+          { type: "table", title: "Recent entries", cols: ["Date", "Tail", "Route", "Type", "Duration", "Remarks"], rows: [
+            ["2026-07-29", "N662LF", "KTLH→KMCO", "Part 135", "2.1h", "Business transport"],
+            ["2026-07-27", "N662LF", "KMCO→KTLH", "Part 135", "2.0h", "Business transport"],
+            ["2026-07-25", "N661LF", "KTLH→KTPA", "Part 91",  "1.4h", "Maintenance flight"],
+          ] },
+        ],
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        description: "Your currency status — all certificates and recencies at a glance.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "Medical — Class 1 current",  detail: "Expires Dec 31 2026 · 154 days remaining" },
+            { band: "GREEN",  title: "BFR — current",               detail: "Completed Feb 10 2026 · Next due Feb 2028" },
+            { band: "YELLOW", title: "Type recurrent — due soon",   detail: "PC-12/47E · Due Nov 2026 · 71 days · Schedule now" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Class 1 Medical",      value: "Dec 31 2026 · 154d", band: "GREEN" },
+            { label: "BFR",                   value: "Feb 2028 · Current",  band: "GREEN" },
+            { label: "IPC",                   value: "Feb 2028 · Current",  band: "GREEN" },
+            { label: "PC-12 Type Recurrent",  value: "Nov 2026 · 71d",      band: "YELLOW" },
+            { label: "Night currency",        value: "Current",              band: "GREEN" },
+            { label: "135.293 PIC Check",     value: "Jun 2027 · Current",   band: "GREEN" },
+          ] },
+        ],
+      },
+      {
+        id: "my-aircraft",
+        label: "My Aircraft",
+        description: "Your primary aircraft — N661LF status and next flight readiness.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "RED",   title: "N661LF — OOS",     detail: "FCU squawk · WO-2026-047 · Est return 2026-08-01" },
+            { band: "GREEN", title: "N662LF — Available", detail: "Airworthy · 2,301 TTSN · Prepped for PAP-112 today" },
+          ] },
+          { type: "cards", items: [
+            { band: "RED",   label: "MY AIRCRAFT", title: "N661LF out of service", detail: "MX working WO-2026-047 (FCU/fuel cap). Next available: estimated 2026-08-01. Use N662LF for scheduled trips.", action: "Track WO" },
+          ] },
+        ],
+      },
+      {
+        id: "schedule",
+        label: "Schedule",
+        description: "Your upcoming trips, training, and duty periods.",
+        blocks: [
+          { type: "table", title: "This week", cols: ["Date", "Trip", "Route", "Tail", "Depart", "Status"], rows: [
+            ["Jul 29", "PAP-112", "KTLH→KMCO", "N662LF", "14:00Z", "Released"],
+            ["Jul 31", "Rest",    "—",           "—",      "—",      "Rest day"],
+            ["Aug 1",  "PAP-116", "KMCO→KTLH", "N662LF", "16:00Z", "Pending"],
+          ] },
+          { type: "kpis", items: [
+            { label: "Duty this week",  value: "18h used / 40h limit",    band: "GREEN" },
+            { label: "Rest today",       value: "10h since last duty off",  band: "GREEN" },
+          ] },
+        ],
+      },
+      {
+        id: "flight-planning",
+        label: "Flight Planning",
+        description: "Flight planning for your next trip — tell Alex your departure and destination.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "BLUE", label: "READY", title: "Tell Alex your route to build a preflight package", detail: "Alex will pull live weather, NOTAMs, compute W&B from your N661LF AFM, calculate FRAT score, and generate a release-ready package.", action: "Start planning" },
+          ] },
+        ],
+      },
+    ],
+  },
 };
+
+// ── Aircraft-specific CoPilot variants (CODEX 60) ────────────────────────────
+// Each entry is a type-specific CoPilot persona. Tabs are scoped to the
+// aircraft type. Canvas data is demo/advisory — live data injected by Alex.
+
+function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoInterval) {
+  return {
+    title: `CoPilot — ${typeLabel}`,
+    subtitle: `${tail} · ${typeLabel} · Pacific Air Partners`,
+    disclaimer: "Advisory only — go/no-go authority rests with the PIC",
+    cas: { RED: 0, YELLOW: 1, BLUE: 0, WHITE: 2, GREEN: 4 },
+    tabs: [
+      {
+        id: "flight-planning",
+        label: "Flight Planning",
+        description: `${typeLabel} flight planning — performance, fuel planning, and routing with type-specific data from your uploaded AFM.`,
+        blocks: [
+          { type: "cards", items: [
+            { band: "BLUE", label: "READY", title: `Tell Alex your route for a ${typeLabel} preflight package`, detail: `Alex will pull live weather, NOTAMs, compute W&B from your ${afmModel} AFM data, and generate a go/no-go package specific to the ${typeLabel}.`, action: "Start planning" },
+          ] },
+        ],
+      },
+      {
+        id: "performance",
+        label: "Performance",
+        description: `${typeLabel} performance tables — climb, cruise, and landing data from your uploaded AFM.`,
+        blocks: [
+          { type: "kpis", items: [
+            { label: "Max cruise",      value: "From AFM — upload to activate",  band: "WHITE" },
+            { label: "Best range",      value: "From AFM — upload to activate",  band: "WHITE" },
+            { label: "Climb rate",      value: "From AFM — upload to activate",  band: "WHITE" },
+            { label: "Service ceiling", value: "From AFM — upload to activate",  band: "WHITE" },
+          ] },
+          { type: "prose", items: [
+            { band: "BLUE", title: "Activate performance data", text: `Upload your ${afmModel} AFM or POH to unlock type-specific performance tables. Alex will parse climb, cruise, descent, and fuel-burn tables and use them in every preflight package.` },
+          ] },
+        ],
+      },
+      {
+        id: "weight-balance",
+        label: "Weight & Balance",
+        description: `Weight and balance computation using your ${tailShort} empty weight and CG from the uploaded AFM.`,
+        blocks: [
+          { type: "cards", items: [
+            { band: "BLUE", label: "UPLOAD AFM TO ACTIVATE", title: `${afmModel} W&B data not yet loaded`, detail: `Upload your aircraft's empty weight and CG data from the ${afmModel} AFM. Alex will compute W&B for every trip automatically.`, action: "Upload AFM" },
+          ] },
+        ],
+      },
+      {
+        id: "logbook",
+        label: "Logbook",
+        description: `Your ${typeLabel} logbook entries — automatically tagged by type and tail.`,
+        blocks: [
+          { type: "kpis", items: [
+            { label: `${typeLabel} time`,  value: "—",  band: "WHITE" },
+            { label: "Last 30 days",       value: "—",  band: "WHITE" },
+            { label: "Last 90 days",       value: "—",  band: "WHITE" },
+            { label: "Total time",         value: "—",  band: "WHITE" },
+          ] },
+          { type: "prose", items: [
+            { band: "BLUE", title: "Connect your logbook", text: "Link your pilot logbook to auto-tag entries by aircraft type. Time in type is tracked separately for insurance, type recurrent, and Part 135 reporting." },
+          ] },
+        ],
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        description: `${typeLabel} type currency — recency of experience and type recurrent status.`,
+        blocks: [
+          { type: "kpis", items: [
+            { label: "Type recurrent", value: "From pilot Vault",  band: "WHITE" },
+            { label: "Night currency", value: "From logbook",      band: "WHITE" },
+            { label: "IFR currency",   value: "From logbook",      band: "WHITE" },
+            { label: "Last flight",    value: "From logbook",      band: "WHITE" },
+          ] },
+          { type: "cards", items: [
+            { band: "BLUE", label: "CONNECT VAULT", title: "Connect your pilot Vault for live currency tracking", detail: "When your Vault is linked, Alex checks currency automatically at every preflight and flags anything that's approaching expiration.", action: "Connect Vault" },
+          ] },
+        ],
+      },
+      {
+        id: "documents",
+        label: "Documents",
+        description: `${typeLabel} documents — AFM, supplements, POH, and operator manuals.`,
+        blocks: [
+          { type: "cards", items: [
+            { band: "YELLOW", label: "AFM / POH",   title: `${afmModel} AFM — not uploaded`, detail: "Upload your AFM to activate performance tables and W&B computation.", action: "Upload" },
+            { band: "WHITE",  label: "SUPPLEMENTS",  title: "No STC supplements on file",       detail: "Add avionics or STC supplement documents if applicable.",              action: "Upload" },
+            { band: "WHITE",  label: "MEL",           title: "No MEL on file",                   detail: "Upload your operator MEL to enable MEL-deferred dispatch tracking.",  action: "Upload" },
+          ] },
+        ],
+      },
+    ],
+  };
+}
+
+AV_CANVAS["av-copilot-pc12"]  = copilotVariant("PC-12/47E", "N661LF · PC-12/47E", "N661LF", "PC-12/47E", "PT6A-67P", "3,600h");
+AV_CANVAS["av-copilot-b200"]  = copilotVariant("King Air B200", "N·B200 · King Air B200", "N·B200", "King Air B200", "PT6A-42", "3,600h");
+AV_CANVAS["av-copilot-b350"]  = copilotVariant("King Air B350", "N·B350 · King Air B350", "N·B350", "King Air B350", "PT6A-60A", "3,600h");
+AV_CANVAS["av-copilot-c90"]   = copilotVariant("King Air C90", "N·C90 · King Air C90", "N·C90", "King Air C90B", "PT6A-21", "3,500h");
+AV_CANVAS["av-copilot-208b"]  = copilotVariant("Caravan 208B", "N·208B · Cessna 208B", "N·208B", "208B Grand Caravan", "PT6A-114A", "3,600h");
 
 export function getAvCanvas(slug) {
   return AV_CANVAS[slug] || null;

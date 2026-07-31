@@ -193,6 +193,68 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "frat":          "Flight Risk Assessment score auto-calculated from weather, crew currency, aircraft status, and mission type.",
     "trip-record":   "The trip record, billing summary, and IRS business-purpose log. Chain-signed and exportable for your CPA.",
   },
+
+  "av-aircraft": {
+    "fleet-map":   "All tails at a glance — airworthiness status, TTSN, next inspection due, and any open items.",
+    "tail-detail": "Specific aircraft deep-dive — configuration, open squawks, component status, and document checklist.",
+    "squawks":     "All open and recent squawks across the fleet — pilot write-up, MX triage, and resolution status.",
+    "ads-sbs":     "AD/SB compliance matrix — all applicable airworthiness directives and service bulletins, compliance dates, and next due.",
+    "documents":   "Aircraft documents — AFM, weight and balance data, 337s, registration, and airworthiness certificate.",
+  },
+  "av-mx": {
+    "work-orders":     "Open and recent work orders — every job from squawk write-up through A&P sign-off, append-only.",
+    "component-life":  "Time-limited component status — engine TSMOH, propeller, and life-limited parts across the fleet.",
+    "ad-compliance":   "AD compliance matrix — all applicable airworthiness directives for each tail, compliance records and next-due.",
+    "parts":           "Parts inventory for open work orders and upcoming maintenance — on-hand status and AOG order tracking.",
+    "schedule":        "Upcoming maintenance events — inspections, component overhauls, and scheduled checks in the next 12 months.",
+  },
+  "av-dispatch": {
+    "dispatch-board":    "Today's trips — tail assignments, crew legality status, and release state for every flight.",
+    "weather-map":       "Live route weather — METARs, TAFs, SIGMETs, and AIRMETs for the current dispatch package.",
+    "wb":                "Weight and balance computation from your operator-uploaded AFM — gross weight and CG within limits.",
+    "notam":             "Relevant NOTAMs for the current departure — airport closures, ILS status, and TFR activity.",
+    "flight-following":  "Live ADS-B fleet position — real-time status for every tail from departure through block-in.",
+  },
+  "av-training": {
+    "crew-currency":  "All-pilots currency matrix — medical, BFR, IPC, type recurrent, and 135 checks at a glance.",
+    "cert-ladder":    "Pilot certificate progression — ATP, type ratings, instrument, and Part 135 qualifications per crew member.",
+    "expirations":    "90-day expiration calendar — medical certificates, recurrent training, and regulatory checks coming due.",
+    "schedule":       "Upcoming training events — simulator slots, checkrides, and ground training for the crew.",
+  },
+  "av-operations": {
+    "crew-schedule": "This week's crew schedule — trips, duty periods, rest blocks, and reserve assignments.",
+    "crew-legality": "Crew legality engine — duty time remaining and currency status per pilot, queried by Dispatch at release time.",
+    "reserve-pool":  "Reserve crew availability — duty-legal pilots available for substitution or coverage.",
+    "conflicts":     "Scheduling conflicts — tail substitutions needed, duty time flags, and rest violations.",
+  },
+  "av-safety": {
+    "safety-board":    "Open safety reports — incidents, hazards, and near-misses. All reports are append-only and confidential.",
+    "hazard-register": "Operational hazard register — risk matrix, likelihood/severity ratings, and mitigation status.",
+    "drug-alcohol":    "DOT/FAA drug and alcohol testing program — testing schedule, random pool status, and compliance.",
+    "foqa":            "Flight data analysis — exceedance trends and safety performance indicators for the operation.",
+    "erp":             "Emergency response plan — current revision, drill history, and POC contact tree.",
+  },
+  "av-copilot": {
+    "logbook":         "Your digital pilot logbook — append-only, chain-signed, portable, with IRS business-purpose notes.",
+    "currency":        "All your certificates and recency requirements at a glance — go/no-go currency status.",
+    "my-aircraft":     "Your primary aircraft — current airworthiness status and next flight readiness.",
+    "schedule":        "Your upcoming trips, training events, and duty periods.",
+    "flight-planning": "Flight planning for your next trip — Alex builds the preflight package from live data.",
+  },
+  "av-copilot-pc12": {
+    "flight-planning": "PC-12/47E flight planning — performance, fuel planning, and routing with type-specific data.",
+    "map":             "Route map and weather overlay for your planned flight.",
+    "checklists":      "PC-12/47E normal procedures — from your operator checklist or AFM default flows.",
+    "qrh":             "Quick Reference Handbook — emergency and abnormal procedures for the PC-12/47E.",
+    "performance":     "PC-12/47E performance tables — climb, cruise, and landing data from your uploaded AFM.",
+    "weight-balance":  "Weight and balance computation using your N661LF empty weight and CG from the AFM.",
+    "aircraft":        "Your aircraft profile — N661LF configuration, avionics, and STC deviations from type.",
+    "logbook":         "Your PC-12 logbook entries — automatically tagged by type and tail.",
+    "currency":        "PC-12/47E type currency — recency of experience and type recurrent status.",
+    "duty":            "Duty time and rest for your current and upcoming duty periods.",
+    "training":        "PC-12/47E training record — initial type rating, recurrent, and checkride history.",
+    "documents":       "PC-12/47E documents — AFM, supplements, POH, and operator manuals.",
+  },
 };
 
 /**

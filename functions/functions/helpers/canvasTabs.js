@@ -175,6 +175,60 @@ const AVIATION_DISPATCH_TABS = [
   { id: "trip-record",   label: "Trip Record",   signal: "card:work-product", order: 2 },
 ];
 
+const AVIATION_AIRCRAFT_TABS = [
+  { id: "fleet-map",   label: "Fleet Map",   signal: "card:work-product", default: true, order: 0 },
+  { id: "tail-detail", label: "Tail Detail", signal: "card:work-product", order: 1 },
+  { id: "squawks",     label: "Squawks",     signal: "card:work-product", order: 2 },
+  { id: "ads-sbs",     label: "ADs/SBs",     signal: "card:work-product", order: 3 },
+  { id: "documents",   label: "Documents",   signal: "card:work-product", order: 4 },
+];
+
+const AVIATION_MX_V2_TABS = [
+  { id: "work-orders",    label: "Work Orders",    signal: "card:work-product", default: true, order: 0 },
+  { id: "component-life", label: "Component Life", signal: "card:work-product", order: 1 },
+  { id: "ad-compliance",  label: "AD Compliance",  signal: "card:work-product", order: 2 },
+  { id: "parts",          label: "Parts",          signal: "card:work-product", order: 3 },
+  { id: "schedule",       label: "Schedule",       signal: "card:work-product", order: 4 },
+];
+
+const AVIATION_DISPATCH_V2_TABS = [
+  { id: "dispatch-board", label: "Dispatch Board", signal: "card:work-product", default: true, order: 0 },
+  { id: "weather-map",    label: "Weather",        signal: "card:work-product", order: 1 },
+  { id: "wb",             label: "W&B",            signal: "card:work-product", order: 2 },
+  { id: "notam",          label: "NOTAMs",         signal: "card:work-product", order: 3 },
+  { id: "flight-following", label: "Flight Following", signal: "card:work-product", order: 4 },
+];
+
+const AVIATION_TRAINING_TABS = [
+  { id: "crew-currency", label: "Crew Currency", signal: "card:work-product", default: true, order: 0 },
+  { id: "cert-ladder",   label: "Certificate Ladder", signal: "card:work-product", order: 1 },
+  { id: "expirations",   label: "Upcoming",      signal: "card:work-product", order: 2 },
+  { id: "schedule",      label: "Schedule",      signal: "card:work-product", order: 3 },
+];
+
+const AVIATION_OPERATIONS_TABS = [
+  { id: "crew-schedule",  label: "Crew Schedule", signal: "card:work-product", default: true, order: 0 },
+  { id: "crew-legality",  label: "Crew Legality", signal: "card:work-product", order: 1 },
+  { id: "reserve-pool",   label: "Reserve Pool",  signal: "card:work-product", order: 2 },
+  { id: "conflicts",      label: "Conflicts",     signal: "card:work-product", order: 3 },
+];
+
+const AVIATION_SAFETY_V2_TABS = [
+  { id: "safety-board",   label: "Safety Board",    signal: "card:work-product", default: true, order: 0 },
+  { id: "hazard-register",label: "Hazard Register", signal: "card:work-product", order: 1 },
+  { id: "drug-alcohol",   label: "Drug & Alcohol",  signal: "card:work-product", order: 2 },
+  { id: "foqa",           label: "FOQA",            signal: "card:work-product", order: 3 },
+  { id: "erp",            label: "ERP",             signal: "card:work-product", order: 4 },
+];
+
+const AVIATION_COPILOT_HUB_TABS = [
+  { id: "logbook",        label: "My Logbook",     signal: "card:work-product", default: true, order: 0 },
+  { id: "currency",       label: "Currency",       signal: "card:aviation-currency", order: 1 },
+  { id: "my-aircraft",    label: "My Aircraft",    signal: "card:work-product", order: 2 },
+  { id: "schedule",       label: "Schedule",       signal: "card:work-product", order: 3 },
+  { id: "flight-planning",label: "Flight Planning",signal: "card:aviation-flight-planning", order: 4 },
+];
+
 // Universal long-tail fallback. Every worker without a specific rule above
 // gets these three tabs. All point at card:work-product; the tab label
 // becomes the _title shown by the card's empty-state.
@@ -213,6 +267,18 @@ function generateDefaultTabs(worker) {
   // Dispatch / Trip Release — slug or AV-D catalogId prefix
   if (slug === "av-dispatch-001" || /^AV-D\d/.test(catalogId)) {
     return AVIATION_DISPATCH_TABS.map(t => ({ ...t }));
+  }
+
+  // CODEX 60 consolidated workers
+  if (slug === "av-aircraft") return AVIATION_AIRCRAFT_TABS.map(t => ({ ...t }));
+  if (slug === "av-mx") return AVIATION_MX_V2_TABS.map(t => ({ ...t }));
+  if (slug === "av-dispatch") return AVIATION_DISPATCH_V2_TABS.map(t => ({ ...t }));
+  if (slug === "av-training") return AVIATION_TRAINING_TABS.map(t => ({ ...t }));
+  if (slug === "av-operations") return AVIATION_OPERATIONS_TABS.map(t => ({ ...t }));
+  if (slug === "av-safety") return AVIATION_SAFETY_V2_TABS.map(t => ({ ...t }));
+  if (slug === "av-copilot") return AVIATION_COPILOT_HUB_TABS.map(t => ({ ...t }));
+  if (["av-copilot-pc12","av-copilot-b200","av-copilot-b350","av-copilot-c90","av-copilot-208b"].includes(slug)) {
+    return AVIATION_COPILOT_TABS.map(t => ({ ...t }));
   }
 
   // CoPilots — EFB mirror. Identified by catalogId AV-P01..AV-P11
@@ -260,6 +326,13 @@ module.exports = {
   AVIATION_COPILOT_TABS,
   AVIATION_MX_TABS,
   AVIATION_DISPATCH_TABS,
+  AVIATION_AIRCRAFT_TABS,
+  AVIATION_MX_V2_TABS,
+  AVIATION_DISPATCH_V2_TABS,
+  AVIATION_TRAINING_TABS,
+  AVIATION_OPERATIONS_TABS,
+  AVIATION_SAFETY_V2_TABS,
+  AVIATION_COPILOT_HUB_TABS,
   RE_TABS,
   RES_SALESPERSON_TABS,
   GEN_SCHEDULING_TABS,

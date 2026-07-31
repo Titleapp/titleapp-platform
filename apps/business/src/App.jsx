@@ -4927,18 +4927,43 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <AlexPipelines />;
       case "pending-signatures":
         return <PendingSignatures />;
-      case "av-copilot":
-        return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
-      case "av-dispatch":
-        return <AviationWorkerCanvas workerSlug="av-dispatch-001" />;
-      case "av-fleet":
+      // ── Aviation workers — CODEX 60 slugs pass through directly ──────────
+      case "av-aircraft":
+        return <AviationWorkerCanvas workerSlug="av-aircraft" />;
       case "av-mx":
+        return <AviationWorkerCanvas workerSlug="av-mx" />;
+      case "av-dispatch":
+        return <AviationWorkerCanvas workerSlug="av-dispatch" />;
+      case "av-training":
+        return <AviationWorkerCanvas workerSlug="av-training" />;
+      case "av-operations":
+        return <AviationWorkerCanvas workerSlug="av-operations" />;
+      case "av-safety":
+        return <AviationWorkerCanvas workerSlug="av-safety" />;
+      case "av-copilot":
+        return <AviationWorkerCanvas workerSlug="av-copilot" />;
+      case "av-copilot-pc12":
+        return <AviationWorkerCanvas workerSlug="av-copilot-pc12" />;
+      case "av-copilot-b200":
+        return <AviationWorkerCanvas workerSlug="av-copilot-b200" />;
+      case "av-copilot-b350":
+        return <AviationWorkerCanvas workerSlug="av-copilot-b350" />;
+      case "av-copilot-c90":
+        return <AviationWorkerCanvas workerSlug="av-copilot-c90" />;
+      case "av-copilot-208b":
+        return <AviationWorkerCanvas workerSlug="av-copilot-208b" />;
+      // Legacy slugs — keep for backward compat
+      case "av-copilot-001":
+        return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
+      case "av-dispatch-001":
+        return <AviationWorkerCanvas workerSlug="av-dispatch-001" />;
+      case "av-mx-001":
+      case "av-fleet":
         return <AviationWorkerCanvas workerSlug="av-mx-001" />;
       case "av-crew":
-      case "av-safety":
       case "av-scheduling":
       case "av-compliance":
-        return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
+        return <AviationWorkerCanvas workerSlug="av-copilot" />;
       case "w3-team-roster": {
         const TeamVerification = React.lazy(() => import("./pages/web3/TeamVerification"));
         return <React.Suspense fallback={<div />}><TeamVerification /></React.Suspense>;
