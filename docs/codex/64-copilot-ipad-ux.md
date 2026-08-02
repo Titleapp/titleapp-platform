@@ -1,7 +1,7 @@
 # CODEX 64 — CoPilot iPad UX
 # Aviation Intelligence Layer — iPad-First Design
 
-**Status:** Spec v3 — red-teamed + manifest layer added 2026-08-02  
+**Status:** Spec v4 — aircraft W&B profile required; manifest type expansion 2026-08-02  
 **Author:** Sean + Claude · HNL Airport  
 **Vertical:** Aviation  
 **Workers:** CoPilot (av-copilot-001), Dispatch (av-dispatch-001), MX (av-mx-001)
@@ -96,6 +96,169 @@ a given flight leg — pilot(s), crew, patients, passengers — with their weigh
   "corrections": []          // any post-departure corrections (append-only)
 }
 ```
+
+---
+
+## Aircraft W&B Profile — Required for Any CG Calculation
+
+**Sean's ruling:** W&B must be tied to the actual aircraft's Gross Empty Weight and
+the specifics of that individual aircraft. Otherwise it must be disclaimed — not shown.
+
+Every aircraft has an **approved Weight and Balance document** — specific to that
+tail number, not the model. Two PC-12/47Es sitting side by side have different
+empty weights because of installed avionics, equipment modifications, paint, and
+the last time maintenance re-weighed the aircraft. The approved W&B document is
+the legal reference.
+
+**What the aircraft W&B profile contains (entered once, maintained by ops):**
+
+```json
+{
+  "tailNumber": "N661LF",
+  "model": "PC-12/47E",
+  "serialNumber": "...",
+  "wbDocumentRef": "...",        // filename of approved W&B PDF in Vault
+  "wbDocumentDate": "2025-03-15", // date of last approved weighing
+  "basicEmptyWeightLbs": 3218,   // actual weighed empty weight
+  "basicEmptyCgArm": 141.2,      // CG arm at empty weight (inches aft of datum)
+  "basicEmptyMoment": 454183,    // BEW × arm
+  "maxGrossWeightLbs": 5512,     // MTOW for this aircraft/config
+  "maxLandingWeightLbs": 5512,
+  "cgEnvelope": [                // forward and aft limits at various weights
+    { "weightLbs": 3500, "fwdArmIn": 138.5, "aftArmIn": 145.8 },
+    { "weightLbs": 4000, "fwdArmIn": 139.1, "aftArmIn": 145.8 },
+    { "weightLbs": 4500, "fwdArmIn": 139.8, "aftArmIn": 145.8 },
+    { "weightLbs": 5000, "fwdArmIn": 140.5, "aftArmIn": 145.8 },
+    { "weightLbs": 5512, "fwdArmIn": 141.3, "aftArmIn": 145.8 }
+  ],
+  "stations": [                  // seat and compartment arm positions
+    { "id": "left-front",    "label": "Pilot",         "armIn": 133.5 },
+    { "id": "right-front",   "label": "Co-pilot",      "armIn": 133.5 },
+    { "id": "cabin-left-1",  "label": "Cabin seat 1",  "armIn": 155.0 },
+    { "id": "cabin-right-1", "label": "Cabin seat 2",  "armIn": 155.0 },
+    { "id": "stretcher",     "label": "Stretcher",     "armIn": 158.0 },
+    { "id": "aft-baggage",   "label": "Aft baggage",   "armIn": 183.0 }
+  ]
+}
+```
+
+This profile is entered once per tail number by ops (or MX after a re-weigh) and
+stored in the aircraft record in Vault. It is NOT something the pilot enters on the ramp.
+
+**Two modes — determined by whether the aircraft profile exists:**
+
+### Mode A: Profile exists → Real CG calculation
+Manifest weights + seat station arms + BEW/arm → ramp weight, ramp CG, takeoff CG,
+landing CG. Plotted against the envelope. Green/yellow/red status.
+
+```
+MANIFEST W&B — N661LF
+─────────────────────────────────────
+Basic empty weight:  3,218 lbs @ 141.2"
+Pilot (left-front):    185 lbs @ 133.5"
+Flight nurse:          155 lbs @ 155.0"
+Patient (stretcher):   175 lbs @ 158.0"  ← estimated; tap to confirm
+Stretcher/equip:        85 lbs @ 158.0"
+─────────────────────────────────────
+RAMP WEIGHT:         3,818 lbs  ✓ (limit 5,512)
+RAMP CG:             142.1"    ✓ (limits 139.1" – 145.8" at this weight)
+
+[envelope diagram — dot plotted against limits]
+
+CG STATUS:  ✓ WITHIN LIMITS
+─────────────────────────────────────
+⚠ Verify against approved W&B document
+  before flight. PIC is responsible.
+```
+
+### Mode B: No profile → total weight only, hard disclaimer, CG blocked
+
+```
+MANIFEST — N661LF
+─────────────────────────────────────
+Total manifest weight:  600 lbs
+─────────────────────────────────────
+⛔ CG CALCULATION NOT AVAILABLE
+Aircraft W&B profile has not been entered
+for N661LF. Contact ops to enter the
+approved W&B document before CG can
+be calculated in this app.
+
+Verify W&B against the approved aircraft
+W&B document before flight.
+PIC is responsible.
+```
+
+Mode B never shows a CG number. Partial data — a made-up empty weight, a guessed
+arm — is worse than no data because it creates false confidence.
+
+**Profile maintenance:**
+- Ops enters/updates the profile when maintenance re-weighs the aircraft
+- The approved W&B PDF is attached to the profile as a Vault document
+- Profile carries a `wbDocumentDate` — the app shows a WARNING banner if the
+  profile is > 2 years old (FAA recommends re-weighing when records are lost or
+  after major modifications)
+- MX worker triggers a "re-weigh reminder" alert when modifications affect empty weight
+
+---
+
+## Manifest Types
+
+The Manifest data model must support all Part 91/135 use cases. The `manifestType`
+field drives which fields are required and how the invoice is generated.
+
+| Type | Use case | Weight rows | Billing driver |
+|---|---|---|---|
+| `air-transport` | Charter, point-to-point | Named passengers + weights | Per-seat or block hour |
+| `air-medical` | HEMS, medevac | Crew + patient + equipment | Insurance / patient billing |
+| `cargo` | Freight, no pax | Freight bill + weight distribution | Per-lb or block hour |
+| `mixed` | Cargo + crew (common) | Crew + freight | Block hour |
+| `part-121` | Scheduled service | Pax list + average/actual weights | Ticket price |
+
+Part 121 is out of scope for Phase 3. The others are all Part 135 and are in scope.
+
+**Cargo manifest additions:**
+```json
+{
+  "manifestType": "cargo",
+  "freightItems": [
+    {
+      "freightBillNumber": "...",
+      "description": "Medical supplies",
+      "weightLbs": 240,
+      "station": "aft-baggage",
+      "hazmat": false
+    }
+  ]
+}
+```
+
+**Medical manifest additions:**
+```json
+{
+  "manifestType": "air-medical",
+  "patient": {
+    "weightLbs": 175,
+    "weightType": "estimated",   // → "scale" or "confirmed" after pickup
+    "station": "stretcher",
+    "diagnosis": "...",          // optional — medical crew enters post-flight
+    "insuranceId": "...",        // drives billing
+    "flightNurseNotes": "..."    // appended post-flight, not pre-flight
+  },
+  "equipment": [
+    { "description": "Stretcher + frame", "weightLbs": 65, "station": "stretcher" },
+    { "description": "IV pump + monitor", "weightLbs": 20, "station": "stretcher" }
+  ]
+}
+```
+
+Note: patient weight in medical manifests is often estimated pre-pickup.
+The flow is: ops enters estimate → PIC accepts manifest with estimate →
+patient loaded → actual weight confirmed → CORRECTION EVENT appended.
+The CG recalculates from the confirmed weight. If the updated CG goes out of limits,
+the app alerts the PIC immediately.
+
+---
 
 **The manifest flow (pre-flight):**
 
