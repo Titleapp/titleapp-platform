@@ -495,9 +495,10 @@ Alex aware of what's on the map. Proactive in-flight alerts. Voice to map.
 4. **W&B scope** — quick check (Alex computes from profile, hard disclaimer) vs. full
    AFM-calibrated W&B tool. Quick check is Phase 3. Full tool is a separate CODEX.
 
-5. **Eric Altshuler / HEMS requirements** — have this conversation before Phase 2
-   locks. Patient/stretcher weight and altitude considerations change the brief view
-   and W&B scope. Also: does HEMS operation require specific EFB OpSpec language?
+5. **HEMS/medevac user research** — when you talk to Eric Altshuler, use it as
+   a listening session: what does a medevac Part 135 brief look like vs standard
+   air transport? Patient/stretcher weight in W&B, LZ considerations, altitude
+   constraints. Informs Phase 2 scope — doesn't block it.
 
 6. **React Native vs Swift** — React Native is faster and reuses Firebase/Firestore
    SDK. Swift is more performant and has better CoreBluetooth/CoreLocation integration.
