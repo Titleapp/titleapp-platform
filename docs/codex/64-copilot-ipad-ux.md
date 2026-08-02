@@ -1,7 +1,7 @@
 # CODEX 64 — CoPilot iPad UX
 # Aviation Intelligence Layer — iPad-First Design
 
-**Status:** Spec v2 — red-teamed 2026-08-02  
+**Status:** Spec v3 — red-teamed + manifest layer added 2026-08-02  
 **Author:** Sean + Claude · HNL Airport  
 **Vertical:** Aviation  
 **Workers:** CoPilot (av-copilot-001), Dispatch (av-dispatch-001), MX (av-mx-001)
@@ -24,6 +24,108 @@ The love: **ForeFlight as independent instrument panel.** If avionics go dark �
 EFIS fails, G1000 freezes — the iPad on the kneeboard is showing live GPS position,
 track, groundspeed, and a moving map. Pilots trust their lives to it. We must not
 break this use case. We must earn the right to sit next to it.
+
+---
+
+## The MANIFEST — Central Organizing Record of Every Flight
+
+The Manifest is the most important object in the CoPilot data model. It was missing
+from v1 and v2. Adding it changes W&B, safety, billing, and post-flight debrief.
+
+**What the Manifest is:** The authoritative list of every person on the aircraft for
+a given flight leg — pilot(s), crew, patients, passengers — with their weights and roles.
+
+**Why it's central to Part 135 air transport:**
+
+1. **W&B (Safety):** The CG envelope calculation requires the weight and seat position
+   of every person on the aircraft. You cannot complete W&B without the manifest.
+   For HEMS: patient weight is often estimated pre-flight and confirmed post-pickup.
+   The manifest holds both the estimate and the confirmed weight as separate events.
+
+2. **Performance (Safety):** Takeoff distance, climb rate, max altitude — all
+   performance calculations are manifest-dependent. An overweight or out-of-CG
+   aircraft is a safety event, not a paperwork event.
+
+3. **Safety (Regulatory):** FAR 135.87 requires each PIC to be provided a load
+   manifest before departure. The manifest IS the regulatory record.
+
+4. **Payments and Billing:** In air medical and charter, the manifest is the
+   source of truth for the invoice — who flew, what services were rendered, what
+   the billable weight was. The manifest closes the loop from flight to invoice.
+
+**Manifest data model (append-only, per leg):**
+```json
+{
+  "type": "aviation.manifest",
+  "flightId": "...",
+  "legId": "...",          // one manifest per leg (outbound ≠ return)
+  "aircraft": "N661LF",
+  "manifestedAt": "...",   // time PIC accepted the manifest
+  "manifestedBy": "pilotUid",
+  "persons": [
+    {
+      "role": "PIC",
+      "name": "Combs, Sean",
+      "weightLbs": 185,
+      "seatStation": "left-front"
+    },
+    {
+      "role": "flight-nurse",
+      "name": "...",
+      "weightLbs": 155,
+      "seatStation": "cabin-left"
+    },
+    {
+      "role": "patient",
+      "name": "...",         // may be "Unknown" pre-pickup
+      "weightLbs": 170,      // estimated pre-pickup; confirmed weight added as event
+      "weightType": "estimated|confirmed|scale",
+      "seatStation": "stretcher",
+      "diagnosis": "...",    // optional for medical billing
+      "insuranceId": "..."   // optional, drives billing
+    }
+  ],
+  "totalWeightLbs": 510,
+  "cgStation": 142.3,        // calculated from seat stations and weights
+  "cgLimits": { "fwd": 138.5, "aft": 145.2 },
+  "cgOk": true,
+  "takeoffWeightLbs": 4850,
+  "maxTakeoffWeightLbs": 5250,
+  "weightOk": true,
+  "pilotSignedOff": true,    // PIC explicitly accepts manifest
+  "corrections": []          // any post-departure corrections (append-only)
+}
+```
+
+**The manifest flow (pre-flight):**
+
+```
+1. Dispatch enters initial manifest (crew weights from profiles, patient TBD)
+2. PIC reviews manifest on CoPilot — CG and weight calculated live
+3. Patient arrives → actual weight entered (scale or confirmed estimate)
+4. CG recalculates — green/yellow/red indicator
+5. PIC taps ACCEPT MANIFEST → locked as an event; flight can depart
+6. If patient weight changes after pickup (e.g., additional equipment added)
+   → CORRECTION EVENT appended, not overwrite
+```
+
+**The billing loop (post-flight):**
+
+```
+Manifest → flight completed → billing record generated
+  · Who flew (names + roles)
+  · Billable weight
+  · Services rendered (from flight nurse notes)
+  · Insurance IDs if captured
+→ Invoice draft surfaced in Dispatch worker for ops team to review and send
+```
+
+**What CoPilot (pilot-facing) does vs Dispatch (ops-facing):**
+- CoPilot: PIC accepts the manifest, sees CG/weight status, captures corrections
+- Dispatch: ops team builds the manifest, generates the invoice, tracks billing
+
+The manifest is the handoff point between the two workers. It is write-once from
+Dispatch and read-plus-correction from CoPilot.
 
 ---
 
@@ -235,9 +337,10 @@ Do not reference it in any pitch material until we have API access.
 
 ## 🟢 Polish Resolved
 
-**W&B disclaimer:** Hard persistent banner on quick-check screen, not advisory text:
-*"THIS IS NOT A CERTIFIED W&B CALCULATION. Verify against the aircraft AFM before
-flight. Pilot in command is responsible."* Always visible; cannot be dismissed.
+**W&B / Manifest disclaimer:** Hard persistent banner on the manifest CG screen:
+*"CG calculation is based on entered weights and standard seat station arms. Verify
+against the aircraft AFM W&B document before flight. Pilot in command is responsible
+for confirming aircraft is within CG and weight limits."* Always visible; cannot be dismissed.
 
 **Terrain overlay:** Persistent label on any terrain layer:
 *"Terrain — situational awareness only. Not TAWS. Not certified for IFR terrain
@@ -377,7 +480,7 @@ _Triggered by START A FLIGHT or when a dispatch release exists_
 │                                 │  All current for       │
 │    [tap NOTAM dot = expand]     │  this flight type      │
 │                                 │                        │
-│  [Sentry: 🟢]  [weather]       │  W&B — see AFM banner  │
+│  [Sentry: 🟢]  [weather]       │  MANIFEST · CG ✓ · [ACCEPT] │
 └─────────────────────────────────┴────────────────────────┘
 ```
 
@@ -492,8 +595,12 @@ Alex aware of what's on the map. Proactive in-flight alerts. Voice to map.
 3. **ForeFlight logbook export import** — is this a real use case for Sean? If so,
    ForeFlight CSV/GPX import should be in Phase 4 scope.
 
-4. **W&B scope** — quick check (Alex computes from profile, hard disclaimer) vs. full
-   AFM-calibrated W&B tool. Quick check is Phase 3. Full tool is a separate CODEX.
+4. **W&B scope** — manifest-driven W&B is the right model (see Manifest section above).
+   The question is how precisely we model the aircraft's CG envelope. Quick check
+   (rough CG from manifest weights + standard seat stations) is Phase 3. AFM-calibrated
+   CG envelope (exact station arms from the PC-12 Weight and Balance document) is Phase 4
+   and requires digitizing the AFM data for each tail number. Sean to decide: is rough
+   CG sufficient for Phase 3, or is AFM accuracy required before PIC can use it?
 
 5. **HEMS/medevac user research** — when you talk to Eric Altshuler, use it as
    a listening session: what does a medevac Part 135 brief look like vs standard
