@@ -829,9 +829,9 @@ export const AV_CANVAS = {
   // ─────────────────────────── COPILOT (PERSONAL) ───────────────────────────
   "av-copilot": {
     title: "CoPilot",
-    subtitle: "Combs, Sean · ATP · PC-12/47E",
+    subtitle: "Combs, Sean · Life Flight · PC-12/47E",
     disclaimer: "Advisory only — go/no-go authority rests with the PIC",
-    cas: { RED: 0, YELLOW: 2, BLUE: 0, WHITE: 1, GREEN: 4 },
+    cas: { RED: 0, YELLOW: 9, BLUE: 0, WHITE: 0, GREEN: 6 },
     tabs: [
       {
         id: "logbook",
@@ -839,37 +839,45 @@ export const AV_CANVAS = {
         description: "Your digital pilot logbook — append-only, chain-signed, portable. Every entry includes business purpose for IRS documentation.",
         blocks: [
           { type: "kpis", items: [
-            { label: "Total time",      value: "4,847 hrs",    band: "WHITE" },
-            { label: "PC-12 time",      value: "1,623 hrs",    band: "WHITE" },
-            { label: "Multi-engine",    value: "3,201 hrs",    band: "WHITE" },
-            { label: "Instrument",      value: "1,847 hrs",    band: "WHITE" },
-            { label: "Night",           value: "623 hrs",      band: "WHITE" },
-            { label: "Last 30 days",    value: "47 hrs",       band: "WHITE" },
+            { label: "Calendar year",   value: "116.8 hrs",    band: "WHITE" },
+            { label: "Last 12 months",  value: "170.1 hrs",    band: "WHITE" },
+            { label: "Last 90 days",    value: "54.9 hrs",     band: "WHITE" },
+            { label: "Last 60 days",    value: "33.4 hrs",     band: "WHITE" },
+            { label: "Last 30 days",    value: "7.0 hrs",      band: "WHITE" },
           ] },
-          { type: "table", title: "Recent entries", cols: ["Date", "Tail", "Route", "Type", "Duration", "Remarks"], rows: [
-            ["2026-07-29", "N662LF", "KTLH→KMCO", "Part 135", "2.1h", "Business transport"],
-            ["2026-07-27", "N662LF", "KMCO→KTLH", "Part 135", "2.0h", "Business transport"],
-            ["2026-07-25", "N661LF", "KTLH→KTPA", "Part 91",  "1.4h", "Maintenance flight"],
+          { type: "cards", items: [
+            { band: "BLUE", label: "LOGBOOK", title: "Log your last flight with Alex", detail: "Tell Alex your route, aircraft, and flight time — it will be appended to your Vault logbook as an immutable, chain-signed record with IRS business-purpose documentation.", action: "Log a flight" },
           ] },
         ],
       },
       {
         id: "currency",
         label: "Currency",
-        description: "Your currency status — all certificates and recencies at a glance.",
+        description: "Your Life Flight compliance tracker — real data from your FVO profile as of 2026-08-01. 9 items expire 09/30/2026.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN",  title: "Medical — Class 1 current",  detail: "Expires Dec 31 2026 · 154 days remaining" },
-            { band: "GREEN",  title: "BFR — current",               detail: "Completed Feb 10 2026 · Next due Feb 2028" },
-            { band: "YELLOW", title: "Type recurrent — due soon",   detail: "PC-12/47E · Due Nov 2026 · 71 days · Schedule now" },
+            { band: "YELLOW", title: "9 items expire 09/30/2026",       detail: "Recurrent window opens now. Schedule PC12 Flight, Emergency Training, Ground, and 5 other items before Sep 30." },
+            { band: "GREEN",  title: "Medical — current",                detail: "Medical 1 Year · Completed 05/11/2026 · Expires 05/31/2027" },
+            { band: "GREEN",  title: "HUET — current",                   detail: "Raft Hands On · Completed 09/22/2025 · Expires 09/30/2027" },
           ] },
-          { type: "kpis", items: [
-            { label: "Class 1 Medical",      value: "Dec 31 2026 · 154d", band: "GREEN" },
-            { label: "BFR",                   value: "Feb 2028 · Current",  band: "GREEN" },
-            { label: "IPC",                   value: "Feb 2028 · Current",  band: "GREEN" },
-            { label: "PC-12 Type Recurrent",  value: "Nov 2026 · 71d",      band: "YELLOW" },
-            { label: "Night currency",        value: "Current",              band: "GREEN" },
-            { label: "135.293 PIC Check",     value: "Jun 2027 · Current",   band: "GREEN" },
+          { type: "table", title: "Expiring 09/30/2026 — schedule now", cols: ["Item", "Last Completed", "Expires"], rows: [
+            ["FW - Gen Sub",           "09/19/2025", "09/30/2026"],
+            ["PC12 - Emergency Training", "09/19/2025", "09/30/2026"],
+            ["PC12 - Flight",          "03/21/2026", "09/30/2026"],
+            ["PC12 - Ground",          "09/19/2025", "09/30/2026"],
+            ["PC12 - 293",             "09/19/2025", "09/30/2026"],
+            ["PC12 - 297",             "03/21/2026", "09/30/2026"],
+            ["FW - 293 (a) 1, 4-8",   "10/12/2025", "09/30/2026"],
+            ["FW - CBT Q3",            "—",          "09/30/2026"],
+            ["PC12 - CTS",             "—",          "09/30/2026"],
+          ] },
+          { type: "table", title: "Current — no action needed", cols: ["Item", "Completed", "Expires"], rows: [
+            ["Medical 1 Year",    "05/11/2026", "05/31/2027"],
+            ["FW - 299",          "03/21/2026", "03/31/2027"],
+            ["FW - CBT Q1",       "03/30/2026", "03/31/2027"],
+            ["FW - CBT Q2",       "06/27/2026", "06/30/2027"],
+            ["FW - CBT Q4",       "12/29/2025", "12/31/2026"],
+            ["HUET - Raft Hands On", "09/22/2025", "09/30/2027"],
           ] },
         ],
       },

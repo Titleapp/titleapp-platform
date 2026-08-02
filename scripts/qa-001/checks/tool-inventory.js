@@ -13,20 +13,20 @@ const INDEX = path.resolve(__dirname, "../../../functions/functions/index.js");
 // definition: string that must appear in the tool definitions array
 // handler:    string that must appear in the tool handler switch/if chain
 const REQUIRED_TOOLS = [
-  { tool: "push_alert",            definition: 'name: "push_alert"',            handler: "_cosToolBlock.name === 'push_alert'",            description: "Operating Feed — push alert" },
-  { tool: "resolve_alert",         definition: 'name: "resolve_alert"',         handler: "_cosToolBlock.name === 'resolve_alert'",         description: "Operating Feed — resolve alert" },
-  { tool: "snooze_alert",          definition: 'name: "snooze_alert"',          handler: "_cosToolBlock.name === 'snooze_alert'",          description: "Operating Feed — snooze alert" },
-  { tool: "get_campaigns",         definition: 'name: "get_campaigns"',         handler: "_cosToolBlock.name === 'get_campaigns'",         description: "Cross-worker: list marketing campaigns" },
-  { tool: "get_shopify_orders",    definition: 'name: "get_shopify_orders"',    handler: "_cosToolBlock.name === 'get_shopify_orders'",    description: "Shopify: fetch recent orders on demand" },
-  { tool: "get_shopify_products",  definition: 'name: "get_shopify_products"',  handler: "_cosToolBlock.name === 'get_shopify_products'",  description: "Shopify: fetch product catalog + DPP lookup" },
-  { tool: "campaign_report",       definition: 'name: "campaign_report"',       handler: "_cosToolBlock.name === 'campaign_report'",       description: "Cross-worker: campaign open-rate report" },
-  { tool: "propose_email_campaign",definition: 'name: "propose_email_campaign"',handler: "_cosToolBlock.name === 'propose_email_campaign'",description: "Cross-worker: propose batch email campaign" },
-  { tool: "query_contacts",        definition: 'name: "query_contacts"',        handler: "_cosToolBlock.name === 'query_contacts'",        description: "Cross-worker: query contacts" },
-  { tool: "recall_notes",          definition: 'name: "recall_notes"',          handler: "_cosToolBlock.name === 'recall_notes'",          description: "Alex memory: recall notes" },
-  { tool: "save_note",             definition: 'name: "save_note"',             handler: "_cosToolBlock.name === 'save_note'",             description: "Alex memory: save note" },
-  { tool: "propose_calendar_event",definition: 'name: "propose_calendar_event"',handler: "_cosToolBlock.name === 'propose_calendar_event'",description: "Calendar: propose event" },
-  { tool: "propose_email",         definition: 'name: "propose_email"',         handler: "_cosToolBlock.name === 'propose_email'",         description: "Email: propose individual email" },
-  { tool: "read_inbox",            definition: 'name: "read_inbox"',            handler: "_cosToolBlock.name === 'read_inbox'",            description: "Gmail: read inbox" },
+  { tool: "push_alert",            definition: 'name: "push_alert"',            handler: "_cosTool.name === \"push_alert\"",            description: "Operating Feed — push alert" },
+  { tool: "resolve_alert",         definition: 'name: "resolve_alert"',         handler: "_cosTool.name === \"resolve_alert\"",         description: "Operating Feed — resolve alert" },
+  { tool: "snooze_alert",          definition: 'name: "snooze_alert"',          handler: "_cosTool.name === \"snooze_alert\"",          description: "Operating Feed — snooze alert" },
+  { tool: "get_campaigns",         definition: 'name: "get_campaigns"',         handler: "_cosTool.name === \"get_campaigns\"",         description: "Cross-worker: list marketing campaigns" },
+  { tool: "get_shopify_orders",    definition: 'name: "get_shopify_orders"',    handler: "_cosTool.name === \"get_shopify_orders\"",    description: "Shopify: fetch recent orders on demand" },
+  { tool: "get_shopify_products",  definition: 'name: "get_shopify_products"',  handler: "_cosTool.name === \"get_shopify_products\"",  description: "Shopify: fetch product catalog + DPP lookup" },
+  { tool: "campaign_report",       definition: 'name: "campaign_report"',       handler: "_cosTool.name === \"campaign_report\"",       description: "Cross-worker: campaign open-rate report" },
+  { tool: "propose_email_campaign",definition: 'name: "propose_email_campaign"',handler: "_cosTool.name === \"propose_email_campaign\"",description: "Cross-worker: propose batch email campaign" },
+  { tool: "query_contacts",        definition: 'name: "query_contacts"',        handler: "_cosTool.name === \"query_contacts\"",        description: "Cross-worker: query contacts" },
+  { tool: "recall_notes",          definition: 'name: "recall_notes"',          handler: "_cosTool.name === \"recall_notes\"",          description: "Alex memory: recall notes" },
+  { tool: "save_note",             definition: 'name: "save_note"',             handler: "_cosTool.name === \"save_note\"",             description: "Alex memory: save note" },
+  { tool: "propose_calendar_event",definition: 'name: "propose_calendar_event"',handler: "_cosTool.name === \"propose_calendar_event\"",description: "Calendar: propose event" },
+  { tool: "propose_email",         definition: 'name: "propose_email"',         handler: "_cosTool.name === \"propose_email\"",         description: "Email: propose individual email" },
+  { tool: "read_inbox",            definition: 'name: "read_inbox"',            handler: "_cosTool.name === \"read_inbox\"",            description: "Gmail: read inbox" },
 ];
 
 module.exports = {

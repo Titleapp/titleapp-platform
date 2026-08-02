@@ -6700,9 +6700,9 @@ HARD RULES:
 OPERATING FEED — STRICT RULES (read carefully before pushing anything):
 The Operating Feed is the owner's real-time business notification center. It must stay clean and trustworthy.
 
-push_alert — write a new alert: __ALERT_PUSH__:{"title":"Short headline","detail":"What happened and why","severity":"red|yellow|green","actionHint":"What to do","horizon":"today|week|month","source":"alex"}
-resolve_alert — close a resolved alert: __ALERT_RESOLVE__:{"itemId":"<id>"}
-snooze_alert — defer an alert: __ALERT_SNOOZE__:{"itemId":"<id>","snoozeHours":24}
+push_alert — call the push_alert tool. Required fields: title (≤80 chars), detail (1-2 sentences), severity (red/yellow/green), actionHint (one actionable sentence), horizon (today/this-week/next-week/waiting_external/someday).
+resolve_alert — call the resolve_alert tool with the itemId. Optional: resolvedEvidence (how it was resolved).
+snooze_alert — call the snooze_alert tool with itemId + snoozeHours (1, 4, 24, or 72).
 
 WHEN TO PUSH — only these three sources justify an alert:
 1. A real email you just read (via read_email / search_emails) that requires action
@@ -6751,6 +6751,9 @@ If a user asks about aviation weather, a weather brief, or METARs/TAFs — call 
 If a user asks about NOTAMs for any airport — call get_notams.
 If a user says "log a flight" or wants to record a flight in their logbook — collect the required fields, confirm, then call log_flight.
 If a user says "file a squawk" or "write up a discrepancy" on an aircraft — confirm the details, then call file_squawk.
+If you identify an urgent action item that meets the OPERATING FEED rules above — call push_alert to surface it in the feed.
+If a user says "mark that resolved", "close that alert", or "that's done" about an Operating Feed item — call resolve_alert with the itemId.
+If a user says "remind me later", "snooze that", or "not now" about a feed item — call snooze_alert with an appropriate snoozeHours.
 
 BEHAVIORAL RULES — non-negotiable:
 1. Never present numbered options (1/2/3) or ask the user to choose an approach. Pick the best path and execute it. If you need a clarification, ask ONE specific question in plain prose.
@@ -7057,7 +7060,46 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     required: ["tailNumber", "description"],
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool];
+                const _cosPushAlertTool = {
+                  name: "push_alert",
+                  description: "Write a new alert to the user's Operating Feed. Use for time-sensitive items requiring attention: expiring compliance items, scheduling gaps, account issues, high-priority follow-ups. Do NOT use for routine observations or things the user just told you — only push alerts that are genuinely urgent and action-requiring.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string", description: "Short headline, max 80 chars" },
+                      detail: { type: "string", description: "What happened and why it matters — 1-2 sentences" },
+                      severity: { type: "string", enum: ["red", "yellow", "green"], description: "red = urgent/blocking, yellow = attention needed, green = informational/done" },
+                      actionHint: { type: "string", description: "What the user should do — one actionable sentence" },
+                      horizon: { type: "string", enum: ["today", "this-week", "next-week", "waiting_external", "someday"], description: "When this should be addressed" },
+                    },
+                    required: ["title", "detail", "severity", "actionHint", "horizon"],
+                  },
+                };
+                const _cosResolveAlertTool = {
+                  name: "resolve_alert",
+                  description: "Mark an alert in the Operating Feed as resolved. Call this when the user confirms they have addressed the item or it is no longer relevant. Requires the itemId.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      itemId: { type: "string", description: "The alert item ID from the Operating Feed" },
+                      resolvedEvidence: { type: "string", description: "Brief note on how it was resolved, e.g. 'User confirmed recurrent scheduled for Sep 15'" },
+                    },
+                    required: ["itemId"],
+                  },
+                };
+                const _cosSnoozeAlertTool = {
+                  name: "snooze_alert",
+                  description: "Snooze an alert in the Operating Feed so it reappears after a delay. Use when the user acknowledges an item but cannot act on it yet.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      itemId: { type: "string", description: "The alert item ID from the Operating Feed" },
+                      snoozeHours: { type: "number", enum: [1, 4, 24, 72], description: "Hours to snooze: 1 (remind in an hour), 4 (later today), 24 (tomorrow), 72 (this week)" },
+                    },
+                    required: ["itemId", "snoozeHours"],
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool, _cosPushAlertTool, _cosResolveAlertTool, _cosSnoozeAlertTool];
                 // Build follow-up messages for a tool call — includes stub tool_results for any
                 // extra tool_use blocks in _resp.content so Anthropic never sees an unmatched pair.
                 const _cosFollowUpMsgs = (resp, primaryToolId, primaryResult) => {
@@ -7690,6 +7732,76 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
                     _txt = _squawkFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _squawkResult;
+                  } else if (_cosTool && _cosTool.name === "push_alert") {
+                    let _alertResult;
+                    try {
+                      const inp = _cosTool.input;
+                      const VALID_HORIZONS = ["today","this-week","next-week","waiting_external","someday"];
+                      const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc();
+                      await ref.set({
+                        tenantId: _cosTenantId || authUser.uid,
+                        title: String(inp.title || "").slice(0, 120),
+                        detail: String(inp.detail || ""),
+                        severity: ["red","yellow","green"].includes(inp.severity) ? inp.severity : "yellow",
+                        actionHint: String(inp.actionHint || ""),
+                        horizon: VALID_HORIZONS.includes(inp.horizon) ? inp.horizon : "this-week",
+                        status: "active",
+                        source: "alex",
+                        createdAt: nowServerTs(),
+                      });
+                      _alertResult = `Alert pushed to Operating Feed. ID: ${ref.id}. Title: "${inp.title}". Severity: ${inp.severity}. Horizon: ${inp.horizon}. Tell the user the alert is in their feed.`;
+                    } catch (_alertErr) {
+                      _alertResult = `Failed to push alert: ${_alertErr.message}`;
+                    }
+                    const _alertFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _alertResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _alertFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _alertResult;
+                  } else if (_cosTool && _cosTool.name === "resolve_alert") {
+                    let _resolveResult;
+                    try {
+                      const { itemId, resolvedEvidence } = _cosTool.input;
+                      if (!itemId) throw new Error("itemId required");
+                      const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+                      const snap = await ref.get();
+                      if (!snap.exists) {
+                        _resolveResult = `Alert ${itemId} not found in your feed.`;
+                      } else if (snap.data().status === "resolved") {
+                        _resolveResult = `Alert ${itemId} was already resolved.`;
+                      } else {
+                        await ref.update({ status: "resolved", resolvedAt: nowServerTs(), resolvedBy: "user", resolvedEvidence: resolvedEvidence || null });
+                        _resolveResult = `Alert resolved. ID: ${itemId}. ${resolvedEvidence ? 'Evidence recorded: "' + resolvedEvidence + '".' : ""} Removed from the active feed.`;
+                      }
+                    } catch (_resolveErr) {
+                      _resolveResult = `Failed to resolve alert: ${_resolveErr.message}`;
+                    }
+                    const _resolveFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _resolveResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _resolveFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _resolveResult;
+                  } else if (_cosTool && _cosTool.name === "snooze_alert") {
+                    let _snoozeResult;
+                    try {
+                      const { itemId, snoozeHours } = _cosTool.input;
+                      if (!itemId) throw new Error("itemId required");
+                      const hours = [1, 4, 24, 72].includes(Number(snoozeHours)) ? Number(snoozeHours) : 24;
+                      const snoozedUntil = new Date(Date.now() + hours * 3600000).toISOString();
+                      const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+                      await ref.update({ status: "snoozed", snoozedUntil, horizon: "snoozed" });
+                      _snoozeResult = `Alert snoozed for ${hours}h. Will reappear at ${snoozedUntil.slice(0,16).replace("T"," ")} UTC. ID: ${itemId}.`;
+                    } catch (_snoozeErr) {
+                      _snoozeResult = `Failed to snooze alert: ${_snoozeErr.message}`;
+                    }
+                    const _snoozeFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _snoozeResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _snoozeFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _snoozeResult;
                   }
                 }
                 if (!_txt) {
