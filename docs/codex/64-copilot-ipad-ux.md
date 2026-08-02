@@ -1,7 +1,7 @@
 # CODEX 64 — CoPilot iPad UX
 # Aviation Intelligence Layer — iPad-First Design
 
-**Status:** Spec v4 — aircraft W&B profile required; manifest type expansion 2026-08-02  
+**Status:** Spec v5 — Dispatch as manifest origin; training type; full event chain 2026-08-02  
 **Author:** Sean + Claude · HNL Airport  
 **Vertical:** Aviation  
 **Workers:** CoPilot (av-copilot-001), Dispatch (av-dispatch-001), MX (av-mx-001)
@@ -202,20 +202,122 @@ arm — is worse than no data because it creates false confidence.
 
 ---
 
+## Dispatch → Manifest → CoPilot: The Full Event Chain
+
+**Sean's key insight:** Dispatch is the upstream system. It assigns the aircraft and
+crew mix. The manifest is Dispatch's output and CoPilot's input. The PIC does not
+create the manifest — the PIC accepts it.
+
+```
+DISPATCH (ops worker)
+  │
+  ├─ Assigns AC: N661LF
+  ├─ Assigns crew: Combs (PIC) + Jones (Flight Nurse)
+  ├─ Sets manifest type: air-medical
+  ├─ Enters initial weights from crew profiles
+  ├─ Patient weight: estimated (180 lbs) until pickup
+  │
+  └─▶ manifest.created event → pushed to CoPilot on PIC's device
+          │
+          ▼
+     COPILOT (pilot worker)
+          │
+          ├─ PIC reviews manifest: CG calculated from aircraft profile
+          ├─ Patient arrives → weight confirmed (172 lbs)
+          ├─ manifest.correction event appended, CG recalculates
+          ├─ CG ✓ → PIC taps ACCEPT MANIFEST
+          │         manifest.accepted event written
+          │
+          └─▶ flight.released event → Dispatch sees release confirmation
+                    │
+                    ▼
+               FLIGHT EVENTS (append-only)
+                    │
+                    ├─ flight.departed
+                    ├─ clearance.captured (voice/manual)
+                    ├─ flight.arrived
+                    ├─ logbook.appended (PIC entry)
+                    │   + logbook.appended (SIC/crew entry if applicable)
+                    │
+                    └─▶ invoice.draft created in Dispatch
+                              from manifest: who flew, what services,
+                              patient insurance ID, Hobbs delta
+```
+
+**The rule:** Nothing in this chain is overwritten. Every correction is a new event.
+The manifest that existed at the moment of `manifest.accepted` is permanent — that
+is what the PIC signed off on. The confirmed patient weight is a correction event
+appended after. Both are in the record.
+
+**Dispatch creates. CoPilot consumes and appends. MX reads squawks and ADs.**
+Three workers, one append-only aircraft/flight record underneath.
+
+---
+
 ## Manifest Types
 
 The Manifest data model must support all Part 91/135 use cases. The `manifestType`
 field drives which fields are required and how the invoice is generated.
 
-| Type | Use case | Weight rows | Billing driver |
-|---|---|---|---|
-| `air-transport` | Charter, point-to-point | Named passengers + weights | Per-seat or block hour |
-| `air-medical` | HEMS, medevac | Crew + patient + equipment | Insurance / patient billing |
-| `cargo` | Freight, no pax | Freight bill + weight distribution | Per-lb or block hour |
-| `mixed` | Cargo + crew (common) | Crew + freight | Block hour |
-| `part-121` | Scheduled service | Pax list + average/actual weights | Ticket price |
+| Type | Use case | Weight rows | Billing driver | Logbook |
+|---|---|---|---|---|
+| `air-transport` | Charter, point-to-point | Named passengers + weights | Per-seat or block hour | 1 entry (PIC) |
+| `air-medical` | HEMS, medevac | Crew + patient + equipment | Insurance / patient billing | 1–2 entries (PIC + crew) |
+| `cargo` | Freight, no pax | Freight bill + weight distribution | Per-lb or block hour | 1 entry (PIC) |
+| `mixed` | Cargo + crew | Crew + freight | Block hour | 1 entry (PIC) |
+| `training` | Part 61/141 dual instruction | Instructor + student | Hobbs time (aircraft + CFI) | 2 entries (dual given + dual received) |
+| `part-121` | Scheduled service | Pax list + average/actual weights | Ticket price | — |
 
-Part 121 is out of scope for Phase 3. The others are all Part 135 and are in scope.
+Part 121 and the full flight school billing model are out of scope for Phase 3.
+All others are in scope. Training type is the simplest manifest but produces the
+most complex logbook output (two separate entries, split currency attribution).
+
+**Training manifest additions:**
+```json
+{
+  "manifestType": "training",
+  "instructor": {
+    "role": "CFI",               // or "CFII", "ATP-CTP-instructor", "DE" (checkride)
+    "name": "...",
+    "certificateNumber": "...",
+    "weightLbs": 185,
+    "station": "left-front"      // or right-front depending on aircraft
+  },
+  "student": {
+    "role": "student-pilot",     // or "private", "instrument", "commercial", "ATP-candidate"
+    "name": "...",
+    "certificateNumber": "...",  // if certificated; blank for student pilot
+    "weightLbs": 165,
+    "station": "right-front"
+  },
+  "trainingObjective": "ILS approaches and holding — instrument currency",
+  "hobbsStart": 4821.3,
+  "hobbsEnd": 4823.1,           // filled post-flight
+  "logbookSplit": {
+    "instructorEntry": {
+      "entryType": "dual-given",
+      "instrumentTime": 1.8,
+      "approachCount": 4
+    },
+    "studentEntry": {
+      "entryType": "dual-received",
+      "instrumentTime": 1.8,     // simulated instrument if VMC
+      "approachCount": 4,
+      "holds": 2
+    }
+  }
+}
+```
+
+**Dispatch assigns training flights the same way it assigns charter:** instructor
+to aircraft, student added to manifest, training objective entered. CoPilot surfaces
+the manifest to the instructor (PIC). After flight, both logbook entries are generated
+from the single manifest — instructor reviews/confirms their entry, student confirms
+theirs separately (or the instructor confirms both if student doesn't have app access).
+
+**The training worker** (Flight Academy — separate CODEX) handles the broader curriculum:
+lesson plan progression, endorsements, stage check scheduling, written test prep.
+The manifest type is the CoPilot/Dispatch integration point — not the full training product.
 
 **Cargo manifest additions:**
 ```json
