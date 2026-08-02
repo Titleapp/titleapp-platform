@@ -697,19 +697,34 @@ function renderMemo(doc, data, brand, logoBuffer) {
 // --- One-pager layout ---
 
 function renderOnePager(doc, data, brand, logoBuffer) {
+  // Normalize: AI may send nested {header:{title,tagline}} or flat {title,subtitle}
+  const title = typeof data.title === "string" ? data.title : (data.header?.title || data.header?.tagline || "");
+  const subtitle = typeof data.subtitle === "string" ? data.subtitle : (data.header?.subtitle || data.header?.tagline || "");
+  // callToAction may be {text,url} or a plain string
+  const callToAction = typeof data.callToAction === "string" ? data.callToAction : (data.callToAction?.text || "");
+  const contactInfo = typeof data.contactInfo === "string" ? data.contactInfo : "";
+  // body/highlights: accept string, array of strings, or {text:string}
+  let highlights = data.highlights;
+  if (!Array.isArray(highlights)) {
+    const bodyText = typeof data.body === "string" ? data.body : (typeof data.body?.text === "string" ? data.body.text : "");
+    highlights = bodyText ? bodyText.split(/\n+/).filter(Boolean) : [];
+  }
+  // Re-bind normalized values onto a local object for the rest of the renderer
+  data = { ...data, title, subtitle, callToAction, contactInfo, highlights };
+
   addHeader(doc, brand, logoBuffer);
 
   doc.fontSize(22)
     .font("Helvetica-Bold")
     .fillColor(primaryColor(brand))
-    .text(data.title, { align: "center" });
+    .text(title, { align: "center" });
 
-  if (data.subtitle) {
+  if (subtitle) {
     doc.moveDown(0.2);
     doc.fontSize(FONTS.body.size)
       .font(FONTS.body.font)
       .fillColor(COLORS.textLight)
-      .text(data.subtitle, { align: "center" });
+      .text(subtitle, { align: "center" });
   }
 
   doc.moveDown(1);

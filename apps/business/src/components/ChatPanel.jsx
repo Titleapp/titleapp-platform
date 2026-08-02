@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getAppCheckHeader } from '../firebase';
 import { getWorkerColor } from '../utils/workerColors';
@@ -216,8 +217,8 @@ function DocPreviewModal({ docPreview, onClose }) {
   if (!docPreview) return null;
   const isXlsx = docPreview.format === "xlsx" && Array.isArray(docPreview.sheets);
 
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "stretch" }}>
+  const modal = (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 99999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "stretch" }}>
       <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: isXlsx ? 1100 : 900, height: "100%", margin: "0 auto", padding: "16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{docPreview.title}</div>
@@ -262,6 +263,7 @@ function DocPreviewModal({ docPreview, onClose }) {
       </div>
     </div>
   );
+  return ReactDOM.createPortal(modal, document.body);
 }
 
 function WorkerIntroCard({ intro, onDismiss }) {
@@ -570,7 +572,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     // stale (showed the previous worker's name, e.g. "Zoning 001" while inside
     // Title Abstract) when a worker was opened via the worker context rather
     // than the ta:select-worker event.
-    setActiveWorkerName(w.name || w.display_name || w.slug);
+    setActiveWorkerName(w.persona_name || w.name || w.display_name || w.slug);
     setActiveWorkerSlug(workerId);
     setIntroDismissed(false);
 

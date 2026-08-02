@@ -311,20 +311,32 @@ function Block({ block }) {
 }
 
 // ── Live data fetch config ────────────────────────────────────────────────────
-// Maps workerSlug + tabId → fetch params. Weather stations/NOTAM airports are
-// tied to PAP's Florida routes (KTLH / KMCO) for the demo.
+// Maps workerSlug + tabId → fetch params.
+// mapConfig (optional): appends a route/area map block after weather blocks.
 const LIVE_TABS = {
+  // Fleet workers — operator-wide views (PAP Florida routes)
   "av-dispatch": {
-    "weather-map":      { kind: "weather",  ids: "KTLH,KGNV,KOCF,KMCO,KTPA" },
+    "weather-map":      { kind: "weather",  ids: "KTLH,KGNV,KOCF,KMCO,KTPA",
+                          mapConfig: { address: "Tallahassee, FL", sectionLabel: "Corridor: KTLH → KTPA → KMCO" } },
     "notam":            { kind: "notams",   locations: "KTLH,KMCO" },
     "flight-following": { kind: "traffic",  lat: 28.5, lon: -82.5, dist: 400 },
   },
-  "av-copilot": {
-    "logbook":  { kind: "logbook" },
-    "currency": { kind: "currency" },
-  },
   "av-aircraft": {
     "squawks": { kind: "squawks" },
+  },
+  // Personal workers — CoPilot / MX / Dispatch (single pilot + aircraft)
+  "av-copilot-001": {
+    "dashboard": { kind: "currency" },
+    "preflight": { kind: "weather",  ids: "KTEB,KMCO,KPBI",
+                   mapConfig: { address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI · IFR FL230" } },
+    "logbook":   { kind: "logbook" },
+  },
+  "av-mx-001": {
+    "squawks": { kind: "squawks" },
+  },
+  "av-dispatch-001": {
+    "trip-package": { kind: "weather", ids: "KTEB,KMCO,KPBI",
+                      mapConfig: { address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI" } },
   },
 };
 
@@ -352,7 +364,10 @@ export default function AviationWorkerCanvas({ workerSlug }) {
         let blocks = null;
         if (cfg.kind === "weather") {
           const data = await apiGet(`/v1/aviation:weather?ids=${cfg.ids}`);
-          if (data.metars?.length) blocks = weatherToBlocks(data.metars);
+          if (data.metars?.length) {
+            blocks = weatherToBlocks(data.metars);
+            if (cfg.mapConfig && blocks) blocks.push({ type: "map", ...cfg.mapConfig });
+          }
         } else if (cfg.kind === "notams") {
           const data = await apiGet(`/v1/aviation:notams?locations=${cfg.locations}`);
           const allNotams = (data.airports || []).flatMap(a => a.notams || []);

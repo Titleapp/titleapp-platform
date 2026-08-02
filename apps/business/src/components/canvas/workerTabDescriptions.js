@@ -241,19 +241,18 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "schedule":        "Your upcoming trips, training events, and duty periods.",
     "flight-planning": "Flight planning for your next trip — Alex builds the preflight package from live data.",
   },
-  "av-copilot-pc12": {
-    "flight-planning": "PC-12/47E flight planning — performance, fuel planning, and routing with type-specific data.",
-    "map":             "Route map and weather overlay for your planned flight.",
-    "checklists":      "PC-12/47E normal procedures — from your operator checklist or AFM default flows.",
-    "qrh":             "Quick Reference Handbook — emergency and abnormal procedures for the PC-12/47E.",
-    "performance":     "PC-12/47E performance tables — climb, cruise, and landing data from your uploaded AFM.",
-    "weight-balance":  "Weight and balance computation using your N661LF empty weight and CG from the AFM.",
-    "aircraft":        "Your aircraft profile — N661LF configuration, avionics, and STC deviations from type.",
-    "logbook":         "Your PC-12 logbook entries — automatically tagged by type and tail.",
-    "currency":        "PC-12/47E type currency — recency of experience and type recurrent status.",
-    "duty":            "Duty time and rest for your current and upcoming duty periods.",
-    "training":        "PC-12/47E training record — initial type rating, recurrent, and checkride history.",
-    "documents":       "PC-12/47E documents — AFM, supplements, POH, and operator manuals.",
+  "re-title-defects-001": {
+    "active":        "All open title defects by severity — P0 (blocking), P1 (curative required), P2 (advisory). Nothing closes until every P0 and P1 is green.",
+    "curative":      "Documents and curative steps to clear each defect. Alex drafts standard language — one-click send to the relevant party via Gmail.",
+    "cleared":       "Immutable record of every defect that was found and cleared. Hash-chained with the title order — permanent proof of cure.",
+    "critical-path": "Open defects mapped against the projected close date. Alex alerts if any curative deadline is at risk of delaying close.",
+  },
+  "re-title-commitment-001": {
+    "schedule-a": "The facts: current vesting, legal description, proposed insured, policy type, and consideration — pulled from the title order, no manual entry.",
+    "schedule-b1": "Requirements — everything that must happen before the policy issues. Each requirement links to the corresponding defect and auto-checks when cleared.",
+    "schedule-b2": "Exceptions — what the policy does NOT cover. Standard Texas exceptions plus property-specific items, each linked to the underlying instrument.",
+    "parties":    "All parties to the transaction — buyer, seller, lender, escrow officer, title agent, and underwriter.",
+    "issue":      "One-button T-7 commitment issuance after RAAS validates all preconditions. Document is hashed, anchored, and appended to the title order ledger.",
   },
 };
 

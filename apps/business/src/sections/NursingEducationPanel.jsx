@@ -301,7 +301,63 @@ const SAMPLE_REFLECTIONS = {
 **Evaluation:** The patient's daughter agreed to a pain management adjustment trial. She gave me a hug at the end of the shift. I felt useful in a way that was different from skills-based clinical work. The patient's pain score dropped from 7 to 4 within 24 hours.
 
 **Future Goal:** I want to get more comfortable being the person who says the thing in the room. I tend to defer to the senior person present. I'll practice initiating in lower-stakes interactions first (huddle, handoff) before doing it in family meetings.`,
+
+  "James C.": `**Scenario:** During NURS 220 clinical at the medical-surgical unit, I was assigned a patient load of four post-op patients alongside a senior LPN. At 10:30am, two call lights came on simultaneously — one patient needed a dressing change (within LPN scope), and another was reporting new onset chest discomfort (requiring RN assessment). I had 15 minutes before scheduled medication passes.
+
+**Analysis:**
+
+*Noticing:* The LPN looked to me for direction. Both patients were signaling urgency. I noticed my own instinct was to go handle both myself rather than delegate — I was worried the LPN would feel I didn't trust her.
+
+*Interpreting:* I recognized this as a delegation scenario from our SLO 4.0 unit — the dressing change was straightforward within LPN scope, and the chest discomfort required my immediate assessment. Trying to do both myself would have delayed the higher-acuity patient.
+
+*Responding:* I asked the LPN to take the dressing change and report back in 10 minutes. I went directly to the patient with chest discomfort, assessed vitals, confirmed the discomfort was musculoskeletal (reproducible with palpation, normal O2 sat, no diaphoresis), and notified the charge RN as a precaution. The LPN completed the dressing change without issue and handed off clean.
+
+*Reflecting:* The outcome was good, but I noticed I second-guessed the delegation until the LPN came back. I think my hesitation was about trust, not about scope. In a real high-acuity situation that hesitation would cost time I don't have.
+
+**Evaluation:** Both patients received timely care. The charge RN confirmed my assessment of the chest discomfort was appropriate. The LPN thanked me for "actually letting her do her job."
+
+**Future Goal:** I want to practice delegation language — saying it clearly and moving on, without hovering. I'll look for one delegation opportunity each clinical day and debrief with myself after.`,
+
+  "Sarah K.": `**Scenario:** NURS 230 ER rotation at Hale Makua. A 58-year-old patient arrived via ambulance — altered mental status, BP 88/54, HR 118, SpO2 94% on room air. Three other patients were waiting for triage and the charge nurse was on a call. I was the first clinical person in the bay.
+
+**Analysis:**
+
+*Noticing:* The patient was diaphoretic and couldn't answer orientation questions reliably. The paramedic said "BP was fine in the field" — but 20 minutes had passed and it clearly wasn't fine now. The waiting area had three patients I hadn't assessed yet.
+
+*Interpreting:* This looked like septic shock based on the vitals triad (hypotension, tachycardia, altered mentation) and the history the paramedic gave (UTI symptoms x3 days, nursing home resident). I knew from class that sepsis has a time-sensitive treatment window and that my instinct to "wait for the charge nurse" could be the wrong call.
+
+*Responding:* I activated the charge nurse immediately using SBAR — didn't wait for her to finish her call, knocked and said "sepsis concern, bay 3, BP 88." I placed the patient on continuous monitoring, elevated the head of bed to 30 degrees, and prepared the IV setup while the physician was paged. I did not attempt to triage the waiting room patients — I documented that I held triage pending charge RN.
+
+*Reflecting:* I was scared I was wrong about sepsis. What if I interrupted the charge nurse over musculoskeletal pain or anxiety? But I ran the criteria in my head and acted on what the data showed, not on my comfort level. That felt different from how I've responded in simulations.
+
+**Evaluation:** The patient was diagnosed with urosepsis. Antibiotics were started within 40 minutes of arrival. The charge nurse told me afterward that I "called it right and fast."
+
+**Future Goal:** I want to build the habit of naming my clinical reasoning out loud — SBAR made me do it this time, and it helped. I'll use it in every handoff this rotation, not just emergencies.`,
+
+  "Aaron R.": `**Scenario:** NURS 320 clinical at MMMG Pediatrics. I was assigned a 4-year-old patient, Mateo, admitted for febrile seizure workup. His parents spoke limited English; his grandmother, who was present throughout, spoke no English. The interpreter phone had a 12-minute wait when I called.
+
+**Analysis:**
+
+*Noticing:* The family was visibly anxious. Mateo's mother was holding him tightly and kept asking questions I couldn't fully understand. The grandmother was watching me with what looked like distrust — or maybe fear. The attending wanted vitals and a pain assessment before rounds in 30 minutes.
+
+*Interpreting:* I recognized the communication gap as a patient safety issue, not just a logistics issue. A pain assessment on a 4-year-old that doesn't reach the family isn't a reliable assessment — I might get a number but not the context. And the family's anxiety was going to affect Mateo's behavior during the assessment.
+
+*Responding:* I used the FACES pain scale (visual, language-independent) directly with Mateo and got a reliable response — he pointed to the "2" face and then pointed at his head. I used the interpreter app on the unit tablet (faster than the phone queue) to explain to his mother what I was doing with each step. For the grandmother, I used slow gestures and showed her the thermometer before using it. I documented that the assessment was completed with tablet interpreter support and that the family verbalized understanding via interpreter.
+
+*Reflecting:* Mateo's mother relaxed visibly once she could hear her language. The grandmother smiled when I showed her his temperature reading on the display. I don't speak Spanish but I realized I was treating the language barrier as my problem to solve, not the family's — and that shifted how I approached the room.
+
+**Evaluation:** Vitals obtained, pain documented, family informed. The attending noted in rounds that "the family seemed comfortable" — which I understood was a clinical data point, not just a nice observation.
+
+**Future Goal:** I want to learn 10-15 key clinical phrases in Spanish before my next MMMG rotation. I've already downloaded a medical Spanish app. I'll also advocate in post-conference for the unit to have the tablet interpreter more prominently available.`,
 };
+
+// Per-student anchor hash — varies by display name so the locked state looks real.
+// In production this is the SHA-256 of the signed evaluation record.
+function studentAnchorHash(name) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+  return "0x" + h.toString(16).padStart(8, "0") + "…" + ((h ^ 0xdeadbeef) >>> 0).toString(16).slice(0, 4);
+}
 
 // Per-course SLO 8 (Communication) criteria for grading — pulled from Ruthie's
 // Master Config Sheet via data.json
@@ -346,8 +402,8 @@ function GradeReflectionModal({ reflection, data, onClose }) {
                 : "Some evidence; could be more specific about future application.",
           };
         }),
-        summary: "Strong reflection. Student demonstrates the core SLO criteria with concrete examples. Notable: she names her own hesitation, which is reflective practice at the proficient level. Recommendation: lock at 4/5 (Proficient). Add coaching note on initiation — she identified that growth area herself.",
-        coachingNote: "Sarah K. names her own discomfort with taking the speaking role. That self-awareness IS the SLO. Consider scaffolding her into a leadership initiating role in her next NURS 230 ER simulation.",
+        summary: `Strong reflection. ${reflection.name} demonstrates the core SLO criteria with concrete examples. Notable: they name their own hesitation, which is reflective practice at the proficient level. Recommendation: lock at ${score}/5 (${score === 5 ? "Expert" : score === 4 ? "Proficient" : "Competent"}). Add coaching note on initiation — they identified that growth area themselves.`,
+        coachingNote: `${reflection.name} names their own discomfort stepping into a leadership role. That self-awareness IS the SLO. Consider scaffolding them into a leadership-initiating role in their next clinical simulation.`,
       });
       setScoringInProgress(false);
       setStage("proposed");
@@ -486,8 +542,8 @@ function GradeReflectionModal({ reflection, data, onClose }) {
               <div style={{ padding: "30px 16px", background: "linear-gradient(135deg, #16A34A, #15803D)", color: "#fff", borderRadius: 10, textAlign: "center" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Grade locked · {proposedScore.overall}/5 {proposedScore.label}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: "SF Mono, Menlo, monospace" }}>Chain-anchored: 0x9c4a…2d1f</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 8 }}>Event logged to Sarah's DTC. Coaching note attached.</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: "SF Mono, Menlo, monospace" }}>Chain-anchored: {studentAnchorHash(reflection.name)}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 8 }}>Event logged to {reflection.name.split(" ")[0]}'s DTC. Coaching note attached.</div>
               </div>
             )}
 

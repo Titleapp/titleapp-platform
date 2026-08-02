@@ -567,7 +567,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "No tax delinquency", detail: "Henderson County taxes current" },
           { band: "YELLOW", title: "1 utility easement", detail: "10-ft strip NE boundary — runs with land" },
         ] },
-        { type: "table", header: ["Type", "Holder", "Amount", "Status"], rows: [
+        { type: "table", columns: ["Type", "Holder", "Amount", "Status"], rows: [
           { band: "GREEN", cells: ["Mortgage / DOT", "None", "N/A", "Cash purchase"] },
           { band: "GREEN", cells: ["IRS tax lien", "IRS", "$0", "No lien found"] },
           { band: "GREEN", cells: ["County tax lien", "Henderson County", "$0", "Current — paid 2026-01-15"] },
@@ -738,36 +738,31 @@ export const RE_CANVAS = {
           { band: "YELLOW", title: "Verification status", body: "Instructions above were verified via phone on 07/28/2026. Any future change requires a new dual-channel verification call per TX-T-007 before the new instructions take effect." },
         ] },
       ] },
-      { id: "closing-disclosure", label: "Closing Disclosure", description: "Final settlement statement showing all debits, credits, and net proceeds. TDI promulgated rates applied. 3-day waiting period complete.", blocks: [
+      { id: "closing-disclosure", label: "Closing Disclosure", description: "Required disclosures for 313 Mayfair Dr — buyer and seller acknowledgment status. All items must be marked acknowledged before closing can proceed.", blocks: [
         { type: "heroes", items: [
-          { band: "GREEN", title: "Disclosure sent 07/25/2026", detail: "Delivered to buyer per RESPA" },
-          { band: "BLUE", title: "3-day waiting period complete 07/28/2026", detail: "Clear to sign per federal rule" },
-          { band: "GREEN", title: "Clear to sign", detail: "All conditions satisfied" },
+          { band: "GREEN", title: "Disclosure package sent 07/25/2026", detail: "Delivered to buyer and seller per RESPA/TRID" },
+          { band: "GREEN", title: "3-day waiting period complete 07/28/2026", detail: "Federal clear-to-close satisfied" },
+          { band: "GREEN", title: "All disclosures acknowledged", detail: "12 of 12 items complete" },
         ] },
-        { type: "kpis", items: [
-          { label: "Purchase price", value: "$285,000", band: "WHITE" },
-          { label: "Seller net proceeds", value: "$278,540", band: "GREEN" },
-          { label: "Buyer cash to close", value: "$31,240", band: "WHITE" },
-          { label: "Title insurance (TDI)", value: "$1,650", band: "WHITE" },
-        ] },
-        { type: "table", title: "Closing disclosure — File ATH-2026-0743",
-          columns: ["Line Item", "Buyer Debit", "Seller Credit/Debit"],
+        { type: "table", title: "Required disclosures — File ATH-2026-0743",
+          columns: ["Disclosure Item", "Required By", "Status"],
           rows: [
-            { band: "WHITE", cells: ["Purchase price", "$285,000", "$285,000 CR"] },
-            { band: "GREEN", cells: ["Earnest money deposit", "($5,000 CR)", ""] },
-            { band: "WHITE", cells: ["Title insurance — owner", "$1,650", ""] },
-            { band: "WHITE", cells: ["Title insurance — lender", "N/A (cash)", ""] },
-            { band: "WHITE", cells: ["State deed tax", "$285", ""] },
-            { band: "WHITE", cells: ["Recording fees", "$127", ""] },
-            { band: "WHITE", cells: ["Attorney/escrow fee", "$550 / $550", "$550"] },
-            { band: "GREEN", cells: ["Property taxes — proration", "$528 CR", "$528"] },
-            { band: "WHITE", cells: ["Commission — listing (3%)", "", "$8,550"] },
-            { band: "WHITE", cells: ["Commission — buyer (3%)", "", "$8,550"] },
-            { band: "GREEN", cells: ["Payoff", "N/A (cash)", ""] },
-            { band: "GREEN", cells: ["Net to seller", "", "$278,540 CR"] },
+            { band: "GREEN", cells: ["Seller's Disclosure Notice (TREC OP-H)", "TREC / Texas Property Code §5.008", "Acknowledged — 07/20/2026"] },
+            { band: "GREEN", cells: ["Lead-Based Paint Disclosure", "HUD/EPA (24 CFR §35, 40 CFR §745)", "N/A — home built 1994 (post-1978)"] },
+            { band: "GREEN", cells: ["Flood Zone / FEMA Determination", "RESPA / NFIP", "Acknowledged — Zone X (low risk) · 07/21/2026"] },
+            { band: "GREEN", cells: ["Survey Authorization", "TREC Promulgated Contract §6", "Acknowledged — existing survey accepted · 07/19/2026"] },
+            { band: "GREEN", cells: ["HOA Disclosure", "Texas Property Code §207", "N/A — no HOA for subject property"] },
+            { band: "GREEN", cells: ["MUD / Utility District Disclosure", "Texas Water Code §49.452", "N/A — Henderson County / City of Athens utilities"] },
+            { band: "GREEN", cells: ["Wire Fraud / Cybersecurity Warning (SB 2087)", "Texas SB 2087 (2023)", "Acknowledged — buyer signed 07/25/2026"] },
+            { band: "GREEN", cells: ["Affiliated Business Arrangement Disclosure", "RESPA §8(c)(4)", "Acknowledged — no affiliates involved · 07/25/2026"] },
+            { band: "GREEN", cells: ["FIRPTA Certification", "IRC §1445", "Acknowledged — seller certified US person · TX-T-009 · 07/25/2026"] },
+            { band: "GREEN", cells: ["Homeowner's Insurance Disclosure", "Texas Insurance Code", "Acknowledged — buyer selects own carrier · 07/25/2026"] },
+            { band: "GREEN", cells: ["Right of Rescission Notice", "TILA / Regulation Z", "N/A — purchase transaction (not refinance)"] },
+            { band: "GREEN", cells: ["3-Day RESPA Waiting Period Acknowledgment", "TRID / 12 CFR §1026.19(f)", "Acknowledged — CD delivered 07/25 · cleared 07/28/2026"] },
           ] },
-        { type: "prose", items: [
-          { band: "BLUE", title: "TDI promulgated rate · FIRPTA", body: "TDI promulgated rate applied. Owner's policy $1,650 per Henderson County rate schedule. No lender policy required (cash purchase). FIRPTA: seller confirmed US person; no withholding required (TX-T-009)." },
+        { type: "flags", items: [
+          { band: "GREEN", title: "TDI promulgated title rate applied", detail: "Owner's policy $1,650 per Henderson County rate schedule. No lender policy required — cash purchase. Remittance to underwriter held pending recording (see Disbursements)." },
+          { band: "BLUE", title: "Environmental hazards — no flags", detail: "Phase I not required for standard residential purchase. No known USTs, no prior industrial use. Seller's Disclosure (OP-H) Item 7 — no known hazardous waste." },
         ] },
       ] },
       { id: "disbursements", label: "Disbursements", description: "All post-close disbursements held pending county recording confirmation. Every disbursement will log as a title.funds_disbursed chain event.", blocks: [
@@ -823,6 +818,165 @@ export const RE_CANVAS = {
         { type: "prose", items: [
           { band: "BLUE", title: "The chain-of-title moat — why this is defensive IP", body: "Every event in this file — from search open to vault delivery — is appended to an immutable SOCIII ledger and anchored externally (Patent 64/073,700). That ledger is the chain of title. A title company running SOCIII owns the most current, most granular private record of real estate activity in their county. When the county recorder finally catches up, SOCIII already knows. This is not a workflow tool. This is title plant infrastructure." },
           { band: "WHITE", title: "Data source note — ATTOM vs FirstAm", body: "Current data source: ATTOM Property Data (ownership, AVM, tax, lien flags, recording dates). Phase 2 upgrade to First American DataTree would additionally provide: recorded document PDFs, plat maps, exception document images. Currently unavailable via ATTOM — obtain physical copies from Henderson County Clerk for commitment exceptions." },
+        ] },
+      ] },
+    ],
+  },
+
+  // ───────────────────────── DEFECT TRACKER ─────────────────────────
+  "re-title-defects-001": {
+    title: "Defect Tracker — 313 Mayfair Dr, Athens TX 75751",
+    subtitle: "File ATH-2026-0743 · Henderson County · 0 open defects · Clear to close",
+    disclaimer: "General information — not certified legal advice",
+    cas: { RED: 0, YELLOW: 0, BLUE: 1, WHITE: 0, GREEN: 3 },
+    tabs: [
+      { id: "active", label: "Active Defects", description: "All open title defects by severity — P0 (blocking), P1 (curative required before close), P2 (advisory). Nothing closes until every P0 and P1 is green.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "P0 defects — 0", detail: "No blocking defects" },
+          { band: "GREEN", title: "P1 defects — 0", detail: "All curative complete" },
+          { band: "BLUE", title: "P2 advisory — 1", detail: "Noted · no action required" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "File ATH-2026-0743 — clear to close", detail: "All P0 and P1 defects resolved. RAAS gate title_defects_cleared: PASS. Commitment Engine unlocked." },
+          { band: "BLUE", title: "P2 Advisory · NW corner fence — no recorded boundary agreement", detail: "Physical fence appears to follow lot line. No recorded fence agreement. Survey recommended but not required for this cash purchase. Buyer acknowledged." },
+        ] },
+      ] },
+      { id: "curative", label: "Curative Actions", description: "Documents and steps required to clear each defect. Alex drafts standard curative language; one-click send to the relevant party via Gmail.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Mineral severance — CLEARED", detail: "Schedule B-2 Exception 7 inserted · buyer disclosure signed" },
+          { band: "GREEN", title: "1988 tax sale deed — CLEARED", detail: "Stewart Title indemnity obtained · underwriter approved" },
+          { band: "BLUE", title: "P2 fence advisory — no action", detail: "No curative required" },
+        ] },
+        { type: "table", columns: ["Defect", "Curative Action", "Status", "Cleared By"], rows: [
+          { band: "GREEN", cells: ["Mineral severance 1978", "Schedule B-2 Exception + TX RE Commission mineral disclosure form", "Cleared", "Troy Garris / Sara Kahele — signed 07/15/2026"] },
+          { band: "GREEN", cells: ["1988 tax sale deed", "Stewart Title Guaranty indemnity endorsement", "Cleared", "Stewart Title — file ATH-2026-0743 — 07/17/2026"] },
+          { band: "BLUE", cells: ["NW fence boundary", "Survey recommended", "Advisory only", "No action taken — P2"] },
+        ] },
+      ] },
+      { id: "cleared", label: "Cleared Defects", description: "Immutable record of every defect that was found and cleared. Cleared events cannot be reopened — new defect must be opened if an issue resurfaces.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "2 defects cleared", detail: "Both P1s resolved before commitment" },
+          { band: "GREEN", title: "Anchored to ledger", detail: "Clearance events hash-chained with chain of title" },
+          { band: "BLUE", title: "1 advisory noted", detail: "P2 fence — buyer acknowledged" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "P1 CLEARED · Mineral severance disclosure", detail: "Exception 7 inserted in Schedule B-2. Texas RE Commission mineral disclosure form signed by buyer Sara Kahele and seller Troy Garris Trust. Recorded 07/15/2026. ATTOM data confirmed — mineral rights severed 1978 federal conveyance Doc #1978-00882." },
+          { band: "GREEN", title: "P1 CLEARED · 1988 tax sale deed — redemption risk", detail: "Search confirms no active redemption claim. Stewart Title Guaranty endorsement obtained File ATH-2026-0743. Underwriter sign-off: [Stewart Title Guaranty] 07/17/2026. Cost: $450 endorsement fee, debited from escrow." },
+          { band: "BLUE", title: "P2 Noted · NW corner fence boundary advisory", detail: "Physical fence on NW corner appears to follow lot line per plat. No encroachment detected. No recorded agreement. Survey recommended — buyer declined at this purchase price. Advisory noted in closing file." },
+        ] },
+      ] },
+      { id: "critical-path", label: "Critical Path", description: "Open defects mapped against the projected close date. Alex alerts if any curative deadline is at risk of delaying close.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "All defects cleared before commitment", detail: "No critical path risk" },
+          { band: "GREEN", title: "Close date: July 28, 2026", detail: "On schedule · RAAS green" },
+          { band: "GREEN", title: "Commitment issued: July 18, 2026", detail: "Valid 90 days · expires Oct 17" },
+        ] },
+        { type: "table", columns: ["Milestone", "Date", "Status"], rows: [
+          { band: "GREEN", cells: ["Title search ordered", "July 10, 2026", "Complete"] },
+          { band: "GREEN", cells: ["Mineral disclosure signed", "July 15, 2026", "Complete"] },
+          { band: "GREEN", cells: ["Stewart Title indemnity", "July 17, 2026", "Complete"] },
+          { band: "GREEN", cells: ["Title commitment issued", "July 18, 2026", "Complete"] },
+          { band: "BLUE", cells: ["Projected close date", "July 28, 2026", "On schedule"] },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "RAAS gate: title_defects_cleared — PASS", detail: "All P0 and P1 defects have corresponding cleared events in the title order ledger. Commitment Engine unlocked. Underwriting Review accessible." },
+        ] },
+      ] },
+    ],
+  },
+
+  // ───────────────────────── COMMITMENT ENGINE ─────────────────────────
+  "re-title-commitment-001": {
+    title: "Commitment Engine — 313 Mayfair Dr, Athens TX 75751",
+    subtitle: "File ATH-2026-0743 · T-7 Commitment · Stewart Title Guaranty · Issued 07/18/2026",
+    disclaimer: "General information — not certified legal advice. Title commitment issued by Stewart Title Guaranty Company under Texas Department of Insurance promulgated form T-7.",
+    cas: { RED: 0, YELLOW: 1, BLUE: 3, WHITE: 1, GREEN: 8 },
+    tabs: [
+      { id: "schedule-a", label: "Schedule A", description: "The facts: current vesting, legal description, proposed insured, policy type, and consideration. All pulled from the title order — no manual entry.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Schedule A — verified", detail: "Vesting · legal description · insured confirmed" },
+          { band: "GREEN", title: "Owner's policy — $285,000", detail: "ALTA 2021 · Sara Kahele · Stewart Title" },
+          { band: "GREEN", title: "Effective date — 07/18/2026", detail: "Valid 90 days · expires 10/17/2026" },
+        ] },
+        { type: "kpis", items: [
+          { label: "Current vesting", value: "Troy Garris Trust", band: "GREEN" },
+          { label: "Proposed insured", value: "Sara Kahele", band: "GREEN" },
+          { label: "Policy type", value: "ALTA Owner's 2021", band: "WHITE" },
+          { label: "Coverage amount", value: "$285,000", band: "GREEN" },
+          { label: "Consideration", value: "$285,000 cash", band: "WHITE" },
+          { label: "Effective date", value: "07/18/2026", band: "BLUE" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Legal description — verified against plat", detail: "Lot 14, Block 6, Mayfair Addition, Henderson County, Texas, according to the map or plat thereof recorded in Volume 8, Page 42, Plat Records of Henderson County, Texas. 0.34 acres per plat." },
+          { band: "GREEN", title: "Vesting matches chain of title", detail: "Troy Garris Trust (Edward Garris, Trustee) confirmed as record owner per Trustee Deed dated June 3, 2014, Rec. 2014-06031, Henderson County Deed Records. Trust certification on file." },
+          { band: "BLUE", title: "Homestead status — no homestead exemption applies to buyer at time of sale", detail: "Existing homestead exemption was granted to seller Troy Garris Trust (Edward Garris). Exemption terminates on transfer. Sara Kahele may apply for exemption after acquisition." },
+        ] },
+      ] },
+      { id: "schedule-b1", label: "Schedule B-1", description: "Requirements — everything that must happen before the policy will issue. Each requirement links to the corresponding defect. When the defect clears, the requirement auto-checks green.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "All B-1 requirements — satisfied", detail: "2 of 2 requirements met · ready to issue" },
+          { band: "GREEN", title: "RAAS gate — PASS", detail: "title_commitment_ready: all conditions met" },
+          { band: "BLUE", title: "Awaiting recorded deed", detail: "Deed records at close — July 28, 2026" },
+        ] },
+        { type: "table", columns: ["Requirement", "Description", "Status"], rows: [
+          { band: "GREEN", cells: ["Req. 1", "Mineral severance disclosure — Texas RE Commission form signed by all parties", "SATISFIED — signed 07/15/2026"] },
+          { band: "GREEN", cells: ["Req. 2", "1988 tax sale deed — Stewart Title Guaranty indemnity endorsement obtained", "SATISFIED — endorsement file ATH-2026-0743"] },
+          { band: "BLUE", cells: ["Req. 3", "Warranty deed from Troy Garris Trust to Sara Kahele, properly executed and acknowledged, to be recorded in Henderson County Deed Records", "PENDING — records at close"] },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Requirements 1 and 2 cleared pre-commitment — no conditions at close", detail: "Both title defects were resolved and clearance documented before commitment issuance. The only remaining requirement is the deed itself, which records at closing." },
+        ] },
+      ] },
+      { id: "schedule-b2", label: "Schedule B-2", description: "Exceptions — what the policy does NOT cover. Standard Texas exceptions plus property-specific items. Each exception links to the underlying instrument.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "8 exceptions listed", detail: "All standard · 2 property-specific" },
+          { band: "YELLOW", title: "Exception 7 — mineral severance", detail: "Required · no way to insure over" },
+          { band: "BLUE", title: "Exception 8 — utility easement", detail: "Standard · no insurance coverage" },
+        ] },
+        { type: "table", columns: ["#", "Exception", "Type"], rows: [
+          { band: "GREEN", cells: ["1", "Taxes and assessments for the year 2026 and subsequent years, not yet due and payable", "Standard"] },
+          { band: "GREEN", cells: ["2", "Rights of parties in possession not shown by the public records", "Standard"] },
+          { band: "GREEN", cells: ["3", "Easements, or claims of easements, not shown by the public records", "Standard"] },
+          { band: "GREEN", cells: ["4", "Any encroachments, overlaps, boundary line disputes, or other matters which would be disclosed by an accurate survey or inspection of the premises", "Standard"] },
+          { band: "GREEN", cells: ["5", "Any lien, or right to a lien, for services, labor, or material heretofore or hereafter furnished, imposed by law and not shown by the public records", "Standard"] },
+          { band: "GREEN", cells: ["6", "Homestead rights, community property rights, survivorship rights, or other marital interests, if any", "Standard"] },
+          { band: "YELLOW", cells: ["7", "Minerals and mineral rights, including but not limited to oil, gas and other minerals, as reserved in the Federal Patent recorded 1978, Volume 42, Page 88, Henderson County Deed Records. Surface rights only conveyed.", "Property-specific · Required"] },
+          { band: "BLUE", cells: ["8", "Easement in favor of Henderson County Electric Cooperative for electric distribution lines over the NE 10 feet of said premises, as recorded in Document #89-04412, Henderson County Deed Records", "Property-specific · Active easement"] },
+        ] },
+        { type: "flags", items: [
+          { band: "YELLOW", title: "Exception 7 — mineral severance is non-insurable", detail: "The 1978 federal patent reservation of mineral rights is of record and cannot be insured over. This exception is mandatory per Texas underwriting guidelines. Buyer signed separate Texas RE Commission Addendum for Reservation of Oil, Gas, and Other Minerals." },
+          { band: "BLUE", title: "Exception 8 — Henderson County Electric Co-op easement", detail: "10-ft utility strip along NE boundary. Easement is active and runs with the land. No current infrastructure dispute. Standard utility exception per Stewart Title underwriting guidelines." },
+          { band: "GREEN", title: "No survey exception added — cash purchase at buyer's request", detail: "Buyer Sara Kahele declined survey. Standard survey exception (#4) retained. Stewart Title approved commitment issuance without survey for this residential cash purchase under $500K." },
+        ] },
+      ] },
+      { id: "parties", label: "Parties", description: "All parties to the transaction — buyer, seller, lender, escrow officer, title agent, underwriter.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "All parties confirmed", detail: "Buyer · Seller · Agent · Underwriter" },
+          { band: "GREEN", title: "Cash purchase — no lender", detail: "No mortgage payoff required" },
+          { band: "BLUE", title: "Attorney escrow", detail: "Troy Garris / Garris Horn LLP · TX-T-008" },
+        ] },
+        { type: "table", columns: ["Role", "Party", "Details"], rows: [
+          { band: "GREEN", cells: ["Seller", "Troy Garris Trust", "Edward Garris, Trustee · 110 E Tyler St, Athens TX 75751 · Trust cert on file"] },
+          { band: "GREEN", cells: ["Buyer", "Sara Kahele", "221 Lakeview Dr, Athens TX 75751 · Cash purchaser"] },
+          { band: "WHITE", cells: ["Lender", "None", "Cash purchase — no lender party"] },
+          { band: "BLUE", cells: ["Escrow Officer", "Troy Garris, Esq.", "Garris Horn LLP · Texas Bar #08765432 · TX-T-008 attorney escrow"] },
+          { band: "GREEN", cells: ["Title Agent", "Attorneys Title, Henderson County", "Athens TX · Provisional TDI license"] },
+          { band: "GREEN", cells: ["Underwriter", "Stewart Title Guaranty Company", "Houston TX · NYSE: STC · Policy #STG-ATH-2026-0743"] },
+        ] },
+      ] },
+      { id: "issue", label: "Issue Commitment", description: "One-button commitment issuance after RAAS validates all preconditions — search complete, defects cleared, Schedule A verified, policy amount confirmed.", blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "Commitment issued — 07/18/2026", detail: "T-7 form · Stewart Title · Hash anchored" },
+          { band: "GREEN", title: "RAAS gate: title_commitment_ready — PASS", detail: "All 5 conditions satisfied" },
+          { band: "BLUE", title: "Expires 10/17/2026", detail: "90-day TDI commitment validity" },
+        ] },
+        { type: "flags", items: [
+          { band: "GREEN", title: "Condition 1: Search complete", detail: "title.search_complete event recorded 07/10/2026. Data source: ATTOM Property API (owner, liens, tax). Chain covers 1978–2026 (48 years)." },
+          { band: "GREEN", title: "Condition 2: No P0 defects", detail: "Zero P0 (blocking) defects in order. Both P1 defects cleared before commitment per Defect Tracker." },
+          { band: "GREEN", title: "Condition 3: Vesting matches chain owner", detail: "Schedule A vesting (Troy Garris Trust) confirmed as record owner per chain-of-title event 2014-06031." },
+          { band: "GREEN", title: "Condition 4: Policy amount ≥ sale price", detail: "$285,000 owner's policy coverage equals the $285,000 cash purchase price. TDI-compliant." },
+          { band: "GREEN", title: "Condition 5: Commitment within 90-day validity", detail: "Committed 07/18/2026 · Projected close 07/28/2026 = 10 days. Well within 90-day TDI window." },
+          { band: "BLUE", title: "Commitment hash anchored to ledger", detail: "T-7 commitment document hash (SHA-256) appended to title order ATH-2026-0743 event ledger and anchored externally per Patent 64/073,700. Tamper-evident and auditable by underwriter." },
         ] },
       ] },
     ],
@@ -1187,7 +1341,12 @@ for (const k of Object.keys(RE_CANVAS)) {
 // JSON) refer to the CRE worker as "cre-deal-analyst"; the live worker + canvas
 // key is "cre-analyst". Alias so the designed canvas resolves either way.
 // "title-advocate-001" is the user-facing name alias for "re-escrow-001".
-const RE_CANVAS_ALIASES = { "cre-deal-analyst": "cre-analyst", "title-advocate-001": "re-escrow-001" };
+const RE_CANVAS_ALIASES = {
+  "cre-deal-analyst": "cre-analyst",
+  "title-advocate-001": "re-escrow-001",
+  "defect-tracker-001": "re-title-defects-001",
+  "commitment-engine-001": "re-title-commitment-001",
+};
 
 export function getRECanvas(workerSlug) {
   if (!workerSlug) return null;

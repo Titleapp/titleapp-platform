@@ -18,7 +18,7 @@
       "sloCount": 9,
       "entryRequirements": {
         "total": 12,
-        "formula": "3 SLOs/week × 4 weeks",
+        "formula": "3 SLOs/week \u00d7 4 weeks",
         "categories": [
           {
             "key": "acute",
@@ -41,7 +41,7 @@
         {
           "step": 2,
           "label": "Analysis",
-          "guidance": "Explain what you noticed, what guidance or knowledge helped you understand the situation, and what you did. Use the subcategory prompts from the Reflection Guide (Noticing → Interpreting → Responding → Reflecting)."
+          "guidance": "Explain what you noticed, what guidance or knowledge helped you understand the situation, and what you did. Use the subcategory prompts from the Reflection Guide (Noticing \u2192 Interpreting \u2192 Responding \u2192 Reflecting)."
         },
         {
           "step": 3,
@@ -60,8 +60,8 @@
         "CourseName": "Health Promotion Across the Lifespan",
         "Status": "active",
         "SLOCount": 9,
-        "EntryRequirements": "{\"total\":12,\"formula\":\"3 SLOs/week × 4 weeks\",\"categories\":[{\"key\":\"acute\",\"label\":\"Acute Care\",\"required\":6},{\"key\":\"community\",\"label\":\"Community / Health Promotion\",\"required\":6}]}",
-        "ReflectionStructure": "[{\"step\":1,\"label\":\"Scenario Description\",\"guidance\":\"Briefly describe the patient, setting, date, and your role.\"},{\"step\":2,\"label\":\"Analysis\",\"guidance\":\"Explain what you noticed, what guidance or knowledge helped you understand the situation, and what you did. Use the subcategory prompts from the Reflection Guide (Noticing → Interpreting → Responding → Reflecting).\"},{\"step\":3,\"label\":\"Evaluation\",\"guidance\":\"Reflect on the patient's response, your learning, and what you would do differently next time.\"},{\"step\":4,\"label\":\"Future Goal\",\"guidance\":\"Identify one small, realistic next step for improvement as a beginning nursing student. Address all 6 Closing Prompts.\"}]",
+        "EntryRequirements": "{\"total\":12,\"formula\":\"3 SLOs/week \u00d7 4 weeks\",\"categories\":[{\"key\":\"acute\",\"label\":\"Acute Care\",\"required\":6},{\"key\":\"community\",\"label\":\"Community / Health Promotion\",\"required\":6}]}",
+        "ReflectionStructure": "[{\"step\":1,\"label\":\"Scenario Description\",\"guidance\":\"Briefly describe the patient, setting, date, and your role.\"},{\"step\":2,\"label\":\"Analysis\",\"guidance\":\"Explain what you noticed, what guidance or knowledge helped you understand the situation, and what you did. Use the subcategory prompts from the Reflection Guide (Noticing \u2192 Interpreting \u2192 Responding \u2192 Reflecting).\"},{\"step\":3,\"label\":\"Evaluation\",\"guidance\":\"Reflect on the patient's response, your learning, and what you would do differently next time.\"},{\"step\":4,\"label\":\"Future Goal\",\"guidance\":\"Identify one small, realistic next step for improvement as a beginning nursing student. Address all 6 Closing Prompts.\"}]",
         "CoreValuesOverride": null
       }
     },
@@ -674,7 +674,7 @@
       "criteria": [
         {
           "key": "a",
-          "description": "Understands and follows ANA Code of Ethics, Standards of Practice, and Hawaiʻi Nurse Practice Act. Identifies when clinical practices and protocols may be at odds with the patient's rights."
+          "description": "Understands and follows ANA Code of Ethics, Standards of Practice, and Hawai\u02bbi Nurse Practice Act. Identifies when clinical practices and protocols may be at odds with the patient's rights."
         },
         {
           "key": "b",
@@ -898,12 +898,12 @@
       "sloNumber": "1",
       "focus": "Utilize ANA Standards of Practice and Code of Ethics to identify potential legal and ethical issues in the delivery of nursing care.",
       "questions": [
-        "A. Demonstrates professional behavior — Noticing: What required you to be especially careful about professional behavior? Interpreting: What standard or guidance helped you understand how to act professionally? Responding: What did you do to show professionalism? Reflecting: What did you learn about professional behavior?",
-        "B. Develops professional relationships — Noticing: What showed you that communication and teamwork were important? Interpreting: Why did working respectfully matter for patient care? Responding: How did you communicate with your instructor, nurse, CNA, or provider? Reflecting: What did you learn about building professional relationships?",
-        "C. Provides culturally appropriate care — Noticing: What cultural, family, language, spiritual, or personal preference did you notice? Interpreting: Why did that preference matter? Responding: What did you do to respect that preference? Reflecting: What did you learn about culturally appropriate care?",
-        "D. Uses ethical principles in providing nursing care — Noticing: What ethical concern seemed important — privacy, dignity, choice, truth-telling, or advocacy? Interpreting: What helped you understand why this was an ethical issue? Responding: What did you do to protect the patient's rights or dignity? Reflecting: What did this teach you about using ethical principles?",
-        "E. Follows standards of nursing practice — Noticing: What nursing standard, policy, or expected practice applied here? Interpreting: How did you know that standard was important? Responding: How did you follow safe and appropriate nursing practice? Reflecting: What did you learn about following standards of practice?",
-        "F. Demonstrates awareness of legal issues — Noticing: What legal issue did you notice — consent, privacy, documentation, scope? Interpreting: What made you realize this issue needed caution? Responding: What did you do to stay within legal and professional boundaries? Reflecting: What legal point do you need to understand better?",
+        "A. Demonstrates professional behavior \u2014 Noticing: What required you to be especially careful about professional behavior? Interpreting: What standard or guidance helped you understand how to act professionally? Responding: What did you do to show professionalism? Reflecting: What did you learn about professional behavior?",
+        "B. Develops professional relationships \u2014 Noticing: What showed you that communication and teamwork were important? Interpreting: Why did working respectfully matter for patient care? Responding: How did you communicate with your instructor, nurse, CNA, or provider? Reflecting: What did you learn about building professional relationships?",
+        "C. Provides culturally appropriate care \u2014 Noticing: What cultural, family, language, spiritual, or personal preference did you notice? Interpreting: Why did that preference matter? Responding: What did you do to respect that preference? Reflecting: What did you learn about culturally appropriate care?",
+        "D. Uses ethical principles in providing nursing care \u2014 Noticing: What ethical concern seemed important \u2014 privacy, dignity, choice, truth-telling, or advocacy? Interpreting: What helped you understand why this was an ethical issue? Responding: What did you do to protect the patient's rights or dignity? Reflecting: What did this teach you about using ethical principles?",
+        "E. Follows standards of nursing practice \u2014 Noticing: What nursing standard, policy, or expected practice applied here? Interpreting: How did you know that standard was important? Responding: How did you follow safe and appropriate nursing practice? Reflecting: What did you learn about following standards of practice?",
+        "F. Demonstrates awareness of legal issues \u2014 Noticing: What legal issue did you notice \u2014 consent, privacy, documentation, scope? Interpreting: What made you realize this issue needed caution? Responding: What did you do to stay within legal and professional boundaries? Reflecting: What legal point do you need to understand better?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses confirmed, challenged, or refined your thinking? 3. Were there cues you initially overlooked or misinterpreted? 4. What would you do the same and differently? 5. What does this show about your strengths and next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -965,10 +965,10 @@
       "sloNumber": "2",
       "focus": "Develop a structured plan to reflect on personal nursing process.",
       "questions": [
-        "A. Demonstrates an awareness of own nursing practice — Noticing: What part of your own practice stood out? Interpreting: What did that show you about a strength or area needing more practice? Responding: What did you do in the moment to carry out your role safely? Reflecting: What did you learn about yourself as a beginning nurse?",
-        "B. Composes weekly written journal — Noticing: What patient care moment stood out most this week? Interpreting: Why was this experience meaningful, difficult, or surprising? Responding: What was your role? Reflecting: Why is this important to include in your reflection?",
-        "C. Reflects on strengths, challenges, and goals — Noticing: What went well, and what felt difficult? Interpreting: Why did that strength or challenge show up here? Responding: What did you do to manage the challenge or ask for help? Reflecting: What is one specific goal for next clinical day?",
-        "D. Shares care issues and concerns with others — Noticing: What made you realize you needed support or clarification? Interpreting: Why was it important to bring this concern to your instructor? Responding: What did you ask, discuss, or clarify? Reflecting: What did you learn about asking for help?",
+        "A. Demonstrates an awareness of own nursing practice \u2014 Noticing: What part of your own practice stood out? Interpreting: What did that show you about a strength or area needing more practice? Responding: What did you do in the moment to carry out your role safely? Reflecting: What did you learn about yourself as a beginning nurse?",
+        "B. Composes weekly written journal \u2014 Noticing: What patient care moment stood out most this week? Interpreting: Why was this experience meaningful, difficult, or surprising? Responding: What was your role? Reflecting: Why is this important to include in your reflection?",
+        "C. Reflects on strengths, challenges, and goals \u2014 Noticing: What went well, and what felt difficult? Interpreting: Why did that strength or challenge show up here? Responding: What did you do to manage the challenge or ask for help? Reflecting: What is one specific goal for next clinical day?",
+        "D. Shares care issues and concerns with others \u2014 Noticing: What made you realize you needed support or clarification? Interpreting: Why was it important to bring this concern to your instructor? Responding: What did you ask, discuss, or clarify? Reflecting: What did you learn about asking for help?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety? 2. What patient responses confirmed or challenged your thinking? 3. Were there cues you overlooked? 4. What would you do the same and differently? 5. What does this show about your strengths?"
       ],
       "requiredFor": [],
@@ -1014,17 +1014,17 @@
       "sloNumber": "3",
       "focus": "Choose reliable sources of information to support nursing care decisions to individuals.",
       "questions": [
-        "A. Circulatory system — Noticing: What circulatory finding did you notice (BP, pulse, edema, skin color, perfusion)? Interpreting: What did that finding need attention? Responding: What source or instructor guidance helped you? Reflecting: What did you learn about circulatory assessment?",
-        "B. Respiratory system — Noticing: What respiratory finding (SpO2, WOB, RR, cough, breath sounds)? Interpreting: What made it concerning? Responding: What guidance helped direct your care? Reflecting: What did you learn about respiratory concerns?",
-        "C. Neurosensory — Noticing: What change in LOC, orientation, pupils, sensation? Interpreting: Why did that matter for safety? Responding: What source or guidance helped? Reflecting: What did you learn about neurosensory assessment?",
-        "D. Pain and discomfort — Noticing: What signs indicated pain? Interpreting: What did those signs tell you? Responding: What did you do to assess, report, or manage pain? Reflecting: What did the patient's response teach you?",
-        "E. Hygiene — Noticing: What hygiene need? Interpreting: Why important for comfort, dignity, or safety? Responding: What care and guidance? Reflecting: What did you learn about hygiene in nursing?",
-        "F. Activity and Rest — Noticing: What about mobility, fatigue, or activity tolerance? Interpreting: What made you think the patient needed assistance? Responding: What did you do to support activity, rest, and safety? Reflecting: What did you learn?",
-        "G. Safety — Noticing: What safety risk (fall, aspiration, bleeding, confusion)? Interpreting: Why did it need attention? Responding: What did you do to reduce risk? Reflecting: What did you learn about recognizing safety concerns early?",
-        "H. Medication Administration — Noticing: What medication info did you need? Interpreting: Why important for safe administration? Responding: What source, policy, MAR, drug guide did you use? Reflecting: What did you learn about safe medication practice?",
-        "I. Social Interaction — Noticing: What about mood, coping, support, isolation? Interpreting: Why did it matter? Responding: How did you adjust your approach? Reflecting: What did you learn about social factors?",
-        "J. Teaching/Learning — Noticing: What teaching need? Interpreting: Why important at that time? Responding: What teaching did you provide or reinforce? Reflecting: What did you learn about patient teaching?",
-        "K. Therapeutic Communication — Noticing: What communication cue? Interpreting: What did the patient need from you? Responding: What technique did you use? Reflecting: What did you learn?",
+        "A. Circulatory system \u2014 Noticing: What circulatory finding did you notice (BP, pulse, edema, skin color, perfusion)? Interpreting: What did that finding need attention? Responding: What source or instructor guidance helped you? Reflecting: What did you learn about circulatory assessment?",
+        "B. Respiratory system \u2014 Noticing: What respiratory finding (SpO2, WOB, RR, cough, breath sounds)? Interpreting: What made it concerning? Responding: What guidance helped direct your care? Reflecting: What did you learn about respiratory concerns?",
+        "C. Neurosensory \u2014 Noticing: What change in LOC, orientation, pupils, sensation? Interpreting: Why did that matter for safety? Responding: What source or guidance helped? Reflecting: What did you learn about neurosensory assessment?",
+        "D. Pain and discomfort \u2014 Noticing: What signs indicated pain? Interpreting: What did those signs tell you? Responding: What did you do to assess, report, or manage pain? Reflecting: What did the patient's response teach you?",
+        "E. Hygiene \u2014 Noticing: What hygiene need? Interpreting: Why important for comfort, dignity, or safety? Responding: What care and guidance? Reflecting: What did you learn about hygiene in nursing?",
+        "F. Activity and Rest \u2014 Noticing: What about mobility, fatigue, or activity tolerance? Interpreting: What made you think the patient needed assistance? Responding: What did you do to support activity, rest, and safety? Reflecting: What did you learn?",
+        "G. Safety \u2014 Noticing: What safety risk (fall, aspiration, bleeding, confusion)? Interpreting: Why did it need attention? Responding: What did you do to reduce risk? Reflecting: What did you learn about recognizing safety concerns early?",
+        "H. Medication Administration \u2014 Noticing: What medication info did you need? Interpreting: Why important for safe administration? Responding: What source, policy, MAR, drug guide did you use? Reflecting: What did you learn about safe medication practice?",
+        "I. Social Interaction \u2014 Noticing: What about mood, coping, support, isolation? Interpreting: Why did it matter? Responding: How did you adjust your approach? Reflecting: What did you learn about social factors?",
+        "J. Teaching/Learning \u2014 Noticing: What teaching need? Interpreting: Why important at that time? Responding: What teaching did you provide or reinforce? Reflecting: What did you learn about patient teaching?",
+        "K. Therapeutic Communication \u2014 Noticing: What communication cue? Interpreting: What did the patient need from you? Responding: What technique did you use? Reflecting: What did you learn?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1126,9 +1126,9 @@
       "sloNumber": "4",
       "focus": "Specify nursing care situations requiring the need for delegation and leadership.",
       "questions": [
-        "A. Demonstrates leadership skills at beginning level — Noticing: What required you to think about time, organization, or who needed help first? Interpreting: What helped you understand what needed attention first? Responding: How did you show beginning leadership? Reflecting: What did this teach you about leadership as a student nurse?",
-        "B. Verbalizes appropriate tasks for delegation — Noticing: What task could reasonably be delegated? Interpreting: What made that task appropriate to delegate? Responding: How would you explain the task clearly? Reflecting: What did you learn about safe delegation?",
-        "C. Verbalizes appropriate documentation of task delegation — Noticing: What part of the delegated task would need follow-up? Interpreting: Why is documentation important when a task is delegated? Responding: What should be documented? Reflecting: What did you learn about how documentation protects patient and nurse?",
+        "A. Demonstrates leadership skills at beginning level \u2014 Noticing: What required you to think about time, organization, or who needed help first? Interpreting: What helped you understand what needed attention first? Responding: How did you show beginning leadership? Reflecting: What did this teach you about leadership as a student nurse?",
+        "B. Verbalizes appropriate tasks for delegation \u2014 Noticing: What task could reasonably be delegated? Interpreting: What made that task appropriate to delegate? Responding: How would you explain the task clearly? Reflecting: What did you learn about safe delegation?",
+        "C. Verbalizes appropriate documentation of task delegation \u2014 Noticing: What part of the delegated task would need follow-up? Interpreting: Why is documentation important when a task is delegated? Responding: What should be documented? Reflecting: What did you learn about how documentation protects patient and nurse?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1166,9 +1166,9 @@
       "sloNumber": "5",
       "focus": "Practice in the role of professional nurse as part of the healthcare team.",
       "questions": [
-        "A. Interdisciplinary Communication — Noticing: What cues showed that interdisciplinary communication was needed? Interpreting: Why was structured communication (such as SBAR) important? Responding: How did you communicate with the team? Provide an SBAR you communicated or would communicate. Reflecting: What did you learn about effective team communication?",
-        "B. Referral Sources — Noticing: What patient need suggested a referral was appropriate? Interpreting: What made that referral important? Responding: What team members or resources were available? Reflecting: What did you learn about identifying referral needs?",
-        "C. Clinical Judgment and Critical Thinking — Noticing: What clinical data required you to think critically? Interpreting: How did you make sense of the information? Responding: How did you apply clinical judgment and feedback? Reflecting: What evidence tells you your decisions worked out?",
+        "A. Interdisciplinary Communication \u2014 Noticing: What cues showed that interdisciplinary communication was needed? Interpreting: Why was structured communication (such as SBAR) important? Responding: How did you communicate with the team? Provide an SBAR you communicated or would communicate. Reflecting: What did you learn about effective team communication?",
+        "B. Referral Sources \u2014 Noticing: What patient need suggested a referral was appropriate? Interpreting: What made that referral important? Responding: What team members or resources were available? Reflecting: What did you learn about identifying referral needs?",
+        "C. Clinical Judgment and Critical Thinking \u2014 Noticing: What clinical data required you to think critically? Interpreting: How did you make sense of the information? Responding: How did you apply clinical judgment and feedback? Reflecting: What evidence tells you your decisions worked out?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1206,9 +1206,9 @@
       "sloNumber": "6",
       "focus": "Identify factors that influence access and continuity of healthcare.",
       "questions": [
-        "A. Cultural factors — Noticing: What cultural belief, practice, family role, or communication need did you notice? Interpreting: Why did that factor matter for care or decision-making? Responding: How did you adjust your care, communication, or teaching? Reflecting: What did you learn about culture and continuity of care?",
-        "B. Economic status — Noticing: What clue suggested that money, insurance, transportation, housing, or medication cost might affect care? Interpreting: Why could that become a barrier? Responding: What support, referral, or discharge planning need did you recognize? Reflecting: What did you learn about finances and health care access?",
-        "C. Literacy — Noticing: What sign suggested the patient may have difficulty understanding health information? Interpreting: Why did that matter for safety, teaching, or follow-up? Responding: How did you adjust your teaching or communication? Reflecting: What did you learn about health literacy?",
+        "A. Cultural factors \u2014 Noticing: What cultural belief, practice, family role, or communication need did you notice? Interpreting: Why did that factor matter for care or decision-making? Responding: How did you adjust your care, communication, or teaching? Reflecting: What did you learn about culture and continuity of care?",
+        "B. Economic status \u2014 Noticing: What clue suggested that money, insurance, transportation, housing, or medication cost might affect care? Interpreting: Why could that become a barrier? Responding: What support, referral, or discharge planning need did you recognize? Reflecting: What did you learn about finances and health care access?",
+        "C. Literacy \u2014 Noticing: What sign suggested the patient may have difficulty understanding health information? Interpreting: Why did that matter for safety, teaching, or follow-up? Responding: How did you adjust your teaching or communication? Reflecting: What did you learn about health literacy?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1246,11 +1246,11 @@
       "sloNumber": "7",
       "focus": "Deliver client-centered care.",
       "questions": [
-        "A. Plans, implements, and evaluates plan of care — Noticing: What patient need seemed most important? Interpreting: What helped you understand what the patient needed first? Responding: What care did you provide based on patient's condition and guidance? Reflecting: How did the patient respond?",
-        "B. Communicates effectively — Noticing: What communication need? Interpreting: Why was clear communication important? Responding: How did you communicate respectfully and understandably? Reflecting: What did you learn about effective communication?",
-        "C. Evaluates need for client education and provides teaching — Noticing: What made you realize the patient needed teaching? Interpreting: What did the patient most need to understand? Responding: What teaching did you provide or reinforce? Reflecting: How did you know whether the patient understood?",
-        "D. Demonstrates respect, caring, and privacy — Noticing: What reminded you that privacy, dignity, or comfort were important? Interpreting: Why did this patient need particular attention to respect? Responding: What did you do to protect privacy, dignity, and comfort? Reflecting: What did this teach you about respectful nursing care?",
-        "E. Advocates for client needs — Noticing: What patient need or concern made you think someone should speak up? Interpreting: Why did that need matter enough to report? Responding: What did you say or do to advocate? Reflecting: What did you learn about advocacy as a beginning nurse?",
+        "A. Plans, implements, and evaluates plan of care \u2014 Noticing: What patient need seemed most important? Interpreting: What helped you understand what the patient needed first? Responding: What care did you provide based on patient's condition and guidance? Reflecting: How did the patient respond?",
+        "B. Communicates effectively \u2014 Noticing: What communication need? Interpreting: Why was clear communication important? Responding: How did you communicate respectfully and understandably? Reflecting: What did you learn about effective communication?",
+        "C. Evaluates need for client education and provides teaching \u2014 Noticing: What made you realize the patient needed teaching? Interpreting: What did the patient most need to understand? Responding: What teaching did you provide or reinforce? Reflecting: How did you know whether the patient understood?",
+        "D. Demonstrates respect, caring, and privacy \u2014 Noticing: What reminded you that privacy, dignity, or comfort were important? Interpreting: Why did this patient need particular attention to respect? Responding: What did you do to protect privacy, dignity, and comfort? Reflecting: What did this teach you about respectful nursing care?",
+        "E. Advocates for client needs \u2014 Noticing: What patient need or concern made you think someone should speak up? Interpreting: Why did that need matter enough to report? Responding: What did you say or do to advocate? Reflecting: What did you learn about advocacy as a beginning nurse?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1304,10 +1304,10 @@
       "sloNumber": "8",
       "focus": "Use therapeutic communication skills in the development of relationships with clients and families.",
       "questions": [
-        "A. Establishes, maintains, and terminates therapeutic relationships — Noticing: What did you notice about how the patient or family responded to you? Interpreting: What did that tell you about how to build trust and keep boundaries? Responding: How did you begin, continue, and close the interaction professionally? Reflecting: What did you learn about building therapeutic relationships?",
-        "B. Practices motivational interviewing — Noticing: What sign suggested the patient was unsure, hesitant, or not ready? Interpreting: What did that tell you about readiness to talk or change? Responding: What open-ended question, reflection, affirmation, or summary did you use? Reflecting: What did you learn about helping a patient talk through concerns?",
-        "C. Considers psychosocial concepts of client and family ego integrity — Noticing: What emotional, developmental, or psychosocial need did you notice? Interpreting: Why did that need matter in communication? Responding: How did you adjust your tone, words, or presence? Reflecting: What did you learn about psychosocially sensitive communication?",
-        "D. Demonstrates cultural awareness when communicating — Noticing: What cultural, language, spiritual, or family-related factor affected communication? Interpreting: Why did that factor matter for understanding and trust? Responding: What did you do to communicate respectfully and avoid assumptions? Reflecting: What did you learn about cultural awareness in communication?",
+        "A. Establishes, maintains, and terminates therapeutic relationships \u2014 Noticing: What did you notice about how the patient or family responded to you? Interpreting: What did that tell you about how to build trust and keep boundaries? Responding: How did you begin, continue, and close the interaction professionally? Reflecting: What did you learn about building therapeutic relationships?",
+        "B. Practices motivational interviewing \u2014 Noticing: What sign suggested the patient was unsure, hesitant, or not ready? Interpreting: What did that tell you about readiness to talk or change? Responding: What open-ended question, reflection, affirmation, or summary did you use? Reflecting: What did you learn about helping a patient talk through concerns?",
+        "C. Considers psychosocial concepts of client and family ego integrity \u2014 Noticing: What emotional, developmental, or psychosocial need did you notice? Interpreting: Why did that need matter in communication? Responding: How did you adjust your tone, words, or presence? Reflecting: What did you learn about psychosocially sensitive communication?",
+        "D. Demonstrates cultural awareness when communicating \u2014 Noticing: What cultural, language, spiritual, or family-related factor affected communication? Interpreting: Why did that factor matter for understanding and trust? Responding: What did you do to communicate respectfully and avoid assumptions? Reflecting: What did you learn about cultural awareness in communication?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect safety? 2. What patient responses confirmed your thinking? 3. Cues you overlooked? 4. Same and differently? 5. Strengths and next step?"
       ],
       "requiredFor": [],
@@ -1366,9 +1366,9 @@
       "sloNumber": "1",
       "focus": "Identify potential legal and ethical issues in delivery of health care.",
       "questions": [
-        "A. Applies the ANA Code of Ethics — Noticing: What made you think about ethics, standards, or the Hawaii Nurse Practice Act? Interpreting: What helped you understand which ethical or legal standard applied? Responding: What did you do to act consistently with the ANA Code of Ethics? Reflecting: What did this teach you about applying ethical standards in real patient care?",
-        "B. Notices ethical dilemmas and describes pertinent facts — Noticing: What ethical dilemma or conflict caught your attention? Interpreting: Who were the main stakeholders, and what facts seemed most important? Responding: How did you describe or communicate the dilemma accurately? Reflecting: What did this teach you about recognizing ethical dilemmas early?",
-        "C. Reflects on ethical dilemmas using ethical principles — Noticing: What choice or decision point needed ethical reflection? Interpreting: What ethical principles helped you think through possible choices and consequences? Responding: What option did you support, and why? Reflecting: What would you do the same or differently?",
+        "A. Applies the ANA Code of Ethics \u2014 Noticing: What made you think about ethics, standards, or the Hawaii Nurse Practice Act? Interpreting: What helped you understand which ethical or legal standard applied? Responding: What did you do to act consistently with the ANA Code of Ethics? Reflecting: What did this teach you about applying ethical standards in real patient care?",
+        "B. Notices ethical dilemmas and describes pertinent facts \u2014 Noticing: What ethical dilemma or conflict caught your attention? Interpreting: Who were the main stakeholders, and what facts seemed most important? Responding: How did you describe or communicate the dilemma accurately? Reflecting: What did this teach you about recognizing ethical dilemmas early?",
+        "C. Reflects on ethical dilemmas using ethical principles \u2014 Noticing: What choice or decision point needed ethical reflection? Interpreting: What ethical principles helped you think through possible choices and consequences? Responding: What option did you support, and why? Reflecting: What would you do the same or differently?",
         "CLOSING PROMPTS: 1. What did you feel most confident about? 2. What were you most concerned about related to the patient's care? 3. How did the patient respond? 4. If you could do this clinical day over, what would you do differently? 5. What did you learn that can apply to future patients? 6. What do you still need to learn?"
       ],
       "requiredFor": [],
@@ -1406,9 +1406,9 @@
       "sloNumber": "2",
       "focus": "Reflect on personal nursing practice within the legal and ethical framework of nursing.",
       "questions": [
-        "A. Self-awareness in action — Noticing: What did you notice about your own behavior, thinking, or habits? Interpreting: How did those patterns affect the way you responded? Responding: What did you do to remain safe, honest, and accountable? Reflecting: What did this teach you about your developing nursing practice?",
-        "B. Feedback behavior — Noticing: What made you realize you needed feedback or help? Interpreting: Why was outside feedback important? Responding: What feedback did you seek, and how did you use it? Reflecting: What did this teach you about asking for assistance?",
-        "C. Personal and professional reflection — Noticing: What felt personally and professionally important? Interpreting: How did this connect your personal values with the professional role? Responding: How did you manage yourself in a way that supported professional care? Reflecting: What did you learn about who you are personally and how you practice professionally?",
+        "A. Self-awareness in action \u2014 Noticing: What did you notice about your own behavior, thinking, or habits? Interpreting: How did those patterns affect the way you responded? Responding: What did you do to remain safe, honest, and accountable? Reflecting: What did this teach you about your developing nursing practice?",
+        "B. Feedback behavior \u2014 Noticing: What made you realize you needed feedback or help? Interpreting: Why was outside feedback important? Responding: What feedback did you seek, and how did you use it? Reflecting: What did this teach you about asking for assistance?",
+        "C. Personal and professional reflection \u2014 Noticing: What felt personally and professionally important? Interpreting: How did this connect your personal values with the professional role? Responding: How did you manage yourself in a way that supported professional care? Reflecting: What did you learn about who you are personally and how you practice professionally?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1446,9 +1446,9 @@
       "sloNumber": "3",
       "focus": "Utilize reliable sources of information to support nursing care decisions.",
       "questions": [
-        "A. Preparation: takes responsibility for learning needs — Noticing: What question or knowledge gap came up? Interpreting: Why did you decide this needed understanding? Responding: What did you do to take responsibility? Reflecting: What did this teach you about preparation?",
-        "B. Information retrieval: seeks local resources — Noticing: What specific clinical question needed answering? Interpreting: Which resource seemed most useful (Lexicomp, textbook, staff nurse, chart)? Responding: What source did you use? Reflecting: What did you learn about finding reliable answers?",
-        "C. Use of evidence: provides supporting evidence — Noticing: What intervention needed support or rationale? Interpreting: What information helped you understand why that intervention was appropriate? Responding: How did that evidence influence what you did? Reflecting: What did this teach you about understanding why you are doing an intervention?",
+        "A. Preparation: takes responsibility for learning needs \u2014 Noticing: What question or knowledge gap came up? Interpreting: Why did you decide this needed understanding? Responding: What did you do to take responsibility? Reflecting: What did this teach you about preparation?",
+        "B. Information retrieval: seeks local resources \u2014 Noticing: What specific clinical question needed answering? Interpreting: Which resource seemed most useful (Lexicomp, textbook, staff nurse, chart)? Responding: What source did you use? Reflecting: What did you learn about finding reliable answers?",
+        "C. Use of evidence: provides supporting evidence \u2014 Noticing: What intervention needed support or rationale? Interpreting: What information helped you understand why that intervention was appropriate? Responding: How did that evidence influence what you did? Reflecting: What did this teach you about understanding why you are doing an intervention?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1486,9 +1486,9 @@
       "sloNumber": "4",
       "focus": "Develop own leadership abilities and acknowledge delegation as needed.",
       "questions": [
-        "A. Leadership development — Noticing: What required you to step up, organize care, or move care toward a better outcome? Interpreting: How did you decide what patient need required attention first? Responding: What did you do that showed beginning leadership? Reflecting: What did this teach you about your developing leadership?",
-        "B. Competence: explains purpose and outcome — Noticing: What task needed clearer purpose, timing, or coordination? Interpreting: Why was it important to explain the purpose and expected outcome? Responding: How did you explain what needed to be done, why, and when? Reflecting: What did this teach you about communicating tasks clearly?",
-        "C. Delegation: within scope and competence — Noticing: What task could appropriately be delegated? Interpreting: How did you determine whether it was within the other person's scope? Responding: How would you delegate clearly and evaluate completion? Reflecting: What did this teach you about safe delegation and accountability?",
+        "A. Leadership development \u2014 Noticing: What required you to step up, organize care, or move care toward a better outcome? Interpreting: How did you decide what patient need required attention first? Responding: What did you do that showed beginning leadership? Reflecting: What did this teach you about your developing leadership?",
+        "B. Competence: explains purpose and outcome \u2014 Noticing: What task needed clearer purpose, timing, or coordination? Interpreting: Why was it important to explain the purpose and expected outcome? Responding: How did you explain what needed to be done, why, and when? Reflecting: What did this teach you about communicating tasks clearly?",
+        "C. Delegation: within scope and competence \u2014 Noticing: What task could appropriately be delegated? Interpreting: How did you determine whether it was within the other person's scope? Responding: How would you delegate clearly and evaluate completion? Reflecting: What did this teach you about safe delegation and accountability?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1526,9 +1526,9 @@
       "sloNumber": "5",
       "focus": "Collaborate as a member of the multidisciplinary health care team.",
       "questions": [
-        "A. Team behaviors: consults within the team — Noticing: What cues showed you needed to consult or collaborate? Interpreting: Why was collaboration important to managing this patient's care? Responding: How did you participate in team communication? Reflecting: What did this teach you about seeing yourself as part of the healthcare team?",
-        "B. Planning behaviors: contributes to teamwork — Noticing: What patient issue required teamwork or shared planning? Interpreting: What information did the team need? Responding: How did you contribute, offer help, or share information? Reflecting: What did this teach you about teamwork in clinical care?",
-        "C. Initiates/gives feedback in timely manner — Noticing: What situation made feedback necessary? Interpreting: Why was giving or receiving feedback important? Responding: How did you communicate feedback appropriately? Reflecting: What did this teach you about feedback as part of safe collaboration?",
+        "A. Team behaviors: consults within the team \u2014 Noticing: What cues showed you needed to consult or collaborate? Interpreting: Why was collaboration important to managing this patient's care? Responding: How did you participate in team communication? Reflecting: What did this teach you about seeing yourself as part of the healthcare team?",
+        "B. Planning behaviors: contributes to teamwork \u2014 Noticing: What patient issue required teamwork or shared planning? Interpreting: What information did the team need? Responding: How did you contribute, offer help, or share information? Reflecting: What did this teach you about teamwork in clinical care?",
+        "C. Initiates/gives feedback in timely manner \u2014 Noticing: What situation made feedback necessary? Interpreting: Why was giving or receiving feedback important? Responding: How did you communicate feedback appropriately? Reflecting: What did this teach you about feedback as part of safe collaboration?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1566,8 +1566,8 @@
       "sloNumber": "6",
       "focus": "Identify the need for initiation of referrals and explore community resources.",
       "questions": [
-        "A. Identifies client resources in clinical area and community — Noticing: What patient need made you think about resources beyond bedside care? Interpreting: What clinical or community resources seemed relevant? Responding: How did you identify or discuss those resources? Reflecting: What did this teach you about nursing care beyond the bedside?",
-        "B. Assists clients to overcome barriers to health care — Noticing: What barrier to care, follow-up, or understanding did you notice? Interpreting: Why was that barrier important to the health outcome? Responding: What did you do to help the client address that barrier? Reflecting: What did this teach you about the nurse's role in improving access to care?",
+        "A. Identifies client resources in clinical area and community \u2014 Noticing: What patient need made you think about resources beyond bedside care? Interpreting: What clinical or community resources seemed relevant? Responding: How did you identify or discuss those resources? Reflecting: What did this teach you about nursing care beyond the bedside?",
+        "B. Assists clients to overcome barriers to health care \u2014 Noticing: What barrier to care, follow-up, or understanding did you notice? Interpreting: Why was that barrier important to the health outcome? Responding: What did you do to help the client address that barrier? Reflecting: What did this teach you about the nurse's role in improving access to care?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1597,10 +1597,10 @@
       "sloNumber": "7",
       "focus": "Use therapeutic communication skills in the development of relationships with clients and families.",
       "questions": [
-        "A. Demonstrates basic therapeutic communication — Noticing: What verbal or nonverbal cue caught your attention? Interpreting: What did that cue suggest the client or family needed? Responding: What therapeutic communication strategy did you use? Reflecting: What did this teach you about therapeutic communication?",
-        "B. Incorporates client/family perspective into plan of care — Noticing: What did the client or family say about their perspective? Interpreting: Why was that perspective important in planning care? Responding: How did you include that perspective? Reflecting: What did this teach you about planning care with the client in mind?",
-        "C. Collaborates with client and family in care planning — Noticing: What showed you the client or family wanted to be involved? Interpreting: Why was collaboration important? Responding: How did you involve them in discussing goals or care needs? Reflecting: What did this teach you about collaboration in client-centered care?",
-        "D. Adapts education to individual client/family needs — Noticing: What educational need, readiness, or attitude did you notice? Interpreting: Why did that make individualized teaching important? Responding: How did you adapt your teaching? Reflecting: What did this teach you about individualized patient education?",
+        "A. Demonstrates basic therapeutic communication \u2014 Noticing: What verbal or nonverbal cue caught your attention? Interpreting: What did that cue suggest the client or family needed? Responding: What therapeutic communication strategy did you use? Reflecting: What did this teach you about therapeutic communication?",
+        "B. Incorporates client/family perspective into plan of care \u2014 Noticing: What did the client or family say about their perspective? Interpreting: Why was that perspective important in planning care? Responding: How did you include that perspective? Reflecting: What did this teach you about planning care with the client in mind?",
+        "C. Collaborates with client and family in care planning \u2014 Noticing: What showed you the client or family wanted to be involved? Interpreting: Why was collaboration important? Responding: How did you involve them in discussing goals or care needs? Reflecting: What did this teach you about collaboration in client-centered care?",
+        "D. Adapts education to individual client/family needs \u2014 Noticing: What educational need, readiness, or attitude did you notice? Interpreting: Why did that make individualized teaching important? Responding: How did you adapt your teaching? Reflecting: What did this teach you about individualized patient education?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1646,9 +1646,9 @@
       "sloNumber": "8",
       "focus": "Practice effective oral and written communication with clients, peers and faculty.",
       "questions": [
-        "A. Notices cues indicating barriers to communication — Noticing: What cue suggested communication was not fully effective? Interpreting: What barrier might be interfering (anxiety, pain, confusion, language)? Responding: What did you do to reduce or work around that barrier? Reflecting: What did this teach you about noticing communication barriers early?",
-        "B. Collaborative communication of plan of care — Noticing: What part of the plan needed to be clearly communicated, and to whom? Interpreting: Why was shared understanding especially important? Responding: How did you communicate the plan to client, family, and staff? Reflecting: What did this teach you about oral communication as part of safe nursing care?",
-        "C. Documents completely in all aspects of the EHR — Noticing: What information needed to be documented? Interpreting: Why was complete and accurate documentation important? Responding: How did you ensure your documentation was complete, clear, and relevant? Reflecting: What did this teach you about written communication and continuity of care?",
+        "A. Notices cues indicating barriers to communication \u2014 Noticing: What cue suggested communication was not fully effective? Interpreting: What barrier might be interfering (anxiety, pain, confusion, language)? Responding: What did you do to reduce or work around that barrier? Reflecting: What did this teach you about noticing communication barriers early?",
+        "B. Collaborative communication of plan of care \u2014 Noticing: What part of the plan needed to be clearly communicated, and to whom? Interpreting: Why was shared understanding especially important? Responding: How did you communicate the plan to client, family, and staff? Reflecting: What did this teach you about oral communication as part of safe nursing care?",
+        "C. Documents completely in all aspects of the EHR \u2014 Noticing: What information needed to be documented? Interpreting: Why was complete and accurate documentation important? Responding: How did you ensure your documentation was complete, clear, and relevant? Reflecting: What did this teach you about written communication and continuity of care?",
         "CLOSING PROMPTS: 1. Most confident about? 2. Most concerned about? 3. Patient response? 4. Do differently? 5. Apply to future patients? 6. Still need to learn?"
       ],
       "requiredFor": [],
@@ -1703,7 +1703,7 @@
       "focus": "Apply the ANA Code of Ethics to care of families.",
       "questions": [
         "Noticing: What ethical or legal concerns did you begin to organize and make sense of? What struck you about this patient's rights or the family's situation? What were you worried about?",
-        "Interpreting: How did you connect your knowledge of the ANA Code of Ethics with the specific patient and family situation? Whose values did you consider important — and how did they influence your approach?",
+        "Interpreting: How did you connect your knowledge of the ANA Code of Ethics with the specific patient and family situation? Whose values did you consider important \u2014 and how did they influence your approach?",
         "Responding: What specific actions did you take in response to the ethical situation? If the ethics called for differed from your own, how did you reconcile that? What evidence supports your decision?",
         "Reflecting: If you had to do it over again, would you do anything differently? Were there cues you overlooked about the ethical dimensions? What guidelines would you give other nurses?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses confirmed, challenged, or refined your thinking? 3. Were there cues you initially overlooked or misinterpreted? 4. What would you do the same and what differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
@@ -1774,7 +1774,7 @@
       "focus": "Reflect on nursing practice in managing care for groups of patients.",
       "questions": [
         "Noticing: What changes in patient comfort, condition, or responses did you begin to organize into meaningful observations? What cues signaled the need to modify care? Were you surprised by anything?",
-        "Interpreting: How did you connect your classroom knowledge with what you observed? What hunches did you have? How did you prioritize — what was most salient and why?",
+        "Interpreting: How did you connect your classroom knowledge with what you observed? What hunches did you have? How did you prioritize \u2014 what was most salient and why?",
         "Responding: How did you plan and implement care modifications deliberately? What outcomes were you hoping to attain? How did you seek and respond to feedback from your instructor?",
         "Reflecting: How is your patient responding? How did your priorities change? What did the patient's responses make you realize about your thinking? What went well and what could have gone better?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses confirmed, challenged, or refined your thinking? 3. Were there cues you initially overlooked or misinterpreted? 4. What would you do the same and what differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
@@ -1806,7 +1806,7 @@
           "interpreting": "Why do you think those strengths and challenges showed up here?",
           "responding": "What did you do in the moment to manage the challenge?",
           "reflecting": "What is one specific SMART goal you will set for your next clinical day?",
-          "selfCheck": "Did you worry about missing something important during this experience? That hypervigilance is normal at this stage — it shows you care about getting it right. Are you beginning to turn that worry into deliberate planning?"
+          "selfCheck": "Did you worry about missing something important during this experience? That hypervigilance is normal at this stage \u2014 it shows you care about getting it right. Are you beginning to turn that worry into deliberate planning?"
         },
         {
           "key": "d",
@@ -1815,7 +1815,7 @@
           "interpreting": "Why was it important to ask for help, clarification, or feedback?",
           "responding": "Who did you talk to, and how did their input affect your care?",
           "reflecting": "What did you learn about seeking support appropriately in clinical practice?",
-          "selfCheck": "Were you able to describe the situation clearly enough that others understood what you needed? At this stage, your descriptions may not yet be specific enough to get the exact response you need — that skill develops with practice."
+          "selfCheck": "Were you able to describe the situation clearly enough that others understood what you needed? At this stage, your descriptions may not yet be specific enough to get the exact response you need \u2014 that skill develops with practice."
         }
       ],
       "closingPrompts": null
@@ -1868,7 +1868,7 @@
           "interpreting": "How did you decide what kind of pain or discomfort the patient was experiencing?",
           "responding": "What intervention or comfort measure did you provide, and what evidence supported it?",
           "reflecting": "How did the patient respond, and what did that teach you?",
-          "selfCheck": "Were you beginning to see the patient's pain and suffering as meaningful — not just a number on a scale? Did you notice the patient responding positively to your comfort interventions?"
+          "selfCheck": "Were you beginning to see the patient's pain and suffering as meaningful \u2014 not just a number on a scale? Did you notice the patient responding positively to your comfort interventions?"
         },
         {
           "key": "e",
@@ -1895,7 +1895,7 @@
           "interpreting": "Why was that risk the most urgent or significant?",
           "responding": "What did you do to reduce harm or prevent complications?",
           "reflecting": "What additional safety cue might you have missed at first?",
-          "selfCheck": "Were you beginning to anticipate safety risks before they happened, or did you respond after the risk became obvious? Did you worry about missing something — and did that worry help you be more thorough?"
+          "selfCheck": "Were you beginning to anticipate safety risks before they happened, or did you respond after the risk became obvious? Did you worry about missing something \u2014 and did that worry help you be more thorough?"
         },
         {
           "key": "h",
@@ -1943,9 +1943,9 @@
       "focus": "Apply basic leadership skills in the care of families.",
       "questions": [
         "Noticing: What cues helped you recognize priorities? What did you anticipate when you first received report? How urgent did you expect the situation? What did you anticipate as highest priority?",
-        "Interpreting: How did you connect understanding of patient acuity with planning your approach? What are your priorities — most urgent concerns or actions? Who else might need to be involved?",
-        "Responding: How did you plan and implement leadership actions — organizing care, delegating tasks, managing time? What specific actions did you take? How do you provide comfort, safety, and symptom management?",
-        "Reflecting: Is the situation going as expected — what would you prefer to see happen? How did your priorities change? What did you learn from this situation or from collaborating with peers?",
+        "Interpreting: How did you connect understanding of patient acuity with planning your approach? What are your priorities \u2014 most urgent concerns or actions? Who else might need to be involved?",
+        "Responding: How did you plan and implement leadership actions \u2014 organizing care, delegating tasks, managing time? What specific actions did you take? How do you provide comfort, safety, and symptom management?",
+        "Reflecting: Is the situation going as expected \u2014 what would you prefer to see happen? How did your priorities change? What did you learn from this situation or from collaborating with peers?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses confirmed, challenged, or refined your thinking? 3. Were there cues you initially overlooked or misinterpreted? 4. What would you do the same and what differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2001,7 +2001,7 @@
           "interpreting": "Why was structured communication (like SBAR) critical in this situation?",
           "responding": "Provide an SBAR that you communicated (or would communicate) about your patient. How did team communication affect the care plan?",
           "reflecting": "What feedback from the interaction shows your team communication was or was not effective?",
-          "selfCheck": "When you communicated urgency or concern, was your description specific enough that others understood and responded appropriately? At this stage, your ability to convey the clinical picture clearly is still developing — that's expected."
+          "selfCheck": "When you communicated urgency or concern, was your description specific enough that others understood and responded appropriately? At this stage, your ability to convey the clinical picture clearly is still developing \u2014 that's expected."
         },
         {
           "key": "b",
@@ -2010,7 +2010,7 @@
           "interpreting": "Why was that referral or resource important for this patient's outcome?",
           "responding": "What did you do to connect the patient with the right resource or team member?",
           "reflecting": "What did you learn about identifying and using referral sources in clinical practice?",
-          "selfCheck": "Were you beginning to see beyond the immediate clinical needs to the patient's broader situation — discharge, follow-up, support — or was that still hard to see from your current vantage point?"
+          "selfCheck": "Were you beginning to see beyond the immediate clinical needs to the patient's broader situation \u2014 discharge, follow-up, support \u2014 or was that still hard to see from your current vantage point?"
         },
         {
           "key": "c",
@@ -2019,7 +2019,7 @@
           "interpreting": "How did you weigh different perspectives or information to form your judgment?",
           "responding": "How did you apply clinical judgment and feedback from team members to your care decisions?",
           "reflecting": "What evidence do you recognize that informs you that your decisions worked out for the patient?",
-          "selfCheck": "Did forming your clinical judgment require conscious, deliberate effort — thinking it through step by step? Were you beginning to justify your reasoning, or did you rely mainly on what others told you to do?"
+          "selfCheck": "Did forming your clinical judgment require conscious, deliberate effort \u2014 thinking it through step by step? Were you beginning to justify your reasoning, or did you rely mainly on what others told you to do?"
         }
       ],
       "closingPrompts": null
@@ -2054,7 +2054,7 @@
           "interpreting": "How could those issues affect the patient's discharge plan or follow-up care?",
           "responding": "What support, referral, or teaching would help reduce those barriers?",
           "reflecting": "What did this situation teach you about the connection between economics and health outcomes?",
-          "selfCheck": "Were you beginning to see the whole patient situation — life beyond the hospital — or was discharge planning still abstract? Could you anticipate barriers, or did they become apparent only when someone else pointed them out?"
+          "selfCheck": "Were you beginning to see the whole patient situation \u2014 life beyond the hospital \u2014 or was discharge planning still abstract? Could you anticipate barriers, or did they become apparent only when someone else pointed them out?"
         },
         {
           "key": "c",
@@ -2089,7 +2089,7 @@
           "interpreting": "How did you connect patient data, diagnosis, and priorities into a care plan?",
           "responding": "What interventions did you carry out, and what outcomes were you hoping to achieve?",
           "reflecting": "How did the patient respond, and what would you revise in your plan of care next time?",
-          "selfCheck": "Were you beginning to organize your care around plans and goals for this patient, or still working through tasks one at a time? Did you worry about missing something important — and did that help you be more thorough in your planning?"
+          "selfCheck": "Were you beginning to organize your care around plans and goals for this patient, or still working through tasks one at a time? Did you worry about missing something important \u2014 and did that help you be more thorough in your planning?"
         },
         {
           "key": "b",
@@ -2098,7 +2098,7 @@
           "interpreting": "Why was communication especially important to safe or effective care here?",
           "responding": "How did you communicate clearly with the patient, family, or team?",
           "reflecting": "What feedback from the interaction shows your communication was or was not effective?",
-          "selfCheck": "Were you beginning to notice that the patient responded to your communication — positively or negatively? Could you adjust in the moment, or did you realize what to change only afterward?"
+          "selfCheck": "Were you beginning to notice that the patient responded to your communication \u2014 positively or negatively? Could you adjust in the moment, or did you realize what to change only afterward?"
         },
         {
           "key": "c",
@@ -2116,7 +2116,7 @@
           "interpreting": "Why were respect and caring central to this encounter?",
           "responding": "What did you do to preserve privacy, comfort, and dignity?",
           "reflecting": "How might the patient describe how you treated them?",
-          "selfCheck": "Were you beginning to see this patient's pain, suffering, and vulnerability as something that matters to you personally — not just clinically? Are you moving beyond task completion toward genuine presence with the patient?"
+          "selfCheck": "Were you beginning to see this patient's pain, suffering, and vulnerability as something that matters to you personally \u2014 not just clinically? Are you moving beyond task completion toward genuine presence with the patient?"
         },
         {
           "key": "e",
@@ -2136,9 +2136,9 @@
       "sloNumber": "8",
       "focus": "Demonstrate therapeutic communication skills with families.",
       "questions": [
-        "Noticing: What communication cues — verbal and nonverbal — from the patient and family did you begin to organize? What is the patient/family particularly concerned about? What struck you about how they communicate?",
+        "Noticing: What communication cues \u2014 verbal and nonverbal \u2014 from the patient and family did you begin to organize? What is the patient/family particularly concerned about? What struck you about how they communicate?",
         "Interpreting: How did you connect knowledge of therapeutic communication with the specific cultural and developmental context? Talk about cultural or social factors that may interfere with effective communication.",
-        "Responding: How did you plan and implement therapeutic communication deliberately — teach-back, open-ended questions, SBAR? How do you provide comfort through your communication specific to this patient?",
+        "Responding: How did you plan and implement therapeutic communication deliberately \u2014 teach-back, open-ended questions, SBAR? How do you provide comfort through your communication specific to this patient?",
         "Reflecting: How did the patient and family respond? What did their responses make you realize about your approach? What about your own communication skills and cultural biases became clearer?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses confirmed, challenged, or refined your thinking? 3. Were there cues you initially overlooked or misinterpreted? 4. What would you do the same and what differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
@@ -2151,7 +2151,7 @@
           "interpreting": "What did that tell you about how to build trust and maintain professional boundaries?",
           "responding": "How did you begin, continue, and close the interaction therapeutically?",
           "reflecting": "What would you improve next time about how you establish or end communication?",
-          "selfCheck": "Were you beginning to notice that the patient responded to your interactions — and could you use that feedback to adjust your approach? Or were you still focused on what to say rather than how the patient was receiving it?"
+          "selfCheck": "Were you beginning to notice that the patient responded to your interactions \u2014 and could you use that feedback to adjust your approach? Or were you still focused on what to say rather than how the patient was receiving it?"
         },
         {
           "key": "b",
@@ -2160,7 +2160,7 @@
           "interpreting": "How did you make sense of the patient's readiness or hesitancy?",
           "responding": "What open-ended questions, reflections, affirmations, or summaries did you use?",
           "reflecting": "How did the patient respond to that approach, and what did you learn about guiding change talk?",
-          "selfCheck": "Did using MI techniques require conscious, deliberate effort — thinking about each question before you asked it? Were you beginning to adapt your approach based on the patient's responses, or still practicing the technique itself?"
+          "selfCheck": "Did using MI techniques require conscious, deliberate effort \u2014 thinking about each question before you asked it? Were you beginning to adapt your approach based on the patient's responses, or still practicing the technique itself?"
         },
         {
           "key": "c",
@@ -2169,7 +2169,7 @@
           "interpreting": "How did those psychosocial factors shape what the patient or family needed from you?",
           "responding": "How did you adjust your tone, words, pace, or presence to support emotional well-being?",
           "reflecting": "What did this interaction teach you about communicating beyond the physical problem?",
-          "selfCheck": "Were you beginning to see the person behind the clinical data — their fears, hopes, coping, and family? Or were psychosocial needs still secondary to physical care in your awareness?"
+          "selfCheck": "Were you beginning to see the person behind the clinical data \u2014 their fears, hopes, coping, and family? Or were psychosocial needs still secondary to physical care in your awareness?"
         },
         {
           "key": "d",
@@ -2178,7 +2178,7 @@
           "interpreting": "How did those factors influence how the patient or family understood you?",
           "responding": "What did you do to make your communication more respectful, clear, and culturally aware?",
           "reflecting": "What assumptions or habits in your communication style became visible through this interaction?",
-          "selfCheck": "Were you beginning to know what matters to this patient and family — their values, preferences, and priorities? Or were cultural considerations still something you thought about in general rather than for this specific person?"
+          "selfCheck": "Were you beginning to know what matters to this patient and family \u2014 their values, preferences, and priorities? Or were cultural considerations still something you thought about in general rather than for this specific person?"
         }
       ],
       "closingPrompts": null
@@ -2189,7 +2189,7 @@
       "sloNumber": "9",
       "focus": "Implement evidence-based, safe care using clinical judgment and technology.",
       "questions": [
-        "Noticing: What patterns in patient data did you begin to organize into meaningful observations? What cues or signs caught your attention — what do they mean? What were you expecting to find? What stood out as most important?",
+        "Noticing: What patterns in patient data did you begin to organize into meaningful observations? What cues or signs caught your attention \u2014 what do they mean? What were you expecting to find? What stood out as most important?",
         "Interpreting: How did you begin to connect data and patient cues into meaningful clinical patterns? What key hunches did you have, and what confirmed or disconfirmed them? How did you prioritize?",
         "Responding: What specific clinical actions did you take, and how did they align with patient needs? What outcomes were you hoping for? Identify and discuss nursing interventions needed to prevent 'never events.'",
         "Reflecting: What were the outcomes compared to expectations? Were there cues you initially overlooked? What did you learn that might help next time? How did your decisions impact safety and care?",
@@ -2213,7 +2213,7 @@
           "interpreting": "What pattern did you begin to see when you looked at the data together instead of separately?",
           "responding": "How did those patterns influence your ongoing assessment or reassessment?",
           "reflecting": "Were there subtle cues you initially missed or underestimated, and how would recognizing them sooner have changed your thinking?",
-          "selfCheck": "Were you beginning to grasp this situation as a whole — seeing the big picture rather than just parts? Was this a familiar clinical picture where you could anticipate concerns, or unfamiliar territory where you were working to make sense of it?"
+          "selfCheck": "Were you beginning to grasp this situation as a whole \u2014 seeing the big picture rather than just parts? Was this a familiar clinical picture where you could anticipate concerns, or unfamiliar territory where you were working to make sense of it?"
         },
         {
           "key": "c",
@@ -2231,7 +2231,7 @@
           "interpreting": "How did you decide what mattered most and what could wait?",
           "responding": "What additional assessment, question, or data did you seek to better understand the situation?",
           "reflecting": "Did you spend too much attention on less important details, or did you stay focused on the priority problem?",
-          "selfCheck": "Were you beginning to see which data was most clinically relevant and which could wait, or did everything still feel equally important? Are you developing a sense of salience — knowing what stands out?"
+          "selfCheck": "Were you beginning to see which data was most clinically relevant and which could wait, or did everything still feel equally important? Are you developing a sense of salience \u2014 knowing what stands out?"
         },
         {
           "key": "e",
@@ -2240,7 +2240,7 @@
           "interpreting": "What hunches or hypotheses did you have, and what findings confirmed or disconfirmed them?",
           "responding": "Based on that pattern, what intervention plan made the most sense?",
           "reflecting": "How accurate was your interpretation, and what did this teach you about linking cues to likely problems?",
-          "selfCheck": "With conscious, deliberate effort, were you able to connect your theoretical knowledge to what you observed in this patient? Were you beginning to justify your reasoning — even to yourself — rather than just following instructions?"
+          "selfCheck": "With conscious, deliberate effort, were you able to connect your theoretical knowledge to what you observed in this patient? Were you beginning to justify your reasoning \u2014 even to yourself \u2014 rather than just following instructions?"
         },
         {
           "key": "f",
@@ -2267,7 +2267,7 @@
           "interpreting": "Why did you make the decisions you made at that moment?",
           "responding": "What did you do that was helpful, and what might you have done differently?",
           "reflecting": "What did you learn from this situation that will guide your future practice, clinical judgment, and patient safety decisions?",
-          "selfCheck": "Are you beginning to evaluate your own clinical reasoning — connecting what you thought, what you did, and how the patient responded? Do you feel you had enough knowledge for this situation, or are there gaps that concern you? That awareness of your own gaps is itself a sign of growth."
+          "selfCheck": "Are you beginning to evaluate your own clinical reasoning \u2014 connecting what you thought, what you did, and how the patient responded? Do you feel you had enough knowledge for this situation, or are there gaps that concern you? That awareness of your own gaps is itself a sign of growth."
         }
       ],
       "closingPrompts": null
@@ -2278,9 +2278,9 @@
       "sloNumber": "1",
       "focus": "Analyze ethical and legal concerns experienced by clients, families, and nurses associated with acute and chronic client care, including the dying process.",
       "questions": [
-        "A. Demonstrates ethical behavior in accord with ANA Code of Ethics — Noticing: What ethical, legal, or regulatory concern stood out most clearly, and whose interests were affected? Interpreting: How did you make sense of the dilemma, including conflict between patient rights, protocols, safety, or the greater good? Responding: How did you act, communicate, or advocate reflecting the ANA Code of Ethics? Reflecting: What did this teach you about recognizing and articulating ethical dilemmas?",
-        "B. Applies ethical principles to identify choices and consequences — Noticing: What decision point required you to consider ethical choices and consequences? Interpreting: Which ethical principles were most relevant, and how did they shape reasoning? Responding: What option did you support, and how did you think through consequences? Reflecting: How well did your reasoning account for immediate and longer-term consequences?",
-        "C. Engages in reflection about choices, frameworks, and implications — Noticing: What choice or action feels most important to reflect on now? Interpreting: How do you understand that decision through an ethical framework? Responding: What would you keep the same or change? Reflecting: What did this teach you about how your ethical reasoning is developing toward the RN role?",
+        "A. Demonstrates ethical behavior in accord with ANA Code of Ethics \u2014 Noticing: What ethical, legal, or regulatory concern stood out most clearly, and whose interests were affected? Interpreting: How did you make sense of the dilemma, including conflict between patient rights, protocols, safety, or the greater good? Responding: How did you act, communicate, or advocate reflecting the ANA Code of Ethics? Reflecting: What did this teach you about recognizing and articulating ethical dilemmas?",
+        "B. Applies ethical principles to identify choices and consequences \u2014 Noticing: What decision point required you to consider ethical choices and consequences? Interpreting: Which ethical principles were most relevant, and how did they shape reasoning? Responding: What option did you support, and how did you think through consequences? Reflecting: How well did your reasoning account for immediate and longer-term consequences?",
+        "C. Engages in reflection about choices, frameworks, and implications \u2014 Noticing: What choice or action feels most important to reflect on now? Interpreting: How do you understand that decision through an ethical framework? Responding: What would you keep the same or change? Reflecting: What did this teach you about how your ethical reasoning is developing toward the RN role?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2318,9 +2318,9 @@
       "sloNumber": "2",
       "focus": "Propose adjustments to the plan of care after reflecting on clients level of comfort and ability to manage symptoms.",
       "questions": [
-        "A. Examines personal and professional patterns; practices self-reflection — Noticing: What about patient comfort, distress, or symptom pattern made you reconsider the plan? Interpreting: How did you connect what you observed with your own clinical habits, assumptions, or patterns? Responding: What adjustment did you make or propose? Reflecting: What did this teach you about how self-reflection can improve outcomes?",
-        "B. Seeks and responds to constructive feedback — Noticing: What made feedback especially important? Interpreting: How did the feedback help you better understand the patient's needs or your actions? Responding: How did you use that feedback to modify care, and how did you provide feedback to others? Reflecting: What did this teach you about receiving and using feedback professionally?",
-        "C. Acknowledges implications for personal and professional growth — Noticing: What did this situation reveal about your readiness, confidence, or limitation? Interpreting: Why is this insight important for both personal and professional growth? Responding: What will you intentionally work on next? Reflecting: How is this experience shaping the kind of nurse you are becoming?",
+        "A. Examines personal and professional patterns; practices self-reflection \u2014 Noticing: What about patient comfort, distress, or symptom pattern made you reconsider the plan? Interpreting: How did you connect what you observed with your own clinical habits, assumptions, or patterns? Responding: What adjustment did you make or propose? Reflecting: What did this teach you about how self-reflection can improve outcomes?",
+        "B. Seeks and responds to constructive feedback \u2014 Noticing: What made feedback especially important? Interpreting: How did the feedback help you better understand the patient's needs or your actions? Responding: How did you use that feedback to modify care, and how did you provide feedback to others? Reflecting: What did this teach you about receiving and using feedback professionally?",
+        "C. Acknowledges implications for personal and professional growth \u2014 Noticing: What did this situation reveal about your readiness, confidence, or limitation? Interpreting: Why is this insight important for both personal and professional growth? Responding: What will you intentionally work on next? Reflecting: How is this experience shaping the kind of nurse you are becoming?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2358,10 +2358,10 @@
       "sloNumber": "3",
       "focus": "Incorporate evidence-based interventions in providing care to groups of clients in acute care and mental health settings.",
       "questions": [
-        "A. Takes responsibility for learning needs; selects challenging experiences — Noticing: What showed you that deeper learning was needed? Interpreting: Why did this push you beyond routine care? Responding: How did you take initiative to seek learning or engage in complex care? Reflecting: What did this teach you about owning your learning at the N360 level?",
-        "B. Evaluates evidence supporting opinions and practice — Noticing: What intervention or usual practice made you stop and ask what evidence supported it? Interpreting: How did you weigh available evidence, patient context, and clinical reasoning? Responding: What evidence-based intervention did you support or perform, and why? Reflecting: What did this teach you about not accepting practice at face value?",
-        "C. Participates in additional learning; seeks information beyond assignments — Noticing: What question or uncertainty was not fully answered by routine preparation? Interpreting: Why was it important to investigate further? Responding: What additional learning did you pursue, and how did it affect your care? Reflecting: What did this teach you about self-directed learning as part of safe practice?",
-        "D. Volunteers to assist peers and contributes to group learning — Noticing: What learning need did you notice in your peers or clinical group? Interpreting: Why did supporting group learning matter? Responding: How did you assist peers or strengthen team readiness? Reflecting: What did this teach you about leadership through shared learning?",
+        "A. Takes responsibility for learning needs; selects challenging experiences \u2014 Noticing: What showed you that deeper learning was needed? Interpreting: Why did this push you beyond routine care? Responding: How did you take initiative to seek learning or engage in complex care? Reflecting: What did this teach you about owning your learning at the N360 level?",
+        "B. Evaluates evidence supporting opinions and practice \u2014 Noticing: What intervention or usual practice made you stop and ask what evidence supported it? Interpreting: How did you weigh available evidence, patient context, and clinical reasoning? Responding: What evidence-based intervention did you support or perform, and why? Reflecting: What did this teach you about not accepting practice at face value?",
+        "C. Participates in additional learning; seeks information beyond assignments \u2014 Noticing: What question or uncertainty was not fully answered by routine preparation? Interpreting: Why was it important to investigate further? Responding: What additional learning did you pursue, and how did it affect your care? Reflecting: What did this teach you about self-directed learning as part of safe practice?",
+        "D. Volunteers to assist peers and contributes to group learning \u2014 Noticing: What learning need did you notice in your peers or clinical group? Interpreting: Why did supporting group learning matter? Responding: How did you assist peers or strengthen team readiness? Reflecting: What did this teach you about leadership through shared learning?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2407,9 +2407,9 @@
       "sloNumber": "4",
       "focus": "Use management principles, strategies, and tools in caring for a group of patients.",
       "questions": [
-        "A. Identifies effective leadership; understands consequences with limited information — Noticing: What required leadership rather than just task completion? Interpreting: How did limited information affect your judgment or need to gather more data? Responding: What leadership behaviors did you demonstrate to keep care organized, safe, and moving forward? Reflecting: What did this teach you about making leadership decisions under uncertainty?",
-        "B. Prioritizes actions, organizes care, ensures comprehensive care, meets time commitments — Noticing: What priorities competed for your attention, and what made some more urgent? Interpreting: How did you decide what needed to happen first, what could wait, what needed follow-up? Responding: How did you organize your time, assessments, and follow-through? Reflecting: What did this teach you about managing multiple patients more like an RN?",
-        "C. Delegates ensuring scope, competency, clear communication, and agreement — Noticing: What task could appropriately be delegated? Interpreting: How did you determine whether delegation was safe, appropriate, and within scope? Responding: How did you delegate clearly, confirm understanding, and follow up? Reflecting: What did this teach you about delegation as a clinical judgment responsibility?",
+        "A. Identifies effective leadership; understands consequences with limited information \u2014 Noticing: What required leadership rather than just task completion? Interpreting: How did limited information affect your judgment or need to gather more data? Responding: What leadership behaviors did you demonstrate to keep care organized, safe, and moving forward? Reflecting: What did this teach you about making leadership decisions under uncertainty?",
+        "B. Prioritizes actions, organizes care, ensures comprehensive care, meets time commitments \u2014 Noticing: What priorities competed for your attention, and what made some more urgent? Interpreting: How did you decide what needed to happen first, what could wait, what needed follow-up? Responding: How did you organize your time, assessments, and follow-through? Reflecting: What did this teach you about managing multiple patients more like an RN?",
+        "C. Delegates ensuring scope, competency, clear communication, and agreement \u2014 Noticing: What task could appropriately be delegated? Interpreting: How did you determine whether delegation was safe, appropriate, and within scope? Responding: How did you delegate clearly, confirm understanding, and follow up? Reflecting: What did this teach you about delegation as a clinical judgment responsibility?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2447,10 +2447,10 @@
       "sloNumber": "5",
       "focus": "Work collaboratively with the healthcare team to create individualized care plans that promote health and well-being.",
       "questions": [
-        "A. Actively contributes to teamwork; offers help, shares information, consults — Noticing: What cues showed this situation required active teamwork and consultation? Interpreting: How did team input change, strengthen, or clarify your understanding? Responding: How did you contribute to problem-solving, information sharing, or decision-making? Reflecting: What did this teach you about your role in coordinated care?",
-        "B. Maintains positive relationships; works with varying points of view — Noticing: What differences in perspective, style, or priority emerged? Interpreting: How did those differences affect care planning or team function? Responding: How did you maintain a positive working relationship while contributing meaningfully? Reflecting: What did this teach you about working with different viewpoints?",
-        "C. Asks for assistance and feedback; gives feedback appropriately — Noticing: What made assistance or feedback necessary? Interpreting: Why was it important to involve others rather than work in isolation? Responding: How did you seek help, receive feedback, or provide feedback? Reflecting: What did this teach you about humility, accountability, and team communication?",
-        "D. Recognizes need to manage health barriers and stressors; sets priorities — Noticing: What personal or team stressors affected the situation? Interpreting: How did those stressors influence your priorities or ability to function? Responding: What did you do to stay focused and continue providing safe care? Reflecting: What did this teach you about managing yourself as part of safe team practice?",
+        "A. Actively contributes to teamwork; offers help, shares information, consults \u2014 Noticing: What cues showed this situation required active teamwork and consultation? Interpreting: How did team input change, strengthen, or clarify your understanding? Responding: How did you contribute to problem-solving, information sharing, or decision-making? Reflecting: What did this teach you about your role in coordinated care?",
+        "B. Maintains positive relationships; works with varying points of view \u2014 Noticing: What differences in perspective, style, or priority emerged? Interpreting: How did those differences affect care planning or team function? Responding: How did you maintain a positive working relationship while contributing meaningfully? Reflecting: What did this teach you about working with different viewpoints?",
+        "C. Asks for assistance and feedback; gives feedback appropriately \u2014 Noticing: What made assistance or feedback necessary? Interpreting: Why was it important to involve others rather than work in isolation? Responding: How did you seek help, receive feedback, or provide feedback? Reflecting: What did this teach you about humility, accountability, and team communication?",
+        "D. Recognizes need to manage health barriers and stressors; sets priorities \u2014 Noticing: What personal or team stressors affected the situation? Interpreting: How did those stressors influence your priorities or ability to function? Responding: What did you do to stay focused and continue providing safe care? Reflecting: What did this teach you about managing yourself as part of safe team practice?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2496,9 +2496,9 @@
       "sloNumber": "6",
       "focus": "Assist clients to obtain community health resources for health promotion and maintenance.",
       "questions": [
-        "A. Recognizes current and needed resources — Noticing: What unmet need made you recognize the patient required resources beyond bedside care? Interpreting: How did you determine which resources were available and most relevant? Responding: What resource, referral, or support did you help identify? Reflecting: What did this teach you about seeing resource needs as part of nursing care?",
-        "B. Makes contacts with community agencies; assists clients to reduce barriers — Noticing: What barrier to access, follow-up, or treatment stood out? Interpreting: How did that barrier affect continuity of care? Responding: With faculty permission, how did you assist with connecting the patient to services? Reflecting: What did this teach you about nursing action beyond the unit?",
-        "C. Identifies impact of laws, regulations on resource availability — Noticing: What system issue, rule, or structural barrier affected resource availability? Interpreting: How did you connect that system factor to the patient's actual options? Responding: How did you account for those realities when planning care or referrals? Reflecting: What did this teach you about how systems shape patient outcomes?",
+        "A. Recognizes current and needed resources \u2014 Noticing: What unmet need made you recognize the patient required resources beyond bedside care? Interpreting: How did you determine which resources were available and most relevant? Responding: What resource, referral, or support did you help identify? Reflecting: What did this teach you about seeing resource needs as part of nursing care?",
+        "B. Makes contacts with community agencies; assists clients to reduce barriers \u2014 Noticing: What barrier to access, follow-up, or treatment stood out? Interpreting: How did that barrier affect continuity of care? Responding: With faculty permission, how did you assist with connecting the patient to services? Reflecting: What did this teach you about nursing action beyond the unit?",
+        "C. Identifies impact of laws, regulations on resource availability \u2014 Noticing: What system issue, rule, or structural barrier affected resource availability? Interpreting: How did you connect that system factor to the patient's actual options? Responding: How did you account for those realities when planning care or referrals? Reflecting: What did this teach you about how systems shape patient outcomes?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2536,9 +2536,9 @@
       "sloNumber": "7",
       "focus": "Advocate for care that is specifically tailored to the unique needs and circumstances of the client and family.",
       "questions": [
-        "A. Adapts personal style; moves out of comfort zone — Noticing: What patient need required you to adjust your style or move outside your comfort zone? Interpreting: Why was that adjustment necessary for truly client-centered care? Responding: How did you adapt while maintaining professionalism and boundaries? Reflecting: What did this teach you about flexibility and maturity in relationship-centered nursing?",
-        "B. Uses understanding of cultural, economic, environmental, and social differences — Noticing: What patient-specific factors most shaped this situation? Interpreting: How did those factors affect priorities, coping, decisions, or risks? Responding: How did you account for uniqueness in your care or advocacy? Reflecting: What did this teach you about individualizing care beyond the diagnosis?",
-        "C. Incorporates client/family perspective; collaborates; accepts attitudes — Noticing: What did the patient or family reveal about what mattered most? Interpreting: How did that perspective affect the care plan? Responding: How did you include the client or family in planning and adjust care to reflect their preferences? Reflecting: What did this teach you about advocacy as partnership rather than control?",
+        "A. Adapts personal style; moves out of comfort zone \u2014 Noticing: What patient need required you to adjust your style or move outside your comfort zone? Interpreting: Why was that adjustment necessary for truly client-centered care? Responding: How did you adapt while maintaining professionalism and boundaries? Reflecting: What did this teach you about flexibility and maturity in relationship-centered nursing?",
+        "B. Uses understanding of cultural, economic, environmental, and social differences \u2014 Noticing: What patient-specific factors most shaped this situation? Interpreting: How did those factors affect priorities, coping, decisions, or risks? Responding: How did you account for uniqueness in your care or advocacy? Reflecting: What did this teach you about individualizing care beyond the diagnosis?",
+        "C. Incorporates client/family perspective; collaborates; accepts attitudes \u2014 Noticing: What did the patient or family reveal about what mattered most? Interpreting: How did that perspective affect the care plan? Responding: How did you include the client or family in planning and adjust care to reflect their preferences? Reflecting: What did this teach you about advocacy as partnership rather than control?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2576,10 +2576,10 @@
       "sloNumber": "8",
       "focus": "Demonstrate effective, culturally sensitive communication skills with clients, families, and health team members.",
       "questions": [
-        "A. Aware of own communication skills, deficits, biases — Noticing: What made you aware of your communication strengths, deficits, or biases? Interpreting: How did those personal factors influence the effectiveness of the interaction? Responding: What did you do to communicate more intentionally, respectfully, and therapeutically? Reflecting: What did this teach you about self-awareness in communication?",
-        "B. Identifies how culture, language, and neuro-disability affect communication — Noticing: What communication barrier related to culture, language, cognition, or neuro-disability was present? Interpreting: How did that barrier affect understanding, trust, or participation? Responding: What strategy did you use to overcome the barrier? Reflecting: What did this teach you about adapting communication in complex situations?",
-        "C. Adapts verbal and nonverbal styles; demonstrates caring through tone — Noticing: What verbal or nonverbal cues from the patient or family guided your approach? Interpreting: How did you decide what tone, pacing, body language, or directness was needed? Responding: How did you adapt your communication to support the patient and family? Reflecting: What did this teach you about the power of tone, presence, and nonverbal care?",
-        "D. Assesses and provides patient/family education that is evidence-based — Noticing: What educational need, interest, or readiness issue became clear? Interpreting: How did you decide what teaching was appropriate and within your role? Responding: What education did you provide, reinforce, or clarify? Reflecting: What did this teach you about education as part of therapeutic responsiveness?",
+        "A. Aware of own communication skills, deficits, biases \u2014 Noticing: What made you aware of your communication strengths, deficits, or biases? Interpreting: How did those personal factors influence the effectiveness of the interaction? Responding: What did you do to communicate more intentionally, respectfully, and therapeutically? Reflecting: What did this teach you about self-awareness in communication?",
+        "B. Identifies how culture, language, and neuro-disability affect communication \u2014 Noticing: What communication barrier related to culture, language, cognition, or neuro-disability was present? Interpreting: How did that barrier affect understanding, trust, or participation? Responding: What strategy did you use to overcome the barrier? Reflecting: What did this teach you about adapting communication in complex situations?",
+        "C. Adapts verbal and nonverbal styles; demonstrates caring through tone \u2014 Noticing: What verbal or nonverbal cues from the patient or family guided your approach? Interpreting: How did you decide what tone, pacing, body language, or directness was needed? Responding: How did you adapt your communication to support the patient and family? Reflecting: What did this teach you about the power of tone, presence, and nonverbal care?",
+        "D. Assesses and provides patient/family education that is evidence-based \u2014 Noticing: What educational need, interest, or readiness issue became clear? Interpreting: How did you decide what teaching was appropriate and within your role? Responding: What education did you provide, reinforce, or clarify? Reflecting: What did this teach you about education as part of therapeutic responsiveness?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2625,11 +2625,11 @@
       "sloNumber": "9",
       "focus": "Demonstrate safe and effective clinical judgment and use of technology in the management of client care.",
       "questions": [
-        "A. Notes and makes sense of patterns in client data — Noticing: What cues, trends, or data patterns stood out as most clinically significant? Interpreting: How did you compare what you were seeing with known patterns from nursing knowledge, research, experience, or intuition? Responding: How did that interpretation shape your assessment priorities or next action? Reflecting: What did this teach you about moving from isolated findings to meaningful clinical patterns?",
-        "B. Develops intervention plans justified by likelihood for success — Noticing: What patient needs or risks most clearly drove your intervention planning? Interpreting: How did you determine which intervention was most likely to succeed for this patient? Responding: What plan did you develop, and what evidence or reasoning supported it? Reflecting: How well did your plan fit the patient's condition and likely trajectory?",
-        "C. Explains interventions; calms/reassures; directs team; checks understanding — Noticing: What did the patient, family, or team need to understand for care to proceed safely? Interpreting: Why was explanation, reassurance, direction, or checking understanding especially important? Responding: How did you explain, calm, direct, and verify understanding? Reflecting: What did this teach you about communication as part of clinical judgment?",
-        "D. Tailors interventions; monitors progress; adjusts treatment — Noticing: What patient-specific factor made individualized treatment especially important? Interpreting: How did you decide the patient's response required change or continuation? Responding: How did you tailor the intervention and monitor closely? Reflecting: What did this teach you about adapting care based on real patient response?",
-        "E. Independently evaluates outcomes and client response; revises plan — Noticing: What outcome told you whether the plan was working? Interpreting: How did you make sense of that outcome in relation to your original reasoning? Responding: How did you evaluate outcomes independently and with the team, and revise the plan? Reflecting: What did this teach you about competent-to-practice-ready clinical judgment?",
+        "A. Notes and makes sense of patterns in client data \u2014 Noticing: What cues, trends, or data patterns stood out as most clinically significant? Interpreting: How did you compare what you were seeing with known patterns from nursing knowledge, research, experience, or intuition? Responding: How did that interpretation shape your assessment priorities or next action? Reflecting: What did this teach you about moving from isolated findings to meaningful clinical patterns?",
+        "B. Develops intervention plans justified by likelihood for success \u2014 Noticing: What patient needs or risks most clearly drove your intervention planning? Interpreting: How did you determine which intervention was most likely to succeed for this patient? Responding: What plan did you develop, and what evidence or reasoning supported it? Reflecting: How well did your plan fit the patient's condition and likely trajectory?",
+        "C. Explains interventions; calms/reassures; directs team; checks understanding \u2014 Noticing: What did the patient, family, or team need to understand for care to proceed safely? Interpreting: Why was explanation, reassurance, direction, or checking understanding especially important? Responding: How did you explain, calm, direct, and verify understanding? Reflecting: What did this teach you about communication as part of clinical judgment?",
+        "D. Tailors interventions; monitors progress; adjusts treatment \u2014 Noticing: What patient-specific factor made individualized treatment especially important? Interpreting: How did you decide the patient's response required change or continuation? Responding: How did you tailor the intervention and monitor closely? Reflecting: What did this teach you about adapting care based on real patient response?",
+        "E. Independently evaluates outcomes and client response; revises plan \u2014 Noticing: What outcome told you whether the plan was working? Interpreting: How did you make sense of that outcome in relation to your original reasoning? Responding: How did you evaluate outcomes independently and with the team, and revise the plan? Reflecting: What did this teach you about competent-to-practice-ready clinical judgment?",
         "CLOSING PROMPTS: 1. How did your clinical decisions affect the patient's safety, well-being, or overall care experience? 2. What patient responses or outcomes confirmed, challenged, or refined your thinking? 3. In hindsight, were there any cues you initially overlooked or misinterpreted? 4. If faced with a similar situation again, what would you do the same and what would you do differently? 5. What does this experience show you about your strengths and your next step toward practice readiness?"
       ],
       "requiredFor": [],
@@ -2685,7 +2685,7 @@
       "questions": [
         {
           "key": "a",
-          "title": "Understands and follows ANA Code of Ethics; Standards of Practice; Hawaiʻi Nurse Practice Act",
+          "title": "Understands and follows ANA Code of Ethics; Standards of Practice; Hawai\u02bbi Nurse Practice Act",
           "noticing": "What in this situation made you think about ethics, standards of practice, or the Nurse Practice Act?",
           "interpreting": "What rule, policy, or instructor guidance helped you understand what was expected?",
           "responding": "What did you do to follow ethical and professional standards?",
@@ -2720,7 +2720,7 @@
       "subcategories": [
         {
           "key": "A",
-          "title": "Understands and follows ANA Code of Ethics; Standards of Practice; Hawaiʻi Nurse Practice Act",
+          "title": "Understands and follows ANA Code of Ethics; Standards of Practice; Hawai\u02bbi Nurse Practice Act",
           "noticing": "What in this situation made you think about ethics, standards of practice, or the Nurse Practice Act?",
           "interpreting": "What rule, policy, or instructor guidance helped you understand what was expected?",
           "responding": "What did you do to follow ethical and professional standards?",
@@ -4002,7 +4002,7 @@
       "currentCourse": "NURS 220",
       "currentSite": "Medical-Surgical",
       "progressStatus": "Behind",
-      "flag": "Behind on reflections — last submission 12 days ago",
+      "flag": "Behind on reflections \u2014 last submission 12 days ago",
       "note": null,
       "enrolledISO": "2025-08-26",
       "status": "active",
@@ -4142,7 +4142,7 @@
       "type": "attendance.recorded",
       "status": "present",
       "instructor": "Dr. Wendy Dahmen",
-      "note": "First clinical day — on time, prepared.",
+      "note": "First clinical day \u2014 on time, prepared.",
       "studentId": "stu_sarah",
       "sequence": 1,
       "isDemo": true,
@@ -4155,7 +4155,7 @@
       "site": "Hale Makua (LTC)",
       "sloNum": "7.0",
       "type": "reflection.submitted",
-      "title": "First LTC shift — patient with mid-stage dementia",
+      "title": "First LTC shift \u2014 patient with mid-stage dementia",
       "studentId": "stu_sarah",
       "sequence": 2,
       "isDemo": true,
@@ -4183,7 +4183,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Wendy Dahmen",
       "score": 3,
-      "note": "Competent — task completion solid; building confidence with families.",
+      "note": "Competent \u2014 task completion solid; building confidence with families.",
       "studentId": "stu_sarah",
       "sequence": 4,
       "isDemo": true,
@@ -4212,7 +4212,7 @@
       "type": "attendance.recorded",
       "status": "absent",
       "instructor": "Dr. Wendy Dahmen",
-      "note": "Called in sick — documented per program policy, not pattern.",
+      "note": "Called in sick \u2014 documented per program policy, not pattern.",
       "studentId": "stu_sarah",
       "sequence": 6,
       "isDemo": true,
@@ -4239,7 +4239,7 @@
       "type": "incident.recorded",
       "severity": "near-miss",
       "instructor": "Dr. Wendy Dahmen",
-      "note": "Caught own error before administering wrong dose. Self-reported. Good clinical judgment under pressure — counted as STRENGTH not failure.",
+      "note": "Caught own error before administering wrong dose. Self-reported. Good clinical judgment under pressure \u2014 counted as STRENGTH not failure.",
       "studentId": "stu_sarah",
       "sequence": 8,
       "isDemo": true,
@@ -4268,7 +4268,7 @@
       "site": "Medical-Surgical",
       "sloNum": "1.0",
       "type": "reflection.submitted",
-      "title": "Ethical dilemma — patient refusing pain medication",
+      "title": "Ethical dilemma \u2014 patient refusing pain medication",
       "studentId": "stu_sarah",
       "sequence": 10,
       "isDemo": true,
@@ -4283,7 +4283,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 4,
-      "note": "Proficient — strong ethical reasoning; pushed back appropriately on team decision.",
+      "note": "Proficient \u2014 strong ethical reasoning; pushed back appropriately on team decision.",
       "studentId": "stu_sarah",
       "sequence": 11,
       "isDemo": true,
@@ -4311,7 +4311,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 2,
-      "note": "Beginner — hesitant to delegate; works through it with debrief.",
+      "note": "Beginner \u2014 hesitant to delegate; works through it with debrief.",
       "studentId": "stu_sarah",
       "sequence": 13,
       "isDemo": true,
@@ -4326,7 +4326,7 @@
       "instructor": "Dr. Ruthie Clearwater",
       "score": 5,
       "dimension": "team",
-      "note": "Took initiative to brief next shift on patient priorities — beyond what assignment required.",
+      "note": "Took initiative to brief next shift on patient priorities \u2014 beyond what assignment required.",
       "studentId": "stu_sarah",
       "sequence": 14,
       "isDemo": true,
@@ -4341,7 +4341,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 3,
-      "note": "Competent — delegated wound care to LPN appropriately, followed up.",
+      "note": "Competent \u2014 delegated wound care to LPN appropriately, followed up.",
       "studentId": "stu_sarah",
       "sequence": 15,
       "isDemo": true,
@@ -4355,7 +4355,7 @@
       "type": "incident.recorded",
       "severity": "documentation",
       "instructor": "Dr. Ruthie Clearwater",
-      "note": "Late charting on med pass — patient unaffected, addressed in shift huddle. Pattern check at end of term.",
+      "note": "Late charting on med pass \u2014 patient unaffected, addressed in shift huddle. Pattern check at end of term.",
       "studentId": "stu_sarah",
       "sequence": 16,
       "isDemo": true,
@@ -4398,7 +4398,7 @@
       "site": "Medical-Surgical",
       "sloNum": "8.0",
       "type": "reflection.submitted",
-      "title": "Patient family meeting — managing emotional load (overdue grading)",
+      "title": "Patient family meeting \u2014 managing emotional load (overdue grading)",
       "isDemo": true,
       "createdAt": "2026-04-29"
     },
@@ -4412,7 +4412,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 2,
-      "note": "Beginner — hesitant to delegate medication pass during full assignment; defaulted to doing everything himself.",
+      "note": "Beginner \u2014 hesitant to delegate medication pass during full assignment; defaulted to doing everything himself.",
       "isDemo": true,
       "createdAt": "2026-02-19"
     },
@@ -4426,7 +4426,7 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 2,
-      "note": "Beginner — froze when sim instructor introduced second admission; needed prompt to call for help.",
+      "note": "Beginner \u2014 froze when sim instructor introduced second admission; needed prompt to call for help.",
       "isDemo": true,
       "createdAt": "2026-03-05"
     },
@@ -4440,9 +4440,247 @@
       "type": "slo.observed",
       "instructor": "Dr. Ruthie Clearwater",
       "score": 3,
-      "note": "Competent — delegated vitals to LPN; followed up appropriately.",
+      "note": "Competent \u2014 delegated vitals to LPN; followed up appropriately.",
       "isDemo": true,
       "createdAt": "2026-04-09"
+    },
+    {
+      "entryId": "stu_aaron_001",
+      "date": "2026-01-15",
+      "course": "NURS 320",
+      "site": "MMMG",
+      "type": "attendance.recorded",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "First pediatric clinical day. Oriented to unit, observed patient handoff.",
+      "studentId": "stu_aaron",
+      "sequence": 1,
+      "isDemo": true,
+      "createdAt": "2026-01-15"
+    },
+    {
+      "entryId": "stu_aaron_002",
+      "date": "2026-02-12",
+      "course": "NURS 320",
+      "site": "MMMG",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Competent \u2014 thorough pediatric assessment; used FACES scale correctly with non-verbal child.",
+      "studentId": "stu_aaron",
+      "sequence": 2,
+      "isDemo": true,
+      "createdAt": "2026-02-12"
+    },
+    {
+      "entryId": "stu_aaron_003",
+      "date": "2026-03-19",
+      "course": "NURS 320",
+      "site": "MMMG",
+      "type": "reflection.submitted",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "",
+      "studentId": "stu_aaron",
+      "sequence": 3,
+      "isDemo": true,
+      "createdAt": "2026-03-19"
+    },
+    {
+      "entryId": "stu_aaron_004",
+      "date": "2026-05-08",
+      "course": "NURS 320",
+      "site": "MMMG",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Proficient \u2014 navigated interpreter workflow independently; family rapport strong.",
+      "studentId": "stu_aaron",
+      "sequence": 4,
+      "isDemo": true,
+      "createdAt": "2026-05-08"
+    },
+    {
+      "entryId": "stu_priya_001",
+      "date": "2025-09-10",
+      "course": "NURS 220",
+      "site": "Simulation",
+      "type": "attendance.recorded",
+      "status": "present",
+      "instructor": "Dr. Wendy Dahmen",
+      "note": "First simulation day. Oriented to hi-fidelity mannequin environment.",
+      "studentId": "stu_priya",
+      "sequence": 1,
+      "isDemo": true,
+      "createdAt": "2025-09-10"
+    },
+    {
+      "entryId": "stu_priya_002",
+      "date": "2025-10-15",
+      "course": "NURS 220",
+      "site": "Simulation",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Wendy Dahmen",
+      "note": "Expert \u2014 assessed deteriorating patient faster than any cohort peer; called rapid response correctly.",
+      "studentId": "stu_priya",
+      "sequence": 2,
+      "isDemo": true,
+      "createdAt": "2025-10-15"
+    },
+    {
+      "entryId": "stu_priya_003",
+      "date": "2025-11-20",
+      "course": "NURS 220",
+      "site": "Simulation",
+      "type": "reflection.submitted",
+      "status": "present",
+      "instructor": "Dr. Wendy Dahmen",
+      "note": "",
+      "studentId": "stu_priya",
+      "sequence": 3,
+      "isDemo": true,
+      "createdAt": "2025-11-20"
+    },
+    {
+      "entryId": "stu_priya_004",
+      "date": "2026-01-28",
+      "course": "NURS 220",
+      "site": "Simulation",
+      "type": "grade.locked",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Top performer \u2014 Expert across SLO 1, 4, 8. Recommended for peer mentor role in Spring cohort.",
+      "studentId": "stu_priya",
+      "sequence": 4,
+      "isDemo": true,
+      "createdAt": "2026-01-28"
+    },
+    {
+      "entryId": "stu_emi_001",
+      "date": "2026-01-08",
+      "course": "NURS 230",
+      "site": "ER",
+      "type": "attendance.recorded",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "ER orientation complete. Shadowed triage for first 2 hours.",
+      "studentId": "stu_emi",
+      "sequence": 1,
+      "isDemo": true,
+      "createdAt": "2026-01-08"
+    },
+    {
+      "entryId": "stu_emi_002",
+      "date": "2026-02-05",
+      "course": "NURS 230",
+      "site": "ER",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Competent \u2014 triage assessment appropriate; used SBAR during handoff without prompting.",
+      "studentId": "stu_emi",
+      "sequence": 2,
+      "isDemo": true,
+      "createdAt": "2026-02-05"
+    },
+    {
+      "entryId": "stu_emi_003",
+      "date": "2026-03-12",
+      "course": "NURS 230",
+      "site": "ER",
+      "type": "reflection.submitted",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "",
+      "studentId": "stu_emi",
+      "sequence": 3,
+      "isDemo": true,
+      "createdAt": "2026-03-12"
+    },
+    {
+      "entryId": "stu_kainoa_001",
+      "date": "2026-01-20",
+      "course": "NURS 320",
+      "site": "Peds MCE 1",
+      "type": "attendance.recorded",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "First Peds MCE rotation. Oriented to unit workflow and charting system.",
+      "studentId": "stu_kainoa",
+      "sequence": 1,
+      "isDemo": true,
+      "createdAt": "2026-01-20"
+    },
+    {
+      "entryId": "stu_kainoa_002",
+      "date": "2026-02-24",
+      "course": "NURS 320",
+      "site": "Peds MCE 1",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Competent \u2014 age-appropriate communication with 6-year-old patient; involved parents naturally in assessment.",
+      "studentId": "stu_kainoa",
+      "sequence": 2,
+      "isDemo": true,
+      "createdAt": "2026-02-24"
+    },
+    {
+      "entryId": "stu_kainoa_003",
+      "date": "2026-04-02",
+      "course": "NURS 320",
+      "site": "Peds MCE 1",
+      "type": "professionalism.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Stepped up when a peer struggled with an emotional case. Showed leadership beyond assigned role.",
+      "studentId": "stu_kainoa",
+      "sequence": 3,
+      "isDemo": true,
+      "createdAt": "2026-04-02"
+    },
+    {
+      "entryId": "stu_leilani_001",
+      "date": "2026-02-03",
+      "course": "NURS 320",
+      "site": "Hospice",
+      "type": "attendance.recorded",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "First hospice rotation. Observed comfort care assessment and family communication.",
+      "studentId": "stu_leilani",
+      "sequence": 1,
+      "isDemo": true,
+      "createdAt": "2026-02-03"
+    },
+    {
+      "entryId": "stu_leilani_002",
+      "date": "2026-03-10",
+      "course": "NURS 320",
+      "site": "Hospice",
+      "type": "professionalism.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Exceptional emotional presence with dying patient and family. Stayed 20 minutes beyond shift to ensure family wasn't alone.",
+      "studentId": "stu_leilani",
+      "sequence": 2,
+      "isDemo": true,
+      "createdAt": "2026-03-10"
+    },
+    {
+      "entryId": "stu_leilani_003",
+      "date": "2026-04-17",
+      "course": "NURS 320",
+      "site": "Hospice",
+      "type": "slo.observed",
+      "status": "present",
+      "instructor": "Dr. Ruthie Clearwater",
+      "note": "Proficient \u2014 pain management assessment thorough; correctly escalated change in comfort status.",
+      "studentId": "stu_leilani",
+      "sequence": 3,
+      "isDemo": true,
+      "createdAt": "2026-04-17"
     }
   ]
 }

@@ -763,7 +763,7 @@ export default function VaultDTCs({ onLockVault }) {
                 {chainBadge(dtc)}
               </div>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: val != null ? 6 : 8 }}>
-                {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
+                {dtc.title || dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
               </div>
               {val != null && (
                 <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 8, color: val < 0 ? "#dc2626" : acc.color }}>

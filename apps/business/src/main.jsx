@@ -4,12 +4,12 @@ import App from "./App.jsx";
 import "./index.css";
 import { initVersionCheck } from "./utils/versionCheck.js";
 
-// 47.9 HOTFIX: Service worker DISABLED. The register/unregister/reload cycle
-// was causing infinite page reload loops on mobile. Disabling entirely until
-// a proper update strategy is implemented. Also unregister any lingering SWs.
+// Re-enable service worker with network-first strategy (safe from reload loops).
+// Old aggressive-cache SW caused the 47.9 mobile loop — the new SW never reloads
+// the page and uses network-first for navigation so stale shells can't get stuck.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((reg) => reg.unregister());
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
   });
 }
 

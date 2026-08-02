@@ -330,9 +330,33 @@ async function searchEmails(uid, query, opts = {}) {
 /**
  * sendEmail — send via Gmail as the connected user.
  * attachments: [{ url, filename, mimeType? }] — fetched server-side and attached as base64 MIME parts.
+ * fromEmail — optional; if provided, routes to the matching extra account (or primary if it matches).
+ *
+ * Fall-back chain: primary slot → extra account matching fromEmail → first available extra account.
+ * This handles the case where a user removes+re-adds their account via "+ Add account" (which goes
+ * to the extra-accounts subcollection, leaving the primary slot empty).
  */
-async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attachments }) {
-  const auth = await buildAuthedClient(uid);
+async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attachments, fromEmail }) {
+  let auth;
+  try {
+    auth = await buildAuthedClient(uid);
+  } catch (primaryErr) {
+    // Primary slot missing or failed — try extra accounts
+    const db = getDb();
+    const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+    if (extras.empty) throw primaryErr;
+    let targetDoc = null;
+    if (fromEmail) {
+      const aId = accountId(fromEmail);
+      targetDoc = extras.docs.find(d => d.id === aId) || null;
+    }
+    if (!targetDoc) {
+      // Prefer sean@sociii.ai if present, otherwise first available
+      targetDoc = extras.docs.find(d => (d.data().email || "").includes("sociii.ai")) || extras.docs[0];
+    }
+    if (!targetDoc || !targetDoc.data().accessToken) throw primaryErr;
+    auth = await buildAuthedClientForAccount(uid, targetDoc.id);
+  }
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
 

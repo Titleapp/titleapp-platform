@@ -2761,7 +2761,8 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
                   return `=== Sheet: ${sn} ===\n${csv}`;
                 });
                 extractedText = _csvParts.join("\n\n");
-                if (extractedText.length > 20000) extractedText = extractedText.substring(0, 20000) + "\n... [truncated]";
+                // Per-file cap: 12K so 3 large files stay within COS context budget
+                if (extractedText.length > 12000) extractedText = extractedText.substring(0, 12000) + "\n... [truncated — file is large, ask the user to clarify which section to focus on]";
                 console.log("[chatEngine] XLSX extracted", extractedText.length, "chars from", f.name, _wb.SheetNames.length, "sheets");
               } catch (xlsxErr) {
                 console.error("[chatEngine] XLSX parse error:", f.name, xlsxErr.message);
@@ -2786,7 +2787,9 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
           }
         }
         if (fileTexts.length > 0) {
-          const fileContext = fileTexts.join("\n\n");
+          let fileContext = fileTexts.join("\n\n");
+          // Total file context cap: 30K chars so the COS prompt + history stay within budget
+          if (fileContext.length > 30000) fileContext = fileContext.substring(0, 30000) + "\n\n... [total file content truncated — if you need data from a specific section, ask the user to paste it directly]";
           userInput = userInput
             ? `${userInput}\n\n[Uploaded files content below]\n${fileContext}`
             : `[Uploaded files content below]\n${fileContext}`;
@@ -3288,10 +3291,75 @@ IMPORTANT BOUNDARIES:
 - For emergencies (not breathing, ingested something toxic, trauma, seizure): direct to the nearest emergency vet immediately.
 - You are NOT Alex, NOT the Chief of Staff. You are Koa's health record system.`,
           },
+          "nursing-education-001": {
+            display_name: "Clearwater Nursing Education",
+            name: "Clearwater Nursing Education",
+            vertical: "education",
+            systemPrompt: `You are the Clearwater Nursing Education Digital Worker, built by Dr. Ruthie Clearwater (CRNA) for nursing program faculty and administrators.
+
+YOU SERVE: Nursing program administrators and faculty at institutions like Makai School of Nursing. The user in front of you is an instructor or program director, not a student.
+
+WHAT YOU MANAGE:
+- Student longitudinal records: competencies, reflections, SLO progress, clinical hours, ATI scores, professionalism flags, attendance, clinical incidents
+- 5 nursing courses: NURS 210/220/230/320/360
+- 45 Student Learning Outcomes (SLOs) mapped to ANA Standards of Practice
+- Tanner Clinical Judgment Framework for reflection grading (Noticing → Interpreting → Responding → Reflecting)
+- 6 cohorts (Faculty Playground, ASN20, BSN01-04)
+- Chain-anchored grade locking (locked grades cannot be modified after blockchain anchor)
+
+CURRENT COHORT — ASN20 (8 students):
+- Sarah K. (NURS 230, Clinical, enrolled 2025-08): On track | GPA 3.5 | 18 events
+- Maya L. (NURS 220, Medical-Surgical, enrolled 2025-08): Behind | Last reflection 12 days ago
+- James C. (NURS 220, Medical-Surgical, enrolled 2025-08): Flagged | GPA 2.3 | Struggling with delegation (SLO 4)
+- Aaron R. (NURS 320, MMMG, enrolled 2025-08): On track | No events yet
+- Priya T. (NURS 220, Simulation, enrolled 2025-08): On track | Top of cohort
+- Emi W. (NURS 230, ER, enrolled 2025-08): On track | No events yet
+- Kainoa P. (NURS 320, MCE 1, enrolled 2025-08): On track | No events yet
+
+REFLECTIONS INBOX — 4 pending:
+- Maya L. | NURS 220 · SLO 8.0 · Patient family meeting — managing emotional load | 12 days old
+- James C. | NURS 220 · SLO 4.0 · Delegating wound care under time pressure | 5 days
+- Sarah K. | NURS 230 · SLO 9.0 · Triage decision-making in fast-paced ER environment | 2 days
+- Aaron R. | NURS 320 · SLO 7.0 · MMMG pediatric assessment with non-English-speaking family | 2 days
+
+WHAT YOU CAN DO:
+- Answer questions about cohort status, student progress, clinical hours, and ATI scores — use get_nursing_cohort and get_nursing_student tools
+- Explain SLO frameworks, grading criteria, and Tanner framework application
+- Advise on accreditation documentation, clinical site requirements, and compliance
+- Help draft faculty communications, student progress summaries, and incident reports
+- Guide faculty through the reflection grading workflow
+
+LANGUAGE RULES:
+- Speak as a peer to nursing faculty — use domain language (SLO numbers, Tanner stages, ANA Standards, cohort/clinical terminology) without translation
+- Be concise and direct — faculty are busy professionals
+- When a student is flagged or behind, be specific about what the flag is and what action to take
+- NEVER fabricate student scores, hours, or records — only cite what the tools return
+
+RAAS BOUNDARIES:
+- You are an educational records system, not a clinical system — don't give patient care advice
+- Student records are confidential — don't share one student's record with another student
+- Chain-anchored grades are locked — clearly state when a grade cannot be modified`,
+          },
         };
 
         if (body.selectedWorker && body.selectedWorker !== "chief-of-staff" && !action && userInput) {
           const workerSlug = body.selectedWorker;
+          // Hoisted here (was declared at the SSE block below) — const TDZ caused
+          // ReferenceError at the history-limit line before this Set was reachable.
+          const _STREAMING_WORKERS = new Set([
+            "ir-worker",
+            "fundraise",
+            "investor-relations",
+            "platform-accounting",
+            "platform-hr",
+            "patent",
+            "platform-contacts",
+            "scheduling",
+            "paralegal",
+            "litigation-discovery",
+            "nursing-ce-001",
+            "business-law",
+          ]);
           try {
             const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
             // Use Firestore doc if exists; fall back to hardcoded demo specs for known demo workers
@@ -3302,7 +3370,7 @@ IMPORTANT BOUNDARIES:
               if (dwSnap.exists && _demoFallback && !dw.systemPrompt) {
                 dw = { ..._demoFallback, ...dw };
               }
-              let workerName = dw.display_name || dw.name || workerSlug;
+              let workerName = dw.persona_name || dw.display_name || dw.name || workerSlug;
               // re-salesperson slug is user-facing as "Real Estate Advocate"
               if (workerSlug === "re-salesperson") workerName = "Real Estate Advocate";
 
@@ -3525,6 +3593,14 @@ IDENTITY RULES:
 ${workerPrompt}`;
               }
 
+              // Universal self-description rule — prevents workers from wrongly
+              // deflecting "what do you do / write me a one-pager about yourself"
+              // queries to the Marketing worker.
+              if (workerPrompt) {
+                workerPrompt = `SELF-DESCRIPTION RULE (overrides any conflicting rule below):
+If the user asks what this worker does, how to explain it to others, or asks for any summary, overview, one-pager, pitch, or written description of this worker's purpose or capabilities — you MUST answer it directly. Use generate_document with templateId "one-pager" if they want a downloadable file. This is ALWAYS within your scope. Never redirect this to a Marketing or Content worker.\n\n${workerPrompt}`;
+              }
+
               // Universal support escalation rule — all workers, all tenants.
               // Appended after the main prompt so it acts as a final override.
               if (workerPrompt) {
@@ -3594,6 +3670,21 @@ INSTRUCTOR VIEW ACTIVE: The user is an instructor or program admin (Ruthie or on
                   } catch (knErr) {
                     console.warn("worker chat: creator-knowledge load failed:", knErr.message);
                   }
+                }
+              }
+
+              // Tenant Studio Locker — inject subscriber-uploaded context docs.
+              // Each tenant can upload their own knowledge (policies, SOPs, context)
+              // for any worker. Docs are stored in tenantLockers/{tenantId}/workers/{workerId}/documents/.
+              if (workerPrompt && reqTenantId && workerSlug) {
+                try {
+                  const { getLockerContext } = require("./services/sandbox/tenantLocker");
+                  const lockerCtx = await getLockerContext(reqTenantId, workerSlug);
+                  if (lockerCtx) {
+                    workerPrompt = `## Workspace Knowledge\nThe following documents have been added by the user's organization and are authoritative for this workspace:\n\n${lockerCtx}\n\n${workerPrompt}`;
+                  }
+                } catch (lockerErr) {
+                  console.warn("worker chat: tenant locker inject failed:", lockerErr.message);
                 }
               }
 
@@ -3832,6 +3923,26 @@ END DELIVERY RULES.
                   if (ownData) workerPrompt = ownData + workerPrompt;
                 } catch (ownErr) {
                   console.warn("worker chat: own-data inject failed:", ownErr.message);
+                }
+              }
+
+              // Studio Locker — inject vertical knowledge base (CODEX 63).
+              // Runs after own-data grounding so the model has both live canvas records
+              // and the regulatory/policy document layer. Aviation workers get FAA Part 135
+              // duty/rest rules at criticality-0 (always injected, never trimmed).
+              if (workerPrompt && dw && dw.vertical && dw.vertical !== "platform") {
+                try {
+                  const { loadStudioLockerContext } = require("./services/studioLocker");
+                  const tenantJurisdiction = (dw && dw.jurisdiction) || "GLOBAL";
+                  const { contextString, injectedDocs, trimmedDocCount } = await loadStudioLockerContext(
+                    dw.vertical, workerSlug, reqTenantId || null, tenantJurisdiction
+                  );
+                  if (contextString) {
+                    workerPrompt = contextString + "\n\n" + workerPrompt;
+                    console.log(`[studio-locker] ${workerSlug}: ${injectedDocs.length} docs injected, ${trimmedDocCount || 0} trimmed (vertical: ${dw.vertical})`);
+                  }
+                } catch (slErr) {
+                  console.warn("worker chat: studio locker inject failed:", slErr.message);
                 }
               }
 
@@ -4238,7 +4349,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               }
 
               // Makai Nursing Demo workers — cohort + student data tools
-              const NURSING_SLUGS = ["nursing-records-001", "nursing-courses-001", "nursing-tutor-001", "nursing-comms-001", "nursing-accreditation-001"];
+              const NURSING_SLUGS = ["nursing-records-001", "nursing-courses-001", "nursing-tutor-001", "nursing-comms-001", "nursing-accreditation-001", "nursing-education-001"];
               if (NURSING_SLUGS.includes(workerSlug)) {
                 businessTools.push({
                   name: "get_nursing_cohort",
@@ -4325,20 +4436,8 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // res.json() path below so tool-result round-trips are handled normally.
               // RAAS-light = text-only workers with no tool round-trips.
               // RE/aviation/nursing/marketing workers stay on res.json() (have tools).
-              const _STREAMING_WORKERS = new Set([
-                "ir-worker",
-                "fundraise",
-                "investor-relations",
-                "platform-accounting",
-                "platform-hr",
-                "patent",
-                "platform-contacts",
-                "scheduling",
-                "paralegal",
-                "litigation-discovery",
-                "nursing-ce-001",
-                "business-law",
-              ]);
+              // NOTE: _STREAMING_WORKERS is declared at the top of the worker if-block
+              // (hoisted to avoid const TDZ crash before the history-limit line).
               if (_STREAMING_WORKERS.has(workerSlug)) {
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -6978,7 +7077,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                   messages: _msgs,
                   tools: _cosTools,
                   tool_choice: { type: "auto", disable_parallel_tool_use: true },
-                });
+                }, { timeoutMs: 90000 });
                 let _txt = "";
                 let _cosGeneratedDoc = null;
                 if (_resp.stop_reason === "tool_use") {
@@ -7030,19 +7129,27 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         .replace(/<[^>]+>/g, " ")
                         .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
                         .replace(/\s+/g, " ").trim().slice(0, 8000);
-                      if (!_fetchedText || _fetchedText.length < 50) _fetchedText = `Page at ${_cosTool.input.url} is a JavaScript app — content not available via fetch. Use canonical sources instead.`;
                     } catch (_fetchErr) {
-                      _fetchedText = `Could not fetch ${_cosTool.input.url}: ${_fetchErr.message}`;
+                      _fetchedText = "";
+                      console.warn("[COS:fetch_url] fetch failed:", _fetchErr.message);
                     }
-                    const _fetchFollowUp = await anthropic.messages.create({
-                      model: "claude-sonnet-4-6",
-                      max_tokens: 4096,
-                      system: cosPrompt,
-                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _fetchedText),
-                      tools: _cosTools,
-                      tool_choice: { type: "none" },
-                    }, { timeoutMs: 60000 });
-                    _txt = _fetchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the page but couldn't summarize it.";
+                    if (!_fetchedText || _fetchedText.length < 50) {
+                      // SPA or empty page — skip the follow-up call, answer from built-in knowledge
+                      _fetchedText = `The page at ${_cosTool.input.url} is a JavaScript-rendered app and could not be read via fetch. Answer the user's question from your built-in knowledge. Do not say you read the page — say you used your built-in knowledge about this topic.`;
+                    }
+                    try {
+                      const _fetchFollowUp = await anthropic.messages.create({
+                        model: "claude-sonnet-4-6",
+                        max_tokens: 4096,
+                        system: cosPrompt,
+                        messages: _cosFollowUpMsgs(_resp, _cosTool.id, _fetchedText),
+                        // No tools — model must respond with text only
+                      }, { timeoutMs: 90000 });
+                      _txt = _fetchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I couldn't load that page, but I can answer from my built-in knowledge — ask me what you'd like to know.";
+                    } catch (_fetchFollowErr) {
+                      console.warn("[COS:fetch_url] follow-up failed:", _fetchFollowErr.message);
+                      _txt = "I had trouble processing that page. Ask me directly what you'd like to know and I'll answer from my built-in knowledge.";
+                    }
                   } else if (_cosTool && _cosTool.name === "web_search") {
                     let _searchText;
                     try {
@@ -7081,21 +7188,44 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                           _cParts.push(`[HN] ${h.title}${h.url ? " — " + h.url : ""}`);
                         });
                       } catch (_che) { console.warn("[cos:web_search] hn err:", _che.message); }
-                      _searchText = _cParts.length > 0
-                        ? `LIVE WEB SEARCH RESULTS for "${_cosTool.input.query}":\n\nRule: Base your answer ONLY on the results below. Do not supplement with training data. If the results don't fully answer the question, say exactly what you found and acknowledge the gap.\n\n${_cParts.join("\n\n")}`
-                        : `No web search results were returned for "${_cosTool.input.query}". Do NOT answer from training data. Tell the user plainly: you searched but found no current results, and direct them to a relevant primary source (e.g. nhc.noaa.gov for hurricanes, FAA.gov for aviation, etc.).`;
+                      if (_cParts.length > 0) {
+                        _searchText = `LIVE WEB SEARCH RESULTS for "${_cosTool.input.query}":\n\nRule: Base your answer primarily on the results below. You may supplement with your training knowledge but clearly distinguish live findings from your prior knowledge. If results don't fully answer the question, say exactly what you found and acknowledge the gap.\n\n${_cParts.join("\n\n")}\n\n[Search complete. Synthesize these results into a direct, helpful response now. Do not call web_search or any other tool again.]`;
+                      } else {
+                        // No results from any source — skip the follow-up call entirely
+                        _searchText = null;
+                        _txt = `My web search came back empty for "${_cosTool.input.query}" — Brave Search may be at a spending cap and Wikipedia had no relevant results. I'll answer from my built-in knowledge, but flag anything that should be verified with live data.`;
+                      }
                     } catch (_searchErr) {
-                      _searchText = `Search failed: ${_searchErr.message}`;
+                      _searchText = null;
+                      _txt = `Search failed (${_searchErr.message}). I'll answer from my built-in knowledge.`;
+                      console.warn("[COS:web_search] search error:", _searchErr.message);
                     }
-                    const _searchFollowUp = await anthropic.messages.create({
-                      model: "claude-sonnet-4-6",
-                      max_tokens: 4096,
-                      system: cosPrompt,
-                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _searchText),
-                      tools: _cosTools,
-                      tool_choice: { type: "none" },
-                    }, { timeoutMs: 60000 });
-                    _txt = _searchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I searched but couldn't summarize the results.";
+                    if (_searchText) {
+                      try {
+                        const _searchFollowUp = await anthropic.messages.create({
+                          model: "claude-sonnet-4-6",
+                          max_tokens: 4096,
+                          system: cosPrompt,
+                          messages: _cosFollowUpMsgs(_resp, _cosTool.id, _searchText),
+                          tools: _cosTools,
+                          tool_choice: { type: "none" },
+                        }, { timeoutMs: 90000 });
+                        _txt = _searchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
+                        if (!_txt) {
+                          console.warn("[COS:web_search] follow-up returned empty — retrying from knowledge");
+                          const _knowledgeFallback = await anthropic.messages.create({
+                            model: "claude-sonnet-4-6",
+                            max_tokens: 2048,
+                            system: cosPrompt,
+                            messages: _msgs,
+                          }, { timeoutMs: 90000 });
+                          _txt = _knowledgeFallback.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "How can I help you?";
+                        }
+                      } catch (_searchFollowErr) {
+                        console.warn("[COS:web_search] follow-up failed:", _searchFollowErr.message);
+                        _txt = "My search timed out before I could summarize. Ask me directly — I'll answer from what I know.";
+                      }
+                    }
                   } else if (_cosTool && _cosTool.name === "search_drive") {
                     let _driveSearchResult;
                     try {
@@ -13551,6 +13681,41 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // ── Tenant Studio Locker (per-subscriber knowledge layer) ────────────
+
+    // GET /v1/worker:locker:list?workerId=... — List tenant's locker docs for a worker.
+    if (route === "/worker:locker:list" && method === "GET") {
+      try {
+        const { handleLockerList } = require("./services/sandbox/tenantLocker");
+        return await handleLockerList(req, res, auth.user);
+      } catch (e) {
+        console.error("worker:locker:list failed:", e);
+        return jsonError(res, 500, "Locker list failed");
+      }
+    }
+
+    // POST /v1/worker:locker:ingest — Ingest paste or file upload into tenant locker.
+    if (route === "/worker:locker:ingest" && method === "POST") {
+      try {
+        const { handleLockerIngest } = require("./services/sandbox/tenantLocker");
+        return await handleLockerIngest(req, res, auth.user);
+      } catch (e) {
+        console.error("worker:locker:ingest failed:", e);
+        return jsonError(res, 500, "Locker ingest failed");
+      }
+    }
+
+    // DELETE /v1/worker:locker:doc — Soft-delete a tenant locker document.
+    if (route === "/worker:locker:doc" && method === "DELETE") {
+      try {
+        const { handleLockerDelete } = require("./services/sandbox/tenantLocker");
+        return await handleLockerDelete(req, res, auth.user);
+      } catch (e) {
+        console.error("worker:locker:doc DELETE failed:", e);
+        return jsonError(res, 500, "Locker delete failed");
+      }
+    }
+
     // ── File Upload (CODEX 47.10) ──────────────────────────────────────
 
     // POST /v1/sandbox:file:upload — Upload an image or video to Cloud Storage.
@@ -15933,11 +16098,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     //   snoozedUntil (ISO string|null), resolvedAt (Timestamp|null), createdAt.
 
     if (route === "/alertFeed" && method === "GET") {
-      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const feedUser = await requireFirebaseUser(req, res);
+      if (!feedUser) return;
       const tenantId = req.headers["x-tenant-id"] || "";
       if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
       try {
-        const snap = await db.collection("alertFeed").doc(authUser.uid).collection("items")
+        const snap = await db.collection("alertFeed").doc(feedUser.uid).collection("items")
           .where("tenantId", "==", tenantId)
           .where("status", "in", ["active", "snoozed"])
           .orderBy("createdAt", "desc")
@@ -15948,21 +16114,22 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     if (route === "/alertFeed:push" && method === "POST") {
-      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const feedUser = await requireFirebaseUser(req, res);
+      if (!feedUser) return;
       const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
       if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
       const { title, detail, severity, source, sourceRef, actionHint, horizon } = body;
       if (!title) return jsonError(res, 400, "title required");
       try {
-        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc();
+        const ref = db.collection("alertFeed").doc(feedUser.uid).collection("items").doc();
         await ref.set({
-          uid: authUser.uid, tenantId,
+          uid: feedUser.uid, tenantId,
           title, detail: detail || "",
           severity: ["red","yellow","green"].includes(severity) ? severity : "yellow",
           status: "active",
           source: source || "system", sourceRef: sourceRef || null,
           actionHint: actionHint || null,
-          horizon: ["today","week","month"].includes(horizon) ? horizon : "week",
+          horizon: ["today","this-week","next-week","waiting_external","snoozed","someday"].includes(horizon) ? horizon : "this-week",
           snoozedUntil: null, resolvedAt: null,
           createdAt: nowServerTs(),
         });
@@ -15971,31 +16138,34 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     if (route === "/alertFeed:resolve" && method === "POST") {
-      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const feedUser = await requireFirebaseUser(req, res);
+      if (!feedUser) return;
       const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
-      const { itemId } = body;
+      const { itemId, resolvedEvidence } = body;
       if (!tenantId || !itemId) return jsonError(res, 400, "x-tenant-id and itemId required");
       try {
-        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+        const ref = db.collection("alertFeed").doc(feedUser.uid).collection("items").doc(itemId);
         const doc = await ref.get();
         if (!doc.exists || doc.data().tenantId !== tenantId) return jsonError(res, 404, "item not found");
-        await ref.update({ status: "resolved", resolvedAt: nowServerTs() });
+        if (doc.data().status === "resolved") return res.json({ ok: true, alreadyResolved: true });
+        await ref.update({ status: "resolved", resolvedAt: nowServerTs(), resolvedBy: "user", resolvedEvidence: resolvedEvidence || null });
         return res.json({ ok: true });
       } catch (e) { return jsonError(res, 500, e.message); }
     }
 
     if (route === "/alertFeed:snooze" && method === "POST") {
-      if (!authUser) return jsonError(res, 401, "Unauthorized");
+      const feedUser = await requireFirebaseUser(req, res);
+      if (!feedUser) return;
       const tenantId = req.headers["x-tenant-id"] || body.tenantId || "";
-      const { itemId, snoozeHours } = body;
+      const { itemId, snoozeHours, snoozedUntil: snoozedUntilOverride } = body;
       if (!tenantId || !itemId) return jsonError(res, 400, "x-tenant-id and itemId required");
       try {
-        const ref = db.collection("alertFeed").doc(authUser.uid).collection("items").doc(itemId);
+        const ref = db.collection("alertFeed").doc(feedUser.uid).collection("items").doc(itemId);
         const doc = await ref.get();
         if (!doc.exists || doc.data().tenantId !== tenantId) return jsonError(res, 404, "item not found");
         const hours = Number(snoozeHours) || 24;
-        const snoozedUntil = new Date(Date.now() + hours * 3600000).toISOString();
-        await ref.update({ status: "snoozed", snoozedUntil });
+        const snoozedUntil = snoozedUntilOverride || new Date(Date.now() + hours * 3600000).toISOString();
+        await ref.update({ status: "snoozed", snoozedUntil, horizon: "snoozed" });
         return res.json({ ok: true, snoozedUntil });
       } catch (e) { return jsonError(res, 500, e.message); }
     }
@@ -29403,6 +29573,80 @@ Analyze now:`;
         }
       } catch (e) {
         console.error("esign: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Google eSign routes (CODEX 62 — suite rail, customer's own Google) ──
+    if (route && route.startsWith("/esign:google:")) {
+      const googleAction = route.replace("/esign:google:", "");
+      try {
+        const gSign = require("./services/esign/googleESign");
+        const userId = auth.user.uid;
+        switch (googleAction) {
+        case "auth": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gSign.handleAuthUrl(req, res, { userId });
+        }
+        case "callback": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gSign.handleExchangeCode(req, res, { userId });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await gSign.handleStatus(req, res, { userId });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await gSign.handleDisconnect(req, res, { userId });
+        }
+        case "send": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { title, signers, message, base64, mimeType, metadata } = body || {};
+          if (!title || !signers || !base64) return jsonError(res, 400, "title, signers, base64 required");
+          const fileBuffer = Buffer.from(base64, "base64");
+          const result = await gSign.sendForSignature(userId, {
+            title, signers, message, fileBuffer,
+            mimeType: mimeType || "application/pdf",
+            tenantId: ctx.tenantId,
+            metadata: metadata || {},
+          });
+          return res.json(result);
+        }
+        case "requests": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const requests = await gSign.listRequests(userId, ctx.tenantId);
+          return res.json({ ok: true, requests });
+        }
+        case "confirm": {
+          // User confirms signing is complete (Google has no programmatic callback).
+          // We anchor the request hash to the Vault append-only record.
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { requestId } = body || {};
+          if (!requestId) return jsonError(res, 400, "requestId required");
+          const reqDoc = await gSign.getRequest(requestId);
+          if (!reqDoc) return jsonError(res, 404, "Signing request not found");
+          const { sha256 } = require("./services/signatureService/blockchain");
+          const confirmedAt = Date.now();
+          const finalHash = sha256(JSON.stringify({ requestId, userId, confirmedAt, ...reqDoc }));
+          await db.collection("esignEvents").add({
+            requestId, userId, tenantId: ctx.tenantId,
+            type: "signing.confirmed",
+            finalHash, anchorStatus: "queued",
+            confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+            isDemo: false,
+          });
+          await db.collection("esignRequests").doc(requestId).set(
+            { status: "completed", finalHash, confirmedAt: admin.firestore.FieldValue.serverTimestamp() },
+            { merge: true }
+          );
+          return res.json({ ok: true, finalHash, anchorStatus: "queued" });
+        }
+        default:
+          return jsonError(res, 404, "Unknown google esign action: " + googleAction);
+        }
+      } catch (e) {
+        console.error("esign:google: failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

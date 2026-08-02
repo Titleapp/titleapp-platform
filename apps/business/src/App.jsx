@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import "./App.css";
 import "./styles/heartbeat.css";
 import DemoWelcomeBanner from "./components/DemoWelcomeBanner";
+import WorkerLockerPanel from "./components/WorkerLockerPanel";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
@@ -4942,16 +4943,6 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <AviationWorkerCanvas workerSlug="av-safety" />;
       case "av-copilot":
         return <AviationWorkerCanvas workerSlug="av-copilot" />;
-      case "av-copilot-pc12":
-        return <AviationWorkerCanvas workerSlug="av-copilot-pc12" />;
-      case "av-copilot-b200":
-        return <AviationWorkerCanvas workerSlug="av-copilot-b200" />;
-      case "av-copilot-b350":
-        return <AviationWorkerCanvas workerSlug="av-copilot-b350" />;
-      case "av-copilot-c90":
-        return <AviationWorkerCanvas workerSlug="av-copilot-c90" />;
-      case "av-copilot-208b":
-        return <AviationWorkerCanvas workerSlug="av-copilot-208b" />;
       // Legacy slugs — keep for backward compat
       case "av-copilot-001":
         return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
@@ -5315,6 +5306,7 @@ export default function App() {
   const [onboardingStep, setOnboardingStep] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [userName, setUserName] = useState("");
+  const [lockerWorker, setLockerWorker] = useState(null);
   const viewResolvedRef = useRef(false);
 
   // View transition — instant switch, no overlay (49.3 architectural fix)
@@ -5533,6 +5525,13 @@ export default function App() {
       window.removeEventListener("ta:meet-alex-lock", lock);
       window.removeEventListener("ta:meet-alex-unlock", unlock);
     };
+  }, []);
+
+  // ── Studio Locker: tenant CMS panel for per-worker knowledge docs ──
+  useEffect(() => {
+    const handler = (e) => setLockerWorker(e.detail || null);
+    window.addEventListener("ta:update-worker", handler);
+    return () => window.removeEventListener("ta:update-worker", handler);
   }, []);
 
   // ── Investor room: mark ready once auth completes ──
@@ -6583,6 +6582,14 @@ export default function App() {
       <>
         <AdminShell onBackToHub={handleBackToHub} />
         {isDemoSession && <DemoWelcomeBanner />}
+        {lockerWorker && (
+          <WorkerLockerPanel
+            worker={lockerWorker}
+            onClose={() => setLockerWorker(null)}
+            token={token}
+            tenantId={localStorage.getItem("TENANT_ID")}
+          />
+        )}
       </>
     </AppErrorBoundary>
   );

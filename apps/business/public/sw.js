@@ -1,30 +1,68 @@
-// SOCIII Service Worker — S52.44 SELF-RETIRING.
-// Service workers are DISABLED platform-wide (see main.jsx). A stale SW left
-// registered on a device (pre-44.5 aggressive-cache era) can serve a broken
-// cached shell — symptom: blank white screen on mobile, stale bundle on desktop.
-// This script exists ONLY to retire any such SW: on activate it purges all
-// caches and unregisters itself, so the next load is clean (no SW, fresh from
-// network). No fetch caching and NO client.navigate()/reload — that avoids the
-// 47.9 "infinite reload loop on mobile" class of bug entirely.
+// SOCIII Service Worker — network-first strategy.
+// Replaces the 47.9 tombstone. Key safety rules:
+//   - Navigation requests (HTML): always network-first; stale shell never gets stuck.
+//   - Hashed assets (JS/CSS): cache-first after first fetch (filename includes hash, so cache is always fresh).
+//   - No client.navigate() or location.reload() calls — that was the 47.9 reload loop root cause.
+//   - On activate: claim all clients so existing tabs pick up immediately.
 
-self.addEventListener('install', () => self.skipWaiting());
+const CACHE_VERSION = "sociii-v2";
+const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil((async () => {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    } catch { /* no caches */ }
-    try {
-      await self.registration.unregister();
-    } catch { /* already gone */ }
-    // Tell any live tab the SW retired; the app may refresh on its own terms.
-    try {
-      const wins = await self.clients.matchAll({ type: 'window' });
-      wins.forEach((c) => c.postMessage({ type: 'SW_RETIRED' }));
-    } catch { /* no clients */ }
-  })());
+// Hashed asset pattern — Vite outputs files like index-Abc123.js, chunk-Xyz.css.
+const HASHED_ASSET_RE = /\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?|png|svg|jpg|webp)(\?.*)?$/;
+
+self.addEventListener("install", (e) => {
+  e.waitUntil(self.skipWaiting());
 });
 
-// Pass-through — never cache.
-self.addEventListener('fetch', () => { /* let the network handle everything */ });
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k !== ASSET_CACHE)
+          .map((k) => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (e) => {
+  const { request } = e;
+  const url = new URL(request.url);
+
+  // Only handle same-origin requests.
+  if (url.origin !== self.location.origin) return;
+
+  // Skip non-GET.
+  if (request.method !== "GET") return;
+
+  // Hashed assets: cache-first (filename IS the cache key — safe forever).
+  if (HASHED_ASSET_RE.test(url.pathname)) {
+    e.respondWith(
+      caches.open(ASSET_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          if (cached) return cached;
+          return fetch(request).then((res) => {
+            if (res.ok) cache.put(request, res.clone());
+            return res;
+          });
+        })
+      )
+    );
+    return;
+  }
+
+  // Everything else (navigation, API calls that happen to be same-origin): network-first.
+  // On failure, attempt cache fallback (navigation only). No reload, no redirect.
+  if (request.mode === "navigate") {
+    e.respondWith(
+      fetch(request).catch(() =>
+        caches.match("/index.html")
+      )
+    );
+    return;
+  }
+
+  // All other same-origin requests: pass through to network.
+});

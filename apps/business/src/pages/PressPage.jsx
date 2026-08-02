@@ -25,6 +25,15 @@ const PRESS_RELEASES = [
 
 const ARTICLES = [
   {
+    slug: "governed-persona-scarlett-johanssen",
+    title: "The problem with AI personas isn't the name. It's who controls the rules.",
+    subtitle: "When Scarlett Johanssen objected to OpenAI's voice, she identified a symptom. The cure isn't banning AI identities — it's governing them. SOCIII ships a model that makes named AI personas legitimate, safe, and a real income source for experts who aren't celebrities.",
+    date: "2026-08-01",
+    readingMinutes: 5,
+    tag: "Thesis",
+    accent: "#7c3aed",
+  },
+  {
     slug: "digital-workers-new-textbook",
     title: "Are Digital Workers the New Textbook?",
     subtitle: "The $4 billion academic publishing industry has a problem. The professors who created all the value are about to notice.",
@@ -221,6 +230,78 @@ const PRESS_RELEASE_BODIES = {
 };
 
 const ARTICLE_BODIES = {
+  "governed-persona-scarlett-johanssen": (
+    <>
+      <p>
+        In May 2024, Scarlett Johanssen released a statement accusing OpenAI of using a voice "so eerily similar to mine" for their ChatGPT voice product that her friends and the press couldn't tell the difference. She hadn't consented. She had, in fact, explicitly declined OpenAI's request to use her voice months earlier. The product shipped anyway.
+      </p>
+      <p>
+        OpenAI called the voice "Sky." They insisted it wasn't Scarlett. They pulled it within 48 hours of the public response — which told you everything about whether they knew what they had built.
+      </p>
+      <p>
+        The story was framed as a celebrity rights issue. An A-list actress versus a tech company. Her lawyers versus theirs. That framing identified a symptom and missed the disease.
+      </p>
+
+      <h2>The wrong question is: should AI have names?</h2>
+      <p>
+        Of course AI can have names. Products have always had names. Characters have names. The question isn't whether "Sky" or "Siri" or "Alexa" should exist. The question is: what rules govern what a named AI can say and do — and who set those rules?
+      </p>
+      <p>
+        OpenAI's mistake wasn't naming the voice. It was building a persona without governance, without consent, and without any structure that would let the name carry actual accountability. "Sky" could say anything. Nothing about Sky's behavior was bounded by the judgment, expertise, or values of any real person who had agreed to be associated with it. It was identity-as-aesthetic: take a recognizable quality, strip the person, paste it on the product.
+      </p>
+      <p>
+        This is the influencer model applied to AI. Pick a face. Attach it to the product. Never worry whether what it says is accurate, because the face was never responsible for the content anyway. Think of it as the Selling Sunset approach to expertise — personality front and center, substance optional.
+      </p>
+
+      <h2>The right question is: who controls what the persona does?</h2>
+      <p>
+        SOCIII's Digital Workers run on RAAS — Rules + AI as a Service, the platform's patented governance substrate. Every worker operates under a composable rule hierarchy: platform safety rules, operational guardrails, vertical-specific requirements, workspace configurations, and transaction-level constraints. The AI's behavior — what it can say, what it can recommend, what it can commit to — is bounded by rules the creator defines and the platform enforces.
+      </p>
+      <p>
+        When a creator names their Digital Worker, the name isn't decoration. It is a named expert running under their own accountability structure.
+      </p>
+      <p>
+        When Ruthie Clearwater, a Doctor of Nursing Practice with twenty-five years of clinical and teaching experience, names her Digital Worker "Ruthie," she isn't lending her likeness to a generic chatbot. She is attaching her name to a system that will only say what her rules allow it to say. If her nursing education worker is asked to approve a competency she hasn't authorized, the platform refuses — not as a policy, as code. The rules are the governance. Ruthie's name means something because what happens under that name is Ruthie's framework, Ruthie's standards, and Ruthie's accountability structure. She agreed to that. She built it.
+      </p>
+      <p>
+        This is structurally different from what OpenAI did with Sky. Consent is step one. Governance is steps two through infinity.
+      </p>
+
+      <h2>This is a new job — and it pays.</h2>
+      <p>
+        The other thing the Johanssen framing missed: the most interesting beneficiaries of governed AI personas aren't celebrities. They're experts.
+      </p>
+      <p>
+        Eric Altshuler flew combat missions as a Navy Top Gun pilot. He has the kind of aviation judgment that takes a particular career to build — threat assessment in degraded conditions, instrument scan discipline under pressure, the pattern recognition that comes from real time in real cockpits. He is not a celebrity. He doesn't have a million followers. He has something more valuable than either in any flight operation: actual expertise in high-stakes, low-margin-for-error aviation.
+      </p>
+      <p>
+        With SOCIII's CoPilot worker named "Eric," a Part 135 operator, an instrument student building currency, or a mission planner doing preflight can ask Eric a question and get a response bounded by the rules of someone with that background. Not a hallucination. Not a language model pattern-matching its way toward plausibility. A governed answer, from a named expert, who chose to put their name on it.
+      </p>
+      <p>
+        Eric earns a share of every subscription. Not because he's famous. Because his judgment has real value, it's finally portable, and the platform gives him a way to earn from it at scale without flying more hours to do it.
+      </p>
+      <p>
+        Elise has spent years navigating EU Battery Regulation compliance for consumer electronics manufacturers — the kind of technical regulatory work that a Big Four consulting engagement charges $2–5 million to study and another $3–10 million to implement. She built the SOCIII DPP worker that carries her name and her rules. Subscribers pay $99 a month to access the judgment she spent her career developing. For companies facing a 2027 compliance deadline they didn't plan for, that $99 is one of the most valuable subscriptions they'll ever buy.
+      </p>
+
+      <h2>What this means for the industry.</h2>
+      <p>
+        Johanssen's lawyers argued about likeness. That's the right battle for a celebrity protecting a commercial asset. But the larger question — the one that matters for the next ten years of AI deployment in professional services — is different: how do you make an AI persona trustworthy enough to carry real professional weight?
+      </p>
+      <p>
+        You can't get there with regulation alone. You can't get there with better terms of service. You get there with architecture — a substrate that makes consent verifiable, rules auditable, and the persona's outputs defensible.
+      </p>
+      <p>
+        That is what RAAS is. That is why SOCIII patents the substrate instead of the UI. The rules engine is the moat because it's the only part of the stack that can actually make "Eric said to fly this approach" mean something a regulatory body or a court could evaluate.
+      </p>
+      <p>
+        Sky was a product decision. Eric is an architecture decision. The difference between them is not a legal argument — it's a design choice that was made before the first line of code was written.
+      </p>
+      <p>
+        For real experts who built careers on judgment, not celebrity, that architecture is a new job. The first ones on this platform are a Navy pilot, a nursing professor, and an EU compliance specialist. They are not household names. They are exactly the people who should be earning from what they know.
+      </p>
+    </>
+  ),
   "digital-workers-new-textbook": (
     <>
       <p>

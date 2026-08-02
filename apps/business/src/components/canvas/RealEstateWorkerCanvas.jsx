@@ -136,17 +136,21 @@ function Cards({ items }) {
   );
 }
 
-function Table({ title, columns, rows }) {
+function Table({ title, columns, rows, header }) {
+  const cols = columns || header || [];
+  const colCount = cols.length || (rows?.[0]?.cells?.length) || 1;
   return (
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
       <div style={{ border: "1px solid #f1f5f9", borderRadius: 10, overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600 }}>
-          {columns.map((col, i) => <div key={i} style={{ padding: "8px 10px" }}>{col}</div>)}
-        </div>
-        {rows.map((r, i) => { const cc = c(r.band); return (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${columns.length}, 1fr)`, fontSize: 12, borderTop: "1px solid #f1f5f9", borderLeft: `3px solid ${cc.dot}`, background: i % 2 ? "#fafafa" : "#fff" }}>
-            {r.cells.map((cell, j) => <div key={j} style={{ padding: "8px 10px", color: j === r.cells.length - 1 ? cc.text : "#334155", fontWeight: j === r.cells.length - 1 ? 600 : 400 }}>{cell}</div>)}
+        {cols.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${colCount}, 1fr)`, background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600 }}>
+            {cols.map((col, i) => <div key={i} style={{ padding: "8px 10px" }}>{col}</div>)}
+          </div>
+        )}
+        {(rows || []).map((r, i) => { const cc = c(r.band); return (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${colCount}, 1fr)`, fontSize: 12, borderTop: "1px solid #f1f5f9", borderLeft: `3px solid ${cc.dot}`, background: i % 2 ? "#fafafa" : "#fff" }}>
+            {(r.cells || []).map((cell, j) => <div key={j} style={{ padding: "8px 10px", color: j === (r.cells?.length || 0) - 1 ? cc.text : "#334155", fontWeight: j === (r.cells?.length || 0) - 1 ? 600 : 400 }}>{cell}</div>)}
           </div>
         ); })}
       </div>

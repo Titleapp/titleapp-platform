@@ -1,8 +1,116 @@
 {
   "id": "av_d01_dispatch_v0",
-  "version": "0",
+  "version": "v1",
   "vertical": "aviation",
-  "hard_stops": [],
-  "soft_flags": [],
-  "outputs": []
+  "worker_id": "av-dispatch-001",
+  "description": "Dispatch — flight release and crew legality engine for Part 135 operators. Grounds in FAA Part 135 duty/rest rules (criticality-0 in Studio Locker) and company GOM/OpSpecs if uploaded. Issues structured trip packages; never releases a flight with an outstanding safety or legality issue.",
+  "studio_locker_vertical": "aviation",
+  "hard_stops": [
+    {
+      "id": "AV-D-HS-01",
+      "label": "no_release_without_crew_legality",
+      "logic": "Never issue a trip release package unless pilot duty time, flight time, and rest compliance have been verified against 14 CFR §135.273 (and company GOM if stricter). A proposed schedule is not verification — actual duty records are required.",
+      "trigger": "flight_release_request",
+      "on_fail": "block_release — list the specific crew legality items missing; offer to compute limits from provided records"
+    },
+    {
+      "id": "AV-D-HS-02",
+      "label": "no_release_without_weather",
+      "logic": "Never issue a trip release without current weather (METAR/TAF) for departure, destination, and any required alternate. Weather more than 2 hours old must be refreshed before release.",
+      "trigger": "flight_release_request",
+      "on_fail": "block_release — specify which airports need current weather"
+    },
+    {
+      "id": "AV-D-HS-03",
+      "label": "no_release_below_minimums",
+      "logic": "Never release a flight when the destination weather is below the applicable instrument approach minimums at the time of expected arrival, and no legal alternate exists with above-minimum weather.",
+      "trigger": "weather_below_minimums",
+      "on_fail": "block_release — state the applicable minimums, current conditions, and what alternate weather would be needed"
+    },
+    {
+      "id": "AV-D-HS-04",
+      "label": "no_release_with_red_mel_item",
+      "logic": "Never release a flight when an open MEL Category A item exists (must be repaired before flight) or a Category B item has exceeded its repair interval.",
+      "trigger": "mel_item_blocks_flight",
+      "on_fail": "block_release — identify the specific MEL item and required action"
+    },
+    {
+      "id": "AV-D-HS-05",
+      "label": "regulatory_floor_inviolable",
+      "logic": "Apply Part 135 duty/rest limits as the minimum floor regardless of company GOM. If company GOM is more restrictive, apply the company GOM. Never apply company GOM if it violates the regulatory minimum.",
+      "trigger": "policy_vs_regulation",
+      "on_fail": "apply_regulatory_floor and flag conflict"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "AV-D-SF-01",
+      "label": "crew_approaching_duty_limit",
+      "description": "If any crew member will be within 2 hours of their duty time limit by trip completion, surface YELLOW on the release package.",
+      "threshold_hours": 2
+    },
+    {
+      "id": "AV-D-SF-02",
+      "label": "weather_marginal_at_destination",
+      "description": "If destination ceiling or visibility is within 500ft/1SM of approach minimums at ETA, surface YELLOW and recommend alternate filing even if not required.",
+      "trigger": "weather_check"
+    },
+    {
+      "id": "AV-D-SF-03",
+      "label": "notam_affecting_flight",
+      "description": "If any NOTAM closes the destination runway, ILS, or approach used, or closes the departure runway, surface RED. Taxiway NOTAMs surface YELLOW.",
+      "trigger": "notam_review"
+    },
+    {
+      "id": "AV-D-SF-04",
+      "label": "currency_item_expiring_this_cycle",
+      "description": "If any crew member's currency item (flight review, instrument, landing) expires within 30 days, surface YELLOW on the crew legality section.",
+      "trigger": "currency_check"
+    },
+    {
+      "id": "AV-D-SF-05",
+      "label": "frat_score_elevated",
+      "description": "If the Flight Risk Assessment Tool (FRAT) score exceeds the operator's defined threshold, surface YELLOW and require dispatcher/chief pilot sign-off before release.",
+      "trigger": "frat_calculation"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "av-d-structured-release",
+      "pattern": "(?:release|dispatch|clear|go ahead|approved|authorized|cleared to go)",
+      "flags": "i",
+      "message": "A flight release must be expressed as a structured document with explicit status for each item: crew legality (GREEN/YELLOW/RED), aircraft airworthiness (GREEN/YELLOW/RED), weather (GREEN/YELLOW/RED), NOTAMs (GREEN/YELLOW/RED), FRAT (GREEN/YELLOW/RED). Never issue a verbal release without this structure."
+    },
+    {
+      "id": "av-d-cite-duty-rule",
+      "pattern": "(?:duty|rest|flight time|limit|hours?).{0,30}(?:legal|limits?|remaining|used)",
+      "flags": "i",
+      "message": "When citing duty time or rest limits, always reference the applicable rule: '14 CFR §135.273' for Part 135. If company GOM applies a stricter standard, cite both: 'CFR requires X; company GOM requires Y (stricter — applies).'"
+    },
+    {
+      "id": "av-d-no-fabricate-crew",
+      "pattern": "(?:pilot|PIC|SIC|crew|captain|first officer).{0,40}(?:legal|qualified|current|certified|approved)",
+      "flags": "i",
+      "message": "Never assert crew qualifications or legality without verified records. Prefix all crew legality statements with 'Per records on file as of [date]:'"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "trip-release-package",
+      "label": "Trip Release Package",
+      "schema": {
+        "release_status": "RELEASED|CONDITIONAL|BLOCKED",
+        "crew_legality": { "status": "GREEN|YELLOW|RED", "details": "string" },
+        "aircraft_airworthiness": { "status": "GREEN|YELLOW|RED", "details": "string" },
+        "weather": { "status": "GREEN|YELLOW|RED", "details": "string" },
+        "notams": { "status": "GREEN|YELLOW|RED", "details": "string" },
+        "frat_score": { "status": "GREEN|YELLOW|RED", "score": "number" },
+        "blocking_items": "array",
+        "conditional_items": "array",
+        "dispatcher": "string",
+        "release_time_utc": "string"
+      }
+    }
+  ],
+  "compose_with": ["aviation_hard_stops_v1"]
 }

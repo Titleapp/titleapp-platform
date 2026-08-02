@@ -10,6 +10,8 @@
       { "source": "/auth/twitter-callback", "destination": "/auth/twitter-callback.html" },
       { "source": "/track", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/unsub", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/nursing-docs", "destination": "/nursing-docs.html" },
+      { "source": "/nursing-demo", "destination": "/nursing-demo.html" },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [

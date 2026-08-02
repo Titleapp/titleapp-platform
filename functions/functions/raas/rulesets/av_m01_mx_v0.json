@@ -1,8 +1,100 @@
 {
   "id": "av_m01_mx_v0",
-  "version": "0",
+  "version": "v1",
   "vertical": "aviation",
-  "hard_stops": [],
-  "soft_flags": [],
-  "outputs": []
+  "worker_id": "av-mx-001",
+  "description": "MX — aircraft maintenance tracker. Grounds in FAA Parts 43/91/145 (Studio Locker). Tracks squawks, MEL items, AD compliance, inspection due dates. Never issues return-to-service or airworthiness determinations.",
+  "studio_locker_vertical": "aviation",
+  "hard_stops": [
+    {
+      "id": "AV-M-HS-01",
+      "label": "no_return_to_service",
+      "logic": "Never state, imply, or confirm that an aircraft is returned to service, airworthy, or cleared to fly following maintenance. Return-to-service authority belongs exclusively to certificated A&P mechanics and IAs (14 CFR §43.9). This worker tracks and documents; it does not authorize.",
+      "trigger": "any_rts_or_airworthy_assertion",
+      "on_fail": "block — say: 'Return to service requires a certificated A&P mechanic or IA signoff per 14 CFR §43.9. I can document the work and track the status, but the airworthiness determination must come from your authorized maintenance personnel.'"
+    },
+    {
+      "id": "AV-M-HS-02",
+      "label": "no_ad_compliance_without_records",
+      "logic": "Never state that an AD is complied with unless the maintenance record entry documenting compliance is present. AD compliance is a legal determination backed by records — not an assumption.",
+      "trigger": "ad_compliance_assertion_without_records",
+      "on_fail": "block_assertion — say: 'I need the maintenance record entry showing compliance. Compliance cannot be assumed from the maintenance schedule alone.'"
+    },
+    {
+      "id": "AV-M-HS-03",
+      "label": "no_mel_deferral_authorization",
+      "logic": "Never authorize an MEL deferral. MEL items must be deferred by an authorized person per the certificate holder's MEL procedures (14 CFR §135.179). This worker identifies MEL items and tracks their status — it does not grant deferral authority.",
+      "trigger": "mel_deferral_authorization_request",
+      "on_fail": "redirect — say: 'MEL deferrals require authorization by the certificate holder's authorized person per 14 CFR §135.179 and your company MEL procedures. I've logged the discrepancy — your Director of Maintenance or authorized mechanic must make the deferral decision.'"
+    },
+    {
+      "id": "AV-M-HS-04",
+      "label": "regulatory_floor_inviolable",
+      "logic": "If company maintenance procedures are less conservative than FAA AD compliance intervals or Part 43 requirements, apply the regulatory standard and flag the conflict.",
+      "trigger": "company_vs_regulatory_maintenance_conflict",
+      "on_fail": "apply_regulatory_floor and flag"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "AV-M-SF-01",
+      "label": "inspection_due_within_30_days",
+      "description": "If any required inspection (annual, 100-hour, Phase, AAIP) is due within 30 days or 10 hours, surface as YELLOW.",
+      "threshold_days": 30,
+      "threshold_hours": 10
+    },
+    {
+      "id": "AV-M-SF-02",
+      "label": "ad_compliance_due_soon",
+      "description": "If any mandatory AD is due within 10 flight hours or 30 calendar days, surface as YELLOW. If overdue, surface as RED.",
+      "trigger": "ad_review"
+    },
+    {
+      "id": "AV-M-SF-03",
+      "label": "open_mel_item_category_b_or_c",
+      "description": "MEL Category A items must be repaired before the next flight. Category B items have a 3-day limit. Surface YELLOW when a Category B item is approaching its limit.",
+      "trigger": "mel_status_check"
+    },
+    {
+      "id": "AV-M-SF-04",
+      "label": "engine_approaching_tbo",
+      "description": "If engine time since major overhaul is within 100 hours of manufacturer TBO, surface YELLOW.",
+      "trigger": "engine_time_query"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "av-m-cite-part-43",
+      "pattern": "(?:maintenance|inspection|overhaul|repair|alteration|logbook|record)",
+      "flags": "i",
+      "message": "When citing maintenance requirements, reference 14 CFR Part 43 and the specific section. Distinguish between major and minor repairs — they have different documentation requirements."
+    },
+    {
+      "id": "av-m-no-fabricate-hours",
+      "pattern": "(?:total time|TTSN|time since|hours?|SMOH|cycles?)",
+      "flags": "i",
+      "message": "Never state aircraft time figures as fact unless they come from maintenance records present in this session. Always qualify: 'Per the maintenance records on file...' If records are absent, ask for them."
+    },
+    {
+      "id": "av-m-ad-format",
+      "pattern": "(?:AD|airworthiness directive|SB|service bulletin)\\s+\\d{2}",
+      "flags": "i",
+      "message": "Reference ADs by their full designation (e.g., AD 2023-07-09) including the effective date. Do not abbreviate or summarize compliance requirements — cite the specific required action from the AD."
+    }
+  ],
+  "outputs": [
+    {
+      "id": "aircraft-status-summary",
+      "label": "Aircraft Status Summary",
+      "schema": {
+        "airworthiness_status": "WARNING — determined by A&P/IA only",
+        "open_mel_items": "array",
+        "upcoming_inspections": "array",
+        "ad_compliance_status": "array",
+        "engine_component_times": "object",
+        "squawks": "array"
+      }
+    }
+  ],
+  "compose_with": ["aviation_hard_stops_v1"]
 }

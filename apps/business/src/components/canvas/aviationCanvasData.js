@@ -29,7 +29,7 @@ export const AV_CANVAS = {
   // ─────────────────────────────── COPILOT ──────────────────────────────────
   "av-copilot-001": {
     title: "CoPilot",
-    subtitle: "N662FW · PC-12/47E · Pacific Air Partners",
+    subtitle: "N662FW · King Air B200 · Pacific Air Partners",
     disclaimer: "Advisory only — go/no-go authority rests with the PIC",
     cas: { RED: 0, YELLOW: 1, BLUE: 1, WHITE: 2, GREEN: 8 },
     tabs: [
@@ -78,6 +78,7 @@ export const AV_CANVAS = {
           { type: "cards", items: [
             { band: "BLUE", label: "NOTAM", title: "KPBI — ILS Rwy 10L out of service", detail: "NOTAM 06/23/2026 · Expect ILS 28L or visual 10R · Suitable alternates: KFLL (14nm) KOPF (54nm)", action: "Review" },
           ] },
+          { type: "map", address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI · IFR FL230" },
           { type: "prose", items: [
             { band: "GREEN", title: "Go/no-go assessment", text: "Conditions support the flight. KPBI departure weather is MVFR with improving TAF — if KPBI holds below minimums at arrival, KFLL is a solid alternate 14 miles south. W&B is within limits at all fuel states. FRAT is Low. One NOTAM: ILS 10L OTS at KPBI — file for 28L ILS or expect visual. Suggest requesting IFR clearance direct KPBI with KFLL as alternate. File flight plan and obtain official briefing via 1800wxbrief.com before departure." },
           ] },
@@ -128,7 +129,7 @@ export const AV_CANVAS = {
             ["Submit Quality Management Report?",  "No",  "No quality events"],
           ] },
           { type: "prose", items: [
-            { band: "GREEN", title: "Pilot remarks", text: "Smooth trip. KPBI was VFR on arrival — TAF verified. ILS 28L in service as NOTAMed. Pax on schedule. Atlantic fuel receipt attached. No squawks. Med crew rocks — wait wrong aircraft." },
+            { band: "GREEN", title: "Pilot remarks", text: "Smooth trip. KPBI was VFR on arrival — TAF verified. ILS 28L in service as NOTAMed. Pax on schedule. Atlantic fuel receipt attached. No squawks. B200 performed as expected — smooth cruise FL230, 263 KTAS." },
           ] },
           { type: "cards", items: [
             { band: "BLUE", label: "RECORD", title: "Trip record signed and chained", detail: "PA26-0721 appended to N662FW aircraft record · 4.0 hrs logged to pilot logbook · QMR: None · Debrief approved: A. Rivera 18:14 Jul 21 2026", action: "View full record" },
@@ -158,14 +159,43 @@ export const AV_CANVAS = {
           ] },
         ],
       },
+      {
+        id: "nav-database",
+        label: "Nav Database",
+        description: "AIRAC-cycle regional navigation database — the same 28-day cycle system used by ForeFlight and Garmin. Download your region before it expires. Workers check currency automatically; a YELLOW alert fires 7 days before expiry.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "AIRAC 2614 · Current",         detail: "Effective Jul 31 2026 · Expires Aug 27 2026 · 26 days remaining" },
+            { band: "GREEN",  title: "Southwest package installed",   detail: "NV/AZ/UT · 1,847 waypoints · 312 navaids · 94 airports · 2.1 MB" },
+            { band: "YELLOW", title: "Hawaii package expiring",       detail: "AIRAC 2613 installed · New package 2614 available now — tap to update" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Current AIRAC cycle",   value: "2614",              band: "GREEN" },
+            { label: "Cycle effective",        value: "Jul 31 2026",       band: "WHITE" },
+            { label: "Cycle expires",          value: "Aug 27 2026",       band: "WHITE" },
+            { label: "Days remaining",         value: "26 days",           band: "GREEN" },
+          ] },
+          { type: "table", title: "Available regional packages — AIRAC 2614", cols: ["Region", "Coverage", "Size", "Status", "Action"], rows: [
+            { band: "GREEN",  cells: ["Southwest",  "NV · AZ · UT · CO corners",       "2.1 MB", "Installed 2614", "Current"] },
+            { band: "YELLOW", cells: ["Hawaii",     "All major islands + PHOG PHTO",    "0.8 MB", "Installed 2613", "Update available"] },
+            { band: "WHITE",  cells: ["SoCal",      "LA · San Diego · KONT · KBUR",     "1.9 MB", "Not installed",  "Download"] },
+            { band: "WHITE",  cells: ["NorCal",     "Bay Area · Sacramento · KSFO",     "1.7 MB", "Not installed",  "Download"] },
+            { band: "WHITE",  cells: ["Northeast",  "NYC · Boston · Philly",            "2.4 MB", "Not installed",  "Download"] },
+            { band: "WHITE",  cells: ["Florida",    "Miami · Orlando · Tampa",          "1.6 MB", "Not installed",  "Download"] },
+          ] },
+          { type: "prose", items: [
+            { band: "BLUE", title: "How AIRAC cycles work", text: "The aeronautical world runs on 28-day cycles — every airport, waypoint, navaid, and airspace boundary updates on a synchronized schedule. AIRAC 2614 is the 14th cycle of 2026. Your navigation database must match the current cycle to give accurate approach, waypoint, and airspace data. CoPilot automatically checks your installed cycle against the active cycle and alerts you 7 days before expiry — the same advance warning window that ForeFlight uses." },
+          ] },
+        ],
+      },
     ],
   },
 
   // ──────────────────────────── MX / MAINTENANCE ────────────────────────────
   "av-mx-001": {
     title: "Aircraft Record",
-    subtitle: "N662FW · PC-12/47E · S/N 1847",
-    disclaimer: "Airworthiness determination is the authority of the certifying A&P/IA — this record is advisory",
+    subtitle: "N662FW · King Air B200 · S/N BB-1847",
+    disclaimer: "Airworthiness determination is the sole authority of the certifying A&P/IA — this record is for tracking and documentation only",
     cas: { RED: 0, YELLOW: 1, BLUE: 1, WHITE: 4, GREEN: 5 },
     tabs: [
       {

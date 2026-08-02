@@ -531,12 +531,12 @@ const WORKER_RULESET_MAP = {
   "nursing-comms-001": "nursing_clinical_v1",
   "nursing-accreditation-001": "nursing_clinical_v1",
   // Aviation workers — Phase 2: RAAS as code (CODEX 42)
-  // All aviation workers share aviation_hard_stops_v1 for chat-level enforcement.
-  // Structural FRAT/duty-time evals (av_009/av_014) are validated separately
-  // via validateOutput() when structured scoring data is available.
-  "av-copilot-001": "aviation_hard_stops_v1",
-  "av-dispatch-001": "aviation_hard_stops_v1",
-  "av-mx-001": "aviation_hard_stops_v1",
+  // Aviation workers: core 3 use their own v1 rules (CoPilot/MX/Dispatch);
+  // other aviation workers use aviation_hard_stops_v1 as the chat-level baseline.
+  // PC-12 specific ruleset (av_c02) deprecated — all CoPilot variants use av_c01.
+  "av-copilot-001": "av_c01_copilot_v0",
+  "av-dispatch-001": "av_d01_dispatch_v0",
+  "av-mx-001": "av_m01_mx_v0",
   "av-daily-ops-report": "aviation_hard_stops_v1",
   "av-dispatch-board": "aviation_hard_stops_v1",
   "av-flight-duty-enforcer": "aviation_hard_stops_v1",

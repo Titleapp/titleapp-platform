@@ -1026,7 +1026,7 @@ function PersonalSettings() {
           <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
             <div style={{ fontWeight: '600', marginBottom: '4px' }}>E-Signature Requests</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$1.99</div>
-            <div style={{ fontSize: '13px', color: '#64748b' }}>Per request. DocuSign-powered third-party attestation on logbook entries.</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Per request. BoldSign-powered third-party attestation on logbook entries.</div>
           </div>
 
           <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>

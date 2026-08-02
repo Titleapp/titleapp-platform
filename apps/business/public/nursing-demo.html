@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SOCIII Nursing Demo — Try It Now</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;line-height:1.6;min-height:100vh;display:flex;flex-direction:column}
+  .topbar{background:#7c3aed;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600}
+  .hero{background:linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%);color:#fff;padding:56px 24px 40px;text-align:center}
+  .hero h1{font-size:clamp(24px,4vw,40px);font-weight:700;line-height:1.2;max-width:640px;margin:0 auto 16px}
+  .hero p{font-size:17px;opacity:.85;max-width:500px;margin:0 auto}
+  .pill{display:inline-block;background:rgba(255,255,255,.18);border-radius:999px;padding:4px 16px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px}
+  main{max-width:800px;margin:0 auto;padding:48px 24px 80px;width:100%}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin:32px 0}
+  .card{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.08);border:2px solid transparent;transition:border-color .2s,box-shadow .2s;text-align:center}
+  .card:hover{border-color:#7c3aed;box-shadow:0 8px 32px rgba(124,58,237,.15)}
+  .card-icon{width:64px;height:64px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px}
+  .card-icon.instructor{background:#ede9fe}
+  .card-icon.student{background:#d1fae5}
+  .card h2{font-size:22px;font-weight:700;margin-bottom:8px;color:#1e293b}
+  .card .role{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7c3aed;margin-bottom:16px}
+  .card p{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px}
+  .feature-list{list-style:none;text-align:left;margin-bottom:28px;border-top:1px solid #f1f5f9;padding-top:20px}
+  .feature-list li{font-size:13.5px;color:#475569;padding:7px 0;display:flex;gap:10px;align-items:flex-start;border-bottom:1px solid #f8fafc}
+  .feature-list li::before{content:"→";color:#7c3aed;font-weight:700;flex-shrink:0;margin-top:1px}
+  .btn{display:block;width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer;border:none;transition:opacity .15s}
+  .btn-instructor{background:#7c3aed;color:#fff}
+  .btn-instructor:hover{opacity:.9}
+  .btn-student{background:#059669;color:#fff}
+  .btn-student:hover{opacity:.9}
+  .steps{background:#fff;border-radius:12px;padding:28px;margin:32px 0;border:1px solid #e2e8f0}
+  .steps h3{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:20px}
+  .step{display:flex;gap:16px;align-items:flex-start;margin-bottom:18px}
+  .step:last-child{margin-bottom:0}
+  .step-num{width:28px;height:28px;background:#7c3aed;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .step-text{font-size:14px;color:#475569;line-height:1.5;padding-top:4px}
+  .step-text strong{color:#1e293b}
+  .note{background:#fefce8;border-left:3px solid #eab308;padding:14px 18px;border-radius:0 8px 8px 0;font-size:13px;color:#713f12;margin-top:28px}
+  footer{background:#1e293b;color:#94a3b8;text-align:center;padding:28px 24px;font-size:13px;margin-top:auto}
+  footer a{color:#c4b5fd;text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  SOCIII Inc. &nbsp;·&nbsp; Nursing Education Demo
+</div>
+
+<div class="hero">
+  <div class="pill">Live Demo</div>
+  <h1>See SOCIII in Action</h1>
+  <p>Try the nursing education platform as an instructor managing a cohort — or as a student preparing for NCLEX.</p>
+</div>
+
+<main>
+
+<div class="card-grid">
+
+  <div class="card">
+    <div class="card-icon instructor">🎓</div>
+    <div class="role">Faculty / Administrator</div>
+    <h2>Instructor View</h2>
+    <p>See how a program director manages a nursing cohort — student records, clinical hours, NCLEX readiness, and accreditation evidence — all in one place.</p>
+    <ul class="feature-list">
+      <li>Cohort dashboard — who's at risk, who's ready</li>
+      <li>Clinical hour tracking tied to competency domains</li>
+      <li>NCLEX readiness scores + clinical judgment gaps</li>
+      <li>ACEN accreditation evidence — always current</li>
+      <li>Talk to Alex: "Who needs intervention this week?"</li>
+    </ul>
+    <a href="https://sociii.ai" class="btn btn-instructor">Open Instructor Demo →</a>
+  </div>
+
+  <div class="card">
+    <div class="card-icon student">📚</div>
+    <div class="role">Student</div>
+    <h2>Student View</h2>
+    <p>Experience SOCIII as a second-semester nursing student — adaptive NCLEX prep, clinical log, course schedule, and a tutor available at 2am on a Sunday.</p>
+    <ul class="feature-list">
+      <li>Adaptive NextGen NCLEX case scenarios</li>
+      <li>Personal clinical log — timestamped & verified</li>
+      <li>Course schedule + upcoming deadlines</li>
+      <li>Study tutor: "Explain intracranial pressure"</li>
+      <li>Progress tracking toward NCLEX readiness</li>
+    </ul>
+    <a href="https://sociii.ai" class="btn btn-student">Open Student Demo →</a>
+  </div>
+
+</div>
+
+<div class="steps">
+  <h3>How to access the demo</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-text">Go to <strong>sociii.ai</strong> and click <strong>Sign in with Google</strong> — use any Google account. Your 14-day free trial starts automatically.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-text">Alex will greet you. Tell him: <strong>"I'm a nursing program director, show me the student evaluation tools"</strong> — or — <strong>"I'm a nursing student preparing for NCLEX."</strong></div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-text">Explore the canvas tabs: cohort dashboard, clinical records, NCLEX readiness, accreditation evidence. Ask Alex anything about your program or students.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-text">When you're ready: <strong>$449/month for a 70-student cohort</strong>. No contract. 14-day free trial. Cancel any time.</div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Questions?</strong> Contact Dr. Ruthie Clearwater at <a href="mailto:ruthie@sociii.ai" style="color:#92400e">ruthie@sociii.ai</a> or reach Sean Combs at <a href="mailto:sean@sociii.ai" style="color:#92400e">sean@sociii.ai</a>. The nursing pilot is live with UH / Makai School of Nursing. Academic research partnership active Q2–Q4 2026.
+</div>
+
+</main>
+
+<footer>
+  <strong style="color:#fff">SOCIII Inc.</strong> &nbsp;·&nbsp; <a href="https://sociii.ai">sociii.ai</a> &nbsp;·&nbsp; <a href="mailto:sean@sociii.ai">sean@sociii.ai</a><br/>
+  Patent pending (USPTO May 2026) &nbsp;·&nbsp; Free 14-day trial &nbsp;·&nbsp; No credit card required
+</footer>
+
+</body>
+</html>

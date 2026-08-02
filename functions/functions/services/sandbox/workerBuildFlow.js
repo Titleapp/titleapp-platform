@@ -278,10 +278,12 @@ async function publishWorkerFromSession(userId, sessionId, data) {
     console.warn("[workerBuildFlow] knowledge load for publish failed:", e.message);
   }
 
+  const personaName = (design.personaName || "").trim();
   const doc = {
     slug,
     display_name: name,
     name,
+    ...(personaName ? { persona_name: personaName } : {}),
     vertical: spec.category || spec.vertical || "",
     headline: design.headlineOutcome || "",
     short_description: spec.problemSolves || spec.targetAudience || "",

@@ -422,6 +422,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
     Array.isArray(initial.tabs) && initial.tabs.length ? initial.tabs : [{ name: "", job: "" }]
   );
   const [visualFloor, setVisualFloor] = useState(initial.visualFloor || "");
+  const [personaName, setPersonaName] = useState(initial.personaName || "");
   const [rationale, setRationale] = useState(initial.rationale || "");
   const [mockupUrl, setMockupUrl] = useState(initial.mockupUrl || "");
   const [mockupSource, setMockupSource] = useState(initial.mockupSource || "");
@@ -582,6 +583,13 @@ export function DesignCanvas({ session, workerId, onComplete }) {
         </div>
       </div>
 
+      {/* Chat persona name — optional branded identity */}
+      <div style={card}>
+        <div style={label}>Chat persona name <span style={{ color: "#94A3B8", fontWeight: 400 }}>(optional)</span></div>
+        <div style={sub}>What should your assistant be called in chat? Leave blank to use your worker's name. Ruthie could name hers "Ruthie" — subscribers talk to a named expert, not a generic AI.</div>
+        <input style={{ ...input, marginBottom: 0 }} value={personaName} onChange={e => setPersonaName(e.target.value)} placeholder='e.g. "Ruthie", "Coach Tom", "Dr. Kim"' />
+      </div>
+
       {/* Logo / app-store icon — visual identity */}
       <div style={card}>
         <div style={label}>Logo — app-store icon</div>
@@ -639,6 +647,7 @@ export function DesignCanvas({ session, workerId, onComplete }) {
             headlineOutcome: headline.trim(),
             tabs: tabs.filter(t => t.name.trim()).map(t => ({ name: t.name.trim(), job: t.job.trim() })),
             visualFloor: visualFloor.trim(),
+            personaName: personaName.trim() || null,
             logoUrl: logoUrl || null,
             logoSource: logoSource || null,
             mockupUrl: mockupUrl || null,
