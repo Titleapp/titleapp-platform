@@ -1,7 +1,7 @@
 # CODEX 64 — CoPilot iPad UX
 # Aviation Intelligence Layer — iPad-First Design
 
-**Status:** Spec v5 — Dispatch as manifest origin; training type; full event chain 2026-08-02  
+**Status:** Spec v6 — red-team pass 2 resolved 2026-08-03  
 **Author:** Sean + Claude · HNL Airport  
 **Vertical:** Aviation  
 **Workers:** CoPilot (av-copilot-001), Dispatch (av-dispatch-001), MX (av-mx-001)
@@ -145,11 +145,42 @@ the legal reference.
 This profile is entered once per tail number by ops (or MX after a re-weigh) and
 stored in the aircraft record in Vault. It is NOT something the pilot enters on the ramp.
 
-**Two modes — determined by whether the aircraft profile exists:**
+**Profile entry requires two-person sign-off.** The same "no single point of failure"
+logic applied to clearance capture applies here — a typed BEW or arm value produces
+a confident green checkmark that is just as dangerous as Mode B's missing data,
+except it looks trustworthy. Profile entry/edit flow:
 
-### Mode A: Profile exists → Real CG calculation
-Manifest weights + seat station arms + BEW/arm → ramp weight, ramp CG, takeoff CG,
-landing CG. Plotted against the envelope. Green/yellow/red status.
+```
+1. Ops enters profile data (BEW, arm, envelope, stations)
+2. Profile enters PENDING state — Mode B still shown for this tail
+3. Second authorized person (director of maintenance or designated ops lead)
+   reviews and confirms each critical field:
+     ✓ BEW matches approved W&B document
+     ✓ CG arm matches approved W&B document
+     ✓ Envelope limits match approved W&B document
+4. Confirmer taps APPROVE PROFILE — profile.approved event written with both UIDs
+5. Mode A activates for this tail number
+```
+
+Profile edits (e.g., after a re-weigh) follow the same two-person flow.
+The old profile remains in the event record — it is not overwritten.
+
+**Two modes — determined by whether an approved profile exists:**
+
+### Mode A: Approved profile exists → Real CG calculation with margin indicator
+
+CG status is **not binary**. A green checkmark at 145.1" against a 145.2" aft limit
+is not the same as one at 142". Three states:
+
+```
+GREEN:  CG is within limits AND more than 5% of envelope width from either limit
+        (comfortably mid-envelope)
+YELLOW: CG is within limits BUT within 5% of either boundary
+        ("NEAR AFT LIMIT — 0.1" margin")
+RED:    CG is outside limits
+
+5% threshold is a starting value — Sean to adjust based on operational experience.
+```
 
 ```
 MANIFEST W&B — N661LF
@@ -160,12 +191,12 @@ Flight nurse:          155 lbs @ 155.0"
 Patient (stretcher):   175 lbs @ 158.0"  ← estimated; tap to confirm
 Stretcher/equip:        85 lbs @ 158.0"
 ─────────────────────────────────────
-RAMP WEIGHT:         3,818 lbs  ✓ (limit 5,512)
-RAMP CG:             142.1"    ✓ (limits 139.1" – 145.8" at this weight)
+RAMP WEIGHT:   3,818 lbs  ✓  (limit 5,512)
+RAMP CG:       144.9"    ⚠  NEAR AFT LIMIT
+                              limit 145.2" · margin 0.3"
 
-[envelope diagram — dot plotted against limits]
+[envelope diagram — dot plotted against limits, color-coded by zone]
 
-CG STATUS:  ✓ WITHIN LIMITS
 ─────────────────────────────────────
 ⚠ Verify against approved W&B document
   before flight. PIC is responsible.
@@ -207,6 +238,25 @@ arm — is worse than no data because it creates false confidence.
 **Sean's key insight:** Dispatch is the upstream system. It assigns the aircraft and
 crew mix. The manifest is Dispatch's output and CoPilot's input. The PIC does not
 create the manifest — the PIC accepts it.
+
+**Self-dispatch exception (small Part 135 operators):** Many Part 135 operators —
+particularly single-pilot or small air taxi operations — do not have a staffed
+Dispatch function. The PIC is also the dispatcher. This is a real and common pattern
+that the current Dispatch→Manifest→CoPilot chain doesn't address.
+
+Self-dispatch mode:
+- Triggered when the tenant has no Dispatch worker licensed, OR when the PIC
+  explicitly taps "I am self-dispatching this flight"
+- PIC builds the manifest themselves in CoPilot (not a separate Dispatch worker)
+- The manifest is tagged `selfDispatched: true` — permanent metadata on the record
+- RAAS audit flag: self-dispatched flights are flagged for ops review in the
+  operator's safety program (not a block — a flag)
+- The billing loop is simplified: no separate Dispatch invoice review step;
+  PIC's manifest IS the billing source
+
+This is not a degraded mode — it's a first-class flow for the operators most
+likely to be early SOCIII customers. The architecture handles both; the manifest
+data model is identical either way.
 
 ```
 DISPATCH (ops worker)
@@ -664,7 +714,11 @@ A persistent EDIT button on every auto-filled field.
 │ Approaches   0             [edit]           │
 │                                             │
 │ Hobbs start  [SNAP PHOTO or type]          │
+│              ← photo: ✓ verified           │
+│              ← manual: ⚠ unverified        │
 │ Hobbs end    [SNAP PHOTO or type]          │
+│              ← photo: ✓ verified           │
+│              ← manual: ⚠ unverified        │
 │                                             │
 │ Business purpose                           │
 │ [Patient transport — PHOG to PHNL]        │
@@ -683,6 +737,14 @@ the original. This is the logbook equivalent of the FAA's own amendment standard
 
 **IRS business purpose** is a required field for Part 135 crews — the app does not
 allow logging without it, consistent with IRS business-purpose documentation requirements.
+
+**Hobbs integrity flag:** Manual Hobbs entries (no photo) are tagged
+`hobbsVerified: false` in the logbook event. These appear in Dispatch with a
+⚠ flag for ops review before the Hobbs delta is used for invoicing. OCR-confirmed
+entries are `hobbsVerified: true`. Pilots see the same flag in their logbook view —
+it doesn't block logging, but it flags the record as pending verification.
+A billing system that treats unverified Hobbs identically to verified Hobbs
+undermines the audit trail built everywhere else in this spec.
 
 **Paper logbook photo import (optional):**
 - Pilot can snap a photo of an existing paper logbook page

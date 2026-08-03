@@ -1,7 +1,7 @@
 # CODEX 65 — Aviation Suite Inter-Worker Architecture
 # One Record, Multiple Workers, Real Information Flow
 
-**Status:** Spec v1 — 2026-08-02 · HNL Airport  
+**Status:** Spec v2 — red-teamed 2026-08-03  
 **Author:** Sean + Claude  
 **Vertical:** Aviation  
 **Depends on:** CODEX 60 (suite rebuild), CODEX 64 (CoPilot iPad UX)
@@ -118,19 +118,56 @@ each other's APIs.
 This is the gap in current practice. Fatigue in MX and Dispatch kills people.
 
 ### Flight Crew (FAR 135.267 / 135.271)
+
+⛔ **DO NOT SHIP THIS GATE UNTIL THE RULE IS ENCODED FROM THE ACTUAL FAR TEXT.**
+
+The red-team correctly flagged that "9 hrs minimum rest" is a dangerous
+simplification. FAR 135.267 is a table — rest requirements scale against the
+length of the preceding duty period. FAR 135.271 covers augmented crew scenarios
+separately. An incorrectly simplified rest rule baked into a hard block is itself
+a hazard: it can wrongly clear a pilot who isn't legal, or wrongly ground one who
+is. This spec does not reproduce the rule from memory.
+
+**Before this gate ships:**
+1. Pull the current FAR 135.267 table verbatim from eCFR.gov
+2. Pull FAR 135.271 (augmented crew) and 135.273 (scheduling)
+3. Encode the exact duty-period → minimum-rest lookup as a deterministic function
+4. Have a licensed aviation attorney or qualified ops spec expert review the
+   implementation against the operator's specific OpSpec provisions
+5. Write the function into raasEngine.validate() with citations to the specific
+   paragraph — not a hardcoded number
+
+**What the gate logic will look like (structure only — values TBD from actual FAR):**
 ```
-Flight time limits:
-  8 hrs in any 24-hr period (single pilot)
-  Duty period: 10 hrs standard, extensions require rest
+GATE: dispatch_cannot_exceed_crew_duty_limit
+  Inputs:
+    preceding_duty_period_hours  (computed from duty.start → duty.end events)
+    rest_hours_accumulated       (computed from duty.end → next duty.start)
+    flight_time_last_24h         (computed from logbook events)
+    flight_time_last_quarter     (rolling)
+    flight_time_last_year        (rolling)
 
-Rest requirements:
-  9 hrs minimum between duty periods
-  Must be free from all duty
+  Lookup: FAR 135.267 table → minimum_rest_required
+          FAR 135.271 if augmented crew → different table
 
-RAAS enforcement:
-  - Dispatch cannot assign a PIC who has < 9 hrs rest since last duty end
-  - CoPilot shows duty clock on schedule tab (live hours used / limit)
-  - Alert fires at 75% of limit (not just at the wall)
+  Action: HARD BLOCK if rest < minimum_rest_required
+  Error: "Rest requirement not met per FAR 135.267. Required: [X] hrs.
+          Accumulated: [Y] hrs. Available after: [timestamp]."
+```
+
+**In the meantime:** Display-only duty clock in CoPilot and Dispatch. No hard block
+until the gate is correctly implemented. A clock that shows hours and lets the crew
+make the call is safer than a rule that might be wrong.
+
+**Flight time limits (these ARE straightforward and safe to encode now):**
+```
+  500 hrs in any calendar quarter        (FAR 135.267(a)(1))
+  800 hrs in any two consecutive quarters (FAR 135.267(a)(2))
+  1,400 hrs in any calendar year         (FAR 135.267(a)(3))
+  8 hrs in any 24-hr period, single PIC  (FAR 135.267(b)(1))
+  10 hrs in any 24-hr period, two pilots (FAR 135.267(b)(2))
+
+These can be hard-blocked now — they are absolute and not duty-period-dependent.
 ```
 
 ### Maintenance Technicians (A&P / IA)
@@ -149,9 +186,23 @@ SOCIII approach:
 
 RAAS gate: critical_mx_signoff_fatigue_check
   If technician duty_hours_used > 10 at time of sign-off:
-    status: WARN (not block)
+    status: WARN
     action: ops_manager_acknowledgment_required
     event: mx.fatigue_waiver_acknowledged
+
+  If technician duty_hours_used > 14 at time of sign-off:
+    status: HARD BLOCK with break-glass override
+    — NOT an unconditional wall. A single A&P at a remote base on an urgent
+      medevac return-to-service has no time for "go home and sleep."
+    Break-glass path:
+      1. TWO authorized persons must approve (ops manager + director of maintenance)
+      2. Written justification required (minimum 50 chars, stored as event field)
+      3. Escalation notification fires to ops director immediately (SMS + in-app)
+      4. Event written: mx.fatigue_hardblock_override with both approver UIDs,
+         justification text, and timestamp — permanent, uneditable
+    The record of what happened is worse for the operator than the fatigue itself.
+    That friction is the point — it prevents casual override while preserving a
+    genuine safety escape valve for extreme circumstances.
 ```
 
 ### Dispatch / Operations Controllers
@@ -217,10 +268,54 @@ Source: **ADS-B Exchange** (already paid for, already wired — see aviation-api
   on_ground + no flight plan = parked
   on_ground + active flight plan = pre-departure or taxiing
   airborne = in flight
-  airborne + squawk 7700 = emergency (alert fires immediately to all workers)
-  airborne + squawk 7600 = lost comms (alert)
-  airborne + squawk 7500 = hijack (alert + external notification)
+  airborne + squawk 7700 = emergency
+  airborne + squawk 7600 = lost comms
+  airborne + squawk 7500 = hijack
   ```
+
+⛔ **Emergency squawk detection requires an out-of-band notification path before
+this feature ships. In-app alerts are useless if nobody has the app open.**
+
+The red-team correctly flagged that Open Question #4 and "alert fires immediately"
+directly contradicted each other. Here is the resolved design:
+
+**Emergency notification architecture (required before Phase 3 ships):**
+
+```
+TRIGGER: ADS-B event with squawk in {7700, 7600, 7500}
+  and aircraft was previously in airborne state
+
+IMMEDIATE (< 30 seconds):
+  1. SMS via Twilio (or equivalent) to ops duty officer phone number
+     — phone number configured per tenant, required field in tenant settings
+     — message: "SQUAWK 7700 — N661LF — last position 21.3204°N 157.9215°W
+                 at 8,500ft — 14:47Z. Check comms immediately."
+  2. SMS to backup contact (second required field in tenant settings)
+  3. In-app push notification to all Dispatch users in this tenant
+
+SECONDARY (in-app, for when someone opens the app):
+  4. RED banner across all workers: "EMERGENCY SQUAWK — N661LF — 14:47Z"
+  5. Flight record event: aircraft.emergency_squawk written immediately
+     (cannot be suppressed, permanent)
+
+SQUAWK 7500 (hijack) — additional step:
+  6. SMS message text changes to include: "NOTIFY LAW ENFORCEMENT"
+     SOCIII does not call law enforcement directly — operator must do that.
+     But the notification text makes the required action explicit.
+
+WHAT WE DO NOT DO:
+  — Call the aircraft directly (we have no voice link)
+  — Dispatch emergency services (liability, jurisdiction — operator's call)
+  — Suppress or delay the notification for any reason
+
+TENANT ONBOARDING GATE:
+  Ops duty officer phone number and backup are required fields.
+  The ADS-B polling loop does not activate until both are configured.
+  A tenant cannot use live aircraft tracking without emergency contacts on file.
+```
+
+This is an onboarding requirement, not an optional configuration. No phone numbers
+→ no live tracking. That's not punitive — it's the responsible default.
 
 ### Engine Telemetry Integration (Phase 4)
 
@@ -289,8 +384,48 @@ GATE: engine_alert_before_release
   Event written: dispatch.engine_alert_acknowledged
 
 GATE: critical_ad_before_release
-  Query: aircraft/{tail}/adCompliance where nextDue <= today
-  Action: HARD BLOCK — cannot dispatch aircraft with overdue AD
+  Query: aircraft/{tail}/adCompliance
+  — Must check AMOC status, not raw due date alone.
+    An AD with an approved Alternate Means of Compliance (AMOC) may extend or
+    replace the standard compliance date. Querying nextDue <= today without
+    checking for an active AMOC blocks legally airworthy aircraft.
+  Data model required:
+    adCompliance entry: {
+      adNumber, title, effectiveDate, standardDueDate,
+      amocApproved: bool,       // AMOC on file with this operator
+      amocReference: string,    // FAA AMOC approval number
+      amocEffectiveDate: date,
+      amocExpiryDate: date,     // AMOCs can expire
+      actualComplianceDate: date,
+      complianceMethod: "standard | amoc | not-applicable",
+      status: "current | overdue | amoc-current | amoc-expired | n/a"
+    }
+  Gate logic: HARD BLOCK only if status in ["overdue", "amoc-expired"]
+  Status "amoc-current" = aircraft is airworthy, no block.
+```
+
+**Transactional consistency for safety-critical gates:**
+
+Gates that could race against concurrent writes need Firestore transactions,
+not plain reads. Two specific cases:
+
+```
+dispatch_cannot_assign_oos_aircraft:
+  Risk: MX clears a squawk (aircraft.returned event) at the same moment
+        Dispatch is checking aircraft status for an assignment.
+  Fix:  Manifest creation runs inside a Firestore transaction that reads
+        the aircraft status document atomically. If a concurrent write
+        changes status between the read and the manifest.created write,
+        the transaction retries. The manifest cannot be created against
+        a document that changed state during the write.
+
+critical_ad_before_release:
+  Same pattern. flight.released event is written inside a transaction
+  that reads adCompliance at the same instant.
+
+RAAS engine implementation note: raasEngine.validate() must use
+db.runTransaction() for these two gates specifically — plain reads
+are not sufficient for safety-critical dispatch blocking.
 ```
 
 ---
@@ -365,18 +500,40 @@ for Dispatch and MX personnel. Same entity records, different window.
    `tenants/{id}/squawks`. The target is `aircraft/{tail}/events`. Migration
    needed before Phase 2 cross-worker queries work.
 
-2. **Multi-operator aircraft:** If N661LF is operated by Life Flight but maintained
-   under an MRO contract at a different company, who owns the aircraft record?
-   Likely the operating certificate holder. MRO gets a read-only view.
+2. **Multi-operator aircraft (cross-tenant access control):** If N661LF is
+   operated by Life Flight but maintained under an MRO contract at a different
+   company, "MRO gets a read-only view" is not a sufficient answer — it implies
+   a single `aircraft/{tail}` document is visible across two tenant accounts,
+   which breaks the Studio Locker per-tenant isolation model.
+   Proposed answer: The aircraft record lives under the operating certificate
+   holder's tenant. MRO access is granted via an explicit `aircraft.share` event
+   that specifies scope: maintenance-events-only (squawks, work orders, ADs) —
+   NOT manifest data, billing data, or crew information. The share is revocable
+   and creates an audit event. This needs its own CODEX before Phase 3 ships.
 
 3. **P&WC AeroCentrix enrollment:** Does Life Flight have an active Eagle Services
    Plan? If so, API access may already be available. Worth asking ops.
 
-4. **Squawk 7700/7600/7500 notification path:** If the ADS-B feed detects an
-   emergency squawk, who gets notified and via what channel? SMS to ops manager?
-   This is a product/liability decision, not just an engineering one.
+4. **Squawk 7700/7600/7500 notification path:** Resolved above — Twilio SMS to
+   ops duty officer and backup contact, both required before live ADS-B activates.
 
-5. **Operations worker scope:** Crew scheduling and fatigue risk management is a
-   significant product in its own right (Jeppesen Crew, Sabre, etc.). What's the
-   SOCIII wedge? Likely the small Part 135 operator who runs crew scheduling out
-   of a spreadsheet and has no formal fatigue risk program at all.
+5. **Operations worker scope:** The SOCIII wedge is the small Part 135 operator
+   running crew scheduling out of a spreadsheet with no formal FRMS. That operator
+   has the most to gain from basic duty tracking and the least switching cost.
+
+6. **Duty clock enforcement for MX/Dispatch:** Without a badge-in/badge-out
+   integration or an active prompt, MX techs and dispatchers have no incentive
+   to log duty events consistently. Options:
+   a. App prompt: "You have an open work order — are you still on duty?" after 10hrs
+   b. Shift-start required before work orders can be opened (procedural enforcement)
+   c. Integration with a timekeeping system (Kronos, etc.) — overkill for Phase 3
+   Recommended: Option (b) for Phase 3. Work order creation is gated on an open
+   duty event. Forces the discipline without hardware integration.
+
+7. **Engine alert tiers:** A single WARN gate for all engine alerts conflates an
+   ITT nudge (schedule a borescope) with an imminent-failure precursor (ground
+   immediately). Phase 4 engine telemetry integration needs at minimum two tiers:
+   ADVISORY (trend deviation, schedule inspection within X hours/cycles) and
+   URGENT (anomaly requiring immediate ground inspection before next flight).
+   URGENT = same override friction as MX fatigue hard block. ADVISORY = same as
+   current WARN with ops manager acknowledgment.
