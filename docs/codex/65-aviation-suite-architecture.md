@@ -1,10 +1,12 @@
 # CODEX 65 — Aviation Suite Inter-Worker Architecture
 # One Record, Multiple Workers, Real Information Flow
 
-**Status:** Spec v2 — red-teamed 2026-08-03  
+**Status:** Spec v3 — round 2 red-team patches applied 2026-08-03  
 **Author:** Sean + Claude  
 **Vertical:** Aviation  
 **Depends on:** CODEX 60 (suite rebuild), CODEX 64 (CoPilot iPad UX)
+
+**Standing citation rule:** Every FAR/AC citation in this document must include a direct source link (eCFR.gov or FAA AC library). A citation without a link is unverified and must be treated as a placeholder until confirmed.
 
 ---
 
@@ -67,6 +69,12 @@ Sources that write to it:
 
 Fields that matter for duty:
   role:            PIC | SIC | flight-nurse | A&P | IA | dispatcher | ops-controller
+  operationCategory: scheduled-135 | unscheduled-135 | hemes | part-91
+                   // drives which FAR duty/rest table applies to this person
+                   // VALIDATION: "hemes" is only valid if tenant.aircraftCategory = "helicopter"
+                   // A fixed-wing air-medical operator is unscheduled-135, not hemes —
+                   // misconfiguring this applies the wrong rest floor (and the 72-hr
+                   // assignment cap to an operation not bound by FAR 135.271)
   currentDutyState: on-duty | off-duty | rest-period
   dutyPeriodStart: timestamp
   dutyHoursUsed:   this duty period
@@ -117,21 +125,52 @@ each other's APIs.
 
 This is the gap in current practice. Fatigue in MX and Dispatch kills people.
 
-### Flight Crew (FAR 135.267 / 135.271)
+### Flight Crew
 
-⛔ **DO NOT SHIP THIS GATE UNTIL THE RULE IS ENCODED FROM THE ACTUAL FAR TEXT.**
+⛔ **DO NOT SHIP THE REST/DUTY GATE UNTIL THE RULE IS ENCODED FROM THE ACTUAL FAR TEXT.**
 
-The red-team correctly flagged that "9 hrs minimum rest" is a dangerous
-simplification. FAR 135.267 is a table — rest requirements scale against the
-length of the preceding duty period. FAR 135.271 covers augmented crew scenarios
-separately. An incorrectly simplified rest rule baked into a hard block is itself
-a hazard: it can wrongly clear a pilot who isn't legal, or wrongly ground one who
-is. This spec does not reproduce the rule from memory.
+**Which FAR governs depends on the operator's category — this is a per-tenant config:**
+
+| Operation type | Governing FAR | Key distinction |
+|---|---|---|
+| Scheduled Part 135 | FAR 135.265 | Graduated 9/10/11-hr rest table keyed to duty period length |
+| Unscheduled Part 135 (standard) | FAR 135.267 | Flat 10-consecutive-hour rest before assignment completion |
+| Helicopter HEMS (hospital-based EMS) | FAR 135.271 | Separate rule shape — see HEMES subsection below |
+
+Do not conflate 135.265 and 135.267. The graduated rest table (9/10/11 hrs) lives in
+135.265 (scheduled operations). FAR 135.267 (unscheduled) uses a flat 10-consecutive-hour
+floor — a simpler but different rule. FAR 135.273 governs flight attendant duty limits;
+it is not a scheduling rule and has no bearing on pilot or dispatcher gates.
+
+FAR 135.271 is HEMES — Helicopter Hospital Emergency Medical Evacuation Service.
+It is not an "augmented crew" rule. It is structurally different from 135.267.
+See HEMES subsection below.
+
+**LEGAL / OPERATIONAL / SAFE framework — applies to every duty/rest gate:**
+```
+LEGAL:        The FAR minimum for this operator's ops type. Cite exact section/paragraph
+              plus a direct link to the eCFR source.
+OPERATIONAL:  What this tenant's OpSpec/GOM requires (often more restrictive than LEGAL).
+              Stored as tenant-level config — not a global constant.
+SAFE:         The more conservative of LEGAL and OPERATIONAL.
+              This is what actually gates by default.
+
+Every gate that touches duty/rest must store all three values as metadata on the gate
+definition at fire time — so an override or audit shows which authority produced the
+number. Default gate behavior = SAFE. Loosening toward LEGAL requires an explicit,
+logged, per-tenant override — never a silent default.
+```
+
+An incorrectly simplified rest rule baked into a hard block is itself a hazard.
+This spec does not reproduce any rule from memory.
 
 **Before this gate ships:**
-1. Pull the current FAR 135.267 table verbatim from eCFR.gov
-2. Pull FAR 135.271 (augmented crew) and 135.273 (scheduling)
-3. Encode the exact duty-period → minimum-rest lookup as a deterministic function
+1. Pull FAR 135.265, 135.267, and 135.271 verbatim from eCFR.gov — each citation
+   in code must include the direct URL to the section
+2. Determine each tenant's operation category from their OpSpec; store as
+   `tenant.operationCategory` (scheduled-135 | unscheduled-135 | hemes | part-91)
+3. Encode the applicable duty-period → minimum-rest lookup as a deterministic function,
+   branched by operationCategory, using the LEGAL/OPERATIONAL/SAFE framework
 4. Have a licensed aviation attorney or qualified ops spec expert review the
    implementation against the operator's specific OpSpec provisions
 5. Write the function into raasEngine.validate() with citations to the specific
@@ -146,13 +185,15 @@ GATE: dispatch_cannot_exceed_crew_duty_limit
     flight_time_last_24h         (computed from logbook events)
     flight_time_last_quarter     (rolling)
     flight_time_last_year        (rolling)
+    operationCategory            (from person record — drives FAR lookup)
 
-  Lookup: FAR 135.267 table → minimum_rest_required
-          FAR 135.271 if augmented crew → different table
+  Lookup: LEGAL        = FAR 135.265 table (scheduled) OR 135.267 floor (unscheduled)
+                         OR 135.271 HEMES rules — per person.operationCategory
+          OPERATIONAL  = tenant.opspecRestMinimum (configured per operator)
+          SAFE         = max(LEGAL, OPERATIONAL)
 
-  Action: HARD BLOCK if rest < minimum_rest_required
-  Error: "Rest requirement not met per FAR 135.267. Required: [X] hrs.
-          Accumulated: [Y] hrs. Available after: [timestamp]."
+  ⛔ ACTION: DISPLAY ONLY until this lookup is encoded with actual FAR text.
+     Gate metadata must store LEGAL, OPERATIONAL, and SAFE values at fire time.
 ```
 
 **In the meantime:** Display-only duty clock in CoPilot and Dispatch. No hard block
@@ -161,13 +202,55 @@ make the call is safer than a rule that might be wrong.
 
 **Flight time limits (these ARE straightforward and safe to encode now):**
 ```
-  500 hrs in any calendar quarter        (FAR 135.267(a)(1))
+  500 hrs in any calendar quarter         (FAR 135.267(a)(1))
   800 hrs in any two consecutive quarters (FAR 135.267(a)(2))
-  1,400 hrs in any calendar year         (FAR 135.267(a)(3))
-  8 hrs in any 24-hr period, single PIC  (FAR 135.267(b)(1))
-  10 hrs in any 24-hr period, two pilots (FAR 135.267(b)(2))
+  1,400 hrs in any calendar year          (FAR 135.267(a)(3))
+  8 hrs in any 24-hr period, single PIC   (FAR 135.267(b)(1))
+  10 hrs in any 24-hr period, two pilots  (FAR 135.267(b)(2))
 
 These can be hard-blocked now — they are absolute and not duty-period-dependent.
+Confirmed correct per eCFR as written.
+```
+
+### HEMES — Helicopter Hospital EMS (FAR 135.271)
+
+FAR 135.271 governs helicopter operators providing hospital-based emergency medical
+evacuation. It is NOT a variation of 135.267 — the rule structures are different.
+Tenants running HEMS operations need this encoded separately, not branched from the
+standard unscheduled model.
+
+| Rule element | Standard unscheduled (135.267) | HEMES (135.271) |
+|---|---|---|
+| Rest before assignment | 10 consecutive hrs before assignment completion | 8 consecutive hrs min in any 24-hr period of assignment |
+| Rest before reporting | — | 10 consecutive hrs immediately preceding hospital report |
+| Max flight time / 24 hr | 8 hrs (1 pilot) / 10 hrs (2 pilots) | 8 hrs max per 24-hr period |
+| Assignment length cap | Not applicable | **72 consecutive hours max at the hospital** |
+| Rest facility | Not applicable | Adequate facility required at or near the hospital |
+| Post-assignment rest | Standard cumulative | 12 hrs (assignment < 48 hrs) · 16 hrs (assignment > 48 hrs) |
+| Quarterly rest floor | 13 periods of ≥ 24 hrs/quarter | Same |
+
+The 72-hour hospital-assignment cap and the rest-facility requirement have no
+equivalent in the standard model and cannot share one lookup table.
+
+**Person record addition for HEMES tenants:**
+```json
+{
+  "currentAssignment": {
+    "startedAt": "...",
+    "hoursElapsed": 36.5,
+    "assignmentCapHours": 72,
+    "restFacilityAvailable": true,
+    "hoursRemaining": 35.5
+  }
+}
+```
+
+```
+GATE: hemes_72hr_assignment_cap
+  ⛔ DO NOT SHIP until FAR 135.271 is encoded verbatim and reviewed by aviation counsel.
+  Display-only until then: show assignment hours elapsed against the 72-hour cap.
+  The 72-hour cap and post-assignment rest requirements (12/16 hrs) have no
+  equivalent in the standard model — they require a separate gate implementation.
 ```
 
 ### Maintenance Technicians (A&P / IA)
@@ -268,54 +351,20 @@ Source: **ADS-B Exchange** (already paid for, already wired — see aviation-api
   on_ground + no flight plan = parked
   on_ground + active flight plan = pre-departure or taxiing
   airborne = in flight
-  airborne + squawk 7700 = emergency
-  airborne + squawk 7600 = lost comms
-  airborne + squawk 7500 = hijack
   ```
 
-⛔ **Emergency squawk detection requires an out-of-band notification path before
-this feature ships. In-app alerts are useless if nobody has the app open.**
+**Emergency squawk detection and notification have been cut from Phase 3 scope.**
 
-The red-team correctly flagged that Open Question #4 and "alert fires immediately"
-directly contradicted each other. Here is the resolved design:
+Rationale: ATC already sees and acts on 7700/7600/7500 squawks faster than a
+60-second ADS-B poll + SMS chain. Adding Twilio SMS notification creates a hard
+onboarding gate (phone numbers required before any live tracking activates) that
+blocks the genuinely valuable part of Phase 3 — aircraft status aggregation —
+without offsetting safety benefit. Emergency alerting may be scoped as a standalone
+feature if a specific operator requests it with a clear use case.
 
-**Emergency notification architecture (required before Phase 3 ships):**
-
-```
-TRIGGER: ADS-B event with squawk in {7700, 7600, 7500}
-  and aircraft was previously in airborne state
-
-IMMEDIATE (< 30 seconds):
-  1. SMS via Twilio (or equivalent) to ops duty officer phone number
-     — phone number configured per tenant, required field in tenant settings
-     — message: "SQUAWK 7700 — N661LF — last position 21.3204°N 157.9215°W
-                 at 8,500ft — 14:47Z. Check comms immediately."
-  2. SMS to backup contact (second required field in tenant settings)
-  3. In-app push notification to all Dispatch users in this tenant
-
-SECONDARY (in-app, for when someone opens the app):
-  4. RED banner across all workers: "EMERGENCY SQUAWK — N661LF — 14:47Z"
-  5. Flight record event: aircraft.emergency_squawk written immediately
-     (cannot be suppressed, permanent)
-
-SQUAWK 7500 (hijack) — additional step:
-  6. SMS message text changes to include: "NOTIFY LAW ENFORCEMENT"
-     SOCIII does not call law enforcement directly — operator must do that.
-     But the notification text makes the required action explicit.
-
-WHAT WE DO NOT DO:
-  — Call the aircraft directly (we have no voice link)
-  — Dispatch emergency services (liability, jurisdiction — operator's call)
-  — Suppress or delay the notification for any reason
-
-TENANT ONBOARDING GATE:
-  Ops duty officer phone number and backup are required fields.
-  The ADS-B polling loop does not activate until both are configured.
-  A tenant cannot use live aircraft tracking without emergency contacts on file.
-```
-
-This is an onboarding requirement, not an optional configuration. No phone numbers
-→ no live tracking. That's not punitive — it's the responsible default.
+Phase 3 retains: ADS-B position tracking, flight state derivation (parked /
+pre-departure / in-flight), and `adsb.on_ground` / `adsb.airborne` event writing.
+Squawk-code-derived state labels are removed from Phase 3 scope.
 
 ### Engine Telemetry Integration (Phase 4)
 
@@ -363,10 +412,18 @@ GATE: dispatch_cannot_assign_oos_aircraft
 GATE: dispatch_cannot_exceed_crew_duty_limit
   Query: persons/{uid}/events where type in ["duty.start","duty.end","flight.departed","flight.arrived"]
          in last 24h
-  Compute: hours since last qualifying rest period
-  Action: HARD BLOCK if < 9 hrs rest (pilot); WARN if < 11 hrs rest (MX/dispatch)
-  Error: "Combs has 6.2 hrs of rest since last duty. Minimum 9 hrs required.
-          Next available: 02:45Z"
+  Compute: hours since last qualifying rest period; operationCategory from person record
+
+  ⛔ ACTION: DISPLAY ONLY — hard block not implemented until LEGAL/OPERATIONAL/SAFE
+     lookup is encoded with actual FAR text (135.265, 135.267, or 135.271 per
+     operationCategory). See duty limits section above.
+
+  When encoded, gate metadata must store at fire time:
+    legal_minimum:        derived from applicable FAR + operationCategory
+    operational_minimum:  from tenant.opspecRestMinimum config
+    safe_minimum:         max(legal_minimum, operational_minimum) — this gates
+
+  Display (interim): "Combs — 6.2 hrs rest since last duty [display only, no block]"
 
 GATE: copilot_cannot_release_without_manifest_accepted
   Query: flights/{flightId}/events where type="manifest.accepted"
@@ -375,8 +432,25 @@ GATE: copilot_cannot_release_without_manifest_accepted
 
 GATE: mx_fatigue_signoff_check
   Query: persons/{uid} duty hours at time of squawk.cleared event
-  Action: WARN if > 10 hrs, HARD BLOCK if > 14 hrs (extreme)
-  Event written: mx.fatigue_waiver_acknowledged (if ops manager overrides WARN)
+  Action: WARN if > 10 hrs — ops manager acknowledgment required
+          HARD BLOCK if > 14 hrs — break-glass override required (not unconditional wall)
+
+  WARN path (> 10 hrs):
+    Requires: ops manager acknowledgment (single person)
+    Event written: mx.fatigue_waiver_acknowledged
+
+  HARD BLOCK path (> 14 hrs) — break-glass:
+    1. TWO authorized persons must approve: ops manager + director of maintenance
+    2. Written justification required (minimum 50 characters, stored as event field)
+    3. Escalation notification fires immediately: SMS + in-app to ops director
+    4. Event written: mx.fatigue_hardblock_override
+       Fields: approver1Uid, approver2Uid, justificationText, timestamp
+       Permanent, uneditable.
+
+    Rationale: A single A&P at a remote base on an urgent medevac return-to-service
+    cannot be sent home. The break-glass path preserves an escape valve while making
+    the record of override worse for the operator than the fatigue itself.
+    That friction is the point.
 
 GATE: engine_alert_before_release
   Query: aircraft/{tail}/events where type="engine.alert" and status="open"
@@ -407,7 +481,7 @@ GATE: critical_ad_before_release
 **Transactional consistency for safety-critical gates:**
 
 Gates that could race against concurrent writes need Firestore transactions,
-not plain reads. Two specific cases:
+not plain reads. Three specific cases:
 
 ```
 dispatch_cannot_assign_oos_aircraft:
@@ -423,9 +497,17 @@ critical_ad_before_release:
   Same pattern. flight.released event is written inside a transaction
   that reads adCompliance at the same instant.
 
+dispatch_cannot_exceed_crew_duty_limit:
+  Risk: A crew member's duty/rest events could update between the rest-hours
+        read and the flight.released write, producing a stale gate result.
+  Fix:  Once the gate is encoded with actual FAR text, the flight.released write
+        must run inside a transaction that reads the person's duty events atomically.
+  Note: Add to transactional enforcement only after the gate itself is correctly
+        implemented per the duty limits section above.
+
 RAAS engine implementation note: raasEngine.validate() must use
-db.runTransaction() for these two gates specifically — plain reads
-are not sufficient for safety-critical dispatch blocking.
+db.runTransaction() for these three gates — plain reads are not sufficient for
+safety-critical dispatch blocking.
 ```
 
 ---
@@ -514,8 +596,10 @@ for Dispatch and MX personnel. Same entity records, different window.
 3. **P&WC AeroCentrix enrollment:** Does Life Flight have an active Eagle Services
    Plan? If so, API access may already be available. Worth asking ops.
 
-4. **Squawk 7700/7600/7500 notification path:** Resolved above — Twilio SMS to
-   ops duty officer and backup contact, both required before live ADS-B activates.
+4. **Squawk 7700/7600/7500 notification path:** Resolved — emergency squawk
+   detection and SMS/Twilio notification architecture removed from Phase 3 scope.
+   See rationale in ADS-B Integration section above. Revisit only if a specific
+   operator requests it as a scoped feature.
 
 5. **Operations worker scope:** The SOCIII wedge is the small Part 135 operator
    running crew scheduling out of a spreadsheet with no formal FRMS. That operator

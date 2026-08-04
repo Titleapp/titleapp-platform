@@ -1,10 +1,12 @@
 # CODEX 64 — CoPilot iPad UX
 # Aviation Intelligence Layer — iPad-First Design
 
-**Status:** Spec v6 — red-team pass 2 resolved 2026-08-03  
+**Status:** Spec v7 — round 2 red-team patches applied 2026-08-03  
 **Author:** Sean + Claude · HNL Airport  
 **Vertical:** Aviation  
 **Workers:** CoPilot (av-copilot-001), Dispatch (av-dispatch-001), MX (av-mx-001)
+
+**Standing citation rule:** Every FAR/AC citation in this document must include a direct source link (eCFR.gov or FAA AC library). A citation without a link is unverified and must be treated as a placeholder.
 
 ---
 
@@ -46,8 +48,9 @@ a given flight leg — pilot(s), crew, patients, passengers — with their weigh
    performance calculations are manifest-dependent. An overweight or out-of-CG
    aircraft is a safety event, not a paperwork event.
 
-3. **Safety (Regulatory):** FAR 135.87 requires each PIC to be provided a load
-   manifest before departure. The manifest IS the regulatory record.
+3. **Safety (Regulatory):** FAR 135.63(c) requires each certificate holder to prepare
+   a load manifest in duplicate before each takeoff (multiengine aircraft). FAR 135.63(d)
+   requires the PIC to carry it on the flight. The manifest IS the regulatory record.
 
 4. **Payments and Billing:** In air medical and charter, the manifest is the
    source of truth for the invoice — who flew, what services were rendered, what
@@ -88,7 +91,7 @@ a given flight leg — pilot(s), crew, patients, passengers — with their weigh
   "totalWeightLbs": 510,
   "cgStation": 142.3,        // calculated from seat stations and weights
   "cgLimits": { "fwd": 138.5, "aft": 145.2 },
-  "cgOk": true,
+  "cgStatus": "ok",              // "ok" | "out-of-limits" | "not-available"
   "takeoffWeightLbs": 4850,
   "maxTakeoffWeightLbs": 5250,
   "weightOk": true,
@@ -353,7 +356,8 @@ most complex logbook output (two separate entries, split currency attribution).
       "entryType": "dual-received",
       "instrumentTime": 1.8,     // simulated instrument if VMC
       "approachCount": 4,
-      "holds": 2
+      "holds": 2,
+      "confirmedByProxy": false  // true if instructor confirmed on student's behalf
     }
   }
 }
@@ -364,6 +368,9 @@ to aircraft, student added to manifest, training objective entered. CoPilot surf
 the manifest to the instructor (PIC). After flight, both logbook entries are generated
 from the single manifest — instructor reviews/confirms their entry, student confirms
 theirs separately (or the instructor confirms both if student doesn't have app access).
+When the instructor confirms on the student's behalf, the student's logbook event is
+tagged `confirmedByProxy: true` — distinguishing proxy confirmation from a
+self-confirmed entry in the audit trail.
 
 **The training worker** (Flight Academy — separate CODEX) handles the broader curriculum:
 lesson plan progression, endorsements, stage check scheduling, written test prep.
@@ -526,13 +533,11 @@ works identically from React Native.
 instrument panel if everything goes to shite" reads like backup instrument, not
 supplemental display. No FAA regulatory framing in the doc.
 
-**Decision:** CoPilot is classified and marketed as a **Class 1 Electronic Flight
-Bag (EFB)** per FAA AC 120-76D — supplemental to, never a replacement for, required
-aircraft instruments and pilot-in-command judgment.
+**Decision:** CoPilot is classified and marketed as a **portable Electronic Flight Bag (EFB)** per FAA AC 120-76E (current, superseded AC 120-76D in June 2024) — supplemental to, never a replacement for, required aircraft instruments and pilot-in-command judgment.
 
 **Required disclaimers:**
 - App launch screen (dismissible after first read, persistent in settings):
-  *"CoPilot is a supplemental Electronic Flight Bag (EFB) per FAA AC 120-76D.
+  *"CoPilot is a supplemental portable Electronic Flight Bag (EFB) per FAA AC 120-76E.
   It is not a certified aviation instrument. Go/no-go authority rests with the PIC.
   Do not use as a primary navigation or instrument reference."*
 - Backup instrument mode persistent footer:
@@ -745,6 +750,17 @@ entries are `hobbsVerified: true`. Pilots see the same flag in their logbook vie
 it doesn't block logging, but it flags the record as pending verification.
 A billing system that treats unverified Hobbs identically to verified Hobbs
 undermines the audit trail built everywhere else in this spec.
+
+**Hobbs gate — aircraft record writes:**
+The `hobbsVerified` flag applies beyond billing. CODEX 65 uses Hobbs to compute
+`aircraft/{tail}/nextInspection.dueHobbs` — the countdown MX watches for 100-hr
+inspections. An unverified Hobbs entry must not silently update that safety-relevant
+countdown with the same weight as a photo-verified entry.
+
+Gate: Hobbs writes to the aircraft record that update `nextInspection.dueHobbs`
+require either `hobbsVerified: true` OR an explicit ops-manager acknowledgment
+(same WARN pattern as the MX fatigue WARN gate). This gate applies when writing
+to `aircraft/{tail}` in CODEX 65 — not only to the billing pipeline.
 
 **Paper logbook photo import (optional):**
 - Pilot can snap a photo of an existing paper logbook page
