@@ -1,6 +1,6 @@
 {
   "vertical": "platform",
-  "name": "Platform — Business in a Box",
+  "name": "Platform \u2014 Business in a Box",
   "version": "1.0.0",
   "lifecycle": [
     {
@@ -54,9 +54,17 @@
         "monthly": 0
       },
       "status": "live",
-      "capabilitySummary": "Zero-setup financial intelligence. Accept any input — photo, PDF, Excel, CSV, or conversation. Build Chart of Accounts, generate plain-English P&L, project cash position. Tax prep support with quarterly checklists. Alex Found Something research radar for tax credits and regulatory guidance.",
-      "tags": ["accounting", "finance", "tax", "radar"],
-      "valueBucket": ["save_money", "stay_compliant"],
+      "capabilitySummary": "Zero-setup financial intelligence. Accept any input \u2014 photo, PDF, Excel, CSV, or conversation. Build Chart of Accounts, generate plain-English P&L, project cash position. Tax prep support with quarterly checklists. Alex Found Something research radar for tax credits and regulatory guidance.",
+      "tags": [
+        "accounting",
+        "finance",
+        "tax",
+        "radar"
+      ],
+      "valueBucket": [
+        "save_money",
+        "stay_compliant"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -75,9 +83,18 @@
         "monthly": 0
       },
       "status": "live",
-      "capabilitySummary": "People operations co-pilot with three subscriber bands: under 5 employees (conversation-first), 5-100 (normalize what they have), over 100 (right-sizing audit). Generate finished documents — offer letters, PIPs, termination letters. Hard stop on protected class complaints. Alex Found Something HR and payroll research radar.",
-      "tags": ["hr", "people", "payroll", "hiring", "radar"],
-      "valueBucket": ["save_money", "stay_compliant"],
+      "capabilitySummary": "People operations co-pilot with three subscriber bands: under 5 employees (conversation-first), 5-100 (normalize what they have), over 100 (right-sizing audit). Generate finished documents \u2014 offer letters, PIPs, termination letters. Hard stop on protected class complaints. Alex Found Something HR and payroll research radar.",
+      "tags": [
+        "hr",
+        "people",
+        "payroll",
+        "hiring",
+        "radar"
+      ],
+      "valueBucket": [
+        "save_money",
+        "stay_compliant"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -96,9 +113,17 @@
         "monthly": 0
       },
       "status": "live",
-      "capabilitySummary": "Professional content co-pilot. Ready-to-send LinkedIn posts, email campaigns, press releases, and thought leadership — not templates. Brand voice via Pro Tips. Two questions max before generating. Minimum 2 variations on all short-form content. Regulated vertical compliance flag with VERIFY tags.",
-      "tags": ["marketing", "content", "social", "email", "press"],
-      "valueBucket": ["make_money"],
+      "capabilitySummary": "Professional content co-pilot. Ready-to-send LinkedIn posts, email campaigns, press releases, and thought leadership \u2014 not templates. Brand voice via Pro Tips. Two questions max before generating. Minimum 2 variations on all short-form content. Regulated vertical compliance flag with VERIFY tags.",
+      "tags": [
+        "marketing",
+        "content",
+        "social",
+        "email",
+        "press"
+      ],
+      "valueBucket": [
+        "make_money"
+      ],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -117,9 +142,17 @@
         "monthly": 0
       },
       "status": "live",
-      "capabilitySummary": "Command bridge for subscriber-operators. Daily briefing via chosen channel (text, email, in-app). Revenue dashboard with MRR and churn. Subscriber intelligence with engagement tracking. Credit consumption monitoring. Burn rate alerts — burn exceeds MRR is always first sentence.",
-      "tags": ["operations", "dashboard", "briefing", "intelligence"],
-      "valueBucket": ["make_money", "save_money"],
+      "capabilitySummary": "Command bridge for subscriber-operators. Daily briefing via chosen channel (text, email, in-app). Revenue dashboard with MRR and churn. Subscriber intelligence with engagement tracking. Credit consumption monitoring. Burn rate alerts \u2014 burn exceeds MRR is always first sentence.",
+      "tags": [
+        "operations",
+        "dashboard",
+        "briefing",
+        "intelligence"
+      ],
+      "valueBucket": [
+        "make_money",
+        "save_money"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -138,9 +171,20 @@
         "monthly": 29
       },
       "status": "live",
-      "capabilitySummary": "Unified roster, onboarding pipeline, schedule, and compliance surface for humans + digital workers. Tracks employees, contractors, advisors, and digital workers in one place. I-9, W-4, certifications, harassment training, PTO, and license expirations surfaced as obligations. Digital workers default to 24×7×365 coverage. Applies to all verticals. Does not run payroll.",
-      "tags": ["hr", "people", "compliance", "scheduling", "onboarding", "advisors", "contractors"],
-      "valueBucket": ["stay_compliant", "save_money"],
+      "capabilitySummary": "Unified roster, onboarding pipeline, schedule, and compliance surface for humans + digital workers. Tracks employees, contractors, advisors, and digital workers in one place. I-9, W-4, certifications, harassment training, PTO, and license expirations surfaced as obligations. Digital workers default to 24\u00d77\u00d7365 coverage. Applies to all verticals. Does not run payroll.",
+      "tags": [
+        "hr",
+        "people",
+        "compliance",
+        "scheduling",
+        "onboarding",
+        "advisors",
+        "contractors"
+      ],
+      "valueBucket": [
+        "stay_compliant",
+        "save_money"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -148,24 +192,98 @@
       },
       "temporalType": "always_on",
       "constraintRaasSources": [
-        { "moduleId": "platform_hr_compliance_v1", "required": true, "load_when": "always" }
+        {
+          "moduleId": "platform_hr_compliance_v1",
+          "required": true,
+          "load_when": "always"
+        }
       ],
       "canvasTabs": [
-        { "id": "people", "label": "People", "signal": "card:work-product", "default": true, "order": 0, "view": "hr", "description": "Roster — employees, contractors, advisors, digital workers in one view" },
-        { "id": "onboarding", "label": "Onboarding", "signal": "card:work-product", "order": 1, "view": "hr", "description": "In-flight onboardings with state — invited / ID-verified / signing / closed" },
-        { "id": "schedule", "label": "Schedule", "signal": "card:work-product", "order": 2, "view": "hr", "description": "Coverage by shift — humans on duty + digital workers 24×7" },
-        { "id": "compliance", "label": "Compliance", "signal": "card:work-product", "order": 3, "view": "hr", "description": "I-9, W-4, harassment training, posters, COBRA, PTO — open obligations" },
-        { "id": "documents", "label": "Documents", "signal": "card:work-product", "order": 4, "view": "hr", "description": "Agreements, NDAs, offer letters, signed packets" },
-        { "id": "notices", "label": "Notices", "signal": "card:work-product", "order": 5, "view": "hr", "description": "Outbound HR communications and required regulatory notices" },
-        { "id": "my-onboarding", "label": "My Onboarding", "signal": "card:work-product", "order": 6, "view": "member", "description": "Where you are in your onboarding flow" },
-        { "id": "my-documents", "label": "My Documents", "signal": "card:work-product", "order": 7, "view": "member", "description": "Your signed agreements and HR documents" },
-        { "id": "my-schedule", "label": "My Schedule", "signal": "card:work-product", "order": 8, "view": "member", "description": "Your shifts, PTO balance, and time-off requests" }
+        {
+          "id": "people",
+          "label": "People",
+          "signal": "card:work-product",
+          "default": true,
+          "order": 0,
+          "view": "hr",
+          "description": "Roster \u2014 employees, contractors, advisors, digital workers in one view"
+        },
+        {
+          "id": "onboarding",
+          "label": "Onboarding",
+          "signal": "card:work-product",
+          "order": 1,
+          "view": "hr",
+          "description": "In-flight onboardings with state \u2014 invited / ID-verified / signing / closed"
+        },
+        {
+          "id": "schedule",
+          "label": "Schedule",
+          "signal": "card:work-product",
+          "order": 2,
+          "view": "hr",
+          "description": "Coverage by shift \u2014 humans on duty + digital workers 24\u00d77"
+        },
+        {
+          "id": "compliance",
+          "label": "Compliance",
+          "signal": "card:work-product",
+          "order": 3,
+          "view": "hr",
+          "description": "I-9, W-4, harassment training, posters, COBRA, PTO \u2014 open obligations"
+        },
+        {
+          "id": "documents",
+          "label": "Documents",
+          "signal": "card:work-product",
+          "order": 4,
+          "view": "hr",
+          "description": "Agreements, NDAs, offer letters, signed packets"
+        },
+        {
+          "id": "notices",
+          "label": "Notices",
+          "signal": "card:work-product",
+          "order": 5,
+          "view": "hr",
+          "description": "Outbound HR communications and required regulatory notices"
+        },
+        {
+          "id": "my-onboarding",
+          "label": "My Onboarding",
+          "signal": "card:work-product",
+          "order": 6,
+          "view": "member",
+          "description": "Where you are in your onboarding flow"
+        },
+        {
+          "id": "my-documents",
+          "label": "My Documents",
+          "signal": "card:work-product",
+          "order": 7,
+          "view": "member",
+          "description": "Your signed agreements and HR documents"
+        },
+        {
+          "id": "my-schedule",
+          "label": "My Schedule",
+          "signal": "card:work-product",
+          "order": 8,
+          "view": "member",
+          "description": "Your shifts, PTO balance, and time-off requests"
+        }
       ],
       "controlCenterContribution": {
         "section": "people",
-        "kpis": ["headcount_humans", "headcount_digital", "open_onboardings", "compliance_obligations_open", "coverage_healthy"]
+        "kpis": [
+          "headcount_humans",
+          "headcount_digital",
+          "open_onboardings",
+          "compliance_obligations_open",
+          "coverage_healthy"
+        ]
       },
-      "_status_note": "Flipped to live 2026-05-29 per user-counsel attestation pattern. HR worker is the unifying surface; advisor onboarding still runs through services/ir/advisorFlow.js (proven path — Kent + aspensean tests passed). Proper port of advisor flow → services/hr/ scheduled as 51.x follow-up."
+      "_status_note": "Flipped to live 2026-05-29 per user-counsel attestation pattern. HR worker is the unifying surface; advisor onboarding still runs through services/ir/advisorFlow.js (proven path \u2014 Kent + aspensean tests passed). Proper port of advisor flow \u2192 services/hr/ scheduled as 51.x follow-up."
     },
     {
       "id": "PLAT-006",
@@ -179,8 +297,16 @@
       },
       "status": "live",
       "capabilitySummary": "Client and contact management co-pilot. Import contacts from CSV, CRM, or conversation. Track communication history, set follow-up automations, and categorize clients and vendors. Alex reminds you when follow-ups are due.",
-      "tags": ["contacts", "crm", "clients", "follow-ups"],
-      "valueBucket": ["make_money", "save_money"],
+      "tags": [
+        "contacts",
+        "crm",
+        "clients",
+        "follow-ups"
+      ],
+      "valueBucket": [
+        "make_money",
+        "save_money"
+      ],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -200,8 +326,15 @@
       },
       "status": "live",
       "capabilitySummary": "Reviews contracts for W-045 enforcement (RESPA, TILA, UCC, state title regs); flags AI-disclosure, statute-of-frauds, securities, usury, draft markings; never provides legal advice.",
-      "tags": ["legal", "contracts", "compliance", "review"],
-      "valueBucket": ["stay_compliant"],
+      "tags": [
+        "legal",
+        "contracts",
+        "compliance",
+        "review"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -216,41 +349,148 @@
       "suite": "Operations",
       "phase": 3,
       "type": "platform",
-      "pricing": { "monthly": 0, "currency": "USD" },
+      "pricing": {
+        "monthly": 0,
+        "currency": "USD"
+      },
       "status": "live",
-      "capabilitySummary": "Mints every meaningful platform action as an NFT through Crossmint and ships it to the customer's wallet (Coinbase Wallet recommended). SOCIII keeps a duplicate custody copy for recovery and dispute resolution when wallets are lost. Each NFT is the cryptographic record of a DTC parent or logbook child — what happened, when, under which RAAS rules, by which verified-real identity. Records survive catastrophic infrastructure loss because the NFTs live on a public chain. Includes hack-resilient 3-2-1 backup: daily Firestore export to an isolated GCP project, weekly second-cloud archive, quarterly physical offline. Patent-pending architecture. Free, included with the SOCIII spine. The most defensible moat on the platform.",
-      "tags": ["audit", "backup", "nft", "crossmint", "coinbase-wallet", "duplicate-custody", "tamper-evident", "disaster-recovery", "patent-pending", "moat"],
-      "valueBucket": ["regulatory_defense", "disaster_recovery", "verifiable_provenance"],
+      "capabilitySummary": "Mints every meaningful platform action as an NFT through Crossmint and ships it to the customer's wallet (Coinbase Wallet recommended). SOCIII keeps a duplicate custody copy for recovery and dispute resolution when wallets are lost. Each NFT is the cryptographic record of a DTC parent or logbook child \u2014 what happened, when, under which RAAS rules, by which verified-real identity. Records survive catastrophic infrastructure loss because the NFTs live on a public chain. Includes hack-resilient 3-2-1 backup: daily Firestore export to an isolated GCP project, weekly second-cloud archive, quarterly physical offline. Patent-pending architecture. Free, included with the SOCIII spine. The most defensible moat on the platform.",
+      "tags": [
+        "audit",
+        "backup",
+        "nft",
+        "crossmint",
+        "coinbase-wallet",
+        "duplicate-custody",
+        "tamper-evident",
+        "disaster-recovery",
+        "patent-pending",
+        "moat"
+      ],
+      "valueBucket": [
+        "regulatory_defense",
+        "disaster_recovery",
+        "verifiable_provenance"
+      ],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "audit_status"
       },
       "temporalType": "always_on",
-      "forge": { "enabled": false, "forge_price": null },
+      "forge": {
+        "enabled": false,
+        "forge_price": null
+      },
       "lane": "marketplace",
       "creator": "sociii-spine",
       "jurisdiction": "US-NATIONWIDE",
       "constraintRaasSources": [
-        { "moduleId": "audit-chain-integrity-v1", "required": true, "load_when": "always" },
-        { "moduleId": "identity-attestation-binding-v1", "required": true, "load_when": "always" },
-        { "moduleId": "raas-composition-hash-v1", "required": true, "load_when": "always" },
-        { "moduleId": "backup-3-2-1-policy", "required": true, "load_when": "always" }
+        {
+          "moduleId": "audit-chain-integrity-v1",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "identity-attestation-binding-v1",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "raas-composition-hash-v1",
+          "required": true,
+          "load_when": "always"
+        },
+        {
+          "moduleId": "backup-3-2-1-policy",
+          "required": true,
+          "load_when": "always"
+        }
       ],
       "canvasTabs": [
-        { "id": "audit-ledger", "label": "Audit Ledger", "signal": "card:audit-ledger", "default": true, "order": 0, "view": "audit", "description": "Time-ordered record of every meaningful platform action; each row hash-anchored to Base + Crossmint" },
-        { "id": "parent-dtcs", "label": "Parent DTCs", "signal": "card:parent-dtcs", "order": 1, "view": "audit", "description": "Digital Title Certificates for every entity — property, matter, vehicle, patient, deal, filing, asset. Each is the root of an append-only chain" },
-        { "id": "logbook-entries", "label": "Logbook Entries", "signal": "card:logbook-entries", "order": 2, "view": "audit", "description": "Child entries appended to each parent DTC, recording every change in chronological order with cryptographic linkage" },
-        { "id": "anchor-records", "label": "NFT Mints", "signal": "card:anchor-records", "order": 3, "view": "audit", "description": "Per-action NFTs minted via Crossmint and shipped to customer wallets (Coinbase Wallet recommended). SOCIII retains a duplicate custody copy for recovery / dispute resolution. Tx hashes verifiable by any third party." },
-        { "id": "identity-attestations", "label": "Identity Bindings", "signal": "card:identity-attestations", "order": 4, "view": "audit", "description": "Stripe Identity + Coinbase Verified ID attestations bound to every action; proves verified-real user authority" },
-        { "id": "raas-composition", "label": "Rule Composition", "signal": "card:raas-composition", "order": 5, "view": "audit", "description": "Per-action composition hash showing which RAAS tiers were active — platform safety, operations, vertical baseline, workspace overlay, per-transaction. Patent Filing C." },
-        { "id": "backup-status", "label": "Backup Status", "signal": "card:backup-status", "order": 6, "view": "audit", "description": "Status of daily Firestore export to isolated GCP project + weekly second-cloud archive + quarterly physical. Every export signed and hash-anchored" },
-        { "id": "recovery-playbook", "label": "Recovery Playbook", "signal": "card:recovery-playbook", "order": 7, "view": "audit", "description": "Step-by-step recovery procedure if catastrophic loss occurs. Public-chain anchors mean records survive even total platform destruction" },
-        { "id": "subpoena-response", "label": "Subpoena Response", "signal": "card:subpoena-response", "order": 8, "view": "audit", "description": "Pre-formatted regulator / court / counsel evidence packages — cryptographic proof of what happened, when, under which rules, by whom" }
+        {
+          "id": "audit-ledger",
+          "label": "Audit Ledger",
+          "signal": "card:audit-ledger",
+          "default": true,
+          "order": 0,
+          "view": "audit",
+          "description": "Time-ordered record of every meaningful platform action; each row hash-anchored to Base + Crossmint"
+        },
+        {
+          "id": "parent-dtcs",
+          "label": "Parent DTCs",
+          "signal": "card:parent-dtcs",
+          "order": 1,
+          "view": "audit",
+          "description": "Digital Title Certificates for every entity \u2014 property, matter, vehicle, patient, deal, filing, asset. Each is the root of an append-only chain"
+        },
+        {
+          "id": "logbook-entries",
+          "label": "Logbook Entries",
+          "signal": "card:logbook-entries",
+          "order": 2,
+          "view": "audit",
+          "description": "Child entries appended to each parent DTC, recording every change in chronological order with cryptographic linkage"
+        },
+        {
+          "id": "anchor-records",
+          "label": "NFT Mints",
+          "signal": "card:anchor-records",
+          "order": 3,
+          "view": "audit",
+          "description": "Per-action NFTs minted via Crossmint and shipped to customer wallets (Coinbase Wallet recommended). SOCIII retains a duplicate custody copy for recovery / dispute resolution. Tx hashes verifiable by any third party."
+        },
+        {
+          "id": "identity-attestations",
+          "label": "Identity Bindings",
+          "signal": "card:identity-attestations",
+          "order": 4,
+          "view": "audit",
+          "description": "Stripe Identity + Coinbase Verified ID attestations bound to every action; proves verified-real user authority"
+        },
+        {
+          "id": "raas-composition",
+          "label": "Rule Composition",
+          "signal": "card:raas-composition",
+          "order": 5,
+          "view": "audit",
+          "description": "Per-action composition hash showing which RAAS tiers were active \u2014 platform safety, operations, vertical baseline, workspace overlay, per-transaction. Patent Filing C."
+        },
+        {
+          "id": "backup-status",
+          "label": "Backup Status",
+          "signal": "card:backup-status",
+          "order": 6,
+          "view": "audit",
+          "description": "Status of daily Firestore export to isolated GCP project + weekly second-cloud archive + quarterly physical. Every export signed and hash-anchored"
+        },
+        {
+          "id": "recovery-playbook",
+          "label": "Recovery Playbook",
+          "signal": "card:recovery-playbook",
+          "order": 7,
+          "view": "audit",
+          "description": "Step-by-step recovery procedure if catastrophic loss occurs. Public-chain anchors mean records survive even total platform destruction"
+        },
+        {
+          "id": "subpoena-response",
+          "label": "Subpoena Response",
+          "signal": "card:subpoena-response",
+          "order": 8,
+          "view": "audit",
+          "description": "Pre-formatted regulator / court / counsel evidence packages \u2014 cryptographic proof of what happened, when, under which rules, by whom"
+        }
       ],
       "controlCenterContribution": {
         "section": "platform_integrity",
-        "kpis": ["actions_anchored_30d", "dtcs_active", "last_backup_at", "anchor_chain_health", "identity_attestation_coverage"]
+        "kpis": [
+          "actions_anchored_30d",
+          "dtcs_active",
+          "last_backup_at",
+          "anchor_chain_health",
+          "identity_attestation_coverage"
+        ]
       },
       "intent": {
         "scope_in": [
@@ -277,45 +517,247 @@
           "Backup of secrets, API keys, or credentials (recovered fresh, never backed up)"
         ],
         "refusal_modes": [
-          "Refuse any request to delete logbook entries or modify anchored records — append-only by design",
-          "Refuse any request to anchor a record without identity attestation — every action must be bound to verified-real authority",
+          "Refuse any request to delete logbook entries or modify anchored records \u2014 append-only by design",
+          "Refuse any request to anchor a record without identity attestation \u2014 every action must be bound to verified-real authority",
           "Refuse any request to disable backup schedule without explicit workspace owner approval + audit log",
-          "Refuse to bypass RAAS composition hash recording — every action carries its rule fingerprint or it does not happen"
+          "Refuse to bypass RAAS composition hash recording \u2014 every action carries its rule fingerprint or it does not happen"
         ],
         "spec_ref": "docs/specs/CODEX-S52.15-Audit-Trail-Architecture-DTC-Logbook-Model.md"
       },
       "vault": {
-        "reads": ["all-workspace-actions", "all-dtcs", "all-logbook-entries", "identity-attestations", "raas-composition-cache"],
-        "writes": ["audit-ledger", "anchor-records", "backup-exports", "evidence-packages", "recovery-snapshots"]
+        "reads": [
+          "all-workspace-actions",
+          "all-dtcs",
+          "all-logbook-entries",
+          "identity-attestations",
+          "raas-composition-cache"
+        ],
+        "writes": [
+          "audit-ledger",
+          "anchor-records",
+          "backup-exports",
+          "evidence-packages",
+          "recovery-snapshots"
+        ]
       },
       "referrals": [
-        { "event": "subpoena_received", "routesTo": "PARA-001" },
-        { "event": "regulator_inquiry", "routesTo": "PARA-001" },
-        { "event": "ransomware_indicator_detected", "routesTo": "platform-control-center-pro" },
-        { "event": "anchor_chain_disruption", "routesTo": "platform-control-center-pro" }
+        {
+          "event": "subpoena_received",
+          "routesTo": "PARA-001"
+        },
+        {
+          "event": "regulator_inquiry",
+          "routesTo": "PARA-001"
+        },
+        {
+          "event": "ransomware_indicator_detected",
+          "routesTo": "platform-control-center-pro"
+        },
+        {
+          "event": "anchor_chain_disruption",
+          "routesTo": "platform-control-center-pro"
+        }
       ],
       "patent_refs": [
         "Identity-Anchored Hash-Chain Audit Trail (patent-pending)",
-        "USPTO Filing C — Multi-Tier Composable Rule-Based Governance System (filed 2026-05-25)",
-        "USPTO Filing B — Title and Property Assurance via Parent-Child DTC + Hash-Anchored Logbook (drafted, pending counsel)"
+        "USPTO Filing C \u2014 Multi-Tier Composable Rule-Based Governance System (filed 2026-05-25)",
+        "USPTO Filing B \u2014 Title and Property Assurance via Parent-Child DTC + Hash-Anchored Logbook (drafted, pending counsel)"
       ],
       "infrastructure_refs": [
-        "functions/services/minting/crossmintMinter.js — Crossmint NFT minting (FUNCTIONAL TODAY)",
-        "functions/services/anchor/hashAnchor.js — hash anchor service (used for backup signing)",
-        "Coinbase Wallet integration — recommended customer wallet (gated on Coinbase Business KYB for direct CDP integration; Crossmint works without)",
+        "functions/services/minting/crossmintMinter.js \u2014 Crossmint NFT minting (FUNCTIONAL TODAY)",
+        "functions/services/anchor/hashAnchor.js \u2014 hash anchor service (used for backup signing)",
+        "Coinbase Wallet integration \u2014 recommended customer wallet (gated on Coinbase Business KYB for direct CDP integration; Crossmint works without)",
         "SOCIII duplicate custody: every minted NFT mirrored to platform's recovery vault (firestore: nftCustody/{tokenId})",
         "Backup architecture spec: CODEX-S52.23 (pending)"
       ],
       "coming_soon": [
         "Coinbase CDP wallet-creation flow (gated on Coinbase Business KYB approval; Crossmint mints to any EVM wallet today)",
-        "Daily Firestore export to isolated backup GCP project (planned — separate billing account + access custodian)",
-        "Weekly AWS Glacier Deep Archive replication (planned — second cloud for hack resilience)",
-        "Quarterly LTO tape + safe-deposit physical backup (planned — for paranoid 3-2-1 compliance)",
+        "Daily Firestore export to isolated backup GCP project (planned \u2014 separate billing account + access custodian)",
+        "Weekly AWS Glacier Deep Archive replication (planned \u2014 second cloud for hack resilience)",
+        "Quarterly LTO tape + safe-deposit physical backup (planned \u2014 for paranoid 3-2-1 compliance)",
         "Subpoena evidence package generator UI (PARA-001 hands off)",
-        "Customer-controlled NFT-mint frequency (per-worker setting — every action vs. daily batch)",
+        "Customer-controlled NFT-mint frequency (per-worker setting \u2014 every action vs. daily batch)",
         "Wallet-loss recovery flow UI (customer requests SOCIII duplicate; identity-verified re-ship)"
       ],
-      "_status_note": "Spec'd 2026-06-02 night per Sean priority: 'audit trail is probably our most defensible and interesting moat' + 'massive hack is greatest fear, need isolated hack-proof backup.' Combined audit + backup into one worker because structurally the same problem — records that survive everything. Stub status: catalog entry live, RAAS modules referenced but not all built, Coinbase CDP integration awaiting KYB. The PUBLIC-CHAIN anchor architecture is the durability layer (records survive catastrophic infrastructure loss because anchors live on Base). Firestore backups are the convenience layer. SECRETS NEVER BACKED UP (recovered fresh). Free tier — part of the SOCIII spine, included with every workspace. This worker IS the moat made visible to customers, investors, and competitors browsing the marketplace."
+      "_status_note": "Spec'd 2026-06-02 night per Sean priority: 'audit trail is probably our most defensible and interesting moat' + 'massive hack is greatest fear, need isolated hack-proof backup.' Combined audit + backup into one worker because structurally the same problem \u2014 records that survive everything. Stub status: catalog entry live, RAAS modules referenced but not all built, Coinbase CDP integration awaiting KYB. The PUBLIC-CHAIN anchor architecture is the durability layer (records survive catastrophic infrastructure loss because anchors live on Base). Firestore backups are the convenience layer. SECRETS NEVER BACKED UP (recovered fresh). Free tier \u2014 part of the SOCIII spine, included with every workspace. This worker IS the moat made visible to customers, investors, and competitors browsing the marketplace."
+    },
+    {
+      "id": "W-048",
+      "name": "Alex \u2014 Chief of Staff",
+      "slug": "chief-of-staff",
+      "suite": "Platform",
+      "phase": 3,
+      "type": "orchestrator",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Daily briefing, task routing, cross-worker summaries, priority recommendations, deadline reminders",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "vault": {
+        "reads": [
+          "market_scorecard",
+          "demographic_profile",
+          "supply_pipeline_data",
+          "rent_comp_data",
+          "deal_analysis",
+          "deal_score",
+          "deal_comparison_matrix",
+          "dd_checklist",
+          "site_risk_profile",
+          "zoning_analysis",
+          "appraisal_review",
+          "valuation_estimate",
+          "entitlement_strategy",
+          "approval_requirements",
+          "entitlement_timeline",
+          "design_review",
+          "program_summary",
+          "engineering_review",
+          "structural_assessment",
+          "environmental_screening",
+          "cultural_assessment",
+          "mitigation_plan",
+          "energy_compliance",
+          "sustainability_strategy",
+          "incentive_inventory",
+          "accessibility_review",
+          "fha_compliance",
+          "hearing_prep",
+          "community_outreach_plan",
+          "fire_safety_review",
+          "egress_analysis",
+          "permit_status",
+          "permit_timeline",
+          "correction_log",
+          "senior_debt_analysis",
+          "loan_comparison",
+          "debt_service_projection",
+          "mezz_pref_analysis",
+          "blended_cost",
+          "construction_loan_analysis",
+          "draw_schedule",
+          "interest_reserve",
+          "capital_stack",
+          "waterfall_model",
+          "irr_projections",
+          "sensitivity_analysis",
+          "tax_credit_eligibility",
+          "credit_model",
+          "compliance_calendar",
+          "exemption_analysis",
+          "filing_requirements",
+          "investor_communications",
+          "investor_pipeline",
+          "oz_eligibility",
+          "oz_model",
+          "oz_compliance",
+          "construction_budget",
+          "construction_schedule",
+          "rfi_log",
+          "change_order_log",
+          "progress_reports",
+          "bid_comparison",
+          "award_recommendations",
+          "draw_requests",
+          "lien_waiver_status",
+          "retainage_tracking",
+          "labor_forecast",
+          "certified_payroll",
+          "labor_costs",
+          "insurance_compliance",
+          "coverage_gaps",
+          "claims_log",
+          "material_tracking",
+          "substitution_log",
+          "inspection_log",
+          "deficiency_log",
+          "qc_reports",
+          "safety_plan",
+          "incident_reports",
+          "osha_300_log",
+          "mep_coordination",
+          "clash_detection",
+          "marketing_plan",
+          "leaseup_velocity",
+          "lead_pipeline",
+          "screening_decisions",
+          "lease_status",
+          "tenant_communications",
+          "violation_log",
+          "rent_roll",
+          "revenue_analysis",
+          "rent_increase_schedule",
+          "work_orders",
+          "pm_schedule",
+          "maintenance_costs",
+          "utility_costs",
+          "rubs_allocation",
+          "hoa_assessments",
+          "reserve_status",
+          "board_packages",
+          "warranty_claims",
+          "warranty_calendar",
+          "defect_analysis",
+          "financial_statements",
+          "budget_variance",
+          "close_checklist",
+          "tax_assessments",
+          "tax_calendar",
+          "exemption_status",
+          "vendor_contracts",
+          "vendor_scorecards",
+          "investor_reports",
+          "distributions",
+          "k1_worksheets",
+          "performance_metrics",
+          "dscr_monitoring",
+          "covenant_compliance",
+          "lender_reports",
+          "maturity_calendar",
+          "disposition_checklist",
+          "valuation_summary",
+          "seller_disclosures",
+          "exchange_analysis",
+          "exchange_timeline",
+          "identification_list",
+          "offering_memorandum",
+          "data_room",
+          "buyer_tracker",
+          "title_review",
+          "escrow_timeline",
+          "closing_checklist",
+          "contract_reviews",
+          "key_terms",
+          "risk_assessments",
+          "entity_structure",
+          "formation_status",
+          "entity_compliance",
+          "deadline_status",
+          "escalation_log",
+          "coverage_analysis",
+          "policy_comparison",
+          "claims_tracking",
+          "renewal_calendar"
+        ],
+        "writes": [
+          "user_profile",
+          "project_profiles",
+          "worker_recommendations",
+          "lifecycle_position",
+          "cross_worker_alerts"
+        ]
+      },
+      "referrals": [],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "Orchestrates all workers, generates daily briefings, routes tasks"
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     }
   ]
 }

@@ -15404,6 +15404,30 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/admin:workers:patch-cos — One-shot: fix chief-of-staff Firestore doc.
+    // Root cause: W-048 was in real-estate-development catalog → vertical stamped as
+    // real_estate_development → backfill generated RE-specific workspaceLaunchPage.
+    // Fix: move to platform vertical, clear bad workspaceLaunchPage, reset canvasTabs.
+    if (route === "/admin:workers:patch-cos" && method === "POST") {
+      try {
+        const ref = db.doc("digitalWorkers/chief-of-staff");
+        const snap = await ref.get();
+        if (!snap.exists) return res.json({ ok: false, error: "chief-of-staff doc not found" });
+        const before = snap.data();
+        await ref.set({
+          vertical: "platform",
+          headline: "Your workers, orchestrated",
+          capabilitySummary: "Daily briefing, task routing, cross-worker summaries, priority recommendations, deadline reminders",
+          canvasTabs: [],
+          workspaceLaunchPage: admin.firestore.FieldValue.delete(),
+        }, { merge: true });
+        return res.json({ ok: true, before: { vertical: before.vertical, headline: before.headline, canvasTabsCount: before.canvasTabs?.length || 0, hadLaunchPage: !!before.workspaceLaunchPage } });
+      } catch (e) {
+        console.error("[admin:workers:patch-cos] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/admin:regulatory:ingest — CODEX 50.17 P0-1 manual trigger.
     // Body: { sources?: ["sec-edgar", "federal-register", "cfpb"] } — defaults to all.
     if (route === "/admin:regulatory:ingest" && method === "POST") {
