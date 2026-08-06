@@ -7,6 +7,7 @@ import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 import useCreatorStatus from "../hooks/useCreatorStatus";
+import { ALEX_SLUGS } from "../utils/workerConstants";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -1222,9 +1223,7 @@ export default function Sidebar({
         vertical: "Platform",
       });
     }
-    // Active workers from workspace
-    // CODEX 49.15 Fix 3 — filter out Alex variants that duplicate chief-of-staff
-    const ALEX_SLUGS = new Set(["chief-of-staff", "alex-platform", "alex"]);
+    // Active workers from workspace — ALEX_SLUGS imported from workerConstants
     for (const wId of activeWorkers) {
       const rawSlug = typeof wId === "string" ? wId : (wId?.slug || wId?.id || "");
       if (ALEX_SLUGS.has(rawSlug)) continue;
@@ -1623,6 +1622,29 @@ export default function Sidebar({
               </button>
             ))}
           </nav>
+        </div>
+      )}
+
+      {/* ── STUDIO LOCKER — visible when any worker is selected ── */}
+      {selectedWorker && (
+        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+          <button
+            className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
+            onClick={() => {
+              const workerData = workerList.find(w => w.slug === selectedWorker) || { slug: selectedWorker };
+              window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: workerData }));
+              handleNavClick("studio-locker");
+            }}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, color: `${personaTint[0]}cc`, fontWeight: 500 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
+              <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+              <line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" strokeWidth="1"/>
+              <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" strokeWidth="1"/>
+              <line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" strokeWidth="1"/>
+            </svg>
+            <span>Studio Locker</span>
+          </button>
         </div>
       )}
 

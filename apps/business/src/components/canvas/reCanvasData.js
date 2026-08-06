@@ -536,6 +536,8 @@ export const RE_CANVAS = {
     title: "Title Search — 313 Mayfair Dr, Athens TX 75751",
     subtitle: "File ATH-2026-0743 · Henderson County · Chain search complete · ATTOM data",
     disclaimer: "General information — not certified legal advice",
+    dataDate: "2026-08-05",
+    dataDepth: "attom",
     cas: { RED: 0, YELLOW: 2, BLUE: 3, WHITE: 2, GREEN: 6 },
     tabs: [
       { id: "chain-of-title", label: "Chain of Title", description: "Every recorded ownership transfer for this parcel — who conveyed to whom, at what price, with any gaps flagged. A clean chain is the foundation of marketable title.", blocks: [
@@ -828,6 +830,8 @@ export const RE_CANVAS = {
     title: "Defect Tracker — 313 Mayfair Dr, Athens TX 75751",
     subtitle: "File ATH-2026-0743 · Henderson County · 0 open defects · Clear to close",
     disclaimer: "General information — not certified legal advice",
+    dataDate: "2026-08-05",
+    dataDepth: "attom",
     cas: { RED: 0, YELLOW: 0, BLUE: 1, WHITE: 0, GREEN: 3 },
     tabs: [
       { id: "active", label: "Active Defects", description: "All open title defects by severity — P0 (blocking), P1 (curative required before close), P2 (advisory). Nothing closes until every P0 and P1 is green.", blocks: [
@@ -890,6 +894,8 @@ export const RE_CANVAS = {
     title: "Commitment Engine — 313 Mayfair Dr, Athens TX 75751",
     subtitle: "File ATH-2026-0743 · T-7 Commitment · Stewart Title Guaranty · Issued 07/18/2026",
     disclaimer: "General information — not certified legal advice. Title commitment issued by Stewart Title Guaranty Company under Texas Department of Insurance promulgated form T-7.",
+    dataDate: "2026-08-05",
+    dataDepth: "attom",
     cas: { RED: 0, YELLOW: 1, BLUE: 3, WHITE: 1, GREEN: 8 },
     tabs: [
       { id: "schedule-a", label: "Schedule A", description: "The facts: current vesting, legal description, proposed insured, policy type, and consideration. All pulled from the title order — no manual entry.", blocks: [

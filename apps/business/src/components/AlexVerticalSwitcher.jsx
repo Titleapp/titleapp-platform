@@ -49,7 +49,6 @@ const WORKER_VERTICALS = {
   "property-manager": "Property Management",
   "tenant-screening": "Property Management",
   "health-ems": "Health & EMS",
-  "government": "Government",
   "solar-sales-closer": "Solar Energy",
   "solar-permit-navigator": "Solar Energy",
   "solar-hoa-approval": "Solar Energy",

@@ -4,6 +4,7 @@ import { currentPersonaTint, gradient } from "../utils/personaColor";
 import { prettyWorkerName } from "../utils/displayName";
 import { useWorkerState } from "../context/WorkerStateContext";
 import MorningBriefCanvas from "../components/MorningBriefCanvas";
+import { ALEX_SLUGS } from "../utils/workerConstants";
 
 // Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
 const WORKER_NAMES = {
@@ -23,8 +24,7 @@ const WORKER_NAMES = {
   "legal-contracts": "Legal Contracts",
 };
 
-// CODEX 49.16 — Alex variants that should not appear as duplicate cards
-const ALEX_SLUGS = new Set(["alex-platform", "alex"]);
+// CODEX 49.16 — Alex variants that should not appear as duplicate cards (shared via workerConstants)
 
 // Vertical category colors — matches sidebar theme system
 const VERTICAL_COLORS = {

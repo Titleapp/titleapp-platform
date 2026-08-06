@@ -2236,6 +2236,16 @@ exports.api = onRequest(
             creditsAvailable: creditResult.creditsAvailable,
           });
         }
+        // Check property cache first — serves pre-pulled demo data when ATTOM key is inactive.
+        const addressKey = address.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const cacheSnap = await db.collection("propertyCache").doc(addressKey).get();
+        if (cacheSnap.exists) {
+          const cached = cacheSnap.data();
+          return res.json({ ok: true, attom: cached.attom, canvasSpec: cached.canvasSpec, fromCache: true });
+        }
+        if (!process.env.ATTOM_API_KEY) {
+          return res.json({ ok: false, error: "Live property data is temporarily unavailable. Contact support to enable.", code: "ATTOM_UNAVAILABLE" });
+        }
         const { lookupAddress } = require("./services/re/liveLookup");
         const result = await lookupAddress(address, process.env.ATTOM_API_KEY);
         return res.json(result);
@@ -2265,6 +2275,35 @@ exports.api = onRequest(
       } catch (e) {
         console.error("re:advocate:search failed:", e);
         return jsonError(res, 500, "Listing search failed");
+      }
+    }
+
+    // GET /v1/re:portfolio:list — Returns all propertyCache docs as a browsable
+    // portfolio list. Used by the RE canvas to show a property picker without
+    // requiring a live ATTOM lookup. Auth-required (same as re:lookup).
+    if (route === "/re:portfolio:list" && method === "GET") {
+      try {
+        const plAuth = await requireFirebaseUser(req, res);
+        if (plAuth.handled) return plAuth.res;
+        const snap = await db.collection("propertyCache").orderBy("address").get();
+        const properties = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            addressKey: d.id,
+            address: data.address,
+            title: data.canvasSpec?.title || data.address,
+            cas: data.canvasSpec?.cas || null,
+            propType: data.attom?.propType || null,
+            ownerName: data.attom?.ownerName || null,
+            lastSaleAmt: data.attom?.lastSaleAmt || null,
+            assessedTotal: data.attom?.assessedTotal || null,
+            demo: data.demo || false,
+          };
+        });
+        return res.json({ ok: true, properties });
+      } catch (e) {
+        console.error("re:portfolio:list failed:", e.message);
+        return jsonError(res, 500, "Portfolio list failed");
       }
     }
 
@@ -3990,7 +4029,18 @@ END DELIVERY RULES.
                   if (h.role === 'assistant' && typeof h.content === 'string' && FORBIDDEN_PATTERNS.test(h.content)) {
                     return { role: 'assistant', content: '[Earlier reply was a deferred-work response. Ignored. Deliver now per Pattern A.]' };
                   }
-                  return { role: h.role, content: h.content };
+                  // Strip canvas render markers + side-effect markers from history — the
+                  // JSON payloads can be thousands of tokens each and accumulate across turns,
+                  // causing context saturation for data-heavy workers (accounting, HR, RE).
+                  // The system prompt already has live recomputed data; stale marker payloads
+                  // in history are never needed and only increase latency + cost.
+                  let _content = h.content;
+                  if (h.role === 'assistant' && typeof _content === 'string') {
+                    _content = _content
+                      .replace(/\|\|\|CANVAS_RENDER\|\|\|[\s\S]*?\|\|\|END_CANVAS\|\|\|/g, '[canvas rendered]')
+                      .replace(/\|\|\|SIDE_EFFECT\|\|\|[\s\S]*?\|\|\|END_SIDE_EFFECT\|\|\|/g, '[action executed]');
+                  }
+                  return { role: h.role, content: _content };
                 }),
               ];
               if (canvasDemoActive) {
@@ -4756,8 +4806,19 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               if (toolBlock && toolBlock.name === 'lookup_property') {
                 try {
                   const addr = String(toolBlock.input.address || "").trim();
-                  const { lookupAddress } = require("./services/re/liveLookup");
-                  const r = await lookupAddress(addr, process.env.ATTOM_API_KEY);
+                  // Check propertyCache first (pre-seeded demo data, no API cost).
+                  const _lpKey = addr.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                  const _lpCache = await db.collection("propertyCache").doc(_lpKey).get().catch(() => null);
+                  let r = null;
+                  if (_lpCache && _lpCache.exists) {
+                    const _cd = _lpCache.data();
+                    r = { ok: true, attom: _cd.attom, canvasSpec: _cd.canvasSpec, fromCache: true };
+                  } else if (process.env.ATTOM_API_KEY) {
+                    const { lookupAddress } = require("./services/re/liveLookup");
+                    r = await lookupAddress(addr, process.env.ATTOM_API_KEY);
+                  } else {
+                    r = { ok: false, error: `"${addr}" is not in the demo portfolio. Try one of the Athens TX demo properties.` };
+                  }
                   if (!r.ok) {
                     aiText = r.error || `I couldn't pull a property record for "${addr}".`;
                   } else {
@@ -4770,7 +4831,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                       `Recorded sales: ${(a.sales || []).filter(s => s.amount || s.date).map(s => `${s.amount ? "$" + Number(s.amount).toLocaleString() : "?"}${s.date ? " (" + s.date + ")" : ""}`).join("; ") || "none on file"}`,
                     ].join("\n");
                     liveReLookup = { address: a.address, lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null, facts };
-                    const toolResultText = `Live ATTOM pull for ${addr}. Present these REAL facts in plain English, framed through THIS worker's specialty (e.g. a title worker reads the ownership/lien picture from them and flags what still needs a deeper paid title search). Be specific with the numbers below; do NOT tell the user to go research it themselves — you already pulled it:\n${facts}`;
+                    const toolResultText = `Property data for ${addr}${r.fromCache ? " (demo portfolio)" : " (live ATTOM)"}. Present these facts in plain English, framed through THIS worker's specialty. Be specific with the numbers; do NOT tell the user to research it themselves:\n${facts}`;
                     const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
                     const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
@@ -4782,11 +4843,17 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               if (toolBlock && toolBlock.name === 'open_title_order') {
                 try {
                   const { openTitleOrder } = require("./workers/re-title-search-001/handler");
-                  const attomApiKey = process.env.ATTOM_API_KEY;
-                  if (!attomApiKey) throw new Error("ATTOM key not configured");
+                  // Use propertyCache as the data source if available; fall back to ATTOM.
+                  const _toAddr = String(toolBlock.input.address || "").trim();
+                  const _toKey = _toAddr.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                  const _toCache = await db.collection("propertyCache").doc(_toKey).get().catch(() => null);
+                  const attomApiKey = (_toCache && _toCache.exists) ? null : (process.env.ATTOM_API_KEY || null);
+                  if (!attomApiKey && !(_toCache && _toCache.exists)) {
+                    throw new Error(`"${_toAddr}" is not in the demo portfolio. Try a Henderson County TX address.`);
+                  }
                   const titleCtx = getCtx(req, body, authUser);
                   const result = await openTitleOrder({
-                    address: String(toolBlock.input.address || "").trim(),
+                    address: _toAddr,
                     tenantId: titleCtx.tenantId,
                     userId: authUser.uid,
                     buyerName: toolBlock.input.buyerName || null,
@@ -4795,6 +4862,7 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     orderType: toolBlock.input.orderType || "purchase",
                     db,
                     attomApiKey,
+                    cachedPropertyData: (_toCache && _toCache.exists) ? _toCache.data() : null,
                   });
                   const ce = result.chainEvents;
                   const resultText = `Title order opened. Order ID: ${result.orderId}\n` +
@@ -11725,6 +11793,73 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/admin:locker:batch-ingest — no user auth (internal tool).
+    // Accepts both old format (name/text) and CODEX-68 format (title/content/tier/trustTag/metadata).
+    if (route === "/admin:locker:batch-ingest" && method === "POST") {
+      try {
+        const { tenantId: lockerTenantId, workerId: lockerWorkerId, documents: lockerDocs } = body || {};
+        if (!lockerTenantId || !lockerWorkerId || !Array.isArray(lockerDocs) || !lockerDocs.length) {
+          return res.json({ ok: false, error: "Requires tenantId, workerId, and documents[]" });
+        }
+        const MAX_CHARS_LOCKER = 12000;
+        const lockerCol = db
+          .collection("tenantLockers").doc(lockerTenantId)
+          .collection("workers").doc(lockerWorkerId)
+          .collection("documents");
+        const results = [];
+        let written = 0;
+        for (const doc of lockerDocs) {
+          const docName = doc.name || doc.title;
+          const docText = doc.text || doc.content;
+          if (!docName || !docText) { results.push({ ok: false, name: docName, error: "missing name/title or text/content" }); continue; }
+          const clamped = docText.length > MAX_CHARS_LOCKER ? docText.substring(0, MAX_CHARS_LOCKER) + "\n... [truncated]" : docText;
+          const docId = doc.docId || null;
+          const docRef = docId ? lockerCol.doc(docId) : lockerCol.doc();
+          await docRef.set({
+            name: docName, text: clamped, type: doc.sourceForm || "upload",
+            charCount: clamped.length, tier: doc.tier || null,
+            trustTag: doc.trustTag || null, metadata: doc.metadata || null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(), deletedAt: null, createdBy: "admin-ingest",
+          });
+          results.push({ ok: true, name: docName, docId: docRef.id, charCount: clamped.length, truncated: clamped.length < docText.length });
+          written++;
+        }
+        return res.json({ ok: true, tenantId: lockerTenantId, workerId: lockerWorkerId, written, count: results.length, results });
+      } catch (e) {
+        console.error("[admin:locker:batch-ingest] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:property:cache-pull — no user auth (internal tool).
+    // Pulls ATTOM data for one address, stores in propertyCache/{addressKey},
+    // and returns the full result. Used to pre-populate demo worker data before
+    // the ATTOM key is deactivated.
+    if (route === "/admin:property:cache-pull" && method === "POST") {
+      try {
+        const { address } = body || {};
+        if (!address) return res.json({ ok: false, error: "address required" });
+        const attomKey = process.env.ATTOM_API_KEY;
+        if (!attomKey) return res.json({ ok: false, error: "ATTOM_API_KEY not configured" });
+        const { lookupAddress } = require("./services/re/liveLookup");
+        const result = await lookupAddress(address, attomKey);
+        if (!result.ok) return res.json({ ok: false, address, error: result.error, code: result.code });
+        const addressKey = address.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        await db.collection("propertyCache").doc(addressKey).set({
+          address,
+          addressKey,
+          attom: result.attom,
+          canvasSpec: result.canvasSpec,
+          cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: "attom",
+        });
+        return res.json({ ok: true, address, addressKey, attom: result.attom, canvasSpec: result.canvasSpec });
+      } catch (e) {
+        console.error("[admin:property:cache-pull] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -15424,6 +15559,44 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true, before: { vertical: before.vertical, headline: before.headline, canvasTabsCount: before.canvasTabs?.length || 0, hadLaunchPage: !!before.workspaceLaunchPage } });
       } catch (e) {
         console.error("[admin:workers:patch-cos] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:locker:batch-ingest — Batch ingest documents into a worker's Studio Locker.
+    // Accepts both old format (name/text) and CODEX-68 format (title/content/tier/trustTag/metadata).
+    if (route === "/admin:locker:batch-ingest" && method === "POST") {
+      try {
+        const { tenantId: lockerTenantId, workerId: lockerWorkerId, documents: lockerDocs } = body || {};
+        if (!lockerTenantId || !lockerWorkerId || !Array.isArray(lockerDocs) || !lockerDocs.length) {
+          return res.json({ ok: false, error: "Requires tenantId, workerId, and documents[]" });
+        }
+        const MAX_CHARS_LOCKER = 12000;
+        const lockerCol = db
+          .collection("tenantLockers").doc(lockerTenantId)
+          .collection("workers").doc(lockerWorkerId)
+          .collection("documents");
+        const results = [];
+        let written = 0;
+        for (const doc of lockerDocs) {
+          const docName = doc.name || doc.title;
+          const docText = doc.text || doc.content;
+          if (!docName || !docText) { results.push({ ok: false, name: docName, error: "missing name/title or text/content" }); continue; }
+          const clamped = docText.length > MAX_CHARS_LOCKER ? docText.substring(0, MAX_CHARS_LOCKER) + "\n... [truncated]" : docText;
+          const docId = doc.docId || null;
+          const docRef = docId ? lockerCol.doc(docId) : lockerCol.doc();
+          await docRef.set({
+            name: docName, text: clamped, type: doc.sourceForm || "upload",
+            charCount: clamped.length, tier: doc.tier || null,
+            trustTag: doc.trustTag || null, metadata: doc.metadata || null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(), deletedAt: null, createdBy: "admin-ingest",
+          });
+          results.push({ ok: true, name: docName, docId: docRef.id, charCount: clamped.length, truncated: clamped.length < docText.length });
+          written++;
+        }
+        return res.json({ ok: true, tenantId: lockerTenantId, workerId: lockerWorkerId, written, count: results.length, results });
+      } catch (e) {
+        console.error("[admin:locker:batch-ingest] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

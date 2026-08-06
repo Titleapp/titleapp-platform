@@ -33,7 +33,7 @@ const ATTOM_TITLE_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
  * @param {string} params.attomApiKey
  */
 async function openTitleOrder(params) {
-  const { address, tenantId, userId, buyerName, sellerName, purchasePrice, orderType = "purchase", db, attomApiKey } = params;
+  const { address, tenantId, userId, buyerName, sellerName, purchasePrice, orderType = "purchase", db, attomApiKey, cachedPropertyData } = params;
 
   const nowTs = admin.firestore.FieldValue.serverTimestamp();
 
@@ -64,16 +64,19 @@ async function openTitleOrder(params) {
     tenantId,
   });
 
-  // 3. Run ATTOM title search in parallel
-  const results = await runAttomTitleSearch({ address, attomApiKey });
+  // 3. Run title search — use cached demo data if available, otherwise ATTOM
+  let eventSummary;
+  if (cachedPropertyData) {
+    eventSummary = await writeChainEventsFromCache(db, orderId, cachedPropertyData, address);
+  } else {
+    const results = await runAttomTitleSearch({ address, attomApiKey });
+    eventSummary = await writeChainEvents(db, orderId, results, address);
+  }
 
-  // 4. Write chain events from ATTOM results (TX-T-001: pipeline-only)
-  const eventSummary = await writeChainEvents(db, orderId, results, address);
-
-  // 5. Compute risk score from events
+  // 4. Compute risk score from events
   const riskScore = computeRiskScore(eventSummary);
 
-  // 6. Update order status
+  // 5. Update order status
   await orderRef.update({
     status: "search_complete",
     riskScore,
@@ -87,7 +90,6 @@ async function openTitleOrder(params) {
     address,
     riskScore,
     chainEvents: eventSummary,
-    attomData: results,
   };
 }
 
@@ -119,6 +121,95 @@ function parseAddress(address) {
     return { address1: parts[0], address2: cityStateZip };
   }
   return { address1: address };
+}
+
+/**
+ * Write immutable chain events from propertyCache demo data.
+ * Extracts ownership chain from canvasSpec chain blocks and attom sales fields.
+ * Mirrors the shape of writeChainEvents so computeRiskScore works unchanged.
+ */
+async function writeChainEventsFromCache(db, orderId, cachedPropertyData, address) {
+  const summary = { totalEvents: 0, defectCount: 0, ownershipEvents: 0, lienEvents: 0, taxEvents: 0, judgmentEvents: 0 };
+  const { attom = {}, canvasSpec = {} } = cachedPropertyData;
+
+  // Walk canvasSpec tabs for chain blocks (ownership) and flag blocks (defects/liens)
+  const tabs = canvasSpec.tabs || [];
+  for (const tab of tabs) {
+    for (const block of (tab.blocks || [])) {
+      if (block.type === "chain") {
+        for (const link of (block.links || [])) {
+          await appendEvent(db, orderId, {
+            type: "title.ownership_found",
+            sourceRef: "propertyCache:canvasSpec:chain",
+            grantee: link.grantee || null,
+            grantor: link.grantor || null,
+            saleDate: link.date || null,
+            saleAmount: link.amount || null,
+            docType: link.docType || null,
+            instrumentNo: link.instrument || null,
+            note: link.note || null,
+            address,
+          });
+          summary.ownershipEvents++;
+          summary.totalEvents++;
+        }
+      }
+
+      if (block.type === "flags") {
+        for (const flag of (block.items || [])) {
+          const band = (flag.band || "").toUpperCase();
+          if (band === "RED") {
+            // P0 defect
+            await appendEvent(db, orderId, {
+              type: "title.defect_logged",
+              sourceRef: "propertyCache:canvasSpec:flags",
+              severity: "P0",
+              description: flag.label || flag.text || "Title defect",
+              detail: flag.detail || null,
+              authoredBy: "pipeline",
+              validated: true,
+              address,
+            });
+            summary.defectCount++;
+            summary.totalEvents++;
+          } else if (band === "YELLOW") {
+            // Lien / caution
+            await appendEvent(db, orderId, {
+              type: "title.lien_found",
+              sourceRef: "propertyCache:canvasSpec:flags",
+              lienType: flag.lienType || "other",
+              lender: flag.lender || null,
+              originalAmount: flag.amount || null,
+              lienStatus: "open",
+              description: flag.label || flag.text || null,
+              detail: flag.detail || null,
+              address,
+            });
+            summary.lienEvents++;
+            summary.totalEvents++;
+          }
+        }
+      }
+    }
+  }
+
+  // Tax status from attom object
+  if (attom.assessedTotal || attom.annualTax) {
+    await appendEvent(db, orderId, {
+      type: "title.tax_status_found",
+      sourceRef: "propertyCache:attom",
+      taxYear: attom.taxYear || null,
+      annualTax: attom.annualTax || null,
+      assessedValue: attom.assessedTotal || null,
+      taxDelinquent: attom.taxDelinquent || false,
+      address,
+    });
+    summary.taxEvents++;
+    summary.totalEvents++;
+    if (attom.taxDelinquent) summary.defectCount++;
+  }
+
+  return summary;
 }
 
 /**

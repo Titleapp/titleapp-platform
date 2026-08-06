@@ -2,6 +2,7 @@
   "vertical": "government",
   "name": "Government Operations",
   "version": "1.0.0",
+  "status": "waitlist",
   "lifecycle": [
     {
       "phase": 0,

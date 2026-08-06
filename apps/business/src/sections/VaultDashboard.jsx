@@ -10,6 +10,7 @@
 
 import React from "react";
 import { firstNameFrom, prettyWorkerName } from "../utils/displayName";
+import { ALEX_SLUGS } from "../utils/workerConstants";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -52,8 +53,6 @@ export default function VaultDashboard() {
   const greeting = getTimeGreeting();
   const workers = getActiveWorkers();
 
-  // CODEX 49.16 — filter Alex duplicates and games
-  const ALEX_SLUGS = new Set(["alex-platform", "alex", "chief-of-staff"]);
   const DISPLAY_NAMES = {
     "chief-of-staff": "Alex — Chief of Staff",
     "platform-accounting": "Accounting",

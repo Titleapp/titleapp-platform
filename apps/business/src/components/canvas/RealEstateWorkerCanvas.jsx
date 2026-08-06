@@ -293,7 +293,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
   // (worker.canvasSpec) when present, else the hardcoded seed fixture by slug.
   const baseData = resolveCanvasSpec(worker);
   const [active, setActive] = useState(0);
-  // #41 — live per-address ATTOM lookup. When set, it overrides the canvas.
+  // #41 — live per-address lookup (propertyCache first, ATTOM fallback).
   const [liveSpec, setLiveSpec] = useState(null);
   const [query, setQuery] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
@@ -302,11 +302,38 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const [liveTransactions, setLiveTransactions] = useState(null);
   // RE Advocate: financing constraint data (FEMA flood, CALFIRE, HUD FHA, FHFA, USDA).
   const [financingData, setFinancingData] = useState(null);
+  // Demo portfolio — list of pre-seeded properties for the property picker.
+  const [portfolio, setPortfolio] = useState([]);
 
   const isREAdvocate = slug === "re-salesperson";
 
-  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); }, [slug]);
+  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); setPortfolio([]); }, [slug]);
   useEffect(() => { setActive(0); }, [liveSpec]);
+
+  // Fetch the demo portfolio list for RE workers so the property picker has addresses to show.
+  useEffect(() => {
+    const ident = `${worker?.vertical || ""} ${slug || ""}`;
+    const isRE = /real|estate|propert|title|zoning|land|parcel|escrow|cre/i.test(ident);
+    if (!isRE) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = getAuth();
+        const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const resp = await fetch(`${apiBase}/api?path=/v1/re:portfolio:list`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!cancelled && json.ok && Array.isArray(json.properties)) {
+          setPortfolio(json.properties);
+        }
+      } catch (_e) {
+        // Non-blocking — search still works manually
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
   useEffect(() => {
     if (!isREAdvocate) return;
@@ -458,17 +485,43 @@ export default function RealEstateWorkerCanvas({ worker }) {
             style={{ flex: "1 1 240px", padding: "8px 12px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8 }}
           />
           <button type="submit" disabled={liveBusy} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: "pointer", opacity: liveBusy ? 0.6 : 1 }}>
-            {liveBusy ? "Pulling live data…" : "Look up"}
+            {liveBusy ? "Looking up…" : "Look up"}
           </button>
           {liveSpec && (
             <button type="button" onClick={() => { setLiveSpec(null); setQuery(""); setLiveErr(null); }} style={{ padding: "8px 12px", fontSize: 13, color: "#64748b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>✕ Clear</button>
           )}
         </form>
       )}
-      {isRE && !liveSpec && (
+      {isRE && !liveSpec && portfolio.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>Demo portfolio:</span>
+            {portfolio.slice(0, 8).map((p) => {
+              const shortAddr = p.address.replace(/, Athens, TX.*/, "").replace(/, Athens TX.*/, "");
+              const hasDefect = p.cas && (p.cas.RED || 0) > 0;
+              const hasLien = p.cas && (p.cas.YELLOW || 0) > 0 && !(p.cas.RED || 0);
+              const dotColor = hasDefect ? "#dc2626" : hasLien ? "#d97706" : "#16a34a";
+              return (
+                <button key={p.addressKey} type="button" disabled={liveBusy} onClick={() => doLookup(null, p.address)}
+                  style={{ fontSize: 11, color: hasDefect ? "#b91c1c" : hasLien ? "#92400e" : "#15803d", background: hasDefect ? "#fef2f2" : hasLien ? "#fffbeb" : "#f0fdf4", border: `1px solid ${hasDefect ? "#fecaca" : hasLien ? "#fde68a" : "#bbf7d0"}`, borderRadius: 999, padding: "3px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                  {shortAddr}
+                </button>
+              );
+            })}
+            {portfolio.length > 8 && (
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>+{portfolio.length - 8} more — type any address above</span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 3 }}>
+            Red = P0 defect · Amber = open lien · Green = clear title
+          </div>
+        </div>
+      )}
+      {isRE && !liveSpec && portfolio.length === 0 && (
         <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 11, color: "#94a3b8" }}>Try:</span>
-          {["325 Battery St, San Francisco, CA", "1600 Pennsylvania Ave NW, Washington, DC", "658 Front St, Lahaina, HI"].map((ex) => (
+          {["313 Mayfair Dr, Athens, TX 75751", "788 County Road 4809, Athens, TX 75751", "2045 State Hwy 175 W, Athens, TX 75751"].map((ex) => (
             <button key={ex} type="button" disabled={liveBusy} onClick={() => doLookup(null, ex)}
               style={{ fontSize: 11, color: "#7c3aed", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px", cursor: "pointer" }}>
               {ex.split(",")[0]}
@@ -477,13 +530,25 @@ export default function RealEstateWorkerCanvas({ worker }) {
         </div>
       )}
       {liveErr && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{liveErr}</div>}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>{resolvedData.subtitle}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {resolvedData.sample && <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>SAMPLE DATA — illustrative, not a live pull</span>}
+          {resolvedData.sample && resolvedData.dataDate && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#0369a1", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 10px" }}>
+              {resolvedData.dataDepth === "attom" ? "ATTOM-grade" : "Demo data"} · {resolvedData.dataDate}
+            </span>
+          )}
+          {resolvedData.sample && !resolvedData.dataDate && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 999, padding: "3px 10px" }}>Illustrative record · demo only</span>
+          )}
           {resolvedData.disclaimer && <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 999, padding: "3px 10px" }}>{resolvedData.disclaimer}</span>}
         </div>
       </div>
+      {resolvedData.sample && isRE && !liveSpec && (
+        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 10, textAlign: "right" }}>
+          Live ATTOM feed available — look up any address above
+        </div>
+      )}
 
       <CasInstrumentPanel counts={resolvedData.cas} labels={resolvedData.casLabels} />
 

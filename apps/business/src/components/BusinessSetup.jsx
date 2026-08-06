@@ -16,7 +16,6 @@ const INDUSTRIES = [
   { value: "professional-services", label: "Professional Services" },
   { value: "legal", label: "Legal" },
   { value: "construction", label: "Construction" },
-  { value: "government", label: "Government" },
   { value: "solar", label: "Solar Energy" },
   { value: "web3", label: "Web3 / Blockchain" },
   { value: "other", label: "Other" },

@@ -136,7 +136,6 @@ const VERTICAL_LABELS = {
   aviation: "Aviation",
   marketing: "Marketing & Content",
   platform: "Platform",
-  government: "Government",
   solar_vpp: "Solar Energy",
   web3: "Web3",
   investor: "Investor",
