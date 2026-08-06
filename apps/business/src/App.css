@@ -104,19 +104,21 @@ body{
   z-index:40;
 }
 
-/* SIDEBAR */
+/* SIDEBAR — CODEX 67 light theme */
 .sidebar{
   width:280px;
-  background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));
-  color:var(--col1-text);
-  padding:14px 12px;
-  border-right:1px solid rgba(255,255,255,0.06);
+  background:#fafafa;
+  color:#111827;
+  padding:0;
+  border-right:1px solid #e5e7eb;
   position:sticky;
   top:0;
   height:100vh;
   overflow:auto;
   z-index:50;
   flex-shrink:0;
+  display:flex;
+  flex-direction:column;
 }
 .sidebarHeader{
   display:flex;
@@ -171,20 +173,23 @@ body{
 }
 .navItem{
   text-decoration:none;
-  color:#e5e7eb;
+  color:#374151;
   font-size:14px;
-  padding:10px 10px;
-  border-radius:12px;
-  border:1px solid transparent;
+  padding:8px 10px;
+  border-radius:6px;
+  border:none;
   background:transparent;
+  cursor:pointer;
 }
 .navItem:hover{
-  background:rgba(255,255,255,0.05);
+  background:#f3f4f6;
 }
 .navItemActive{
-  background:rgba(124,58,237,0.16);
-  border-color:rgba(124,58,237,0.35);
-  color:#ddd6fe;
+  background:#f5f3ff;
+  color:#6d28d9;
+  font-weight:600;
+  box-shadow:inset 2px 0 0 #7c3aed;
+  border-radius:0 6px 6px 0;
 }
 
 .sidebarFooter{

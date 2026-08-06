@@ -1472,450 +1472,129 @@ export default function Sidebar({
   ];
   const ACCOUNT_IDS = new Set(["billing", "settings", "suggestions"]);
   const contextualItems = selectedWorker ? myWorkItems.filter(i => !ACCOUNT_IDS.has(i.id)) : [];
-  const labelStyle = { fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: personaTint[0] };
-
-  const personaNav = (
-    <div style={{
-      marginLeft: 10, marginBottom: 4,
-      borderLeft: `2px solid ${personaTint[0]}55`,
-      paddingLeft: 6,
-    }}>
-      {/* ── MY WORKERS ── */}
-      <div className="sidebarSection" style={{ paddingTop: 8 }}>
-        <button
-          data-demo-id="workers-toggle"
-          data-demo-collapsed={workersCollapsed ? "true" : "false"}
-          onClick={() => setWorkersCollapsed(!workersCollapsed)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
-        >
-          <span style={{ ...labelStyle, display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></span>
-          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: workersCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-        </button>
-        {!workersCollapsed && (
-          <nav className="nav">
-            {/* Chief of Staff — global, tinted to the persona for consistency */}
-            {groupedWorkers.cos.map(worker => {
-              const isSelected = selectedWorker === worker.slug;
-              return (
-                <button
-                  key={worker.slug}
-                  className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                  onClick={() => handleWorkerClick(worker)}
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, background: isSelected ? `${personaTint[0]}22` : "transparent", borderRadius: 8, marginBottom: 2 }}
-                >
-                  <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
-                    <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
-                  </span>
-                  <span style={{ flex: 1, color: "#fff", fontWeight: 600 }}>{worker.name}</span>
-                  <span style={{ fontSize: 10, color: `${personaTint[0]}cc`, fontWeight: 600 }}>CoS</span>
-                </button>
-              );
-            })}
-
-            {/* Workers grouped by vertical — category labels muted, names white */}
-            {groupedWorkers.groups.map(([verticalName, workers], gi) => {
-              const isCollapsed = collapsedGroups[verticalName];
-              return (
-                <div key={verticalName}>
-                  {gi > 0 && <div style={{ height: 1, background: `${personaTint[0]}33`, margin: "4px 10px" }} />}
-                  <button
-                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
-                    style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "8px 10px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                  >
-                    <span>{verticalName === "Spine" ? "Back of House" : verticalName} ({workers.length})</span>
-                    <span style={{ fontSize: 10, transition: "transform 0.2s", transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-                  </button>
-                  {!isCollapsed && workers.map(worker => {
-                    const isSelected = selectedWorker === worker.slug;
-                    return (
-                      <div key={worker.slug}>
-                        <button
-                          className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                          onClick={() => handleWorkerClick(worker)}
-                          style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, ...(isSelected ? { background: `${personaTint[0]}20`, borderRadius: 8 } : {}) }}
-                        >
-                          <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <WorkerIcon slug={worker.slug} size={16} color={personaTint[0]} />
-                            <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
-                          </span>
-                          <span style={{ flex: 1, color: "#fff", fontWeight: isSelected ? 600 : 400 }}>{worker.name}</span>
-                        </button>
-                        <button
-                          onClick={() => { window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: { slug: worker.slug, name: worker.name } })); if (onClose) onClose(); }}
-                          title="Your worker gets better every time you update it"
-                          style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: "2px 10px 6px 38px", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}
-                          onMouseEnter={e => { e.currentTarget.style.color = personaTint[0]; }}
-                          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
-                        >
-                          Update &rarr;
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-
-            {workerList.length > 8 && !workersExpanded && (
-              <button onClick={() => setWorkersExpanded(true)} style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500, padding: "5px 10px" }}>
-                + {workerList.length - 8} more workers
-              </button>
-            )}
-            {workerList.length === 0 && (
-              <div style={{ padding: "8px 16px", fontSize: "12px", color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>No workers yet</div>
-            )}
-
-            {/* Browse Marketplace — persona-tinted action, not green */}
-            <button
-              className="navItem"
-              onClick={() => handleNavClick("raas-store")}
-              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 12, color: personaTint[0], fontWeight: 600, padding: "7px 10px" }}
-            >
-              + Browse Marketplace
-            </button>
-          </nav>
-        )}
-      </div>
-
-      {/* ── MY DRIVE + STUDIO LOCKER — peer row ── */}
-      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-          <button
-            onClick={() => handleNavClick("vault-documents")}
-            style={{ flex: 1, display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
-          >
-            <span style={labelStyle}>My Drive</span>
-          </button>
-          <button
-            className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("studio-locker")}
-            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, padding: "4px 0 0", fontSize: 12, color: `${personaTint[0]}cc`, fontWeight: 500, whiteSpace: "nowrap" }}
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
-              <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-              <line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" strokeWidth="1"/>
-              <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" strokeWidth="1"/>
-              <line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" strokeWidth="1"/>
-            </svg>
-            <span style={labelStyle}>Studio Locker</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── MY GAMES ── */}
-      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-        <button
-          onClick={() => setGamesCollapsed(!gamesCollapsed)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
-        >
-          <span style={labelStyle}>My Games</span>
-          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: gamesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-        </button>
-        {!gamesCollapsed && (
-          <nav className="nav">
-            {myGames.length > 0 ? myGames.map(g => (
-              <button key={g.slug} className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`} onClick={() => handleWorkerClick(g)} style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}>
-                <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${personaTint[0]}26`, color: personaTint[0], fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{(g.name || "G")[0]}</span>
-                <span style={{ flex: 1, color: "#fff" }}>{g.name}</span>
-              </button>
-            )) : (
-              <div style={{ padding: "8px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Coming Soon</div>
-            )}
-          </nav>
-        )}
-      </div>
-
-      {/* ── ACTIVE WORKER TABS (only when a worker is open) ── */}
-      {selectedWorker && contextualItems.length > 0 && (
-        <div className="sidebarSection">
-          <div style={labelStyle}>{selectedWorkerName || "Worker"}</div>
-          <nav className="nav">
-            {contextualItems.map(item => (
-              <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
-
-      {/* ── ACCOUNT (collapsible like the other sections) ── */}
-      <div className="sidebarSection">
-        <button
-          data-demo-id="account-toggle"
-          data-demo-collapsed={accountCollapsed ? "true" : "false"}
-          onClick={() => setAccountCollapsed(!accountCollapsed)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
-        >
-          <span style={labelStyle}>Account</span>
-          <span style={{ fontSize: 10, color: `${personaTint[0]}99`, transition: "transform 0.2s", transform: accountCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
-        </button>
-        {!accountCollapsed && (
-          <nav className="nav">
-            {ACCOUNT_NAV.map(item => (
-              <button key={item.id} className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`} onClick={() => handleNavClick(item.id)} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        )}
-      </div>
-    </div>
-  );
 
   return (
-    <div className="sidebar">
-      {/* ═══ BRAND STRIP ═══ */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "14px 18px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        <img src={sociiiMarkUrl} alt="" width={24} height={24} style={{ display: "block", borderRadius: 5 }} />
-        <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>SOCIII</span>
-      </div>
-      {/* ═══ WORKSPACE IDENTITY ═══ */}
-      <div className="sidebarHeader" style={{ position: "relative", borderTop: `3px solid ${personaTint[0]}` }}>
-        <div
-          className="brand"
-          onClick={() => setShowSwitcher(!showSwitcher)}
-          style={{ cursor: "pointer", flex: 1 }}
-        >
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: `linear-gradient(135deg, ${personaTint[0]} 0%, ${personaTint[1]} 100%)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
-            boxShadow: `0 0 0 2px ${personaTint[0]}33`,
-          }}>
-            {(brandLabel || userFirstName || "S").charAt(0).toUpperCase()}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {brandLabel}
-            </div>
-            <div className="brandSub" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Space" : (VERTICAL_LABELS[vertical] || "Workspace"))}</span>
-              {!isPersonal && workspaceRole && (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,
-                  background: workspaceRole === "admin" ? "rgba(124,58,237,0.25)" : workspaceRole === "viewer" ? "rgba(99,102,241,0.18)" : "rgba(34,197,94,0.18)",
-                  color: workspaceRole === "admin" ? "#c4b5fd" : workspaceRole === "viewer" ? "#a5b4fc" : "#86efac",
-                  textTransform: "uppercase", letterSpacing: 0.4,
-                }}>
-                  {workspaceRole}
-                </span>
-              )}
-            </div>
-          </div>
-          {(
-            <svg
-              width="16" height="16" viewBox="0 0 16 16" fill="none"
-              style={{
-                flexShrink: 0, color: "rgba(226,232,240,0.6)",
-                transform: showSwitcher ? "rotate(180deg)" : "none",
-                transition: "transform 150ms ease",
-              }}
-            >
-              <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </div>
-        <button className="sidebarClose iconBtn" onClick={onClose} aria-label="Close menu">
-          ✕
-        </button>
+    <div className="sidebar" style={{ background: "#fafafa", color: "#111827", borderRight: "1px solid #e5e7eb", padding: 0, display: "flex", flexDirection: "column" }}>
 
-        {/* Workspace Switcher Dropdown */}
+      {/* ═══ TOP BAR: workspace switcher ═══ */}
+      <div style={{ position: "relative" }}>
+        <div
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", cursor: "pointer", borderBottom: "1px solid #e5e7eb" }}
+          onClick={() => setShowSwitcher(!showSwitcher)}
+        >
+          <img src={sociiiMarkUrl} alt="" width={20} height={20} style={{ borderRadius: 4, flexShrink: 0 }} />
+          <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {brandLabel || "SOCIII"}
+          </span>
+          {workspaceRole === "admin" && !isPersonal && (
+            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999, background: "rgba(124,58,237,0.1)", color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0 }}>admin</span>
+          )}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, color: "#9ca3af", transform: showSwitcher ? "rotate(180deg)" : "none", transition: "transform 150ms ease" }}>
+            <path d="M3 5L7 9L11 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <button className="sidebarClose" onClick={onClose} aria-label="Close menu" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}>✕</button>
+
+        {/* Workspace switcher dropdown — stays dark */}
         {showSwitcher && (
-          <div style={{
-            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
-            background: "#0f172a", borderRadius: "0 0 12px 12px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-            maxHeight: 320, overflowY: "auto",
-          }}>
-            {/* Alex — Chief of Staff (always first) */}
-            <div
-              onClick={() => { setShowSwitcher(false); window.location.href = "/alex"; }}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "8px 12px", cursor: "pointer",
-                background: "transparent",
-                borderRadius: 8, margin: "2px 8px",
-              }}
+          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "#0f172a", borderRadius: "0 0 12px 12px", borderTop: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", maxHeight: 320, overflowY: "auto" }}>
+            {/* Alex */}
+            <div onClick={() => { setShowSwitcher(false); window.location.href = "/alex"; }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", cursor: "pointer", borderRadius: 8, margin: "2px 8px" }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-            >
-              <div style={{
-                width: 28, height: 28, borderRadius: 6,
-                background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
-              }}>A</div>
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+              <div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0 }}>A</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>Alex</div>
                 <div style={{ fontSize: 11, color: "#a78bfa" }}>Chief of Staff</div>
               </div>
             </div>
             <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 8px" }} />
-
             {ownWorkspaces.length > 0 && (
-              <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Your Workspaces
-              </div>
+              <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Your Workspaces</div>
             )}
             {ownWorkspaces.map(ws => {
               const isCurrent = ws.id === currentWorkspaceId;
               const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
               const canInvite = !isPersonalRow && ws.role === "admin";
               return (
-                <div
-                  key={ws.id}
-                  onClick={() => { setShowSwitcher(false); if (!isCurrent) onSwitchWorkspace(ws); }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "8px 12px", cursor: "pointer",
-                    background: isCurrent ? "rgba(124,58,237,0.15)" : "transparent",
-                    borderRadius: 8, margin: "2px 8px",
-                    position: "relative",
+                <div key={ws.id}
+                  onClick={() => {
+                    const onCreators = typeof window !== "undefined" && window.location.pathname.startsWith("/creators");
+                    setShowSwitcher(false);
+                    if (!isCurrent) onSwitchWorkspace(ws);
+                    if (onCreators) { window.location.href = "/"; }
                   }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", cursor: "pointer", background: isCurrent ? "rgba(124,58,237,0.15)" : "transparent", borderRadius: 8, margin: "2px 8px", position: "relative" }}
                   onMouseEnter={e => {
                     if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                    const btn = e.currentTarget.querySelector('[data-invite-btn]');
+                    const btn = e.currentTarget.querySelector("[data-invite-btn]");
                     if (btn) btn.style.opacity = "1";
                   }}
                   onMouseLeave={e => {
                     if (!isCurrent) e.currentTarget.style.background = "transparent";
-                    const btn = e.currentTarget.querySelector('[data-invite-btn]');
+                    const btn = e.currentTarget.querySelector("[data-invite-btn]");
                     if (btn) btn.style.opacity = "0";
-                  }}
-                >
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 6,
-                    background: `linear-gradient(135deg, ${personaTintFor(ws.id, isPersonalRow)[0]} 0%, ${personaTintFor(ws.id, isPersonalRow)[1]} 100%)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
                   }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: `linear-gradient(135deg, ${personaTintFor(ws.id, isPersonalRow)[0]} 0%, ${personaTintFor(ws.id, isPersonalRow)[1]} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0 }}>
                     {(ws.name || "?").charAt(0).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {ws.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>
-                      {VERTICAL_LABELS[ws.vertical] || ws.vertical}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ws.name}</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>{VERTICAL_LABELS[ws.vertical] || ws.vertical}</div>
                   </div>
-                  {/* Per-row invite icon — admin only, visible on hover (CODEX 50.10-T2 Note 1) */}
                   {canInvite && (
-                    <button
-                      data-invite-btn
+                    <button data-invite-btn
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowSwitcher(false);
-                        window.dispatchEvent(new CustomEvent("ta:open-invite-modal", {
-                          detail: { tenantId: ws.id, workspaceName: ws.name },
-                        }));
+                        window.dispatchEvent(new CustomEvent("ta:open-invite-modal", { detail: { tenantId: ws.id, workspaceName: ws.name } }));
                       }}
-                      title={`Invite a member to ${ws.name}`}
-                      style={{
-                        flexShrink: 0,
-                        width: 24, height: 24, borderRadius: 6,
-                        background: "rgba(124,58,237,0.2)",
-                        border: "none",
-                        color: "#a78bfa",
-                        cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        opacity: isCurrent ? 1 : 0,
-                        transition: "opacity 120ms ease",
-                        marginRight: isCurrent ? 0 : 4,
-                      }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <line x1="20" y1="8" x2="20" y2="14" />
-                        <line x1="23" y1="11" x2="17" y2="11" />
-                      </svg>
+                      style={{ opacity: 0, transition: "opacity 0.15s", background: "rgba(124,58,237,0.18)", border: "none", borderRadius: 6, padding: "3px 7px", cursor: "pointer", fontSize: 11, color: "#c4b5fd", fontWeight: 600, flexShrink: 0 }}>
+                      Invite
                     </button>
-                  )}
-                  {isCurrent && !canInvite && (
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
                   )}
                 </div>
               );
             })}
-
             {sharedWorkspaces.length > 0 && (
               <>
-                <div style={{ padding: "12px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Shared With You
-                </div>
-                {sharedWorkspaces.map(ws => (
-                  <div
-                    key={ws.id}
-                    onClick={() => { setShowSwitcher(false); if (ws.id !== currentWorkspaceId) onSwitchWorkspace(ws); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "8px 12px", cursor: "pointer",
-                      background: ws.id === currentWorkspaceId ? "rgba(124,58,237,0.15)" : "transparent",
-                      borderRadius: 8, margin: "2px 8px",
-                    }}
-                    onMouseEnter={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                    onMouseLeave={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 6,
-                      background: "#0f766e",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
-                    }}>
-                      {(ws.senderOrgName || "?").charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {ws.name}
+                <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 8px" }} />
+                <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Shared with you</div>
+                {sharedWorkspaces.map(ws => {
+                  const isCurrent = ws.id === currentWorkspaceId;
+                  return (
+                    <div key={ws.id} onClick={() => { setShowSwitcher(false); if (!isCurrent) onSwitchWorkspace(ws); }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", cursor: "pointer", background: isCurrent ? "rgba(124,58,237,0.15)" : "transparent", borderRadius: 8, margin: "2px 8px" }}
+                      onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                      onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "transparent"; }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: `linear-gradient(135deg, ${personaTintFor(ws.id, false)[0]} 0%, ${personaTintFor(ws.id, false)[1]} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0 }}>
+                        {(ws.name || "?").charAt(0).toUpperCase()}
                       </div>
-                      <div style={{ fontSize: 11, color: "#64748b" }}>
-                        From {ws.senderOrgName}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ws.name}</div>
+                        {ws.role && <div style={{ fontSize: 11, color: "#64748b" }}>{ws.role}</div>}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
-
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "4px 0" }} />
-
-            {/* Per-row invite icons replace the standalone "Invite a member"
-                button (CODEX 50.10-T2 Note 1). Hover any workspace row above
-                to reveal a + invite icon if you're admin of that workspace. */}
-
-            {onBackToHub && (
-              <div
-                onClick={() => { setShowSwitcher(false); onBackToHub(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "8px 12px", cursor: "pointer", margin: "2px 8px", borderRadius: 8,
-                }}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 8px" }} />
+            {!guestMode && (
+              <div onClick={() => { setShowSwitcher(false); window.dispatchEvent(new CustomEvent("ta:open-new-workspace")); }}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px 6px", cursor: "pointer", borderRadius: 8, margin: "2px 8px" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-              >
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                 <div style={{ width: 28, height: 28, borderRadius: 6, border: "1px dashed #475569", display: "flex", alignItems: "center", justifyContent: "center", color: "#7c3aed", fontSize: 16, fontWeight: 600 }}>+</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#7c3aed" }}>Add Workspace</div>
               </div>
             )}
-
             {onBackToHub && (
-              <div
-                onClick={() => { setShowSwitcher(false); onBackToHub(); }}
-                style={{
-                  padding: "6px 12px 10px", cursor: "pointer",
-                  fontSize: 12, color: "#64748b", textAlign: "center",
-                }}
+              <div onClick={() => { setShowSwitcher(false); onBackToHub(); }}
+                style={{ padding: "6px 12px 10px", cursor: "pointer", fontSize: 12, color: "#64748b", textAlign: "center" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#94a3b8"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#64748b"; }}
-              >
+                onMouseLeave={e => { e.currentTarget.style.color = "#64748b"; }}>
                 Manage Workspaces
               </div>
             )}
@@ -1923,292 +1602,204 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* CODEX 48.3 Phase A — Return to Vault breadcrumb */}
-      {selectedWorker && (
-        <div
-          onClick={handleWorkerDeselect}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "10px 16px", cursor: "pointer",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            fontSize: 12, color: "rgba(255,255,255,0.6)",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#c4b5fd"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
-        >
-          <span style={{ fontSize: 14 }}>&larr;</span>
-          <span>My Vault</span>
-          <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
-          <span style={{ color: "#c4b5fd", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {selectedWorkerName}
-          </span>
+      {/* ═══ BACK BREADCRUMB (worker selected) ═══ */}
+      {!guestMode && selectedWorker && (
+        <div onClick={handleWorkerDeselect}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", cursor: "pointer", borderBottom: "1px solid #e5e7eb", fontSize: 12, color: "#6b7280" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#7c3aed"; e.currentTarget.style.background = "#f5f3ff"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#6b7280"; e.currentTarget.style.background = "transparent"; }}>
+          <span style={{ flexShrink: 0 }}>←</span>
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>{selectedWorkerName}</span>
         </div>
       )}
 
-      {/* ═══ TOP-LEVEL CROSS-CUTTING NAV (2026-06-24 locked IA) ═══
-           Above the persona switcher, only two things live: Alex / Chief of
-           Staff (the always-on Chief of Staff, reachable from the switcher and
-           kept gated as-is) and My Vault. Everything else is per-persona.
+      {/* ═══ SCROLLABLE NAV BODY ═══ */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "6px 8px 24px" }}>
 
-           My Vault routes to the VaultDTCs surface backed by /v1/dtc:list and
-           holds the user's own Digital Title Certificates (car titles, IDs,
-           credentials). The store is workspace-scoped via TENANT_ID. My Drive
-           moved DOWN into the per-persona block (after "+ Browse Marketplace").
-           The Creator persona now lives as a row in MY WORKSPACES. ═══ */}
-      {!guestMode && (
-        <>
-          <div className="sidebarSection">
-            {(() => { const vaultCollapsed = collapsedGroups["__vault__"]; return (
-            <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              <button
-                onClick={() => handleNavClick("vault-dtcs")}
-                className="sidebarLabel"
-                style={{
-                  display: "flex", alignItems: "center", flex: 1,
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: 0, margin: 0, textAlign: "left",
-                }}
-              >
-                <span style={{ color: "#94a3b8" }}>My Vault</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("vault-documents")}
-                className="sidebarLabel"
-                style={{
-                  display: "flex", alignItems: "center",
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: 0, margin: 0, textAlign: "left",
-                }}
-              >
-                <span style={{ color: "#94a3b8" }}>My Drive</span>
-              </button>
-              {/* Chevron toggles the Academic Record child so it tucks UNDER
-                  My Vault instead of floating as its own item (S52.61). */}
-              <button
-                onClick={() => setCollapsedGroups(prev => ({ ...prev, __vault__: !prev.__vault__ }))}
-                title={vaultCollapsed ? "Show records under My Vault" : "Collapse"}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", display: "flex", alignItems: "center", flexShrink: 0 }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: vaultCollapsed ? "none" : "rotate(90deg)", transition: "transform .15s" }}>
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </button>
-            </div>
-            {!vaultCollapsed && (
-              <button
-                onClick={() => handleNavClick("vault-learning-record")}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, margin: "8px 0 0 0" }}
-              >
-                <span style={{ color: "#a78bfa", display: "flex", alignItems: "center", gap: 6, paddingLeft: 16, fontSize: 12.5 }}><span aria-hidden="true">🎓</span> Academic Record</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </button>
-            )}
-            </>
-            ); })()}
-          </div>
-        </>
-      )}
-
-      {/* Divider */}
-      {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
-
-      {/* ═══ MY WORKSPACES (CODEX 50.10-T2 Note 2) ═══
-           Parallel to MY WORKERS / MY GAMES. Lists every persona the user can
-           switch into: Personal Space, every business workspace, AND the
-           Creator persona (2026-06-24). Per-row hover-revealed invite icon for
-           admins. Always rendered for signed-in users (even with a single
-           workspace) so the Creator persona is always reachable. */}
-      {!guestMode && (
-        <div className="sidebarSection">
-          <button
-            className="sidebarLabel"
-            onClick={() => setWorkspacesCollapsed(!workspacesCollapsed)}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              width: "100%", background: "none", border: "none", cursor: "pointer",
-              padding: 0, margin: 0,
-            }}
-          >
-            <span style={{ color: "#60a5fa" }}>My Workspaces</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: workspacesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+        {/* ── Home ── */}
+        {!guestMode && (
+          <button className={`navItem ${currentSection === "dashboard" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("dashboard")}
+            style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "dashboard" ? "#7c3aed" : "#9ca3af" }}>
+              <path d="M2 6.5L8 2L14 6.5V13.5C14 13.78 13.78 14 13.5 14H10.5V10H5.5V14H2.5C2.22 14 2 13.78 2 13.5V6.5Z"/>
+            </svg>
+            Home
           </button>
-          {!workspacesCollapsed && (
-            <nav className="nav" style={{ marginTop: 4 }}>
-              {workspaces.filter(w => w.type !== "shared").map((ws, wsIdx) => {
-                const isCurrent = ws.id === currentWorkspaceId;
-                const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
-                const canInvite = !isPersonalRow && ws.role === "admin";
-                return (
-                  <React.Fragment key={`mws-${ws.id}`}>
-                  <div
-                    data-demo-id={wsIdx === 0 ? "workspace-row-0" : undefined}
-                    onClick={() => {
-                      // If we're parked on the /creators route, switching to any
-                      // workspace persona must LEAVE that route so the canvas
-                      // resets (otherwise it stays stuck on Creator Dashboard).
-                      const onCreators = typeof window !== "undefined" && window.location.pathname.startsWith("/creators");
-                      if (!isCurrent) onSwitchWorkspace(ws);
-                      if (onCreators) { window.location.href = "/"; }
-                    }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "7px 10px", cursor: "pointer",
-                      borderRadius: 8, marginBottom: 2,
-                      background: isCurrent ? `${personaTintFor(ws.id, isPersonalRow)[0]}26` : "transparent",
-                      position: "relative",
-                    }}
-                    onMouseEnter={e => {
-                      if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                      const btn = e.currentTarget.querySelector("[data-mws-invite]");
-                      if (btn) btn.style.opacity = "1";
-                    }}
-                    onMouseLeave={e => {
-                      if (!isCurrent) e.currentTarget.style.background = "transparent";
-                      const btn = e.currentTarget.querySelector("[data-mws-invite]");
-                      if (btn) btn.style.opacity = "0";
-                    }}
-                  >
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 5,
-                      background: `linear-gradient(135deg, ${personaTintFor(ws.id, isPersonalRow)[0]} 0%, ${personaTintFor(ws.id, isPersonalRow)[1]} 100%)`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "white", fontWeight: 600, fontSize: 11, flexShrink: 0,
-                    }}>
-                      {(ws.name || "?").charAt(0).toUpperCase()}
-                    </div>
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: isCurrent ? "#e2e8f0" : "rgba(255,255,255,0.85)", fontWeight: isCurrent ? 600 : 500, fontSize: 13 }}>
-                      {ws.name}
-                    </span>
-                    {ws.role && !isPersonalRow && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999,
-                        background: ws.role === "admin" ? "rgba(124,58,237,0.25)" : ws.role === "viewer" ? "rgba(99,102,241,0.18)" : ws.role === "investor" ? "rgba(6,134,212,0.22)" : "rgba(34,197,94,0.18)",
-                        color: ws.role === "admin" ? "#c4b5fd" : ws.role === "viewer" ? "#a5b4fc" : ws.role === "investor" ? "#7dd3fc" : "#86efac",
-                        textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
-                      }}>
-                        {ws.role}
-                      </span>
-                    )}
-                    {canInvite && (
+        )}
+
+        {!guestMode && (
+          <>
+            {/* ────────────── STORAGE ────────────── */}
+            <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Storage</div>
+
+            <button className={`navItem ${currentSection === "vault-dtcs" ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick("vault-dtcs")}
+              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "vault-dtcs" ? "#7c3aed" : "#9ca3af" }}>
+                <rect x="2" y="3" width="12" height="11" rx="2"/>
+                <path d="M5.5 8.5H10.5M8 6.5V10.5"/>
+              </svg>
+              My Vault
+            </button>
+
+            <button className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick("vault-documents")}
+              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "vault-documents" ? "#7c3aed" : "#9ca3af" }}>
+                <path d="M3 4.5C3 3.67 3.67 3 4.5 3H9.5L13 6.5V12.5C13 13.33 12.33 14 11.5 14H4.5C3.67 14 3 13.33 3 12.5V4.5Z"/>
+                <path d="M9.5 3V6.5H13"/>
+              </svg>
+              My Drive
+            </button>
+
+            {/* Studio Locker — expandable with per-worker folders */}
+            <button
+              onClick={() => { handleNavClick("studio-locker"); setWorkersExpanded(v => !v); }}
+              className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
+              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "studio-locker" ? "#7c3aed" : "#9ca3af" }}>
+                <rect x="2" y="2" width="12" height="12" rx="2"/>
+                <path d="M2 6.5H14M6.5 2V6.5"/>
+              </svg>
+              <span style={{ flex: 1 }}>Studio Locker</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: workersExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                <path d="M2 4L6 8L10 4"/>
+              </svg>
+            </button>
+            {workersExpanded && (
+              <>
+                {workerList.filter(w => !w.isChiefOfStaff).map(w => (
+                  <button key={w.slug}
+                    className={`navItem ${selectedWorker === w.slug ? "navItemActive" : ""}`}
+                    onClick={() => handleWorkerClick(w)}
+                    style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 7, paddingLeft: 28, fontSize: 13, marginBottom: 1 }}>
+                    <WorkerIcon slug={w.slug} size={13} color={selectedWorker === w.slug ? "#7c3aed" : "#9ca3af"} />
+                    {w.name}
+                  </button>
+                ))}
+                {workerList.filter(w => !w.isChiefOfStaff).length === 0 && (
+                  <div style={{ paddingLeft: 28, paddingTop: 4, paddingBottom: 4, fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>No workers yet</div>
+                )}
+              </>
+            )}
+
+            {/* ────────────── WORKERS ────────────── */}
+            <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Workers</div>
+
+            {/* Alex — Chief of Staff */}
+            {groupedWorkers.cos.map(worker => (
+              <button key={worker.slug}
+                className={`navItem ${selectedWorker === worker.slug ? "navItemActive" : ""}`}
+                onClick={() => handleWorkerClick(worker)}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: selectedWorker === worker.slug ? "#7c3aed" : "#9ca3af" }}>
+                  <circle cx="8" cy="5.5" r="2.5"/>
+                  <path d="M2.5 14C2.5 11.24 5 9 8 9C11 9 13.5 11.24 13.5 14"/>
+                </svg>
+                <span style={{ flex: 1 }}>Alex</span>
+                <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 500 }}>CoS</span>
+              </button>
+            ))}
+
+            {/* Back of House — all vertical worker groups */}
+            {groupedWorkers.groups.length > 0 && (
+              <>
+                <button
+                  onClick={() => setWorkersCollapsed(v => !v)}
+                  className="navItem"
+                  style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af" }}>
+                    <rect x="2" y="5" width="12" height="9" rx="1.5"/>
+                    <path d="M5 5V3.5C5 2.67 5.67 2 6.5 2H9.5C10.33 2 11 2.67 11 3.5V5"/>
+                    <path d="M2 9H14"/>
+                  </svg>
+                  <span style={{ flex: 1 }}>Back of House</span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: !workersCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <path d="M2 4L6 8L10 4"/>
+                  </svg>
+                </button>
+                {!workersCollapsed && groupedWorkers.groups.map(([verticalName, workers]) => {
+                  const isCollapsed = collapsedGroups[verticalName];
+                  return (
+                    <React.Fragment key={verticalName}>
                       <button
-                        data-mws-invite
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.dispatchEvent(new CustomEvent("ta:open-invite-modal", {
-                            detail: { tenantId: ws.id, workspaceName: ws.name },
-                          }));
-                        }}
-                        title={`Invite a member to ${ws.name}`}
-                        style={{
-                          flexShrink: 0,
-                          width: 22, height: 22, borderRadius: 5,
-                          background: "rgba(124,58,237,0.2)",
-                          border: "none",
-                          color: "#a78bfa",
-                          cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          opacity: isCurrent ? 1 : 0,
-                          transition: "opacity 120ms ease",
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
+                        onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
+                        style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "3px 8px 3px 26px", fontSize: 11, fontWeight: 600, color: "#9ca3af", borderRadius: 4 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#f3f4f6"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
+                        <span style={{ flex: 1 }}>{verticalName}</span>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: "#9ca3af", transform: !isCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                          <path d="M2 4L6 8L10 4"/>
                         </svg>
                       </button>
-                    )}
-                  </div>
-                  {/* Active persona expands INLINE here, under its own row */}
-                  {isCurrent && personaNav}
-                  </React.Fragment>
-                );
-              })}
+                      {!isCollapsed && workers.map(worker => (
+                        <button key={worker.slug}
+                          className={`navItem ${selectedWorker === worker.slug ? "navItemActive" : ""}`}
+                          onClick={() => handleWorkerClick(worker)}
+                          style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 7, paddingLeft: 36, fontSize: 13, marginBottom: 1 }}>
+                          <WorkerIcon slug={worker.slug} size={13} color={selectedWorker === worker.slug ? "#7c3aed" : "#9ca3af"} />
+                          {worker.name}
+                        </button>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            )}
 
-              {/* ═══ CREATOR persona row (2026-06-24) ═══
-                   A SOCIII Creator is a first-class persona — domain experts
-                   who build Digital Workers. Folds the old top-level "Create"
-                   section (Build a Worker + Creator Dashboard) into a single
-                   persona row that navigates exactly like the former "Creator
-                   Dashboard" item did (/creators/dashboard?tab=workers).
-                   Colored via personaTintFor so it reads as its own persona. */}
-              {creatorStatus !== "none" && (() => {
-                const creatorTint = personaTintFor("__creator__", false);
-                // Route-based, not currentSection (which is sticky) — Creator
-                // expands ONLY when actually parked on the /creators route, so
-                // it collapses the moment you switch to another persona.
-                const creatorActive = typeof window !== "undefined" && window.location.pathname.startsWith("/creators");
-                const creatorLabel = { fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: creatorTint[0] };
-                return (
-                  <React.Fragment>
-                  <div
-                    key="mws-creator"
-                    onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "7px 10px", cursor: "pointer",
-                      borderRadius: 8, marginBottom: 2,
-                      background: "transparent",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 5,
-                      background: `linear-gradient(135deg, ${creatorTint[0]} 0%, ${creatorTint[1]} 100%)`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "white", fontWeight: 600, fontSize: 11, flexShrink: 0,
-                    }}>✦</div>
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.85)", fontWeight: 500, fontSize: 13 }}>
-                      Creator
-                    </span>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999,
-                      background: "rgba(124,58,237,0.25)", color: "#c4b5fd",
-                      textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
-                    }}>
-                      Build
-                    </span>
-                  </div>
-                  {creatorActive && (
-                    <div style={{ marginLeft: 10, marginBottom: 4, borderLeft: `2px solid ${creatorTint[0]}55`, paddingLeft: 6 }}>
-                      <div className="sidebarSection" style={{ paddingTop: 8 }}>
-                        <div style={creatorLabel}>Creator</div>
-                        <nav className="nav">
-                          {[["My Workers", "workers"], ["Profile", "profile"], ["Earnings", "earnings"]].map(([lbl, tab]) => (
-                            <button key={tab} className="navItem" onClick={() => { window.location.href = `/creators/dashboard?tab=${tab}`; }} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: "#fff" }}>{lbl}</button>
-                          ))}
-                          <button className="navItem" onClick={() => { window.location.href = "/creators/journey"; }} style={{ width: "100%", textAlign: "left", cursor: "pointer", color: creatorTint[0], fontWeight: 600 }}>+ Build a Worker</button>
-                        </nav>
-                      </div>
-                    </div>
-                  )}
-                  </React.Fragment>
-                );
-              })()}
-            </nav>
-          )}
-        </div>
-      )}
+            {/* ── Contextual worker tabs (when a worker is selected) ── */}
+            {selectedWorker && contextualItems.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>{selectedWorkerName}</div>
+                {contextualItems.map(item => (
+                  <button key={item.id}
+                    className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`}
+                    onClick={() => handleNavClick(item.id)}
+                    style={{ width: "100%", textAlign: "left", marginBottom: 2 }}>
+                    {item.label}
+                  </button>
+                ))}
+              </>
+            )}
 
-      {/* Footer: Sign Out (Switch Worker removed in CODEX 50.10-T2 — redundant
-          with persona switcher and MY WORKERS list). */}
-      <div className="sidebarFooter">
-        <button
-          onClick={handleSignOut}
-          className="iconBtn"
-          style={{
-            width: "100%", fontSize: 12,
-            color: "rgba(255,255,255,0.4)", background: "none", border: "none",
-            cursor: "pointer", padding: "8px 16px", textAlign: "left",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
-        >
-          Sign Out
-        </button>
+            {/* ────────────── ACCOUNT ────────────── */}
+            <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Account</div>
+
+            <button className={`navItem ${currentSection === "settings" ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick("settings")}
+              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "settings" ? "#7c3aed" : "#9ca3af" }}>
+                <circle cx="8" cy="8" r="2.5"/>
+                <path d="M8 2V3M8 13V14M13.2 4.8L12.46 5.54M3.54 10.46L2.8 11.2M14 8H13M3 8H2M13.2 11.2L12.46 10.46M3.54 5.54L2.8 4.8"/>
+              </svg>
+              Settings
+            </button>
+
+            {creatorStatus !== "none" && (
+              <button className={`navItem ${typeof window !== "undefined" && window.location.pathname.startsWith("/creators") ? "navItemActive" : ""}`}
+                onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af" }}>
+                  <path d="M8 1.5L9.8 6.3H14.8L10.7 9.2L12.4 14L8 11.1L3.6 14L5.3 9.2L1.2 6.3H6.2L8 1.5Z"/>
+                </svg>
+                Creator Studio
+              </button>
+            )}
+
+            <button className="navItem"
+              onClick={handleSignOut}
+              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, color: "#9ca3af", fontSize: 13 }}>
+              Sign out
+            </button>
+          </>
+        )}
+
+        {guestMode && (
+          <div style={{ padding: "16px 8px", fontSize: 13, color: "#9ca3af" }}>
+            {tenantName || "SOCIII"}
+          </div>
+        )}
       </div>
     </div>
   );
