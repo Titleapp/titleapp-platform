@@ -3,6 +3,7 @@ import "./App.css";
 import "./styles/heartbeat.css";
 import DemoWelcomeBanner from "./components/DemoWelcomeBanner";
 import WorkerLockerPanel from "./components/WorkerLockerPanel";
+import WorkerLibrarySection from "./components/WorkerLibrarySection";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
@@ -4985,6 +4986,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <BusinessSetup onComplete={() => setCurrentSection("dashboard")} />;
       case "import-contacts":
         return <ContactImport />;
+      case "studio-locker":
+        return <WorkerLibrarySection />;
       default:
         if (currentSection.startsWith("worker-")) return <WorkerHome />;
         return <WorkerHome />;

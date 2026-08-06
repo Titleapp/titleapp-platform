@@ -1578,14 +1578,29 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── MY DRIVE — peer row, styled like the section labels (no icon) ── */}
+      {/* ── MY DRIVE + STUDIO LOCKER — peer row ── */}
       <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-        <button
-          onClick={() => handleNavClick("vault-documents")}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
-        >
-          <span style={labelStyle}>My Drive</span>
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          <button
+            onClick={() => handleNavClick("vault-documents")}
+            style={{ flex: 1, display: "flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0" }}
+          >
+            <span style={labelStyle}>My Drive</span>
+          </button>
+          <button
+            className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("studio-locker")}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, padding: "4px 0 0", fontSize: 12, color: `${personaTint[0]}cc`, fontWeight: 500, whiteSpace: "nowrap" }}
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
+              <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+              <line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" strokeWidth="1"/>
+              <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" strokeWidth="1"/>
+              <line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" strokeWidth="1"/>
+            </svg>
+            <span style={labelStyle}>Studio Locker</span>
+          </button>
+        </div>
       </div>
 
       {/* ── MY GAMES ── */}
@@ -1622,29 +1637,6 @@ export default function Sidebar({
               </button>
             ))}
           </nav>
-        </div>
-      )}
-
-      {/* ── STUDIO LOCKER — visible when any worker is selected ── */}
-      {selectedWorker && (
-        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-          <button
-            className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
-            onClick={() => {
-              const workerData = workerList.find(w => w.slug === selectedWorker) || { slug: selectedWorker };
-              window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: workerData }));
-              handleNavClick("studio-locker");
-            }}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13, color: `${personaTint[0]}cc`, fontWeight: 500 }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
-              <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-              <line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" strokeWidth="1"/>
-              <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" strokeWidth="1"/>
-              <line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" strokeWidth="1"/>
-            </svg>
-            <span>Studio Locker</span>
-          </button>
         </div>
       )}
 

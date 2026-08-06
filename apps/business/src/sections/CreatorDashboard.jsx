@@ -160,16 +160,17 @@ export default function CreatorDashboard() {
   }
 
   if (tab === "profile") {
+    const emailPrefix = currentUser?.email?.split("@")[0] || "";
     const profileData = {
-      name: currentUser?.displayName || "Dr. Maya Chen, DVM",
-      title: "Veterinarian & Practice Owner",
-      bio: "Practicing veterinarian for 14 years and founder of Meadow Creek Veterinary Clinic. I built clinical evaluation and drug dosing workers to solve the compliance and documentation bottlenecks I faced every week — and published them so other practice owners don't have to start from scratch.",
-      credentials: ["DVM — University of California Davis", "AVMA Member", "Colorado State Veterinary License #VL-2847", "DEA Schedule II–IV Authorization"],
-      specialty: "Small Animal Medicine & Surgery",
-      location: "Boulder, CO",
+      name: currentUser?.displayName || emailPrefix || "Creator",
+      title: "",
+      bio: "",
+      credentials: [],
+      specialty: "",
+      location: "",
       publishedWorkers: workers.filter(w => w.published).length,
-      totalSubscribers: 47,
-      avgRating: 4.8,
+      totalSubscribers: 0,
+      avgRating: null,
     };
     return (
       <div>
@@ -183,12 +184,17 @@ export default function CreatorDashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, alignItems: "start" }}>
           {/* Profile card */}
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#34d399,#10b981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 16 }}>MC</div>
+            {(() => {
+              const initials = profileData.name.split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+              return <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#6C47FF,#a78bfa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 16 }}>{initials}</div>;
+            })()}
             <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{profileData.name}</div>
-            <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginBottom: 4 }}>{profileData.title}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>{profileData.specialty} · {profileData.location}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-              {[["Workers", profileData.publishedWorkers], ["Subscribers", profileData.totalSubscribers], ["Rating", profileData.avgRating + "★"]].map(([label, val]) => (
+            {profileData.title && <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginBottom: 4 }}>{profileData.title}</div>}
+            {(profileData.specialty || profileData.location) && (
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>{[profileData.specialty, profileData.location].filter(Boolean).join(" · ")}</div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+              {[["Workers", profileData.publishedWorkers], ["Subscribers", profileData.totalSubscribers]].map(([label, val]) => (
                 <div key={label} style={{ textAlign: "center", padding: "10px 4px", background: "#f8fafc", borderRadius: 8 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{val}</div>
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>{label}</div>
@@ -201,19 +207,24 @@ export default function CreatorDashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>Bio</div>
-              <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.7 }}>{profileData.bio}</div>
+              {profileData.bio
+                ? <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.7 }}>{profileData.bio}</div>
+                : <div style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>No bio yet — click Edit Profile to add one.</div>
+              }
             </div>
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>Credentials</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {profileData.credentials.map((c, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
-                    {c}
-                  </div>
-                ))}
+            {profileData.credentials.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: 24 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>Credentials</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {profileData.credentials.map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+                      {c}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -221,12 +232,8 @@ export default function CreatorDashboard() {
   }
 
   if (tab === "earnings") {
-    const quarters = [
-      { q: "Q2 2026", gross: 2847, net: 2135, subs: 19, workers: ["Clinical Evaluation", "Drug Dosing"] },
-      { q: "Q1 2026", gross: 1620, net: 1215, subs: 12, workers: ["Clinical Evaluation"] },
-      { q: "Q4 2025", gross: 840, net: 630, subs: 6, workers: ["Clinical Evaluation"] },
-    ];
-    const totalNet = quarters.reduce((s, q) => s + q.net, 0);
+    const quarters = [];
+    const totalNet = 0;
     return (
       <div>
         <div className="pageHeader">
@@ -237,7 +244,7 @@ export default function CreatorDashboard() {
         </div>
         {tabBar}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-          {[["Total Earned (net)", `$${totalNet.toLocaleString()}`], ["Active Subscribers", "47"], ["Revenue Share", "75%"]].map(([label, val]) => (
+          {[["Total Earned (net)", `$${totalNet.toLocaleString()}`], ["Active Subscribers", "0"], ["Revenue Share", "75%"]].map(([label, val]) => (
             <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: "20px 24px" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{label}</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#1e293b" }}>{val}</div>
@@ -255,6 +262,9 @@ export default function CreatorDashboard() {
               </tr>
             </thead>
             <tbody>
+              {quarters.length === 0 && (
+                <tr><td colSpan={5} style={{ padding: "32px 20px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No earnings yet — publish a worker to start earning.</td></tr>
+              )}
               {quarters.map((q, i) => (
                 <tr key={q.q} style={{ borderTop: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                   <td style={{ padding: "12px 20px", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{q.q}</td>
@@ -267,7 +277,7 @@ export default function CreatorDashboard() {
             </tbody>
           </table>
           <div style={{ padding: "12px 20px", borderTop: "1px solid #f1f5f9", fontSize: 12, color: "#94a3b8" }}>
-            Payouts processed monthly to your connected bank account. Next payout: August 1, 2026.
+            Payouts processed monthly to your connected bank account.
           </div>
         </div>
       </div>
