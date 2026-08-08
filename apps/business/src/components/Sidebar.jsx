@@ -855,15 +855,6 @@ const WORKER_NAV_MAP = {
     { id: "av-dispatch", label: "Dispatch" },
     { id: "av-training", label: "Training" },
   ],
-  "web3": [
-    { id: "w3-dashboard", label: "Dashboard" },
-    { id: "vault-documents", label: "Document Vault" },
-    { id: "w3-team-roster", label: "Team Roster" },
-    { id: "w3-treasury", label: "Treasury" },
-    { id: "w3-governance", label: "Governance" },
-    { id: "w3-community", label: "Community" },
-    { id: "w3-contracts", label: "Contracts" },
-  ],
   "consumer": [
     { id: "vault-documents", label: "Documents" },
     { id: "pending-signatures", label: "Signatures" },
@@ -1098,7 +1089,6 @@ const VERTICAL_LABELS = {
   consumer: "Personal Space",
   "auto-dealer": "Auto Dealer",
   real_estate_development: "Real Estate",
-  web3: "Web3",
   solar: "Solar",
   government: "Government",
 };

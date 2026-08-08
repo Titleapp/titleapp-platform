@@ -1,0 +1,15 @@
+node_modules
+.git
+*.log
+*.md
+
+# Run-once seed/backfill scripts — kept in git for history, excluded from Cloud Run image
+scripts/backfill-*.js
+scripts/bulk*.js
+scripts/fix-*.js
+scripts/fixSocii*.js
+scripts/list*.js
+scripts/migrate*.js
+scripts/seed*.js
+scripts/demo/
+scripts/test/

@@ -32119,21 +32119,27 @@ exports.recurringChargeDigest = onSchedule(
 );
 
 // ----------------------------
+// PLATFORM ADMIN ONLY: SEED ADMIN DATA
+// ----------------------------
 const { seedAdmins } = require("./admin/seedAdminData");
 exports.seedAdminData = onRequest({ region: "us-central1" }, async (req, res) => {
   const origin = req.headers.origin;
   if (origin) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
+  const auth = await requireFirebaseUser(req, res);
+  if (auth.handled) return;
+  const PLATFORM_ADMIN_UIDS = new Set(["WResykI56hW16silsOtvlw1UjJK2"]);
+  if (!PLATFORM_ADMIN_UIDS.has(auth.user?.uid)) return res.status(403).json({ ok: false, error: "Forbidden", code: "FORBIDDEN" });
   return seedAdmins(req, res);
 });
 
 // ----------------------------
-// ADMIN: SEED SAMPLE DATA
+// PLATFORM ADMIN ONLY: SEED SAMPLE DATA
 // ----------------------------
 const { seedSampleData: handleSeedSample } = require("./admin/seedSampleData");
 exports.seedSampleData = onRequest({ region: "us-central1" }, async (req, res) => {
@@ -32141,15 +32147,19 @@ exports.seedSampleData = onRequest({ region: "us-central1" }, async (req, res) =
   if (origin) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
+  const auth = await requireFirebaseUser(req, res);
+  if (auth.handled) return;
+  const PLATFORM_ADMIN_UIDS = new Set(["WResykI56hW16silsOtvlw1UjJK2"]);
+  if (!PLATFORM_ADMIN_UIDS.has(auth.user?.uid)) return res.status(403).json({ ok: false, error: "Forbidden", code: "FORBIDDEN" });
   return handleSeedSample(req, res);
 });
 
 // ----------------------------
-// ADMIN: SEED ACTIVITY DATA
+// PLATFORM ADMIN ONLY: SEED ACTIVITY DATA
 // ----------------------------
 const { seedActivityData: handleSeedActivity } = require("./admin/seedActivityData");
 exports.seedActivityData = onRequest({ region: "us-central1" }, async (req, res) => {
@@ -32157,10 +32167,14 @@ exports.seedActivityData = onRequest({ region: "us-central1" }, async (req, res)
   if (origin) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
+  const auth = await requireFirebaseUser(req, res);
+  if (auth.handled) return;
+  const PLATFORM_ADMIN_UIDS = new Set(["WResykI56hW16silsOtvlw1UjJK2"]);
+  if (!PLATFORM_ADMIN_UIDS.has(auth.user?.uid)) return res.status(403).json({ ok: false, error: "Forbidden", code: "FORBIDDEN" });
   return handleSeedActivity(req, res);
 });
 
