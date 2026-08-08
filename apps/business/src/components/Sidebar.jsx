@@ -1070,6 +1070,10 @@ const WORKER_DISPLAY_NAMES = {
   "nursing-education-001": "Hannah",
   "nursing-micro-001": "Morgan",
   "nursing-ob-001": "Clara",
+  "av-copilot-001": "Skye",
+  "av-mx-001": "Skye",
+  "av-dispatch-001": "Skye",
+  "av-ground-school-001": "Skye",
   "pet-health-client": "Pet Health Records",
   // Tenant-facing consumer workers
   "tenant-portal-001": "Tenant Portal",

@@ -324,19 +324,22 @@ const LIVE_TABS = {
   "av-aircraft": {
     "squawks": { kind: "squawks" },
   },
-  // Personal workers — CoPilot / MX / Dispatch (single pilot + aircraft)
+  // Personal workers — owner-operator (Las Vegas home base: KLAS/KVGT)
   "av-copilot-001": {
-    "dashboard": { kind: "currency" },
-    "preflight": { kind: "weather",  ids: "KTEB,KMCO,KPBI",
-                   mapConfig: { address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI · IFR FL230" } },
-    "logbook":   { kind: "logbook" },
+    "dashboard":  { kind: "currency" },
+    "preflight":  { kind: "weather", ids: "KLAS,KPHX,KLAX",
+                    mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
+    "logbook":    { kind: "logbook" },
   },
   "av-mx-001": {
     "squawks": { kind: "squawks" },
   },
   "av-dispatch-001": {
-    "trip-package": { kind: "weather", ids: "KTEB,KMCO,KPBI",
-                      mapConfig: { address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI" } },
+    "trip-package": { kind: "weather", ids: "KLAS,KPHX,KLAX",
+                      mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX" } },
+  },
+  "av-ground-school-001": {
+    "quiz-zone": { kind: "currency" },
   },
 };
 

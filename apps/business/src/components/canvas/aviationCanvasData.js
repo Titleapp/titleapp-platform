@@ -1062,6 +1062,139 @@ AV_CANVAS["av-copilot-b200"]  = copilotVariant("King Air B200", "N·B200 · King
 AV_CANVAS["av-copilot-b350"]  = copilotVariant("King Air B350", "N·B350 · King Air B350", "N·B350", "King Air B350", "PT6A-60A", "3,600h");
 AV_CANVAS["av-copilot-c90"]   = copilotVariant("King Air C90", "N·C90 · King Air C90", "N·C90", "King Air C90B", "PT6A-21", "3,500h");
 AV_CANVAS["av-copilot-208b"]  = copilotVariant("Caravan 208B", "N·208B · Cessna 208B", "N·208B", "208B Grand Caravan", "PT6A-114A", "3,600h");
+AV_CANVAS["av-copilot-sr22"]  = copilotVariant("Cirrus SR22 G5", "N663SR · Cirrus SR22 G5", "N663SR", "SR22 G5 POH", "IO-550-N", "2,000h");
+
+// ─────────────────────────── GROUND SCHOOL (PERSONAL) ─────────────────────
+AV_CANVAS["av-ground-school-001"] = {
+  title: "Ground School",
+  subtitle: "Oral Prep · ACS Standards · PC-12 / B200 / SR22",
+  disclaimer: "Study and preparation material only — certification standards are set by the examiner",
+  cas: { RED: 0, YELLOW: 0, BLUE: 2, WHITE: 3, GREEN: 2 },
+  tabs: [
+    {
+      id: "aircraft-systems",
+      label: "Aircraft Systems",
+      description: "Quick-reference systems overview for your three aircraft — PC-12, B200, and SR22. Ask Skye to drill deeper on any system.",
+      blocks: [
+        { type: "heroes", items: [
+          { band: "GREEN", title: "PC-12/47E · PT6A-67P",   detail: "Single turbine · Primus Apex · 270 KTAS cruise · FL310 ceiling · 9 pax" },
+          { band: "GREEN", title: "King Air B200 · PT6A-42", detail: "Twin turbine · Collins Pro Line · 290 KTAS · FL350 ceiling · 8 pax" },
+          { band: "WHITE", title: "Cirrus SR22 G5 · IO-550-N", detail: "Piston single · G1000 NXi + CAPS · 185 KTAS · 17,500 ft" },
+        ] },
+        { type: "table", title: "PC-12/47E — Key systems", cols: ["System", "Description", "Notes"], rows: [
+          ["Engine",           "PT6A-67P free turbine · 1,200 SHP",                 "Reverse-flow design · 3,600h TBO"],
+          ["Propeller",        "5-blade composite full-feathering · autofeather",    "Oil-pressure-to-feather — oil loss = feathers"],
+          ["Fuel",             "2 tanks · 518 gal total · 506 usable",              "FADEC fuel management · crossfeed via selector"],
+          ["Pressurization",   "Engine bleed · 6.0 PSI diff · 8,000 ft at FL300",  "Outflow valve + safety + negative pressure relief"],
+          ["Ice protection",   "TKS weeping wing + heated leading edges + prop de-ice", "Known-ice certified with proper equipment"],
+          ["Avionics",         "Honeywell Primus Apex · dual GTN750",               "EGPWS · TCAS II · autothrottle"],
+          ["Engine fire T/O",  "Condition lever → cutoff · firewall shutoff · NESA off", "Autofeather arms at T/O power above 60 kt"],
+          ["Emergency descent","Power idle · prop full forward · Vmo/Mmo − 10 · max bank 45°", "Oxygen masks · squawk 7700"],
+        ] },
+        { type: "table", title: "King Air B200 — Key systems", cols: ["System", "Description", "Notes"], rows: [
+          ["Engines",          "2× PT6A-42 · 850 SHP each",                         "3,600h TBO · 60s max OEI power"],
+          ["Fuel",             "4 tanks · 544 gal usable",                          "Crossfeed required OEI · gravity-feed aux"],
+          ["Pressurization",   "6.5 PSI diff · cabin 10,000 ft at FL350",           "Outflow valve + safety valve"],
+          ["Ice",              "Pneumatic boot + heated leading edges + windshield",  "NOT certified for severe icing"],
+          ["Avionics",         "Collins Pro Line 21 · dual GTN650",                 "EGPWS · weather radar"],
+          ["OEI performance",  "VMC = 80 KIAS · Vyse (blue line) = 121 KIAS",      "Vsse = 99 KIAS · Accelerate-stop dist matters"],
+          ["Engine failure",   "Identify → verify → feather → checklist",           "Dead foot = dead engine"],
+        ] },
+        { type: "table", title: "Cirrus SR22 G5 — Key systems", cols: ["System", "Description", "Notes"], rows: [
+          ["Engine",           "Continental IO-550-N · 310 HP · fuel injected",     "2,000h TBO · on-condition extensions available"],
+          ["CAPS",             "Cirrus Airframe Parachute System · BRS Aerospace",  "Deploy above 920 ft AGL · any uncontrollable situation"],
+          ["Avionics",         "Garmin G1000 NXi + Garmin Perspective+ autopilot",  "SVT · NEXRAD · ADS-B in/out"],
+          ["Fuel",             "2 tanks · 92 gal usable",                          "No crossfeed — switch tanks per SOP (30 min intervals)"],
+          ["Oxygen",           "Built-in crew O2 above 12,500 ft per 91.211",      "Pax O2 masks available"],
+          ["Vmo",              "205 KIAS / Mach 0.35",                              "Never exceed — also monitor Va for turbulence"],
+        ] },
+      ],
+    },
+    {
+      id: "oral-prep",
+      label: "Oral Prep",
+      description: "ACS-aligned oral exam questions by topic. Ask Skye to quiz you on any row — she probes Socratically before revealing the answer.",
+      blocks: [
+        { type: "heroes", items: [
+          { band: "BLUE",  title: "Ask Skye to run a drill", detail: "Say 'Quiz me on B200 OEI emergencies at proficient level' or 'Walk me through PC-12 pressurization failure'" },
+          { band: "GREEN", title: "ACS standard",            detail: "Instrument Rating ACS · ATP ACS · type-specific oral standards" },
+        ] },
+        { type: "table", title: "Airspace", cols: ["Topic", "Key facts", "ACS ref"], rows: [
+          ["Class A",     "18,000–60,000 MSL · IFR only · ATC clearance required",              "IR.I.B"],
+          ["Class B",     "Clearance required · Mode C within 30nm · VFR min 3SM/1,000/500/2,000","IR.I.B"],
+          ["TFRs",        "tfr.faa.gov + NOTAM + ForeFlight overlay · 91.141",                  "IR.I.C"],
+          ["ADIZ",        "Two-way radio + defense flight plan + transponder + code",             "IR.I.B"],
+          ["MOA",         "VFR: caution, ATC advises · IFR: ATC keeps you clear of traffic",    "IR.I.B"],
+        ] },
+        { type: "table", title: "Weather & icing", cols: ["Topic", "Key facts", "ACS ref"], rows: [
+          ["SIGMET",      "Severe icing · severe turbulence · volcanic ash · tropical cyclone",  "IR.I.D"],
+          ["Icing cert",  "PC-12 known-ice OK · B200 NOT severe icing · SR22 NOT known-ice",    "IR.I.D"],
+          ["TAF decode",  "FM=from · TEMPO=<1h period · BECMG=becoming · PROB40=40% chance",    "IR.I.D"],
+          ["DA vs. MDA",  "DA=decision altitude (ILS/LPV) · MDA=minimum descent alt (LNAV/LOC)","IR.II.B"],
+          ["Alternate req","IFR alt required if destination forecast: ceiling <2,000 or vis <3SM","IR.I.C"],
+        ] },
+        { type: "table", title: "PC-12 emergency memory items", cols: ["Emergency", "Memory items"], rows: [
+          ["Engine fire",          "Condition lever CUTOFF · firewall shutoff CLOSE · NESA OFF · emergency descent"],
+          ["Pressurization loss",  "O2 masks · descend FL250 (14,000 ft target) · land ASAP"],
+          ["Smoke / fumes",        "O2 mask + goggles · identify source · land ASAP"],
+          ["Engine fail T/O",      "Autofeather · maintain Vy 105 kt · runway remaining → land or go"],
+          ["Emergency descent",    "Power idle · prop full forward · Vmo−10 · bank 30-45° · squawk 7700"],
+        ] },
+        { type: "table", title: "Regulations — Part 91 key items", cols: ["FAR", "Rule"], rows: [
+          ["91.167", "IFR fuel: destination + alternate + 45 min reserve"],
+          ["91.175", "IFR approaches: continue past MAP/DA only if required visual references in sight"],
+          ["91.207", "ELT required — inspect every 12 months · battery every 50% life or 1 year"],
+          ["91.213", "Inoperative equipment: MEL, or remove/deactivate + placard (91.213(d))"],
+          ["91.409", "Annual inspection: 12 calendar months · 100-hr for hire"],
+          ["91.411", "Altimeter/static: 24 calendar months"],
+          ["91.413", "Transponder: 24 calendar months"],
+        ] },
+      ],
+    },
+    {
+      id: "regulatory",
+      label: "Regulatory",
+      description: "Part 61, Part 91, and ATP/type rating requirements at a glance. Ask Skye to explain any item or dig into the nuance.",
+      blocks: [
+        { type: "kpis", items: [
+          { label: "ATP minimums",       value: "23 yrs · 1,500 TT · 500 XC · 100 night · 75 inst · 250 PIC", band: "WHITE" },
+          { label: "BFR (flight review)", value: "Every 24 calendar months · 1h ground + 1h flight min",        band: "WHITE" },
+          { label: "IFR currency",        value: "6 approaches + holds + tracking in 6 months (or IPC)",        band: "WHITE" },
+          { label: "Night pax currency",  value: "3 full-stop night landings in 90 days",                       band: "WHITE" },
+          { label: "Medical Class 1",     value: "Under 40: 12 months · 40 or older: 6 months",                band: "WHITE" },
+          { label: "135 line check",      value: "Every 12 calendar months — operator-specific timing",          band: "WHITE" },
+        ] },
+        { type: "table", title: "Type rating requirements", cols: ["Aircraft", "Rating needed", "PIC reqs for Part 135"], rows: [
+          ["PC-12/47E", "Not required Part 91 · required Part 135 PIC",          "ATP + type + Class 1 medical"],
+          ["King Air B200", "Required for Part 135 PIC (multi-engine turbine)", "ATP + type + Class 1 medical"],
+          ["SR22 G5",   "No type rating — single-engine piston",                "Commercial cert + Class 2 or Class 1"],
+        ] },
+        { type: "prose", items: [
+          { band: "BLUE",  title: "ACS vs PTS", text: "All practical tests since 2016 use the Airman Certification Standards (ACS) — task-based with knowledge, risk management, and skill evaluated together. For PC-12 and B200 type rating orals, use the ATP ACS plus the manufacturer's type-specific oral guide (FSI provides one for each). The DPE will follow the ACS task list." },
+          { band: "GREEN", title: "Currency vs legality", text: "Currency (FAR 61.57) = recent experience to carry passengers. Legality = meeting all FAR certificate and medical requirements to act as PIC. You can be legal but not current (no landings in 90 days). You can be currency-current but not legal (expired medical). Both required before every flight." },
+          { band: "WHITE", title: "CAPS deployment envelope", text: "Cirrus CAPS: deploy at any attitude, any airspeed (up to Vmo), above 920 ft AGL recommended for full chute inflation. No published altitude maximum. Pull the handle — Cirrus data shows CAPS saves lives. Any uncontrolled/uncontrollable situation, including loss of control, structural failure, or disorientation." },
+        ] },
+      ],
+    },
+    {
+      id: "quiz-zone",
+      label: "Quiz Zone",
+      description: "Tell Skye what to quiz you on and at what level. She probes Socratically before revealing the answer — exactly like a real oral exam.",
+      blocks: [
+        { type: "heroes", items: [
+          { band: "BLUE",  title: "Interactive oral prep with Skye", detail: "Skye adapts to your answers — presses harder when you're right, explains clearly when you miss" },
+          { band: "GREEN", title: "4 levels matching ACS standards",  detail: "Novice: recall · Developing: application · Proficient: analysis · Expert: synthesis + judgment" },
+        ] },
+        { type: "cards", items: [
+          { band: "WHITE", label: "DRILL",  title: "PC-12 type recurrent oral", detail: "Say: 'Walk me through a PC-12 type recurrent oral — systems, emergencies, and ACS standards. 20 questions at proficient level.'", action: "Start" },
+          { band: "WHITE", label: "DRILL",  title: "B200 multi-engine emergencies", detail: "Say: 'Quiz me on King Air B200 OEI emergencies and VMC at ATP level — 10 questions.'", action: "Start" },
+          { band: "WHITE", label: "DRILL",  title: "IFR regulations", detail: "Say: 'IFR regs quiz — approach minimums, alternates, currency, fuel requirements. Mix novice and proficient.'", action: "Start" },
+          { band: "WHITE", label: "DRILL",  title: "SR22 CAPS and systems", detail: "Say: 'SR22 systems and CAPS deployment criteria — 8 questions at developing level.'", action: "Start" },
+        ] },
+      ],
+    },
+  ],
+};
 
 export function getAvCanvas(slug) {
   return AV_CANVAS[slug] || null;

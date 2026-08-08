@@ -4956,6 +4956,8 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "av-mx-001":
       case "av-fleet":
         return <AviationWorkerCanvas workerSlug="av-mx-001" />;
+      case "av-ground-school-001":
+        return <AviationWorkerCanvas workerSlug="av-ground-school-001" />;
       case "av-crew":
       case "av-scheduling":
       case "av-compliance":
