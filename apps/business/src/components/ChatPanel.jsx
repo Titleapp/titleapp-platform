@@ -2657,7 +2657,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "platform-marketing": "Ivy",
               "investor-relations": "Reed",
               "ir-worker": "Reed",
-              // Aviation — Skye
+              // Aviation — Skye (owner-operator demo suite)
+              "av-copilot-001": "Skye", "av-copilot-sr22": "Skye",
+              "av-mx-001": "Skye", "av-dispatch-001": "Skye", "av-ground-school-001": "Skye",
+              // Aviation — Skye (catalog)
               "av-pc12-ng": "Skye", "av-king-air-b200": "Skye", "av-king-air-350": "Skye",
               "av-king-air-c90": "Skye", "av-caravan-208b": "Skye", "av-digital-logbook": "Skye",
               "av-currency-tracker": "Skye", "av-my-aircraft": "Skye", "av-training-proficiency": "Skye",

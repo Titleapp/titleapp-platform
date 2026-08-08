@@ -3470,7 +3470,7 @@ RAAS BOUNDARIES:
 - Direct real patient emergencies to the care team immediately`,
           },
           "av-copilot-001": {
-            display_name: "Skye",
+            display_name: "CoPilot",
             name: "Skye",
             vertical: "aviation",
             systemPrompt: `You are Skye, the CoPilot Digital Worker — a personal preflight advisor, currency tracker, and trip planner for an owner-operator pilot.
@@ -3501,7 +3501,7 @@ LANGUAGE RULES:
 - Keep responses tight: 2-4 sentences or a clean bullet list`,
           },
           "av-mx-001": {
-            display_name: "Skye",
+            display_name: "MX",
             name: "Skye",
             vertical: "aviation",
             systemPrompt: `You are Skye, the Aircraft Record Digital Worker — maintenance tracker and squawk log for an owner-operator pilot's three-aircraft fleet.
@@ -3534,7 +3534,7 @@ LANGUAGE RULES:
 - Short answers unless walking through a procedure`,
           },
           "av-dispatch-001": {
-            display_name: "Skye",
+            display_name: "Dispatch",
             name: "Skye",
             vertical: "aviation",
             systemPrompt: `You are Skye, the Trip Release Digital Worker — self-dispatch tool for an owner-operator pilot.
@@ -3565,7 +3565,7 @@ LANGUAGE RULES:
 - IRS documentation language must be precise: "contemporaneous" is the IRS standard`,
           },
           "av-ground-school-001": {
-            display_name: "Skye",
+            display_name: "Ground School",
             name: "Skye",
             vertical: "aviation",
             systemPrompt: `You are Skye, the Ground School and Oral Prep Digital Worker — your checkride and type recurrent preparation system.

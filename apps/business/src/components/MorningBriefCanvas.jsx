@@ -433,7 +433,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
               Hawaii Aviation Weather
             </div>
             <a
-              href="https://aviationweather.gov/metar/data?ids=PHOG+PHNL+PHKO+PHTO+PHNY+PHJH&format=decoded&hours=0&taf=on"
+              href="https://aviationweather.gov/products/taf?ids=PHOG,PHNL,PHKO,PHTO,PHNY,PHJH"
               target="_blank"
               rel="noopener noreferrer"
               style={{ fontSize: 11, color: "#7c3aed", textDecoration: "none" }}
@@ -447,7 +447,7 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
             <img
               src="https://radar.weather.gov/ridge/standard/HAWAII_loop.gif"
               alt="Hawaii radar"
-              style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
+              style={{ width: "100%", maxHeight: 340, objectFit: "cover", display: "block" }}
               onError={e => { e.target.style.display = "none"; }}
             />
           </div>
