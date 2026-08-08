@@ -11,7 +11,9 @@ const tabToKey = (t) => t.toLowerCase().replace(/ /g, "-");
 // ── Slug registry ─────────────────────────────────────────────────────────────
 
 const NURSING_SLUGS = new Set([
-  "nursing-education-001",        // Clearwater Nursing Education (deployed)
+  "nursing-education-001",        // Hannah — Clearwater Clinical Evaluation
+  "nursing-micro-001",            // Morgan — Microbiology Tutor
+  "nursing-ob-001",               // Clara — OB/Maternity Tutor
   "nursing-records-001",
   "nursing-courses-001",
   "nursing-tutor-001",
@@ -1016,6 +1018,585 @@ function AccreditationCanvas({ slug, schoolData }) {
   );
 }
 
+// ── Worker: Morgan — Microbiology Tutor ──────────────────────────────────────
+
+const MICRO_CHAPTERS = [
+  { num: "Ch 1", title: "Intro to Microbiology", topics: ["Prokaryote vs Eukaryote", "Domains of Life", "Scope of Micro"], loaded: true },
+  { num: "Ch 3", title: "Cell Structure", topics: ["Cell wall", "Gram stain basis", "Flagella & pili", "Endospores"], loaded: true },
+  { num: "Ch 8–9", title: "Microbial Metabolism & Genetics", topics: ["Pathogenicity mechanisms", "Virulence factors", "Gene transfer"], loaded: true },
+  { num: "Ch 11, 15", title: "Disease Mechanisms", topics: ["Host defenses", "Nosocomial infections", "Chain of infection"], loaded: true },
+  { num: "Ch 17–18", title: "Antimicrobial Drugs & Lab ID", topics: ["Drug classes & MOA", "Resistance mechanisms", "Culture & sensitivity"], loaded: true },
+  { num: "Ch 14, 21–24", title: "Immunity + Clinical Syndromes", topics: ["Innate & adaptive immunity", "Respiratory", "GI", "UTI", "Wound", "CNS infections"], loaded: true },
+];
+
+const GRAM_STAIN_BUGS = [
+  { gram: "+", shape: "Cocci clusters", organism: "S. aureus", diseases: "Skin infections, pneumonia, endocarditis, food poisoning", drug: "Nafcillin / Vancomycin (MRSA)" },
+  { gram: "+", shape: "Cocci chains", organism: "S. pyogenes (GAS)", diseases: "Strep throat, rheumatic fever, cellulitis, necrotizing fasciitis", drug: "Penicillin G" },
+  { gram: "+", shape: "Cocci pairs", organism: "S. pneumoniae", diseases: "Pneumonia, meningitis, otitis media", drug: "Penicillin / Vancomycin (resistant)" },
+  { gram: "+", shape: "Rods (spores)", organism: "C. difficile", diseases: "Pseudomembranous colitis (post-antibiotic)", drug: "Vancomycin (PO) / Fidaxomicin" },
+  { gram: "+", shape: "Rods (spores)", organism: "B. anthracis", diseases: "Anthrax — cutaneous/inhalation", drug: "Ciprofloxacin / Penicillin" },
+  { gram: "–", shape: "Diplococci", organism: "N. gonorrhoeae", diseases: "Gonorrhea, PID, neonatal conjunctivitis", drug: "Ceftriaxone + Azithromycin" },
+  { gram: "–", shape: "Diplococci", organism: "N. meningitidis", diseases: "Bacterial meningitis, septicemia", drug: "Penicillin G / Ceftriaxone" },
+  { gram: "–", shape: "Rods (enteric)", organism: "E. coli", diseases: "UTI, neonatal meningitis, traveler's diarrhea, HUS", drug: "TMP-SMX / Ceftriaxone (serious)" },
+  { gram: "–", shape: "Rods (enteric)", organism: "Salmonella", diseases: "Gastroenteritis, typhoid fever, osteomyelitis (sickle cell)", drug: "Ciprofloxacin / Ceftriaxone" },
+  { gram: "–", shape: "Rods (enteric)", organism: "Klebsiella", diseases: "Pneumonia (alcoholics), UTI, hospital infections", drug: "Carbapenems (ESBL strains)" },
+  { gram: "–", shape: "Rods (respiratory)", organism: "H. influenzae", diseases: "Epiglottitis, otitis media, meningitis", drug: "Amoxicillin-clavulanate / Ceftriaxone" },
+  { gram: "–", shape: "Curved rods", organism: "H. pylori", diseases: "Peptic ulcer disease, gastric cancer", drug: "Triple therapy: PPI + Clarithro + Amox" },
+  { gram: "Atypical", shape: "No cell wall", organism: "Mycoplasma pneumoniae", diseases: "Walking pneumonia (young adults)", drug: "Azithromycin / Doxycycline" },
+  { gram: "Atypical", shape: "Obligate intracellular", organism: "Chlamydia trachomatis", diseases: "Chlamydia, PID, neonatal eye/lung infections", drug: "Azithromycin / Doxycycline" },
+];
+
+const ANTIBIOTIC_CLASSES = [
+  { cls: "Penicillins", moa: "Inhibit cell wall synthesis (PBP binding)", examples: "Amoxicillin, Nafcillin, Piperacillin-tazobactam", coverage: "Gram + (expanded spectrum with β-lactamase inhibitor)", nursing: "Ask about penicillin allergy; assess for rash/anaphylaxis; give with food" },
+  { cls: "Cephalosporins", moa: "Inhibit cell wall synthesis (β-lactam ring)", examples: "Cephalexin (1st), Cefuroxime (2nd), Ceftriaxone (3rd), Cefepime (4th)", coverage: "1st→4th: progressive Gram– coverage; 3rd/4th cross BBB", nursing: "10% cross-reactivity with PCN allergy; monitor renal function; IM ceftriaxone is painful" },
+  { cls: "Vancomycin", moa: "Inhibits cell wall — binds D-Ala-D-Ala (different from β-lactams)", examples: "Vancomycin IV", coverage: "Gram + only (MRSA, C. diff PO)", nursing: "Red Man Syndrome — slow the infusion; trough monitoring; nephrotoxic" },
+  { cls: "Fluoroquinolones", moa: "Inhibit DNA gyrase (topoisomerase II/IV)", examples: "Ciprofloxacin, Levofloxacin, Moxifloxacin", coverage: "Broad Gram– + atypicals; Cipro = UTI/GI; Levo/Moxi = respiratory", nursing: "Tendon rupture risk; avoid in pregnancy; antacids block absorption; photosensitivity" },
+  { cls: "Macrolides", moa: "Inhibit 50S ribosomal subunit → block translocation", examples: "Azithromycin (Z-pack), Erythromycin, Clarithromycin", coverage: "Atypicals (Mycoplasma, Chlamydia, Legionella), strep, some Gram–", nursing: "GI upset common; QT prolongation — avoid with other QT drugs; hepatotoxic (Erythro)" },
+  { cls: "Tetracyclines", moa: "Inhibit 30S ribosomal subunit → block aminoacyl-tRNA binding", examples: "Doxycycline, Minocycline", coverage: "Atypicals, Rickettsiales, Borrelia, H. pylori combo", nursing: "No dairy/antacids (chelation); photosensitivity; contraindicated in pregnancy + children <8" },
+  { cls: "Aminoglycosides", moa: "Bind 30S ribosome → misreading of mRNA → bactericidal", examples: "Gentamicin, Tobramycin, Amikacin", coverage: "Gram– aerobes; synergy with β-lactams for Gram+", nursing: "NEPHROTOXIC + OTOTOXIC — trough/peak monitoring mandatory; hydration critical" },
+  { cls: "Carbapenems", moa: "Broadest β-lactam; inhibit PBPs; stable to most β-lactamases", examples: "Meropenem, Imipenem-cilastatin, Ertapenem", coverage: "\"Last resort\" Gram– including ESBL/Pseudomonas", nursing: "Reserve for MDR organisms; seizure risk (Imipenem > others); C. diff risk" },
+];
+
+const MICRO_QUIZ = {
+  Novice: [
+    { q: "A Gram stain shows purple spherical clusters. What organism family is most likely?", options: ["Gram-positive cocci", "Gram-negative rods", "Spirochetes", "Atypical organisms"], correct: 0 },
+    { q: "Which precaution type is used for TB (Mycobacterium tuberculosis)?", options: ["Contact", "Droplet", "Airborne", "Standard"], correct: 2 },
+    { q: "A patient develops watery diarrhea after a 10-day course of clindamycin. Which organism is most likely?", options: ["E. coli O157:H7", "Salmonella enterica", "Clostridioides difficile", "Norovirus"], correct: 2 },
+  ],
+  Proficient: [
+    { q: "A patient with a penicillin allergy and gram-positive bacteremia needs IV coverage. Which is FIRST-line?", options: ["Ceftriaxone", "Vancomycin", "Azithromycin", "Ciprofloxacin"], correct: 1 },
+    { q: "A 22-year-old presents with fever, petechial rash, and nuchal rigidity. CSF shows Gram-negative diplococci. What is the PRIORITY nursing action?", options: ["Draw blood cultures and administer ceftriaxone STAT", "Place in droplet precautions and notify infection control", "Administer acetaminophen for fever first", "Perform lumbar puncture before any antibiotics"], correct: 0 },
+    { q: "Which antibiotic class works by inhibiting cell wall synthesis through a mechanism DIFFERENT from β-lactams?", options: ["Cephalosporins", "Carbapenems", "Vancomycin", "Penicillins"], correct: 2 },
+  ],
+};
+
+function MicroCanvas() {
+  const [tab, setTab] = useState("Course Map");
+  const [gramFilter, setGramFilter] = useState("All");
+  const [quizLevel, setQuizLevel] = useState("Novice");
+  const [quizIdx, setQuizIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [revealed, setRevealed] = useState(false);
+  const TABS = ["Course Map", "Quick Reference", "Antibiotic Guide", "Quiz Zone"];
+
+  const filteredBugs = gramFilter === "All" ? GRAM_STAIN_BUGS
+    : gramFilter === "+" ? GRAM_STAIN_BUGS.filter(b => b.gram === "+")
+    : gramFilter === "–" ? GRAM_STAIN_BUGS.filter(b => b.gram === "–")
+    : GRAM_STAIN_BUGS.filter(b => b.gram === "Atypical");
+
+  const questions = MICRO_QUIZ[quizLevel] || MICRO_QUIZ.Novice;
+  const q = questions[quizIdx % questions.length];
+
+  return (
+    <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", padding: "12px 16px" }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>
+        Makai School of Nursing · Microbiology
+      </div>
+      <div style={{ fontSize: 13, color: "#374151", marginBottom: 12 }}>
+        <strong>Morgan</strong> — AI Microbiology Tutor · Powered by OpenStax Microbiology 2e (CC BY 4.0)
+      </div>
+      <TabBar tabs={TABS} active={tab} onSelect={t => { setTab(t); setSelected(null); setRevealed(false); }} />
+
+      {tab === "Course Map" && (
+        <div>
+          <div style={{ ...CARD, background: "#f0f9ff", borderColor: "#bae6fd", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: "#0369a1" }}>
+              <strong>6 chapter groups loaded</strong> into Morgan's Studio Locker — 174k characters of OpenStax Microbiology 2e. Morgan can discuss, explain, or quiz on any of these topics.
+            </div>
+          </div>
+          {MICRO_CHAPTERS.map((ch, i) => (
+            <div key={i} style={{ ...CARD, borderLeft: `3px solid ${ch.loaded ? "#6366f1" : "#e5e7eb"}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#6366f1", background: "#ede9fe", padding: "2px 7px", borderRadius: 10, marginRight: 8 }}>{ch.num}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{ch.title}</span>
+                </div>
+                <span style={{ ...TAG("green"), fontSize: 10 }}>Loaded</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {ch.topics.map(t => (
+                  <span key={t} style={{ fontSize: 10, background: "#f3f4f6", color: "#374151", padding: "2px 7px", borderRadius: 10 }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div style={{ ...CARD, background: "#f5f3ff", borderColor: "#c4b5fd" }}>
+            <div style={{ fontSize: 11, color: "#5b21b6" }}>
+              Ask Morgan to quiz you on any chapter, explain a concept, or connect a pathogen to its clinical presentation — Socratic method enforced.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "Quick Reference" && (
+        <div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>Filter:</span>
+            {["All", "+", "–", "Atypical"].map(f => (
+              <button key={f} onClick={() => setGramFilter(f)} style={{
+                fontSize: 11, padding: "3px 10px", borderRadius: 12,
+                background: gramFilter === f ? "#6366f1" : "#f3f4f6",
+                color: gramFilter === f ? "#fff" : "#374151",
+                border: "none", cursor: "pointer", fontWeight: gramFilter === f ? 600 : 400,
+              }}>
+                {f === "+" ? "Gram +" : f === "–" ? "Gram –" : f}
+              </button>
+            ))}
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  {["Gram", "Shape", "Organism", "Key Diseases", "Drug of Choice"].map(h => (
+                    <th key={h} style={{ padding: "7px 8px", textAlign: "left", fontWeight: 600, color: "#374151", borderBottom: "2px solid #e5e7eb", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBugs.map((b, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <td style={{ padding: "6px 8px" }}>
+                      <span style={{
+                        fontWeight: 700, fontSize: 12,
+                        color: b.gram === "+" ? "#7c3aed" : b.gram === "–" ? "#dc2626" : "#92400e",
+                        background: b.gram === "+" ? "#ede9fe" : b.gram === "–" ? "#fee2e2" : "#fef3c7",
+                        padding: "2px 6px", borderRadius: 6,
+                      }}>{b.gram}</span>
+                    </td>
+                    <td style={{ padding: "6px 8px", color: "#6b7280", whiteSpace: "nowrap" }}>{b.shape}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: 600, color: "#111827", whiteSpace: "nowrap" }}>{b.organism}</td>
+                    <td style={{ padding: "6px 8px", color: "#374151", lineHeight: 1.4 }}>{b.diseases}</td>
+                    <td style={{ padding: "6px 8px", color: "#065f46", fontWeight: 500 }}>{b.drug}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ ...CARD, background: "#f0fdf4", borderColor: "#86efac", marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: "#166534" }}>
+              <strong>Isolation Precautions cheat:</strong> Airborne = TB, measles, varicella (N95 + negative pressure). Droplet = meningitis, flu, pertussis (surgical mask). Contact = C. diff, MRSA, VRE (gown + gloves).
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "Antibiotic Guide" && (
+        <div>
+          {ANTIBIOTIC_CLASSES.map((ab, i) => (
+            <div key={i} style={{ ...CARD, cursor: "pointer", borderLeft: "3px solid #6366f1" }}
+              onClick={() => setSelected(selected === i ? null : i)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{ab.cls}</div>
+                <span style={{ fontSize: 10, color: "#9ca3af" }}>{selected === i ? "▲" : "▼"}</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{ab.examples}</div>
+              {selected === i && (
+                <div style={{ marginTop: 10, borderTop: "1px solid #e5e7eb", paddingTop: 10 }}>
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={LABEL}>Mechanism</div>
+                    <div style={{ fontSize: 12 }}>{ab.moa}</div>
+                  </div>
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={LABEL}>Coverage</div>
+                    <div style={{ fontSize: 12 }}>{ab.coverage}</div>
+                  </div>
+                  <div style={{ background: "#fef3c7", borderRadius: 6, padding: "8px 10px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>Nursing Considerations</div>
+                    <div style={{ fontSize: 12, color: "#78350f" }}>{ab.nursing}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "Quiz Zone" && (
+        <div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>Level:</span>
+            {["Novice", "Proficient"].map(l => (
+              <button key={l} onClick={() => { setQuizLevel(l); setQuizIdx(0); setSelected(null); setRevealed(false); }} style={{
+                fontSize: 11, padding: "4px 12px", borderRadius: 12,
+                background: quizLevel === l ? "#6366f1" : "#f3f4f6",
+                color: quizLevel === l ? "#fff" : "#374151",
+                border: "none", cursor: "pointer", fontWeight: quizLevel === l ? 600 : 400,
+              }}>{l}</button>
+            ))}
+          </div>
+          <div style={{ ...CARD, borderLeft: "3px solid #6366f1" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Question {(quizIdx % questions.length) + 1} of {questions.length} · {quizLevel}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", lineHeight: 1.5, marginBottom: 14 }}>{q.q}</div>
+            {q.options.map((opt, i) => {
+              let bg = "#f9fafb", border = "1px solid #e5e7eb", color = "#374151";
+              if (revealed) {
+                if (i === q.correct) { bg = "#d1fae5"; border = "1px solid #6ee7b7"; color = "#065f46"; }
+                else if (i === selected) { bg = "#fee2e2"; border = "1px solid #fca5a5"; color = "#991b1b"; }
+              } else if (i === selected) { bg = "#ede9fe"; border = "1px solid #a78bfa"; color = "#5b21b6"; }
+              return (
+                <div key={i}
+                  onClick={() => { if (!revealed) setSelected(i); }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border, background: bg, color, cursor: revealed ? "default" : "pointer", marginBottom: 6, fontSize: 13 }}>
+                  {["A", "B", "C", "D"][i]}. {opt}
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {!revealed ? (
+                <button onClick={() => { if (selected !== null) setRevealed(true); }}
+                  disabled={selected === null}
+                  style={{ flex: 1, padding: "9px", background: selected !== null ? "#6366f1" : "#e5e7eb", color: selected !== null ? "#fff" : "#9ca3af", border: "none", borderRadius: 7, fontWeight: 600, cursor: selected !== null ? "pointer" : "default" }}>
+                  Check Answer
+                </button>
+              ) : (
+                <>
+                  <div style={{ flex: 1, fontSize: 12, color: selected === q.correct ? "#065f46" : "#991b1b", fontWeight: 600, padding: "9px 0" }}>
+                    {selected === q.correct ? "✓ Correct!" : `✗ Correct answer: ${["A", "B", "C", "D"][q.correct]}`}
+                  </div>
+                  <button onClick={() => { setQuizIdx(i => i + 1); setSelected(null); setRevealed(false); }}
+                    style={{ padding: "9px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer" }}>
+                    Next →
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          <div style={{ ...CARD, background: "#f5f3ff", borderColor: "#c4b5fd", marginTop: 8 }}>
+            <div style={{ fontSize: 11, color: "#5b21b6" }}>
+              Ask Morgan in chat to quiz you at Expert or Developing level, or to explain the reasoning behind any answer.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Worker: Clara — OB/Maternity Tutor ───────────────────────────────────────
+
+const OB_COURSE_MAP = [
+  {
+    phase: "Antepartum",
+    color: "#d1fae5", border: "#6ee7b7", text: "#065f46",
+    topics: [
+      { name: "Reproductive Anatomy & Physiology", detail: "Fertilization, implantation, placental function, fetal circulation" },
+      { name: "Prenatal Assessment", detail: "Naegele's rule, McDonald's rule, fundal height, Leopold's maneuvers, biophysical profile" },
+      { name: "OB Complications", detail: "Preeclampsia, HELLP syndrome, GDM, placenta previa, placental abruption, ectopic pregnancy" },
+      { name: "Medication Safety", detail: "MgSO4 toxicity monitoring, betamethasone, RhoGAM, oxytocin" },
+    ],
+  },
+  {
+    phase: "Intrapartum",
+    color: "#ddd6fe", border: "#a78bfa", text: "#4c1d95",
+    topics: [
+      { name: "Stages of Labor", detail: "Latent / active / transition / pushing / placental delivery — time landmarks and nursing actions" },
+      { name: "Fetal Heart Rate Monitoring", detail: "Baseline, variability, accelerations, early/late/variable/prolonged decelerations" },
+      { name: "SBAR for OB Emergencies", detail: "Shoulder dystocia (McRoberts + suprapubic), prolapsed cord, uterine rupture, amniotic fluid embolism" },
+      { name: "Pain Management", detail: "Epidural administration, nursing monitoring, non-pharmacologic alternatives" },
+    ],
+  },
+  {
+    phase: "Postpartum",
+    color: "#fef3c7", border: "#fde68a", text: "#78350f",
+    topics: [
+      { name: "BUBBLE-HE Assessment", detail: "Breasts, Uterus, Bowel, Bladder, Lochia, Episiotomy/incision, Homans' sign (DVT), Emotional" },
+      { name: "Postpartum Complications", detail: "PPH (uterine atony #1 cause), postpartum infection, postpartum depression, mastitis" },
+      { name: "Medication Management", detail: "Oxytocin, methergine, misoprostol, carboprost, fundal massage indications" },
+      { name: "Patient Education", detail: "Breastfeeding, contraception, lochia progression, when to call provider" },
+    ],
+  },
+  {
+    phase: "Neonatal",
+    color: "#fee2e2", border: "#fca5a5", text: "#7f1d1d",
+    topics: [
+      { name: "APGAR Scoring", detail: "Appearance, Pulse, Grimace, Activity, Respiration — 0-2 each; score 7-10 normal, <7 needs intervention" },
+      { name: "Newborn Reflexes", detail: "Moro, rooting, sucking, Babinski, palmar/plantar grasp — abnormal if absent" },
+      { name: "Thermoregulation", detail: "Neutral thermal environment, non-shivering thermogenesis (brown fat), kangaroo care" },
+      { name: "Jaundice", detail: "Physiologic vs pathologic, bilirubin levels, phototherapy nursing care, breastfeeding jaundice" },
+    ],
+  },
+];
+
+const APGAR_ROWS = [
+  { sign: "Appearance (color)", score0: "Blue/pale all over", score1: "Blue extremities, pink body", score2: "Pink all over" },
+  { sign: "Pulse (HR)", score0: "Absent", score1: "<100 bpm", score2: "≥100 bpm" },
+  { sign: "Grimace (reflex)", score0: "No response to stimulation", score1: "Grimace", score2: "Cry/cough/sneeze" },
+  { sign: "Activity (tone)", score0: "Limp", score1: "Some flexion", score2: "Active motion" },
+  { sign: "Respiration", score0: "Absent", score1: "Weak/irregular", score2: "Strong cry" },
+];
+
+const FHR_PATTERNS = [
+  { pattern: "Early Decelerations", timing: "Mirror contraction (start + end together)", cause: "Head compression (benign)", action: "Document; no intervention required", severity: "green" },
+  { pattern: "Late Decelerations", timing: "After peak of contraction (ominous)", cause: "Uteroplacental insufficiency", action: "Lateral position, O₂, IV fluid, stop oxytocin, NOTIFY MD STAT", severity: "red" },
+  { pattern: "Variable Decelerations", timing: "Abrupt onset, V-shaped", cause: "Cord compression", action: "Change position (knee-chest); if persistent → amnioinfusion, notify MD", severity: "yellow" },
+  { pattern: "Prolonged Deceleration", timing: ">2 min, <10 min", cause: "Cord prolapse, maternal hypotension, placental abruption", action: "Emergency response — call provider IMMEDIATELY; prepare for delivery", severity: "red" },
+  { pattern: "Acceleration (reassuring)", timing: "≥15 bpm for ≥15 sec (term)", cause: "Fetal movement — sign of well-being", action: "Document; reactive NST = reassuring", severity: "green" },
+];
+
+const OB_EMERGENCIES = [
+  {
+    name: "Preeclampsia / HELLP",
+    criteria: "BP ≥140/90 on 2 occasions 4h apart, after 20 weeks + proteinuria OR end-organ damage",
+    hellp: "H = Hemolysis, EL = Elevated Liver enzymes, LP = Low Platelets",
+    nursing: ["Seizure precautions — pad bed, dim lights, quiet environment", "MgSO4 infusion: 4-6g loading over 15-20min, then 1-2g/hr", "Monitor reflexes, respiratory rate (≥12), UO (≥25mL/hr) — antidote = Calcium gluconate", "Antihypertensives: Hydralazine, Labetalol, Nifedipine — goal BP <160/110"],
+    color: "#dc2626",
+  },
+  {
+    name: "Postpartum Hemorrhage (PPH)",
+    criteria: "Blood loss >500mL (vaginal delivery) or >1000mL (C-section) within 24h",
+    causes: "4 T's: Tone (uterine atony #1 = 80%), Trauma, Tissue (retained placenta), Thrombin (coagulopathy)",
+    nursing: ["Fundal massage — firm, circular motion at umbilicus", "Oxytocin 10-40 units in 1L NS IV infusion (first line)", "Methergine 0.2mg IM if uterus boggy (CONTRAINDICATED in hypertension)", "Carboprost 0.25mg IM q15-90min (asthma contraindication); Misoprostol rectal backup", "Position — elevate legs, keep warm; two large-bore IVs, type & screen"],
+    color: "#d97706",
+  },
+  {
+    name: "Shoulder Dystocia",
+    criteria: "Fetal head delivered but shoulders impacted above symphysis pubis — obstetric emergency",
+    mnemonic: "HELPERR: H=Call for Help, E=Episiotomy, L=Legs (McRoberts), P=Suprapubic Pressure, E=Enter (rotational maneuvers), R=Remove posterior arm, R=Roll (all-fours)",
+    nursing: ["McRoberts maneuver FIRST: flex thighs sharply onto abdomen (flattens lumbar lordosis)", "Suprapubic pressure (NOT fundal pressure) — disimpact anterior shoulder", "NEVER apply fundal pressure — worsens impaction", "Document time of head delivery — time to delivery of shoulders is critical"],
+    color: "#7c3aed",
+  },
+  {
+    name: "Prolapsed Umbilical Cord",
+    criteria: "Cord falls through cervix before presenting fetal part — cord compression = fetal hypoxia",
+    nursing: ["PRIORITY: relieve cord compression IMMEDIATELY", "Nurse's gloved hand: push presenting part off cord in vagina", "Knee-chest or Trendelenburg position to use gravity", "Apply moist warm saline dressings if cord is external", "Prepare for emergency C-section — this is a category I fetal bradycardia"],
+    color: "#dc2626",
+  },
+];
+
+const OB_QUIZ = {
+  Novice: [
+    { q: "When assessing postpartum uterine involution, the nurse finds the fundus 3 cm above the umbilicus and deviated to the right. What is the PRIORITY action?", options: ["Document as normal for post-delivery", "Assist the patient to empty her bladder", "Administer oxytocin as prescribed", "Notify the healthcare provider immediately"], correct: 1 },
+    { q: "A newborn's APGAR score at 5 minutes is 8. How should the nurse interpret this?", options: ["Severe distress — initiate resuscitation", "Moderate distress — provide supplemental O₂", "Mild distress — provide stimulation and reassess", "Normal — routine newborn care"], correct: 3 },
+    { q: "Which finding in BUBBLE-HE assessment indicates a COMPLICATION requiring provider notification?", options: ["Lochia rubra on postpartum day 1", "Fundus firm at umbilicus", "Calf pain with dorsiflexion", "Moderate breast engorgement"], correct: 2 },
+  ],
+  Proficient: [
+    { q: "A patient at 38 weeks presents with BP 158/105, severe headache, RUQ pain, and platelets of 85,000. The nurse anticipates which diagnosis and PRIORITY intervention?", options: ["Gestational hypertension — oral antihypertensive", "HELLP syndrome — MgSO4 and prepare for delivery", "Preeclampsia without severe features — bed rest", "Normal lab variation — reassure patient"], correct: 1 },
+    { q: "During oxytocin augmentation, the nurse notes late decelerations with moderate variability. The FIRST nursing action is:", options: ["Increase IV fluid rate to 125mL/hr", "Apply O₂ via face mask at 8-10L/min", "Discontinue the oxytocin infusion and reposition", "Notify the provider before doing anything"], correct: 2 },
+    { q: "A patient develops uterine atony after delivery. Fundal massage is performed and oxytocin is infusing. Which medication would be CONTRAINDICATED if her BP is 168/104?", options: ["Carboprost (Hemabate)", "Misoprostol (Cytotec) rectal", "Methergine (methylergonovine)", "Dinoprostone suppository"], correct: 2 },
+  ],
+};
+
+function OBCanvas() {
+  const [tab, setTab] = useState("Course Map");
+  const [expanded, setExpanded] = useState(null);
+  const [quizLevel, setQuizLevel] = useState("Novice");
+  const [quizIdx, setQuizIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [revealed, setRevealed] = useState(false);
+  const TABS = ["Course Map", "Quick Reference", "OB Emergencies", "Quiz Zone"];
+
+  const questions = OB_QUIZ[quizLevel] || OB_QUIZ.Novice;
+  const q = questions[quizIdx % questions.length];
+
+  return (
+    <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", padding: "12px 16px" }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>
+        Makai School of Nursing · Obstetrics & Maternity
+      </div>
+      <div style={{ fontSize: 13, color: "#374151", marginBottom: 12 }}>
+        <strong>Clara</strong> — AI OB/Maternity Tutor · OpenStax A&P + StatPearls + ACOG Guidelines
+      </div>
+      <TabBar tabs={TABS} active={tab} onSelect={t => { setTab(t); setExpanded(null); setSelected(null); setRevealed(false); }} />
+
+      {tab === "Course Map" && (
+        <div>
+          {OB_COURSE_MAP.map((phase, pi) => (
+            <div key={pi} style={{ marginBottom: 10 }}>
+              <div style={{ ...CARD, background: phase.color, borderColor: phase.border, borderLeft: `4px solid ${phase.border}`, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: phase.text, marginBottom: 8, letterSpacing: "0.04em" }}>
+                  {["1️⃣", "2️⃣", "3️⃣", "4️⃣"][pi]} {phase.phase}
+                </div>
+                {phase.topics.map((t, ti) => (
+                  <div key={ti} style={{ marginBottom: 6, cursor: "pointer" }}
+                    onClick={() => setExpanded(expanded === `${pi}-${ti}` ? null : `${pi}-${ti}`)}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: phase.text }}>{t.name} {expanded === `${pi}-${ti}` ? "▲" : "▼"}</div>
+                    {expanded === `${pi}-${ti}` && (
+                      <div style={{ fontSize: 11, color: phase.text, marginTop: 3, opacity: 0.85, lineHeight: 1.5 }}>{t.detail}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "Quick Reference" && (
+        <div>
+          <div style={{ ...CARD, background: "#f5f3ff", borderColor: "#c4b5fd", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#5b21b6", marginBottom: 6 }}>BUBBLE-HE Postpartum Assessment</div>
+            {[
+              { letter: "B", full: "Breasts", check: "Engorgement, nipple integrity, milk production; colostrum days 1-3" },
+              { letter: "U", full: "Uterus", check: "Firm, midline; 1 cm below umbilicus/day; boggy = massage + notify" },
+              { letter: "B", full: "Bowel", check: "Bowel sounds, first BM usually day 2-3; stool softeners routine" },
+              { letter: "B", full: "Bladder", check: "Void q4-6h; ≥300mL; distension → fundal deviation (classic NCLEX!)" },
+              { letter: "L", full: "Lochia", check: "Rubra (days 1-3) → serosa (days 4-10) → alba (days 11-21); clots >golf ball = report" },
+              { letter: "E", full: "Episiotomy/Incision", check: "REEDA: Redness, Edema, Ecchymosis, Discharge, Approximation" },
+              { letter: "H", full: "Homans' Sign", check: "Calf pain with dorsiflexion = DVT until proven otherwise → notify MD" },
+              { letter: "E", full: "Emotional", check: "Baby blues vs postpartum depression vs psychosis — Edinburgh screening" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: i < 7 ? "1px solid #e9d5ff" : "none" }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{item.letter}</div>
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#4c1d95" }}>{item.full}: </span>
+                  <span style={{ fontSize: 11, color: "#5b21b6" }}>{item.check}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={CARD}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>APGAR Score (1 & 5 min)</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb" }}>
+                  {["Sign", "0", "1", "2"].map(h => <th key={h} style={{ padding: "5px 8px", textAlign: "left", fontWeight: 600, borderBottom: "1px solid #e5e7eb" }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {APGAR_ROWS.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "5px 8px", fontWeight: 500 }}>{r.sign}</td>
+                    <td style={{ padding: "5px 8px", color: "#dc2626" }}>{r.score0}</td>
+                    <td style={{ padding: "5px 8px", color: "#d97706" }}>{r.score1}</td>
+                    <td style={{ padding: "5px 8px", color: "#065f46" }}>{r.score2}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>Score 7-10 = Normal · 4-6 = Some concern · &lt;4 = Intervention needed</div>
+          </div>
+
+          <div style={CARD}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>Fetal Heart Rate Patterns</div>
+            {FHR_PATTERNS.map((p, i) => (
+              <div key={i} style={{ padding: "7px 0", borderBottom: i < FHR_PATTERNS.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.severity === "green" ? "#10b981" : p.severity === "red" ? "#ef4444" : "#f59e0b" }} />
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{p.pattern}</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#6b7280", marginLeft: 16, marginBottom: 2 }}><strong>Cause:</strong> {p.cause}</div>
+                <div style={{ fontSize: 11, color: p.severity === "red" ? "#dc2626" : "#374151", marginLeft: 16, fontWeight: p.severity === "red" ? 600 : 400 }}><strong>Action:</strong> {p.action}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "OB Emergencies" && (
+        <div>
+          <div style={{ ...CARD, background: "#fff7ed", borderColor: "#fed7aa", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: "#9a3412" }}>
+              <strong>NCLEX priority:</strong> OB emergencies test nursing decision-making under pressure. Know the sequence: ASSESS → POSITION → NOTIFY → MEDICATE. Position often comes before calling the provider.
+            </div>
+          </div>
+          {OB_EMERGENCIES.map((em, i) => (
+            <div key={i} style={{ ...CARD, borderLeft: `4px solid ${em.color}`, cursor: "pointer" }}
+              onClick={() => setExpanded(expanded === i ? null : i)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: em.color }}>{em.name}</div>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>{expanded === i ? "▲ collapse" : "▼ expand"}</span>
+              </div>
+              {em.criteria && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{em.criteria}</div>}
+              {expanded === i && (
+                <div style={{ marginTop: 10, borderTop: "1px solid #f3f4f6", paddingTop: 10 }}>
+                  {em.hellp && (
+                    <div style={{ background: "#fee2e2", borderRadius: 6, padding: "7px 10px", marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#7f1d1d", marginBottom: 2 }}>HELLP</div>
+                      <div style={{ fontSize: 12, color: "#991b1b" }}>{em.hellp}</div>
+                    </div>
+                  )}
+                  {em.mnemonic && (
+                    <div style={{ background: "#ede9fe", borderRadius: 6, padding: "7px 10px", marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#4c1d95", marginBottom: 2 }}>Mnemonic</div>
+                      <div style={{ fontSize: 12, color: "#5b21b6" }}>{em.mnemonic}</div>
+                    </div>
+                  )}
+                  {em.causes && (
+                    <div style={{ background: "#fff7ed", borderRadius: 6, padding: "7px 10px", marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#78350f", marginBottom: 2 }}>Causes</div>
+                      <div style={{ fontSize: 12, color: "#92400e" }}>{em.causes}</div>
+                    </div>
+                  )}
+                  <div style={LABEL}>Nursing Actions (in order)</div>
+                  {em.nursing.map((n, ni) => (
+                    <div key={ni} style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: ni < em.nursing.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", background: em.color, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ni + 1}</div>
+                      <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.4 }}>{n}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "Quiz Zone" && (
+        <div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>Level:</span>
+            {["Novice", "Proficient"].map(l => (
+              <button key={l} onClick={() => { setQuizLevel(l); setQuizIdx(0); setSelected(null); setRevealed(false); }} style={{
+                fontSize: 11, padding: "4px 12px", borderRadius: 12,
+                background: quizLevel === l ? "#7c3aed" : "#f3f4f6",
+                color: quizLevel === l ? "#fff" : "#374151",
+                border: "none", cursor: "pointer", fontWeight: quizLevel === l ? 600 : 400,
+              }}>{l}</button>
+            ))}
+          </div>
+          <div style={{ ...CARD, borderLeft: "3px solid #7c3aed" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Question {(quizIdx % questions.length) + 1} of {questions.length} · {quizLevel}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", lineHeight: 1.5, marginBottom: 14 }}>{q.q}</div>
+            {q.options.map((opt, i) => {
+              let bg = "#f9fafb", border = "1px solid #e5e7eb", color = "#374151";
+              if (revealed) {
+                if (i === q.correct) { bg = "#d1fae5"; border = "1px solid #6ee7b7"; color = "#065f46"; }
+                else if (i === selected) { bg = "#fee2e2"; border = "1px solid #fca5a5"; color = "#991b1b"; }
+              } else if (i === selected) { bg = "#ede9fe"; border = "1px solid #a78bfa"; color = "#5b21b6"; }
+              return (
+                <div key={i}
+                  onClick={() => { if (!revealed) setSelected(i); }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border, background: bg, color, cursor: revealed ? "default" : "pointer", marginBottom: 6, fontSize: 13 }}>
+                  {["A", "B", "C", "D"][i]}. {opt}
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {!revealed ? (
+                <button onClick={() => { if (selected !== null) setRevealed(true); }}
+                  disabled={selected === null}
+                  style={{ flex: 1, padding: "9px", background: selected !== null ? "#7c3aed" : "#e5e7eb", color: selected !== null ? "#fff" : "#9ca3af", border: "none", borderRadius: 7, fontWeight: 600, cursor: selected !== null ? "pointer" : "default" }}>
+                  Check Answer
+                </button>
+              ) : (
+                <>
+                  <div style={{ flex: 1, fontSize: 12, color: selected === q.correct ? "#065f46" : "#991b1b", fontWeight: 600, padding: "9px 0" }}>
+                    {selected === q.correct ? "✓ Correct!" : `✗ Correct: ${["A", "B", "C", "D"][q.correct]}`}
+                  </div>
+                  <button onClick={() => { setQuizIdx(i => i + 1); setSelected(null); setRevealed(false); }}
+                    style={{ padding: "9px 16px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer" }}>
+                    Next →
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          <div style={{ ...CARD, background: "#f5f3ff", borderColor: "#c4b5fd", marginTop: 8 }}>
+            <div style={{ fontSize: 11, color: "#5b21b6" }}>
+              Ask Clara in chat for more clinical scenarios — labor triage situations, medication safety cases, or postpartum complications.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 const WORKER_CANVAS = {
@@ -1029,12 +1610,13 @@ const WORKER_CANVAS = {
   "uh-nursing-tutor-001":       TutorCanvas,
   "uh-nursing-comms-001":       CommsCanvas,
   "uh-nursing-accreditation-001": AccreditationCanvas,
+  "nursing-micro-001":          MicroCanvas,
+  "nursing-ob-001":             OBCanvas,
 };
 
 export default function NursingWorkerCanvas({ worker }) {
   const slug = worker?.workerId || worker?.slug || "";
   const Canvas = WORKER_CANVAS[slug];
-  const schoolData = getSchoolData(slug);
 
   if (!Canvas) return (
     <div style={{ padding: 24, color: "#6b7280", fontSize: 13 }}>
@@ -1042,6 +1624,12 @@ export default function NursingWorkerCanvas({ worker }) {
     </div>
   );
 
+  // Course tutors (Morgan/Clara) manage their own header — no schoolData needed
+  if (slug === "nursing-micro-001" || slug === "nursing-ob-001") {
+    return <Canvas />;
+  }
+
+  const schoolData = getSchoolData(slug);
   return (
     <div style={{ padding: "12px 16px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div style={{ marginBottom: 12 }}>

@@ -74,6 +74,7 @@ import AlexPipelines from "./sections/AlexPipelines";
 import SpineSection from "./sections/SpineSection";
 import HRSchedulePanel from "./sections/HRSchedulePanel";
 import NursingEducationPanel from "./sections/NursingEducationPanel";
+import NursingWorkerCanvas from "./components/canvas/NursingWorkerCanvas";
 import VersionBanner from "./components/VersionBanner";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
@@ -4612,6 +4613,9 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
   if (worker?.slug === "nursing-education-001") {
     return <NursingEducationPanel />;
   }
+  if (worker?.slug === "nursing-micro-001" || worker?.slug === "nursing-ob-001") {
+    return <NursingWorkerCanvas worker={worker} />;
+  }
 
   // re-ce-nevada-001 — Nevada Real Estate CE worker (the "what do you hate"
   // demo). Renders its own 4-tab canvas: Readiness / Course / Reporting / Done.
@@ -5612,10 +5616,21 @@ export default function App() {
        "VERTICAL", "DISPLAY_NAME", "IS_CREATOR", "IS_DEMO", "AUTH_UID"].forEach(k => localStorage.removeItem(k));
       // Fall through to resolveView below
     } else if (hasExistingTenant && !hasSessionOverride) {
-      if (currentUid) localStorage.setItem("AUTH_UID", currentUid);
-      viewResolvedRef.current = true;
-      transitionTo("app");
-      return;
+      const storedTid = localStorage.getItem("TENANT_ID") || "";
+      // One-time upgrade: if user is on the legacy title-app-llc tenant and hasn't
+      // been through the ws_ upgrade check yet, clear workspace keys so the scoring
+      // logic below can promote them to their proper ws_ workspace.
+      if (storedTid === "title-app-llc" && !localStorage.getItem("_ws_upgrade_v1")) {
+        localStorage.setItem("_ws_upgrade_v1", "1");
+        ["TENANT_ID", "WORKSPACE_ID", "WORKSPACE_NAME", "COMPANY_NAME", "TENANT_NAME",
+         "VERTICAL", "DISPLAY_NAME"].forEach(k => localStorage.removeItem(k));
+        // Fall through to resolveView so scoring can pick the best workspace
+      } else {
+        if (currentUid) localStorage.setItem("AUTH_UID", currentUid);
+        viewResolvedRef.current = true;
+        transitionTo("app");
+        return;
+      }
     }
 
     // Timeout wrapper for fetch calls — prevents indefinite hangs
@@ -5763,9 +5778,28 @@ export default function App() {
           const promoParams2 = new URLSearchParams(window.location.search);
           if (promoParams2.get("promoted") === "true" || sessionStorage.getItem("ta_guest_promoted")) {
             const mems = data.memberships || [];
-            if (mems.length > 0) {
-              const tid = localStorage.getItem("TENANT_ID") || mems[0].tenantId;
-              localStorage.setItem("TENANT_ID", tid);
+            if (mems.length > 0 && !localStorage.getItem("TENANT_ID")) {
+              // Use same scoring as normal login: ws_* prefix > named tenant > admin role
+              const tenants = data.tenants || {};
+              const scored = mems.slice().sort((a, b) => {
+                let sa = 0, sb = 0;
+                if (String(a.tenantId).startsWith("ws_")) sa += 100;
+                if (String(b.tenantId).startsWith("ws_")) sb += 100;
+                const ta = tenants[a.tenantId] || {}, tb = tenants[b.tenantId] || {};
+                if (ta.companyName || ta.name) sa += 20;
+                if (tb.companyName || tb.name) sb += 20;
+                if (a.role === "admin") sa += 10;
+                if (b.role === "admin") sb += 10;
+                return sb - sa;
+              });
+              const best = scored[0];
+              const tenant = tenants[best.tenantId] || {};
+              localStorage.setItem("TENANT_ID", best.tenantId);
+              if (tenant.vertical && tenant.vertical !== "GLOBAL") localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+              if (tenant.companyName || tenant.name) {
+                localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+                localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+              }
             }
             viewResolvedRef.current = true;
             transitionTo("app");

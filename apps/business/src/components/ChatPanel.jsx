@@ -572,7 +572,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     // stale (showed the previous worker's name, e.g. "Zoning 001" while inside
     // Title Abstract) when a worker was opened via the worker context rather
     // than the ta:select-worker event.
-    setActiveWorkerName(w.persona_name || w.name || w.display_name || w.slug);
+    setActiveWorkerName(w.name || w.display_name || w.persona_name || w.slug);
     setActiveWorkerSlug(workerId);
     setIntroDismissed(false);
 
@@ -2643,7 +2643,94 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           // SPECIALIST worker is the speaker — show its name + a "Worker" tag,
           // and the header bar is already tinted that worker's color. Only the
           // home view is Alex, the Chief of Staff.
-          if (activeWorkerName && activeWorkerSlug !== 'chief-of-staff') return `${activeWorkerName} · Worker`;
+          if (activeWorkerName && activeWorkerSlug !== 'chief-of-staff') {
+            // Creator-built workers store their persona name in catalog as persona_name.
+            const _creatorPersona = (workerCtx?.activeWorkerData?.persona_name || "").trim();
+            if (_creatorPersona) {
+              return `${_creatorPersona} · ${activeWorkerName}`;
+            }
+            const WORKER_PERSONAS = {
+              // Back of House
+              "platform-accounting": "Max",
+              "platform-hr": "Jordan",
+              "platform-contacts": "Sage",
+              "platform-marketing": "Ivy",
+              "investor-relations": "Reed",
+              "ir-worker": "Reed",
+              // Aviation — Skye
+              "av-pc12-ng": "Skye", "av-king-air-b200": "Skye", "av-king-air-350": "Skye",
+              "av-king-air-c90": "Skye", "av-caravan-208b": "Skye", "av-digital-logbook": "Skye",
+              "av-currency-tracker": "Skye", "av-my-aircraft": "Skye", "av-training-proficiency": "Skye",
+              "av-flight-planning": "Skye", "av-cert-assistant": "Skye", "av-gom-authoring": "Skye",
+              "av-frat": "Skye", "av-mission-builder": "Skye", "av-crew-scheduling": "Skye",
+              "av-safety-officer": "Skye", "aviation-ops": "Skye", "pilot-logbook": "Skye",
+              "part-135": "Skye",
+              // Title & Escrow — Petra
+              "esc-escrow-locker": "Petra", "esc-wire-fraud-prevention": "Petra",
+              "esc-title-search-commitment": "Petra", "esc-lien-clearance-manager": "Petra",
+              "esc-disclosure-package": "Petra", "esc-closing-disclosure": "Petra",
+              "esc-firpta-1031": "Petra", "esc-commission-reconciliation": "Petra",
+              "esc-hoa-estoppel": "Petra", "esc-status-portal": "Petra",
+              "esc-recording-monitor": "Petra",
+              // Real Estate / CRE — Rudy
+              "cre-analyst": "Rudy", "construction-manager": "Rudy", "construction-draws": "Rudy",
+              "construction-lending": "Rudy", "capital-stack-optimizer": "Rudy",
+              "property-management": "Rudy", "legal-contracts": "Rudy", "compliance-tracker": "Rudy",
+              "mortgage-senior-debt": "Rudy", "mortgage-broker": "Rudy", "bid-procurement": "Rudy",
+              "insurance-coi": "Rudy", "insurance-risk": "Rudy", "tax-assessment": "Rudy",
+              "tax-credit-incentive": "Rudy", "permit-tracker": "Rudy", "permit-submission": "Rudy",
+              "quality-control": "Rudy", "safety-osha": "Rudy", "mep-coordination": "Rudy",
+              "labor-staffing": "Rudy", "materials-supply-chain": "Rudy",
+              "mezzanine-preferred-equity": "Rudy", "crowdfunding-regd": "Rudy",
+              "site-due-diligence": "Rudy", "land-use-entitlement": "Rudy",
+              "lease-up-marketing": "Rudy", "market-research": "Rudy",
+              "architecture-review": "Rudy", "engineering-review": "Rudy",
+              "environmental-cultural-review": "Rudy", "energy-sustainability": "Rudy",
+              "accessibility-fair-housing": "Rudy", "opportunity-zone": "Rudy",
+              "appraisal-valuation": "Rudy", "tenant-screening": "Rudy",
+              "rent-roll-revenue": "Rudy", "maintenance-work-order": "Rudy",
+              "utility-management": "Rudy", "hoa-association": "Rudy",
+              "warranty-defect": "Rudy", "vendor-contract": "Rudy",
+              "disposition-preparation": "Rudy", "exchange-1031": "Rudy",
+              "entity-formation": "Rudy", "property-insurance": "Rudy",
+              "disposition-marketing": "Rudy", "investor-reporting": "Rudy",
+              "debt-service": "Rudy",
+              // Auto Dealer — Vinny
+              "ad-dealer-licensing": "Vinny", "ad-facility-operations": "Vinny",
+              "ad-new-car-allocation": "Vinny", "ad-used-car-acquisition": "Vinny",
+              "ad-wholesale-disposition": "Vinny", "ad-used-car-pricing": "Vinny",
+              "ad-vehicle-merchandising": "Vinny", "ad-reconditioning": "Vinny",
+              "ad-lead-management": "Vinny", "ad-desking": "Vinny",
+              "ad-inventory-turn": "Vinny", "auto-dealer": "Vinny",
+              // Government — Rowe
+              "gov-jurisdiction-onboarding": "Rowe", "gov-title-registration-intake": "Rowe",
+              "gov-lien-management": "Rowe", "gov-title-fraud-detection": "Rowe",
+              "gov-driver-license-intake": "Rowe", "gov-cdl-endorsement-tracker": "Rowe",
+              "gov-vehicle-inspection-compliance": "Rowe", "gov-registration-renewal-engine": "Rowe",
+              "gov-fleet-dealer-title": "Rowe", "gov-dmv-queue-appointment": "Rowe",
+              "gov-out-of-state-title": "Rowe", "gov-salvage-rebuilt-title": "Rowe",
+              "gov-dppa-compliance": "Rowe", "gov-revenue-fee-reconciliation": "Rowe",
+              "gov-dmv-audit-readiness": "Rowe", "gov-permit-application-intake": "Rowe",
+              "gov-building-permit-tracker": "Rowe", "gov-plan-review-coordinator": "Rowe",
+              "gov-contractor-credential": "Rowe", "gov-zoning-land-use": "Rowe",
+              "gov-variance-appeal-tracker": "Rowe", "gov-event-permit-manager": "Rowe",
+              "gov-environmental-review": "Rowe", "gov-fee-calculation-collection": "Rowe",
+              "gov-public-notice-generator": "Rowe", "gov-contractor-verification": "Rowe",
+              "gov-certificate-of-occupancy": "Rowe", "gov-permit-compliance-monitor": "Rowe",
+              "gov-public-portal-status": "Rowe", "gov-building-inspector": "Rowe",
+              "gov-code-enforcement": "Rowe", "gov-fire-inspection": "Rowe",
+              "gov-health-food-inspector": "Rowe", "gov-electrical-inspector": "Rowe",
+              "gov-plumbing-inspector": "Rowe", "gov-reinspection-scheduler": "Rowe",
+              "gov-inspection-report-generator": "Rowe", "gov-inspection-backlog": "Rowe",
+              "gov-document-recording-intake": "Rowe", "gov-chain-of-title": "Rowe",
+              "gov-deed-transfer": "Rowe", "gov-lien-recording-release": "Rowe",
+              "gov-ron-notarization": "Rowe", "gov-ecords-compliance": "Rowe",
+              "gov-recording-fraud-detection": "Rowe", "gov-public-records-request": "Rowe",
+              "gov-index-search-engine": "Rowe",
+            };
+            const persona = WORKER_PERSONAS[activeWorkerSlug];
+            return persona ? `${persona} · ${activeWorkerName}` : `${activeWorkerName} · Worker`;
+          }
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
             return cfg.name ? `${cfg.name} · Chief of Staff` : 'Alex · Chief of Staff';

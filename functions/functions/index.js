@@ -1899,7 +1899,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Kealani Moku",
             role:          "admin",
-            activeWorkers: ["nursing-education-001"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001"],
           },
           "nursing-student": {
             uid:           "sara-kahele-demo",
@@ -1908,7 +1908,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Sara Kahele",
             role:          "member",
-            activeWorkers: ["nursing-education-001", "makai-bio-101"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "nursing-courses-001"],
           },
           // ── UH Mānoa ─────────────────────────────────────────────────────
           "uh-admin": {
@@ -1918,7 +1918,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Noa Kahananui",
             role:          "admin",
-            activeWorkers: ["nursing-education-001"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001"],
           },
           "uh-student": {
             uid:           "sara-kahele-demo",
@@ -1927,7 +1927,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Sara Kahele",
             role:          "member",
-            activeWorkers: ["nursing-education-001"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "nursing-courses-001"],
           },
           // ── Vet client (Sara as pet owner) ────────────────────────────────
           "vet-client": {
@@ -3198,6 +3198,25 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
         // ── Worker-specific chat: bypass Alex entirely when a worker is active ──
         // Inline fallback prompts for demo workers that may not have a digitalWorkers doc.
         const DEMO_WORKER_FALLBACKS = {
+          "nursing-courses-001": {
+            display_name: "A&P Course Tutor",
+            headline: "AI tutor for Anatomy & Physiology — grounded in your instructor's uploaded course materials.",
+            capabilitySummary: "You are an A&P course tutor. Your knowledge comes entirely from the course materials the instructor uploaded to the Studio Locker — OpenStax Anatomy & Physiology 2e Chapter 1 content and the chapter learning objectives rubric. Quiz students on LOs, explain concepts in plain English, connect A&P to clinical nursing practice. Never fabricate anatomy facts not in the locker documents.",
+            systemPrompt: `You are the Anatomy & Physiology Course Tutor — a study assistant grounded in the course materials your instructor uploaded.
+
+WHAT YOU DO:
+- Answer A&P questions using only the course documents in your knowledge base
+- Quiz students on learning objectives (LOs) one at a time; evaluate against the rubric
+- Explain concepts in plain English; always connect to clinical nursing when relevant
+- Tell students "that's not in Chapter 1 — let me stick to what's covered" if they ask about later content
+
+WHAT YOU DON'T DO:
+- Write assignments, essays, or quiz answers for the student
+- Make up anatomy facts — base every answer on the uploaded materials
+- Reveal rubric performance-level labels (Novice/Developing/Proficient/Expert) — just give the feedback
+
+TONE: Warm, direct, coaching. Short answers. One concept at a time. One follow-up question max.`,
+          },
           "makai-bio-101": {
             display_name: "Anatomy & Physiology I",
             headline: "Study assistant for BIOL 201 — Anatomy & Physiology I at Makai School of Nursing.",
@@ -3331,10 +3350,10 @@ IMPORTANT BOUNDARIES:
 - You are NOT Alex, NOT the Chief of Staff. You are Koa's health record system.`,
           },
           "nursing-education-001": {
-            display_name: "Clearwater Nursing Education",
-            name: "Clearwater Nursing Education",
+            display_name: "Hannah",
+            name: "Hannah",
             vertical: "education",
-            systemPrompt: `You are the Clearwater Nursing Education Digital Worker, built by Dr. Ruthie Clearwater (CRNA) for nursing program faculty and administrators.
+            systemPrompt: `You are Hannah, the Clearwater Nursing Education Digital Worker built by Dr. Ruthie Clearwater (CRNA) for nursing program faculty and administrators.
 
 YOU SERVE: Nursing program administrators and faculty at institutions like Makai School of Nursing. The user in front of you is an instructor or program director, not a student.
 
@@ -3379,6 +3398,77 @@ RAAS BOUNDARIES:
 - Student records are confidential — don't share one student's record with another student
 - Chain-anchored grades are locked — clearly state when a grade cannot be modified`,
           },
+          "nursing-micro-001": {
+            display_name: "Morgan",
+            name: "Morgan",
+            vertical: "education",
+            systemPrompt: `You are Morgan, an AI Microbiology tutor for nursing students. Your knowledge base is drawn from OpenStax Microbiology 2e (CC BY 4.0) loaded into your Studio Locker by your instructor.
+
+YOUR TEACHING METHOD — SOCRATIC FIRST:
+- Never give the answer immediately. Ask a probing question first.
+- After two failed attempts, explain directly and clearly.
+- Connect every concept to clinical nursing practice ("Why does this matter at the bedside?")
+- Use mnemonics and memory devices when helpful.
+
+WHAT YOU TEACH:
+- Microbial classification, cell structure (prokaryote vs eukaryote)
+- Microbial growth, metabolism, and genetics
+- Mechanisms of microbial disease and pathogenicity
+- Innate and adaptive immunity
+- Antimicrobial drugs — mechanisms, resistance, nursing considerations
+- Lab identification techniques — Gram stain, culture, sensitivity
+- Clinical infection syndromes: skin, respiratory, urinary, GI, STIs
+
+QUIZ MODE:
+When a student asks to be quizzed, generate questions at four levels:
+- Novice: recall/definition ("What does Gram-positive mean?")
+- Developing: application ("A patient has gram-positive cocci in clusters. What organism is most likely?")
+- Proficient: analysis ("Why does MRSA require contact precautions but not airborne?")
+- Expert: synthesis ("Your patient is on vancomycin for MRSA bacteremia. Day 3 labs show rising creatinine. What do you do and why?")
+
+RAAS BOUNDARIES:
+- You are a tutor, not a clinical decision-maker — always direct real patient care questions to the care team
+- Do not fabricate lab values, organisms, or drug doses — only cite what is in your Studio Locker
+- Cite your source document when answering factual questions ("Per OpenStax Microbiology Ch. 17...")`,
+          },
+          "nursing-ob-001": {
+            display_name: "Clara",
+            name: "Clara",
+            vertical: "education",
+            systemPrompt: `You are Clara, an AI Obstetrics & Maternity Nursing tutor for nursing students. Your knowledge base is drawn from OpenStax Anatomy & Physiology 2e (Chapters 27-28), StatPearls, and WHO/ACOG clinical guidelines loaded into your Studio Locker.
+
+YOUR TEACHING METHOD — SOCRATIC FIRST:
+- Never give the answer immediately. Ask a probing question first.
+- After two failed attempts, explain directly and clearly.
+- Connect every concept to clinical nursing practice and NCLEX-style thinking.
+- Use mnemonics when helpful (BUBBLE-HE, APGAR, HELLP, etc.)
+
+WHAT YOU TEACH:
+- Female reproductive anatomy and physiology
+- Fertilization, implantation, placental development
+- Fetal development by trimester — embryonic vs fetal period
+- Physiological changes of pregnancy (cardiovascular, respiratory, renal, GI)
+- Prenatal care: assessment schedule, lab values, screening tests
+- Labor and delivery: stages, fetal monitoring, Bishop score
+- Obstetric complications: preeclampsia, HELLP, GDM, placenta previa, abruption, ectopic
+- Intrapartum nursing: FHR strip interpretation (Category I/II/III, deceleration types)
+- Postpartum care: BUBBLE-HE, lochia stages, uterine involution
+- Neonatal assessment: APGAR scoring, newborn reflexes, common conditions
+- Medications: MgSO4 toxicity monitoring, oxytocin, RhoGAM, betamethasone, tocolytics
+- Postpartum mood disorders: baby blues vs PPD vs postpartum psychosis
+
+QUIZ MODE:
+When asked to quiz, generate NCLEX-style questions at four levels:
+- Novice: recall ("What are the three stages of labor?")
+- Developing: application ("A patient is 28 weeks with BP 152/96 and 2+ protein. What do you do first?")
+- Proficient: priority ("Which patient do you assess first: the patient with late decelerations or the patient with variable decelerations?")
+- Expert: delegation/safety ("Your postpartum patient has a fundus 3 cm above the umbilicus displaced to the right. What is your first action and why?")
+
+RAAS BOUNDARIES:
+- You are a tutor, not a clinical decision-maker
+- Do not fabricate lab values or drug doses — only cite what is in your Studio Locker
+- Direct real patient emergencies to the care team immediately`,
+          },
         };
 
         if (body.selectedWorker && body.selectedWorker !== "chief-of-staff" && !action && userInput) {
@@ -3412,6 +3502,37 @@ RAAS BOUNDARIES:
               let workerName = dw.persona_name || dw.display_name || dw.name || workerSlug;
               // re-salesperson slug is user-facing as "Real Estate Advocate"
               if (workerSlug === "re-salesperson") workerName = "Real Estate Advocate";
+              // Suite persona names — override the generic catalog name so workers
+              // introduce themselves by their persona (Max, Jordan, Skye, etc.)
+              const _SUITE_PERSONAS = {
+                "platform-accounting": "Max",
+                "platform-hr": "Jordan",
+                "platform-contacts": "Sage",
+                "platform-marketing": "Ivy",
+                "investor-relations": "Reed",
+                "ir-worker": "Reed",
+                "av-pc12-ng": "Skye", "av-king-air-b200": "Skye", "av-king-air-350": "Skye",
+                "av-king-air-c90": "Skye", "av-caravan-208b": "Skye", "av-digital-logbook": "Skye",
+                "av-currency-tracker": "Skye", "av-my-aircraft": "Skye", "av-training-proficiency": "Skye",
+                "av-flight-planning": "Skye", "av-cert-assistant": "Skye", "av-gom-authoring": "Skye",
+                "av-frat": "Skye", "av-mission-builder": "Skye", "av-crew-scheduling": "Skye",
+                "av-safety-officer": "Skye", "aviation-ops": "Skye", "pilot-logbook": "Skye", "part-135": "Skye",
+                "esc-escrow-locker": "Petra", "esc-wire-fraud-prevention": "Petra",
+                "esc-title-search-commitment": "Petra", "esc-lien-clearance-manager": "Petra",
+                "esc-disclosure-package": "Petra", "esc-closing-disclosure": "Petra",
+                "esc-firpta-1031": "Petra", "esc-commission-reconciliation": "Petra",
+                "esc-hoa-estoppel": "Petra", "esc-status-portal": "Petra", "esc-recording-monitor": "Petra",
+                "cre-analyst": "Rudy", "construction-manager": "Rudy", "construction-draws": "Rudy",
+                "construction-lending": "Rudy", "capital-stack-optimizer": "Rudy",
+                "property-management": "Rudy", "legal-contracts": "Rudy", "compliance-tracker": "Rudy",
+                "mortgage-senior-debt": "Rudy", "mortgage-broker": "Rudy", "site-due-diligence": "Rudy",
+                "land-use-entitlement": "Rudy", "appraisal-valuation": "Rudy", "market-research": "Rudy",
+                "ad-dealer-licensing": "Vinny", "ad-facility-operations": "Vinny", "ad-new-car-allocation": "Vinny",
+                "ad-used-car-acquisition": "Vinny", "ad-wholesale-disposition": "Vinny", "ad-used-car-pricing": "Vinny",
+                "ad-vehicle-merchandising": "Vinny", "ad-reconditioning": "Vinny", "ad-lead-management": "Vinny",
+                "ad-desking": "Vinny", "ad-inventory-turn": "Vinny", "auto-dealer": "Vinny",
+              };
+              if (_SUITE_PERSONAS[workerSlug]) workerName = _SUITE_PERSONAS[workerSlug];
 
               // ── Organization-only visibility gate ──
               // Confidential workers (visibility:"organization") can only be USED
@@ -3620,6 +3741,22 @@ IDENTITY RULES:
                   // Non-fatal — proceed without name
                 }
               }
+              // Inject Drive anchors — files this user has previously read with this worker.
+              // Tells the worker "you've already seen these files" so it doesn't re-ask.
+              if (authUser && workerPrompt && !_isDemoTenant) {
+                try {
+                  const _anchorsSnap = await db.collection("users").doc(authUser.uid)
+                    .collection("driveAnchors").where("workerSlug", "==", workerSlug).limit(20).get();
+                  if (!_anchorsSnap.empty) {
+                    const _anchored = _anchorsSnap.docs.map(d => d.data()).filter(a => a.fileName);
+                    if (_anchored.length) {
+                      const _anchorList = _anchored.map(a => `- ${a.fileName} (ID: ${a.fileId})`).join("\n");
+                      workerPrompt += `\n\nPREVIOUSLY READ DRIVE FILES (you have already accessed these — use their file IDs directly without searching again):\n${_anchorList}`;
+                    }
+                  }
+                } catch (_ae) { /* non-fatal */ }
+              }
+
               // Demo sessions — never address the user by their persona name;
               // viewers of the demo are not the persona. Inject a universal overlay.
               if (_isDemoTenant && workerPrompt) {
@@ -4206,6 +4343,44 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 },
               });
 
+              // Drive tools — available to ALL workers when the user has connected Google Drive.
+              let _driveConnected = false;
+              if (authUser) {
+                try {
+                  const _driveIntSnap = await db.collection("users").doc(authUser.uid)
+                    .collection("integrations").doc("googleDrive").get();
+                  _driveConnected = _driveIntSnap.exists
+                    && !!(_driveIntSnap.data() || {}).connected
+                    && !(_driveIntSnap.data() || {}).tokenInvalid;
+                } catch (_) {}
+              }
+              if (_driveConnected) {
+                businessTools.push({
+                  name: "search_drive",
+                  description: "Search the user's connected Google Drive for files by name or keywords. Call this when the user asks about a file, spreadsheet, document, statement, report, or financials stored in their Drive. Returns matching files with IDs and modified dates.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "File name or keywords, e.g. 'SOCIII Financials 2026' or 'Q2 report'" },
+                    },
+                    required: ["query"],
+                  },
+                });
+                businessTools.push({
+                  name: "read_drive_file",
+                  description: "Read the full content of a Google Drive file by ID or name. Supports Google Sheets (→ CSV), Google Docs (→ text), Excel (.xlsx), CSV, and plain text. Call search_drive first if you don't have the file ID. Use this whenever the user asks you to look at, review, or work with a Drive file — do NOT ask them to re-attach it.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      file_id: { type: "string", description: "Google Drive file ID from search_drive" },
+                      file_name: { type: "string", description: "File name to find if file_id is unknown" },
+                    },
+                    required: [],
+                  },
+                });
+                workerPrompt += `\n\nGOOGLE DRIVE ACCESS: This user has connected their Google Drive. You have two tools: search_drive (find files by name/keyword) and read_drive_file (read a file by ID or name). When the user asks about a file, spreadsheet, document, statement, or report in their Drive — search for it and read it directly. NEVER say you "can't access Drive" or ask them to re-attach a file that's already in their Drive. NEVER ask the user to download or attach something they've already saved there.`;
+              }
+
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
               if (workerSlug === "cre-analyst") {
                 businessTools.push({
@@ -4488,7 +4663,11 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // RE/aviation/nursing/marketing workers stay on res.json() (have tools).
               // NOTE: _STREAMING_WORKERS is declared at the top of the worker if-block
               // (hoisted to avoid const TDZ crash before the history-limit line).
-              if (_STREAMING_WORKERS.has(workerSlug)) {
+              // If Drive is connected and the user message references a file, drop out of
+              // streaming mode so tool round-trips work (streaming doesn't support tools).
+              const _driveHintRe = /\b(drive|my file|the file|a file|the spreadsheet|the document|the pdf|the statement|the report|the financials?|saved file|uploaded file|from drive|do you have|can you see|can you access)\b/i;
+              const _switchToToolMode = _driveConnected && _driveHintRe.test(userInput || "");
+              if (_STREAMING_WORKERS.has(workerSlug) && !_switchToToolMode) {
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
                 res.setHeader('Connection', 'keep-alive');
@@ -5325,6 +5504,85 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (docErr) {
                   console.warn(`[worker:${workerSlug}] generate_document failed:`, docErr.message);
+                }
+              }
+
+              // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
+              if (toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected) {
+                let _driveToolResult = "Drive operation failed.";
+                try {
+                  const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
+                  const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                  if (toolBlock.name === 'search_drive') {
+                    const _q = (toolBlock.input.query || "").replace(/'/g, "\\'");
+                    const _list = await _driveClient.files.list({
+                      q: `fullText contains '${_q}' and trashed = false`,
+                      fields: "files(id, name, mimeType, modifiedTime)",
+                      pageSize: 10, orderBy: "modifiedTime desc",
+                    });
+                    const _files = (_list.data.files || []);
+                    _driveToolResult = _files.length
+                      ? `Found ${_files.length} file(s):\n` + _files.map(f => `- ${f.name} (ID: ${f.id}, modified: ${(f.modifiedTime || "").slice(0, 10)})`).join("\n")
+                      : `No files found matching "${toolBlock.input.query}".`;
+                  } else {
+                    let _fileId = toolBlock.input.file_id || null;
+                    if (!_fileId && toolBlock.input.file_name) {
+                      const _ns = await _driveClient.files.list({
+                        q: `name contains '${toolBlock.input.file_name.replace(/'/g, "\\'")}' and trashed = false`,
+                        fields: "files(id,name,mimeType)", pageSize: 5, orderBy: "modifiedTime desc",
+                      });
+                      _fileId = ((_ns.data.files || [])[0] || {}).id || null;
+                      if (!_fileId) _driveToolResult = `No file named "${toolBlock.input.file_name}" found in Drive.`;
+                    }
+                    if (_fileId) {
+                      const _meta = (await _driveClient.files.get({ fileId: _fileId, fields: "id,name,mimeType" })).data;
+                      const _m = _meta.mimeType || "";
+                      let _rawContent = "";
+                      if (_m === "application/vnd.google-apps.spreadsheet") {
+                        const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/csv" }, { responseType: "text" });
+                        _rawContent = _exp.data || "";
+                      } else if (_m === "application/vnd.google-apps.document") {
+                        const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/plain" }, { responseType: "text" });
+                        _rawContent = _exp.data || "";
+                      } else if (_m.includes("spreadsheetml") || (_meta.name || "").endsWith(".xlsx")) {
+                        const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "arraybuffer" });
+                        const xlsxLib = require("xlsx");
+                        const wb = xlsxLib.read(Buffer.from(_dl.data), { type: "buffer" });
+                        _rawContent = wb.SheetNames.map(n => `Sheet: ${n}\n${xlsxLib.utils.sheet_to_csv(wb.Sheets[n])}`).join("\n\n");
+                      } else {
+                        const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "text" });
+                        _rawContent = String(_dl.data || "");
+                      }
+                      const _trunc = _rawContent.length > 20000;
+                      _driveToolResult = `DRIVE FILE: "${_meta.name}"\n\n${_rawContent.slice(0, 20000)}${_trunc ? "\n\n[File truncated — first 20,000 characters shown]" : ""}`;
+                      // Persist Drive file anchor so future sessions can re-read without re-searching.
+                      // Stored under users/{uid}/driveAnchors/{fileId} — append-only, idempotent.
+                      if (authUser && _fileId) {
+                        try {
+                          await db.collection("users").doc(authUser.uid)
+                            .collection("driveAnchors").doc(_fileId).set({
+                              fileId: _fileId,
+                              fileName: _meta.name,
+                              mimeType: _meta.mimeType || "",
+                              workerSlug,
+                              lastReadAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+                            }, { merge: true });
+                        } catch (_anchorErr) {
+                          console.warn(`[worker:${workerSlug}] driveAnchor write failed:`, _anchorErr.message);
+                        }
+                      }
+                    }
+                  }
+                } catch (_de) {
+                  _driveToolResult = `Could not access Google Drive: ${_de.message}`;
+                  console.warn(`[worker:${workerSlug}] Drive tool error:`, _de.message);
+                }
+                if (aiResponse && aiResponse.content) {
+                  const _driveFU = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-6', max_tokens: workerMaxTokens, system: workerPrompt,
+                    messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _driveToolResult }] }],
+                  });
+                  aiText = (_driveFU.content.find(b => b.type === 'text') || {}).text || aiText;
                 }
               }
 
@@ -6720,7 +6978,20 @@ For legal specifics, custom terms, or strategic questions, offer to connect with
         // bug Sean hit as Dr. Chen). Answer as a grounded COS using real
         // workspace data. (Sean, 2026-06-25.)
         {
-          const _cosTenantId = (body && body.tenantId) || (body && body.context && body.context.tenantId) || req.headers["x-tenant-id"] || null;
+          let _cosTenantId = (body && body.tenantId) || (body && body.context && body.context.tenantId) || req.headers["x-tenant-id"] || null;
+          // When the tenant header is missing/empty (e.g. incognito or fresh session where
+          // TENANT_ID hasn't been written to localStorage yet), fall back to the user's
+          // first active membership. Same logic used later for effectiveTenantId.
+          if (!_cosTenantId && authUser) {
+            try {
+              const _memFallback = await db.collection("memberships")
+                .where("userId", "==", authUser.uid)
+                .where("status", "==", "active")
+                .limit(1)
+                .get();
+              if (!_memFallback.empty) _cosTenantId = _memFallback.docs[0].data().tenantId || null;
+            } catch (_) {}
+          }
           const _isCos = !body.selectedWorker || body.selectedWorker === "chief-of-staff";
           if (_isCos && !action && userInput && authUser && _cosTenantId && _cosTenantId !== "vault") {
             let _ws = null;
@@ -10226,8 +10497,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         // 1. Write/upsert the digitalWorkers catalog doc
         await db.doc("digitalWorkers/nursing-education-001").set({
           slug: "nursing-education-001",
-          display_name: "Clearwater Nursing Education",
-          name: "Clearwater Nursing Education",
+          display_name: "Hannah",
+          name: "Hannah",
           short_description: "Longitudinal student record for nursing programs — competency + professionalism + attendance + clinical incidents, in one tamper-proof place.",
           description: "Built by Dr. Ruthie Clearwater (CRNA, nursing instructor). 5 nursing courses (NURS 210/220/230/320/360), 45 SLOs mapped to ANA Standards, 45 reflection templates using Tanner clinical judgment framework, 31 clinical sites, 25 instructors, 6 cohorts. Multi-dimensional event tracking: reflections + SLO observations + professionalism + attendance + clinical incidents. Locked grades chain-anchored.",
           tagline: "Longitudinal nursing student records with tamper-proof grades.",
@@ -10276,7 +10547,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           status: "active",
           issuedAt: nowServerTs(),
           workerCount: 1,
-          workers: [{ slug: "nursing-education-001", name: "Clearwater Nursing Education" }],
+          workers: [{ slug: "nursing-education-001", name: "Hannah" }],
         }, { merge: true });
 
         // 2. Optional: add subscription if userId provided

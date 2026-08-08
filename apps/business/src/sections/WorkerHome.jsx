@@ -28,7 +28,7 @@ const WORKER_NAMES = {
 
 // Vertical category colors — matches sidebar theme system
 const VERTICAL_COLORS = {
-  "Spine":       { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
+  "Back of House": { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
   "Aviation":    { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
   "Auto Dealer": { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
   "Real Estate": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
@@ -40,7 +40,8 @@ const VERTICAL_COLORS = {
 
 function normalizeVertical(slug) {
   if (!slug) return "Other";
-  if (slug.startsWith("platform-") || slug === "chief-of-staff") return "Spine";
+  if (slug.startsWith("platform-") || slug === "chief-of-staff") return "Back of House";
+  if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
   if (slug.startsWith("av-")) return "Aviation";
   if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
@@ -168,10 +169,10 @@ export default function WorkerHome() {
       price: cat.price || 0,
     });
   }
-  // Sort groups: Spine first, Other last, rest alphabetical
+  // Sort groups: Back of House first, Other last, rest alphabetical
   const sortedGroups = Object.entries(grouped).sort(([a], [b]) => {
-    if (a === "Spine") return -1;
-    if (b === "Spine") return 1;
+    if (a === "Back of House") return -1;
+    if (b === "Back of House") return 1;
     if (a === "Other") return 1;
     if (b === "Other") return -1;
     return a.localeCompare(b);

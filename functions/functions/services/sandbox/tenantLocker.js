@@ -12,13 +12,123 @@
  *   tenantLockers/{tenantId}/workers/{workerId}/documents/{docId}
  *
  * Each doc: { name, text (capped), type, charCount, createdAt }
+ *
+ * System docs (readOnly: true) are injected at list time from RAAS rulesets
+ * on disk — they are never written to Firestore and cannot be deleted by tenants.
  */
 
+const path = require("path");
+const fs = require("fs");
 const admin = require("firebase-admin");
+
+// Map worker slug → RAAS ruleset file + legal references shown as system docs.
+const WORKER_SYSTEM_DOCS = {
+  "platform-accounting": {
+    rulesetFile: "platform_accounting_v1.json",
+    legalRefs: [
+      { name: "US GAAP — Generally Accepted Accounting Principles", url: "https://fasb.org/standards" },
+      { name: "IRS Publication 334 — Tax Guide for Small Business", url: "https://irs.gov/pub/irs-pdf/p334.pdf" },
+      { name: "IRS Publication 535 — Business Expenses", url: "https://irs.gov/pub/irs-pdf/p535.pdf" },
+    ],
+  },
+  "platform-hr": {
+    rulesetFile: "platform_hr_compliance_v1.json",
+    legalRefs: [
+      { name: "FLSA — Fair Labor Standards Act (DOL)", url: "https://dol.gov/agencies/whd/flsa" },
+      { name: "EEOC — Equal Employment Opportunity Commission", url: "https://eeoc.gov/laws/statutes" },
+      { name: "FMLA — Family & Medical Leave Act", url: "https://dol.gov/agencies/whd/fmla" },
+      { name: "ADA — Americans with Disabilities Act", url: "https://eeoc.gov/disability-discrimination" },
+    ],
+  },
+  "platform-contacts": {
+    rulesetFile: "platform_contacts_v1.json",
+    legalRefs: [
+      { name: "CAN-SPAM Act — FTC", url: "https://ftc.gov/tips-advice/business-center/guidance/can-spam-act-compliance-guide-business" },
+      { name: "GDPR Summary — European Commission", url: "https://commission.europa.eu/law/law-topic/data-protection_en" },
+      { name: "CCPA — California Consumer Privacy Act", url: "https://oag.ca.gov/privacy/ccpa" },
+    ],
+  },
+  "platform-marketing": {
+    rulesetFile: "platform_marketing_v1.json",
+    legalRefs: [
+      { name: "FTC Endorsement Guides", url: "https://ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking" },
+      { name: "CAN-SPAM Act — FTC", url: "https://ftc.gov/tips-advice/business-center/guidance/can-spam-act-compliance-guide-business" },
+      { name: "SEC Marketing Rule (advisers)", url: "https://sec.gov/investment/marketing-rule" },
+    ],
+  },
+  "investor-relations": {
+    rulesetFile: "ir_compliance_v0.json",
+    legalRefs: [
+      { name: "SEC Regulation D (Rule 506b / 506c)", url: "https://sec.gov/smallbusiness/exemptofferings/rulesbusiness" },
+      { name: "SEC Regulation CF (Crowdfunding)", url: "https://sec.gov/smallbusiness/exemptofferings/regcrowdfunding" },
+      { name: "SEC Regulation A+", url: "https://sec.gov/smallbusiness/exemptofferings/rega" },
+      { name: "JOBS Act — Accredited Investor Definition", url: "https://sec.gov/education/capitalraising/building-blocks/accredited-investor" },
+    ],
+  },
+  "ir-worker": { rulesetFile: "ir_compliance_v0.json", legalRefs: [] },
+};
+
+const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");
+
+function buildSystemDocs(workerId) {
+  const cfg = WORKER_SYSTEM_DOCS[workerId];
+  if (!cfg) return [];
+  const docs = [];
+  // 1. RAAS ruleset as a formatted system doc
+  try {
+    const raw = fs.readFileSync(path.join(RULESETS_DIR, cfg.rulesetFile), "utf-8");
+    const ruleset = JSON.parse(raw);
+    const lines = [`RAAS RULESET — ${ruleset.id || workerId}\n`];
+    if (ruleset.hard_stops?.length) {
+      lines.push("HARD STOPS (never violate):");
+      ruleset.hard_stops.forEach(h => lines.push(`  • ${h.logic || h.id}`));
+    }
+    if (ruleset.soft_flags?.length) {
+      lines.push("\nSOFT FLAGS (flag for review):");
+      ruleset.soft_flags.forEach(s => lines.push(`  • ${s.logic || s.id}`));
+    }
+    if (ruleset.chat_rules?.length) {
+      lines.push("\nCHAT RULES:");
+      ruleset.chat_rules.forEach(c => lines.push(`  • ${c.message || c.id}`));
+    }
+    if (ruleset.outputs?.length) {
+      lines.push(`\nAPPROVED OUTPUTS: ${ruleset.outputs.join(", ")}`);
+    }
+    const text = lines.join("\n");
+    docs.push({
+      id: `__raas__${cfg.rulesetFile}`,
+      name: `RAAS Rules — ${ruleset.domain || workerId}`,
+      type: "system",
+      readOnly: true,
+      charCount: text.length,
+      createdAt: null,
+      text,
+    });
+  } catch (_) { /* ruleset file missing — skip */ }
+  // 2. Legal references as a system doc
+  if (cfg.legalRefs?.length) {
+    const refText = `LEGAL & REGULATORY REFERENCES\n\n` + cfg.legalRefs.map(r => `• ${r.name}\n  ${r.url}`).join("\n\n");
+    docs.push({
+      id: `__legal__${workerId}`,
+      name: "Legal & Regulatory References",
+      type: "system",
+      readOnly: true,
+      charCount: refText.length,
+      createdAt: null,
+      text: refText,
+    });
+  }
+  return docs;
+}
 
 function db() { return admin.firestore(); }
 
-const MAX_CHARS = 12000; // ~3k tokens — fits in system prompt budget
+// Per-document cap: one doc can be up to 500k chars (full CFR part, full POH/AFM).
+const MAX_CHARS_PER_DOC = 500000;
+// Total injection cap: sum of all locker docs injected into a single chat prompt.
+// Claude's context is 200k tokens (~800k chars); leave ~200k chars for conversation
+// + system prompt + tools. Aviation workers need CFRs + POH + ops specs simultaneously.
+const MAX_CHARS_INJECTION = 600000;
 
 function lockerCol(tenantId, workerId) {
   return db()
@@ -28,8 +138,8 @@ function lockerCol(tenantId, workerId) {
 }
 
 function clamp(text) {
-  if (!text || text.length <= MAX_CHARS) return text || "";
-  return text.substring(0, MAX_CHARS) + "\n... [truncated]";
+  if (!text || text.length <= MAX_CHARS_PER_DOC) return text || "";
+  return text.substring(0, MAX_CHARS_PER_DOC) + "\n... [truncated — upload full doc in sections if needed]";
 }
 
 async function parsePdf(buffer) {
@@ -57,13 +167,13 @@ async function handleLockerList(req, res, user) {
   if (!workerId) return res.json({ ok: false, error: "Missing workerId" });
 
   const snap = await lockerCol(tenantId, workerId)
-    .where("deletedAt", "==", null)
     .orderBy("createdAt", "desc")
     .get();
 
   const documents = [];
   snap.forEach(d => {
     const data = d.data();
+    if (data.deletedAt != null) return; // skip soft-deleted docs
     documents.push({
       id: d.id,
       name: data.name,
@@ -72,6 +182,19 @@ async function handleLockerList(req, res, user) {
       createdAt: data.createdAt?.toMillis?.() || null,
     });
   });
+
+  // Append read-only system docs (RAAS rulesets + legal refs) for Back of House workers
+  const systemDocs = buildSystemDocs(workerId);
+  for (const sd of systemDocs) {
+    documents.push({
+      id: sd.id,
+      name: sd.name,
+      type: sd.type,
+      charCount: sd.charCount,
+      createdAt: sd.createdAt,
+      readOnly: true,
+    });
+  }
 
   return res.json({ ok: true, documents });
 }
@@ -150,16 +273,26 @@ async function handleLockerDelete(req, res, user) {
 async function getLockerContext(tenantId, workerId) {
   if (!tenantId || !workerId) return null;
   try {
+    const parts = [];
+    let total = 0;
+
+    // Inject RAAS system docs first so they anchor the context
+    const systemDocs = buildSystemDocs(workerId);
+    for (const sd of systemDocs) {
+      if (sd.text && total < MAX_CHARS_INJECTION) {
+        const chunk = `## ${sd.name}\n${sd.text}`;
+        parts.push(chunk);
+        total += chunk.length;
+      }
+    }
+
     const snap = await lockerCol(tenantId, workerId)
       .where("deletedAt", "==", null)
       .orderBy("createdAt", "asc")
       .get();
-    if (snap.empty) return null;
-    const parts = [];
-    let total = 0;
     snap.forEach(d => {
       const text = d.data().text || "";
-      if (text && total < MAX_CHARS) {
+      if (text && total < MAX_CHARS_INJECTION) {
         const name = d.data().name || "Document";
         const chunk = `## ${name}\n${text}`;
         parts.push(chunk);

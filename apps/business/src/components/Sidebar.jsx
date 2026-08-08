@@ -17,13 +17,8 @@ const WORKER_NAV_MAP = {
     { id: "assumptions", label: "Assumptions" },
     { id: "evidence", label: "Evidence Table" },
   ],
-  "investor-relations": [
-    { id: "investor-pipeline", label: "Investor Pipeline" },
-    { id: "compliance", label: "Compliance" },
-    { id: "waterfall", label: "Waterfall" },
-    { id: "investor-data-room", label: "Data Room" },
-    { id: "reporting", label: "Reporting" },
-  ],
+  "investor-relations": [], // canvas tabs handle all navigation internally (Back of House pattern)
+  "ir-worker": [],
   "chief-of-staff": [
     { id: "pipelines", label: "Pipelines" },
     { id: "task-board", label: "Task Board" },
@@ -1072,7 +1067,9 @@ const WORKER_DISPLAY_NAMES = {
   "title-abstract-001": "Title & Abstract",
   "zoning-001": "Zoning & Land Use",
   // Healthcare / nursing vertical
-  "nursing-education-001": "Nursing Education",
+  "nursing-education-001": "Hannah",
+  "nursing-micro-001": "Morgan",
+  "nursing-ob-001": "Clara",
   "pet-health-client": "Pet Health Records",
   // Tenant-facing consumer workers
   "tenant-portal-001": "Tenant Portal",
@@ -1104,8 +1101,9 @@ const VERTICAL_LABELS = {
 // Determine vertical from worker slug prefix
 function normalizeVertical(slug) {
   if (!slug) return "Other";
-  // CODEX 49.16 — platform workers grouped under "Spine"
-  if (slug.startsWith("platform-")) return "Spine";
+  // CODEX 49.16 — platform workers grouped under "Back of House"
+  if (slug.startsWith("platform-")) return "Back of House";
+  if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
   if (slug.startsWith("av-")) return "Aviation";
   if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("eu-")) return "EU DPP";
@@ -1349,10 +1347,10 @@ export default function Sidebar({
     for (const v in groups) {
       groups[v].sort((a, b) => a.name.localeCompare(b.name));
     }
-    // Sort groups: vertical workers first (alphabetical), Spine/Back of House last
+    // Sort groups: vertical workers first (alphabetical), Back of House last
     const sorted = Object.entries(groups).sort(([a], [b]) => {
-      if (a === "Spine") return 1;
-      if (b === "Spine") return -1;
+      if (a === "Back of House") return 1;
+      if (b === "Back of House") return -1;
       if (a === "Other") return 1;
       if (b === "Other") return -1;
       return a.localeCompare(b);
@@ -1684,8 +1682,10 @@ export default function Sidebar({
               </>
             )}
 
-            {/* ────────────── WORKERS ────────────── */}
-            <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Workers</div>
+            {/* ────────────── WORKERS (only if workspace has workers) ────────────── */}
+            {(groupedWorkers.cos.length > 0 || groupedWorkers.groups.length > 0) && (
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Workers</div>
+            )}
 
             {/* Alex — Chief of Staff */}
             {groupedWorkers.cos.map(worker => (
@@ -1714,7 +1714,7 @@ export default function Sidebar({
                     <path d="M5 5V3.5C5 2.67 5.67 2 6.5 2H9.5C10.33 2 11 2.67 11 3.5V5"/>
                     <path d="M2 9H14"/>
                   </svg>
-                  <span style={{ flex: 1 }}>Back of House</span>
+                  <span style={{ flex: 1 }}>Workers</span>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: !workersCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
                     <path d="M2 4L6 8L10 4"/>
                   </svg>

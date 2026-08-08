@@ -18,21 +18,28 @@ async function apiCall(method, path, body, token, tenantId) {
 
 function DocRow({ doc, onDelete }) {
   const [deleting, setDeleting] = useState(false);
+  const isSystem = doc.readOnly === true || doc.type === "system";
+  const typeLabel = isSystem ? "System · Read-only" : doc.type === "paste" ? "Pasted text" : "Uploaded file";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9", opacity: isSystem ? 0.85 : 1 }}>
+      {isSystem && (
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6C47FF", flexShrink: 0, marginTop: 1 }} />
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name || "Untitled"}</div>
         <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
-          {doc.type === "paste" ? "Pasted text" : "Uploaded file"} · {doc.charCount ? `${doc.charCount.toLocaleString()} chars` : ""}{doc.createdAt ? ` · ${new Date(doc.createdAt).toLocaleDateString()}` : ""}
+          {typeLabel} · {doc.charCount ? `${doc.charCount.toLocaleString()} chars` : ""}{doc.createdAt ? ` · ${new Date(doc.createdAt).toLocaleDateString()}` : ""}
         </div>
       </div>
-      <button
-        onClick={async () => { setDeleting(true); await onDelete(doc.id); }}
-        disabled={deleting}
-        style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 4, opacity: deleting ? 0.4 : 1 }}
-      >
-        {deleting ? "…" : "Remove"}
-      </button>
+      {!isSystem && (
+        <button
+          onClick={async () => { setDeleting(true); await onDelete(doc.id); }}
+          disabled={deleting}
+          style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 4, opacity: deleting ? 0.4 : 1 }}
+        >
+          {deleting ? "…" : "Remove"}
+        </button>
+      )}
     </div>
   );
 }
@@ -92,8 +99,10 @@ export default function WorkerLockerPanel({ worker, onClose, token, tenantId }) 
     load();
   }
 
-  const totalChars = docs.reduce((s, d) => s + (d.charCount || 0), 0);
-  const charLimit = 12000;
+  const userDocs = docs.filter(d => !d.readOnly && d.type !== "system");
+  const totalChars = userDocs.reduce((s, d) => s + (d.charCount || 0), 0);
+  const systemDocCount = docs.length - userDocs.length;
+  const charLimit = 600000;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", justifyContent: "flex-end" }}>
@@ -118,7 +127,7 @@ export default function WorkerLockerPanel({ worker, onClose, token, tenantId }) 
           {/* Capacity bar */}
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
-              <span>{docs.length} document{docs.length !== 1 ? "s" : ""}</span>
+              <span>{userDocs.length} document{userDocs.length !== 1 ? "s" : ""}{systemDocCount > 0 ? ` + ${systemDocCount} system` : ""}</span>
               <span>{totalChars.toLocaleString()} / {charLimit.toLocaleString()} chars</span>
             </div>
             <div style={{ height: 4, borderRadius: 2, background: "#E2E8F0", overflow: "hidden" }}>
@@ -147,14 +156,20 @@ export default function WorkerLockerPanel({ worker, onClose, token, tenantId }) 
           {tab === "docs" && (
             loading ? (
               <div style={{ fontSize: 13, color: "#94A3B8", paddingTop: 20, textAlign: "center" }}>Loading…</div>
-            ) : docs.length === 0 ? (
-              <div style={{ textAlign: "center", paddingTop: 32 }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1E293B", marginBottom: 6 }}>No documents yet</div>
-                <div style={{ fontSize: 12, color: "#64748B" }}>Paste notes or upload files to ground this worker in your organization's context.</div>
-              </div>
             ) : (
-              docs.map(doc => <DocRow key={doc.id} doc={doc} onDelete={handleDelete} />)
+              <>
+                {docs.map(doc => <DocRow key={doc.id} doc={doc} onDelete={handleDelete} />)}
+                {userDocs.length === 0 && (
+                  <div style={{ textAlign: "center", paddingTop: systemDocCount > 0 ? 20 : 32 }}>
+                    {systemDocCount === 0 && <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>}
+                    <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+                      {systemDocCount > 0
+                        ? "Add your own context — policies, procedures, or notes — to supplement the system rules above."
+                        : "Paste notes or upload files to ground this worker in your organization's context."}
+                    </div>
+                  </div>
+                )}
+              </>
             )
           )}
 
