@@ -8,6 +8,7 @@ import { getAuth } from "firebase/auth";
 import { getAvCanvas, AV_CAS, AV_CAS_ORDER, AV_CAS_LABELS } from "./aviationCanvasData";
 import MapCard from "./MapCard";
 import TabDescription from "./TabDescription";
+import AviationMap from "./AviationMap";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -304,6 +305,18 @@ function Block({ block }) {
       return (
         <div style={{ marginBottom: 18 }}>
           <MapCard resolved={{ address: block.address, region: block.region, mapType: block.mapType, sectionLabel: block.sectionLabel }} />
+        </div>
+      );
+    case "aviationMap":
+      return (
+        <div style={{ marginBottom: 18, marginLeft: -20, marginRight: -20 }}>
+          <AviationMap
+            center={block.center || [20.5, -157.0]}
+            zoom={block.zoom || 7}
+            height={block.height || 560}
+            icaos={block.icaos || ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH"]}
+            compact={false}
+          />
         </div>
       );
     default: return null;

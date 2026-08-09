@@ -29,10 +29,19 @@ export const AV_CANVAS = {
   // ─────────────────────────────── COPILOT ──────────────────────────────────
   "av-copilot-001": {
     title: "CoPilot",
-    subtitle: "PC-12/47E · Life Flight Network",
+    subtitle: "PC-12/47E · Hawaii operations",
     disclaimer: "Advisory only — go/no-go authority rests with the PIC",
     cas: { RED: 0, YELLOW: 9, BLUE: 0, WHITE: 6, GREEN: 6 },
     tabs: [
+      {
+        id: "map",
+        label: "Map",
+        description: "Live aviation map — METAR dots always on. Toggle Airports, Airspace, Navaids, and Traffic layers. Click any marker for detail.",
+        blocks: [
+          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 560,
+            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"] },
+        ],
+      },
       {
         id: "dashboard",
         label: "Dashboard",

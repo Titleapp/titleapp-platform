@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection, query, where, limit, onSnapshot } from "firebase/firestore";
+import AviationMap from "./canvas/AviationMap";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -442,35 +443,15 @@ export default function MorningBriefCanvas({ hasAviationWorker }) {
             </a>
           </div>
 
-          {/* Hawaii radar map */}
-          <div style={{ marginBottom: 14, borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
-            <img
-              src="https://radar.weather.gov/ridge/standard/HAWAII_loop.gif"
-              alt="Hawaii radar"
-              style={{ width: "100%", maxHeight: 340, objectFit: "cover", display: "block" }}
-              onError={e => { e.target.style.display = "none"; }}
+          {/* Interactive aviation map — airports, airspace, navaids, traffic toggles */}
+          <div style={{ marginBottom: 14 }}>
+            <AviationMap
+              center={[20.5, -157.0]}
+              zoom={7}
+              height={340}
+              icaos={HI_AIRPORTS.map(a => a.icao)}
+              compact={false}
             />
-          </div>
-
-          {/* METAR cards */}
-          {metarLoading ? (
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>Loading METARs...</div>
-          ) : metars.length > 0 ? (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {metars.map(m => <MetarCard key={m.icaoId} m={m} />)}
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>No METAR data available</div>
-          )}
-
-          {/* Legend */}
-          <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-            {Object.entries({ VFR: "VFR", MVFR: "Marginal", IFR: "IFR", LIFR: "Low IFR" }).map(([k, label]) => (
-              <span key={k} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#64748b" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: FLIGHT_CAT_COLOR[k], display: "inline-block" }} />
-                {label}
-              </span>
-            ))}
           </div>
         </div>
       )}
