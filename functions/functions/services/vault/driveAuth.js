@@ -25,10 +25,14 @@ function getGoogle() {
 }
 
 const SCOPES = [
+  "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/drive.metadata.readonly",
   "email",
 ];
+
+// Scopes required to write files — subset of SCOPES above
+const WRITE_SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
 // ═══════════════════════════════════════════════════════════════
 //  TOKEN ENCRYPTION — AES-256-GCM
@@ -243,32 +247,37 @@ async function getAuthenticatedDriveClient(userId) {
   const google = getGoogle();
   const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-  // Wrap the drive client to catch invalid_grant and mark token as expired
-  return new Proxy(drive, {
-    get(target, prop) {
-      const val = target[prop];
-      if (typeof val !== "object" || val === null) return val;
-      // Wrap each resource (files, about, etc.)
-      return new Proxy(val, {
-        get(res, method) {
-          const fn = res[method];
-          if (typeof fn !== "function") return fn;
-          return async (...args) => {
-            try {
-              return await fn.apply(res, args);
-            } catch (err) {
-              const msg = err.message || "";
-              if (msg.includes("invalid_grant") || msg.includes("Token has been expired or revoked")) {
-                docRef.update({ tokenInvalid: true, connected: false }).catch(() => {});
-                throw new Error("Google Drive token expired. Please go to Settings → Integrations → Google Drive and reconnect.");
-              }
-              throw err;
-            }
-          };
-        },
-      });
+  // Wrap only the specific methods we call — avoids Proxy breaking googleapis internals.
+  function wrapDriveMethod(fn, ctx) {
+    return async (...args) => {
+      try {
+        return await fn.apply(ctx, args);
+      } catch (err) {
+        const msg = err.message || "";
+        if (msg.includes("invalid_grant") || msg.includes("Token has been expired or revoked") || msg.includes("invalid_rapt")) {
+          docRef.update({ tokenInvalid: true, connected: false }).catch(() => {});
+          throw new Error("Google Drive token expired. Please go to Settings → Integrations → Google Drive and reconnect.");
+        }
+        throw err;
+      }
+    };
+  }
+
+  const files = drive.files;
+
+  // Check if stored scopes include drive.file (write capability)
+  const storedScopes = data.scopes || [];
+  const canWrite = storedScopes.includes("https://www.googleapis.com/auth/drive.file");
+
+  return {
+    canWrite,
+    files: {
+      list:   wrapDriveMethod(files.list.bind(files),   files),
+      get:    wrapDriveMethod(files.get.bind(files),    files),
+      export: wrapDriveMethod(files.export.bind(files), files),
+      create: canWrite ? wrapDriveMethod(files.create.bind(files), files) : null,
     },
-  });
+  };
 }
 
 module.exports = {
@@ -277,4 +286,5 @@ module.exports = {
   handleDriveDisconnect,
   handleDriveStatus,
   getAuthenticatedDriveClient,
+  WRITE_SCOPES,
 };

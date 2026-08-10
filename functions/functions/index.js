@@ -3544,9 +3544,9 @@ AS THE OWNER-OPERATOR YOU SELF-DISPATCH:
 - Part 135: dispatch per OpSpecs — this worker generates your release package
 
 WHAT YOU BUILD FOR EVERY TRIP:
-1. Pilot currency check — medical, BFR, IPC, type recurrent, 135 line check (from Vault)
+1. Crew legality — duty/rest per §135.273 (see computation rules below)
 2. Aircraft airworthiness — MEL status, inspection currency (from aircraft record)
-3. Weather brief — live METARs + TAFs via weather_brief tool
+3. Weather brief — live METARs + TAFs via weather_brief tool (MUST retrieve live data)
 4. FRAT score — auto-scored from weather, crew, and aircraft inputs
 5. W&B computation — from uploaded AFM data
 6. NOTAMs — relevant to departure, en-route, destination
@@ -3558,10 +3558,41 @@ TRIPS TO DATE (DEMO):
 TOOLS YOU HAVE:
 - weather_brief: pull live METARs + TAFs
 
+═══ FAIL-CLOSED ON DATA FAILURE ═══
+If ANY required data source fails or is unavailable, the release is BLOCKED — not CONDITIONAL.
+Missing data is NOT permission to proceed.
+
+• weather_brief fails or returns no data → "Release BLOCKED — weather data unavailable. Do not dispatch until current METAR/TAF confirmed for [airports]."
+• Crew duty records absent or incomplete → "Release BLOCKED — crew legality UNVERIFIED. Provide duty period start time, rest hours, and flight hours to compute §135.273 compliance."
+• NOTAM retrieval fails on IFR route → "Release BLOCKED — NOTAM data unavailable for IFR operation. Verify via notams.faa.gov before dispatch."
+
+CONDITIONAL is only valid when data IS present but indicates a concern. Never CONDITIONAL when data is missing.
+
+═══ CREW LEGALITY — 14 CFR §135.273 (UNSCHEDULED OPS) ═══
+Life Flight Network Hawaii PC-12 = fixed-wing unscheduled Part 135. §135.273 applies. NOT §135.271 (HEMES is helicopter-only).
+
+To compute crew legality you MUST have from the pilot:
+  • duty_period_start (local or UTC)
+  • rest_hours before this duty period (must be ≥ 8h qualifying rest)
+  • flight_hours in last 24 hours
+  • flight_hours this calendar quarter (running total)
+  • flight_hours this calendar year (running total)
+
+Then compute and state explicitly:
+  • REST: rest_hours ≥ 8h? If no → BLOCKED.
+  • DUTY REMAINING: GOM limit 14h − hours_since_duty_start = remaining. Trip ETE + turnaround ≤ remaining?
+  • 24H FLIGHT TIME: flight_hours_last_24h + trip_ETE ≤ 8h? (10h if augmented crew verified)
+  • QUARTERLY: current_quarter + trip_ETE ≤ 500h? Surface YELLOW if > 450h.
+  • ANNUAL: current_year + trip_ETE ≤ 1,400h? Surface YELLOW if > 1,300h.
+  • CURRENCY: medical valid + class appropriate; IFR currency (6 approaches + holds ≤ 6 calendar months); landing currency (3 T/L ≤ 90 days); type recurrent within window.
+
+If any input is missing → crew status = UNVERIFIED → release = BLOCKED. List exactly what's needed.
+Always cite: "Per 14 CFR §135.273 and company GOM (14h duty max)."
+
 LANGUAGE RULES:
 - You are Skye — not Alex
-- Concise, structured: lead with package status (green/yellow/hold)
-- Never release a trip with an unresolved RED item — hold and explain what needs resolution
+- Concise, structured: lead with package status (RELEASED / CONDITIONAL / BLOCKED)
+- Never release with an unresolved RED item
 - IRS documentation language must be precise: "contemporaneous" is the IRS standard`,
           },
           "av-ground-school-001": {
@@ -4454,7 +4485,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               });
               businessTools.push({
                 name: "generate_document",
-                description: "Generate a downloadable document and return a download URL. Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template. Returns a real download URL the user can click.",
+                description: "Generate a document and return a download URL. If the user has Google Drive connected, the document is automatically saved to their Drive (xlsx→Google Sheets, docx→Google Docs, pptx→Google Slides). Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template.",
                 input_schema: {
                   type: "object",
                   properties: {
@@ -4509,7 +4540,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     required: [],
                   },
                 });
-                workerPrompt += `\n\nGOOGLE DRIVE ACCESS: This user has connected their Google Drive. You have two tools: search_drive (find files by name/keyword) and read_drive_file (read a file by ID or name). When the user asks about a file, spreadsheet, document, statement, or report in their Drive — search for it and read it directly. NEVER say you "can't access Drive" or ask them to re-attach a file that's already in their Drive. NEVER ask the user to download or attach something they've already saved there.`;
+                workerPrompt += `\n\nGOOGLE DRIVE ACCESS: This user has connected their Google Drive. You have tools: search_drive (find files by name/keyword), read_drive_file (read a file by ID or name), and generate_document (create Word/Excel/PowerPoint documents that are automatically saved to their Drive as native Google Docs/Sheets/Slides). When the user asks about a file, spreadsheet, document, statement, or report in their Drive — search for it and read it directly. When they ask you to create any document, spreadsheet, or presentation, call generate_document — it will be saved to their Drive automatically. NEVER say you "can't access Drive" or ask them to re-attach a file that's already in their Drive. NEVER say you can't create or export documents — you can.`;
               }
 
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
@@ -4794,10 +4825,11 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // RE/aviation/nursing/marketing workers stay on res.json() (have tools).
               // NOTE: _STREAMING_WORKERS is declared at the top of the worker if-block
               // (hoisted to avoid const TDZ crash before the history-limit line).
-              // If Drive is connected and the user message references a file, drop out of
-              // streaming mode so tool round-trips work (streaming doesn't support tools).
-              const _driveHintRe = /\b(drive|my file|the file|a file|the spreadsheet|the document|the pdf|the statement|the report|the financials?|saved file|uploaded file|from drive|do you have|can you see|can you access)\b/i;
-              const _switchToToolMode = _driveConnected && _driveHintRe.test(userInput || "");
+              // If Drive is connected, always use the tool-mode (non-streaming) path so
+              // tool round-trips actually execute. The streaming API path never passes
+              // `tools` to the model, so search_drive / read_drive_file were silently
+              // unavailable even when the system prompt said Drive was connected.
+              const _switchToToolMode = _driveConnected;
               if (_STREAMING_WORKERS.has(workerSlug) && !_switchToToolMode) {
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -5612,7 +5644,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               // CODEX 91 — generate_document tool handler (all workers)
               if (toolBlock && toolBlock.name === 'generate_document') {
                 try {
-                  const { generateDocument } = require("./documents");
+                  const { generateDocument, saveToDrive } = require("./documents");
                   const docResult = await generateDocument({
                     tenantId: reqTenantId || ctx.tenantId,
                     userId: authUser ? authUser.uid : "anonymous",
@@ -5621,11 +5653,23 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     content: toolBlock.input.content,
                     title: toolBlock.input.title,
                     metadata: { workerSlug, surface: 'worker' },
+                    returnBuffer: _driveConnected,
                   });
                   let docToolResult;
                   if (docResult.ok) {
-                    workerGeneratedDoc = { title: toolBlock.input.title, format: docResult.format || toolBlock.input.format || "pdf", downloadUrl: docResult.downloadUrl, docId: docResult.docId };
-                    docToolResult = `Document generated successfully. Title: "${toolBlock.input.title}". Format: ${workerGeneratedDoc.format.toUpperCase()}. Download URL: ${docResult.downloadUrl}. Tell the user their document is ready and provide a brief summary of what it contains. Do not repeat the URL — the UI will show a download button automatically.`;
+                    let driveLink = null;
+                    if (_driveConnected && docResult.buffer && authUser) {
+                      try {
+                        const _driveUp = await saveToDrive({ buffer: docResult.buffer, format: docResult.format, title: toolBlock.input.title || "Document", userId: authUser.uid });
+                        if (_driveUp.ok) driveLink = _driveUp.webViewLink;
+                        else if (_driveUp.needsReauth) console.warn(`[worker:${workerSlug}] Drive write scope missing — user needs to reconnect Drive`);
+                      } catch (_driveUpErr) {
+                        console.warn(`[worker:${workerSlug}] Drive upload failed:`, _driveUpErr.message);
+                      }
+                    }
+                    workerGeneratedDoc = { title: toolBlock.input.title, format: docResult.format || toolBlock.input.format || "pdf", downloadUrl: docResult.downloadUrl, docId: docResult.docId, driveLink };
+                    const _driveMsg = driveLink ? ` It has also been saved to the user's Google Drive.` : (_driveConnected ? ` Note: Drive saving requires reconnecting Google Drive with updated permissions.` : "");
+                    docToolResult = `Document generated successfully. Title: "${toolBlock.input.title}". Format: ${workerGeneratedDoc.format.toUpperCase()}. Download URL: ${docResult.downloadUrl}.${_driveMsg} Tell the user their document is ready and provide a brief summary of what it contains. Do not repeat the URL — the UI will show a download button automatically.`;
                   } else {
                     console.warn(`[worker:${workerSlug}] generate_document ok:false`, { error: docResult.error, templateId: toolBlock.input.templateId, contentKeys: Object.keys(toolBlock.input.content || {}) });
                     docToolResult = `Document generation failed: ${docResult.error || "unknown error"}. Apologize briefly and offer to try again or provide the content as text instead.`;
@@ -5639,11 +5683,76 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               }
 
               // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
+              // search_drive auto-reads the top result so the model doesn't need a second
+              // tool call to say "reading now" — everything lands in one response turn.
               if (toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected) {
                 let _driveToolResult = "Drive operation failed.";
                 try {
                   const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
                   const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+
+                  // Shared file reader — used by both search_drive auto-read and read_drive_file.
+                  // xlsx binary downloads use a 20s timeout race so the function never hangs
+                  // on large files. Google-native files (Sheets/Docs) use server-side export
+                  // which is instant.
+                  const _readOneFile = async (fileId) => {
+                    const _meta = (await _driveClient.files.get({ fileId, fields: "id,name,mimeType,size" })).data;
+                    const _m = _meta.mimeType || "";
+                    let _raw = "";
+                    if (_m === "application/vnd.google-apps.spreadsheet") {
+                      const _exp = await _driveClient.files.export({ fileId, mimeType: "text/csv" }, { responseType: "text" });
+                      _raw = _exp.data || "";
+                    } else if (_m === "application/vnd.google-apps.document") {
+                      const _exp = await _driveClient.files.export({ fileId, mimeType: "text/plain" }, { responseType: "text" });
+                      _raw = _exp.data || "";
+                    } else if (_m.includes("spreadsheetml") || (_meta.name || "").endsWith(".xlsx") || (_meta.name || "").endsWith(".xls")) {
+                      // Binary xlsx download with hard 20-second timeout.
+                      // Large files (>2MB) are impractical to download + parse in a chat turn.
+                      const _fileSizeBytes = parseInt(_meta.size || "0", 10);
+                      if (_fileSizeBytes > 3 * 1024 * 1024) {
+                        _raw = `[File "${_meta.name}" is ${Math.round(_fileSizeBytes / 1024 / 1024)}MB — too large to auto-read. Ask the user to open it in Google Drive and use File → Save as Google Sheets, which converts it to a native format I can read instantly.]`;
+                      } else {
+                        const _dlPromise = _driveClient.files.get({ fileId, alt: "media" }, { responseType: "arraybuffer" });
+                        const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("xlsx_download_timeout")), 20000));
+                        try {
+                          const _dl = await Promise.race([_dlPromise, _timeout]);
+                          const _buf = _dl && _dl.data ? Buffer.from(_dl.data) : null;
+                          if (!_buf || _buf.length === 0) {
+                            _raw = `[Empty or unreadable file: "${_meta.name}"]`;
+                          } else {
+                            const xlsxLib = require("xlsx");
+                            const wb = xlsxLib.read(_buf, { type: "buffer" });
+                            _raw = wb.SheetNames.map(n => `Sheet: ${n}\n${xlsxLib.utils.sheet_to_csv(wb.Sheets[n])}`).join("\n\n");
+                          }
+                        } catch (_dlErr) {
+                          if (_dlErr.message === "xlsx_download_timeout") {
+                            _raw = `[Download of "${_meta.name}" timed out. The file may be too large or the Drive connection is slow. Ask the user to open it in Google Drive → File → Save as Google Sheets so I can read it as a native spreadsheet (instant export).]`;
+                          } else {
+                            throw _dlErr;
+                          }
+                        }
+                      }
+                    } else {
+                      // Plain text / CSV / PDF — 15s timeout for text downloads
+                      const _dlTxt = _driveClient.files.get({ fileId, alt: "media" }, { responseType: "text" });
+                      const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("txt_download_timeout")), 15000));
+                      try {
+                        const _dl = await Promise.race([_dlTxt, _timeout]);
+                        _raw = String(_dl.data || "");
+                      } catch (_dlErr) {
+                        _raw = `[File download timed out: ${_meta.name}]`;
+                      }
+                    }
+                    const _trunc = _raw.length > 20000;
+                    // Persist driveAnchor (non-blocking)
+                    if (authUser) {
+                      db.collection("users").doc(authUser.uid).collection("driveAnchors").doc(fileId)
+                        .set({ fileId, fileName: _meta.name, mimeType: _m, workerSlug, lastReadAt: require("firebase-admin").firestore.FieldValue.serverTimestamp() }, { merge: true })
+                        .catch(() => {});
+                    }
+                    return `DRIVE FILE: "${_meta.name}"\n\n${_raw.slice(0, 20000)}${_trunc ? "\n\n[Truncated — first 20,000 characters shown]" : ""}`;
+                  };
+
                   if (toolBlock.name === 'search_drive') {
                     const _q = (toolBlock.input.query || "").replace(/'/g, "\\'");
                     const _list = await _driveClient.files.list({
@@ -5652,56 +5761,35 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       pageSize: 10, orderBy: "modifiedTime desc",
                     });
                     const _files = (_list.data.files || []);
-                    _driveToolResult = _files.length
-                      ? `Found ${_files.length} file(s):\n` + _files.map(f => `- ${f.name} (ID: ${f.id}, modified: ${(f.modifiedTime || "").slice(0, 10)})`).join("\n")
-                      : `No files found matching "${toolBlock.input.query}".`;
+                    if (!_files.length) {
+                      _driveToolResult = `No files found matching "${toolBlock.input.query}".`;
+                    } else {
+                      // Auto-read the top result so the model can respond in one turn.
+                      // If multiple files are found, list them first then read the top one.
+                      const _fileList = `Found ${_files.length} file(s):\n` + _files.map(f => `- ${f.name} (ID: ${f.id}, modified: ${(f.modifiedTime || "").slice(0, 10)})`).join("\n");
+                      try {
+                        const _topContent = await _readOneFile(_files[0].id);
+                        _driveToolResult = _files.length === 1
+                          ? _topContent
+                          : `${_fileList}\n\nAuto-reading most recent file:\n\n${_topContent}`;
+                      } catch (_autoReadErr) {
+                        console.warn(`[worker:${workerSlug}] search_drive auto-read failed:`, _autoReadErr.message);
+                        _driveToolResult = _fileList;
+                      }
+                    }
                   } else {
+                    // read_drive_file: look up by ID or name, then read.
                     let _fileId = toolBlock.input.file_id || null;
                     if (!_fileId && toolBlock.input.file_name) {
                       const _ns = await _driveClient.files.list({
-                        q: `name contains '${toolBlock.input.file_name.replace(/'/g, "\\'")}' and trashed = false`,
+                        q: `name contains '${(toolBlock.input.file_name || "").replace(/'/g, "\\'")}' and trashed = false`,
                         fields: "files(id,name,mimeType)", pageSize: 5, orderBy: "modifiedTime desc",
                       });
                       _fileId = ((_ns.data.files || [])[0] || {}).id || null;
                       if (!_fileId) _driveToolResult = `No file named "${toolBlock.input.file_name}" found in Drive.`;
                     }
                     if (_fileId) {
-                      const _meta = (await _driveClient.files.get({ fileId: _fileId, fields: "id,name,mimeType" })).data;
-                      const _m = _meta.mimeType || "";
-                      let _rawContent = "";
-                      if (_m === "application/vnd.google-apps.spreadsheet") {
-                        const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/csv" }, { responseType: "text" });
-                        _rawContent = _exp.data || "";
-                      } else if (_m === "application/vnd.google-apps.document") {
-                        const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/plain" }, { responseType: "text" });
-                        _rawContent = _exp.data || "";
-                      } else if (_m.includes("spreadsheetml") || (_meta.name || "").endsWith(".xlsx")) {
-                        const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "arraybuffer" });
-                        const xlsxLib = require("xlsx");
-                        const wb = xlsxLib.read(Buffer.from(_dl.data), { type: "buffer" });
-                        _rawContent = wb.SheetNames.map(n => `Sheet: ${n}\n${xlsxLib.utils.sheet_to_csv(wb.Sheets[n])}`).join("\n\n");
-                      } else {
-                        const _dl = await _driveClient.files.get({ fileId: _fileId, alt: "media" }, { responseType: "text" });
-                        _rawContent = String(_dl.data || "");
-                      }
-                      const _trunc = _rawContent.length > 20000;
-                      _driveToolResult = `DRIVE FILE: "${_meta.name}"\n\n${_rawContent.slice(0, 20000)}${_trunc ? "\n\n[File truncated — first 20,000 characters shown]" : ""}`;
-                      // Persist Drive file anchor so future sessions can re-read without re-searching.
-                      // Stored under users/{uid}/driveAnchors/{fileId} — append-only, idempotent.
-                      if (authUser && _fileId) {
-                        try {
-                          await db.collection("users").doc(authUser.uid)
-                            .collection("driveAnchors").doc(_fileId).set({
-                              fileId: _fileId,
-                              fileName: _meta.name,
-                              mimeType: _meta.mimeType || "",
-                              workerSlug,
-                              lastReadAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
-                            }, { merge: true });
-                        } catch (_anchorErr) {
-                          console.warn(`[worker:${workerSlug}] driveAnchor write failed:`, _anchorErr.message);
-                        }
-                      }
+                      _driveToolResult = await _readOneFile(_fileId);
                     }
                   }
                 } catch (_de) {
@@ -5709,11 +5797,75 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   console.warn(`[worker:${workerSlug}] Drive tool error:`, _de.message);
                 }
                 if (aiResponse && aiResponse.content) {
-                  const _driveFU = await anthropic.messages.create({
-                    model: 'claude-sonnet-4-6', max_tokens: workerMaxTokens, system: workerPrompt,
-                    messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _driveToolResult }] }],
-                  });
-                  aiText = (_driveFU.content.find(b => b.type === 'text') || {}).text || aiText;
+                  try {
+                    // Loop up to 3 Drive tool calls so multi-file research works
+                    // (model reads file A → wants file B → wants file C → final answer).
+                    // Each model call is raced against a 30s timeout so one slow file
+                    // can't hang the whole request.
+                    const _MODEL_TIMEOUT_MS = 30_000;
+                    const _MAX_DRIVE_ROUNDS = 3;
+                    let _loopMessages = [
+                      ...messages,
+                      { role: "assistant", content: aiResponse.content },
+                      { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _driveToolResult }] },
+                    ];
+                    let _rounds = 0;
+                    while (_rounds < _MAX_DRIVE_ROUNDS) {
+                      _rounds++;
+                      const _fuTimeout = new Promise((_, rej) =>
+                        setTimeout(() => rej(new Error("drive_followup_timeout")), _MODEL_TIMEOUT_MS)
+                      );
+                      const _fu = await Promise.race([
+                        anthropic.messages.create({
+                          model: 'claude-sonnet-4-6', max_tokens: workerMaxTokens,
+                          system: workerPrompt, messages: _loopMessages,
+                          tools: [{ name: "search_drive", description: "Search Google Drive", input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } }, { name: "read_drive_file", description: "Read a file from Google Drive", input_schema: { type: "object", properties: { file_id: { type: "string" }, file_name: { type: "string" } } } }],
+                        }),
+                        _fuTimeout,
+                      ]);
+
+                      const _fuText = (_fu.content.find(b => b.type === 'text') || {}).text || "";
+                      const _fuTool = _fu.content.find(b => b.type === 'tool_use' && (b.name === 'search_drive' || b.name === 'read_drive_file'));
+
+                      if (_fuText) aiText = _fuText;
+
+                      // If model wants another file, execute and loop.
+                      if (_fuTool && _rounds < _MAX_DRIVE_ROUNDS) {
+                        let _nextResult = "";
+                        try {
+                          if (_fuTool.name === 'search_drive') {
+                            const _q = _fuTool.input.query || "";
+                            const _sr = await _driveClient.files.list({ q: `fullText contains '${_q.replace(/'/g,"\\'")}' and trashed = false`, fields: "files(id,name,mimeType,modifiedTime)", pageSize: 5, orderBy: "modifiedTime desc" });
+                            const _sf = (_sr.data.files || []);
+                            if (_sf.length === 0) { _nextResult = `No files found for "${_q}".`; }
+                            else { _nextResult = await _readOneFile(_sf[0].id); }
+                          } else {
+                            let _fid = _fuTool.input.file_id || null;
+                            if (!_fid && _fuTool.input.file_name) {
+                              const _ns2 = await _driveClient.files.list({ q: `name contains '${(_fuTool.input.file_name||"").replace(/'/g,"\\'")}' and trashed = false`, fields: "files(id)", pageSize: 3, orderBy: "modifiedTime desc" });
+                              _fid = ((_ns2.data.files||[])[0]||{}).id || null;
+                            }
+                            _nextResult = _fid ? await _readOneFile(_fid) : `File not found.`;
+                          }
+                        } catch (_loopReadErr) {
+                          _nextResult = `Could not read file: ${_loopReadErr.message}`;
+                        }
+                        _loopMessages = [
+                          ..._loopMessages,
+                          { role: "assistant", content: _fu.content },
+                          { role: "user", content: [{ type: "tool_result", tool_use_id: _fuTool.id, content: _nextResult }] },
+                        ];
+                      } else {
+                        // No more tool calls — we're done.
+                        break;
+                      }
+                    }
+                  } catch (_fuErr) {
+                    console.warn(`[worker:${workerSlug}] Drive follow-up failed:`, _fuErr.message);
+                    aiText = _fuErr.message === "drive_followup_timeout"
+                      ? `I retrieved the file but the analysis timed out. Try asking about a specific section or convert large files to Google Sheets for faster access.`
+                      : (_driveToolResult.startsWith("Could not") ? _driveToolResult : `I read the file — here's a summary:\n\n${_driveToolResult.slice(0, 2000)}`);
+                  }
                 }
               }
 
@@ -6158,8 +6310,16 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               });
             }
           } catch (workerErr) {
-            console.error(`[chatEngine] Worker handler failed for ${workerSlug}:`, workerErr.message);
-            // Fall through to sales mode
+            console.error(`[chatEngine] Worker handler failed for ${workerSlug}:`, workerErr.message, workerErr.stack);
+            // Return a proper error response — falling through to sales mode would
+            // produce a non-response if no sales block matches, causing "Failed to fetch".
+            return res.json({
+              ok: true,
+              response: `I hit a snag on my end — ${workerErr.message}. Please try again.`,
+              conversationState: 'worker_active',
+              canvasSignal: null,
+              canvasRenders: [],
+            });
           }
         }
 
@@ -7193,7 +7353,7 @@ Only you (Alex) may push alerts. Domain workers cannot write to the Operating Fe
 YOUR TOOLS — the complete list of what you can actually call. Never claim a tool exists that is not on this list. Never deny a tool that is on this list.
 - web_search: search the live internet. Call any time current facts, competitor data, pricing, or regulations are needed.
 - fetch_url: fetch and read any public web page.
-- generate_document: produce a PDF, Word doc, Excel model, or PowerPoint deck — user gets a download link.
+- generate_document: produce a PDF, Word doc, Excel model, or PowerPoint deck — user gets a download link. If Drive is connected, the file is also saved to their Drive automatically (xlsx→Google Sheets, docx→Google Docs, pptx→Google Slides).
 - generate_image: generate an image, logo, illustration, or visual via Fal.ai — renders inline in chat.
 - search_drive: find files in the user's connected Google Drive by name or keywords.
 - read_drive_file: read a Google Drive file (Sheets→CSV, Docs→text, Excel, CSV, plain text). NEVER tell the user to download it themselves — read it directly.
@@ -7306,7 +7466,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                 const _isDocRequest = /whitepaper|white paper|deck|slide|rewrite|draft|document|report|analysis|brief|outline|proposal|strategy|plan|summary|generate|create a|write a|write the/i.test(userInput);
                 const _cosDocTool = {
                   name: "generate_document",
-                  description: "Generate a downloadable document and return a download URL. Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template. Returns a real download URL the user can click.",
+                  description: "Generate a document and return a download URL. If the user has Google Drive connected, the document is automatically saved to their Drive (xlsx→Google Sheets, docx→Google Docs, pptx→Google Slides). Call this whenever the user asks to create, draft, generate, export, or download any document, report, memo, deck, presentation, contract, proposal, letter, spreadsheet, or financial model. Choose the closest template.",
                   input_schema: {
                     type: "object",
                     properties: {
@@ -7596,7 +7756,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                   const _cosTool = _resp.content.find(b => b.type === "tool_use");
                   if (_cosTool && _cosTool.name === "generate_document") {
                     try {
-                      const { generateDocument } = require("./documents");
+                      const { generateDocument, saveToDrive } = require("./documents");
                       const _docResult = await generateDocument({
                         tenantId: _cosTenantId || authUser.uid,
                         userId: authUser.uid,
@@ -7605,11 +7765,21 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         content: _cosTool.input.content,
                         title: _cosTool.input.title,
                         metadata: { workerSlug: "chief-of-staff", surface: "cos" },
+                        returnBuffer: true,
                       });
                       let _docToolResult;
                       if (_docResult.ok) {
-                        _cosGeneratedDoc = { title: _cosTool.input.title, format: _docResult.format || _cosTool.input.format || "pdf", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId };
-                        _docToolResult = `Document generated. Title: "${_cosTool.input.title}". Format: ${_cosGeneratedDoc.format.toUpperCase()}. Download URL: ${_docResult.downloadUrl}. Tell the user their document is ready with a brief summary. Do not repeat the URL.`;
+                        let _cDriveLink = null;
+                        if (_docResult.buffer) {
+                          try {
+                            const _cDriveUp = await saveToDrive({ buffer: _docResult.buffer, format: _docResult.format, title: _cosTool.input.title || "Document", userId: authUser.uid });
+                            if (_cDriveUp.ok) _cDriveLink = _cDriveUp.webViewLink;
+                            else if (_cDriveUp.needsReauth) console.warn("[COS] Drive write scope missing — user needs to reconnect Drive");
+                          } catch (_cDriveErr) { console.warn("[COS] Drive upload failed:", _cDriveErr.message); }
+                        }
+                        _cosGeneratedDoc = { title: _cosTool.input.title, format: _docResult.format || _cosTool.input.format || "pdf", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId, driveLink: _cDriveLink };
+                        const _cDriveMsg = _cDriveLink ? ` It has also been saved to the user's Google Drive.` : "";
+                        _docToolResult = `Document generated. Title: "${_cosTool.input.title}". Format: ${_cosGeneratedDoc.format.toUpperCase()}. Download URL: ${_docResult.downloadUrl}.${_cDriveMsg} Tell the user their document is ready with a brief summary. Do not repeat the URL.`;
                       } else {
                         console.warn("[COS] generate_document ok:false", { error: _docResult.error, templateId: _cosTool.input.templateId, contentKeys: Object.keys(_cosTool.input.content || {}) });
                         _docToolResult = `Document generation failed: ${_docResult.error || "unknown error"}. Apologize and offer to provide the content as text.`;
@@ -7837,7 +8007,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     const _driveFollowTool = _driveReadFollowUp.content.find(b => b.type === "tool_use");
                     if (_driveFollowTool && _driveFollowTool.name === "generate_document") {
                       try {
-                        const { generateDocument } = require("./documents");
+                        const { generateDocument, saveToDrive } = require("./documents");
                         const _docResult = await generateDocument({
                           tenantId: _cosTenantId || authUser.uid,
                           userId: authUser.uid,
@@ -7846,12 +8016,21 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                           content: _driveFollowTool.input.content,
                           title: _driveFollowTool.input.title,
                           metadata: { workerSlug: "chief-of-staff", surface: "cos" },
+                          returnBuffer: true,
                         });
                         if (_docResult.ok) {
-                          _cosGeneratedDoc = { title: _driveFollowTool.input.title, format: _docResult.format || _driveFollowTool.input.format || "xlsx", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId };
+                          let _dfDriveLink = null;
+                          if (_docResult.buffer) {
+                            try {
+                              const _dfDriveUp = await saveToDrive({ buffer: _docResult.buffer, format: _docResult.format, title: _driveFollowTool.input.title || "Document", userId: authUser.uid });
+                              if (_dfDriveUp.ok) _dfDriveLink = _dfDriveUp.webViewLink;
+                            } catch (_dfDriveErr) { console.warn("[COS:drive→doc] Drive upload failed:", _dfDriveErr.message); }
+                          }
+                          _cosGeneratedDoc = { title: _driveFollowTool.input.title, format: _docResult.format || _driveFollowTool.input.format || "xlsx", downloadUrl: _docResult.downloadUrl, docId: _docResult.docId, driveLink: _dfDriveLink };
                         }
+                        const _dfDriveMsg = _cosGeneratedDoc?.driveLink ? ` It has also been saved to the user's Google Drive.` : "";
                         const _docToolResult = _docResult.ok
-                          ? `Document generated. Title: "${_driveFollowTool.input.title}". Format: ${(_docResult.format||"xlsx").toUpperCase()}. Download URL: ${_docResult.downloadUrl}. Tell the user their document is ready with a brief summary. Do not repeat the URL.`
+                          ? `Document generated. Title: "${_driveFollowTool.input.title}". Format: ${(_docResult.format||"xlsx").toUpperCase()}. Download URL: ${_docResult.downloadUrl}.${_dfDriveMsg} Tell the user their document is ready with a brief summary. Do not repeat the URL.`
                           : `Document generation failed: ${_docResult.error || "unknown error"}.`;
                         const _docFollowUp = await anthropic.messages.create({
                           model: "claude-sonnet-4-6", max_tokens: 2048, system: cosPrompt,

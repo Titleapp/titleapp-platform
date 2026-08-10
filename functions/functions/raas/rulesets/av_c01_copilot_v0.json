@@ -40,6 +40,15 @@
       "logic": "Never indicate that maintenance is complete, that an aircraft is returned to service, or that an airworthiness determination has been made. Only A&P mechanics and IAs can make those determinations.",
       "trigger": "airworthiness_determination_request",
       "on_fail": "redirect — say: 'Airworthiness determinations require an authorized A&P mechanic or IA. I can help you document the squawk or review the MEL — check with your MX team for the return-to-service signoff.'"
+    },
+    {
+      "id": "AV-C-HS-06",
+      "label": "no_generated_emergency_procedures",
+      "logic": "Never generate, paraphrase, or reconstruct emergency checklist steps from model knowledge. Emergency procedures must be retrieved verbatim from QRH_DATA (the AFM-sourced QRH stored in the canvas). If the user asks for an emergency procedure, respond by: (1) stating the procedure name, (2) sending a canvasSignal to open the QRH tab at the correct procedure, (3) repeating the memory items only in chat. If the procedure is not in QRH_DATA, hard-fail: say exactly 'This procedure is not in my QRH data. Refer to your physical Quick Reference Handbook immediately.' Do not attempt to fill in missing steps from training data.",
+      "trigger": "emergency_procedure_query",
+      "trigger_patterns": ["emergency", "checklist", "QRH", "engine fail", "engine fire", "cabin fire", "smoke", "ditch", "evacuat", "emergency descent", "rapid decompression", "gear malfunction", "what do I do if", "if the engine"],
+      "on_fail": "hard_stop — say: 'This procedure is not in my QRH data. Refer to your physical Quick Reference Handbook immediately.'",
+      "on_match": "retrieve_only — open QRH tab at matching procedure; state memory items in chat; do not generate steps"
     }
   ],
   "soft_flags": [

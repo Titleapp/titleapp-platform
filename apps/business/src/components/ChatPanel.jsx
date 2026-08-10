@@ -2971,6 +2971,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     >
                       Download
                     </a>
+                    {msg.generatedDocument.driveLink && (
+                      <a
+                        href={msg.generatedDocument.driveLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open in Google Drive"
+                        style={{ padding: "7px 14px", background: "#fff", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 87.3 78" style={{ flexShrink: 0 }}><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.55A9.06 9.06 0 000 53.05h27.45z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.85L73.55 76.8z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.85 53.05H27.45L13.7 76.85c1.35.8 2.9 1.15 4.5 1.15h50.9c1.6 0 3.15-.4 4.5-1.15z" fill="#2684fc"/><path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.2 28.05H87.3c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+                        Drive
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

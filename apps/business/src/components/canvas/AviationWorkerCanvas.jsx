@@ -9,6 +9,10 @@ import { getAvCanvas, AV_CAS, AV_CAS_ORDER, AV_CAS_LABELS } from "./aviationCanv
 import MapCard from "./MapCard";
 import TabDescription from "./TabDescription";
 import AviationMap from "./AviationMap";
+import AviationCharts from "./AviationCharts";
+import SyntheticPFD from "./SyntheticPFD";
+import AviationNearest from "./AviationNearest";
+import AviationQRH from "./AviationQRH";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -237,17 +241,59 @@ function Flags({ items }) {
   );
 }
 
-function Cards({ items }) {
+// Extract the "Say: '...'" prompt from a card's detail text.
+function extractSayPrompt(detail) {
+  const m = (detail || "").match(/Say:\s*['"](.+?)['"]/);
+  return m ? m[1] : null;
+}
+
+function Cards({ items, onTabSwitch, onChatFill }) {
   return (
     <div style={{ marginBottom: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-      {items.map((card, i) => { const cc = c(card.band); return (
-        <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: cc.bg, border: `1px solid ${cc.border}` }}>
-          {card.label && <div style={{ fontSize: 10, fontWeight: 700, color: cc.text, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>{card.label}</div>}
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{card.title}</div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>{card.detail}</div>
-          {card.action && <div style={{ fontSize: 12, fontWeight: 600, color: "#0284c7", marginTop: 8 }}>{card.action} →</div>}
-        </div>
-      ); })}
+      {items.map((card, i) => {
+        const cc = c(card.band);
+        const sayPrompt = extractSayPrompt(card.detail);
+
+        function handleAction() {
+          if (!card.action) return;
+          if (card.action === "Open course" && onTabSwitch) {
+            onTabSwitch("active-course");
+          } else if (
+            (card.action === "Start quiz" || card.action === "Start lesson" || card.action === "Study with Skye") &&
+            sayPrompt
+          ) {
+            window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: sayPrompt } }));
+            if (onChatFill) onChatFill(sayPrompt);
+          }
+        }
+
+        const isClickable = card.action === "Open course" ||
+          ((card.action === "Start quiz" || card.action === "Start lesson" || card.action === "Study with Skye") && sayPrompt);
+
+        return (
+          <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: cc.bg, border: `1px solid ${cc.border}` }}>
+            {card.label && <div style={{ fontSize: 10, fontWeight: 700, color: cc.text, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>{card.label}</div>}
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{card.title}</div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>{card.detail}</div>
+            {card.action && (
+              isClickable ? (
+                <button
+                  onClick={handleAction}
+                  style={{
+                    marginTop: 10, padding: "5px 14px", fontSize: 12, fontWeight: 700,
+                    background: "#0284c7", color: "#fff", border: "none",
+                    borderRadius: 6, cursor: "pointer",
+                  }}
+                >
+                  {card.action} →
+                </button>
+              ) : (
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#0284c7", marginTop: 8 }}>{card.action} →</div>
+              )
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -293,12 +339,12 @@ function Prose({ items }) {
   );
 }
 
-function Block({ block }) {
+function Block({ block, onTabSwitch, onChatFill }) {
   switch (block.type) {
     case "heroes":  return <Heroes items={block.items} />;
     case "kpis":    return <Kpis items={block.items} />;
     case "flags":   return <Flags items={block.items} />;
-    case "cards":   return <Cards items={block.items} />;
+    case "cards":   return <Cards items={block.items} onTabSwitch={onTabSwitch} onChatFill={onChatFill} />;
     case "table":   return <AvTable title={block.title} cols={block.cols} rows={block.rows} />;
     case "prose":   return <Prose items={block.items} />;
     case "map":
@@ -315,10 +361,19 @@ function Block({ block }) {
             zoom={block.zoom || 7}
             height={block.height || 560}
             icaos={block.icaos || ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH"]}
+            fleetTails={block.fleetTails || []}
             compact={false}
           />
         </div>
       );
+    case "aviationCharts":
+      return <div style={{ marginBottom: 18 }}><AviationCharts /></div>;
+    case "syntheticPfd":
+      return <div style={{ marginBottom: 18 }}><SyntheticPFD /></div>;
+    case "nearest":
+      return <div style={{ marginBottom: 18 }}><AviationNearest /></div>;
+    case "aviationQrh":
+      return <div style={{ marginBottom: 18 }}><AviationQRH initialProcedureId={block.procedureId} /></div>;
     default: return null;
   }
 }
@@ -503,7 +558,7 @@ export default function AviationWorkerCanvas({ workerSlug }) {
 
       {/* Tab blocks */}
       {tabBlocks.map((block, i) => (
-        <Block key={i} block={block} />
+        <Block key={i} block={block} onTabSwitch={setActiveTab} onChatFill={null} />
       ))}
     </div>
   );

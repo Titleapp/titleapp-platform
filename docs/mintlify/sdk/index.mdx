@@ -1,0 +1,45 @@
+---
+title: Creator SDK Overview
+description: Build a governed AI worker on SOCIII — no backend infrastructure required.
+---
+
+# Creator SDK
+
+The SOCIII Creator SDK lets domain experts — nurses, pilots, real estate attorneys, teachers — build AI workers that run on the SOCIII platform. You bring the domain knowledge; the platform handles infrastructure, billing, auth, records, and delivery.
+
+## What you're building
+
+A **Digital Worker** is a governed AI agent with:
+- A **canvas** — tabs the user sees with real data
+- A **chat interface** — Alex (or your custom AI) running on your rules
+- **Records** — append-only, owned by the user, stored in the Vault
+- **Rules** — your domain logic, enforced at the platform level
+
+## Who this is for
+
+You don't need to be an engineer. The SDK is designed for domain experts who can describe their workflow clearly. Your AI (Claude Code) does the coding; you do the specification and review.
+
+Ruthie Clearwater (nursing) and Scott Eschelman (commercial real estate) are both building workers without prior software engineering experience.
+
+## Getting started
+
+The fastest path: paste [CREATOR-SETUP.md](https://github.com/titleapp-platform/blob/main/docs/CREATOR-SETUP.md) into Claude or ChatGPT and say "walk me through it one step at a time." The AI becomes your guide.
+
+```bash
+# After setup, clone the SDK
+git clone https://github.com/SOCIII-Inc/sociii-sdk.git
+cd sociii-sdk
+```
+
+- [Full setup guide →](/sdk/setup)
+- [What you can build →](/sdk/capabilities)
+- [How workers are structured →](/sdk/worker-build)
+- [Creator earnings →](/sdk/earnings)
+
+## SDK repository
+
+The open SDK lives at [github.com/SOCIII-Inc/sociii-sdk](https://github.com/SOCIII-Inc/sociii-sdk). It includes:
+- Worker spec templates
+- Canvas tab examples
+- Service module patterns
+- The versioned capability contract

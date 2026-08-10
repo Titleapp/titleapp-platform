@@ -1,0 +1,43 @@
+---
+title: What is SOCIII?
+description: SOCIII is a platform for building, governing, and scaling AI workers in regulated professions.
+---
+
+# What is SOCIII?
+
+SOCIII is a platform for building, governing, and scaling AI workers in regulated professions. The core technology is **RAAS — Rules + AI as a Service**: a four-tier rules engine that governs every AI output before it commits to a record.
+
+Every decision is recorded in an append-only, cryptographically anchored audit trail. The AI proposes; the rules engine validates; the user confirms; only then does an event append.
+
+## What makes it different
+
+Most AI tools let the model decide what to do. SOCIII inverts this: business logic lives in rules, not prompts. The model is interchangeable (Claude, GPT, Gemini); the rules are what the platform enforces.
+
+| Other AI tools | SOCIII |
+|---|---|
+| Model decides what's correct | Rules engine decides what's allowed |
+| Outputs go directly to user | Outputs validated before committing |
+| Records live in the model's context | Records are append-only, portable, and signed |
+| One size fits all industries | Each vertical has its own rule tier |
+
+## How it works
+
+```
+User → Alex (Chief of Staff) → Digital Worker → Rules Engine → Append-only Record
+```
+
+1. **Alex** is the orchestration layer — he routes tasks to the right worker and monitors your entire workspace
+2. **Digital Workers** are domain-specific AI agents with pre-loaded industry rules
+3. **The Rules Engine** (RAAS) validates every output against four tiers of rules before anything commits
+4. **The Vault** is the append-only record store — immutable, portable, and cryptographically anchored
+
+## Patent status
+
+SOCIII's append-only record model, rules validation engine, and ownership/transfer semantics are covered under pending USPTO filings (May 2026). Delaware C-Corp, Las Vegas NV.
+
+## Quick links
+
+- [What is RAAS?](/docs/what-is-raas)
+- [Platform architecture](/docs/architecture)
+- [Pricing](/docs/pricing)
+- [Creator SDK](/sdk/index)

@@ -16,7 +16,67 @@ const GENERATORS = {
   pptx: generatePptx,
 };
 
-async function generateDocument({ tenantId, userId, templateId, format, content, title, metadata }) {
+// MIME type map for Drive upload — source format → Google Workspace target
+const DRIVE_MIME_MAP = {
+  docx: {
+    sourceMime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    targetMime: "application/vnd.google-apps.document",
+  },
+  xlsx: {
+    sourceMime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    targetMime: "application/vnd.google-apps.spreadsheet",
+  },
+  pptx: {
+    sourceMime: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    targetMime: "application/vnd.google-apps.presentation",
+  },
+  pdf: {
+    sourceMime: "application/pdf",
+    targetMime: null, // keep as PDF — no conversion
+  },
+};
+
+/**
+ * Upload a document buffer to the user's Google Drive.
+ * Converts docx/xlsx/pptx to native Google Docs/Sheets/Slides automatically.
+ * Returns { ok, webViewLink, fileId } or { ok: false, error, needsReauth }.
+ */
+async function saveToDrive({ buffer, format, title, userId }) {
+  const mimeInfo = DRIVE_MIME_MAP[format];
+  if (!mimeInfo) return { ok: false, error: `Drive upload not supported for format: ${format}` };
+
+  const { getAuthenticatedDriveClient } = require("../services/vault/driveAuth");
+  const driveClient = await getAuthenticatedDriveClient(userId);
+
+  if (!driveClient.canWrite || !driveClient.files.create) {
+    return { ok: false, error: "Drive write permission not granted", needsReauth: true };
+  }
+
+  const fileName = mimeInfo.targetMime
+    ? title  // no extension — Google Workspace files don't show extensions
+    : `${title}.${format}`;
+
+  const res = await driveClient.files.create({
+    requestBody: {
+      name: fileName,
+      ...(mimeInfo.targetMime ? { mimeType: mimeInfo.targetMime } : {}),
+    },
+    media: {
+      mimeType: mimeInfo.sourceMime,
+      body: buffer,
+    },
+    fields: "id,name,webViewLink",
+  });
+
+  return {
+    ok: true,
+    fileId: res.data.id,
+    fileName: res.data.name,
+    webViewLink: res.data.webViewLink,
+  };
+}
+
+async function generateDocument({ tenantId, userId, templateId, format, content, title, metadata, returnBuffer }) {
   // Validate template
   const template = getTemplate(templateId);
   if (!template) {
@@ -75,6 +135,8 @@ async function generateDocument({ tenantId, userId, templateId, format, content,
     pageCount: saved.pageCount,
     downloadUrl: saved.downloadUrl,
     generatedAt: new Date().toISOString(),
+    // Only include buffer when caller explicitly requests it (for Drive upload)
+    ...(returnBuffer ? { buffer: result.buffer } : {}),
   };
 }
 
@@ -99,4 +161,4 @@ function getTemplates(category) {
   return { ok: true, templates: listTemplates(category) };
 }
 
-module.exports = { generateDocument, getDocument, listDocuments, getTemplates };
+module.exports = { generateDocument, saveToDrive, getDocument, listDocuments, getTemplates };

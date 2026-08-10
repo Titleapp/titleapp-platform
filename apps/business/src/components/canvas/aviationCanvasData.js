@@ -69,6 +69,42 @@ export const AV_CANVAS = {
         ],
       },
       {
+        id: "flight",
+        label: "Flight",
+        description: "Your next planned flight — ForeFlight-style. Fill in the details with Alex and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "BLUE",   title: "Next flight — PHOG → PHNL",          detail: "Aug 9 2026 · ETD 08:00 HST · IFR · FL230 · N661LF · Crew: Combs" },
+            { band: "GREEN",  title: "Weather — VFR improving",             detail: "PHOG VFR · PHNL VFR · Enroute clear · No SIGMETs" },
+            { band: "YELLOW", title: "W&B check required before release",   detail: "Planned pax not yet added — tell Skye your pax weights to compute W&B" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Date",                value: "Aug 9 2026",            band: "WHITE" },
+            { label: "ETD (HST)",           value: "08:00",                 band: "WHITE" },
+            { label: "Departure",           value: "PHOG (Kahului)",        band: "WHITE" },
+            { label: "Destination",         value: "PHNL (Honolulu)",       band: "WHITE" },
+            { label: "Alternate",           value: "PHKO (Kona)",           band: "WHITE" },
+            { label: "Aircraft",            value: "N661LF · PC-12/47E",    band: "WHITE" },
+            { label: "Route",               value: "PHOG V19 PHNL",        band: "WHITE" },
+            { label: "Altitude",            value: "FL230 IFR",             band: "WHITE" },
+            { label: "ETE",                 value: "~0:45",                 band: "WHITE" },
+            { label: "Fuel required",       value: "~65 gal",               band: "GREEN" },
+            { label: "FBO — PHOG",          value: "Signature Flight Support", band: "WHITE" },
+            { label: "FBO — PHNL",          value: "Signature Flight Support", band: "WHITE" },
+          ] },
+          { type: "table", title: "Navlog — PHOG → PHNL · IFR", cols: ["Fix", "Radial/Dist", "Alt", "TAS", "Wind", "GS", "ETE"], rows: [
+            ["PHOG",  "Dep",       "4,000",  "—",     "—",       "—",    "0:00"],
+            ["MKK",   "V19 34nm",  "FL230",  "270kt", "270/25",  "295kt","0:07"],
+            ["PHNL",  "V19 55nm",  "Desc",   "270kt", "270/20",  "290kt","0:11"],
+            ["TOT",   "89nm",      "—",      "—",     "—",       "—",    "0:18"],
+          ] },
+          { type: "cards", items: [
+            { band: "BLUE", label: "BUILD PREFLIGHT PACKAGE", title: "Tell Skye to pull the full go/no-go package", detail: "Say: 'Build me a preflight package for PHOG to PHNL tomorrow at 08:00.' Skye pulls live weather, NOTAMs, computes W&B with your pax weights, scores the FRAT, and generates the release package.", action: "Open chat" },
+            { band: "BLUE", label: "FILE FLIGHT PLAN", title: "Tell Skye to file IFR with PHOG clearance delivery", detail: "Say: 'File my IFR for PHOG PHNL FL230 V19 at 0800Z.' Skye formats the flight plan and confirms filing.", action: "File plan" },
+          ] },
+        ],
+      },
+      {
         id: "currency",
         label: "Currency",
         description: "Your full compliance record — every training item, completion date, and expiration. This is what FVO shows you, plus the intelligence to act on it.",
@@ -131,8 +167,8 @@ export const AV_CANVAS = {
       },
       {
         id: "trip",
-        label: "Trip",
-        description: "The immutable record for this trip — every event timestamped and signed from preflight release through debrief. This is your IRS business-purpose log and your compliance record.",
+        label: "Past Trips",
+        description: "Historical trip record — every past flight timestamped and signed from preflight release through debrief. This is your IRS business-purpose log and compliance archive. For your next planned flight, use the Flight tab.",
         blocks: [
           { type: "heroes", items: [
             { band: "GREEN", title: "Trip closed",             detail: "PA26-0721 · Jul 21 2026 · 2.1 hrs PIC" },
@@ -184,7 +220,7 @@ export const AV_CANVAS = {
       {
         id: "logbook",
         label: "Logbook",
-        description: "Your digital pilot logbook — append-only, chain-signed, and portable. Every entry timestamped at the time of flight. IRS-ready with business purpose on every trip.",
+        description: "Your digital pilot logbook — append-only, chain-signed, and portable. FAA-standard columns with Day/Night, IFR/VFR, landings, and approach types.",
         blocks: [
           { type: "kpis", items: [
             { label: "Calendar year (PC-12)", value: "116.8 hrs",  band: "WHITE" },
@@ -192,13 +228,17 @@ export const AV_CANVAS = {
             { label: "Last 90 days",          value: "54.9 hrs",   band: "WHITE" },
             { label: "Last 60 days",          value: "33.4 hrs",   band: "WHITE" },
             { label: "Last 30 days",          value: "7.0 hrs",    band: "WHITE" },
+            { label: "Night — last 90 days",  value: "18.3 hrs",   band: "WHITE" },
+            { label: "IFR actual — 90 days",  value: "41.2 hrs",   band: "WHITE" },
+            { label: "Day landings — 90 days",value: "34",         band: "WHITE" },
+            { label: "Night landings — 90d",  value: "12",         band: "WHITE" },
           ] },
-          { type: "table", title: "Recent flights — PC-12 / Life Flight Network", cols: ["Date", "Route", "Aircraft", "Block", "PIC", "Purpose"], rows: [
-            ["Aug 04", "KBFL–KLAX", "PC-12", "1.1", "1.1", "Air medical transport"],
-            ["Aug 01", "KLAX–KBFL", "PC-12", "1.2", "1.2", "Return positioning"],
-            ["Jul 28", "KBFL–KSBA", "PC-12", "0.9", "0.9", "Air medical transport"],
-            ["Jul 24", "KBFL–KLAX", "PC-12", "1.1", "1.1", "Air medical transport"],
-            ["Jul 20", "KLAX–KBFL", "PC-12", "1.2", "1.2", "Return positioning"],
+          { type: "table", title: "Recent flights — PC-12 / Life Flight Network", cols: ["Date", "Route", "Aircraft", "Total", "Day", "Night", "IFR", "Day Ldg", "Night Ldg", "Apch", "Purpose"], rows: [
+            ["Aug 04", "PHOG–PHNL", "PC-12/47E", "0.8", "0.8", "—",  "0.8", "1", "—", "ILS 04L", "Air medical"],
+            ["Aug 01", "PHNL–PHOG", "PC-12/47E", "0.8", "0.5", "0.3","0.8", "—", "1", "RNAV 02", "Positioning"],
+            ["Jul 28", "PHOG–PHKO", "PC-12/47E", "0.9", "0.9", "—",  "0.7", "1", "—", "VFR",     "Air medical"],
+            ["Jul 24", "PHKO–PHNL", "PC-12/47E", "1.1", "0.8", "0.3","1.1", "—", "1", "ILS 08L", "Air medical"],
+            ["Jul 20", "PHNL–PHOG", "PC-12/47E", "0.8", "—",  "0.8","0.8", "—", "1", "RNAV 02", "Positioning"],
           ] },
           { type: "prose", items: [
             { band: "BLUE", title: "IRS documentation standard", text: "Every entry includes business purpose recorded at time of flight — not reconstructed later. This is what the IRS means by 'contemporaneous' logbook. Chain-signed entries cannot be altered after the fact. Export this record any time for your CPA or an audit." },
@@ -206,32 +246,35 @@ export const AV_CANVAS = {
         ],
       },
       {
-        id: "nav-database",
-        label: "Nav Database",
-        description: "AIRAC-cycle regional navigation database — the same 28-day cycle system used by ForeFlight and Garmin. Download your region before it expires. Workers check currency automatically; a YELLOW alert fires 7 days before expiry.",
+        id: "charts",
+        label: "Charts",
+        description: "Approach and departure charts, airport diagrams, and preferred IFR routing for your bases — PHOG, PHNL, PHKO, PHTO, PHNY. Sourced from FAA AeroNav. Always verify chart currency against the current AIRAC cycle before flight.",
         blocks: [
-          { type: "heroes", items: [
-            { band: "GREEN",  title: "AIRAC 2614 · Current",         detail: "Effective Jul 31 2026 · Expires Aug 27 2026 · 26 days remaining" },
-            { band: "GREEN",  title: "Southwest package installed",   detail: "NV/AZ/UT · 1,847 waypoints · 312 navaids · 94 airports · 2.1 MB" },
-            { band: "YELLOW", title: "Hawaii package expiring",       detail: "AIRAC 2613 installed · New package 2614 available now — tap to update" },
-          ] },
-          { type: "kpis", items: [
-            { label: "Current AIRAC cycle",   value: "2614",              band: "GREEN" },
-            { label: "Cycle effective",        value: "Jul 31 2026",       band: "WHITE" },
-            { label: "Cycle expires",          value: "Aug 27 2026",       band: "WHITE" },
-            { label: "Days remaining",         value: "26 days",           band: "GREEN" },
-          ] },
-          { type: "table", title: "Available regional packages — AIRAC 2614", cols: ["Region", "Coverage", "Size", "Status", "Action"], rows: [
-            { band: "GREEN",  cells: ["Southwest",  "NV · AZ · UT · CO corners",       "2.1 MB", "Installed 2614", "Current"] },
-            { band: "YELLOW", cells: ["Hawaii",     "All major islands + PHOG PHTO",    "0.8 MB", "Installed 2613", "Update available"] },
-            { band: "WHITE",  cells: ["SoCal",      "LA · San Diego · KONT · KBUR",     "1.9 MB", "Not installed",  "Download"] },
-            { band: "WHITE",  cells: ["NorCal",     "Bay Area · Sacramento · KSFO",     "1.7 MB", "Not installed",  "Download"] },
-            { band: "WHITE",  cells: ["Northeast",  "NYC · Boston · Philly",            "2.4 MB", "Not installed",  "Download"] },
-            { band: "WHITE",  cells: ["Florida",    "Miami · Orlando · Tampa",          "1.6 MB", "Not installed",  "Download"] },
-          ] },
-          { type: "prose", items: [
-            { band: "BLUE", title: "How AIRAC cycles work", text: "The aeronautical world runs on 28-day cycles — every airport, waypoint, navaid, and airspace boundary updates on a synchronized schedule. AIRAC 2614 is the 14th cycle of 2026. Your navigation database must match the current cycle to give accurate approach, waypoint, and airspace data. CoPilot automatically checks your installed cycle against the active cycle and alerts you 7 days before expiry — the same advance warning window that ForeFlight uses." },
-          ] },
+          { type: "aviationCharts" },
+        ],
+      },
+      {
+        id: "synthetic-pfd",
+        label: "Synthetic PFD",
+        description: "Device-sensor-based backup flight display — attitude from motion sensors, speed and altitude from GPS. Independent of aircraft avionics. The independence is the entire point: panel-dark scenario, pre-flight situational awareness, post-maintenance function check. NOT a certified instrument. Verify against aircraft instruments at all times.",
+        blocks: [
+          { type: "syntheticPfd" },
+        ],
+      },
+      {
+        id: "nearest",
+        label: "NEAREST",
+        description: "Nearest airports ranked by distance with glide-range rings and arrival altitude calculated at your current altitude. PC-12/47E best glide: 118 KIAS, 15:1 per POH/AFM. Shows estimated arrival altitude at each airport — reachable with margin (green), marginal (yellow), or out of range (red). Enter altitude or use GPS to recalculate live.",
+        blocks: [
+          { type: "nearest" },
+        ],
+      },
+      {
+        id: "qrh",
+        label: "QRH",
+        description: "Emergency Quick Reference Handbook — verbatim checklists from the PC-12/47E AFM. Memory items appear first. These procedures are retrieved, never generated. If a procedure is not in this database, refer to your physical QRH immediately.",
+        blocks: [
+          { type: "aviationQrh" },
         ],
       },
     ],
@@ -239,85 +282,144 @@ export const AV_CANVAS = {
 
   // ──────────────────────────── MX / MAINTENANCE ────────────────────────────
   "av-mx-001": {
-    title: "Aircraft Record",
-    subtitle: "N662FW · King Air B200 · S/N BB-1847",
+    title: "MX",
+    subtitle: "PC-12/47E · Life Flight Network · Hawaii",
     disclaimer: "Airworthiness determination is the sole authority of the certifying A&P/IA — this record is for tracking and documentation only",
-    cas: { RED: 0, YELLOW: 1, BLUE: 1, WHITE: 4, GREEN: 5 },
+    cas: { RED: 0, YELLOW: 1, BLUE: 1, WHITE: 3, GREEN: 4 },
     tabs: [
       {
-        id: "airworthiness",
-        label: "Airworthiness",
-        description: "N662FW's complete airworthiness picture — inspections, engine time, and open MEL items at a glance.",
+        id: "aircraft",
+        label: "Aircraft",
+        description: "Your aircraft record — the anchor for all maintenance, inspections, and compliance tracking. Everything else connects here.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN",  title: "AIRWORTHY",       detail: "No Category A or B MEL items · cleared for all operations" },
-            { band: "YELLOW", title: "1 MEL deferred",  detail: "Cat C · gear door light inop · 30-day window · day/night OK" },
-            { band: "GREEN",  title: "Annual current",  detail: "Completed Dec 15 2025 · Next due Dec 15 2026" },
+            { band: "GREEN",  title: "AIRWORTHY · PC-12/47E",     detail: "No MEL Category A or B items · cleared for all operations" },
+            { band: "GREEN",  title: "Annual current",             detail: "Completed Dec 2025 · Next due Dec 2026" },
+            { band: "YELLOW", title: "100-hour due in ~53 hrs",    detail: "Current: 1,847 TTSN · Due: 1,900 · At ~15 hrs/month → ~3.5 months" },
           ] },
           { type: "kpis", items: [
-            { label: "Total airframe time",  value: "1,847 hrs",                  band: "WHITE" },
-            { label: "Engine time (SMOH)",   value: "1,847 hrs / 3,600 TBO",     band: "WHITE" },
-            { label: "Engine remaining",     value: "1,753 hrs",                  band: "GREEN" },
-            { label: "Last 100-hr",          value: "1,800 hrs (47 hrs ago)",     band: "GREEN" },
+            { label: "Operator",            value: "Life Flight Network",   band: "WHITE" },
+            { label: "Make / Model",        value: "Pilatus PC-12/47E",     band: "WHITE" },
+            { label: "Engine",              value: "PT6A-67P · 1,200 SHP",  band: "WHITE" },
+            { label: "Total airframe time", value: "1,847 hrs TTSN",        band: "WHITE" },
+            { label: "Engine time (SMOH)",  value: "1,847 / 3,600 TBO",    band: "WHITE" },
+            { label: "Engine remaining",    value: "1,753 hrs",             band: "GREEN" },
+            { label: "Annual due",          value: "Dec 15 2026",           band: "GREEN" },
+            { label: "100-hour due",        value: "1,900 hrs (~53 away)",  band: "YELLOW" },
           ] },
-          { type: "table", title: "Inspection status", cols: ["Inspection", "Last completed", "Next due", "Status"], rows: [
-            ["Annual (FAR 91.409)",          "Dec 15 2025",  "Dec 15 2026",  "Current ✓"],
-            ["100-hour",                     "1,800 hrs",    "1,900 hrs",    "47 hrs used / 53 remaining"],
-            ["Altimeter/static (FAR 91.411)","Mar 2025",     "Mar 2027",     "Current ✓"],
-            ["Transponder (FAR 91.413)",     "Mar 2025",     "Mar 2027",     "Current ✓"],
-            ["ELT (FAR 91.207)",             "Dec 2025",     "Dec 2026",     "Current ✓"],
+          { type: "table", title: "Aircraft certificates", cols: ["Document", "Status", "Expires"], rows: [
+            ["FAA Registration",          "Current",   "Dec 31 2028"],
+            ["Standard Airworthiness",    "Current",   "No expiration (maintained)"],
+            ["IFR-certified (91.411)",    "Current",   "Mar 2027"],
+            ["Transponder (91.413)",      "Current",   "Mar 2027"],
+            ["ELT (91.207)",              "Current",   "Dec 2026"],
+          ] },
+        ],
+      },
+      {
+        id: "aircraft-logbook",
+        label: "Aircraft Logbook",
+        description: "Append-only aircraft maintenance logbook — every entry timestamped and A&P-signed. The legal record of this aircraft's life.",
+        blocks: [
+          { type: "table", title: "Maintenance logbook (most recent first)", cols: ["Date", "TTSN", "Description", "Category", "Signed by"], rows: [
+            ["Jul 15 2026", "1,847", "Gear door light R/M insp — socket defective, MEL deferred Cat C",   "Unscheduled", "Williams, R A&P"],
+            ["Jun 28 2026", "1,800", "100-hour inspection — all items cleared · oil change MIL-PRF-23699", "Scheduled",   "Williams, R A&P/IA"],
+            ["Jun 15 2026", "1,782", "PT6A chip detector inspection — no material · clear",                "Inspection",  "Williams, R A&P"],
+            ["May 10 2026", "1,744", "AD 2026-08-12 compliance — fuel cap seal replacement",               "AD",          "Williams, R A&P"],
+            ["Dec 15 2025", "1,601", "Annual inspection — all ADs current · airworthy",                    "Annual",      "Williams, R IA"],
+            ["Dec 12 2025", "1,601", "ELT battery replacement — Kannad 406 AF-Compact · exp Dec 2027",    "Inspection",  "Williams, R A&P"],
           ] },
           { type: "cards", items: [
-            { band: "YELLOW", label: "MEL CAT C · 30-DAY", title: "Gear door light — right main inoperative", detail: "Inop since Jul 15 2026 · MEL item 32-60-01 · Placard installed · No operational restriction day/night VFR/IFR · Defer to next scheduled MX visit · A&P notified: Williams, R", action: "View MEL item" },
+            { band: "BLUE", label: "LOG MAINTENANCE", title: "Tell Alex to log a maintenance entry", detail: "Say: 'Log maintenance on the PC-12 — [description], [A&P name], [TTSN], [date].' The entry appends to this logbook and cannot be altered after signing.", action: "Open chat" },
           ] },
         ],
       },
       {
-        id: "timeline",
-        label: "Timeline",
-        description: "Complete maintenance history for N662FW — every entry append-only and chain-signed. The full story of this aircraft.",
+        id: "scheduled-mx",
+        label: "Scheduled MX",
+        description: "All calendar- and hour-based scheduled maintenance — 100-hour, Annual, phase checks, and recurring ADs with due dates.",
         blocks: [
-          { type: "table", title: "Maintenance timeline (most recent first)", cols: ["Date", "Tach", "Description", "Status", "Signed by"], rows: [
-            ["Jul 15 2026", "1,847", "Gear door light R/M px insp — bulb replaced, socket defective, MEL deferred",    "MEL open",  "Williams, R A&P"],
-            ["Jul 14 2026", "1,847", "Return from PA26-0721 · 4.0 hrs logged",                                          "Logged",    "A. Rivera PIC"],
-            ["Jun 28 2026", "1,800", "100-hour inspection completed — all items cleared · oil change 8qt MIL-PRF-23699", "Signed off","Williams, R A&P / IA"],
-            ["Jun 15 2026", "1,782", "PT6A engine chip detector inspection — no material found · clear",                 "Closed",    "Williams, R A&P"],
-            ["May 10 2026", "1,744", "AD 2026-08-12 compliance — fuel cap seal replacement (recurring 12-month)",        "Complied",  "Williams, R A&P"],
-            ["Dec 15 2025", "1,601", "Annual inspection completed — all ADs current · airworthy",                        "Signed off","Williams, R IA"],
-            ["Dec 12 2025", "1,601", "ELT battery replacement — Kannad 406 AF-Compact · exp Dec 2027",                  "Closed",    "Williams, R A&P"],
+          { type: "table", title: "Upcoming scheduled maintenance", cols: ["Event", "Basis", "Due", "Remaining", "Status"], rows: [
+            ["100-hour inspection",             "Hours",    "1,900 hrs",    "53 hrs (~3.5 mo)",  "Schedule now"],
+            ["Annual inspection (91.409)",      "Calendar", "Dec 15 2026",  "~130 days",         "Plan ahead"],
+            ["ELT battery / inspection (91.207)","Calendar","Dec 2026",     "~130 days",         "Coordinate w/ Annual"],
+            ["Altimeter/static (91.411)",        "Calendar", "Mar 2027",    "~7 months",         "Tracking"],
+            ["Transponder (91.413)",             "Calendar", "Mar 2027",    "~7 months",         "Tracking"],
+            ["PT6A TBO (on-condition)",          "Hours",    "3,600 hrs",   "1,753 hrs",         "On track"],
+            ["AD 2026-08-12 fuel cap seal",      "Calendar", "May 2027",    "~9 months",         "Tracking"],
+          ] },
+          { type: "cards", items: [
+            { band: "YELLOW", label: "SCHEDULE NOW", title: "100-hour inspection due at 1,900 hrs", detail: "53 hrs remaining at current pace (~15 hrs/month) = approximately mid-November 2026. Coordinate with Williams MX now. Last 100-hr took 2 days AOG. Plan around Life Flight scheduling.", action: "Contact A&P" },
           ] },
         ],
       },
       {
-        id: "squawks",
-        label: "Squawks",
-        description: "Open discrepancies and their resolution status. Log a new squawk by telling Alex — it goes into the record immediately.",
+        id: "unscheduled-mx",
+        label: "Unscheduled MX",
+        description: "Open squawks, pilot write-ups, and unscheduled maintenance events. Log a squawk by telling Alex.",
         blocks: [
           { type: "flags", items: [
-            { band: "YELLOW", title: "Gear door light — right main", detail: "Logged Jul 15 2026 · MEL 32-60-01 · Cat C 30-day deferral · Placard installed at R/H main gear door · No dispatch restriction · A&P Williams notified · Repair scheduled Jul 28 · Part on order: light assy P/N 1149-002" },
+            { band: "YELLOW", title: "Gear door light — right main inoperative", detail: "Logged Jul 15 2026 · MEL 32-60-01 · Cat C 30-day deferral · Placard installed · No operational restriction day/night VFR/IFR · A&P Williams notified · Part on order: light assy P/N 1149-002 · Repair scheduled Jul 28" },
           ] },
           { type: "prose", items: [
-            { band: "GREEN", title: "No open Category A or B squawks", text: "N662FW is cleared for all operations. The one open item (gear door light) is a Category C MEL deferral — it does not restrict operations day or night, IFR or VFR. The placard is installed. Repair is scheduled for Jul 28 when the part arrives." },
+            { band: "GREEN", title: "No Category A or B open items", text: "Aircraft is cleared for all operations. One open Cat C MEL item (gear door light) does not restrict dispatch. Placard installed at R/H main gear door." },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'Log a squawk on N662FW — [describe the issue].' Alex will create a timestamped entry in the aircraft record and notify your A&P. The squawk is immutable — it cannot be deleted, only resolved.", action: "Open chat" },
+            { band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'Log a squawk — [describe the issue].' Alex creates a timestamped entry and notifies your A&P. Squawks are immutable — resolved, not deleted.", action: "Open chat" },
           ] },
         ],
       },
       {
-        id: "upcoming",
-        label: "Upcoming",
-        description: "What's coming due on N662FW — by date and by hours. Nothing should surprise you.",
+        id: "inspections",
+        label: "Inspections",
+        description: "Complete inspection status — every FAR-required and operator inspection with last completed and next due.",
         blocks: [
-          { type: "table", title: "Upcoming maintenance", cols: ["Item", "Basis", "Due", "Remaining", "Priority"], rows: [
-            ["100-hour inspection",           "Hours",    "1,900 hrs",  "53 hrs",       "Schedule now"],
-            ["Annual inspection",             "Calendar", "Dec 15 2026","148 days",     "Plan ahead"],
-            ["PT6A engine TBO",               "Hours",    "3,600 hrs",  "1,753 hrs",    "On track"],
-            ["AD 2026-08-12 (fuel cap seal)", "Calendar", "May 2027",   "~10 months",   "Tracking"],
-            ["Altimeter/static",              "Calendar", "Mar 2027",   "~8 months",    "Tracking"],
+          { type: "table", title: "Required inspection status", cols: ["Inspection", "FAR", "Last completed", "Next due", "Status"], rows: [
+            ["Annual inspection",           "91.409",  "Dec 15 2025",           "Dec 15 2026",         "Current ✓"],
+            ["100-hour inspection",         "91.409",  "Jun 28 2026 @ 1,800h",  "1,900h (~53 hrs)",    "⚠ Due ~Nov 2026"],
+            ["Altimeter/static system",     "91.411",  "Mar 2025",              "Mar 2027",            "Current ✓"],
+            ["Transponder",                 "91.413",  "Mar 2025",              "Mar 2027",            "Current ✓"],
+            ["ELT battery/inspection",      "91.207",  "Dec 2025",              "Dec 2026",            "Current ✓"],
+            ["VOR checks (IFR ops)",        "91.171",  "Per flight",            "Per flight",          "Crew responsibility"],
+            ["Pitot-static (IFR)",          "91.411",  "Mar 2025",              "Mar 2027",            "Current ✓"],
+            ["PT6A chip detector",          "Ops spec", "Jun 15 2026",          "Per 100-hr",          "Current ✓"],
           ] },
+          { type: "prose", items: [
+            { band: "BLUE", title: "Part 135 additional inspections", text: "Life Flight Network Part 135 OpSpecs add progressive/phase inspections above Part 91 minimums. Check current OpSpecs §D for operator-specific intervals on the PC-12/47E." },
+          ] },
+        ],
+      },
+      {
+        id: "ads-sbs",
+        label: "ADs / SBs",
+        description: "Airworthiness directive compliance and open service bulletins.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "GREEN",  title: "23 ADs complied",         detail: "All applicable ADs current as of Dec 2025 annual" },
+            { band: "YELLOW", title: "1 recurring AD upcoming", detail: "AD 2026-08-12 fuel cap seal due May 2027" },
+            { band: "GREEN",  title: "No emergency ADs",        detail: "No SAIB or emergency airworthiness directive outstanding" },
+          ] },
+          { type: "table", title: "Recurring ADs", cols: ["AD Number", "Subject", "Interval", "Last done", "Next due", "Status"], rows: [
+            ["2026-08-12", "PC-12 fuel cap seal replacement", "12-month", "May 2026",  "May 2027",  "Current ✓"],
+            ["2024-15-03", "Propeller hub inspection",        "1,000h",   "1,200h",    "2,200h",    "Current ✓"],
+          ] },
+          { type: "table", title: "Open service bulletins (non-mandatory)", cols: ["SB Number", "Subject", "Priority", "Status"], rows: [
+            ["PC12-25-027", "Cabin door seal replacement",    "Non-mandatory", "Open — review at next Annual"],
+            ["PC12-71-014", "Engine inlet de-ice inspection", "Non-mandatory", "Open — before winter ops"],
+          ] },
+        ],
+      },
+      {
+        id: "documents",
+        label: "Documents",
+        description: "Aircraft documents — AFM, registration, airworthiness certificate, weight & balance, and 337s.",
+        blocks: [
           { type: "cards", items: [
-            { band: "YELLOW", label: "SCHEDULE NOW", title: "100-hour inspection due at 1,900 hrs (53 hrs away)", detail: "At current flying rate (~15 hrs/month) this is due in approximately 3-4 months — September or October 2026. Coordinate with Williams MX now to avoid AOG. Last 100-hr took 2 days.", action: "Contact A&P" },
+            { band: "GREEN",  label: "AFM / POH",        title: "PC-12/47E AFM Rev 12", detail: "Uploaded · W&B and performance tabs active · 387 pages", action: "View" },
+            { band: "GREEN",  label: "REGISTRATION",     title: "FAA Registration — current", detail: "Expires Dec 31 2028 · Class: Airplane · Category: Standard", action: "View" },
+            { band: "GREEN",  label: "AIRWORTHINESS",    title: "Standard Airworthiness Certificate", detail: "Issued · No expiration · Aircraft maintained per Part 91/135", action: "View" },
+            { band: "GREEN",  label: "WEIGHT & BALANCE", title: "Current W&B data on file", detail: "Empty weight and CG from AFM · Used by CoPilot for preflight W&B computation", action: "View" },
+            { band: "YELLOW", label: "337 FORMS",        title: "No 337 field approvals on file", detail: "Upload any STC or field approval 337s if applicable.", action: "Upload" },
           ] },
         ],
       },
@@ -326,76 +428,108 @@ export const AV_CANVAS = {
 
   // ────────────────────────────── DISPATCH ──────────────────────────────────
   "av-dispatch-001": {
-    title: "Trip Release",
-    subtitle: "Pacific Air Partners · Part 135 charter",
-    disclaimer: "Advisory only — dispatch authority rests with the designated dispatcher and PIC per the operator's OpSpecs",
-    cas: { RED: 0, YELLOW: 1, BLUE: 0, WHITE: 2, GREEN: 6 },
+    title: "Dispatch",
+    subtitle: "Life Flight Network · Hawaii · Part 135",
+    disclaimer: "Formal release required before departure — crew and aircraft legality verified at dispatch time",
+    cas: { RED: 0, YELLOW: 1, BLUE: 0, WHITE: 1, GREEN: 3 },
     tabs: [
       {
-        id: "trip-package",
-        label: "Trip Package",
-        description: "Alex's pre-assembled trip release package — every item verified before you tap Dispatch. No manual re-entry.",
+        id: "fleet-map",
+        label: "Fleet Map",
+        description: "Live fleet position map — fleet aircraft shown in gold, other ADS-B traffic in white. METAR dots colored by flight category. Toggle Traffic layer to see all ADS-B.",
+        blocks: [
+          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 500,
+            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"],
+            fleetTails: ["N661LF", "N662LF", "N663LF"] },
+        ],
+      },
+      {
+        id: "schedule",
+        label: "Schedule",
+        description: "Today's and upcoming flight schedule — trips, tail assignments, crew, and release status.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN", title: "Package complete",      detail: "All release items verified · FRAT 8/50 Low" },
-            { band: "GREEN", title: "Pilot: A. Rivera",      detail: "Currency current · Medical current · Type current" },
-            { band: "GREEN", title: "N662FW airworthy",      detail: "MEL Cat C (no restriction) · W&B within limits" },
+            { band: "GREEN", title: "2 flights today",       detail: "LFN-0808-01 en route · LFN-0808-02 departs 18:00Z" },
+            { band: "GREEN", title: "All crew legal",         detail: "All assigned crew within duty time limits" },
+            { band: "GREEN", title: "All tails airworthy",    detail: "3 available PC-12 tails · no AOG aircraft today" },
           ] },
-          { type: "table", title: "Release checklist — PA26-0721", cols: ["Item", "Status", "Data source"], rows: [
-            ["Pilot currency — Medical",          "✓ Current · Dec 2026",              "Pilot Vault"],
-            ["Pilot currency — BFR/IPC",          "✓ Current · Feb 2026",              "Pilot Vault"],
-            ["Pilot currency — Type recurrent",   "✓ Current · due Oct 2026",          "Pilot Vault"],
-            ["Aircraft airworthy",                "✓ Airworthy · 1 MEL Cat C",         "Aircraft Record N662FW"],
-            ["MEL items — operational impact",    "✓ None · gear door light day/night OK", "MEL 32-60-01"],
-            ["W&B",                               "✓ 9,847 lbs within MTOW 10,450",    "Preflight package"],
-            ["Weather brief",                     "✓ FRAT Low · KPBI improving",        "Live weather"],
-            ["Flight plan filed",                 "✓ KTEB KPBI direct IFR FL230",       "FAA filed 08:47"],
+          { type: "table", title: "Today's schedule — 2026-08-08", cols: ["Trip", "Tail", "Crew PIC", "Route", "Depart", "Status"], rows: [
+            ["LFN-0808-01", "N661LF", "Combs S.",    "PHOG → PHNL", "14:00Z", "En route"],
+            ["LFN-0808-02", "N662LF", "Martinez J.", "PHKO → PHOG", "18:00Z", "Pending"],
+            ["LFN-0808-03", "N663LF", "—",           "—",           "—",      "Available"],
           ] },
-          { type: "prose", items: [
-            { band: "GREEN", title: "Release status", text: "All items verified. Tap Dispatch to open the trip record and start the operating feed. Every item above is signed to a data source — not self-reported. If any item goes red, the package holds until resolved." },
+          { type: "table", title: "Upcoming 3 days", cols: ["Date", "Trip", "Route", "Tail", "Status"], rows: [
+            ["Aug 9",  "LFN-0809-01", "PHNL → PHTO", "N661LF", "Scheduled"],
+            ["Aug 10", "LFN-0810-01", "PHOG → PHNL", "N662LF", "Scheduled"],
+            ["Aug 10", "LFN-0810-02", "PHKO → PHOG", "N663LF", "Tentative"],
           ] },
         ],
       },
       {
-        id: "frat",
-        label: "FRAT",
-        description: "Flight Risk Assessment score for PA26-0721 — auto-scored from weather, crew, and aircraft data.",
+        id: "crew",
+        label: "Crew",
+        description: "Crew legality computed per 14 CFR §135.273 (unscheduled Part 135). Skye requires actual duty period start, rest hours, and accumulated flight hours before releasing a trip — a proposed schedule is not verification. Provide these to Skye to get a computed release package.",
         blocks: [
-          { type: "heroes", items: [
-            { band: "GREEN", title: "Score: 8/50 · Low Risk", detail: "Below 20-point threshold · no Chief Pilot review required" },
+          { type: "table", title: "Crew legality — today (§135.273 snapshot)", cols: ["Pilot", "Cert", "Medical", "Duty used / rem", "24h flight", "Status"], rows: [
+            { band: "GREEN",  cells: ["Combs S.",    "ATP · PC-12 type", "Class 1 — May 2027",  "4h / 10h rem",  "2.1h / 8h max",  "● GREEN"] },
+            { band: "YELLOW", cells: ["Martinez J.", "ATP · PC-12 type", "Class 1 — Aug 2026 ⚠","0h / 14h",      "0h / 8h max",    "● CAUTION"] },
+            { band: "GREEN",  cells: ["Thompson K.", "CPL · Inst",        "Class 2 — Mar 2027",  "0h / 14h",      "0h / 8h max",    "● GREEN"] },
           ] },
-          { type: "table", title: "FRAT breakdown", cols: ["Category", "Score", "Max", "Detail"], rows: [
-            ["Weather",          "4", "20", "KPBI MVFR improving · KFLL alternate available"],
-            ["Aircraft",         "1", "10", "MEL Cat C · no restriction"],
-            ["Crew experience",  "1", "10", "ATP · type current"],
-            ["Mission type",     "2", "10", "Interfacility charter · 4 pax"],
-            ["Night operations", "0", "10", "Day flight · return before dusk"],
+          { type: "flags", items: [
+            { band: "YELLOW", title: "Martinez J. — Medical renewal in 32 days", detail: "Class 1 due Aug 2026 · Schedule AME appointment this week · Still legal to fly now" },
           ] },
-          { type: "prose", items: [
-            { band: "GREEN", title: "FRAT result", text: "Score 8/50 — Low Risk. No single category is elevated. Dispatch without Chief Pilot review per OpSpecs §7.3. If KPBI weather does not improve as forecast, re-run FRAT before wheels-up — a forecast bust to 400 OVC would push Weather to 14 and total to 18, still Low but worth confirming alternate availability." },
+          { type: "cards", items: [
+            { band: "BLUE", label: "RELEASE GATE — §135.273", title: "Tell Skye your duty start + rest + flight hours to compute a release", detail: "Say: 'Release LFN-0810-01 — duty started 06:00 HST, 9h rest prior, 0h flight today, 214h this quarter, 612h this year.' Skye computes all §135.273 limits and issues RELEASED / CONDITIONAL / BLOCKED with citations. Missing any input = BLOCKED.", action: "Start release" },
           ] },
         ],
       },
       {
-        id: "trip-record",
-        label: "Trip Record",
-        description: "The trip record and IRS documentation — business purpose, passengers, billing, and the chain-signed event log.",
+        id: "pax-manifest",
+        label: "Pax Manifest",
+        description: "Passenger manifest for active and upcoming flights — names, weights, mission type (medevac or charter), and W&B feed.",
         blocks: [
-          { type: "kpis", items: [
-            { label: "Trip ID",      value: "PA26-0721",        band: "WHITE" },
-            { label: "Block time",   value: "4.0 hrs",          band: "WHITE" },
-            { label: "Fuel (KPBI)", value: "87 gal @ $7.10",   band: "WHITE" },
-            { label: "Passengers",  value: "4",                  band: "WHITE" },
+          { type: "table", title: "LFN-0808-01 — active flight (air medical)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
+            ["Patient",     "180 lbs", "Patient",      "Air medical — PHOG → PHNL · Queen's Medical Center"],
+            ["Medic 1",     "195 lbs", "Flight nurse",  "Life Flight crew"],
+            ["Medic 2",     "175 lbs", "Paramedic",     "Life Flight crew"],
           ] },
-          { type: "table", title: "Billing summary", cols: ["Item", "Quantity", "Rate", "Amount"], rows: [
-            ["Block time — charter",        "4.0 hrs",  "$1,850/hr",               "$7,400.00"],
-            ["Fuel surcharge",              "87 gal",   "$2.10/gal above $5.00",   "$182.70"],
-            ["Landing fee — KPBI",          "1",        "$45.00",                  "$45.00"],
-            ["Ground transport coordination","1",       "$0",                      "Pax arranged directly"],
-            ["Total",                       "",         "",                        "$7,627.70"],
+          { type: "table", title: "LFN-0808-02 — charter flight (PHKO → PHOG 18:00Z)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
+            ["Reyes, Maria",    "145 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
+            ["Reyes, Carlos",   "185 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
+            ["Tanaka, Yuki",    "130 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
+            ["Baggage",          "85 lbs", "Cargo",     "2 soft bags · aft baggage · W&B verified"],
+          ] },
+          { type: "cards", items: [
+            { band: "BLUE", label: "ADD PAX", title: "Tell Skye to add a passenger to any flight", detail: "Say: 'Add pax to LFN-0808-02 — [name], [weight], [role].' The manifest updates in the dispatch record and feeds W&B automatically. Charter and medevac pax handled the same way.", action: "Open chat" },
+          ] },
+        ],
+      },
+      {
+        id: "aircraft-status",
+        label: "Aircraft Status",
+        description: "Fleet airworthiness — current status of all tails available to dispatch.",
+        blocks: [
+          { type: "table", title: "Fleet status — Aug 8 2026", cols: ["Tail", "TTSN", "Next due", "MEL items", "Status"], rows: [
+            ["N661LF", "1,847", "100-hr @ 1,900h",  "1 Cat C — gear door light (no restriction)", "AIRWORTHY"],
+            ["N662LF", "2,301", "Annual Apr 2027",   "None",                                        "AIRWORTHY"],
+            ["N663LF", "1,412", "Annual Nov 2026",   "None",                                        "AIRWORTHY"],
           ] },
           { type: "prose", items: [
-            { band: "BLUE", title: "IRS business purpose log", text: "Business purpose: Site visit · Meridian Waterfront Phase 2. Date: Jul 21 2026. PIC: A. Rivera ATP. Passengers: 4. This entry is timestamped at time of flight and chain-signed — it meets the IRS contemporaneous log requirement for aircraft deduction documentation under IRC §274(d). Export for your CPA via the trip record." },
+            { band: "GREEN", title: "All three tails available for dispatch today", text: "N661LF has one Cat C MEL deferral (gear door light) — no operational restriction. Placard installed. N661LF cleared for release." },
+          ] },
+          { type: "cards", items: [
+            { band: "WHITE", label: "MX DETAIL", title: "View full MX record for any tail", detail: "Click through to the MX worker for squawk history, open work orders, inspection status, and component life tracking for any tail.", action: "Open MX worker" },
+          ] },
+        ],
+      },
+      {
+        id: "notams",
+        label: "NOTAMs",
+        description: "Active NOTAMs for Hawaii operations — relevant to today's Life Flight routes.",
+        blocks: [
+          { type: "cards", items: [
+            { band: "BLUE", label: "LIVE NOTAMS", title: "Ask Alex to pull current NOTAMs for your route", detail: "Tell Alex: 'Get NOTAMs for PHOG to PHNL' — Alex pulls live NOTAMs from the FAA and summarizes operationally relevant items.", action: "Open chat" },
+            { band: "WHITE", label: "STANDING", title: "PHOG — Confirm ILS 02/20 and RNAV approaches", detail: "Standard operations. Confirm approach status before filing.", action: "Confirm" },
           ] },
         ],
       },
@@ -1076,129 +1210,133 @@ AV_CANVAS["av-copilot-sr22"]  = copilotVariant("Cirrus SR22 G5", "N663SR · Cirr
 // ─────────────────────────── GROUND SCHOOL (PERSONAL) ─────────────────────
 AV_CANVAS["av-ground-school-001"] = {
   title: "Ground School",
-  subtitle: "Oral Prep · ACS Standards · PC-12 / B200 / SR22",
-  disclaimer: "Study and preparation material only — certification standards are set by the examiner",
-  cas: { RED: 0, YELLOW: 0, BLUE: 2, WHITE: 3, GREEN: 2 },
+  subtitle: "My Courses · Progress · Oral Prep · PC-12 Recurrent",
+  disclaimer: "Study material only — certification standards are set by the FAA examiner",
+  cas: { RED: 0, YELLOW: 1, BLUE: 2, WHITE: 2, GREEN: 2 },
   tabs: [
     {
-      id: "aircraft-systems",
-      label: "Aircraft Systems",
-      description: "Quick-reference systems overview for your three aircraft — PC-12, B200, and SR22. Ask Skye to drill deeper on any system.",
+      id: "my-courses",
+      label: "My Courses",
+      description: "Your enrolled ground school courses — progress, due dates, and what's next. Tap any course to open it.",
       blocks: [
         { type: "heroes", items: [
-          { band: "GREEN", title: "PC-12/47E · PT6A-67P",   detail: "Single turbine · Primus Apex · 270 KTAS cruise · FL310 ceiling · 9 pax" },
-          { band: "GREEN", title: "King Air B200 · PT6A-42", detail: "Twin turbine · Collins Pro Line · 290 KTAS · FL350 ceiling · 8 pax" },
-          { band: "WHITE", title: "Cirrus SR22 G5 · IO-550-N", detail: "Piston single · G1000 NXi + CAPS · 185 KTAS · 17,500 ft" },
-        ] },
-        { type: "table", title: "PC-12/47E — Key systems", cols: ["System", "Description", "Notes"], rows: [
-          ["Engine",           "PT6A-67P free turbine · 1,200 SHP",                 "Reverse-flow design · 3,600h TBO"],
-          ["Propeller",        "5-blade composite full-feathering · autofeather",    "Oil-pressure-to-feather — oil loss = feathers"],
-          ["Fuel",             "2 tanks · 518 gal total · 506 usable",              "FADEC fuel management · crossfeed via selector"],
-          ["Pressurization",   "Engine bleed · 6.0 PSI diff · 8,000 ft at FL300",  "Outflow valve + safety + negative pressure relief"],
-          ["Ice protection",   "TKS weeping wing + heated leading edges + prop de-ice", "Known-ice certified with proper equipment"],
-          ["Avionics",         "Honeywell Primus Apex · dual GTN750",               "EGPWS · TCAS II · autothrottle"],
-          ["Engine fire T/O",  "Condition lever → cutoff · firewall shutoff · NESA off", "Autofeather arms at T/O power above 60 kt"],
-          ["Emergency descent","Power idle · prop full forward · Vmo/Mmo − 10 · max bank 45°", "Oxygen masks · squawk 7700"],
-        ] },
-        { type: "table", title: "King Air B200 — Key systems", cols: ["System", "Description", "Notes"], rows: [
-          ["Engines",          "2× PT6A-42 · 850 SHP each",                         "3,600h TBO · 60s max OEI power"],
-          ["Fuel",             "4 tanks · 544 gal usable",                          "Crossfeed required OEI · gravity-feed aux"],
-          ["Pressurization",   "6.5 PSI diff · cabin 10,000 ft at FL350",           "Outflow valve + safety valve"],
-          ["Ice",              "Pneumatic boot + heated leading edges + windshield",  "NOT certified for severe icing"],
-          ["Avionics",         "Collins Pro Line 21 · dual GTN650",                 "EGPWS · weather radar"],
-          ["OEI performance",  "VMC = 80 KIAS · Vyse (blue line) = 121 KIAS",      "Vsse = 99 KIAS · Accelerate-stop dist matters"],
-          ["Engine failure",   "Identify → verify → feather → checklist",           "Dead foot = dead engine"],
-        ] },
-        { type: "table", title: "Cirrus SR22 G5 — Key systems", cols: ["System", "Description", "Notes"], rows: [
-          ["Engine",           "Continental IO-550-N · 310 HP · fuel injected",     "2,000h TBO · on-condition extensions available"],
-          ["CAPS",             "Cirrus Airframe Parachute System · BRS Aerospace",  "Deploy above 920 ft AGL · any uncontrollable situation"],
-          ["Avionics",         "Garmin G1000 NXi + Garmin Perspective+ autopilot",  "SVT · NEXRAD · ADS-B in/out"],
-          ["Fuel",             "2 tanks · 92 gal usable",                          "No crossfeed — switch tanks per SOP (30 min intervals)"],
-          ["Oxygen",           "Built-in crew O2 above 12,500 ft per 91.211",      "Pax O2 masks available"],
-          ["Vmo",              "205 KIAS / Mach 0.35",                              "Never exceed — also monitor Va for turbulence"],
-        ] },
-      ],
-    },
-    {
-      id: "oral-prep",
-      label: "Oral Prep",
-      description: "ACS-aligned oral exam questions by topic. Ask Skye to quiz you on any row — she probes Socratically before revealing the answer.",
-      blocks: [
-        { type: "heroes", items: [
-          { band: "BLUE",  title: "Ask Skye to run a drill", detail: "Say 'Quiz me on B200 OEI emergencies at proficient level' or 'Walk me through PC-12 pressurization failure'" },
-          { band: "GREEN", title: "ACS standard",            detail: "Instrument Rating ACS · ATP ACS · type-specific oral standards" },
-        ] },
-        { type: "table", title: "Airspace", cols: ["Topic", "Key facts", "ACS ref"], rows: [
-          ["Class A",     "18,000–60,000 MSL · IFR only · ATC clearance required",              "IR.I.B"],
-          ["Class B",     "Clearance required · Mode C within 30nm · VFR min 3SM/1,000/500/2,000","IR.I.B"],
-          ["TFRs",        "tfr.faa.gov + NOTAM + ForeFlight overlay · 91.141",                  "IR.I.C"],
-          ["ADIZ",        "Two-way radio + defense flight plan + transponder + code",             "IR.I.B"],
-          ["MOA",         "VFR: caution, ATC advises · IFR: ATC keeps you clear of traffic",    "IR.I.B"],
-        ] },
-        { type: "table", title: "Weather & icing", cols: ["Topic", "Key facts", "ACS ref"], rows: [
-          ["SIGMET",      "Severe icing · severe turbulence · volcanic ash · tropical cyclone",  "IR.I.D"],
-          ["Icing cert",  "PC-12 known-ice OK · B200 NOT severe icing · SR22 NOT known-ice",    "IR.I.D"],
-          ["TAF decode",  "FM=from · TEMPO=<1h period · BECMG=becoming · PROB40=40% chance",    "IR.I.D"],
-          ["DA vs. MDA",  "DA=decision altitude (ILS/LPV) · MDA=minimum descent alt (LNAV/LOC)","IR.II.B"],
-          ["Alternate req","IFR alt required if destination forecast: ceiling <2,000 or vis <3SM","IR.I.C"],
-        ] },
-        { type: "table", title: "PC-12 emergency memory items", cols: ["Emergency", "Memory items"], rows: [
-          ["Engine fire",          "Condition lever CUTOFF · firewall shutoff CLOSE · NESA OFF · emergency descent"],
-          ["Pressurization loss",  "O2 masks · descend FL250 (14,000 ft target) · land ASAP"],
-          ["Smoke / fumes",        "O2 mask + goggles · identify source · land ASAP"],
-          ["Engine fail T/O",      "Autofeather · maintain Vy 105 kt · runway remaining → land or go"],
-          ["Emergency descent",    "Power idle · prop full forward · Vmo−10 · bank 30-45° · squawk 7700"],
-        ] },
-        { type: "table", title: "Regulations — Part 91 key items", cols: ["FAR", "Rule"], rows: [
-          ["91.167", "IFR fuel: destination + alternate + 45 min reserve"],
-          ["91.175", "IFR approaches: continue past MAP/DA only if required visual references in sight"],
-          ["91.207", "ELT required — inspect every 12 months · battery every 50% life or 1 year"],
-          ["91.213", "Inoperative equipment: MEL, or remove/deactivate + placard (91.213(d))"],
-          ["91.409", "Annual inspection: 12 calendar months · 100-hr for hire"],
-          ["91.411", "Altimeter/static: 24 calendar months"],
-          ["91.413", "Transponder: 24 calendar months"],
-        ] },
-      ],
-    },
-    {
-      id: "regulatory",
-      label: "Regulatory",
-      description: "Part 61, Part 91, and ATP/type rating requirements at a glance. Ask Skye to explain any item or dig into the nuance.",
-      blocks: [
-        { type: "kpis", items: [
-          { label: "ATP minimums",       value: "23 yrs · 1,500 TT · 500 XC · 100 night · 75 inst · 250 PIC", band: "WHITE" },
-          { label: "BFR (flight review)", value: "Every 24 calendar months · 1h ground + 1h flight min",        band: "WHITE" },
-          { label: "IFR currency",        value: "6 approaches + holds + tracking in 6 months (or IPC)",        band: "WHITE" },
-          { label: "Night pax currency",  value: "3 full-stop night landings in 90 days",                       band: "WHITE" },
-          { label: "Medical Class 1",     value: "Under 40: 12 months · 40 or older: 6 months",                band: "WHITE" },
-          { label: "135 line check",      value: "Every 12 calendar months — operator-specific timing",          band: "WHITE" },
-        ] },
-        { type: "table", title: "Type rating requirements", cols: ["Aircraft", "Rating needed", "PIC reqs for Part 135"], rows: [
-          ["PC-12/47E", "Not required Part 91 · required Part 135 PIC",          "ATP + type + Class 1 medical"],
-          ["King Air B200", "Required for Part 135 PIC (multi-engine turbine)", "ATP + type + Class 1 medical"],
-          ["SR22 G5",   "No type rating — single-engine piston",                "Commercial cert + Class 2 or Class 1"],
-        ] },
-        { type: "prose", items: [
-          { band: "BLUE",  title: "ACS vs PTS", text: "All practical tests since 2016 use the Airman Certification Standards (ACS) — task-based with knowledge, risk management, and skill evaluated together. For PC-12 and B200 type rating orals, use the ATP ACS plus the manufacturer's type-specific oral guide (FSI provides one for each). The DPE will follow the ACS task list." },
-          { band: "GREEN", title: "Currency vs legality", text: "Currency (FAR 61.57) = recent experience to carry passengers. Legality = meeting all FAR certificate and medical requirements to act as PIC. You can be legal but not current (no landings in 90 days). You can be currency-current but not legal (expired medical). Both required before every flight." },
-          { band: "WHITE", title: "CAPS deployment envelope", text: "Cirrus CAPS: deploy at any attitude, any airspeed (up to Vmo), above 920 ft AGL recommended for full chute inflation. No published altitude maximum. Pull the handle — Cirrus data shows CAPS saves lives. Any uncontrolled/uncontrollable situation, including loss of control, structural failure, or disorientation." },
-        ] },
-      ],
-    },
-    {
-      id: "quiz-zone",
-      label: "Quiz Zone",
-      description: "Tell Skye what to quiz you on and at what level. She probes Socratically before revealing the answer — exactly like a real oral exam.",
-      blocks: [
-        { type: "heroes", items: [
-          { band: "BLUE",  title: "Interactive oral prep with Skye", detail: "Skye adapts to your answers — presses harder when you're right, explains clearly when you miss" },
-          { band: "GREEN", title: "4 levels matching ACS standards",  detail: "Novice: recall · Developing: application · Proficient: analysis · Expert: synthesis + judgment" },
+          { band: "YELLOW", title: "9 courses due Sep 30 2026",         detail: "PC-12 recurrent window · Schedule FSI Scottsdale sim block as anchor (Flight + Emergency + Ground) · CBT and ground modules online" },
+          { band: "BLUE",   title: "PC12 CTS — no completion on file",  detail: "Crew Threat and Error management — required for recurrent window · 4-hour classroom or online" },
+          { band: "GREEN",  title: "CBT Q1 Q2 Q4 complete",             detail: "Quarterly CBT modules current · Q3 due Sep 30" },
         ] },
         { type: "cards", items: [
-          { band: "WHITE", label: "DRILL",  title: "PC-12 type recurrent oral", detail: "Say: 'Walk me through a PC-12 type recurrent oral — systems, emergencies, and ACS standards. 20 questions at proficient level.'", action: "Start" },
-          { band: "WHITE", label: "DRILL",  title: "B200 multi-engine emergencies", detail: "Say: 'Quiz me on King Air B200 OEI emergencies and VMC at ATP level — 10 questions.'", action: "Start" },
-          { band: "WHITE", label: "DRILL",  title: "IFR regulations", detail: "Say: 'IFR regs quiz — approach minimums, alternates, currency, fuel requirements. Mix novice and proficient.'", action: "Start" },
-          { band: "WHITE", label: "DRILL",  title: "SR22 CAPS and systems", detail: "Say: 'SR22 systems and CAPS deployment criteria — 8 questions at developing level.'", action: "Start" },
+          { band: "YELLOW", label: "⚠ NOT STARTED · SIM REQUIRED", title: "PC12 — Flight · Type Recurrent Simulator",    detail: "FlightSafety Int'l · Scottsdale (KSDL) or Denver (KAPA) · 2-day full-motion sim · Due Sep 30 2026. Click to open Active Course for curriculum.", action: "Open course" },
+          { band: "YELLOW", label: "⚠ NOT STARTED · SIM REQUIRED", title: "PC12 — Emergency Training · Emergency Sim",   detail: "FlightSafety Int'l · Covered in FSI 2-day block with Flight · Memory items + emergency scenarios · Due Sep 30 2026.", action: "Open course" },
+          { band: "YELLOW", label: "⚠ NOT STARTED · GROUND",       title: "PC12 — Ground · Type Recurrent Ground",       detail: "FlightSafety Int'l · Ground portion of 2-day sim block · Systems, abnormals, QRH review · Due Sep 30 2026.", action: "Open course" },
+          { band: "YELLOW", label: "⚠ NO RECORD ON FILE",           title: "PC12 — CTS · Crew Threat & Error Management", detail: "Annual recurrent requirement · 4-hour classroom + scenario debrief · Due Sep 30 2026. Ask Skye to study CRM concepts now.", action: "Study with Skye" },
+          { band: "YELLOW", label: "⚠ NO RECORD ON FILE",           title: "FW — CBT Q3 · Quarterly CBT Module",          detail: "Online CBT module — complete any time before Sep 30 2026. Skye can cover the Q3 topics interactively to prepare.", action: "Study with Skye" },
+          { band: "YELLOW", label: "⚠ EXPIRING",                    title: "FW — Gen Sub · Fixed-Wing General Subjects",  detail: "Annual ground topic review · Due Sep 30 2026. Skye can run an interactive review of Gen Sub topics.", action: "Study with Skye" },
+          { band: "YELLOW", label: "⚠ EXPIRING",                    title: "PC12 — 293 · FAR 61.293 Ground",              detail: "Required ground knowledge review per FAR 61.293 · Due Sep 30 2026.", action: "Study with Skye" },
+          { band: "YELLOW", label: "⚠ EXPIRING",                    title: "PC12 — 297 · FAR 61.297 Ground",              detail: "Required ground knowledge review per FAR 61.297 · Due Sep 30 2026.", action: "Study with Skye" },
+          { band: "YELLOW", label: "⚠ EXPIRING",                    title: "FW — 293(a) 1, 4-8 · Fixed-Wing Operations", detail: "Fixed-wing operations review items 1, 4–8 · Due Sep 30 2026. Skye can walk through each item.", action: "Study with Skye" },
+        ] },
+      ],
+    },
+    {
+      id: "active-course",
+      label: "Active Course",
+      description: "Your current course — curriculum outline, where you are, and what's next. Skye teaches any module interactively.",
+      blocks: [
+        { type: "heroes", items: [
+          { band: "YELLOW", title: "PC-12/47E Type Recurrent — FSI 2-day course", detail: "FlightSafety International · Scottsdale (KSDL) or Denver (KAPA) · Full-motion sim" },
+          { band: "BLUE",   title: "Skye can run interactive oral prep now",        detail: "No sim slot needed for the knowledge portion — Skye covers every systems topic in conversational depth" },
+        ] },
+        { type: "table", title: "PC-12/47E Type Recurrent — curriculum outline", cols: ["Module", "Topic", "Format", "Status"], rows: [
+          ["1 — Systems",    "Powerplant · PT6A-67P · fuel system · oil system",          "Ground + oral",   "Not started"],
+          ["2 — Systems",    "Pressurization · bleed air · outflow valve · safety valve", "Ground",          "Not started"],
+          ["3 — Systems",    "Hydraulics · landing gear · brakes · nosewheel steering",   "Ground",          "Not started"],
+          ["4 — Systems",    "Avionics · Primus Apex · autopilot · autothrottle",         "Ground",          "Not started"],
+          ["5 — Emergency",  "Engine fire · emergency descent · pressurization loss",      "Sim · memory",    "Not started"],
+          ["6 — Emergency",  "Smoke/fumes · gear malfunction · electrical failure",        "Sim · memory",    "Not started"],
+          ["7 — Maneuvers",  "IFR proficiency · approaches · partial panel · abnormal",    "Sim",             "Not started"],
+          ["8 — CTS",        "Crew Threat and Error management · scenario debrief",        "Ground + debrief","Not started"],
+        ] },
+        { type: "cards", items: [
+          { band: "BLUE", label: "START WITH SKYE", title: "Run Module 1 — PT6A-67P powerplant with Skye now", detail: "Say: 'Teach me PC-12 PT6A-67P systems at ACS Proficient level — start with the engine, fuel system, and autofeather, then quiz me on memory items.' Skye tracks what you've covered and picks up where you left off.", action: "Start lesson" },
+        ] },
+      ],
+    },
+    {
+      id: "quiz-exam",
+      label: "Quiz & Exam",
+      description: "AI-scored quizzes with rubric. Click any topic below to start a Skye quiz — Socratic probing before the answer, exactly like a real oral exam. Or type it in the chat.",
+      blocks: [
+        { type: "heroes", items: [
+          { band: "BLUE",  title: "Click a topic below to start your quiz now", detail: "Each card starts a Skye oral prep session — no setup needed. Skye probes before revealing answers, just like a DPE." },
+          { band: "GREEN", title: "4 ACS proficiency levels",                   detail: "Novice: recall · Developing: application · Proficient: analysis · Expert: synthesis + judgment" },
+        ] },
+        { type: "cards", items: [
+          { band: "BLUE",   label: "15 Qs · PROFICIENT", title: "PT6A-67P Powerplant — Engine systems quiz",           detail: "Engine, fuel system, oil system, autofeather, chip detector, ITT limits. Say: 'Quiz me on PC-12 engine systems — 15 questions at proficient.'",                     action: "Start quiz" },
+          { band: "YELLOW", label: "10 Qs · EXPERT",     title: "Pressurization failure — emergency oral quiz",        detail: "Outflow valve, safety valve, emergency descent triggers, O2 duration, crew actions. Say: 'PC-12 pressurization emergency — 10 questions at expert.'",               action: "Start quiz" },
+          { band: "YELLOW", label: "12 Qs · EXPERT",     title: "Emergency memory items — engine fire / smoke / gear", detail: "All memory items from the QRH. Say: 'Run PC-12 emergency memory items quiz — start with engine fire, then pressurization, then smoke/fumes.'",                    action: "Start quiz" },
+          { band: "BLUE",   label: "20 Qs · DEVELOPING", title: "FAR 61.293 / 61.297 — regulatory ground review",    detail: "Flight review requirements, currency, logging, recency. Say: 'Quiz me on .293 and .297 content at developing level.'",                                              action: "Start quiz" },
+          { band: "BLUE",   label: "25 Qs · PROFICIENT", title: "IFR regulations — alternates, fuel, approaches",    detail: "Alternate requirements, fuel reserves, approach minimums, ATC instructions. Say: 'IFR regs quiz — alternates, fuel, approaches, minimums.'",                     action: "Start quiz" },
+          { band: "BLUE",   label: "10 Qs · PROFICIENT", title: "CTS — Crew Threat and Error management",            detail: "Threat identification, error management, CRM principles. Say: 'CTS scenario quiz — 10 questions from the annual CRM module.'",                                   action: "Start quiz" },
+        ] },
+        { type: "prose", items: [
+          { band: "GREEN", title: "How Skye scores you", text: "Skye uses the ACS task-based rubric across 4 levels. After each quiz set Skye gives a proficiency summary by topic — the same way an FSI instructor rates you before the sim check. Your scores append to your study record." },
+        ] },
+      ],
+    },
+    {
+      id: "progress",
+      label: "Progress",
+      description: "Your completion tracking — courses done, quiz scores, and what's left before Sep 30.",
+      blocks: [
+        { type: "kpis", items: [
+          { label: "Courses complete",     value: "0 / 9 in window",    band: "YELLOW" },
+          { label: "CBT modules",          value: "3 / 4 complete",     band: "YELLOW" },
+          { label: "Days to Sep 30",        value: "53 days",            band: "YELLOW" },
+          { label: "Sim slot needed",       value: "2 days · FSI",       band: "YELLOW" },
+        ] },
+        { type: "table", title: "Completion tracker", cols: ["Course", "Completion date", "Signed by / Score"], rows: [
+          ["PC12 - Flight",          "—", "—"],
+          ["PC12 - Ground",          "—", "—"],
+          ["PC12 - Emergency Training","—","—"],
+          ["PC12 - CTS",             "—", "—"],
+          ["FW - Gen Sub",           "—", "—"],
+          ["FW - CBT Q3",            "—", "—"],
+          ["PC12 - 293",             "—", "—"],
+          ["PC12 - 297",             "—", "—"],
+          ["FW - 293 (a) 1, 4-8",   "—", "—"],
+        ] },
+        { type: "cards", items: [
+          { band: "YELLOW", label: "BOOK NOW", title: "Schedule FSI Scottsdale — PC-12 type recurrent", detail: "FSI Scottsdale (KSDL) or Denver (KAPA). 2-day course covers PC12 Flight + Ground + Emergency Training in one visit. After booking, tell Alex the date — he'll mark all three as scheduled and block your Life Flight schedule.", action: "Ask Skye to draft the request" },
+        ] },
+      ],
+    },
+    {
+      id: "study-materials",
+      label: "Study Materials",
+      description: "Quick-reference crib sheets — PC-12 memory items, key limitations, and currency requirements.",
+      blocks: [
+        { type: "table", title: "PC-12/47E emergency memory items", cols: ["Emergency", "Immediate actions"], rows: [
+          ["Engine fire",          "Condition lever CUTOFF · firewall shutoff CLOSE · NESA OFF · emergency descent"],
+          ["Pressurization loss",  "O2 masks ON · descend FL250 (target 14,000 ft) · squawk 7700 · land ASAP"],
+          ["Smoke / fumes",        "O2 mask + goggles · identify source · ventilate if safe · land ASAP"],
+          ["Engine failure T/O",   "Autofeather arms · maintain Vy 105 KIAS · assess runway remaining"],
+          ["Emergency descent",    "Power idle · prop full forward · Vmo−10 · bank 30-45° · squawk 7700 · declare"],
+          ["Gear malfunction",     "Emergency extension checklist · fly the aircraft · land longest runway available"],
+        ] },
+        { type: "table", title: "Key limitations — PC-12/47E", cols: ["Parameter", "Limit", "Notes"], rows: [
+          ["Vmo",                        "237 KIAS / Mmo 0.52",   "Never exceed — monitor in descent"],
+          ["Max gear speed (Vle)",        "185 KIAS",              "Also max extension speed"],
+          ["Max flap speed",              "150 KIAS (T/O) · 130 KIAS (LDG)", "Placard in cockpit"],
+          ["Max crosswind (demonstrated)","25 kt",                 "Operator may limit lower"],
+          ["PT6A ITT continuous",         "820°C",                 "1,090°C for 5 sec start limit"],
+          ["Prop reverse",                "Below 40 KIAS",          "Fine pitch available airborne emergency"],
+        ] },
+        { type: "table", title: "Currency requirements (Part 135 · Life Flight)", cols: ["Requirement", "Interval", "Standard"], rows: [
+          ["PC-12 type recurrent",  "Annual (Sep 30 window)",        "FSI sim + ground + emergency + CTS"],
+          ["IFR proficiency",       "6 approaches + holds in 6 mo",  "Or IPC with CFII"],
+          ["Night pax currency",    "3 full-stop night ldgs / 90 d", "If carrying night pax"],
+          ["Medical — Class 1",     "40+: 6 months",                 "AME exam required"],
+          ["FAR 61.293/297",        "Annual",                        "Life Flight-specific operations ground"],
         ] },
       ],
     },

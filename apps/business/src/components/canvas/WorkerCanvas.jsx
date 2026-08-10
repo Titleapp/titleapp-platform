@@ -13,6 +13,12 @@ import NursingWorkerCanvas, { isNursingWorker } from "./NursingWorkerCanvas";
 import PetHealthCanvas, { isPetHealthWorker } from "./PetHealthCanvas";
 import TenantPortalCanvas, { isTenantPortalWorker } from "./TenantPortalCanvas";
 import BioCourseCanvas, { isBioCourseWorker } from "./BioCourseCanvas";
+import AviationWorkerCanvas from "./AviationWorkerCanvas";
+
+function isAviationWorker(w) {
+  const slug = w.workerId || w.slug || "";
+  return slug.startsWith("av-") || (w.vertical || w.suite || "").toLowerCase() === "aviation";
+}
 
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
@@ -877,6 +883,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const isGame = !!w.gameConfig?.isGame;
   const workerSlug = w.workerId || w.slug;
   const reWorker = isREWorker(w); // S52.44 — RE workers render the shared RE canvas
+  const aviationWorker = isAviationWorker(w); // Aviation workers render AviationWorkerCanvas
   const dppWorker = isDPPWorker(w); // EU Battery DPP worker gets its own canvas
   const nursingWorker = isNursingWorker(w); // Makai School of Nursing demo suite
   const petHealthWorker = isPetHealthWorker(w); // Meadow Creek Vet consumer canvas
@@ -1273,6 +1280,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   verdict heroes + KPI cards + flag stack) in place of the
                   generic chips/intelligence preview. */}
               {reWorker && <RealEstateWorkerCanvas worker={w} />}
+              {aviationWorker && <AviationWorkerCanvas workerSlug={workerSlug} />}
               {dppWorker && <DPPWorkerCanvas worker={w} />}
               {nursingWorker && <NursingWorkerCanvas worker={w} />}
               {petHealthWorker && <PetHealthCanvas worker={w} />}
@@ -1280,7 +1288,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               {bioCourseWorker && <BioCourseCanvas worker={w} />}
 
               {/* Quick start chips — hidden in stage 3 for intelligence workers */}
-              {!reWorker && !dppWorker && !nursingWorker && !consumerWorker && !(hasIntelligence && canvasStage === 3) && (
+              {!reWorker && !aviationWorker && !dppWorker && !nursingWorker && !consumerWorker && !(hasIntelligence && canvasStage === 3) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                 {prompts.map((p, i) => (
                   <button
@@ -1313,7 +1321,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               {/* Power Moves (Guide) — clickable prompts from worker.docs.powerMoves.
                   Only shown when docs exist; hidden for specialized canvas workers
                   that already render their own canvas content above. */}
-              {!reWorker && !dppWorker && !nursingWorker && !consumerWorker && w.docs?.powerMoves?.length > 0 && (
+              {!reWorker && !aviationWorker && !dppWorker && !nursingWorker && !consumerWorker && w.docs?.powerMoves?.length > 0 && (
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.35)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
                     Try asking
@@ -1354,8 +1362,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 </div>
               )}
 
-              {/* Substrate badges — stage-aware (49.13) — hidden for RE workers (shared RE canvas above) */}
-              {!reWorker && (
+              {/* Substrate badges — stage-aware (49.13) — hidden for RE and aviation workers (own canvas above) */}
+              {!reWorker && !aviationWorker && (
               <div
                 className="arrival-badges"
                 style={{

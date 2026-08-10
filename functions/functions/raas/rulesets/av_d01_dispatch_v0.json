@@ -40,6 +40,13 @@
       "logic": "Apply Part 135 duty/rest limits as the minimum floor regardless of company GOM. If company GOM is more restrictive, apply the company GOM. Never apply company GOM if it violates the regulatory minimum.",
       "trigger": "policy_vs_regulation",
       "on_fail": "apply_regulatory_floor and flag conflict"
+    },
+    {
+      "id": "AV-D-HS-06",
+      "label": "fail_closed_on_live_data_failure",
+      "logic": "If ANY required live data source fails to return data — weather (METAR/TAF), NOTAMs, or crew duty records — the release status must be BLOCKED, not CONDITIONAL. The absence of data is not permission to proceed. Specifically: (1) if weather_brief returns an error, empty result, or data older than 2 hours: release = BLOCKED, state 'Release BLOCKED — weather data unavailable or stale. Do not dispatch until current METAR/TAF confirmed.'; (2) if NOTAM retrieval fails: release = BLOCKED for routes with known NOTAM-sensitive operations (ILS, runway closures); (3) if crew duty records are absent or incomplete: release = BLOCKED per DL-HS-01 in av_065_duty_limit_v0. CONDITIONAL releases are only valid when data IS available but indicates a concern — not when data is missing entirely.",
+      "trigger": "any_required_data_source_failure",
+      "on_fail": "block_release — specify exactly which data source failed and what is needed to unblock"
     }
   ],
   "soft_flags": [
@@ -112,5 +119,5 @@
       }
     }
   ],
-  "compose_with": ["aviation_hard_stops_v1"]
+  "compose_with": ["aviation_hard_stops_v1", "av_065_duty_limit_v0"]
 }

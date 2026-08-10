@@ -1,0 +1,104 @@
+{
+  "id": "av_065_duty_limit_v0",
+  "version": "v0",
+  "domain": "aviation-duty-rest",
+  "description": "Duty/rest limit engine for Part 135 crew and dispatch. Grounds in 14 CFR §135.273 (unscheduled ops) and §135.271 (HEMS/helicopter). Composed into av-dispatch-001 and av-copilot-001 for any crew legality determination.",
+  "source_regulations": [
+    { "rule": "14 CFR §135.273", "title": "Duty period limitations and rest requirements (unscheduled ops)", "url": "https://www.ecfr.gov/current/title-14/chapter-I/subchapter-G/part-135/subpart-F/section-135.273" },
+    { "rule": "14 CFR §135.271", "title": "Helicopter hospital emergency medical evacuation service (HEMES)", "url": "https://www.ecfr.gov/current/title-14/chapter-I/subchapter-G/part-135/subpart-F/section-135.271" },
+    { "rule": "14 CFR §135.265", "title": "Flight time limitations — scheduled operations (reference only)", "url": "https://www.ecfr.gov/current/title-14/chapter-I/subchapter-G/part-135/subpart-F/section-135.265" }
+  ],
+  "operation_categories": {
+    "unscheduled_135": {
+      "description": "Unscheduled Part 135 — air medical (fixed-wing), charter, on-demand. Applies to Life Flight Network Hawaii PC-12 operations.",
+      "applicable_far": "§135.273",
+      "flight_time_limits": {
+        "per_duty_period_hrs": 8,
+        "per_duty_period_augmented_hrs": 10,
+        "per_calendar_quarter_hrs": 500,
+        "per_two_consecutive_quarters_hrs": 800,
+        "per_calendar_year_hrs": 1400
+      },
+      "rest_requirements": {
+        "minimum_rest_before_duty_hrs": 8,
+        "note": "Rest period must be free from all duty. On-call is NOT qualifying rest unless crew is given a rest facility and is not disturbed."
+      },
+      "duty_period_limits": {
+        "note": "§135.273 does not set an explicit max duty period for unscheduled ops — company GOM governs. Apply GOM if stricter. Common standard: 14 hours max duty.",
+        "gom_default_max_duty_hrs": 14
+      }
+    },
+    "hemes": {
+      "description": "Helicopter EMS — §135.271 applies. NOT applicable to fixed-wing air medical. Misconfiguring a PC-12 operation as HEMES applies wrong rest floor.",
+      "applicable_far": "§135.271",
+      "validation": "Only valid when tenant.aircraftCategory = helicopter. Flag as configuration error if applied to fixed-wing."
+    }
+  },
+  "computation_rules": [
+    {
+      "id": "DL-01",
+      "label": "require_actual_records",
+      "logic": "Duty limit computation requires actual duty period start time, previous rest hours, and accumulated flight hours. A proposed schedule is NOT verification. If any of these inputs are missing, duty status = UNVERIFIED and release = BLOCKED.",
+      "inputs_required": ["duty_period_start_utc", "rest_hours_since_last_duty", "flight_hours_last_24h", "flight_hours_current_quarter", "flight_hours_calendar_year"]
+    },
+    {
+      "id": "DL-02",
+      "label": "compute_remaining_duty",
+      "logic": "remaining_duty_hrs = gom_max_duty_hrs - (now_utc - duty_period_start_utc). If remaining_duty_hrs < estimated_flight_time + turnaround + post_flight: status = RED (cannot complete trip within duty limits).",
+      "surface_as": "YELLOW if remaining < 2h beyond trip, RED if remaining < trip ETE"
+    },
+    {
+      "id": "DL-03",
+      "label": "verify_rest_qualification",
+      "logic": "rest_hours_since_last_duty must be >= 8 hours of qualifying rest (free from duty). If rest_hours < 8: status = RED — crew is not legal to begin a new duty period.",
+      "on_fail": "block_release — crew does not meet minimum rest requirement per §135.273"
+    },
+    {
+      "id": "DL-04",
+      "label": "flight_time_24h_limit",
+      "logic": "flight_hours_last_24h + proposed_trip_ete must not exceed 8 hours (or 10 if augmented crew is verified). If limit would be exceeded: status = RED.",
+      "on_fail": "block_release — flight time limit would be exceeded per §135.273"
+    },
+    {
+      "id": "DL-05",
+      "label": "quarterly_annual_limits",
+      "logic": "Compute projected totals: quarterly = flight_hours_current_quarter + proposed_ete; annual = flight_hours_calendar_year + proposed_ete. Surface YELLOW if > 90% of limit. Surface RED if limit would be exceeded.",
+      "limits": { "quarterly": 500, "annual": 1400 }
+    },
+    {
+      "id": "DL-06",
+      "label": "currency_items_check",
+      "logic": "Verify: medical certificate valid and class appropriate for operation; flight review within 24 calendar months (Part 91) or line check within applicable 135 window; instrument currency if IFR (6 approaches + holds within 6 calendar months); landing currency (3 takeoffs/landings within 90 days for day VFR pax; night currency if applicable). Each item must be confirmed from logbook records, not assumed.",
+      "on_fail": "block_release — list each expired or unverifiable item"
+    }
+  ],
+  "output_schema": {
+    "crew_legality_status": "GREEN|YELLOW|RED|UNVERIFIED",
+    "items": [
+      { "check": "rest_qualification", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "duty_remaining", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "flight_time_24h", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "quarterly_limit", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "annual_limit", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "medical", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" },
+      { "check": "currency", "status": "GREEN|YELLOW|RED|UNVERIFIED", "detail": "string" }
+    ],
+    "blocking_items": "array of RED or UNVERIFIED items that prevent release",
+    "applicable_rule": "§135.273 unscheduled | §135.271 HEMES",
+    "computed_at_utc": "string"
+  },
+  "hard_stops": [
+    {
+      "id": "DL-HS-01",
+      "label": "unverified_equals_blocked",
+      "logic": "UNVERIFIED crew legality is not a CONDITIONAL release — it is BLOCKED. A dispatcher cannot release a flight when crew duty/rest records are unavailable. The absence of information is not permission to proceed.",
+      "on_fail": "block_release — state exactly which records are missing"
+    },
+    {
+      "id": "DL-HS-02",
+      "label": "no_hemes_for_fixed_wing",
+      "logic": "If operation type is air medical but aircraft is fixed-wing (PC-12, B200, Caravan), apply §135.273, NOT §135.271 (HEMES). Flag as configuration error if HEMES is applied to a fixed-wing operator.",
+      "on_fail": "configuration_error — correct operationCategory to unscheduled_135"
+    }
+  ]
+}
