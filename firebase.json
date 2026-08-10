@@ -1,14 +1,17 @@
 {
   "hosting": {
+    "site": "title-app-alpha",
     "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
-      { "source": "/v1/**", "function": "api" },
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/v1/**",
+        "function": "api"
+      }
     ]
-  },
-"functions": {
-  "source": "functions",
-  "runtime": "nodejs20"
-}
+  }
 }

@@ -1,0 +1,9 @@
+{
+  "name": "titleapp-frontdoor-worker",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

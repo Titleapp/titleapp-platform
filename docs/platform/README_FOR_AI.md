@@ -17,3 +17,4 @@ Rules:
 6. If something is missing, propose it by updating docs + contracts first, then implement.
 
 Violation of these rules is considered a bug.
+Canonical rule: Each SOP or policy exists in exactly one location. Do not duplicate files across folders; reference them instead.

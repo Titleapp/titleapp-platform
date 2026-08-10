@@ -1,0 +1,6 @@
+name = "titleapp-frontdoor"
+main = "src/index.ts"
+compatibility_date = "2026-01-22"
+
+[vars]
+BACKEND_ORIGIN = "https://api-feyfibglbq-uc.a.run.app"

@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "prod": "ta-unified-platform",
+    "firebase use --add": "sales-demo-2-35204758-8ebec",
+    "alpha": "title-app-alpha"
+  },
+  "targets": {},
+  "etags": {}
+}
