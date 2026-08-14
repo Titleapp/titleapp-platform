@@ -102,7 +102,7 @@ With SOCIII:
 4. **Ongoing compliance:** When a certification is renewed, upload the new document — the DPP record updates automatically with a new event. The original certification record remains.
 5. **Retailer and customs documentation:** Generate a compliance export for the German distributor. The distributor forwards it to Amazon EU and Zalando for product listing approval.
 
-Total time: five weeks. Total cost: $99/month.
+Total time: five weeks. *(Cost figure removed 2026-08-13 — 47 SKUs exceeds the currently-approved $99/20-product tier; do not quote a specific monthly cost for this example until the Growth tier is validated, per CODEX 71 §19a.)*
 
 ---
 
@@ -135,10 +135,11 @@ If your certifications are current and your supply chain data is accurate, SOCII
 
 ## Pricing
 
-**$49/month** — one product category, up to 500 SKUs
-**$99/month** — all product categories, unlimited SKUs
+**$99/month** — all product categories, up to 20 products. Larger catalogs: contact us.
 
-No setup fees. No per-SKU charges above the tier limit. No data export fees. QR code hosting included for the required ten-year period.
+*(Pricing under active revision as of 2026-08-13 — see CODEX 71 §19a. A prior "$49/one category up to 500 SKUs, $99/unlimited SKUs" scheme was found live in this file and removed — not safe to publish given real per-product cost data. Do not re-add an "unlimited" claim at any fixed price.)*
+
+No setup fees. No data export fees. QR code hosting included for the required ten-year period.
 
 For enterprise accounts (5,000+ SKUs or multi-brand portfolios), contact compliance@sociii.ai for custom pricing.
 

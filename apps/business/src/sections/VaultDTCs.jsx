@@ -361,9 +361,13 @@ function fmtUsd(n) {
 function dtcValue(dtc) {
   const m = dtc.metadata || {};
   let v = null;
+  // Some seed scripts (e.g. seedTitleDemo.js) write valueUsd at the document's
+  // top level instead of nested under metadata — check both shapes.
   if (typeof m.valueUsd === "number") v = m.valueUsd;
+  else if (typeof dtc.valueUsd === "number") v = dtc.valueUsd;
   else {
-    const raw = m.estimatedValue ?? m.balance ?? m.estValue ?? m.value ?? m.marketValue ?? m.purchasePrice;
+    const raw = m.estimatedValue ?? m.balance ?? m.estValue ?? m.value ?? m.marketValue ?? m.purchasePrice
+      ?? dtc.estimatedValue ?? dtc.balance ?? dtc.estValue ?? dtc.value ?? dtc.marketValue ?? dtc.purchasePrice;
     if (raw != null) { const n = parseFloat(String(raw).replace(/[^0-9.]/g, "")); if (!isNaN(n)) v = n; }
   }
   if (v == null) return null;

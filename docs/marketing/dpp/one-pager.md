@@ -29,10 +29,11 @@ EU manufacturers and importers of battery-containing products. US brands with EU
 
 ### Pricing
 
-**$49/month** — one product category, up to 500 SKUs
-**$99/month** — all product categories, unlimited SKUs
+**$99/month** — all product categories, up to 20 products. Larger catalogs: contact us.
 
-No setup fees. No per-SKU charges above the tier limit.
+*(Pricing under active revision as of 2026-08-13 — a prior "$49/one category up to 500 SKUs, $99/unlimited SKUs" scheme was found live in this file and is not safe to publish given real per-product cost data gathered since; removed rather than left live while reconciliation is pending. Do not re-add an "unlimited" claim at any fixed price.)*
+
+No setup fees.
 
 ---
 

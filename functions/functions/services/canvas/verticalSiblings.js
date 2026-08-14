@@ -43,12 +43,11 @@ const BUNDLE_SHAPES = {
   "av-copilot-001":         { emits: "flight-brief/v1", accepts: "route + aircraft, pilot-currency/v1" },
   "av-mx-001":              { emits: "mx-report/v1", accepts: "aircraft-id, logbook-entry/v1" },
   "av-dispatch-001":        { emits: "dispatch-release/v1", accepts: "flight-brief/v1, wx-brief/v1" },
-  // DPP (EU battery / product passport) vertical
+  // DPP (EU battery / product passport) vertical — CODEX 71: collapsed
+  // Passport Builder + Registry Manager + Lifecycle Monitor into one worker.
   "eu-battery-dpp-001":     { emits: "dpp-compliance-report/v1", accepts: "product-id, battery-specs" },
-  "eu-passport-builder-001":{ emits: "dpp-passport/v1", accepts: "dpp-compliance-report/v1" },
+  "eu-passport-registry-001":{ emits: "dpp-passport/v1, registry-record/v1, lifecycle-alert/v1", accepts: "dpp-compliance-report/v1" },
   "eu-supply-chain-tracer-001": { emits: "supply-chain-bundle/v1", accepts: "product-id" },
-  "eu-registry-manager-001":{ emits: "registry-record/v1", accepts: "dpp-passport/v1" },
-  "eu-lifecycle-monitor-001":{ emits: "lifecycle-alert/v1", accepts: "dpp-passport/v1" },
 };
 
 const HANDOFF_LINES = {
@@ -76,10 +75,8 @@ const HANDOFF_LINES = {
   "av-dispatch-001":        "They issue the dispatch release with weather and NOTAMs cleared.",
   // DPP
   "eu-battery-dpp-001":     "They run EU Battery Regulation compliance checks and generate the compliance report.",
-  "eu-passport-builder-001":"They build the digital product passport from a compliance report.",
+  "eu-passport-registry-001":"They build the digital product passport from a compliance report, submit and manage it in the EU registry, and monitor lifecycle events (state of health, amendments) as the battery ages.",
   "eu-supply-chain-tracer-001": "They trace supply chain provenance for a product.",
-  "eu-registry-manager-001":"They submit and manage records in the EU product registry.",
-  "eu-lifecycle-monitor-001":"They monitor battery lifecycle events and alert on threshold breaches.",
 };
 
 /**

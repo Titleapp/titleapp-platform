@@ -104,13 +104,13 @@ This is the same architecture as chain-of-title in real estate — the append-on
 
 ## What This Costs — and What the Alternative Costs
 
-**SOCIII DPP in a Box: $99/month** base, plus per-seat pricing for your compliance team (most companies need 2–4 seats) and compute charges per DPP generated (fractions of a cent at scale). A small brand managing a catalog of 50 SKUs with a 2-person compliance team is looking at **$200–400/month all-in.** A mid-size manufacturer with a larger catalog and a few more users might land at $600–900/month. Both numbers include the Passport Builder, the Supply Chain Tracer, the Registry Manager, and Alex monitoring your entire catalog for deadline and certification alerts.
+**SOCIII DPP in a Box: $99/month** base, plus per-seat pricing for your compliance team (most companies need 2–4 seats) and compute charges per DPP generated (fractions of a cent at scale). A small brand managing a catalog of 50 SKUs with a 2-person compliance team is looking at **$200–400/month all-in.** A mid-size manufacturer with a larger catalog and a few more users might land at $600–900/month. Both numbers include the Compliance Auditor, the Passport & Registry Manager, the Supply Chain Tracer, and Alex monitoring your entire catalog for deadline and certification alerts.
 
 **The consulting alternative:** A McKinsey, Deloitte, or Big Four engagement to assess your DPP readiness, map the regulatory requirements to your supply chain, and recommend an implementation approach typically runs **$2–5 million** for a mid-size manufacturer. That engagement produces a report and a recommendation — not a running system. Implementation of the recommended solution adds another $3–10 million and 12–18 months of integration work. By the time the custom solution is live, the deadline has arrived and the implementation hasn't been tested in production.
 
 **The third option** — doing nothing — is market exclusion from the EU. For any company with meaningful EU revenue, the cost of non-compliance is not a fine. It is losing access to the world's largest single market.
 
-SOCIII is the running system that is live before your deadline, costs less per month than a single hour of Big Four consulting time, and produces DPPs that are compliant, auditable, and registry-ready from day one.
+SOCIII is being built to be the running system in place well before your deadline, at a cost far below a single hour of Big Four consulting time — architected from the ground up for compliant, auditable, registry-ready output.
 
 ---
 
@@ -118,7 +118,7 @@ SOCIII is the running system that is live before your deadline, costs less per m
 
 SOCIII's first DPP pilot is with a medical supplies company building EU Battery Regulation compliance for their portable medical device battery products — equipment that crosses both EU medical device regulation (MDR) and EU Battery Regulation scope simultaneously. This is the hardest version of the problem: two regulatory frameworks, multiple supply chain tiers, and a product where the provenance record has patient safety implications.
 
-The pilot establishes the record architecture, the supplier attestation workflow, and the QR-to-registry interface. The learnings from medical device DPP — where the documentation standards are more demanding than general consumer goods — translate directly to the broader EU Battery Regulation and ESPR market.
+The pilot is building out the record architecture, the supplier attestation workflow, and the QR-to-registry interface. The learnings from medical device DPP — where the documentation standards are more demanding than general consumer goods — translate directly to the broader EU Battery Regulation and ESPR market.
 
 ---
 

@@ -2,16 +2,21 @@
 // Trump Rule: big picture first. Every worker opens on a charge-bar overview
 // using the same battery health visual language across all 5 workers.
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext, createContext } from "react";
+import { getAuth } from "firebase/auth";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 // ── Slug registry ─────────────────────────────────────────────────────────────
 
+// CODEX 71: collapsed from 5 workers to 3 — Passport Builder + Registry
+// Manager + Lifecycle Monitor merged into eu-passport-registry-001 (same
+// client-side user, sequential/recurring touches on the same passport
+// record). Supply Chain Tracer stays separate — different user (suppliers).
 const DPP_SLUGS = new Set([
   "eu-battery-dpp-001",
-  "eu-passport-builder-001",
+  "eu-passport-registry-001",
   "eu-supply-chain-tracer-001",
-  "eu-registry-manager-001",
-  "eu-lifecycle-monitor-001",
 ]);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -151,7 +156,9 @@ const CONNECTORS = [
 
 // ── Worker 4 — Registry submission pipeline ───────────────────────────────────
 
-const DAYS_TO_REGISTRY = Math.max(0, Math.ceil((new Date("2026-07-19") - new Date()) / (1000 * 60 * 60 * 24)));
+// Corrected 2026-08-13: public launch is 20 Jul 2026, not 19 Jul (the 19th was
+// the Commission's internal setup deadline per ESPR Article 13) — CODEX 71 §9a.
+const DAYS_TO_REGISTRY = Math.max(0, Math.ceil((new Date("2026-07-20") - new Date()) / (1000 * 60 * 60 * 24)));
 
 const REG_STATUS = SKUS.map(s => {
   let regPct, regStatus, regColor, regNote;
@@ -178,6 +185,127 @@ const FLEET = [
   { sku: "VLT-EV48",  name: "EV Module 48V 200Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
   { sku: "VLT-EV72",  name: "EV Module 72V 150Ah",   cat: "EV",         units: 0,  soh: null, cycles: null, rated: 3000, pull: "—",    bmsStatus: "Not connected",          color: "grey",   trend: "—",        amendPending: false },
 ];
+
+// ── Live data (CODEX 71 §20/build) ────────────────────────────────────────────
+// Fetches real Firestore-backed product/supplier/registry/fleet records via
+// GET /v1/dpp:demo:data and reshapes them into the exact same shape as the
+// hardcoded SKUS/SUPPLIERS/FLEET/CLIENT/GEN_STATUS/SUPPLY_COVERAGE/REG_STATUS
+// constants above, so every existing tab component keeps working unchanged.
+// Falls back to the hardcoded constants whenever live data is empty/unfetched
+// (unseeded tenant, offline, error) — the demo never breaks or goes blank.
+
+const DPPDataContext = createContext(null);
+
+function colorForPct(pct) {
+  if (pct >= 90) return "green";
+  if (pct >= 15) return "yellow";
+  return "grey";
+}
+
+function liveProductsToSkus(products, suppliers) {
+  return products.map((p) => {
+    const c3 = p.clusters?.c3?.pct ?? 0;
+    const missingClusters = [1, 2, 3, 4, 5, 6, 7]
+      .filter((i) => (p.clusters?.[`c${i}`]?.pct ?? 0) < 100)
+      .map((i) => `Cluster ${i}`);
+    return {
+      id: p.id, sku: p.sku, name: p.name, category: p.category,
+      pct: p.overallPct ?? 0, color: colorForPct(p.overallPct ?? 0),
+      daysAtStatus: null, // not tracked in live schema — cosmetic only, omitted rather than guessed
+      priority: (p.overallPct ?? 0) >= 15 && (p.overallPct ?? 0) < 90,
+      status: (p.overallPct ?? 0) < 15 ? "Not started" : (p.overallPct ?? 0) < 90 ? "In progress" : "In review",
+      gaps: missingClusters.length ? [`${missingClusters.join(", ")} — not yet complete`] : ["All clusters complete"],
+      _c3: c3,
+    };
+  });
+}
+
+function liveDeriveGenStatus(skus) {
+  return skus.map((s) => {
+    const c3 = s._c3 ?? 0;
+    let genStatus, genColor, genNote;
+    if (s.pct < 15) { genStatus = "Not started"; genColor = "grey"; genNote = "Data collection not yet begun."; }
+    else if (s.pct < 80) { genStatus = "Data in progress"; genColor = "grey"; genNote = `${s.pct}% of 90 attributes collected — 100% required before export is possible.`; }
+    else { genStatus = "Cluster 3 blocked"; genColor = "yellow"; genNote = `Cluster 3 LCA at ${c3}% — third-party LCA certificate required to unlock passport export.`; }
+    return { ...s, c3, genStatus, genColor, genNote };
+  });
+}
+
+function liveDeriveSupplyCoverage(skus, suppliers) {
+  return skus.map((s) => {
+    const linked = suppliers.filter((sup) => (sup.products || []).includes(s.sku));
+    const verified = linked.filter((sup) => sup.status === "verified").length;
+    const autoPct = linked.length ? Math.round((verified / linked.length) * 100) : 0;
+    const covColor = autoPct === 0 ? "grey" : autoPct < 60 ? "yellow" : "green";
+    const covStatus = autoPct === 0 ? "Not started" : autoPct < 60 ? "In progress" : "High coverage";
+    return { ...s, autoPct, covStatus, covColor };
+  });
+}
+
+function liveDeriveRegStatus(skus) {
+  return skus.map((s) => {
+    let regPct, regStatus, regColor, regNote;
+    if (s.pct < 50) { regPct = 0; regStatus = "Not ready"; regColor = "grey"; regNote = "Data completeness too low to queue for submission."; }
+    else if (s.pct < 87) { regPct = 25; regStatus = "Data in progress"; regColor = "grey"; regNote = "Complete the compliance record before queuing for submission."; }
+    else { regPct = 55; regStatus = "Queued — C3 pending"; regColor = "yellow"; regNote = "Passport draft generated. LCA certificate will unlock registry submission."; }
+    return { ...s, regPct, regStatus, regColor, regNote };
+  });
+}
+
+function liveSuppliersToDisplay(suppliers) {
+  const statusMap = { verified: "Connected", invited: "Invited", pending: "Pending", partial: "Connected" };
+  return suppliers.map((s) => ({
+    id: s.id, name: s.name, country: s.language || "—",
+    material: "Cell / materials supplier", status: statusMap[s.status] || "Pending",
+    skus: s.products || [], lastUpdate: s.updatedAt ? "Recently" : "—", verified: s.status === "verified",
+  }));
+}
+
+function liveFleetToDisplay(fleet) {
+  return fleet.map((f) => ({
+    sku: f.sku, name: f.sku, cat: null,
+    units: f.unitsDeployed ?? 0, soh: f.sohPct ?? null, cycles: f.cycleCount ?? null, rated: f.ratedCycles ?? null,
+    pull: f.bmsStatus === "not_connected" ? "—" : "Recently",
+    bmsStatus: f.bmsStatus === "not_connected" ? "Not connected" : f.bmsStatus,
+    color: f.sohColor || "grey", trend: "—", amendPending: !!f.amendmentPending,
+  }));
+}
+
+// Hook: fetches live data once per mount, computes the effective (live-or-
+// fallback) bundle. Used by the outer DPPWorkerCanvas to build context value.
+function useDPPLiveData() {
+  const [live, setLive] = useState(null); // null = not yet fetched / unavailable
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = getAuth();
+        const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+        if (!token) return; // no session yet — stay on fallback silently
+        const tenantId = localStorage.getItem("TENANT_ID") || "";
+        const resp = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/dpp:demo:data")}`, {
+          headers: { Authorization: `Bearer ${token}`, ...(tenantId ? { "x-tenant-id": tenantId } : {}) },
+        });
+        const json = await resp.json().catch(() => null);
+        if (!cancelled && json?.ok && (json.products?.length || json.suppliers?.length || json.fleet?.length)) {
+          setLive(json);
+        }
+      } catch (_e) {
+        // Non-blocking — fallback demo data stays visible, exactly like the
+        // RE Advocate canvas's live-lookup failure handling.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return live;
+}
+
+function useDPPData() {
+  const ctx = useContext(DPPDataContext);
+  if (ctx) return ctx;
+  // No provider in the tree (shouldn't happen) — fall back to hardcoded module data directly.
+  return { SKUS, SUPPLIERS, FLEET, CLIENT, GEN_STATUS, SUPPLY_COVERAGE, REG_STATUS, isLive: false };
+}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -304,6 +432,7 @@ function SuiteHeader({ workerNum, name, tagline, icon, codex }) {
 // ── Worker 1 Tab Components ───────────────────────────────────────────────────
 
 function TabDashboard({ onSelectSku }) {
+  const { SKUS } = useDPPData();
   const days = daysToDeadline();
   const summary = {
     total: SKUS.length,
@@ -386,8 +515,9 @@ function TabDashboard({ onSelectSku }) {
 }
 
 function TabPassport({ selectedSku, onSelectSku }) {
+  const { SKUS } = useDPPData();
   const [expanded, setExpanded] = useState(null);
-  const sku = selectedSku || SKUS[3];
+  const sku = selectedSku || SKUS[3] || SKUS[0];
   const clusters = getClusters(sku.pct);
   const SOURCE_COLOR = { "Manual upload": "#6366f1", "Supplier portal": "#f59e0b", "BMS direct": "#10b981" };
   return (
@@ -527,6 +657,7 @@ function TabTimeline() {
 }
 
 function TabClientFile() {
+  const { CLIENT } = useDPPData();
   const fields = [
     ["Company", CLIENT.name], ["Jurisdiction", CLIENT.jurisdiction],
     ["Contact", CLIENT.contact], ["Email", CLIENT.email],
@@ -633,6 +764,7 @@ function Worker1Canvas() {
 // ── Worker 2 — EU Passport Builder ────────────────────────────────────────────
 
 function PBTabQueue() {
+  const { GEN_STATUS } = useDPPData();
   const noneReady = GEN_STATUS.every(s => s.genColor !== "green");
   return (
     <div>
@@ -752,23 +884,44 @@ function PBTabLedger() {
   );
 }
 
-function PassportBuilderCanvas() {
+// CODEX 71: Passport Builder + Registry Manager + Lifecycle Monitor collapsed
+// into one worker (eu-passport-registry-001) — same client-side user,
+// sequential/recurring touches on the same passport record (build → submit
+// → track status/amendments → ongoing lifecycle updates). All tabs from the
+// three former workers are preserved below; none of their content was cut.
+function PassportRegistryCanvas() {
   const [active, setActive] = useState("queue");
   const [selectedSku, setSelectedSku] = useState(null);
   const tabs = [
-    { id: "queue",   label: "Passport Queue" },
-    { id: "preview", label: "Passport Preview" },
-    { id: "export",  label: "Export + Submit" },
-    { id: "ledger",  label: "Passport Ledger" },
+    { id: "queue",         label: "Passport Queue" },
+    { id: "preview",       label: "Passport Preview" },
+    { id: "export",        label: "Export + Submit" },
+    { id: "ledger",        label: "Passport Ledger" },
+    { id: "reg-status",    label: "Registry Status" },
+    { id: "reg-queue",     label: "Submission Queue" },
+    { id: "qr",            label: "QR Codes" },
+    { id: "reg-alerts",    label: "Registry Alerts" },
+    { id: "fleet",         label: "Live Battery Fleet" },
+    { id: "amendments",    label: "Update Queue" },
+    { id: "bms",           label: "BMS Connections" },
+    { id: "secondlife",    label: "Second-Life Tracker" },
   ];
   return (
     <div style={{ marginTop: 16 }}>
-      <SuiteHeader workerNum={2} name="EU Passport Builder" tagline="Generates registry-ready Digital Battery Passports in Annex XIII JSON-LD format." icon="📄" codex="CODEX 30" />
+      <SuiteHeader workerNum={2} name="Passport & Registry Manager" tagline="Builds, submits, and maintains registry-ready Digital Battery Passports — from Annex XIII JSON-LD generation through ongoing lifecycle amendments." icon="📄" codex="CODEX 30, 32, 33, 71" />
       <TabBar tabs={tabs} active={active} onChange={setActive} />
-      {active === "queue"   && <PBTabQueue />}
-      {active === "preview" && <TabPassport selectedSku={selectedSku} onSelectSku={setSelectedSku} />}
-      {active === "export"  && <PBTabExport />}
-      {active === "ledger"  && <PBTabLedger />}
+      {active === "queue"      && <PBTabQueue />}
+      {active === "preview"    && <TabPassport selectedSku={selectedSku} onSelectSku={setSelectedSku} />}
+      {active === "export"     && <PBTabExport />}
+      {active === "ledger"     && <PBTabLedger />}
+      {active === "reg-status" && <RMTabStatus />}
+      {active === "reg-queue"  && <RMTabQueue />}
+      {active === "qr"         && <RMTabQR />}
+      {active === "reg-alerts" && <RMTabAlerts />}
+      {active === "fleet"      && <LMTabFleet />}
+      {active === "amendments" && <LMTabAmendments />}
+      {active === "bms"        && <LMTabBMS />}
+      {active === "secondlife" && <LMTabSecondLife />}
     </div>
   );
 }
@@ -776,6 +929,7 @@ function PassportBuilderCanvas() {
 // ── Worker 3 — EU Supply Chain Tracer ─────────────────────────────────────────
 
 function SCTabCoverage() {
+  const { SUPPLY_COVERAGE, SUPPLIERS } = useDPPData();
   const netCovered = SUPPLY_COVERAGE.filter(s => s.covColor !== "grey").length;
   return (
     <div>
@@ -838,6 +992,7 @@ function SCTabCoverage() {
 }
 
 function SCTabSuppliers() {
+  const { SUPPLIERS } = useDPPData();
   const statusColor = { Connected: "#059669", Invited: "#d97706", Pending: "#6366f1" };
   const statusBg   = { Connected: "#d1fae5", Invited: "#fef3c7", Pending: "#ede9fe" };
   return (
@@ -906,6 +1061,7 @@ function SCTabConnectors() {
 }
 
 function SCTabGaps() {
+  const { SUPPLY_COVERAGE } = useDPPData();
   return (
     <div>
       <SectionLabel text="Cluster 4+5 gap analysis by product" />
@@ -958,6 +1114,7 @@ function SupplyChainCanvas() {
 // ── Worker 4 — EU Registry Manager ────────────────────────────────────────────
 
 function RMTabStatus() {
+  const { REG_STATUS } = useDPPData();
   const ready = REG_STATUS.filter(s => s.regColor === "green").length;
   const queued = REG_STATUS.filter(s => s.regPct === 55).length;
   return (
@@ -1017,6 +1174,7 @@ function RMTabStatus() {
 }
 
 function RMTabQueue() {
+  const { REG_STATUS } = useDPPData();
   const queuedSkus = REG_STATUS.filter(s => s.regPct === 55);
   return (
     <div>
@@ -1064,13 +1222,14 @@ function RMTabQueue() {
 }
 
 function RMTabQR() {
+  const { SKUS } = useDPPData();
   return (
     <div>
       {DAYS_TO_REGISTRY > 0 && (
         <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — QR download disabled</div>
           <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
-            QR codes are mock stubs until passports are registered with the EU DPP Central Registry (opens 19 Jul 2026, {DAYS_TO_REGISTRY} day{DAYS_TO_REGISTRY !== 1 ? "s" : ""}). QR download is disabled until official registration is confirmed. Do not use test QR codes on product labels.
+            QR codes are mock stubs until passports are registered with the EU DPP Central Registry (public launch 20 Jul 2026 — corrected from an earlier 19 Jul claim, which was the Commission's internal setup deadline, not the public launch; see CODEX 71 §9a). QR download is disabled until official registration is confirmed. Do not use test QR codes on product labels.
           </div>
         </div>
       )}
@@ -1100,7 +1259,7 @@ function RMTabAlerts() {
       <SectionLabel text="Upcoming deadlines" />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {[
-          { label: "EU DPP Central Registry opens",    date: "19 Jul 2026", urgency: "soon",     note: `${DAYS_TO_REGISTRY} days. Apply for allowlisting on day one.`, action: "Register for allowlist" },
+          { label: "EU DPP Central Registry opens",    date: "20 Jul 2026", urgency: "soon",     note: `${DAYS_TO_REGISTRY} days. Requires a verified economic operator credential (eIDAS), not a simple allowlist application — see CODEX 71 §9a.`, action: "Start verified-operator process" },
           { label: "Full passport mandatory",          date: "18 Feb 2027", urgency: "deadline", note: `${days} days. VLT-LMT24 is closest to ready — prioritize LCA certificate.`, action: null },
         ].map((a, i) => (
           <div key={i} style={{ padding: "14px 16px", borderRadius: 10, border: "1px solid", borderColor: a.urgency === "deadline" ? "#fca5a5" : "#fde68a", background: a.urgency === "deadline" ? "#fff5f5" : "#fffbeb" }}>
@@ -1122,29 +1281,10 @@ function RMTabAlerts() {
   );
 }
 
-function RegistryManagerCanvas() {
-  const [active, setActive] = useState("status");
-  const tabs = [
-    { id: "status", label: "Registry Status" },
-    { id: "queue",  label: "Submission Queue" },
-    { id: "qr",     label: "QR Codes" },
-    { id: "alerts", label: "Alerts" },
-  ];
-  return (
-    <div style={{ marginTop: 16 }}>
-      <SuiteHeader workerNum={4} name="EU Registry Manager" tagline="Manages the live relationship with the EU DPP Central Registry." icon="🏛️" codex="CODEX 32" />
-      <TabBar tabs={tabs} active={active} onChange={setActive} />
-      {active === "status" && <RMTabStatus />}
-      {active === "queue"  && <RMTabQueue />}
-      {active === "qr"     && <RMTabQR />}
-      {active === "alerts" && <RMTabAlerts />}
-    </div>
-  );
-}
-
-// ── Worker 5 — EU Lifecycle Monitor ──────────────────────────────────────────
+// ── Worker 5 — EU Lifecycle Monitor (tabs merged into PassportRegistryCanvas above) ──
 
 function LMTabFleet() {
+  const { FLEET } = useDPPData();
   const live = FLEET.filter(f => f.soh !== null);
   const alerts = FLEET.filter(f => f.soh !== null && f.soh < 80);
   return (
@@ -1213,6 +1353,7 @@ function LMTabFleet() {
 }
 
 function LMTabAmendments() {
+  const { FLEET } = useDPPData();
   const pending = FLEET.filter(f => f.amendPending);
   return (
     <div>
@@ -1281,6 +1422,7 @@ function LMTabBMS() {
 }
 
 function LMTabSecondLife() {
+  const { FLEET } = useDPPData();
   const secondLife = FLEET.filter(f => f.soh !== null && f.soh < 80);
   return (
     <div>
@@ -1317,33 +1459,34 @@ function LMTabSecondLife() {
   );
 }
 
-function LifecycleMonitorCanvas() {
-  const [active, setActive] = useState("fleet");
-  const tabs = [
-    { id: "fleet",      label: "Live Battery Fleet" },
-    { id: "amendments", label: "Update Queue" },
-    { id: "bms",        label: "BMS Connections" },
-    { id: "secondlife", label: "Second-Life Tracker" },
-  ];
-  return (
-    <div style={{ marginTop: 16 }}>
-      <SuiteHeader workerNum={5} name="Lifecycle Monitor" tagline="BMS direct API. Passport updates itself as batteries age." icon="⚡" codex="CODEX 33" />
-      <TabBar tabs={tabs} active={active} onChange={setActive} />
-      {active === "fleet"      && <LMTabFleet />}
-      {active === "amendments" && <LMTabAmendments />}
-      {active === "bms"        && <LMTabBMS />}
-      {active === "secondlife" && <LMTabSecondLife />}
-    </div>
-  );
-}
-
 // ── Main export — routes to the correct canvas by slug ────────────────────────
 
 export default function DPPWorkerCanvas({ worker }) {
   const slug = worker?.workerId || worker?.slug || "";
-  if (slug === "eu-passport-builder-001")    return <PassportBuilderCanvas />;
-  if (slug === "eu-supply-chain-tracer-001") return <SupplyChainCanvas />;
-  if (slug === "eu-registry-manager-001")    return <RegistryManagerCanvas />;
-  if (slug === "eu-lifecycle-monitor-001")   return <LifecycleMonitorCanvas />;
-  return <Worker1Canvas />;
+  const live = useDPPLiveData();
+
+  // Build the effective data bundle once: live-fetched data reshaped into the
+  // exact shape every tab already expects, or the hardcoded fallback demo
+  // data unchanged. Never a mix, never empty — always one coherent story.
+  const effective = React.useMemo(() => {
+    if (!live) return { SKUS, SUPPLIERS, FLEET, CLIENT, GEN_STATUS, SUPPLY_COVERAGE, REG_STATUS, isLive: false };
+    const liveSuppliers = liveSuppliersToDisplay(live.suppliers || []);
+    const liveSkus = liveProductsToSkus(live.products || [], live.suppliers || []);
+    return {
+      SKUS: liveSkus.length ? liveSkus : SKUS,
+      SUPPLIERS: liveSuppliers.length ? liveSuppliers : SUPPLIERS,
+      FLEET: (live.fleet || []).length ? liveFleetToDisplay(live.fleet) : FLEET,
+      CLIENT, // client profile (Voltara BV) isn't tenant-editable data yet — stays as-is
+      GEN_STATUS: liveSkus.length ? liveDeriveGenStatus(liveSkus) : GEN_STATUS,
+      SUPPLY_COVERAGE: liveSkus.length ? liveDeriveSupplyCoverage(liveSkus, live.suppliers || []) : SUPPLY_COVERAGE,
+      REG_STATUS: liveSkus.length ? liveDeriveRegStatus(liveSkus) : REG_STATUS,
+      isLive: liveSkus.length > 0,
+    };
+  }, [live]);
+
+  const inner = slug === "eu-passport-registry-001" ? <PassportRegistryCanvas />
+    : slug === "eu-supply-chain-tracer-001" ? <SupplyChainCanvas />
+    : <Worker1Canvas />;
+
+  return <DPPDataContext.Provider value={effective}>{inner}</DPPDataContext.Provider>;
 }

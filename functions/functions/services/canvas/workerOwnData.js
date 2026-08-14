@@ -373,16 +373,59 @@ async function dppComplianceBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
-// DPP Worker 2 — Passport Builder
-async function dppPassportBlock(db, tenantId) {
-  const products = await _dppProducts(db, tenantId);
-  if (!products.length) return "";
-  const lines = [`YOUR OWN RECORDS — Passport Builder (${products.length} SKUs):`];
-  for (const p of products) {
-    const c3 = (p.clusters?.c3?.pct ?? 0);
-    const gatable = c3 === 0 ? "BLOCKED (Cluster 3 = 0% — LCA required)" : c3 < 100 ? `Cluster 3 at ${c3}% — partial` : "GENERATION ELIGIBLE";
-    lines.push(`- ${p.sku}: status=${p.passportStatus || "unknown"} | ${gatable}${p.registryId ? ` | registryId=${p.registryId}` : ""}`);
+// DPP Worker 2 — Passport & Registry Manager (CODEX 71: merged Passport
+// Builder + Registry Manager + Lifecycle Monitor — same client-side user,
+// sequential/recurring touches on the same passport record).
+async function dppPassportRegistryBlock(db, tenantId) {
+  const [products, regSnap, fleetSnap] = await Promise.all([
+    _dppProducts(db, tenantId),
+    safe(db.collection("dppRegistryStatus").where("tenantId", "==", tenantId).limit(1).get(), null),
+    safe(db.collection("dppFleet").where("tenantId", "==", tenantId).get(), null),
+  ]);
+  const reg = docs(regSnap)[0] || null;
+  const fleet = docs(fleetSnap);
+  if (!products.length && !reg && !fleet.length) return "";
+
+  const lines = [`YOUR OWN RECORDS — Passport & Registry Manager:`];
+
+  if (products.length) {
+    lines.push(`\nPASSPORT BUILD (${products.length} SKUs):`);
+    for (const p of products) {
+      const c3 = (p.clusters?.c3?.pct ?? 0);
+      const gatable = c3 === 0 ? "BLOCKED (Cluster 3 = 0% — LCA required)" : c3 < 100 ? `Cluster 3 at ${c3}% — partial` : "GENERATION ELIGIBLE";
+      lines.push(`- ${p.sku}: status=${p.passportStatus || "unknown"} | ${gatable}${p.registryId ? ` | registryId=${p.registryId}` : ""}`);
+    }
   }
+
+  if (reg) {
+    lines.push(`\nREGISTRY STATUS: allowlist=${reg.allowlistStatus || "unknown"} | goLive=${reg.registryGoLive || "19 Jul 2026"}`);
+    if (reg.submissionQueue?.length) lines.push(`QUEUED FOR SUBMISSION: ${reg.submissionQueue.join(", ")}`);
+    if (reg.registered?.length) lines.push(`REGISTERED: ${reg.registered.join(", ")}`);
+    else lines.push("REGISTERED: none yet.");
+  }
+  const queued = products.filter(p => p.passportStatus === "ready" || p.passportStatus === "submitted");
+  const registered = products.filter(p => p.passportStatus === "registered");
+  if (queued.length) lines.push(`READY/QUEUED SKUs: ${queued.map(p => p.sku).join(", ")}`);
+  if (registered.length) lines.push(`REGISTERED SKUs: ${registered.map(p => `${p.sku} (ID: ${p.registryId || "pending"})`).join(", ")}`);
+
+  if (fleet.length) {
+    const colorIcon = (c) => ({ green: "🟢", yellow: "🟡", grey: "⬜", red: "🔴" }[c] || "❓");
+    lines.push(`\nLIFECYCLE MONITOR (${fleet.length} SKUs in field):`);
+    for (const f of fleet) {
+      const soh = f.bmsStatus === "not_connected" || f.bmsStatus === "Disconnected"
+        ? "BMS not connected — SoH unavailable"
+        : `SoH ${f.sohPct ?? "?"}% ${colorIcon(f.sohColor)}`;
+      const amend = f.amendmentPending ? " | AMENDMENT PENDING" : "";
+      lines.push(`- ${f.sku}: ${f.unitsDeployed ?? "?"} units | ${soh} | cycles ${f.cycleCount ?? "?"}/${f.ratedCycles ?? "?"}${amend}`);
+    }
+    const nearThreshold = fleet.filter(f => f.sohPct && f.sohPct <= 82 && f.bmsStatus !== "not_connected" && f.bmsStatus !== "Disconnected");
+    if (nearThreshold.length) {
+      lines.push(`APPROACHING 80% SoH THRESHOLD (EV repurposing gate): ${nearThreshold.map(f => `${f.sku} at ${f.sohPct}%`).join(", ")}`);
+    }
+    const amendPending = fleet.filter(f => f.amendmentPending);
+    if (amendPending.length) lines.push(`AMENDMENTS PENDING APPROVAL: ${amendPending.map(f => f.sku).join(", ")}`);
+  }
+
   return lines.join("\n") + "\n\n";
 }
 
@@ -400,52 +443,6 @@ async function dppSupplyChainBlock(db, tenantId) {
   }
   const unsubmitted = suppliers.filter(s => s.status === "invited");
   if (unsubmitted.length) lines.push(`NOT YET SUBMITTED (${unsubmitted.length}): ${unsubmitted.map(s => s.name).join(", ")} — their absence blocks the SKUs they supply.`);
-  return lines.join("\n") + "\n\n";
-}
-
-// DPP Worker 4 — Registry Manager
-async function dppRegistryBlock(db, tenantId) {
-  const [regSnap, prodSnap] = await Promise.all([
-    safe(db.collection("dppRegistryStatus").where("tenantId", "==", tenantId).limit(1).get(), null),
-    safe(db.collection("dppProducts").where("tenantId", "==", tenantId).get(), null),
-  ]);
-  const reg = docs(regSnap)[0] || null;
-  const products = docs(prodSnap);
-  if (!reg && !products.length) return "";
-  const lines = [`YOUR OWN RECORDS — Registry Manager:`];
-  if (reg) {
-    lines.push(`REGISTRY STATUS: allowlist=${reg.allowlistStatus || "unknown"} | goLive=${reg.registryGoLive || "19 Jul 2026"}`);
-    if (reg.submissionQueue?.length) lines.push(`QUEUED FOR SUBMISSION: ${reg.submissionQueue.join(", ")}`);
-    if (reg.registered?.length) lines.push(`REGISTERED: ${reg.registered.join(", ")}`);
-    else lines.push("REGISTERED: none yet.");
-  }
-  const queued = products.filter(p => p.passportStatus === "ready" || p.passportStatus === "submitted");
-  const registered = products.filter(p => p.passportStatus === "registered");
-  if (queued.length) lines.push(`READY/QUEUED SKUs: ${queued.map(p => p.sku).join(", ")}`);
-  if (registered.length) lines.push(`REGISTERED SKUs: ${registered.map(p => `${p.sku} (ID: ${p.registryId || "pending"})`).join(", ")}`);
-  return lines.join("\n") + "\n\n";
-}
-
-// DPP Worker 5 — Lifecycle Monitor
-async function dppLifecycleBlock(db, tenantId) {
-  const snap = await safe(db.collection("dppFleet").where("tenantId", "==", tenantId).get(), null);
-  const fleet = docs(snap);
-  if (!fleet.length) return "";
-  const colorIcon = (c) => ({ green: "🟢", yellow: "🟡", grey: "⬜", red: "🔴" }[c] || "❓");
-  const lines = [`YOUR OWN RECORDS — Lifecycle Monitor (${fleet.length} SKUs in field):`];
-  for (const f of fleet) {
-    const soh = f.bmsStatus === "not_connected" || f.bmsStatus === "Disconnected"
-      ? "BMS not connected — SoH unavailable"
-      : `SoH ${f.sohPct ?? "?"}% ${colorIcon(f.sohColor)}`;
-    const amend = f.amendmentPending ? " | AMENDMENT PENDING" : "";
-    lines.push(`- ${f.sku}: ${f.unitsDeployed ?? "?"} units | ${soh} | cycles ${f.cycleCount ?? "?"}/${f.ratedCycles ?? "?"}${amend}`);
-  }
-  const nearThreshold = fleet.filter(f => f.sohPct && f.sohPct <= 82 && f.bmsStatus !== "not_connected" && f.bmsStatus !== "Disconnected");
-  if (nearThreshold.length) {
-    lines.push(`APPROACHING 80% SoH THRESHOLD (EV repurposing gate): ${nearThreshold.map(f => `${f.sku} at ${f.sohPct}%`).join(", ")}`);
-  }
-  const amendPending = fleet.filter(f => f.amendmentPending);
-  if (amendPending.length) lines.push(`AMENDMENTS PENDING APPROVAL: ${amendPending.map(f => f.sku).join(", ")}`);
   return lines.join("\n") + "\n\n";
 }
 
@@ -619,12 +616,12 @@ const BUILDERS = {
   "platform-accounting": accountingBlock,
   "fundraise": irBlock,
   "investor-relations": irBlock,
-  // EU Battery DPP suite
+  // EU Battery DPP suite (CODEX 71: collapsed from 5 workers to 3 —
+  // Passport Builder + Registry Manager + Lifecycle Monitor merged into
+  // one "Passport & Registry Manager" worker)
   "eu-battery-dpp-001": dppComplianceBlock,
-  "eu-passport-builder-001": dppPassportBlock,
+  "eu-passport-registry-001": dppPassportRegistryBlock,
   "eu-supply-chain-tracer-001": dppSupplyChainBlock,
-  "eu-registry-manager-001": dppRegistryBlock,
-  "eu-lifecycle-monitor-001": dppLifecycleBlock,
   // Makai School of Nursing + Clearwater Nursing Education — all share the cohort grounding block
   "nursing-education-001": nursingCohortBlock,
   "nursing-records-001": nursingCohortBlock,

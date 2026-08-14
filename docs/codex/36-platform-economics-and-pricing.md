@@ -94,8 +94,8 @@ Applies to both tracks identically.
 
 | Event class | Event | Fee | Value unlocked |
 |-------------|-------|-----|----------------|
-| **EU regulatory access** | DPP initial passport registration | €75 | EU market access for one battery product |
-| **EU regulatory maintenance** | DPP lifecycle amendment | €20 | Passport currency; compliance standing |
+| **EU regulatory access** | DPP initial passport registration (new product only — see CODEX 71 §19c/§20 for what counts as a new product vs. a variant of one already registered) | €75 | EU market access for one battery product |
+| ~~EU regulatory maintenance~~ | ~~DPP lifecycle amendment~~ | ~~€20~~ **RETIRED 2026-08-13, CONDITIONAL — corrected 2026-08-13 after this row was found to repeat a false claim.** Amendments are proposed as unlimited/included in the subscription, not billed per-event — **but this is not yet safe to treat as final.** The original justification here ("amendments are already gated to material events only, so unlimited isn't abusable") is **false as of today** — the worker that would enforce material-event-only gating (Passport & Registry Manager) isn't built. See CODEX 71 §19b for the full correction. **Do not rely on this row alone** — until the gating rule is actually built (or a soft cap is added as an interim safeguard), unlimited amendments are an uncapped cost exposure, not a confirmed-safe decision. | — |
 | **Personal Vault anchor** | DTC mint (Vault) | €5 | Immutable ownership/provenance record |
 | **Platform minimum** | Student transcript, logbook, attestation | $1 | Permanence; audit trail |
 

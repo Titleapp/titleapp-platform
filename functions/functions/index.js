@@ -1997,12 +1997,15 @@ exports.api = onRequest(
             vertical:      "retail",
             name:          "Elise Moreau",
             role:          "admin",
+            // CODEX 71: collapsed from 5 workers to 3 — Passport Builder +
+            // Registry Manager + Lifecycle Monitor merged into one worker
+            // (same client-side user, sequential/recurring touches on the
+            // same passport record). Supply Chain Tracer stays separate —
+            // it serves a different user (suppliers, own access mode).
             activeWorkers: [
               "eu-battery-dpp-001",
-              "eu-passport-builder-001",
+              "eu-passport-registry-001",
               "eu-supply-chain-tracer-001",
-              "eu-registry-manager-001",
-              "eu-lifecycle-monitor-001",
             ],
           },
         };
@@ -2304,6 +2307,35 @@ exports.api = onRequest(
       } catch (e) {
         console.error("re:portfolio:list failed:", e.message);
         return jsonError(res, 500, "Portfolio list failed");
+      }
+    }
+
+    // GET /v1/dpp:demo:data — Returns live DPP product/supplier/registry/fleet
+    // records for the requesting tenant, for the DPP canvas (Compliance
+    // Auditor, Passport & Registry Manager, Supply Chain Tracer) to render
+    // instead of hardcoded demo constants. Auth-required. Empty arrays are a
+    // valid response (unseeded tenant) — the canvas falls back to its
+    // existing hardcoded demo data in that case, never breaking. CODEX 71 §20/build.
+    if (route === "/dpp:demo:data" && method === "GET") {
+      try {
+        const dppAuth = await requireFirebaseUser(req, res);
+        if (dppAuth.handled) return dppAuth.res;
+        const dppCtx = getCtx(req, {}, dppAuth.user);
+        if (!dppCtx.tenantId) return res.json({ ok: true, products: [], suppliers: [], registryStatus: null, fleet: [] });
+        const [productsSnap, suppliersSnap, registrySnap, fleetSnap] = await Promise.all([
+          db.collection("dppProducts").where("tenantId", "==", dppCtx.tenantId).get(),
+          db.collection("dppSuppliers").where("tenantId", "==", dppCtx.tenantId).get(),
+          db.collection("dppRegistryStatus").where("tenantId", "==", dppCtx.tenantId).limit(1).get(),
+          db.collection("dppFleet").where("tenantId", "==", dppCtx.tenantId).get(),
+        ]);
+        const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const suppliers = suppliersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const registryStatus = registrySnap.empty ? null : { id: registrySnap.docs[0].id, ...registrySnap.docs[0].data() };
+        const fleet = fleetSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, products, suppliers, registryStatus, fleet });
+      } catch (e) {
+        console.error("dpp:demo:data failed:", e.message);
+        return jsonError(res, 500, "DPP demo data fetch failed");
       }
     }
 
@@ -3684,11 +3716,16 @@ RAAS BOUNDARIES:
                 "esc-disclosure-package": "Petra", "esc-closing-disclosure": "Petra",
                 "esc-firpta-1031": "Petra", "esc-commission-reconciliation": "Petra",
                 "esc-hoa-estoppel": "Petra", "esc-status-portal": "Petra", "esc-recording-monitor": "Petra",
+                "re-escrow-001": "Petra", "re-title-search-001": "Petra",
+                "re-salesperson": "Dana",
                 "cre-analyst": "Rudy", "construction-manager": "Rudy", "construction-draws": "Rudy",
                 "construction-lending": "Rudy", "capital-stack-optimizer": "Rudy",
                 "property-management": "Rudy", "legal-contracts": "Rudy", "compliance-tracker": "Rudy",
                 "mortgage-senior-debt": "Rudy", "mortgage-broker": "Rudy", "site-due-diligence": "Rudy",
-                "land-use-entitlement": "Rudy", "appraisal-valuation": "Rudy", "market-research": "Rudy",
+                "land-use-entitlement": "Rudy", "law-landuse-001": "Rudy",
+                "appraisal-valuation": "Rudy", "market-research": "Rudy",
+                "eu-battery-dpp-001": "Elara", "eu-passport-registry-001": "Elara",
+                "eu-supply-chain-tracer-001": "Elara",
                 "ad-dealer-licensing": "Vinny", "ad-facility-operations": "Vinny", "ad-new-car-allocation": "Vinny",
                 "ad-used-car-acquisition": "Vinny", "ad-wholesale-disposition": "Vinny", "ad-used-car-pricing": "Vinny",
                 "ad-vehicle-merchandising": "Vinny", "ad-reconditioning": "Vinny", "ad-lead-management": "Vinny",
@@ -4812,9 +4849,15 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // re-salesperson drafts counter-offer letters (long-form text).
               // platform-accounting emits full financial reports + JSON canvas
               // payloads — 1024 truncates mid-table every time.
+              // DPP suite (2026-08-13): same failure mode — Annex XIII compliance
+              // tables (90 attributes), carbon footprint cluster breakdowns, and
+              // supplier data submission templates are comparable in length to
+              // accounting's financial reports. Never had this bump; fixing now
+              // rather than waiting to discover it truncates mid-table too.
               const workerMaxTokens =
                 workerSlug === "re-salesperson" ? 4096 :
                 workerSlug === "platform-accounting" ? 8192 :
+                (workerSlug === "eu-battery-dpp-001" || workerSlug === "eu-passport-registry-001" || workerSlug === "eu-supply-chain-tracer-001") ? 8192 :
                 2048;
 
               // ── CODEX 42 Phase 1 — True SSE streaming (RAAS-light, no-tool workers) ──

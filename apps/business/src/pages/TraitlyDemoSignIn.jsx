@@ -1,7 +1,7 @@
 // One-click TRAITLY demo sign-in — Elise Moreau / Volta Advisory / EU Battery DPP.
 // Mounted at /demo/dpp. Uses the demo:token custom-token flow (self-provisioning —
 // no pre-seeded email/password account required). Lands in the Volta Advisory
-// workspace with the 5 EU DPP workers active.
+// workspace with the 3 EU DPP workers active (collapsed from 5 — CODEX 71 §6).
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { signInWithCustomToken, signOut } from "firebase/auth";

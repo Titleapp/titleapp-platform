@@ -1071,12 +1071,11 @@ const WORKER_DISPLAY_NAMES = {
   "tenant-portal-001": "Tenant Portal",
   // Academic / course workers
   "makai-bio-101": "Anatomy & Physiology I",
-  // EU Battery DPP Suite
+  // EU Battery DPP Suite (CODEX 71: collapsed 5 workers to 3 — Passport
+  // Builder + Registry Manager + Lifecycle Monitor merged)
   "eu-battery-dpp-001":        "DPP Compliance Tracker",
-  "eu-passport-builder-001":   "EU Passport Builder",
+  "eu-passport-registry-001":  "Passport & Registry Manager",
   "eu-supply-chain-tracer-001":"Supply Chain Tracer",
-  "eu-registry-manager-001":   "EU Registry Manager",
-  "eu-lifecycle-monitor-001":  "Lifecycle Monitor",
 };
 
 const VERTICAL_LABELS = {

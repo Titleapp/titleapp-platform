@@ -141,12 +141,14 @@ Visual: A roadmap timeline showing Battery Reg → ESPR Textiles → ESPR Electr
 
 **Less than one week of consulting. Live in five weeks.**
 
-| Plan | Monthly Cost | SKUs | Categories |
+| Plan | Monthly Cost | Products | Categories |
 |------|-------------|------|-----------|
-| Single Category | $49/month | Up to 500 | 1 category |
-| All Categories | $99/month | Unlimited | All regulated categories |
+| All Categories | $99/month | Up to 20 | All regulated categories |
+| Larger catalogs | Contact us | 20+ | All regulated categories |
 
-No setup fees. No per-SKU charges above the tier limit. QR code hosting included for the required ten-year record persistence period.
+*(Pricing under active revision as of 2026-08-13 — see CODEX 71 §19a. A prior "$49/one category up to 500 SKUs, $99/unlimited SKUs" row was found live in this deck and removed — not safe to publish given real per-product cost data.)*
+
+No setup fees. QR code hosting included for the required ten-year record persistence period.
 
 **For enterprise accounts** (5,000+ SKUs or multi-brand portfolios): compliance@sociii.ai
 

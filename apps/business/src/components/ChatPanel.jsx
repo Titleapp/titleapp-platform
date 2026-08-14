@@ -598,7 +598,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       opener = `Ready to play? ${tagline}.${prompts[0] ? ` Tap '${prompts[0]}' to start.` : ""}`;
     } else {
       // CODEX 49.15 Fix 2 — platform workers need "worker" after tagline for complete greeting
-      const tagText = tagline.charAt(0).toLowerCase() + tagline.slice(1);
+      // S52.45 — skip the lowercase transform when the tagline is itself a proper
+      // name/acronym (every word capitalized, e.g. "RE Escrow", "Law Landuse") —
+      // lowercasing just the first letter produced "rE Escrow" / "law Landuse".
+      const _taglineWords = tagline.split(" ");
+      const _taglineIsProperName = _taglineWords.length > 1 && _taglineWords.every(w => /^[A-Z]/.test(w));
+      const tagText = _taglineIsProperName ? tagline : (tagline.charAt(0).toLowerCase() + tagline.slice(1));
       const suffix = workerType === "platform" ? " worker" : "";
       // 2026-05-12: return-visit opener used to be "Welcome back. {tagline}.
       // Where did we leave off?" — that was a dead-end. Replaced with the
@@ -2675,6 +2680,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "esc-firpta-1031": "Petra", "esc-commission-reconciliation": "Petra",
               "esc-hoa-estoppel": "Petra", "esc-status-portal": "Petra",
               "esc-recording-monitor": "Petra",
+              "re-escrow-001": "Petra", "re-title-search-001": "Petra",
+              "re-salesperson": "Dana",
               // Real Estate / CRE — Rudy
               "cre-analyst": "Rudy", "construction-manager": "Rudy", "construction-draws": "Rudy",
               "construction-lending": "Rudy", "capital-stack-optimizer": "Rudy",
@@ -2686,6 +2693,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "labor-staffing": "Rudy", "materials-supply-chain": "Rudy",
               "mezzanine-preferred-equity": "Rudy", "crowdfunding-regd": "Rudy",
               "site-due-diligence": "Rudy", "land-use-entitlement": "Rudy",
+              "law-landuse-001": "Rudy",
               "lease-up-marketing": "Rudy", "market-research": "Rudy",
               "architecture-review": "Rudy", "engineering-review": "Rudy",
               "environmental-cultural-review": "Rudy", "energy-sustainability": "Rudy",
@@ -2730,6 +2738,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "gov-ron-notarization": "Rowe", "gov-ecords-compliance": "Rowe",
               "gov-recording-fraud-detection": "Rowe", "gov-public-records-request": "Rowe",
               "gov-index-search-engine": "Rowe",
+              // EU Battery DPP suite — Elara (shared persona across all 3 workers, per CODEX 30-33)
+              "eu-battery-dpp-001": "Elara", "eu-passport-registry-001": "Elara",
+              "eu-supply-chain-tracer-001": "Elara",
             };
             const persona = WORKER_PERSONAS[activeWorkerSlug];
             return persona ? `${persona} · ${activeWorkerName}` : `${activeWorkerName} · Worker`;

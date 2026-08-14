@@ -14,10 +14,10 @@ The EU Battery Regulation is the first in a wave of mandatory DPP frameworks. Ec
 
 ## What SOCIII Does
 
-- **Builds and maintains the DPP record for each product in the catalog.** Passport Builder maps supply chain data, carbon footprint attestations, and lifecycle documentation to the regulation's schema automatically.
-- **Monitors every product's compliance status against tightening regulatory thresholds.** Lifecycle Monitor flags when an attestation is approaching its validity window or when a regulatory update affects an existing record.
-- **Maintains an append-only audit trail.** A carbon footprint attestation written in 2025 cannot be retroactively changed when the regulation tightens in 2027. The audit trail is complete, tamper-evident, and cryptographically anchored to the Base blockchain by default.
-- **Handles supply chain tracing and registry submission in one workflow.** Supply Chain Tracer and Registry Manager run concurrently — you do not manage the data flow between tools manually.
+- **Is being built to build and maintain the DPP record for each product in the catalog.** The Passport & Registry Manager worker is designed to map supply chain data, carbon footprint attestations, and lifecycle documentation to the regulation's schema.
+- **Is being built to monitor every product's compliance status against tightening regulatory thresholds** — flagging when an attestation is approaching its validity window or when a regulatory update affects an existing record.
+- **Is architected around an append-only audit trail.** The design principle: a carbon footprint attestation written in 2025 cannot be retroactively changed when the regulation tightens in 2027. Base-blockchain anchoring is live elsewhere on the SOCIII platform (Vault records) — **confirmed via code check that it is not yet wired to DPP records specifically.** Do not imply blockchain anchoring is live for DPP in this pager or any conversation until it's actually built for this vertical.
+- **Is designed to handle supply chain tracing and registry management in one connected workflow** — the Supply Chain Tracer and Passport & Registry Manager are built to share data automatically rather than require manual handoff between tools.
 
 ---
 
@@ -36,7 +36,7 @@ The EU Battery Regulation is the first in a wave of mandatory DPP frameworks. Ec
 
 **Before:** A 2-person compliance team manually building and maintaining DPP records for a 50-SKU catalog. One tool for supply chain data. Another for carbon calculations. A third for registry submission. Assembly is manual, auditable only to the extent of what was saved.
 
-**After:** Same 2-person team. Passport Builder handles the catalog. Alex monitors all deadlines. The audit trail is always current and always tamper-evident.
+**After:** Same 2-person team. The Passport & Registry Manager worker is built to handle the catalog end to end, with Alex monitoring all deadlines and the audit trail designed to stay current and tamper-evident.
 
 ---
 
@@ -44,11 +44,9 @@ The EU Battery Regulation is the first in a wave of mandatory DPP frameworks. Ec
 
 | Worker | Record Type |
 |---|---|
-| DPP Compliance | `dpp-compliance-report/v1` |
-| Passport Builder | `dpp-passport/v1` |
+| DPP Compliance Tracker | `dpp-compliance-report/v1` |
+| Passport & Registry Manager | `dpp-passport/v1`, `registry-record/v1`, `lifecycle-alert/v1` |
 | Supply Chain Tracer | `supply-chain-bundle/v1` |
-| Registry Manager | `registry-record/v1` |
-| Lifecycle Monitor | `lifecycle-alert/v1` |
 | Alex — Chief of Staff | Deadline monitor, compliance tracker |
 
 Shopify app and API connector: Q3 2026 roadmap.

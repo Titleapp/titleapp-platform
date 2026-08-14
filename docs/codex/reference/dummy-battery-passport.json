@@ -1,0 +1,85 @@
+{
+  "_meta": {
+    "purpose": "SAMPLE / DUMMY DATA — for Traitly pitch and demo use only. Not a real product, not real regulatory data.",
+    "product_modeled_on": "Fictional C&I (commercial & industrial) stationary energy storage unit, styled on the class of product Battlink-type suppliers place on the EU market",
+    "legal_basis": "Regulation (EU) 2023/1542 (EU Battery Regulation), Article 77 and Annex XIII",
+    "content_cluster_source": "Battery Pass Consortium — Battery Passport Content Guidance",
+    "access_tiers": {
+      "public": "Visible to any person scanning the QR code",
+      "legitimate_interest": "Technicians, recyclers, current owners, authorised repairers",
+      "regulator_only": "Notified bodies, market surveillance authorities, the Commission"
+    },
+    "field_type": {
+      "static": "Fixed at manufacture, tied to the battery model/batch",
+      "dynamic": "Changes over the battery's life, requires live data connection"
+    },
+    "mandatory_field_count_note": "EV batteries carry ~80 mandatory Annex XIII attributes; industrial batteries >2kWh carry a comparable but not identical set. This sample shows representative fields per cluster, not the exhaustive list."
+  },
+
+  "1_general_information": {
+    "battery_model_identifier": { "value": "TRT-ESS-100C", "access_tier": "public", "field_type": "static" },
+    "unique_identifier_serial_number": { "value": "TRT-ESS-100C-2027-000482", "access_tier": "public", "field_type": "static" },
+    "battery_category": { "value": "Industrial battery, stationary, >2 kWh", "access_tier": "public", "field_type": "static" },
+    "manufacturer_name": { "value": "Exemplar Energy Storage GmbH (sample entity)", "access_tier": "public", "field_type": "static" },
+    "manufacturer_address": { "value": "Musterstrasse 12, 80331 Munich, Germany (sample address)", "access_tier": "public", "field_type": "static" },
+    "manufacture_date": { "value": "2027-01-14", "access_tier": "public", "field_type": "static" },
+    "manufacture_location": { "value": "Shenzhen, China (sample)", "access_tier": "public", "field_type": "static" },
+    "batch_number": { "value": "BATCH-2027-Q1-0117", "access_tier": "legitimate_interest", "field_type": "static" },
+    "economic_operator_placing_on_market": { "value": "Sample EU Importer B.V., Rotterdam, Netherlands", "access_tier": "public", "field_type": "static" }
+  },
+
+  "2_compliance_and_labels": {
+    "ce_marking_status": { "value": "Affixed", "access_tier": "public", "field_type": "static" },
+    "eu_declaration_of_conformity_reference": { "value": "DoC-TRT-ESS-100C-2027-0004", "access_tier": "public", "field_type": "static" },
+    "applicable_standards": { "value": "IEC 62619, IEC 63056, ISO/IEC 15459 (unique identifier)", "access_tier": "public", "field_type": "static" },
+    "notified_body": { "value": "Sample Notified Body No. 1234", "access_tier": "regulator_only", "field_type": "static" },
+    "qr_code_data_carrier_standard": { "value": "ISO/IEC 15459-compliant QR / GS1 Digital Link resolvable", "access_tier": "public", "field_type": "static" }
+  },
+
+  "3_carbon_footprint": {
+    "lifecycle_carbon_footprint_total": { "value": "61.4 kg CO2e / kWh", "access_tier": "public", "field_type": "static" },
+    "carbon_footprint_performance_class": { "value": "Class C", "access_tier": "public", "field_type": "static" },
+    "raw_material_stage_emissions": { "value": "34.1 kg CO2e / kWh", "access_tier": "legitimate_interest", "field_type": "static" },
+    "manufacturing_stage_emissions": { "value": "18.6 kg CO2e / kWh", "access_tier": "legitimate_interest", "field_type": "static" },
+    "distribution_stage_emissions": { "value": "4.2 kg CO2e / kWh", "access_tier": "legitimate_interest", "field_type": "static" },
+    "end_of_life_stage_emissions": { "value": "4.5 kg CO2e / kWh", "access_tier": "legitimate_interest", "field_type": "static" },
+    "calculation_methodology_reference": { "value": "EU delegated act carbon footprint methodology, industrial batteries (sample reference)", "access_tier": "public", "field_type": "static" }
+  },
+
+  "4_supply_chain_due_diligence": {
+    "due_diligence_policy_summary": { "value": "Sample summary: risk-based sourcing policy for cobalt, lithium, nickel, natural graphite, aligned to OECD Due Diligence Guidance", "access_tier": "public", "field_type": "static" },
+    "third_party_verification_status": { "value": "Verified — sample auditor, 2026-11-02", "access_tier": "legitimate_interest", "field_type": "static" },
+    "cobalt_source_countries": { "value": "DRC (sample — smelter-level traceability), Indonesia", "access_tier": "legitimate_interest", "field_type": "static" },
+    "lithium_source_countries": { "value": "Australia, Chile (sample)", "access_tier": "legitimate_interest", "field_type": "static" },
+    "conflict_minerals_compliance_reference": { "value": "Aligned to Reg. (EU) 2017/821 (sample statement)", "access_tier": "public", "field_type": "static" }
+  },
+
+  "5_materials_and_composition": {
+    "battery_chemistry": { "value": "Lithium Iron Phosphate (LFP)", "access_tier": "public", "field_type": "static" },
+    "hazardous_substances_declaration": { "value": "None above regulatory threshold (sample)", "access_tier": "public", "field_type": "static" },
+    "recycled_content_cobalt_pct": { "value": "N/A (LFP chemistry, no cobalt)", "access_tier": "public", "field_type": "static" },
+    "recycled_content_lithium_pct": { "value": "4.2% (sample)", "access_tier": "public", "field_type": "static" },
+    "recycled_content_nickel_pct": { "value": "N/A (LFP chemistry)", "access_tier": "public", "field_type": "static" },
+    "recycled_content_lead_pct": { "value": "N/A", "access_tier": "public", "field_type": "static" },
+    "detailed_bill_of_materials": { "value": "[restricted — full BOM available to authorised technicians/recyclers only]", "access_tier": "legitimate_interest", "field_type": "static" }
+  },
+
+  "6_circularity_and_resource_efficiency": {
+    "removability_replaceability_design": { "value": "Modular rack design, cell-level replacement supported", "access_tier": "public", "field_type": "static" },
+    "dismantling_information_reference": { "value": "Dismantling manual DM-TRT-ESS-100C-v2 (sample, restricted access)", "access_tier": "legitimate_interest", "field_type": "static" },
+    "second_life_suitability_assessment": { "value": "Suitable for stationary second-life use at ≥70% SoH per sample assessment criteria", "access_tier": "legitimate_interest", "field_type": "static" },
+    "recyclability_rate_declared": { "value": "96% by weight (sample, per Annex XII methodology)", "access_tier": "public", "field_type": "static" },
+    "recycler_designation": { "value": "Sample designated recycler network, EU-registered", "access_tier": "legitimate_interest", "field_type": "static" }
+  },
+
+  "7_performance_and_durability": {
+    "rated_capacity_kwh": { "value": "100 kWh", "access_tier": "public", "field_type": "static" },
+    "nominal_voltage": { "value": "716 V", "access_tier": "public", "field_type": "static" },
+    "expected_service_life_cycles": { "value": "6,000 cycles @ 80% depth of discharge (sample rating)", "access_tier": "public", "field_type": "static" },
+    "warranty_period": { "value": "10 years / 6,000 cycles, whichever first (sample)", "access_tier": "public", "field_type": "static" },
+    "state_of_health_current": { "value": "98.4%", "access_tier": "legitimate_interest", "field_type": "dynamic — requires live BMS connection" },
+    "cycle_count_current": { "value": "142", "access_tier": "legitimate_interest", "field_type": "dynamic — requires live BMS connection" },
+    "remaining_capacity_current": { "value": "98.6 kWh", "access_tier": "legitimate_interest", "field_type": "dynamic — requires live BMS connection" },
+    "last_data_update_timestamp": { "value": "2027-02-18T09:14:00Z", "access_tier": "legitimate_interest", "field_type": "dynamic" }
+  }
+}

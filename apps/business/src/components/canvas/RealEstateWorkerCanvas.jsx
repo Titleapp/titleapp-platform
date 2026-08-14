@@ -302,12 +302,13 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const [liveTransactions, setLiveTransactions] = useState(null);
   // RE Advocate: financing constraint data (FEMA flood, CALFIRE, HUD FHA, FHFA, USDA).
   const [financingData, setFinancingData] = useState(null);
+  const [financingErr, setFinancingErr] = useState(null);
   // Demo portfolio — list of pre-seeded properties for the property picker.
   const [portfolio, setPortfolio] = useState([]);
 
   const isREAdvocate = slug === "re-salesperson";
 
-  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); setPortfolio([]); }, [slug]);
+  useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); setFinancingErr(null); setPortfolio([]); }, [slug]);
   useEffect(() => { setActive(0); }, [liveSpec]);
 
   // Fetch the demo portfolio list for RE workers so the property picker has addresses to show.
@@ -447,7 +448,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
     const addr = (addrOverride || query).trim();
     if (!addr) return;
     if (addrOverride) setQuery(addrOverride);
-    setLiveBusy(true); setLiveErr(null); setFinancingData(null);
+    setLiveBusy(true); setLiveErr(null); setFinancingData(null); setFinancingErr(null);
     try {
       const auth = getAuth();
       const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
@@ -466,6 +467,7 @@ export default function RealEstateWorkerCanvas({ worker }) {
       if (finResp) {
         const fj = await finResp.json().catch(() => null);
         if (fj && fj.ok) setFinancingData(fj);
+        else setFinancingErr(fj?.message || "Financing constraint lookup failed.");
       }
     } catch (_err) {
       setLiveErr("Lookup failed — try again.");
@@ -530,6 +532,11 @@ export default function RealEstateWorkerCanvas({ worker }) {
         </div>
       )}
       {liveErr && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{liveErr}</div>}
+      {isREAdvocate && financingErr && !financingData && (
+        <div style={{ fontSize: 12, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+          Financing constraints unavailable: {financingErr}
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>{resolvedData.subtitle}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
