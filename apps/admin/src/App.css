@@ -64,7 +64,11 @@ body{
   position:fixed;
   inset:0;
   background:rgba(15,23,42,0.35);
-  z-index:40;
+  /* Must sit above FloatingChat (.floating-chat-button:1000,
+     .floating-chat-panel:999, .floating-chat-overlay:998) — the chat widget
+     is always mounted, so the nav drawer needs to open on top of it. Same
+     fix as apps/business/src/App.css. */
+  z-index:1010;
 }
 
 /* SIDEBAR */
@@ -402,7 +406,8 @@ body{
     transform:translateX(-110%);
     transition:transform 180ms ease;
     height:100vh;
-    z-index:60;
+    /* Above .backdrop (1010) and FloatingChat (999/1000) — see note above. */
+    z-index:1011;
   }
   .sidebarOpen{
     transform:translateX(0);
