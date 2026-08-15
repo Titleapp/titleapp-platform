@@ -5969,12 +5969,17 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 }
                 if (aiResponse && aiResponse.content) {
                   try {
-                    // Loop up to 3 Drive tool calls so multi-file research works
-                    // (model reads file A → wants file B → wants file C → final answer).
-                    // Each model call is raced against a 30s timeout so one slow file
-                    // can't hang the whole request.
+                    // Loop up to 3 Drive tool calls (6 for accounting) so multi-file
+                    // research works (model reads file A → wants file B → wants file
+                    // C → final answer). Each model call is raced against a 30s
+                    // timeout so one slow file can't hang the whole request.
+                    // CODEX S52.48 (2026-08-15): accounting reconciliation routinely
+                    // needs to cross-check 3-4+ statements in a single turn (Chime
+                    // checking, Chime credit, a second card, PayPal, etc.) — 3 rounds
+                    // was cutting it off mid-verification. Other workers keep the
+                    // original 3; this is scoped to accounting only.
                     const _MODEL_TIMEOUT_MS = 30_000;
-                    const _MAX_DRIVE_ROUNDS = 3;
+                    const _MAX_DRIVE_ROUNDS = workerSlug === "platform-accounting" ? 6 : 3;
                     let _loopMessages = [
                       ...messages,
                       { role: "assistant", content: aiResponse.content },
