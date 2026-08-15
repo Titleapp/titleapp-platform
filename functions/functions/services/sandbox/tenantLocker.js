@@ -21,10 +21,19 @@ const path = require("path");
 const fs = require("fs");
 const admin = require("firebase-admin");
 
-// Map worker slug → RAAS ruleset file + legal references shown as system docs.
+// Map worker slug → RAAS rules source + legal references shown as system docs.
+// CODEX S52.48 (2026-08-15): "moduleId" is the new live path — reads the same
+// constraintRaasModules content that's actually injected into the model's
+// system prompt (services/raas/workerPromptComposer.js), so what a user sees
+// here is guaranteed to match what actually binds the worker. "rulesetFile"
+// is the legacy path (static JSON on disk) — kept as a fallback for workers
+// that haven't been migrated to a constraintRaasModules entry yet. Migrate
+// each worker by adding a moduleId here once its module exists; remove
+// rulesetFile once migrated so there's exactly one source per worker.
 const WORKER_SYSTEM_DOCS = {
   "platform-accounting": {
-    rulesetFile: "platform_accounting_v1.json",
+    moduleId: "accounting_gaap_v1",
+    rulesetFile: "platform_accounting_v1.json", // legacy fallback only — superseded by moduleId above
     legalRefs: [
       { name: "US GAAP — Generally Accepted Accounting Principles", url: "https://fasb.org/standards" },
       { name: "IRS Publication 334 — Tax Guide for Small Business", url: "https://irs.gov/pub/irs-pdf/p334.pdf" },
@@ -70,41 +79,65 @@ const WORKER_SYSTEM_DOCS = {
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");
 
-function buildSystemDocs(workerId) {
+async function buildSystemDocs(workerId) {
   const cfg = WORKER_SYSTEM_DOCS[workerId];
   if (!cfg) return [];
   const docs = [];
-  // 1. RAAS ruleset as a formatted system doc
-  try {
-    const raw = fs.readFileSync(path.join(RULESETS_DIR, cfg.rulesetFile), "utf-8");
-    const ruleset = JSON.parse(raw);
-    const lines = [`RAAS RULESET — ${ruleset.id || workerId}\n`];
-    if (ruleset.hard_stops?.length) {
-      lines.push("HARD STOPS (never violate):");
-      ruleset.hard_stops.forEach(h => lines.push(`  • ${h.logic || h.id}`));
+  // 1. Live constraintRaasModules content (preferred — same source actually
+  // injected into the model's prompt, so panel display can never drift from
+  // real enforcement). Falls back to the legacy static-file ruleset only if
+  // no moduleId is configured for this worker yet.
+  if (cfg.moduleId) {
+    try {
+      const constraintModules = require("../raas/constraintModules");
+      const composed = await constraintModules.composePromptText(cfg.moduleId, { maxTokens: 4000 });
+      if (composed.text) {
+        docs.push({
+          id: `__raas__${cfg.moduleId}`,
+          name: `RAAS Rules — ${cfg.moduleId} (v${composed.version})`,
+          type: "system",
+          readOnly: true,
+          charCount: composed.text.length,
+          createdAt: null,
+          text: composed.text,
+        });
+      }
+    } catch (e) {
+      console.warn(`[tenantLocker] failed to load constraintRaasModule ${cfg.moduleId} for ${workerId}:`, e.message);
     }
-    if (ruleset.soft_flags?.length) {
-      lines.push("\nSOFT FLAGS (flag for review):");
-      ruleset.soft_flags.forEach(s => lines.push(`  • ${s.logic || s.id}`));
-    }
-    if (ruleset.chat_rules?.length) {
-      lines.push("\nCHAT RULES:");
-      ruleset.chat_rules.forEach(c => lines.push(`  • ${c.message || c.id}`));
-    }
-    if (ruleset.outputs?.length) {
-      lines.push(`\nAPPROVED OUTPUTS: ${ruleset.outputs.join(", ")}`);
-    }
-    const text = lines.join("\n");
-    docs.push({
-      id: `__raas__${cfg.rulesetFile}`,
-      name: `RAAS Rules — ${ruleset.domain || workerId}`,
-      type: "system",
-      readOnly: true,
-      charCount: text.length,
-      createdAt: null,
-      text,
-    });
-  } catch (_) { /* ruleset file missing — skip */ }
+  } else {
+    // Legacy path — static JSON ruleset file on disk.
+    try {
+      const raw = fs.readFileSync(path.join(RULESETS_DIR, cfg.rulesetFile), "utf-8");
+      const ruleset = JSON.parse(raw);
+      const lines = [`RAAS RULESET — ${ruleset.id || workerId}\n`];
+      if (ruleset.hard_stops?.length) {
+        lines.push("HARD STOPS (never violate):");
+        ruleset.hard_stops.forEach(h => lines.push(`  • ${h.logic || h.id}`));
+      }
+      if (ruleset.soft_flags?.length) {
+        lines.push("\nSOFT FLAGS (flag for review):");
+        ruleset.soft_flags.forEach(s => lines.push(`  • ${s.logic || s.id}`));
+      }
+      if (ruleset.chat_rules?.length) {
+        lines.push("\nCHAT RULES:");
+        ruleset.chat_rules.forEach(c => lines.push(`  • ${c.message || c.id}`));
+      }
+      if (ruleset.outputs?.length) {
+        lines.push(`\nAPPROVED OUTPUTS: ${ruleset.outputs.join(", ")}`);
+      }
+      const text = lines.join("\n");
+      docs.push({
+        id: `__raas__${cfg.rulesetFile}`,
+        name: `RAAS Rules — ${ruleset.domain || workerId}`,
+        type: "system",
+        readOnly: true,
+        charCount: text.length,
+        createdAt: null,
+        text,
+      });
+    } catch (_) { /* ruleset file missing — skip */ }
+  }
   // 2. Legal references as a system doc
   if (cfg.legalRefs?.length) {
     const refText = `LEGAL & REGULATORY REFERENCES\n\n` + cfg.legalRefs.map(r => `• ${r.name}\n  ${r.url}`).join("\n\n");
@@ -184,7 +217,7 @@ async function handleLockerList(req, res, user) {
   });
 
   // Append read-only system docs (RAAS rulesets + legal refs) for Back of House workers
-  const systemDocs = buildSystemDocs(workerId);
+  const systemDocs = await buildSystemDocs(workerId);
   for (const sd of systemDocs) {
     documents.push({
       id: sd.id,
@@ -277,7 +310,7 @@ async function getLockerContext(tenantId, workerId) {
     let total = 0;
 
     // Inject RAAS system docs first so they anchor the context
-    const systemDocs = buildSystemDocs(workerId);
+    const systemDocs = await buildSystemDocs(workerId);
     for (const sd of systemDocs) {
       if (sd.text && total < MAX_CHARS_INJECTION) {
         const chunk = `## ${sd.name}\n${sd.text}`;
