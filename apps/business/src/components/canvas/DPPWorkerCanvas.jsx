@@ -613,7 +613,7 @@ function TabPassport({ selectedSku, onSelectSku }) {
 function TabTimeline() {
   const milestones = [
     { date: "18 Aug 2025", label: "Carbon footprint declarations in force", status: "past", note: "Already in force. Some clients may already be non-compliant." },
-    { date: "19 Jul 2026",  label: "EU DPP Central Registry goes live",      status: "soon", note: "Early submission now open. Credibility advantage for first movers." },
+    { date: "20 Jul 2026",  label: "EU DPP Central Registry goes live",      status: "soon", note: "Early submission now open. Credibility advantage for first movers." },
     { date: "18 Feb 2027",  label: "Full passport mandatory — no exceptions", status: "deadline", note: "No EU market access without a registered Digital Battery Passport." },
   ];
   const clientStages = [
@@ -689,6 +689,7 @@ function TabClientFile() {
 }
 
 function TabReports() {
+  const [approved, setApproved] = useState(false);
   const urgent = [
     "VLT-LMT24: Cluster 3 LCA certificate outstanding — blocks registry submission",
     "VLT-IND24 + VLT-IND48: Supplier portal not yet accepted by cell manufacturer",
@@ -697,15 +698,27 @@ function TabReports() {
   return (
     <div>
       <SectionLabel text="Draft — Week of 7 Jul 2026" />
-      <div style={{ padding: "14px 16px", borderRadius: 12, background: "#fff7ed", border: "1.5px solid #fed7aa", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c" }}>⏳ Pending review</div>
-          <div style={{ fontSize: 11, color: "#9a3412", marginLeft: "auto" }}>Auto-generated · 48-hour hold · Awaiting Elise approval</div>
+      {approved ? (
+        <div style={{ padding: "14px 16px", borderRadius: 12, background: "#f0fdf4", border: "1.5px solid #bbf7d0", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>✓ Approved</div>
+            <div style={{ fontSize: 11, color: "#166534", marginLeft: "auto" }}>Sent to Voltara BV</div>
+          </div>
+          <div style={{ fontSize: 12, color: "#166534" }}>
+            This weekly status report has been approved and sent to Voltara BV.
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: "#7c2d12" }}>
-          This weekly status report is ready for your review. No report is sent to Voltara without your explicit approval.
+      ) : (
+        <div style={{ padding: "14px 16px", borderRadius: 12, background: "#fff7ed", border: "1.5px solid #fed7aa", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c" }}>⏳ Pending review</div>
+            <div style={{ fontSize: 11, color: "#9a3412", marginLeft: "auto" }}>Auto-generated · 48-hour hold · Awaiting Elise approval</div>
+          </div>
+          <div style={{ fontSize: 12, color: "#7c2d12" }}>
+            This weekly status report is ready for your review. No report is sent to Voltara without your explicit approval.
+          </div>
         </div>
-      </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
         {[{ label: "Data complete", value: "1 / 6", color: "#34d399" }, { label: "In progress", value: "2 / 6", color: "#fbbf24" }, { label: "Not started", value: "2 / 6", color: "#94a3b8" }].map(k => (
           <div key={k.label} style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
@@ -723,8 +736,16 @@ function TabReports() {
           </div>
         ))}
       </div>
-      <button style={{ width: "100%", padding: "12px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", background: "#6366f1", color: "#fff" }}>
-        Review + Approve Report
+      <button
+        disabled={approved}
+        onClick={() => setApproved(true)}
+        style={{
+          width: "100%", padding: "12px", borderRadius: 10, fontWeight: 700, fontSize: 13,
+          cursor: approved ? "default" : "pointer", border: "none",
+          background: approved ? "#e2e8f0" : "#6366f1", color: approved ? "#64748b" : "#fff",
+        }}
+      >
+        {approved ? "Approved" : "Review + Approve Report"}
       </button>
     </div>
   );
@@ -751,6 +772,7 @@ function Worker1Canvas() {
 
   return (
     <div style={{ marginTop: 16 }}>
+      <SuiteHeader workerNum={1} name="DPP Compliance Tracker" tagline="Data intake across the 7 clusters / 90 attributes — the foundational compliance-audit worker." icon="📋" codex="CODEX 29" />
       <TabBar tabs={W1_TABS} active={activeTab} onChange={setActiveTab} />
       {activeTab === "dashboard" && <TabDashboard onSelectSku={handleSkuSelect} />}
       {activeTab === "passport"  && <TabPassport selectedSku={selectedSku} onSelectSku={setSelectedSku} />}
@@ -833,12 +855,12 @@ function PBTabExport() {
         <div style={{ padding: "16px", background: "#fef2f2", border: "2px solid #fca5a5", borderRadius: 12, marginBottom: 20 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>⚠ TEST MODE — Registry not yet live</div>
           <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6 }}>
-            The EU DPP Central Registry opens in {DAYS_TO_REGISTRY} day{DAYS_TO_REGISTRY !== 1 ? "s" : ""} (19 July 2026). Any passport ID or QR code generated now is a mock stub. <strong>Do not print QR codes on product labels</strong> before the real registry is live and your passport is officially registered.
+            The EU DPP Central Registry opens in {DAYS_TO_REGISTRY} day{DAYS_TO_REGISTRY !== 1 ? "s" : ""} (20 July 2026). Any passport ID or QR code generated now is a mock stub. <strong>Do not print QR codes on product labels</strong> before the real registry is live and your passport is officially registered.
           </div>
         </div>
       ) : (
         <div style={{ padding: "16px", background: "#ecfdf5", border: "2px solid #6ee7b7", borderRadius: 12, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#065f46", marginBottom: 6 }}>✓ Registry is live — 19 Jul 2026</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#065f46", marginBottom: 6 }}>✓ Registry is live — 20 Jul 2026</div>
           <div style={{ fontSize: 12, color: "#064e3b", lineHeight: 1.6 }}>
             The EU DPP Central Registry is open. Products with completed passports (Cluster 3 at 100%) are eligible for official submission. Submitted passports receive a real registry ID and scannable QR code.
           </div>
@@ -856,7 +878,7 @@ function PBTabExport() {
         { label: "DPA signed — Voltara BV",           done: true  },
         { label: "SCC compliant — confirmed",          done: true  },
         { label: "EU data residency confirmed",        done: false },
-        { label: "Registry allowlisting applied for", done: false },
+        { label: "Verified economic operator credential (eIDAS) applied for", done: false },
       ].map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
           <div style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: item.done ? "#d1fae5" : "#f1f5f9", border: `1.5px solid ${item.done ? "#34d399" : "#e2e8f0"}`, fontSize: 11, color: item.done ? "#059669" : "#94a3b8", fontWeight: 700 }}>
@@ -877,7 +899,7 @@ function PBTabLedger() {
         <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>No passports registered yet</div>
         <div style={{ fontSize: 12, color: "#64748b", maxWidth: 320, margin: "0 auto" }}>
-          Passports appear here after submission to the EU DPP Central Registry (opens 19 Jul 2026) and receipt of an official passport ID and QR code.
+          Passports appear here after submission to the EU DPP Central Registry (opens 20 Jul 2026) and receipt of an official passport ID and QR code.
         </div>
       </div>
     </div>
@@ -1127,17 +1149,17 @@ function RMTabStatus() {
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#93c5fd", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 2 }}>EU DPP Central Registry</div>
           <div style={{ fontSize: 16, fontWeight: 800 }}>Voltara BV — Submission Pipeline</div>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{queued} passport{queued !== 1 ? "s" : ""} queued · {ready} registered · allowlisting pending</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{queued} passport{queued !== 1 ? "s" : ""} queued · {ready} registered · verified-operator credential pending</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 28, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>{DAYS_TO_REGISTRY}</div>
           <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.05em" }}>DAYS TO REGISTRY OPEN</div>
-          <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>19 Jul 2026</div>
+          <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>20 Jul 2026</div>
         </div>
       </div>
 
       <div style={{ padding: "10px 14px", background: "#fef9c3", border: "1px solid #fde68a", borderRadius: 8, marginBottom: 18, fontSize: 12, color: "#78350f" }}>
-        <strong>Allowlisting required.</strong> Third-party submitters (advisors, platforms) must register with the EU Commission's registry operator before submission is possible. Apply immediately when the registry opens on 19 Jul 2026.
+        <strong>Verified economic operator credential required.</strong> Third-party submitters (advisors, platforms) must register with the EU Commission's registry operator under eIDAS before submission is possible. Apply immediately when the registry opens on 20 Jul 2026.
       </div>
 
       <SectionLabel text="Submission pipeline by product" />
@@ -1202,7 +1224,7 @@ function RMTabQueue() {
 
       <SectionLabel text="Submission prerequisites" />
       {[
-        { label: "Registry allowlisting",          done: false, note: "Apply on 19 Jul 2026 when registry opens" },
+        { label: "Verified economic operator credential", done: false, note: "Apply on 20 Jul 2026 when registry opens" },
         { label: "Registry API schema received",   done: false, note: "EU Commission publishes pre-launch" },
         { label: "Passport Builder active",        done: true,  note: "CODEX 30 — live" },
         { label: "EU data residency confirmed",    done: false, note: "Firestore EU-region migration required" },

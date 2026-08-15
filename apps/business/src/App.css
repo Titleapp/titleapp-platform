@@ -101,7 +101,9 @@ body{
   position:fixed;
   inset:0;
   background:rgba(15,23,42,0.35);
-  z-index:40;
+  /* Must sit above .mobileChatPanel (999) — mobile is chat-first, so the
+     nav drawer opens on top of an already-visible chat overlay. */
+  z-index:1010;
 }
 
 /* SIDEBAR — CODEX 67 light theme */
@@ -946,7 +948,10 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
     width:min(280px, 85vw) !important;
     min-width:unset !important;
     height:100dvh !important;
-    z-index:200 !important;
+    /* Above .mobileChatPanel (999)/.mobileChatBackdrop (998)/.chatToggleTab
+       (1000) and above .backdrop (1010) minus a hair so the drawer itself
+       sits on top of its own backdrop, which sits on top of the chat panel. */
+    z-index:1011 !important;
     overflow-y:auto;
   }
   .sidebarCollapseToggle{ display:none !important; }

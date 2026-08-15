@@ -398,7 +398,7 @@ async function dppPassportRegistryBlock(db, tenantId) {
   }
 
   if (reg) {
-    lines.push(`\nREGISTRY STATUS: allowlist=${reg.allowlistStatus || "unknown"} | goLive=${reg.registryGoLive || "19 Jul 2026"}`);
+    lines.push(`\nREGISTRY STATUS: allowlist=${reg.allowlistStatus || "unknown"} | goLive=${reg.registryGoLive || "20 Jul 2026"}`);
     if (reg.submissionQueue?.length) lines.push(`QUEUED FOR SUBMISSION: ${reg.submissionQueue.join(", ")}`);
     if (reg.registered?.length) lines.push(`REGISTERED: ${reg.registered.join(", ")}`);
     else lines.push("REGISTERED: none yet.");
