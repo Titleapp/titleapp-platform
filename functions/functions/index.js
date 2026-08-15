@@ -4464,7 +4464,13 @@ END DELIVERY RULES.
               // Streaming workers (accounting, HR, IR) can accumulate large responses
               // in history. Cap them more aggressively: the system prompt already
               // contains live data, so recent context matters more than full history.
-              const _historyLimit = _STREAMING_WORKERS.has(workerSlug) ? 8 : 20;
+              // ACCT-001 (2026-08-15): platform-accounting gets a higher floor than
+              // HR/IR — reconciliation is inherently multi-turn (cross-checking sources,
+              // correcting figures across a session), and the 8-turn cap combined with
+              // an unreliable data source was part of why Max repeated the same wrong
+              // total across a long session with nothing to catch it. See ACCT001-R02
+              // (no silent recomputation) in raas/horizontal/GLOBAL/ACCT-001.
+              const _historyLimit = workerSlug === "platform-accounting" ? 16 : (_STREAMING_WORKERS.has(workerSlug) ? 8 : 20);
               const _trimmedHistory = _workerThreadHistory.slice(-_historyLimit);
               const messages = canvasDemoActive ? [] : [
                 ..._trimmedHistory.map(h => {
@@ -5849,8 +5855,24 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     const _m = _meta.mimeType || "";
                     let _raw = "";
                     if (_m === "application/vnd.google-apps.spreadsheet") {
-                      const _exp = await _driveClient.files.export({ fileId, mimeType: "text/csv" }, { responseType: "text" });
-                      _raw = _exp.data || "";
+                      // FIX 2026-08-15: text/csv export only ever returns the FIRST tab, with
+                      // no tab-name metadata — a native Sheet with e.g. "Expenses" (raw) and
+                      // "Expense Detail" (reconciled) tabs would silently drop everything but
+                      // whichever tab is first/active. Export as xlsx instead (still a Drive
+                      // API export, no new OAuth scope needed) and reuse the same per-tab
+                      // labeling logic as the binary-upload path below.
+                      const _exp = await _driveClient.files.export(
+                        { fileId, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+                        { responseType: "arraybuffer" }
+                      );
+                      const _buf = _exp && _exp.data ? Buffer.from(_exp.data) : null;
+                      if (!_buf || _buf.length === 0) {
+                        _raw = `[Empty or unreadable spreadsheet: "${_meta.name}"]`;
+                      } else {
+                        const xlsxLib = require("xlsx");
+                        const wb = xlsxLib.read(_buf, { type: "buffer" });
+                        _raw = wb.SheetNames.map(n => `Sheet: ${n}\n${xlsxLib.utils.sheet_to_csv(wb.Sheets[n])}`).join("\n\n");
+                      }
                     } else if (_m === "application/vnd.google-apps.document") {
                       const _exp = await _driveClient.files.export({ fileId, mimeType: "text/plain" }, { responseType: "text" });
                       _raw = _exp.data || "";
@@ -8116,9 +8138,19 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         const _m = _meta.mimeType || "";
                         let _rawContent = "";
                         if (_m === "application/vnd.google-apps.spreadsheet") {
-                          // Google Sheet → export as CSV
-                          const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/csv" }, { responseType: "text" });
-                          _rawContent = typeof _exp.data === "string" ? _exp.data : String(_exp.data);
+                          // FIX 2026-08-15: text/csv export only returns the FIRST tab, no tab
+                          // names — a Sheet with e.g. "Expenses" (raw) and "Expense Detail"
+                          // (reconciled) tabs would silently drop everything but tab 1. This was
+                          // the likely root cause of Max presenting a raw-feed total as Net
+                          // Income. Export as xlsx (still a Drive API export, no new OAuth scope)
+                          // and label every tab, matching the xlsx-upload branch below.
+                          const _exp = await _driveClient.files.export(
+                            { fileId: _fileId, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+                            { responseType: "arraybuffer" }
+                          );
+                          const XLSX = require("xlsx");
+                          const _wb = XLSX.read(Buffer.from(_exp.data), { type: "buffer" });
+                          _rawContent = _wb.SheetNames.map(sn => `=== Sheet: ${sn} ===\n${XLSX.utils.sheet_to_csv(_wb.Sheets[sn])}`).join("\n\n");
                         } else if (_m === "application/vnd.google-apps.document") {
                           const _exp = await _driveClient.files.export({ fileId: _fileId, mimeType: "text/plain" }, { responseType: "text" });
                           _rawContent = typeof _exp.data === "string" ? _exp.data : String(_exp.data);
