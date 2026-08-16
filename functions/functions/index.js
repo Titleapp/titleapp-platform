@@ -4266,6 +4266,8 @@ You are stateless. There is no background processing. There is no async work. Ev
 
 If your prior responses in this conversation said "working on it", "give me a few minutes", "I will have it shortly", "I will send you...", "let me extract that", or any variation, those promises are NULL. The user is waiting now. Deliver now or admit you cannot.
 
+LANGUAGE RULE: Always respond in the same language the user is writing to you in — match their message, not their profile or account locale. Switch languages mid-conversation if they do. Write with the fluency and idiom of a native speaker, not a literal translation; this matters especially for Mandarin (中文), Dutch (Nederlands), and German (Deutsch) — get tone, register, and business terminology right, not just grammatically correct. When emitting a |||CANVAS_RENDER||| payload, write every human-readable string in it (title, summary, label, heading, body, items) in that same language too — but keep JSON keys, the "type" field value, and status enums (e.g. "draft"/"scheduled"/"sent", "done"/"active"/"pending") in English exactly as specified below, since the renderer matches on those literally.
+
 NEVER use these phrases or any variation:
 - "Working on it now" / "Working now"
 - "I will have the breakdown for you shortly"
@@ -4692,6 +4694,85 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 workerPrompt += `\n\nGOOGLE DRIVE ACCESS: This user has connected their Google Drive. You have tools: search_drive (find files by name/keyword), read_drive_file (read a file by ID or name), and generate_document (create Word/Excel/PowerPoint documents that are automatically saved to their Drive as native Google Docs/Sheets/Slides). When the user asks about a file, spreadsheet, document, statement, or report in their Drive — search for it and read it directly. When they ask you to create any document, spreadsheet, or presentation, call generate_document — it will be saved to their Drive automatically. NEVER say you "can't access Drive" or ask them to re-attach a file that's already in their Drive. NEVER say you can't create or export documents — you can.`;
               }
 
+              // CODEX S52.48 step 6 — accounting's own cross-check tool, available
+              // regardless of Drive connection (unlike search_drive/read_drive_file
+              // above). Lets Max verify a user-stated figure against what's actually
+              // recorded in this tenant's books instead of taking it on faith.
+              if (workerSlug === "platform-accounting") {
+                businessTools.push({
+                  name: "query_ledger",
+                  description: "Search this tenant's recorded transactions (the books) by keyword and/or date range. Call this whenever you need to verify a user-stated figure, find what was recorded for a specific institution/vendor, or cross-check a statement against the books before answering. Returns matching transactions with date, description, amount, direction, and status.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "Keyword to match against description or institution, e.g. 'Chase' or 'PayPal'. Empty string to skip keyword filtering." },
+                      startDate: { type: "string", description: "YYYY-MM-DD, inclusive. Omit for no lower bound." },
+                      endDate: { type: "string", description: "YYYY-MM-DD, inclusive. Omit for no upper bound." },
+                      limit: { type: "integer", description: "Max transactions to return (default 25, max 100)." },
+                    },
+                    required: [],
+                  },
+                });
+                workerPrompt += `\n\nLEDGER ACCESS: You have a query_ledger tool that reads this tenant's actual recorded transactions from the books. Use it to verify figures instead of trusting a user's stated number at face value — that is the source-hierarchy discipline your accounting rules require. If a user gives you a number, check it against query_ledger before agreeing it is correct.`;
+              }
+
+              // CODEX S52.48 step 8 — same pattern rolled out to Contacts: a real
+              // cross-check tool over this tenant's actual CRM records, regardless
+              // of Drive connection.
+              if (workerSlug === "platform-contacts") {
+                businessTools.push({
+                  name: "query_contacts",
+                  description: "Search this tenant's actual CRM contact records by keyword (name, email, company, or title). Call this to verify a contact exists, check their details, or find matches before answering — do not assume or invent contact details.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "Keyword to match against name, email, company, or title." },
+                      limit: { type: "integer", description: "Max contacts to return (default 25, max 100)." },
+                    },
+                    required: [],
+                  },
+                });
+                workerPrompt += `\n\nCRM ACCESS: You have a query_contacts tool that reads this tenant's actual contact records. Use it to verify a contact's details or find matches instead of guessing or inventing them.`;
+              }
+
+              // CODEX S52.48 step 8 — same pattern rolled out to Marketing: a real
+              // cross-check tool over this tenant's actual campaign records.
+              if (workerSlug === "platform-marketing" || workerSlug === "marketing-content") {
+                businessTools.push({
+                  name: "query_campaigns",
+                  description: "Search this tenant's actual marketing campaigns by keyword (name or platform) and/or status. Call this to verify a campaign exists and check its real budget/metrics before answering — do not assume or invent campaign performance numbers.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "Keyword to match against campaign name or platform, e.g. 'TikTok' or 'Spring Launch'." },
+                      status: { type: "string", description: "Filter by status, e.g. 'active', 'paused', 'draft'. Omit for all statuses." },
+                      limit: { type: "integer", description: "Max campaigns to return (default 25, max 100)." },
+                    },
+                    required: [],
+                  },
+                });
+                workerPrompt += `\n\nCAMPAIGN DATA ACCESS: You have a query_campaigns tool that reads this tenant's actual campaign records (budget, spend, metrics). Use it to verify real performance numbers instead of inventing plausible-sounding ones.`;
+              }
+
+              // CODEX S52.48 step 8 — same pattern rolled out to IR: a real
+              // cross-check tool over this tenant's actual investor records.
+              if (workerSlug === "investor-relations" || workerSlug === "ir-worker") {
+                businessTools.push({
+                  name: "query_investors",
+                  description: "Search this tenant's actual investor/CRM records by keyword (name, email, or type) and/or status. Call this to verify an investor's real status, target amount, or last activity before answering — do not assume or invent investor details.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      query: { type: "string", description: "Keyword to match against investor name, email, or type." },
+                      status: { type: "string", description: "Filter by status, e.g. 'Contacted', 'Committed', 'Passed'. Omit for all statuses." },
+                      limit: { type: "integer", description: "Max investors to return (default 25, max 100)." },
+                    },
+                    required: [],
+                  },
+                });
+                workerPrompt += `\n\nINVESTOR DATA ACCESS: You have a query_investors tool that reads this tenant's actual investor records. Use it to verify real status/commitment details instead of guessing or inventing them.`;
+              }
+
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
               if (workerSlug === "cre-analyst") {
                 businessTools.push({
@@ -4984,7 +5065,12 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               // tool round-trips actually execute. The streaming API path never passes
               // `tools` to the model, so search_drive / read_drive_file were silently
               // unavailable even when the system prompt said Drive was connected.
-              const _switchToToolMode = _driveConnected;
+              // CODEX S52.48 step 6/8: workers with their own always-on data-query
+              // tool (accounting, contacts, marketing, IR) route into tool-mode
+              // regardless of Drive, since they need the multi-round loop below to
+              // actually verify things against real tenant data.
+              const _hasOwnDataTool = ["platform-accounting", "platform-contacts", "platform-marketing", "marketing-content", "investor-relations", "ir-worker"].includes(workerSlug);
+              const _switchToToolMode = _driveConnected || _hasOwnDataTool;
               if (_STREAMING_WORKERS.has(workerSlug) && !_switchToToolMode) {
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -5122,6 +5208,12 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
               });
 
               let aiText = aiResponse.content.find(b => b.type === 'text')?.text || "";
+              // CODEX S52.49 — set true only if the accounting verification loop below
+              // actually enters a multi-round check; switches this response to SSE so
+              // the client can show "still checking" progress instead of a silent wait.
+              // Single-round replies (the common case) never touch this — same res.json()
+              // as before.
+              let _sseProgressActive = false;
               let workerImageUrl = null;
               let workerImgErrMsg = null; // S52.46 — guidance from a blocked/failed image gen, forwarded to the model
               let workerImgCharge = null; // S52.46 — "charged $X" note for a successful gen
@@ -5840,17 +5932,138 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
               // search_drive auto-reads the top result so the model doesn't need a second
               // tool call to say "reading now" — everything lands in one response turn.
-              if (toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected) {
-                let _driveToolResult = "Drive operation failed.";
+              // CODEX S52.48 steps 6/8: each worker's own tenant-data tool (query_ledger,
+              // query_contacts, query_campaigns, query_investors) shares this same
+              // multi-round loop, so a worker can cross-check a Drive file against its
+              // real records, or check its own records alone when Drive isn't connected.
+              const _OWN_DATA_TOOL_WORKERS = {
+                query_ledger: ["platform-accounting"],
+                query_contacts: ["platform-contacts"],
+                query_campaigns: ["platform-marketing", "marketing-content"],
+                query_investors: ["investor-relations", "ir-worker"],
+              };
+              const _isOwnDataTool = toolBlock && !!_OWN_DATA_TOOL_WORKERS[toolBlock.name] && _OWN_DATA_TOOL_WORKERS[toolBlock.name].includes(workerSlug);
+              const _isDriveTool = toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected;
+              if (_isOwnDataTool || _isDriveTool) {
+                let _driveToolResult = "Tool operation failed.";
+                // Hoisted (not declared inside the try below) so the follow-up round
+                // loop further down — a sibling block, not nested in that try — can
+                // reuse the same authenticated client and reader instead of each
+                // round re-authenticating or throwing a ReferenceError.
+                let _driveClient = null;
+                let _readOneFile = null;
+
+                const _queryLedger = async (input) => {
+                  input = input || {};
+                  const lim = Math.max(1, Math.min(parseInt(input.limit, 10) || 25, 100));
+                  let q = db.collection("transactions").where("tenantId", "==", reqTenantId);
+                  if (input.startDate) q = q.where("date", ">=", input.startDate);
+                  if (input.endDate) q = q.where("date", "<=", input.endDate);
+                  const snap = await q.orderBy("date", "desc").limit(200).get();
+                  const kw = (input.query || "").trim().toLowerCase();
+                  let rows = snap.docs.map(d => d.data());
+                  if (kw) {
+                    rows = rows.filter(t =>
+                      (t.description || "").toLowerCase().includes(kw) ||
+                      (t.institution || "").toLowerCase().includes(kw) ||
+                      (t.accountLast4 || "").toLowerCase().includes(kw)
+                    );
+                  }
+                  rows = rows.slice(0, lim);
+                  if (rows.length === 0) {
+                    return `No recorded transactions found matching query=${JSON.stringify(input.query || "")} startDate=${input.startDate || "(none)"} endDate=${input.endDate || "(none)"}.`;
+                  }
+                  const lines = rows.map(t => {
+                    const dollars = ((t.amountCents || 0) / 100).toFixed(2);
+                    return `${t.date || "?"} | ${t.direction === "credit" ? "+" : "-"}$${dollars} | ${t.description || "(no description)"} | ${t.institution || ""} | status=${t.status || "review"} | source=${t.source || ""}`;
+                  });
+                  return `${rows.length} recorded transaction(s) (date | amount | description | institution | status | source):\n${lines.join("\n")}`;
+                };
+
+                const _queryContacts = async (input) => {
+                  input = input || {};
+                  const lim = Math.max(1, Math.min(parseInt(input.limit, 10) || 25, 100));
+                  const snap = await db.collection("contacts").where("tenantId", "==", reqTenantId).limit(500).get();
+                  const kw = (input.query || "").trim().toLowerCase();
+                  let rows = snap.docs.map(d => d.data());
+                  if (kw) {
+                    rows = rows.filter(c =>
+                      (c.name || "").toLowerCase().includes(kw) ||
+                      (c.email || "").toLowerCase().includes(kw) ||
+                      (c.company || "").toLowerCase().includes(kw) ||
+                      (c.title || "").toLowerCase().includes(kw)
+                    );
+                  }
+                  rows = rows.slice(0, lim);
+                  if (rows.length === 0) return `No contacts found matching query=${JSON.stringify(input.query || "")}.`;
+                  const lines = rows.map(c => `${c.name || "(no name)"} | ${c.email || ""} | ${c.company || ""} | ${c.title || ""} | segments=${(c.segments || []).join(",")}`);
+                  return `${rows.length} contact(s) (name | email | company | title | segments):\n${lines.join("\n")}`;
+                };
+
+                const _queryCampaigns = async (input) => {
+                  input = input || {};
+                  const lim = Math.max(1, Math.min(parseInt(input.limit, 10) || 25, 100));
+                  let q = db.collection("campaigns").where("tenantId", "==", reqTenantId);
+                  if (input.status) q = q.where("status", "==", input.status);
+                  const snap = await q.limit(200).get();
+                  const kw = (input.query || "").trim().toLowerCase();
+                  let rows = snap.docs.map(d => d.data());
+                  if (kw) {
+                    rows = rows.filter(c =>
+                      (c.name || "").toLowerCase().includes(kw) ||
+                      (c.platform || "").toLowerCase().includes(kw)
+                    );
+                  }
+                  rows = rows.slice(0, lim);
+                  if (rows.length === 0) return `No campaigns found matching query=${JSON.stringify(input.query || "")} status=${input.status || "(any)"}.`;
+                  const lines = rows.map(c => {
+                    const b = c.budget || {}, m = c.metrics || {};
+                    return `${c.name || "(no name)"} | ${c.platform || ""} | status=${c.status || ""} | spent=$${b.spent ?? "?"}/${b.total ?? "?"} | clicks=${m.clicks ?? "?"} | conversions=${m.conversions ?? "?"}`;
+                  });
+                  return `${rows.length} campaign(s) (name | platform | status | spend | clicks | conversions):\n${lines.join("\n")}`;
+                };
+
+                const _queryInvestors = async (input) => {
+                  input = input || {};
+                  const lim = Math.max(1, Math.min(parseInt(input.limit, 10) || 25, 100));
+                  let q = db.collection("investors").where("tenantId", "==", reqTenantId);
+                  if (input.status) q = q.where("status", "==", input.status);
+                  const snap = await q.limit(200).get();
+                  const kw = (input.query || "").trim().toLowerCase();
+                  let rows = snap.docs.map(d => d.data());
+                  if (kw) {
+                    rows = rows.filter(i =>
+                      (i.name || "").toLowerCase().includes(kw) ||
+                      (i.email || "").toLowerCase().includes(kw) ||
+                      (i.type || "").toLowerCase().includes(kw)
+                    );
+                  }
+                  rows = rows.slice(0, lim);
+                  if (rows.length === 0) return `No investors found matching query=${JSON.stringify(input.query || "")} status=${input.status || "(any)"}.`;
+                  const lines = rows.map(i => `${i.name || "(no name)"} | ${i.email || ""} | ${i.type || ""} | status=${i.status || ""} | target=$${i.targetAmount ?? "?"} | lastActivity=${i.lastActivity || ""}`);
+                  return `${rows.length} investor(s) (name | email | type | status | target | last activity):\n${lines.join("\n")}`;
+                };
+
+                const _execOwnDataTool = async (name, input) => {
+                  if (name === 'query_ledger') return _queryLedger(input);
+                  if (name === 'query_contacts') return _queryContacts(input);
+                  if (name === 'query_campaigns') return _queryCampaigns(input);
+                  if (name === 'query_investors') return _queryInvestors(input);
+                  return `Unknown tool: ${name}`;
+                };
+
                 try {
+                  if (_isOwnDataTool) {
+                    _driveToolResult = await _execOwnDataTool(toolBlock.name, toolBlock.input);
+                  } else {
                   const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
-                  const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                  _driveClient = await getAuthenticatedDriveClient(authUser.uid);
 
                   // Shared file reader — used by both search_drive auto-read and read_drive_file.
                   // xlsx binary downloads use a 20s timeout race so the function never hangs
                   // on large files. Google-native files (Sheets/Docs) use server-side export
                   // which is instant.
-                  const _readOneFile = async (fileId) => {
+                  _readOneFile = async (fileId) => {
                     const _meta = (await _driveClient.files.get({ fileId, fields: "id,name,mimeType,size" })).data;
                     const _m = _meta.mimeType || "";
                     let _raw = "";
@@ -5963,23 +6176,43 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       _driveToolResult = await _readOneFile(_fileId);
                     }
                   }
+                  }
                 } catch (_de) {
-                  _driveToolResult = `Could not access Google Drive: ${_de.message}`;
-                  console.warn(`[worker:${workerSlug}] Drive tool error:`, _de.message);
+                  _driveToolResult = _isOwnDataTool
+                    ? `Could not complete that lookup: ${_de.message}`
+                    : `Could not access Google Drive: ${_de.message}`;
+                  console.warn(`[worker:${workerSlug}] ${_isOwnDataTool ? toolBlock.name : "Drive"} tool error:`, _de.message);
                 }
                 if (aiResponse && aiResponse.content) {
                   try {
-                    // Loop up to 3 Drive tool calls (6 for accounting) so multi-file
-                    // research works (model reads file A → wants file B → wants file
-                    // C → final answer). Each model call is raced against a 30s
-                    // timeout so one slow file can't hang the whole request.
-                    // CODEX S52.48 (2026-08-15): accounting reconciliation routinely
-                    // needs to cross-check 3-4+ statements in a single turn (Chime
-                    // checking, Chime credit, a second card, PayPal, etc.) — 3 rounds
-                    // was cutting it off mid-verification. Other workers keep the
-                    // original 3; this is scoped to accounting only.
-                    const _MODEL_TIMEOUT_MS = 30_000;
-                    const _MAX_DRIVE_ROUNDS = workerSlug === "platform-accounting" ? 6 : 3;
+                    // CODEX S52.48 step 6 — generalized verification loop. Originally
+                    // Drive-only (3 rounds, 6 for accounting); now arbitrary tool set
+                    // (Drive + query_ledger) so accounting can actually cross-check a
+                    // statement against a second source, or the books alone with no
+                    // Drive connected at all. Each round races its own timeout so one
+                    // slow call can't hang the whole request. Accounting gets a higher
+                    // round cap (reconciliation routinely needs 3-4+ sources in one
+                    // turn) and a shorter per-round timeout, agreed with Sean 2026-08-15:
+                    // 5 rounds x 25s = 125s worst case, surfaced to the user as a
+                    // "still checking" progress state rather than a silent wait
+                    // (front-end work tracked separately). Other workers keep the
+                    // original 3 rounds / 30s.
+                    const _isAcctWorker = workerSlug === "platform-accounting";
+                    const _MODEL_TIMEOUT_MS = _isAcctWorker ? 25_000 : 30_000;
+                    const _MAX_DRIVE_ROUNDS = _isAcctWorker ? 5 : 3;
+                    const _OWN_DATA_TOOL_DEFS = {
+                      query_ledger: { name: "query_ledger", description: "Search this tenant's recorded transactions by keyword and/or date range.", input_schema: { type: "object", properties: { query: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      query_contacts: { name: "query_contacts", description: "Search this tenant's CRM contact records by keyword (name, email, company, or title).", input_schema: { type: "object", properties: { query: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      query_campaigns: { name: "query_campaigns", description: "Search this tenant's marketing campaigns by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      query_investors: { name: "query_investors", description: "Search this tenant's investor records by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                    };
+                    const _followUpTools = [
+                      ...Object.keys(_OWN_DATA_TOOL_WORKERS).filter(n => _OWN_DATA_TOOL_WORKERS[n].includes(workerSlug)).map(n => _OWN_DATA_TOOL_DEFS[n]),
+                      ...(_driveConnected ? [
+                        { name: "search_drive", description: "Search Google Drive", input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
+                        { name: "read_drive_file", description: "Read a file from Google Drive", input_schema: { type: "object", properties: { file_id: { type: "string" }, file_name: { type: "string" } } } },
+                      ] : []),
+                    ];
                     let _loopMessages = [
                       ...messages,
                       { role: "assistant", content: aiResponse.content },
@@ -5988,6 +6221,23 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     let _rounds = 0;
                     while (_rounds < _MAX_DRIVE_ROUNDS) {
                       _rounds++;
+                      // CODEX S52.49 — surface "still checking" progress instead of a
+                      // silent wait. Only switches this response to SSE once we know
+                      // we're actually in a multi-round verification (not on every
+                      // accounting reply — most are single-round and unaffected).
+                      if (_isAcctWorker) {
+                        if (!_sseProgressActive) {
+                          _sseProgressActive = true;
+                          res.setHeader('Content-Type', 'text/event-stream');
+                          res.setHeader('Cache-Control', 'no-cache');
+                          res.setHeader('Connection', 'keep-alive');
+                          res.flushHeaders();
+                        }
+                        const _progressMsg = _rounds === 1
+                          ? "Checking a second source to verify this..."
+                          : `Still verifying — round ${_rounds} of ${_MAX_DRIVE_ROUNDS}...`;
+                        res.write(`data: ${JSON.stringify({ progress: _progressMsg })}\n\n`);
+                      }
                       const _fuTimeout = new Promise((_, rej) =>
                         setTimeout(() => rej(new Error("drive_followup_timeout")), _MODEL_TIMEOUT_MS)
                       );
@@ -5995,21 +6245,23 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                         anthropic.messages.create({
                           model: 'claude-sonnet-4-6', max_tokens: workerMaxTokens,
                           system: workerPrompt, messages: _loopMessages,
-                          tools: [{ name: "search_drive", description: "Search Google Drive", input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } }, { name: "read_drive_file", description: "Read a file from Google Drive", input_schema: { type: "object", properties: { file_id: { type: "string" }, file_name: { type: "string" } } } }],
+                          tools: _followUpTools,
                         }),
                         _fuTimeout,
                       ]);
 
                       const _fuText = (_fu.content.find(b => b.type === 'text') || {}).text || "";
-                      const _fuTool = _fu.content.find(b => b.type === 'tool_use' && (b.name === 'search_drive' || b.name === 'read_drive_file'));
+                      const _fuTool = _fu.content.find(b => b.type === 'tool_use' && (b.name === 'search_drive' || b.name === 'read_drive_file' || !!_OWN_DATA_TOOL_WORKERS[b.name]));
 
                       if (_fuText) aiText = _fuText;
 
-                      // If model wants another file, execute and loop.
+                      // If model wants another tool call, execute and loop.
                       if (_fuTool && _rounds < _MAX_DRIVE_ROUNDS) {
                         let _nextResult = "";
                         try {
-                          if (_fuTool.name === 'search_drive') {
+                          if (_OWN_DATA_TOOL_WORKERS[_fuTool.name]) {
+                            _nextResult = await _execOwnDataTool(_fuTool.name, _fuTool.input);
+                          } else if (_fuTool.name === 'search_drive') {
                             const _q = _fuTool.input.query || "";
                             const _sr = await _driveClient.files.list({ q: `fullText contains '${_q.replace(/'/g,"\\'")}' and trashed = false`, fields: "files(id,name,mimeType,modifiedTime)", pageSize: 5, orderBy: "modifiedTime desc" });
                             const _sf = (_sr.data.files || []);
@@ -6024,7 +6276,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                             _nextResult = _fid ? await _readOneFile(_fid) : `File not found.`;
                           }
                         } catch (_loopReadErr) {
-                          _nextResult = `Could not read file: ${_loopReadErr.message}`;
+                          _nextResult = `Could not complete that lookup: ${_loopReadErr.message}`;
                         }
                         _loopMessages = [
                           ..._loopMessages,
@@ -6037,10 +6289,10 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       }
                     }
                   } catch (_fuErr) {
-                    console.warn(`[worker:${workerSlug}] Drive follow-up failed:`, _fuErr.message);
+                    console.warn(`[worker:${workerSlug}] verification follow-up failed:`, _fuErr.message);
                     aiText = _fuErr.message === "drive_followup_timeout"
-                      ? `I retrieved the file but the analysis timed out. Try asking about a specific section or convert large files to Google Sheets for faster access.`
-                      : (_driveToolResult.startsWith("Could not") ? _driveToolResult : `I read the file — here's a summary:\n\n${_driveToolResult.slice(0, 2000)}`);
+                      ? `I started checking a second source but the verification timed out. Try asking about a specific statement or date range so I can narrow it down.`
+                      : (_driveToolResult.startsWith("Could not") ? _driveToolResult : `Here's what I found:\n\n${_driveToolResult.slice(0, 2000)}`);
                   }
                 }
               }
@@ -6476,6 +6728,19 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               // 49.27 — return `response` (not `message`) so ChatPanel renders the text
               // CODEX 42: RAAS-light streaming workers return early above (true SSE path).
               // All remaining workers reach here and get standard res.json() delivery.
+              // CODEX S52.49 — unless this request already switched to SSE mid-flight
+              // (accounting's multi-round verification loop, above) — headers are
+              // already sent in that case, so this must close out as an SSE event.
+              if (_sseProgressActive) {
+                res.write(`data: ${JSON.stringify({
+                  done: true,
+                  response: aiText,
+                  canvasSignal,
+                  canvasRenders: workerCanvasRenders,
+                  ...(workerGeneratedDoc ? { generatedDocument: workerGeneratedDoc } : {}),
+                })}\n\n`);
+                return res.end();
+              }
               return res.json({
                 ok: true,
                 response: aiText,
@@ -6489,6 +6754,15 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
             console.error(`[chatEngine] Worker handler failed for ${workerSlug}:`, workerErr.message, workerErr.stack);
             // Return a proper error response — falling through to sales mode would
             // produce a non-response if no sales block matches, causing "Failed to fetch".
+            if (_sseProgressActive) {
+              res.write(`data: ${JSON.stringify({
+                done: true,
+                response: `I hit a snag on my end — ${workerErr.message}. Please try again.`,
+                canvasSignal: null,
+                canvasRenders: [],
+              })}\n\n`);
+              return res.end();
+            }
             return res.json({
               ok: true,
               response: `I hit a snag on my end — ${workerErr.message}. Please try again.`,

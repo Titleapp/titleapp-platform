@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "chatSessions",
       "queryScope": "COLLECTION",
       "fields": [

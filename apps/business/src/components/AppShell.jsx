@@ -116,7 +116,21 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         setWorkspaces(data.workspaces);
         // Sync localStorage vertical with actual workspace data
         const wsId = localStorage.getItem("WORKSPACE_ID") || "vault";
-        const matchedWs = data.workspaces.find(w => w.id === wsId);
+        let matchedWs = data.workspaces.find(w => w.id === wsId);
+        // Stale WORKSPACE_ID/TENANT_ID (e.g. left over from a /demo/* sign-in
+        // that stamped these same shared keys) won't match this user's real
+        // workspace list. Falling back silently here (instead of correcting
+        // localStorage) is what caused demo content/workers to bleed into —
+        // or blank out — a real user's workspace after sign-in.
+        if (!matchedWs && data.workspaces.length > 0) {
+          matchedWs = data.workspaces[0];
+          localStorage.setItem("VERTICAL", matchedWs.vertical || "");
+          localStorage.setItem("WORKSPACE_ID", matchedWs.id);
+          localStorage.setItem("WORKSPACE_NAME", matchedWs.name || "");
+          localStorage.setItem("COMPANY_NAME", matchedWs.name || "");
+          localStorage.setItem("TENANT_NAME", matchedWs.name || "");
+          localStorage.setItem("TENANT_ID", matchedWs.id);
+        }
         if (matchedWs && matchedWs.vertical) {
           const storedVertical = localStorage.getItem("VERTICAL");
           if (storedVertical !== matchedWs.vertical) {

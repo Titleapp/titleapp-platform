@@ -1873,12 +1873,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           let lineBuf = '';
           const pump = () => reader.read().then(({ done, value }) => {
             if (done) {
+              // CODEX S52.49 — accounting's multi-round verification loop doesn't
+              // stream token-by-token; it sends progress updates, then the whole
+              // answer in one `done` event. Fall back to that when no tokens came
+              // through, instead of clobbering the real answer with the last
+              // progress line still sitting in `accumulated`.
+              const finalText = accumulated.trim() || (donePayload?.response || '').trim();
               setMessages(prev => prev.map(m =>
-                m._streamKey === streamKey ? { ...m, content: accumulated.trim(), _streamKey: undefined } : m
+                m._streamKey === streamKey ? { ...m, content: finalText, _streamKey: undefined, _isProgress: false } : m
               ));
               resolve({
                 ok: true,
-                response: accumulated.trim(),
+                response: finalText,
                 canvasSignal: donePayload?.canvasSignal || null,
                 canvasRenders: donePayload?.canvasRenders || [],
               });
@@ -1891,10 +1897,19 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               if (!line.startsWith('data: ')) continue;
               try {
                 const parsed = JSON.parse(line.slice(6));
+                // CODEX S52.49 — transient "still checking a second source..."
+                // status. Shown in place of the empty placeholder bubble; never
+                // accumulated into the real answer, and gets overwritten by the
+                // next progress update, a real token, or the final done text.
+                if (parsed.progress !== undefined) {
+                  setMessages(prev => prev.map(m =>
+                    m._streamKey === streamKey ? { ...m, content: parsed.progress, _isProgress: true } : m
+                  ));
+                }
                 if (parsed.token !== undefined) {
                   accumulated += parsed.token;
                   setMessages(prev => prev.map(m =>
-                    m._streamKey === streamKey ? { ...m, content: accumulated } : m
+                    m._streamKey === streamKey ? { ...m, content: accumulated, _isProgress: false } : m
                   ));
                 }
                 if (parsed.done) donePayload = parsed;
@@ -2923,7 +2938,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           return (
           <div key={idx} {...(msg.workerCards?.length > 0 ? { "data-worker-results": "true" } : {})}>
             <div className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
-              <div className="chat-bubble" style={msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' } : undefined}>
+              <div className="chat-bubble" style={
+                msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' }
+                : msg._isProgress ? { fontStyle: 'italic', color: '#94a3b8' }
+                : undefined
+              }>
                 {msg.role === 'assistant' && !msg.isError && typeof displayContent === 'string'
                   ? <ChatMarkdown>{displayContent}</ChatMarkdown>
                   : displayContent}
