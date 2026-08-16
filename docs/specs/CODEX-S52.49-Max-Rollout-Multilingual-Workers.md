@@ -1,6 +1,6 @@
 # CODEX S52.49 — Max Verification Loop Shipped, Rolled Out to 3 Workers, Multilingual Rule Added
 
-**Status:** SHIPPED (2026-08-15), one item still open (see "Not done yet")
+**Status:** SHIPPED (2026-08-15), five items still open (see "Not done yet")
 **Author:** Sean Lee Combs + Claude Code
 **Predecessor:** CODEX-S52.48-Max-Agentic-Loop-and-Studio-Locker-Consolidation (this session executes and extends that spec's build sequence)
 
@@ -13,17 +13,19 @@ This session (resumed after a hardware crash mid-work) closed out the load-beari
 ## What shipped
 
 ### 1. Workspace-ID / demo-bleed bug fixed (`apps/business/src/components/AppShell.jsx`)
-Root cause of two reported symptoms — demo-tenant content bleeding into a real workspace, and workers not showing up in the sidebar after sign-in. `loadWorkspaces()` read `localStorage.WORKSPACE_ID` and, when it didn't match any of the user's real workspaces (e.g. left over from a `/demo/*` sign-in that stamps the same shared keys), silently no-op'd instead of correcting it. Fix: fall back to the user's first real workspace and reset `WORKSPACE_ID`/`TENANT_ID`/etc. when the stored value is stale — mirrors the logic `handleSwitchWorkspace` already had.
+Root cause of two reported symptoms — demo-tenant content bleeding into a real workspace, and workers not showing up in the sidebar after sign-in. `loadWorkspaces()` read `localStorage.WORKSPACE_ID` and, when it didn't match any of the user's real workspaces (e.g. left over from a `/demo/*` sign-in that stamps the same shared keys), silently no-op'd instead of correcting it. Fix: fall back to the user's first real workspace and reset `WORKSPACE_ID`/`TENANT_ID`/etc. when the stored value is stale — mirrors the logic `handleSwitchWorkspace` already had. Re-read `handleSwitchWorkspace` directly to confirm before relying on it: it sets the same six keys (`VERTICAL`/`WORKSPACE_ID`/`WORKSPACE_NAME`/`COMPANY_NAME`/`TENANT_NAME`/`TENANT_ID`) from a real `workspace` object with no bug spotted — the mirrored logic was checked, not just copied on faith.
 
 ### 2. S52.48 step 5 completed — `accounting_gaap_v1` live
-Confirmed via direct Firestore read: `constraintRaasModules/accounting_gaap_v1` is `status: "live"`, counsel-reviewed by Sean per the spec's own carve-out (internal accounting-process rules, not external regulatory), and wired onto `digitalWorkers/platform-accounting` via `constraintRaasSources`. Verified live in a real conversation — Max refused a "just plug the $340 difference" request, cited the no-fabricated-figures rule, and proposed a real reconciliation.
+Confirmed via direct Firestore read: `constraintRaasModules/accounting_gaap_v1` is `status: "live"`, counsel-reviewed by Sean, and wired onto `digitalWorkers/platform-accounting` via `constraintRaasSources`.
+
+**Standing principle, stated once here rather than left implicit across sections**: Sean can self-certify as "counsel" only for internal, non-regulatory process rules — discipline the business itself sets (e.g. accounting's no-fabricated-figures rule, which governs how *this company* reconciles its own books, not what the law requires). The moment a rule's authority comes from an external regulatory body — employment law for HR, securities law for IR — that line is crossed and self-certification isn't appropriate; it needs either real counsel review or the actual domain expert who owns that regulatory relationship. This is why accounting could ship today and HR/IR's constraint modules explicitly could not (see "Not done yet" below). Verified live in a real conversation — Max refused a "just plug the $340 difference" request, cited the no-fabricated-figures rule, and proposed a real reconciliation.
 
 ### 3. S52.48 step 6 completed — generalized tool-call loop (`functions/functions/index.js`)
 - New `query_ledger` tool: reads this tenant's actual `transactions` collection by keyword/date range, available to Max regardless of Drive connection.
 - **Found and fixed a real bug along the way**: `_driveClient` and `_readOneFile` were `const`-declared inside the first tool-dispatch `try` block, but the multi-round follow-up loop that calls them lives in a sibling block after that `try` closes — every round-2+ Drive follow-up was hitting a silently-caught `ReferenceError` and falling back to a canned summary. Fixed by hoisting both to the enclosing scope.
 - Round cap/timeout for accounting tuned to 5 rounds x 25s (was 6x30s), agreed with Sean as the tradeoff between thorough cross-checking and worst-case latency.
 - `platform-accounting` now always routes into tool-mode, Drive connected or not (`_switchToToolMode`).
-- New Firestore composite index: `transactions` on `(tenantId ASC, date DESC)` — required for `query_ledger`'s range queries.
+- New Firestore composite index: `transactions` on `(tenantId ASC, date DESC)` — required for `query_ledger`'s range queries. **Verified READY, not just deployed**: ran the actual `query_ledger`-shaped query (tenantId equality + date range + orderBy) directly against Firestore after deploy — it returned results rather than throwing `FAILED_PRECONDITION`, confirming the index had finished building, not just that its definition was pushed.
 
 ### 4. S52.48 step 8 — rolled out to 3 of 4 remaining Back of House workers
 Same pattern (own-tenant-data query tool, tool-mode-by-default, shared multi-round loop) extended to:
@@ -38,7 +40,7 @@ The dispatch logic (`_OWN_DATA_TOOL_WORKERS` registry, `_execOwnDataTool`) is wr
 Added to the universal delivery-rules block in `index.js` (applies to every RAAS worker) and separately to Alex's `services/alex/prompts/core.js` (Alex runs its own prompt stack, per S52.48's own inventory item #11): match the user's language turn-by-turn, native fluency expected especially for Mandarin/Dutch/German, canvas payload text in-language too, JSON keys/status enums stay in English. Verified live in German (Max) and Mandarin (HR) — both fluent, not stilted machine translation.
 
 ### 6. Studio Locker/RAAS wiring verified live for all 5 Back of House workers
-Confirms S52.48 step 3 (repoint `tenantLocker.js` to read live from `constraintRaasModules`) actually works platform-wide, not just for accounting: Accounting shows its full 9k-char GAAP module; Contacts, HR, Marketing, and IR each show their own existing baseline docs (625/2k/715/853 chars respectively) — thin placeholder content, not yet built out like accounting's, but genuinely live and correctly scoped per worker with no cross-worker bleed.
+Confirms S52.48 step 3 (repoint `tenantLocker.js` to read live from `constraintRaasModules`) actually works platform-wide, not just for accounting: Accounting shows its full 9k-char GAAP module; the other four each show their own existing baseline doc — Contacts 625 chars, HR 2k chars, Marketing 715 chars, IR 853 chars — thin placeholder content, not yet built out like accounting's, but genuinely live and correctly scoped per worker with no cross-worker bleed.
 
 ## Not done yet — open items
 
