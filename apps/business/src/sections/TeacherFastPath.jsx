@@ -118,6 +118,7 @@ export default function TeacherFastPath() {
               <div style={{ fontSize: 12, color: "#64748b", marginBottom: 2 }}>{r.category}</div>
               <div style={{ fontSize: 13, color: "#334155", marginBottom: 4 }}>{r.answer.slice(0, 220)}{r.answer.length > 220 ? "…" : ""}</div>
               <span style={{ fontSize: 11, fontWeight: 700, color: CLASS_COLOR[r.classification] || "#64748b", textTransform: "uppercase" }}>{r.classification}</span>
+              {r.judgeReason && <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: 8 }}>— {r.judgeReason}</span>}
             </div>
           ))}
         </div>

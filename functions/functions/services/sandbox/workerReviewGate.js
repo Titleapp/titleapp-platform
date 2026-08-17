@@ -75,7 +75,37 @@ async function handleList(req, res, user) {
       .where("tenantId", "==", tenantId).where("status", "==", status).get();
     const reviews = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?._seconds || 0) - (a.createdAt?._seconds || 0));
-    return res.json({ ok: true, reviews });
+
+    // CODEX S52.55 follow-up — a review that only shows a slug isn't
+    // actually reviewable. Join in the real worker content (what it's
+    // supposed to do, its rules, its escalation triggers, and its test
+    // transcript) so "approve" means something. Independent evaluation
+    // (below on decide) is a separate, additional signal, not a replacement
+    // for showing the admin the real content.
+    const withContent = await Promise.all(reviews.map(async (r) => {
+      if (!r.workerSlug) return r;
+      try {
+        const wSnap = await db.collection("digitalWorkers").doc(r.workerSlug).get();
+        if (!wSnap.exists) return { ...r, workerMissing: true };
+        const w = wSnap.data();
+        return {
+          ...r,
+          workerName: w.name || null,
+          evaluationWorkerName: w.evaluationWorkerName || null,
+          subject: w.subject || null,
+          job: w.job || null,
+          knowledgeSummary: w.knowledgeSummary || null,
+          systemPrompt: w.systemPrompt || null,
+          testSummary: w.testSummary || null,
+          minutesPending: r.createdAt?._seconds ? Math.round((Date.now() / 1000 - r.createdAt._seconds) / 60) : null,
+        };
+      } catch (e) {
+        console.warn("[workerReviewGate] failed to join worker content for", r.workerSlug, e.message);
+        return r;
+      }
+    }));
+
+    return res.json({ ok: true, reviews: withContent });
   } catch (e) {
     console.error("[workerReviewGate] list failed:", e.message);
     return res.status(500).json({ ok: false, error: e.message });
@@ -131,4 +161,55 @@ async function handleDecide(req, res, user) {
   }
 }
 
-module.exports = { submitReview, handleSubmit, handleList, handleDecide };
+/**
+ * Scheduled daily. The review-queue UI shows elapsed time, but a UI label
+ * only reaches someone already looking at the page — the SLA gap named in
+ * S52.55 needs a real push, not just a passive display. Emails each
+ * tenant's admin once per stale review per day, reusing the same SendGrid
+ * pattern as liveEscalation.js.
+ */
+async function checkStaleReviews() {
+  const db = getDb();
+  const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+  const snap = await db.collection("pendingWorkerReviews")
+    .where("status", "==", "pending").where("createdAt", "<=", cutoff).get();
+  if (snap.empty) return { checked: 0, notified: 0 };
+
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+  let notified = 0;
+  for (const doc of snap.docs) {
+    const r = doc.data();
+    if (r.staleReminderSentAt) continue; // one reminder per stale review, not daily spam
+    try {
+      if (SENDGRID_API_KEY && r.tenantId) {
+        const membershipsSnap = await db.collection("memberships")
+          .where("tenantId", "==", r.tenantId).where("role", "==", "admin").where("status", "==", "active")
+          .limit(1).get();
+        if (!membershipsSnap.empty) {
+          const uid = membershipsSnap.docs[0].data().userId;
+          const userRecord = uid ? await admin.auth().getUser(uid).catch(() => null) : null;
+          if (userRecord && userRecord.email) {
+            await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: userRecord.email }] }],
+                from: { email: "alerts@sociii.ai", name: "SOCIII Alerts" },
+                subject: `[SOCIII] Worker review pending over 24 hours — ${r.workerSlug}`,
+                content: [{ type: "text/plain", value: `A fast-path-built worker (${r.workerSlug}) has been waiting for your review for over 24 hours. Nothing is live until you approve or reject it.\n\nReview it in your Worker Review Queue.\n\n— SOCIII (automated)` }],
+              }),
+            });
+            notified++;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[workerReviewGate] stale reminder failed for", doc.id, e.message);
+    } finally {
+      await doc.ref.update({ staleReminderSentAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+  }
+  return { checked: snap.size, notified };
+}
+
+module.exports = { submitReview, handleSubmit, handleList, handleDecide, checkStaleReviews };

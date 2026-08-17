@@ -32784,6 +32784,15 @@ exports.checkTrialExpiry = onSchedule(
   async () => { await checkTrialExpiry(); }
 );
 
+// CODEX S52.55 — daily check for worker reviews pending over 24h. The
+// review-queue UI shows elapsed time, but that only reaches someone already
+// on the page; this is the actual SLA push named as a gap in that spec.
+const { checkStaleReviews } = require("./services/sandbox/workerReviewGate");
+exports.checkStaleWorkerReviews = onSchedule(
+  { schedule: "0 9 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await checkStaleReviews(); }
+);
+
 // ----------------------------
 // CODEX S52.50 — DPP Priority Report + Supplier Data-Request Drafting
 // Weekly, Monday 8am PT. Cadence is a proposed default per the spec, not a
