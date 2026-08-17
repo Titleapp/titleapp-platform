@@ -70,6 +70,31 @@ Derive a Digital Worker spec as JSON ONLY, no other text:
   };
 }
 
+// Hardcoded, not AI-derived — a real gap found live: the derivation prompt
+// asked the model to write escalation rules, and every version it wrote said
+// "a caring adult will be told" with nothing actionable for the student in
+// the moment. For a live self-harm/suicide disclosure specifically, waiting
+// on an adult being notified later is not the same as the student having a
+// real crisis resource in front of them right now. 988 (call or text) is the
+// US crisis line and is treated as universally safe to surface immediately —
+// this is NOT left to AI derivation because a teacher's uploaded materials
+// have no reason to mention it and the model reliably won't invent it
+// unprompted (verified: it didn't, across every fast-path worker built so
+// far). Deliberately NOT extending this same "surface a hotline immediately"
+// treatment to abuse/neglect disclosures — flagged below as a real, open,
+// unresolved safety-design question rather than guessed at, since a chatbot
+// proactively naming an abuse hotline in the moment carries a real risk if
+// the disclosure happens on a device an abuser can see, which self-harm
+// hotline guidance does not carry in the same way. That asymmetry is a
+// genuine judgment call, not an engineering detail — needs a real answer
+// from Sean (or someone with actual child-safety-policy expertise), not an
+// assumption made here.
+const MANDATORY_SAFETY_RULES = `
+MANDATORY SAFETY RULES (not derived from uploaded materials — always apply, cannot be overridden by any rule above):
+- If a student discloses thoughts of self-harm or suicide: stop tutoring, respond warmly, and IMMEDIATELY tell them, in these words or very close to them: "You can call or text 988 (the Suicide & Crisis Lifeline) right now, any time, for free — a real person will talk with you." Say this in addition to flagging a real adult — not instead of it.
+- For any other escalation category (abuse, neglect, being hurt, being unsafe at home): stop tutoring, respond warmly, flag a real adult immediately, and do NOT push for more details. Do not name a specific hotline for this category unprompted — flagging a trusted adult who knows the student's real situation is the safer default here, unlike the self-harm case above.
+- Never promise a student that a flagged conversation will be kept secret, in any escalation category.`;
+
 function buildSystemPrompt(spec, subject) {
   const rules = spec.tutoringRules.length ? `\nYou must:\n${spec.tutoringRules.map((r) => `- ${r}`).join("\n")}` : "";
   const escalation = spec.escalationRules.length ? `\nESCALATE — stop tutoring and say you're flagging this for a real adult, then actually flag it — when:\n${spec.escalationRules.map((r) => `- ${r}`).join("\n")}` : "";
@@ -78,6 +103,7 @@ function buildSystemPrompt(spec, subject) {
     spec.job ? `Your job: ${spec.job}.` : "",
     rules,
     escalation,
+    MANDATORY_SAFETY_RULES,
     `\nThis worker was built by a teacher via an upload-first tool, not hand-written by an engineer — if a student asks something the uploaded materials don't cover, say so plainly rather than guessing.`,
   ].filter(Boolean).join("\n");
 }
@@ -180,6 +206,12 @@ async function buildAndSubmit({ anthropic, tenantId, userId, materialsText, help
     systemPrompt,
     job: spec.job,
     knowledgeSummary: spec.knowledgeSummary,
+    // Stored separately, not just baked into systemPrompt — so a future fix
+    // (like MANDATORY_SAFETY_RULES) can be re-applied to an existing worker
+    // without needing to re-derive from the original uploaded materials.
+    tutoringRules: spec.tutoringRules,
+    escalationRules: spec.escalationRules,
+    uncertain: spec.uncertain,
     tenantId: tenantId || null,
     createdBy: userId,
     buildSource: "fast-path",

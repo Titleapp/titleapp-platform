@@ -129,6 +129,14 @@ export default function WorkerReviewQueue() {
                   <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #f1f5f9" }}>
                     {r.job && <div style={{ fontSize: 13, color: "#334155", marginBottom: 10 }}><strong>Job:</strong> {r.job}</div>}
                     {r.knowledgeSummary && <div style={{ fontSize: 13, color: "#334155", marginBottom: 10 }}><strong>What it learned from uploaded materials:</strong> {r.knowledgeSummary}</div>}
+                    {r.systemPrompt && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", marginBottom: 4 }}>
+                          The actual rules this worker will follow — this is what you're approving, not just a summary of it
+                        </div>
+                        <pre style={{ fontSize: 12, color: "#334155", background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 8, padding: "10px 12px", whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0 }}>{r.systemPrompt}</pre>
+                      </div>
+                    )}
                     {r.testSummary?.results?.map((tr) => (
                       <div key={tr.id} style={{ padding: "8px 0", borderTop: "1px solid #f8fafc" }}>
                         <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 2 }}>{tr.category}</div>
