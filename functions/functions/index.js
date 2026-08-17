@@ -1979,7 +1979,15 @@ exports.api = onRequest(
             role:          "admin",
             activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001"],
           },
-          // ── Education K-12 (Westview Elementary) ─────────────────────────
+          // ── Education K-12 (Westview Elementary) — CODEX S52.54/S52.55 ──────
+          // Was wired to nursing-education-001 (a nursing CE worker) under a
+          // K-12 principal persona — a real, confirmed mismatch, not a typo.
+          // Now points to a real worker built via the upload-first fast path
+          // (S52.55): "Ms. Reyes" uploaded 5th-grade water cycle materials,
+          // the pipeline derived a Course Worker + escalation rules, ran the
+          // automated red-team test, and Dr. Wells (this persona, role:
+          // admin) approved it through the real review gate — the same path
+          // any teacher's submission goes through, not special-cased.
           education: {
             uid:           "demo-education-patricia-001",
             tenantId:      "demo-westview-education",
@@ -1987,7 +1995,7 @@ exports.api = onRequest(
             vertical:      "education",
             name:          "Dr. Patricia Wells",
             role:          "admin",
-            activeWorkers: ["nursing-education-001"],
+            activeWorkers: ["watercyclehelper-mswpe8no"],
           },
           // ── TRAITLY / EU Battery DPP (Volta Advisory) ─────────────────────
           traitly: {
@@ -3913,6 +3921,23 @@ TONE: Precise, compliance-grade, no hedging beyond what's actually uncertain. Sh
               if (dwSnap.exists && _demoFallback && !dw.systemPrompt) {
                 dw = { ..._demoFallback, ...dw };
               }
+
+              // CODEX S52.55 — real enforcement for the admin-review gate.
+              // Scoped to buildSource:"fast-path" only, not every digitalWorkers
+              // doc (existing workers' status conventions weren't audited here;
+              // don't risk blocking something that already works). Without this
+              // check, "pending_review" is exactly the same kind of hollow label
+              // the old self-checkable Preflight box was — verified serving
+              // unconditionally on `dwSnap.exists`, with no status read anywhere
+              // in this path before this fix.
+              if (dw.buildSource === "fast-path" && dw.status !== "live") {
+                return res.json({
+                  ok: true,
+                  response: "This helper hasn't been approved yet — it's waiting for admin review before it can chat with anyone.",
+                  conversationState: "worker_pending_review",
+                });
+              }
+
               let workerName = dw.persona_name || dw.display_name || dw.name || workerSlug;
               // re-salesperson slug is user-facing as "Real Estate Advocate"
               if (workerSlug === "re-salesperson") workerName = "Real Estate Advocate";
@@ -6854,6 +6879,26 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 } catch (revErr) {
                   console.warn(`[50.5] chat-completion usage event failed for ${workerSlug}:`, revErr.message);
                 }
+              }
+
+              // CODEX S52.55 — live escalation screen. Runs on every worker's every
+              // turn (not just fast-path-built workers — this is generic platform
+              // infra per that spec). Detection is synchronous/free; only the rare
+              // flagged case pays the cost of a real write + notification, and that
+              // cost is paid BEFORE responding so the record can't be lost to a
+              // scaled-down function instance.
+              try {
+                const { detectEscalation, recordAndNotifyEscalation } = require("./services/sandbox/liveEscalation");
+                const _escHit = detectEscalation({ userInput, aiText });
+                if (_escHit) {
+                  await recordAndNotifyEscalation({
+                    db, tenantId: reqTenantId, workerSlug,
+                    userId: authUser && authUser.uid, userInput, aiText,
+                    tag: _escHit.tag, source: _escHit.source,
+                  });
+                }
+              } catch (escErr) {
+                console.warn(`[liveEscalation] screen failed for worker:${workerSlug}:`, escErr.message);
               }
 
               // Clean response — no detectedVertical, no workerCards, no Alex markers
@@ -15052,6 +15097,47 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         console.error("sandbox:worker:state failed:", e);
         return jsonError(res, 500, "Worker state read failed");
       }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  WORKER REVIEW GATE — CODEX S52.55 (real admin-review backstop for
+    //  fast-path-built workers; Preflight's own checkbox is not backend-
+    //  enforced, verified directly — see workerReviewGate.js header)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/worker:fastpath:build — CODEX S52.55. Body: { tenantId,
+    //   materialsText, helpsWith, redFlags, subject, audience }. One call:
+    //   derives spec → builds prompt → runs the 5-question red-team test
+    //   (automated classification, not creator-overridable) → writes the
+    //   digitalWorkers doc as pending_review → submits to the real review
+    //   gate. Never auto-publishes live.
+    if (route === "/worker:fastpath:build" && method === "POST") {
+      try {
+        const { materialsText, helpsWith, redFlags, subject, audience, tenantId } = req.body || {};
+        const { buildAndSubmit } = require("./services/sandbox/teacherFastPath");
+        const fastPathAnthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const result = await buildAndSubmit({
+          anthropic: fastPathAnthropic, tenantId: tenantId || null, userId: auth.user.uid,
+          materialsText, helpsWith, redFlags, subject, audience,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("worker:fastpath:build failed:", e.message);
+        return jsonError(res, 500, e.message || "Fast-path build failed");
+      }
+    }
+
+    if (route === "/worker:review:submit" && method === "POST") {
+      const { handleSubmit } = require("./services/sandbox/workerReviewGate");
+      return await handleSubmit(req, res, auth.user);
+    }
+    if (route === "/worker:review:list" && method === "GET") {
+      const { handleList } = require("./services/sandbox/workerReviewGate");
+      return await handleList(req, res, auth.user);
+    }
+    if (route === "/worker:review:decide" && method === "POST") {
+      const { handleDecide } = require("./services/sandbox/workerReviewGate");
+      return await handleDecide(req, res, auth.user);
     }
 
     // ── Studio Locker (Knowledge step) ─────────────────────────────────

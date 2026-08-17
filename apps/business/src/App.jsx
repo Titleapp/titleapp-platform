@@ -49,6 +49,8 @@ import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
 import VaultDTCs from "./sections/VaultDTCs";
 import BusinessVaultDTCs from "./sections/BusinessVaultDTCs";
+import WorkerReviewQueue from "./sections/WorkerReviewQueue";
+import TeacherFastPath from "./sections/TeacherFastPath";
 import VaultGate from "./components/VaultGate";
 import LearningRecord from "./sections/LearningRecord";
 import CECourseCanvas from "./sections/CECourseCanvas";
@@ -4888,6 +4890,10 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <VaultGate><VaultDTCs /></VaultGate>;
       case "vault-business":
         return <VaultGate><BusinessVaultDTCs /></VaultGate>;
+      case "worker-review-queue":
+        return <WorkerReviewQueue />;
+      case "teacher-fast-path":
+        return <TeacherFastPath />;
       case "vault-learning-record":
         return <VaultGate><LearningRecord /></VaultGate>;
       case "vault-assets":

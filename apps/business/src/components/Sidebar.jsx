@@ -1057,6 +1057,8 @@ const WORKER_DISPLAY_NAMES = {
   "re-property-manager": "Property Manager",
   "title-abstract-001": "Title & Abstract",
   "zoning-001": "Zoning & Land Use",
+  // Education K-12 — S52.54/S52.55, built via the upload-first fast path
+  "watercyclehelper-mswpe8no": "WaterCycleHelper",
   // Healthcare / nursing vertical
   "nursing-education-001": "Hannah",
   "nursing-micro-001": "Morgan",
@@ -1783,6 +1785,34 @@ export default function Sidebar({
               </svg>
               Settings
             </button>
+
+            {/* S52.55 — admin review queue for fast-path-built workers.
+                Server-enforced via enforceRoleGate; shown here whenever a
+                business workspace is active (non-admins just see a 403). */}
+            {!isPersonal && (
+              <button className={`navItem ${currentSection === "worker-review-queue" ? "navItemActive" : ""}`}
+                onClick={() => handleNavClick("worker-review-queue")}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "worker-review-queue" ? "#7c3aed" : "#9ca3af" }}>
+                  <path d="M2 4.5C2 3.67 2.67 3 3.5 3H12.5C13.33 3 14 3.67 14 4.5V11.5C14 12.33 13.33 13 12.5 13H3.5C2.67 13 2 12.33 2 11.5V4.5Z"/>
+                  <path d="M5 7.5L7 9.5L11 5.5"/>
+                </svg>
+                Worker Reviews
+              </button>
+            )}
+
+            {/* S52.55 — upload-first fast path, any business workspace. */}
+            {!isPersonal && (
+              <button className={`navItem ${currentSection === "teacher-fast-path" ? "navItemActive" : ""}`}
+                onClick={() => handleNavClick("teacher-fast-path")}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "teacher-fast-path" ? "#7c3aed" : "#9ca3af" }}>
+                  <path d="M8 2V10M4.5 5.5L8 2L11.5 5.5"/>
+                  <path d="M3 11.5V13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13V11.5"/>
+                </svg>
+                Build a Helper
+              </button>
+            )}
 
             {creatorStatus !== "none" && (
               <button className={`navItem ${typeof window !== "undefined" && window.location.pathname.startsWith("/creators") ? "navItemActive" : ""}`}

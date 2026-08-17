@@ -55,7 +55,10 @@ export default function EducationDemoSignIn() {
           try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* quota */ }
         }
 
-        sessionStorage.setItem("ta_open_worker", "nursing-education-001");
+        // CODEX S52.54 — was nursing-education-001 (a nursing worker under a
+        // K-12 principal persona, a real mismatch). Now opens the real
+        // water-cycle Course Worker built via the S52.55 fast path.
+        sessionStorage.setItem("ta_open_worker", "watercyclehelper-mswpe8no");
         window.location.replace("/?demo=1&persona=education");
       } catch (e) {
         if (!cancelled) {
