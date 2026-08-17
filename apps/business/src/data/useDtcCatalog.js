@@ -43,10 +43,13 @@ export const ASSET_CLASS_OF = {
   liability: "Money",
   lease: "Real Property",
   pet_health: "Health",
+  // Business/company records (S52.53) — a title agency's E&O policy, license,
+  // etc. are company obligations, not "my stuff" the way a watch or a car is.
+  license: "Credentials", // e.g. a TDI title insurance license — a credential, same as a degree
+  insurance: "Compliance", // e.g. an E&O policy — a regulatory/audit-facing obligation, not a personal belonging
   // Future types:
   // commercial_property: "Real Property", land: "Real Property",
   // commercial_fleet: "Vehicles",
-  // professional_license: "Credentials", certification: "Credentials",
   // entity_formation: "Business Records", operating_agreement: "Business Records",
   // inspection_report: "Compliance", audit_finding: "Compliance", permit: "Compliance",
 };
@@ -114,4 +117,52 @@ export function useDtcCatalog() {
   }, []);
 
   return { dtcs, loading, error, tenantId: PERSONAL_VAULT_TENANT };
+}
+
+// S52.53 — business Vault query path. Unlike useDtcCatalog (always pinned to
+// the personal "vault" tenant, unconditionally — see comment above), this
+// queries whatever business tenantId is passed in, for the new business Vault
+// view. Returns nothing (no fetch) when tenantId is missing/personal, since
+// there's no business Vault to show outside a real business workspace.
+export function useBusinessDtcCatalog(tenantId) {
+  const [dtcs, setDtcs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId || tenantId === PERSONAL_VAULT_TENANT || tenantId === "personal") {
+      setDtcs([]); setLoading(false); setError(null);
+      return;
+    }
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        headers["x-tenant-id"] = tenantId;
+        const res = await fetch(`${API_BASE}/api?path=/v1/dtc:list`, { headers });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.ok && Array.isArray(data.dtcs)) {
+          setDtcs(data.dtcs.map(d => ({ ...d, assetClass: assetClassOf(d.type) })));
+        } else {
+          setDtcs([]);
+          if (data?.error) setError(data.error);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message || "Failed to load DTCs");
+          setDtcs([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  return { dtcs, loading, error, tenantId };
 }

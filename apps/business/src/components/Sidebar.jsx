@@ -1635,6 +1635,20 @@ export default function Sidebar({
               My Vault
             </button>
 
+            {/* S52.53 — business Vault, only shown for a real business workspace.
+                Personal Vault above is unaffected and always available. */}
+            {!isPersonal && (
+              <button className={`navItem ${currentSection === "vault-business" ? "navItemActive" : ""}`}
+                onClick={() => handleNavClick("vault-business")}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "vault-business" ? "#7c3aed" : "#9ca3af" }}>
+                  <rect x="2" y="3" width="12" height="11" rx="2"/>
+                  <path d="M5 6.5H11M5 9H11M5 11.5H8.5"/>
+                </svg>
+                Company Vault
+              </button>
+            )}
+
             <button className={`navItem ${currentSection === "vault-documents" ? "navItemActive" : ""}`}
               onClick={() => handleNavClick("vault-documents")}
               style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>

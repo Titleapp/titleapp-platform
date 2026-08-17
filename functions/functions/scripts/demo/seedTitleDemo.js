@@ -411,7 +411,7 @@ const DTCS = [
     tags: ["operating-account", "title"],
   },
   {
-    type: "equipment",
+    type: "credential", // a notary commission is a credential, not equipment — fixed under S52.53
     title: "Notary Commission — Deborah Sandoval TX-2024-38891",
     valueUsd: null,
     description: "Texas notary public commission. Commission #2024-38891. Expires 2028. Required for all closing documents requiring notarization.",
@@ -550,12 +550,19 @@ async function clearCollection(col, field = "demo") {
   }
   console.log(`• Cleared ${logSnap.size} existing logbook entries`);
 
+  // S52.53 — these are company assets (E&O insurance, escrow/trust + operating
+  // accounts, TDI license, notary commission, office lease), not Sarah's
+  // personal belongings. Seeding them to tenantId "vault" was a real bug: it
+  // commingled ABC Title's $847,200 client escrow balance into Sarah's
+  // personal net worth, which is exactly what TDI trust-account segregation
+  // rules prohibit. These now go to TITLE_TENANT — the business Vault reads
+  // them from there; the personal Vault (tenantId "vault") no longer sees them.
   for (const dtc of DTCS) {
     const ref = dtcCol.doc();
     await ref.set({
       ...dtc,
       userId: TITLE_UID,
-      tenantId: "vault",
+      tenantId: TITLE_TENANT,
       demo: true,
       createdAt: now(),
       updatedAt: now(),
@@ -563,7 +570,7 @@ async function clearCollection(col, field = "demo") {
     await logCol.add({
       dtcId: ref.id,
       userId: TITLE_UID,
-      tenantId: "vault",
+      tenantId: TITLE_TENANT,
       action: "created",
       note: `Seeded by seedTitleDemo.js`,
       demo: true,

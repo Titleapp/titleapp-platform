@@ -2240,7 +2240,8 @@ exports.api = onRequest(
           });
         }
         // Check property cache first — serves pre-pulled demo data when ATTOM key is inactive.
-        const addressKey = address.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const { normalizeAddressKey } = require("./services/re/liveLookup");
+        const addressKey = normalizeAddressKey(address);
         const cacheSnap = await db.collection("propertyCache").doc(addressKey).get();
         if (cacheSnap.exists) {
           const cached = cacheSnap.data();
@@ -5150,6 +5151,8 @@ Use markdown formatting: put each section on its own line with a blank line betw
 
 After the draft, add one line: "Want me to send this via Gmail? Just confirm and give me the recipient's email address." When the user confirms sending and provides the address, emit: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"RECIPIENT_EMAIL","subject":"SUBJECT","body":"FULL_BODY_TEXT"}}|||END_SIDE_EFFECT|||
 
+LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a real, live Realtor.com feed — it is NOT a placeholder and NOT limited to major metros. Whenever the user describes a property they want to find or buy (any location, including a small town, a rural address, or anywhere you're not confident has MLS coverage), you MUST call search_listings before saying anything about availability. Never say "I don't have a live MLS feed," "I can't pull real-time listings," or anything implying the feed doesn't exist or doesn't cover an area — you do not know that until you've actually called the tool and seen its response. If the tool genuinely returns zero results, report that plainly (e.g. "no active listings matched — try a broader radius or different criteria") instead of speculating beforehand that it wouldn't work.
+
 ` + workerPrompt;
               }
               // RE Advocate and Accounting need more output tokens:
@@ -5510,7 +5513,8 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                 try {
                   const addr = String(toolBlock.input.address || "").trim();
                   // Check propertyCache first (pre-seeded demo data, no API cost).
-                  const _lpKey = addr.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                  const { normalizeAddressKey: _normLpKey } = require("./services/re/liveLookup");
+                  const _lpKey = _normLpKey(addr);
                   const _lpCache = await db.collection("propertyCache").doc(_lpKey).get().catch(() => null);
                   let r = null;
                   if (_lpCache && _lpCache.exists) {
@@ -5548,7 +5552,8 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                   const { openTitleOrder } = require("./workers/re-title-search-001/handler");
                   // Use propertyCache as the data source if available; fall back to ATTOM.
                   const _toAddr = String(toolBlock.input.address || "").trim();
-                  const _toKey = _toAddr.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                  const { normalizeAddressKey: _normToKey } = require("./services/re/liveLookup");
+                  const _toKey = _normToKey(_toAddr);
                   const _toCache = await db.collection("propertyCache").doc(_toKey).get().catch(() => null);
                   const attomApiKey = (_toCache && _toCache.exists) ? null : (process.env.ATTOM_API_KEY || null);
                   if (!attomApiKey && !(_toCache && _toCache.exists)) {
@@ -5567,19 +5572,32 @@ After the draft, add one line: "Want me to send this via Gmail? Just confirm and
                     attomApiKey,
                     cachedPropertyData: (_toCache && _toCache.exists) ? _toCache.data() : null,
                   });
-                  const ce = result.chainEvents;
-                  const resultText = `Title order opened. Order ID: ${result.orderId}\n` +
-                    `Address: ${result.address}\n` +
-                    `Risk Score: ${result.riskScore}/100\n` +
-                    `Chain events written:\n` +
-                    `  - Ownership records found: ${ce.ownershipEvents}\n` +
-                    `  - Liens / mortgages found: ${ce.lienEvents}\n` +
-                    `  - Tax status records: ${ce.taxEvents}\n` +
-                    `  - Preliminary defects flagged: ${ce.defectCount}\n\n` +
-                    `Present this as the Title Search Summary. State the orderId so the user can reference it. ` +
-                    `If risk score > 30 or defects > 0, flag what needs curative review. ` +
-                    `Offer to pass the chain-of-title bundle to re-commitment-001 to draft the title commitment. ` +
-                    `Do NOT invent facts beyond what is shown here — the chain events are the authoritative record.`;
+                  let resultText;
+                  if (result.existingOrder) {
+                    resultText = `An order already exists for this address — not opening a duplicate. Order ID: ${result.orderId}\n` +
+                      `Address: ${result.address}\n` +
+                      `Status: ${result.status || "unknown"}\n` +
+                      `Risk Score: ${result.riskScore != null ? result.riskScore + "/100" : "not yet scored"}\n` +
+                      `Chain events on file: ${result.chainEventCount ?? "unknown"}\n` +
+                      `Defects flagged: ${result.defectCount}${result.defectNote ? ` — ${result.defectNote}` : ""}\n\n` +
+                      `Present this as the existing order's status, not a new search. State the orderId so the user can reference it. ` +
+                      `If risk score > 30 or defects > 0, flag what needs curative review. ` +
+                      `Do NOT invent facts beyond what is shown here — these are the authoritative order fields.`;
+                  } else {
+                    const ce = result.chainEvents;
+                    resultText = `Title order opened. Order ID: ${result.orderId}\n` +
+                      `Address: ${result.address}\n` +
+                      `Risk Score: ${result.riskScore}/100\n` +
+                      `Chain events written:\n` +
+                      `  - Ownership records found: ${ce.ownershipEvents}\n` +
+                      `  - Liens / mortgages found: ${ce.lienEvents}\n` +
+                      `  - Tax status records: ${ce.taxEvents}\n` +
+                      `  - Preliminary defects flagged: ${ce.defectCount}\n\n` +
+                      `Present this as the Title Search Summary. State the orderId so the user can reference it. ` +
+                      `If risk score > 30 or defects > 0, flag what needs curative review. ` +
+                      `Offer to pass the chain-of-title bundle to re-commitment-001 to draft the title commitment. ` +
+                      `Do NOT invent facts beyond what is shown here — the chain events are the authoritative record.`;
+                  }
                   const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Title order opened.";
@@ -12996,10 +13014,10 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         if (!address) return res.json({ ok: false, error: "address required" });
         const attomKey = process.env.ATTOM_API_KEY;
         if (!attomKey) return res.json({ ok: false, error: "ATTOM_API_KEY not configured" });
-        const { lookupAddress } = require("./services/re/liveLookup");
+        const { lookupAddress, normalizeAddressKey } = require("./services/re/liveLookup");
         const result = await lookupAddress(address, attomKey);
         if (!result.ok) return res.json({ ok: false, address, error: result.error, code: result.code });
-        const addressKey = address.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const addressKey = normalizeAddressKey(address);
         await db.collection("propertyCache").doc(addressKey).set({
           address,
           addressKey,

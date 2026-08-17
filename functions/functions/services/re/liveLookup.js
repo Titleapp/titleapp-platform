@@ -10,6 +10,28 @@
 
 const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
 
+// Canonical street-suffix abbreviations so "Dr"/"Drive", "St"/"Street", etc.
+// hash to the same propertyCache key. Zip is stripped separately below —
+// keying on street+city+state is enough to disambiguate every address this
+// platform serves today, and a typed zip (or lack of one) shouldn't be able
+// to silently miss a cached demo record and fall through to a live ATTOM call.
+const STREET_SUFFIX_MAP = {
+  drive: "dr", street: "st", road: "rd", avenue: "ave", lane: "ln",
+  boulevard: "blvd", court: "ct", place: "pl", highway: "hwy",
+  parkway: "pkwy", circle: "cir", terrace: "ter", trail: "trl", way: "way",
+};
+
+// Single source of truth for propertyCache doc IDs — every read and write
+// path (route handlers, chat-tool executors, the bulk pre-pull script) must
+// go through this so the same real-world address always resolves to the
+// same cache doc regardless of exactly how it was typed.
+function normalizeAddressKey(address) {
+  let s = String(address || "").toLowerCase().trim();
+  s = s.replace(/\s+\d{5}(-\d{4})?\s*$/, ""); // strip trailing zip / zip+4
+  const tokens = s.split(/[^a-z0-9]+/).filter(Boolean).map((t) => STREET_SUFFIX_MAP[t] || t);
+  return tokens.join("-");
+}
+
 async function attomGet(path, params, apiKey) {
   const url = new URL(ATTOM_BASE + path);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -256,4 +278,4 @@ function buildLiveCanvasSpec(a) {
   };
 }
 
-module.exports = { lookupAddress, buildLiveCanvasSpec };
+module.exports = { lookupAddress, buildLiveCanvasSpec, normalizeAddressKey };

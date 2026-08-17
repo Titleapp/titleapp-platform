@@ -48,6 +48,7 @@ import VaultDocuments from "./sections/VaultDocuments";
 import Contacts from "./sections/Contacts";
 import Accounting from "./sections/Accounting";
 import VaultDTCs from "./sections/VaultDTCs";
+import BusinessVaultDTCs from "./sections/BusinessVaultDTCs";
 import VaultGate from "./components/VaultGate";
 import LearningRecord from "./sections/LearningRecord";
 import CECourseCanvas from "./sections/CECourseCanvas";
@@ -4885,6 +4886,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <Accounting />;
       case "vault-dtcs":
         return <VaultGate><VaultDTCs /></VaultGate>;
+      case "vault-business":
+        return <VaultGate><BusinessVaultDTCs /></VaultGate>;
       case "vault-learning-record":
         return <VaultGate><LearningRecord /></VaultGate>;
       case "vault-assets":

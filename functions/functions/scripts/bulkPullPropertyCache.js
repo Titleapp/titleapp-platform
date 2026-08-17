@@ -17,6 +17,7 @@ const path = require("path");
 const admin = require(path.join(__dirname, "..", "node_modules", "firebase-admin"));
 if (!admin.apps.length) admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
+const { normalizeAddressKey } = require(path.join(__dirname, "..", "services", "re", "liveLookup"));
 
 const KEY = process.env.ATTOM_API_KEY;
 const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
@@ -469,7 +470,7 @@ async function run() {
       }
 
       const canvasSpec = buildCanvasSpec(prop, attom, isReal);
-      const addressKey = prop.address.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const addressKey = normalizeAddressKey(prop.address);
 
       await db.collection("propertyCache").doc(addressKey).set({
         address: prop.address,

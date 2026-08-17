@@ -13,6 +13,7 @@
  */
 
 const { attomGet } = require("../site-recon-001/attomClient");
+const { normalizeAddressKey } = require("../../services/re/liveLookup");
 const admin = require("firebase-admin");
 
 const ATTOM_TITLE_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
@@ -34,6 +35,32 @@ const ATTOM_TITLE_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
  */
 async function openTitleOrder(params) {
   const { address, tenantId, userId, buyerName, sellerName, purchasePrice, orderType = "purchase", db, attomApiKey, cachedPropertyData } = params;
+
+  // 0. Check for an existing order on this address first — this used to mint
+  // a brand-new duplicate order every time anyone asked about an address a
+  // second time (found live: asking twice about the same property created
+  // two separate titleOrders docs for it). Match by tenant + normalized
+  // address so "313 Mayfair Dr, Athens, TX" and "313 Mayfair Dr, Athens, TX
+  // 75751" resolve to the same existing order instead of each minting one.
+  if (tenantId) {
+    const existingKey = normalizeAddressKey(address);
+    const tenantSnap = await db.collection("titleOrders").where("tenantId", "==", tenantId).get();
+    const existing = tenantSnap.docs.find((d) => normalizeAddressKey(d.data().address || "") === existingKey);
+    if (existing) {
+      const e = existing.data();
+      return {
+        orderId: e.orderId || existing.id,
+        address: e.address,
+        riskScore: e.riskScore ?? null,
+        existingOrder: true,
+        status: e.status || null,
+        defectCount: e.defectCount ?? 0,
+        defectNote: e.defectNote || null,
+        chainEventCount: e.chainEventCount ?? null,
+        notes: e.notes || null,
+      };
+    }
+  }
 
   const nowTs = admin.firestore.FieldValue.serverTimestamp();
 
