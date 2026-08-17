@@ -221,6 +221,26 @@ async function generateXlsx(templateDef, content, branding) {
       autoWidth(ws);
     }
 
+  } else if (templateId === "dpp-supplier-data-request") {
+    // CODEX S52.50 — fillable data-request sheet attached to a supplier/
+    // assessor email. "Please Provide" column is left empty for the
+    // recipient to fill in and send back.
+    const items = Array.isArray(content.items) ? content.items : [];
+    const ws = workbook.addWorksheet("Data Request");
+    ws.addRow(["SKU", "Cluster", "Attribute / What's Needed", "Current Status", "Please Provide", "Notes"]);
+    applyHeaderRow(ws, 1);
+    for (const item of items) {
+      ws.addRow([
+        item.sku || "",
+        item.cluster || "",
+        item.attribute || "",
+        item.currentStatus || "",
+        "", // left blank for the recipient
+        item.notes || "",
+      ]);
+    }
+    autoWidth(ws);
+
   } else {
     // Fallback: dump content as key-value
     const ws = workbook.addWorksheet("Data");

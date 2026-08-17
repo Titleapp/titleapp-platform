@@ -118,6 +118,20 @@ const TEMPLATES = {
     defaultStyles: { ...DEFAULT_STYLES, fontSize: 10 },
   },
 
+  "dpp-supplier-data-request": {
+    id: "dpp-supplier-data-request",
+    name: "DPP Supplier Data Request",
+    description: "Fillable attribute-level data request sent to a supplier/assessor for missing DPP cluster data",
+    version: "v1",
+    category: "compliance",
+    supportedFormats: ["xlsx"],
+    defaultFormat: "xlsx",
+    sections: [
+      { id: "items", name: "Requested Items", required: true },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES, fontSize: 10 },
+  },
+
   "one-pager": {
     id: "one-pager",
     name: "One-Pager",

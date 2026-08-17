@@ -2339,6 +2339,120 @@ exports.api = onRequest(
       }
     }
 
+    // GET /v1/dpp:report:latest — most recent priority report for the
+    // requesting tenant. CODEX S52.50.
+    if (route === "/dpp:report:latest" && method === "GET") {
+      try {
+        const dppAuth = await requireFirebaseUser(req, res);
+        if (dppAuth.handled) return dppAuth.res;
+        const dppCtx = getCtx(req, {}, dppAuth.user);
+        if (!dppCtx.tenantId) return res.json({ ok: true, report: null });
+        const snap = await db.collection("dppPriorityReports")
+          .where("tenantId", "==", dppCtx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .get();
+        const report = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+        return res.json({ ok: true, report });
+      } catch (e) {
+        console.error("dpp:report:latest failed:", e.message);
+        return jsonError(res, 500, "DPP report fetch failed");
+      }
+    }
+
+    // POST /v1/dpp:report:approve — marks a report reviewed/approved.
+    // "Approved" here means the report itself (the internal status
+    // summary), separate from approving individual supplier emails below.
+    if (route === "/dpp:report:approve" && method === "POST") {
+      try {
+        const dppAuth = await requireFirebaseUser(req, res);
+        if (dppAuth.handled) return dppAuth.res;
+        const { reportId } = body || {};
+        if (!reportId) return jsonError(res, 400, "reportId required");
+        await db.collection("dppPriorityReports").doc(reportId).update({
+          status: "approved",
+          approvedBy: dppAuth.user.uid,
+          approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("dpp:report:approve failed:", e.message);
+        return jsonError(res, 500, "DPP report approve failed");
+      }
+    }
+
+    // GET /v1/dpp:pendingRequests:list — drafted supplier/assessor emails
+    // awaiting review for the requesting tenant. Nothing here has been
+    // sent — that only happens via the approve route below.
+    if (route === "/dpp:pendingRequests:list" && method === "GET") {
+      try {
+        const dppAuth = await requireFirebaseUser(req, res);
+        if (dppAuth.handled) return dppAuth.res;
+        const dppCtx = getCtx(req, {}, dppAuth.user);
+        if (!dppCtx.tenantId) return res.json({ ok: true, requests: [] });
+        const snap = await db.collection("dppPendingSupplierRequests")
+          .where("tenantId", "==", dppCtx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        const requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, requests });
+      } catch (e) {
+        console.error("dpp:pendingRequests:list failed:", e.message);
+        return jsonError(res, 500, "DPP pending requests fetch failed");
+      }
+    }
+
+    // POST /v1/dpp:pendingRequests:approve — the actual send. Explicit
+    // approval gate: nothing reaches a real supplier/assessor inbox until
+    // this is called by an authenticated tenant member. Body may include
+    // edited `subject`/`body` if the reviewer changed the draft.
+    if (route === "/dpp:pendingRequests:approve" && method === "POST") {
+      try {
+        const dppAuth = await requireFirebaseUser(req, res);
+        if (dppAuth.handled) return dppAuth.res;
+        const { requestId, subject: editedSubject, body: editedBody } = body || {};
+        if (!requestId) return jsonError(res, 400, "requestId required");
+        const ref = db.collection("dppPendingSupplierRequests").doc(requestId);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Request not found");
+        const reqData = snap.data();
+        if (reqData.status === "sent") return jsonError(res, 400, "Already sent");
+        if (!reqData.contactEmail) return jsonError(res, 400, "No contact email on file — add one before sending");
+
+        const subject = editedSubject || reqData.subject;
+        const emailBody = editedBody || reqData.body;
+        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+        if (!SENDGRID_API_KEY) return jsonError(res, 500, "SENDGRID_API_KEY not configured");
+
+        const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: reqData.contactEmail, name: reqData.contactName || undefined }] }],
+            from: { email: "sean@sociii.ai", name: "Voltara BV · DPP Compliance" },
+            reply_to: { email: "sean@sociii.ai" },
+            subject,
+            content: [{ type: "text/plain", value: emailBody }],
+            custom_args: { requestId, tenantId: reqData.tenantId, kind: "dpp_supplier_request" },
+          }),
+        });
+        const sendOk = sgRes.ok;
+        await ref.update({
+          status: sendOk ? "sent" : "send_failed",
+          subject, body: emailBody,
+          sentBy: dppAuth.user.uid,
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sendError: sendOk ? null : await sgRes.text(),
+        });
+        if (!sendOk) return jsonError(res, 502, "Send failed — see request for details");
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("dpp:pendingRequests:approve failed:", e.message);
+        return jsonError(res, 500, "DPP request approve/send failed");
+      }
+    }
+
     // POST /v1/re:advocate:cma — CMA from ATTOM comparable sales.
     if (route === "/re:advocate:cma" && method === "POST") {
       try {
@@ -32564,6 +32678,28 @@ const { checkTrialExpiry } = require("./services/workerTrial");
 exports.checkTrialExpiry = onSchedule(
   { schedule: "0 6 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkTrialExpiry(); }
+);
+
+// ----------------------------
+// CODEX S52.50 — DPP Priority Report + Supplier Data-Request Drafting
+// Weekly, Monday 8am PT. Cadence is a proposed default per the spec, not a
+// confirmed requirement — revisit once there's real usage data.
+// ----------------------------
+const { generateWeeklyReports: _dppGenerateWeeklyReports, draftSupplierEmails: _dppDraftSupplierEmails } = require("./services/dpp/priorityReportJob");
+
+exports.dppWeeklyReportJob = onSchedule(
+  { schedule: "0 8 * * 1", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const reports = await _dppGenerateWeeklyReports();
+    for (const report of reports) {
+      try {
+        const { drafted, skipped } = await _dppDraftSupplierEmails(report);
+        console.log(`[dppWeeklyReportJob] tenant ${report.tenantId}: ${drafted.length} drafted, ${skipped.length} skipped (no contact/email on file)`);
+      } catch (e) {
+        console.error(`[dppWeeklyReportJob] draftSupplierEmails failed for tenant ${report.tenantId}:`, e.message);
+      }
+    }
+  }
 );
 
 // ----------------------------

@@ -688,64 +688,176 @@ function TabClientFile() {
   );
 }
 
+// CODEX S52.50 — live report + supplier-request review queue. Fetches from
+// dppWeeklyReportJob's output instead of hardcoded demo state. No fallback-
+// to-mock here (unlike useDPPLiveData above) — an empty/no-report state is
+// shown honestly rather than papered over with fake content, since this tab
+// is specifically where Elise reviews and approves real outbound requests.
+function useDPPReportsData() {
+  const [state, setState] = useState({ report: null, requests: [], loading: true, error: null });
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = getAuth();
+        const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+        if (!token) { if (!cancelled) setState(s => ({ ...s, loading: false })); return; }
+        const tenantId = localStorage.getItem("TENANT_ID") || "";
+        const headers = { Authorization: `Bearer ${token}`, ...(tenantId ? { "x-tenant-id": tenantId } : {}) };
+        const [reportResp, requestsResp] = await Promise.all([
+          fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/dpp:report:latest")}`, { headers }),
+          fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/dpp:pendingRequests:list")}`, { headers }),
+        ]);
+        const reportJson = await reportResp.json().catch(() => null);
+        const requestsJson = await requestsResp.json().catch(() => null);
+        if (!cancelled) {
+          setState({
+            report: reportJson?.ok ? reportJson.report : null,
+            requests: requestsJson?.ok ? requestsJson.requests : [],
+            loading: false, error: null,
+          });
+        }
+      } catch (e) {
+        if (!cancelled) setState(s => ({ ...s, loading: false, error: e.message }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+  return { ...state, refresh: () => setRefreshKey(k => k + 1) };
+}
+
+async function _dppAuthedFetch(path, opts = {}) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+  const tenantId = localStorage.getItem("TENANT_ID") || "";
+  return fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      Authorization: `Bearer ${token}`,
+      ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+    },
+  });
+}
+
 function TabReports() {
-  const [approved, setApproved] = useState(false);
-  const urgent = [
-    "VLT-LMT24: Cluster 3 LCA certificate outstanding — blocks registry submission",
-    "VLT-IND24 + VLT-IND48: Supplier portal not yet accepted by cell manufacturer",
-    "VLT-EV48 + VLT-EV72: Not yet started — kickoff session needed",
-  ];
+  const { report, requests, loading, error, refresh } = useDPPReportsData();
+  const [busyId, setBusyId] = useState(null);
+
+  async function approveReport() {
+    if (!report) return;
+    setBusyId("report");
+    try {
+      await _dppAuthedFetch("/v1/dpp:report:approve", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: report.id }),
+      });
+      refresh();
+    } finally { setBusyId(null); }
+  }
+
+  async function sendRequest(requestId) {
+    setBusyId(requestId);
+    try {
+      const resp = await _dppAuthedFetch("/v1/dpp:pendingRequests:approve", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!json?.ok) console.warn("[TabReports] send failed:", json?.error);
+      refresh();
+    } finally { setBusyId(null); }
+  }
+
+  if (loading) {
+    return <div style={{ padding: "20px 0", fontSize: 12, color: "#94a3b8" }}>Loading report…</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: "14px 16px", borderRadius: 12, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 12, color: "#991b1b" }}>Could not load report: {error}</div>;
+  }
+
+  if (!report) {
+    return (
+      <div>
+        <SectionLabel text="No report yet" />
+        <div style={{ padding: "14px 16px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12, color: "#64748b" }}>
+          The weekly priority report runs automatically (Mondays). No report has been generated yet for this workspace.
+        </div>
+      </div>
+    );
+  }
+
+  const products = report.priorityProducts || [];
+  const totalItems = products.reduce((sum, p) => sum + (p.missingClusters?.length || 0), 0);
+
   return (
     <div>
-      <SectionLabel text="Draft — Week of 7 Jul 2026" />
-      {approved ? (
+      <SectionLabel text={`Priority Report — generated ${new Date(report.generatedAt).toLocaleDateString()}`} />
+      {report.status === "approved" ? (
         <div style={{ padding: "14px 16px", borderRadius: 12, background: "#f0fdf4", border: "1.5px solid #bbf7d0", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>✓ Approved</div>
-            <div style={{ fontSize: 11, color: "#166534", marginLeft: "auto" }}>Sent to Voltara BV</div>
-          </div>
-          <div style={{ fontSize: 12, color: "#166534" }}>
-            This weekly status report has been approved and sent to Voltara BV.
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>✓ Approved</div>
         </div>
       ) : (
         <div style={{ padding: "14px 16px", borderRadius: 12, background: "#fff7ed", border: "1.5px solid #fed7aa", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c" }}>⏳ Pending review</div>
-            <div style={{ fontSize: 11, color: "#9a3412", marginLeft: "auto" }}>Auto-generated · 48-hour hold · Awaiting Elise approval</div>
-          </div>
-          <div style={{ fontSize: 12, color: "#7c2d12" }}>
-            This weekly status report is ready for your review. No report is sent to Voltara without your explicit approval.
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c", marginBottom: 6 }}>⏳ Pending review</div>
+          <div style={{ fontSize: 12, color: "#7c2d12" }}>{products.length} priority product(s), {totalItems} missing data item(s) across all clusters.</div>
         </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
-        {[{ label: "Data complete", value: "1 / 6", color: "#34d399" }, { label: "In progress", value: "2 / 6", color: "#fbbf24" }, { label: "Not started", value: "2 / 6", color: "#94a3b8" }].map(k => (
-          <div key={k.label} style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: k.color }}>{k.value}</div>
-            <div style={{ fontSize: 10, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{k.label}</div>
-          </div>
-        ))}
-      </div>
-      <SectionLabel text="Urgent items" />
+
+      <SectionLabel text="Priority products" />
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-        {urgent.map((item, i) => (
-          <div key={i} style={{ padding: "10px 14px", background: "#fef2f2", borderRadius: 8, border: "1px solid #fecaca", fontSize: 12, color: "#991b1b", display: "flex", gap: 8 }}>
-            <span style={{ fontWeight: 700, flexShrink: 0 }}>!</span>
-            <span>{item}</span>
+        {products.map(p => (
+          <div key={p.sku} style={{ padding: "10px 14px", background: "#fef2f2", borderRadius: 8, border: "1px solid #fecaca", fontSize: 12, color: "#991b1b" }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{p.sku} — {p.name} ({p.overallPct}%)</div>
+            {(p.missingClusters || []).map(m => (
+              <div key={m.cluster} style={{ marginLeft: 8, marginBottom: 2 }}>
+                Cluster {m.cluster} ({m.name}) at {m.pct}%{m.responsibleContact ? ` — ${m.responsibleContact.name}${m.responsibleContact.email ? "" : " (no email on file)"}` : " — no contact on file"}
+              </div>
+            ))}
           </div>
         ))}
       </div>
+
+      <SectionLabel text={`Pending supplier requests (${requests.length})`} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+        {requests.length === 0 && (
+          <div style={{ fontSize: 12, color: "#94a3b8" }}>No drafted requests. This happens when no responsible contact has an email on file yet — see "no email on file" above.</div>
+        )}
+        {requests.map(r => (
+          <div key={r.id} style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}>
+            <div style={{ fontWeight: 700, color: "#1e293b" }}>{r.subject}</div>
+            <div style={{ color: "#64748b", margin: "4px 0" }}>To: {r.contactName} ({r.contactEmail})</div>
+            <div style={{ color: "#475569", whiteSpace: "pre-wrap", marginBottom: 8 }}>{r.body}</div>
+            {r.attachment && <div style={{ color: "#7c3aed", marginBottom: 8 }}>📎 Data request template attached</div>}
+            {r.status === "sent" ? (
+              <div style={{ color: "#15803d", fontWeight: 600 }}>✓ Sent</div>
+            ) : r.status === "send_failed" ? (
+              <div style={{ color: "#991b1b" }}>Send failed — try again</div>
+            ) : (
+              <button
+                disabled={busyId === r.id}
+                onClick={() => sendRequest(r.id)}
+                style={{ padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 12, border: "none", cursor: busyId === r.id ? "default" : "pointer", background: "#6366f1", color: "#fff" }}
+              >
+                {busyId === r.id ? "Sending…" : "Approve + Send"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
       <button
-        disabled={approved}
-        onClick={() => setApproved(true)}
+        disabled={busyId === "report" || report.status === "approved"}
+        onClick={approveReport}
         style={{
           width: "100%", padding: "12px", borderRadius: 10, fontWeight: 700, fontSize: 13,
-          cursor: approved ? "default" : "pointer", border: "none",
-          background: approved ? "#e2e8f0" : "#6366f1", color: approved ? "#64748b" : "#fff",
+          cursor: report.status === "approved" ? "default" : "pointer", border: "none",
+          background: report.status === "approved" ? "#e2e8f0" : "#6366f1", color: report.status === "approved" ? "#64748b" : "#fff",
         }}
       >
-        {approved ? "Approved" : "Review + Approve Report"}
+        {report.status === "approved" ? "Approved" : "Review + Approve Report"}
       </button>
     </div>
   );
