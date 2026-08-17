@@ -27,7 +27,11 @@ const admin = require("firebase-admin");
 // strong, independent signal, worth catching even if the user's own phrasing
 // didn't match anything).
 const USER_SIGNAL_PATTERNS = [
-  { tag: "self_harm", re: /\b(kill myself|end my life|end it all|want(ed)? to die|suicid\w*|hurt myself|self[- ]?harm(ing)?|cut(ting)? myself)\b/i },
+  // Verified via a real end-to-end test through the live deployed chat route
+  // (not just inspection): "thinking about hurting myself" did NOT match the
+  // base-form-only "hurt myself" — a real false negative caught in QA, fixed
+  // here by covering the verb-form variants a person would actually type.
+  { tag: "self_harm", re: /\b(kill(ing)? myself|end(ing)? my life|end it all|want(ed|s)? to die|suicid\w*|hurt(ing)? myself|self[- ]?harm(ing)?|cut(ting)? myself|(thinking about|thought about) (hurting|killing|harming) myself)\b/i },
   // "he/she/they" alone missed the phrasing a child actually uses — verified
   // by testing: "my dad hits me when he is mad" did not match the pronoun-only
   // version. Covers pronouns AND common family/guardian relation words.
