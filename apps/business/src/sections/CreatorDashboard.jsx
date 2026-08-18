@@ -169,8 +169,10 @@ export default function CreatorDashboard() {
       specialty: "",
       location: "",
       publishedWorkers: workers.filter(w => w.published).length,
-      totalSubscribers: 0,
-      avgRating: null,
+      totalSubscribers: workers.reduce((sum, w) => sum + (w.subscriber_count || 0), 0),
+      avgRating: workers.filter(w => w.rating).length
+        ? (workers.reduce((sum, w) => sum + (w.rating || 0), 0) / workers.filter(w => w.rating).length).toFixed(1)
+        : null,
     };
     return (
       <div>
@@ -232,8 +234,30 @@ export default function CreatorDashboard() {
   }
 
   if (tab === "earnings") {
-    const quarters = [];
-    const totalNet = 0;
+    // Real current-quarter snapshot computed from the same published-worker
+    // docs "My Workers" already loaded (subscriber_count + pricing are real
+    // Firestore fields, not fabricated) — this tab used to hardcode
+    // quarters:[] and totalNet:0 regardless of what a creator had actually
+    // published (Sean, 2026-08-18: "not yet wired"). No historical
+    // per-quarter time series exists yet, so this shows one real row for
+    // the current quarter rather than inventing a fake multi-quarter history.
+    // 60%, matching the per-worker "Monthly Revenue · your 60%" figure
+    // already computed in the My Workers tab above — not 75%, which this
+    // tab originally guessed before checking the established real rate.
+    const REVENUE_SHARE = 0.6;
+    const monetized = workers.filter(w => w.published && w.pricing?.model === "subscription" && w.pricing?.price);
+    const totalSubs = monetized.reduce((sum, w) => sum + (w.subscriber_count || 0), 0);
+    const totalGross = monetized.reduce((sum, w) => sum + (w.subscriber_count || 0) * (w.pricing?.price || 0), 0);
+    const totalNet = Math.round(totalGross * REVENUE_SHARE);
+    const now = new Date();
+    const currentQuarter = `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
+    const quarters = monetized.length ? [{
+      q: currentQuarter,
+      workers: monetized.map(w => w.name),
+      subs: totalSubs,
+      gross: totalGross,
+      net: totalNet,
+    }] : [];
     return (
       <div>
         <div className="pageHeader">
@@ -244,7 +268,7 @@ export default function CreatorDashboard() {
         </div>
         {tabBar}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-          {[["Total Earned (net)", `$${totalNet.toLocaleString()}`], ["Active Subscribers", "0"], ["Revenue Share", "75%"]].map(([label, val]) => (
+          {[[`${currentQuarter} (net)`, `$${totalNet.toLocaleString()}`], ["Active Subscribers", totalSubs.toLocaleString()], ["Revenue Share", "60%"]].map(([label, val]) => (
             <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #f1f5f9", padding: "20px 24px" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{label}</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#1e293b" }}>{val}</div>
@@ -256,7 +280,7 @@ export default function CreatorDashboard() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
-                {["Quarter", "Workers", "Subscribers", "Gross Revenue", "Your Net (75%)"].map(h => (
+                {["Quarter", "Workers", "Subscribers", "Gross Revenue", "Your Net (60%)"].map(h => (
                   <th key={h} style={{ padding: "10px 20px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</th>
                 ))}
               </tr>

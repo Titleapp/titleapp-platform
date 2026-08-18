@@ -3499,52 +3499,32 @@ FORMATTING:
           },
           "pet-health-client": {
             display_name: "Pet Health Records",
-            headline: "Koa's health record tracker. Primary vet: Dr. Maya Chen, DVM at Meadow Creek Veterinary Clinic.",
-            capabilitySummary: "Help Sara Kahele track and manage health records for her dog Koa, a Golden Retriever Mix (4 years, 62 lbs). Show vaccination history, medications, and upcoming appointments. Help her prepare for vet visits and remind her about Koa's preventatives.",
-            systemPrompt: `You are the Pet Health Records Digital Worker, tracking the health records of Koa.
-
-KOA'S PROFILE:
-- Name: Koa
-- Breed: Golden Retriever Mix
-- Age: 4 years
-- Weight: 62 lbs
-- Microchip: 985141004123456
-- Primary Vet: Dr. Maya Chen, DVM — Meadow Creek Veterinary Clinic
-- Clinic phone: [call to book appointments]
-- Next appointment: Annual Wellness Exam — Aug 12, 2026 at 10:30 AM with Dr. Maya Chen
-
-RECENT HEALTH HISTORY:
-- Mar 15, 2026: Annual Wellness Exam — Healthy weight. All vaccinations updated. Dental cleaning recommended within 6 months. Heartworm negative.
-- Nov 2, 2025: Sick Visit — Mild GI upset, prescribed bland diet for 3 days. Resolved completely.
-- Mar 20, 2025: Annual Wellness Exam — Healthy overall. Minor tartar buildup noted. Heartworm negative.
-
-VACCINATIONS (all current except one):
-- Rabies: Given Mar 15, 2026. Due Mar 15, 2027.
-- DHPP: Given Mar 15, 2026. Due Mar 15, 2027.
-- Leptospirosis: Given Mar 15, 2026. Due Mar 15, 2027.
-- Bordetella: Given Sep 10, 2025. Due Sep 10, 2026. (DUE SOON — 2 months away)
-- Canine Influenza: Given Mar 15, 2026. Due Mar 15, 2027.
-
-ACTIVE MEDICATIONS:
-- Heartgard Plus (Heartworm prevention — Monthly): Last Jul 1, 2026. Next due Aug 1, 2026.
-- NexGard (Flea & tick prevention — Monthly): Last Jul 1, 2026. Next due Aug 1, 2026.
+            headline: "Your pet's health record tracker.",
+            capabilitySummary: "Help a pet owner track and manage their pet's health records — vaccination history, medications, and upcoming appointments. Help them prepare for vet visits and remind them about preventatives.",
+            // No pet name/profile/history hardcoded here — this worker was
+            // built static because the product wasn't far enough along yet
+            // (Sean, 2026-08-18). The real record is injected at chat time
+            // below (see PET_HEALTH_SLUGS), read from the same Firestore
+            // data the canvas renders, per signed-in owner.
+            systemPrompt: `You are the Pet Health Records Digital Worker for a veterinary clinic's client portal.
 
 WHAT YOU DO:
-- Answer questions about Koa's health history, vaccinations, and medications from the record above
+- Answer questions about the pet's health history, vaccinations, and medications from the real record injected below
 - Remind about upcoming appointments and preventative due dates
 - Help prepare for vet visits (what to ask, what to bring)
-- Provide general pet care tips (nutrition, exercise, dental care) appropriate for a 4-year-old large-breed dog
-- Flag if a vaccine is coming due (Bordetella due Sep 2026)
+- Provide general pet care tips (nutrition, exercise, dental care) appropriate for the pet's species/breed/age
+- Flag any vaccination or medication that is due soon or overdue
 
 LANGUAGE RULES:
 - NEVER address the user by name — say "Hi" or lead directly with the answer
 - Keep responses concise: 2-4 sentences or a short bullet list. No walls of text.
 
 IMPORTANT BOUNDARIES:
-- You can describe what's IN Koa's records. You cannot diagnose conditions or prescribe treatment.
-- If asked about a symptom (limping, vomiting, lethargy, etc.): (1) say whether it sounds urgent or non-urgent, (2) give immediate first-aid guidance if safe, (3) ALWAYS direct to Dr. Maya Chen for anything beyond minor/resolved symptoms.
+- You can describe what's IN the pet's records. You cannot diagnose conditions or prescribe treatment.
+- If asked about a symptom (limping, vomiting, lethargy, etc.): (1) say whether it sounds urgent or non-urgent, (2) give immediate first-aid guidance if safe, (3) ALWAYS direct to the primary vet for anything beyond minor/resolved symptoms.
 - For emergencies (not breathing, ingested something toxic, trauma, seizure): direct to the nearest emergency vet immediately.
-- You are NOT Alex, NOT the Chief of Staff. You are Koa's health record system.`,
+- You are NOT Alex, NOT the Chief of Staff. You are the pet's health record system.
+- If no real record is present below, say so plainly — do not invent a pet name, breed, or history.`,
           },
           "nursing-education-001": {
             display_name: "Hannah",
@@ -4315,6 +4295,44 @@ IDENTITY RULES:
                   workerPrompt += `\n\nLIVE CREW SCHEDULE (computed just now from real Firestore records — cite directly):\nASSIGNMENTS (most recent 50):\n${JSON.stringify(assignments, null, 2)}\n\nOPEN SWAP/RELEASE/PICKUP REQUESTS:\n${JSON.stringify(openSwaps, null, 2)}\n\nYou manage roster assignments and shift trading — release, pickup, and swap — each checked against overtime policy before it's approved (see otCheck on any swap request; approvalRequired:true means it needs an explicit override, not a rubber stamp). Pilots and MX trade shifts far more than Dispatch — that's normal, not a red flag. If assignments/requests are empty, say so plainly rather than inventing a roster.`;
                 } catch (schedErr) {
                   console.warn("worker chat: crew scheduling live data injection failed (non-blocking):", schedErr.message);
+                }
+              }
+
+              // ── Pet health records (real per-pet record, client-side worker) ──
+              // pet-health-client's data used to be entirely baked into its
+              // systemPrompt (Koa's profile/history/vaccinations/meds as
+              // static text) — built that way because the product wasn't far
+              // enough along yet (Sean, 2026-08-18). Now reads the real record
+              // the canvas renders, same as CoPilot's pilot-records injection.
+              if (workerPrompt && authUser && workerSlug === "pet-health-client") {
+                try {
+                  const { computePetHealthRecord } = require("./services/vet/petHealthTracker");
+                  const petScopeId = reqTenantId || authUser.uid;
+                  const ownSnap = await db.collection("petRecords").doc(petScopeId).collection("pets")
+                    .where("ownerUid", "==", authUser.uid).limit(1).get();
+                  const petDoc = ownSnap.docs[0];
+                  let record;
+                  if (petDoc) {
+                    const petRef = petDoc.ref;
+                    const [visitsSnap, vaccSnap, medsSnap, apptSnap] = await Promise.all([
+                      petRef.collection("visits").get(),
+                      petRef.collection("vaccinations").get(),
+                      petRef.collection("medications").get(),
+                      petRef.collection("appointments").get(),
+                    ]);
+                    record = computePetHealthRecord(
+                      { id: petDoc.id, ...petDoc.data() },
+                      visitsSnap.docs.map(d => d.data()),
+                      vaccSnap.docs.map(d => d.data()),
+                      medsSnap.docs.map(d => d.data()),
+                      apptSnap.docs.map(d => d.data()),
+                    );
+                  } else {
+                    record = computePetHealthRecord(null, [], [], [], []);
+                  }
+                  workerPrompt += `\n\nLIVE PET RECORD (computed just now from this signed-in owner's actual Firestore records — this is real, not hypothetical; cite it directly, do not invent a pet name or history):\n${JSON.stringify(record, null, 2)}\n\nIf pet is null above, no record is on file for this owner — say so plainly rather than inventing one.`;
+                } catch (petErr) {
+                  console.warn("worker chat: pet health live data injection failed (non-blocking):", petErr.message);
                 }
               }
 
@@ -31950,6 +31968,35 @@ Analyze now:`;
       } catch (e) {
         console.error("vet:dosing failed:", e);
         return jsonError(res, 500, "Failed to load dosing data");
+      }
+    }
+
+    // /v1/vet:petRecord, /v1/vet:upsertPet, /v1/vet:addVisit,
+    // /v1/vet:addVaccination, /v1/vet:addMedication, /v1/vet:addAppointment,
+    // /v1/vet:listPets — real per-pet health records for "pet-health-client"
+    // (was a hardcoded systemPrompt + hardcoded PetHealthCanvas.jsx constants,
+    // built static because the product wasn't far enough along yet — Sean,
+    // 2026-08-18. This is the real version.)
+    if (route.startsWith("/vet:") && route !== "/vet:dosing") {
+      const vetAction = route.replace("/vet:", "");
+      try {
+        const vAuth = await requireFirebaseUser(req, res);
+        if (vAuth.handled) return vAuth.res;
+        const vctx = getCtx(req, body, vAuth.user);
+        const petHealth = require("./services/vet/petHealthRecords");
+        switch (vetAction) {
+          case "petRecord": return await petHealth.handleGetPetRecord(req, res, vctx);
+          case "upsertPet": return await petHealth.handleUpsertPet(req, res, vctx);
+          case "addVisit": return await petHealth.handleAddVisit(req, res, vctx);
+          case "addVaccination": return await petHealth.handleAddVaccination(req, res, vctx);
+          case "addMedication": return await petHealth.handleAddMedication(req, res, vctx);
+          case "addAppointment": return await petHealth.handleAddAppointment(req, res, vctx);
+          case "listPets": return await petHealth.handleListPets(req, res, vctx);
+          default: return jsonError(res, 404, `Unknown vet action: ${vetAction}`);
+        }
+      } catch (e) {
+        console.error(`vet:${vetAction} failed:`, e);
+        return jsonError(res, 500, `Failed to process vet:${vetAction}`);
       }
     }
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, getFirestore, query, where, limit } from "firebase/firestore";
 import WorkerIcon from "../utils/workerIcons";
 import { prettyWorkerName } from "../utils/displayName";
@@ -1158,10 +1158,9 @@ export default function Sidebar({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!tid || tid === "vault" || tid === "personal") { setWorkspaceRole(null); return; }
     let cancelled = false;
-    async function loadRole() {
+    async function loadRole(u) {
+      if (!u) return;
       try {
-        const u = getAuth().currentUser;
-        if (!u) return;
         const q = query(
           collection(getFirestore(), "memberships"),
           where("userId", "==", u.uid),
@@ -1175,10 +1174,19 @@ export default function Sidebar({
         }
       } catch { /* non-fatal */ }
     }
-    loadRole();
-    function onChange() { loadRole(); }
+    // getAuth().currentUser can still be null here — Firebase Auth restoring
+    // a session (or exchanging a fresh custom token right after demo sign-in)
+    // hasn't necessarily finished by the time this effect first runs. A bare
+    // one-shot check silently no-ops and never retries, leaving
+    // workspaceRole stuck at null forever — which defeats any
+    // workspaceRole !== "member" gate (Sean, 2026-08-18, found via the
+    // vet-client demo still leaking the operator nav after this same fix).
+    // onAuthStateChanged fires immediately with the current state AND again
+    // on every real change, so it covers both the race and actual re-logins.
+    const unsubAuth = onAuthStateChanged(getAuth(), (u) => loadRole(u));
+    function onChange() { loadRole(getAuth().currentUser); }
     window.addEventListener("ta:workspace-changed", onChange);
-    return () => { cancelled = true; window.removeEventListener("ta:workspace-changed", onChange); };
+    return () => { cancelled = true; unsubAuth(); window.removeEventListener("ta:workspace-changed", onChange); };
   }, [guestMode, isPersonal]);
 
   // User's display label (for personalized header, e.g. "Sean's Personal Space").
@@ -1661,39 +1669,48 @@ export default function Sidebar({
               My Drive
             </button>
 
-            {/* Studio Locker — expandable with per-worker folders */}
-            <button
-              onClick={() => { handleNavClick("studio-locker"); setWorkersExpanded(v => !v); }}
-              className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
-              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "studio-locker" ? "#7c3aed" : "#9ca3af" }}>
-                <rect x="2" y="2" width="12" height="12" rx="2"/>
-                <path d="M2 6.5H14M6.5 2V6.5"/>
-              </svg>
-              <span style={{ flex: 1 }}>Studio Locker</span>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: workersExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                <path d="M2 4L6 8L10 4"/>
-              </svg>
-            </button>
-            {workersExpanded && (
+            {/* Studio Locker — expandable with per-worker folders.
+                Operator-only: a member-role user (e.g. a customer handed a
+                client-facing worker like pet-health-client) should never see
+                the tenant's whole worker library/CMS — that's the operator
+                cockpit, not their own view (Sean, 2026-08-18, found via the
+                vet-client demo leaking this to a pet owner). */}
+            {workspaceRole !== "member" && (
               <>
-                {workerList.filter(w => !w.isChiefOfStaff).map(w => (
-                  <button key={w.slug}
-                    className={`navItem ${selectedWorker === w.slug ? "navItemActive" : ""}`}
-                    onClick={() => handleWorkerClick(w)}
-                    style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 7, paddingLeft: 28, fontSize: 13, marginBottom: 1 }}>
-                    <WorkerIcon slug={w.slug} size={13} color={selectedWorker === w.slug ? "#7c3aed" : "#9ca3af"} />
-                    {w.name}
-                  </button>
-                ))}
-                {workerList.filter(w => !w.isChiefOfStaff).length === 0 && (
-                  <div style={{ paddingLeft: 28, paddingTop: 4, paddingBottom: 4, fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>No workers yet</div>
+                <button
+                  onClick={() => { handleNavClick("studio-locker"); setWorkersExpanded(v => !v); }}
+                  className={`navItem ${currentSection === "studio-locker" ? "navItemActive" : ""}`}
+                  style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: currentSection === "studio-locker" ? "#7c3aed" : "#9ca3af" }}>
+                    <rect x="2" y="2" width="12" height="12" rx="2"/>
+                    <path d="M2 6.5H14M6.5 2V6.5"/>
+                  </svg>
+                  <span style={{ flex: 1 }}>Studio Locker</span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: workersExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <path d="M2 4L6 8L10 4"/>
+                  </svg>
+                </button>
+                {workersExpanded && (
+                  <>
+                    {workerList.filter(w => !w.isChiefOfStaff).map(w => (
+                      <button key={w.slug}
+                        className={`navItem ${selectedWorker === w.slug ? "navItemActive" : ""}`}
+                        onClick={() => handleWorkerClick(w)}
+                        style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 7, paddingLeft: 28, fontSize: 13, marginBottom: 1 }}>
+                        <WorkerIcon slug={w.slug} size={13} color={selectedWorker === w.slug ? "#7c3aed" : "#9ca3af"} />
+                        {w.name}
+                      </button>
+                    ))}
+                    {workerList.filter(w => !w.isChiefOfStaff).length === 0 && (
+                      <div style={{ paddingLeft: 28, paddingTop: 4, paddingBottom: 4, fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>No workers yet</div>
+                    )}
+                  </>
                 )}
               </>
             )}
 
             {/* ────────────── WORKERS (only if workspace has workers) ────────────── */}
-            {(groupedWorkers.cos.length > 0 || groupedWorkers.groups.length > 0) && (
+            {(groupedWorkers.cos.length > 0 || groupedWorkers.groups.length > 0 || workspaceRole === "member") && (
               <div style={{ fontSize: 11, fontWeight: 500, color: "#9ca3af", margin: "12px 0 2px 8px" }}>Workers</div>
             )}
 
@@ -1712,8 +1729,25 @@ export default function Sidebar({
               </button>
             ))}
 
-            {/* Back of House — all vertical worker groups */}
-            {groupedWorkers.groups.length > 0 && (
+            {/* Member-role users (a customer handed a client-facing worker,
+                e.g. pet-health-client) get a plain flat list of just their
+                own assigned worker(s) — no vertical grouping/browse UI,
+                since that's the operator's marketplace view, not theirs.
+                Without this they'd have no way at all to reach their own
+                worker once Studio Locker/Back of House are hidden above
+                (Sean, 2026-08-18). */}
+            {workspaceRole === "member" && workerList.filter(w => !w.isChiefOfStaff).map(w => (
+              <button key={w.slug}
+                className={`navItem ${selectedWorker === w.slug ? "navItemActive" : ""}`}
+                onClick={() => handleWorkerClick(w)}
+                style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <WorkerIcon slug={w.slug} size={15} color={selectedWorker === w.slug ? "#7c3aed" : "#9ca3af"} />
+                {w.name}
+              </button>
+            ))}
+
+            {/* Back of House — all vertical worker groups. Operator-only, same reasoning as Studio Locker above. */}
+            {workspaceRole !== "member" && groupedWorkers.groups.length > 0 && (
               <>
                 <button
                   onClick={() => setWorkersCollapsed(v => !v)}
@@ -1788,8 +1822,10 @@ export default function Sidebar({
 
             {/* S52.55 — admin review queue for fast-path-built workers.
                 Server-enforced via enforceRoleGate; shown here whenever a
-                business workspace is active (non-admins just see a 403). */}
-            {!isPersonal && (
+                business workspace is active (non-admins just see a 403).
+                Also hidden client-side for member-role users — no reason
+                for a customer to see this at all (Sean, 2026-08-18). */}
+            {!isPersonal && workspaceRole !== "member" && (
               <button className={`navItem ${currentSection === "worker-review-queue" ? "navItemActive" : ""}`}
                 onClick={() => handleNavClick("worker-review-queue")}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -1801,8 +1837,10 @@ export default function Sidebar({
               </button>
             )}
 
-            {/* S52.55 — upload-first fast path, any business workspace. */}
-            {!isPersonal && (
+            {/* S52.55 — upload-first fast path, any business workspace.
+                Operator-only — hidden for member-role users, same reasoning
+                as Worker Reviews above. */}
+            {!isPersonal && workspaceRole !== "member" && (
               <button className={`navItem ${currentSection === "teacher-fast-path" ? "navItemActive" : ""}`}
                 onClick={() => handleNavClick("teacher-fast-path")}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -1814,7 +1852,9 @@ export default function Sidebar({
               </button>
             )}
 
-            {creatorStatus !== "none" && (
+            {/* Creator Studio — building/publishing workers is an operator
+                capability, not a customer one. Hidden for member-role users. */}
+            {creatorStatus !== "none" && workspaceRole !== "member" && (
               <button className={`navItem ${typeof window !== "undefined" && window.location.pathname.startsWith("/creators") ? "navItemActive" : ""}`}
                 onClick={() => { window.location.href = "/creators/dashboard?tab=workers"; }}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
