@@ -27,10 +27,32 @@ import { useVisitorContext } from "../hooks/useVisitorContext";
 import { auth } from "../firebase";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
+// Desktop (.chatSidebar) and mobile (.mobileChatPanel) ChatPanel instances are
+// BOTH always mounted (CSS display:none, not unmount) at the 769px breakpoint
+// App.css already uses (see .chatSidebar{display:none} under max-width:768px
+// and .mobileChatPanel{display:none} under min-width:769px). Without this,
+// both instances independently register a 'ta:select-worker' listener and
+// write the same chat-session localStorage keys on every worker switch
+// (Sean, 2026-08-17) — pass isVisible so only the one the user can actually
+// see does that work.
+function useIsDesktopViewport() {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 769px)").matches : true
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 769px)");
+    const onChange = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
+}
+
 const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
 
 export default function AppShell({ children, currentSection, onNavigate, onBackToHub, guestMode, guestVertical }) {
   const visitorCtx = useVisitorContext();
+  const isDesktopViewport = useIsDesktopViewport();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -570,7 +592,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           className="chatSidebar"
           style={{ width: chatWidth + "%", maxWidth: "none" }}
         >
-          {guestMode ? children : <ChatPanel currentSection={currentSection} />}
+          {guestMode ? children : <ChatPanel currentSection={currentSection} isVisible={isDesktopViewport} />}
         </aside>
         <div
           className={`resizeHandle${isResizing === "chat" ? " active" : ""}`}
@@ -623,7 +645,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
             </svg>
           </button>
         </div>
-        <ChatPanel currentSection={currentSection} />
+        <ChatPanel currentSection={currentSection} isVisible={!isDesktopViewport} />
       </div>
 
       {/* Mobile: floating "back to chat" button — visible when canvas is showing */}

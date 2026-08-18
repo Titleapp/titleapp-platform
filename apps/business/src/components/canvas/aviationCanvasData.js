@@ -74,7 +74,7 @@ export const AV_CANVAS = {
         description: "Your next planned flight — ForeFlight-style. Fill in the details with Alex and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
         blocks: [
           { type: "heroes", items: [
-            { band: "BLUE",   title: "Next flight — PHOG → PHNL",          detail: "Aug 9 2026 · ETD 08:00 HST · IFR · FL230 · N661LF · Crew: Combs" },
+            { band: "BLUE",   title: "Next flight — PHOG → PHNL",          detail: "Aug 9 2026 · ETD 08:00 HST · IFR · FL230 · N701AA · Crew: Rivera" },
             { band: "GREEN",  title: "Weather — VFR improving",             detail: "PHOG VFR · PHNL VFR · Enroute clear · No SIGMETs" },
             { band: "YELLOW", title: "W&B check required before release",   detail: "Planned pax not yet added — tell Skye your pax weights to compute W&B" },
           ] },
@@ -84,7 +84,7 @@ export const AV_CANVAS = {
             { label: "Departure",           value: "PHOG (Kahului)",        band: "WHITE" },
             { label: "Destination",         value: "PHNL (Honolulu)",       band: "WHITE" },
             { label: "Alternate",           value: "PHKO (Kona)",           band: "WHITE" },
-            { label: "Aircraft",            value: "N661LF · PC-12/47E",    band: "WHITE" },
+            { label: "Aircraft",            value: "N701AA · PC-12/47E",    band: "WHITE" },
             { label: "Route",               value: "PHOG V19 PHNL",        band: "WHITE" },
             { label: "Altitude",            value: "FL230 IFR",             band: "WHITE" },
             { label: "ETE",                 value: "~0:45",                 band: "WHITE" },
@@ -113,7 +113,7 @@ export const AV_CANVAS = {
             { band: "YELLOW", title: "9 items expiring 09/30/2026", detail: "All in the same recurrent window — schedule simulator and CBT modules now" },
             { band: "GREEN",  title: "6 items current",             detail: "Medical · FW-299 · CBT Q1/Q2/Q4 · HUET — all clear through 2027" },
           ] },
-          { type: "table", title: "Training record — PC-12 / Life Flight Network", cols: ["Item", "Completed", "Expires", "Status"], rows: [
+          { type: "table", title: "Training record — PC-12 / Aeromed Air", cols: ["Item", "Completed", "Expires", "Status"], rows: [
             ["Medical 1 Year",             "05/11/2026", "05/31/2027", "Current ✓"],
             ["FW - 299",                   "03/21/2026", "03/31/2027", "Current ✓"],
             ["FW - CBT Q1",                "03/30/2026", "03/31/2027", "Current ✓"],
@@ -178,7 +178,7 @@ export const AV_CANVAS = {
           { type: "table", title: "Operating feed — PA26-0721", cols: ["Time HST", "Event", "Notes"], rows: [
             ["08:12", "Preflight package assembled",   "Weather · W&B · FRAT all green"],
             ["08:47", "Flight plan filed",              "KTEB KPBI direct IFR FL230"],
-            ["09:03", "Wheels up KTEB",                 "N662FW · 4 pax"],
+            ["09:03", "Wheels up KTEB",                 "N704AA · 4 pax"],
             ["09:08", "En route FL230",                 "On course · clear of TFRs"],
             ["11:09", "Wheels down KPBI",               "2.1 hrs block · fuel stop Atlantic Aviation"],
             ["11:22", "Fuel: 87 gal Jet-A · KPBI",    "Atlantic Aviation · $7.10/gal"],
@@ -201,7 +201,7 @@ export const AV_CANVAS = {
           { type: "heroes", items: [
             { band: "GREEN", title: "Debrief complete",   detail: "PA26-0721 · Jul 21 2026 · Filed 18:14" },
             { band: "GREEN", title: "QMR: None filed",    detail: "No quality events flagged on this trip" },
-            { band: "GREEN", title: "Records updated",    detail: "Logbook +4.0 hrs · N662FW engine +4.0 hrs" },
+            { band: "GREEN", title: "Records updated",    detail: "Logbook +4.0 hrs · N704AA engine +4.0 hrs" },
           ] },
           { type: "table", title: "FOQA — Flight Operations Quality Assurance", cols: ["Question", "Answer", "Notes"], rows: [
             ["Non-typical flight operations?",    "No",  "Standard IFR day flight"],
@@ -213,7 +213,7 @@ export const AV_CANVAS = {
             { band: "GREEN", title: "Pilot remarks", text: "Smooth trip. KPBI was VFR on arrival — TAF verified. ILS 28L in service as NOTAMed. Pax on schedule. Atlantic fuel receipt attached. No squawks. B200 performed as expected — smooth cruise FL230, 263 KTAS." },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "RECORD", title: "Trip record signed and chained", detail: "PA26-0721 appended to N662FW aircraft record · 4.0 hrs logged to pilot logbook · QMR: None · Debrief approved: A. Rivera 18:14 Jul 21 2026", action: "View full record" },
+            { band: "BLUE", label: "RECORD", title: "Trip record signed and chained", detail: "PA26-0721 appended to N704AA aircraft record · 4.0 hrs logged to pilot logbook · QMR: None · Debrief approved: A. Rivera 18:14 Jul 21 2026", action: "View full record" },
           ] },
         ],
       },
@@ -233,7 +233,7 @@ export const AV_CANVAS = {
             { label: "Day landings — 90 days",value: "34",         band: "WHITE" },
             { label: "Night landings — 90d",  value: "12",         band: "WHITE" },
           ] },
-          { type: "table", title: "Recent flights — PC-12 / Life Flight Network", cols: ["Date", "Route", "Aircraft", "Total", "Day", "Night", "IFR", "Day Ldg", "Night Ldg", "Apch", "Purpose"], rows: [
+          { type: "table", title: "Recent flights — PC-12 / Aeromed Air", cols: ["Date", "Route", "Aircraft", "Total", "Day", "Night", "IFR", "Day Ldg", "Night Ldg", "Apch", "Purpose"], rows: [
             ["Aug 04", "PHOG–PHNL", "PC-12/47E", "0.8", "0.8", "—",  "0.8", "1", "—", "ILS 04L", "Air medical"],
             ["Aug 01", "PHNL–PHOG", "PC-12/47E", "0.8", "0.5", "0.3","0.8", "—", "1", "RNAV 02", "Positioning"],
             ["Jul 28", "PHOG–PHKO", "PC-12/47E", "0.9", "0.9", "—",  "0.7", "1", "—", "VFR",     "Air medical"],
@@ -283,7 +283,7 @@ export const AV_CANVAS = {
   // ──────────────────────────── MX / MAINTENANCE ────────────────────────────
   "av-mx-001": {
     title: "MX",
-    subtitle: "PC-12/47E · Life Flight Network · Hawaii",
+    subtitle: "PC-12/47E · Aeromed Air · Hawaii",
     disclaimer: "Airworthiness determination is the sole authority of the certifying A&P/IA — this record is for tracking and documentation only",
     cas: { RED: 0, YELLOW: 1, BLUE: 1, WHITE: 3, GREEN: 4 },
     tabs: [
@@ -298,7 +298,7 @@ export const AV_CANVAS = {
             { band: "YELLOW", title: "100-hour due in ~53 hrs",    detail: "Current: 1,847 TTSN · Due: 1,900 · At ~15 hrs/month → ~3.5 months" },
           ] },
           { type: "kpis", items: [
-            { label: "Operator",            value: "Life Flight Network",   band: "WHITE" },
+            { label: "Operator",            value: "Aeromed Air",   band: "WHITE" },
             { label: "Make / Model",        value: "Pilatus PC-12/47E",     band: "WHITE" },
             { label: "Engine",              value: "PT6A-67P · 1,200 SHP",  band: "WHITE" },
             { label: "Total airframe time", value: "1,847 hrs TTSN",        band: "WHITE" },
@@ -349,7 +349,7 @@ export const AV_CANVAS = {
             ["AD 2026-08-12 fuel cap seal",      "Calendar", "May 2027",    "~9 months",         "Tracking"],
           ] },
           { type: "cards", items: [
-            { band: "YELLOW", label: "SCHEDULE NOW", title: "100-hour inspection due at 1,900 hrs", detail: "53 hrs remaining at current pace (~15 hrs/month) = approximately mid-November 2026. Coordinate with Williams MX now. Last 100-hr took 2 days AOG. Plan around Life Flight scheduling.", action: "Contact A&P" },
+            { band: "YELLOW", label: "SCHEDULE NOW", title: "100-hour inspection due at 1,900 hrs", detail: "53 hrs remaining at current pace (~15 hrs/month) = approximately mid-November 2026. Coordinate with Williams MX now. Last 100-hr took 2 days AOG. Plan around Aeromed scheduling.", action: "Contact A&P" },
           ] },
         ],
       },
@@ -385,7 +385,7 @@ export const AV_CANVAS = {
             ["PT6A chip detector",          "Ops spec", "Jun 15 2026",          "Per 100-hr",          "Current ✓"],
           ] },
           { type: "prose", items: [
-            { band: "BLUE", title: "Part 135 additional inspections", text: "Life Flight Network Part 135 OpSpecs add progressive/phase inspections above Part 91 minimums. Check current OpSpecs §D for operator-specific intervals on the PC-12/47E." },
+            { band: "BLUE", title: "Part 135 additional inspections", text: "Aeromed Air Part 135 OpSpecs add progressive/phase inspections above Part 91 minimums. Check current OpSpecs §D for operator-specific intervals on the PC-12/47E." },
           ] },
         ],
       },
@@ -429,7 +429,7 @@ export const AV_CANVAS = {
   // ────────────────────────────── DISPATCH ──────────────────────────────────
   "av-dispatch-001": {
     title: "Dispatch",
-    subtitle: "Life Flight Network · Hawaii · Part 135",
+    subtitle: "Aeromed Air · Hawaii · Part 135",
     disclaimer: "Formal release required before departure — crew and aircraft legality verified at dispatch time",
     cas: { RED: 0, YELLOW: 1, BLUE: 0, WHITE: 1, GREEN: 3 },
     tabs: [
@@ -440,7 +440,7 @@ export const AV_CANVAS = {
         blocks: [
           { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 500,
             icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"],
-            fleetTails: ["N661LF", "N662LF", "N663LF"] },
+            fleetTails: ["N701AA", "N702AA", "N703AA"] },
         ],
       },
       {
@@ -449,19 +449,19 @@ export const AV_CANVAS = {
         description: "Today's and upcoming flight schedule — trips, tail assignments, crew, and release status.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN", title: "2 flights today",       detail: "LFN-0808-01 en route · LFN-0808-02 departs 18:00Z" },
+            { band: "GREEN", title: "2 flights today",       detail: "AMA-0808-01 en route · AMA-0808-02 departs 18:00Z" },
             { band: "GREEN", title: "All crew legal",         detail: "All assigned crew within duty time limits" },
             { band: "GREEN", title: "All tails airworthy",    detail: "3 available PC-12 tails · no AOG aircraft today" },
           ] },
           { type: "table", title: "Today's schedule — 2026-08-08", cols: ["Trip", "Tail", "Crew PIC", "Route", "Depart", "Status"], rows: [
-            ["LFN-0808-01", "N661LF", "Combs S.",    "PHOG → PHNL", "14:00Z", "En route"],
-            ["LFN-0808-02", "N662LF", "Martinez J.", "PHKO → PHOG", "18:00Z", "Pending"],
-            ["LFN-0808-03", "N663LF", "—",           "—",           "—",      "Available"],
+            ["AMA-0808-01", "N701AA", "Rivera A.",    "PHOG → PHNL", "14:00Z", "En route"],
+            ["AMA-0808-02", "N702AA", "Martinez J.", "PHKO → PHOG", "18:00Z", "Pending"],
+            ["AMA-0808-03", "N703AA", "—",           "—",           "—",      "Available"],
           ] },
           { type: "table", title: "Upcoming 3 days", cols: ["Date", "Trip", "Route", "Tail", "Status"], rows: [
-            ["Aug 9",  "LFN-0809-01", "PHNL → PHTO", "N661LF", "Scheduled"],
-            ["Aug 10", "LFN-0810-01", "PHOG → PHNL", "N662LF", "Scheduled"],
-            ["Aug 10", "LFN-0810-02", "PHKO → PHOG", "N663LF", "Tentative"],
+            ["Aug 9",  "AMA-0809-01", "PHNL → PHTO", "N701AA", "Scheduled"],
+            ["Aug 10", "AMA-0810-01", "PHOG → PHNL", "N702AA", "Scheduled"],
+            ["Aug 10", "AMA-0810-02", "PHKO → PHOG", "N703AA", "Tentative"],
           ] },
         ],
       },
@@ -471,7 +471,7 @@ export const AV_CANVAS = {
         description: "Crew legality computed per 14 CFR §135.273 (unscheduled Part 135). Skye requires actual duty period start, rest hours, and accumulated flight hours before releasing a trip — a proposed schedule is not verification. Provide these to Skye to get a computed release package.",
         blocks: [
           { type: "table", title: "Crew legality — today (§135.273 snapshot)", cols: ["Pilot", "Cert", "Medical", "Duty used / rem", "24h flight", "Status"], rows: [
-            { band: "GREEN",  cells: ["Combs S.",    "ATP · PC-12 type", "Class 1 — May 2027",  "4h / 10h rem",  "2.1h / 8h max",  "● GREEN"] },
+            { band: "GREEN",  cells: ["Rivera A.",    "ATP · PC-12 type", "Class 1 — May 2027",  "4h / 10h rem",  "2.1h / 8h max",  "● GREEN"] },
             { band: "YELLOW", cells: ["Martinez J.", "ATP · PC-12 type", "Class 1 — Aug 2026 ⚠","0h / 14h",      "0h / 8h max",    "● CAUTION"] },
             { band: "GREEN",  cells: ["Thompson K.", "CPL · Inst",        "Class 2 — Mar 2027",  "0h / 14h",      "0h / 8h max",    "● GREEN"] },
           ] },
@@ -479,7 +479,7 @@ export const AV_CANVAS = {
             { band: "YELLOW", title: "Martinez J. — Medical renewal in 32 days", detail: "Class 1 due Aug 2026 · Schedule AME appointment this week · Still legal to fly now" },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "RELEASE GATE — §135.273", title: "Tell Skye your duty start + rest + flight hours to compute a release", detail: "Say: 'Release LFN-0810-01 — duty started 06:00 HST, 9h rest prior, 0h flight today, 214h this quarter, 612h this year.' Skye computes all §135.273 limits and issues RELEASED / CONDITIONAL / BLOCKED with citations. Missing any input = BLOCKED.", action: "Start release" },
+            { band: "BLUE", label: "RELEASE GATE — §135.273", title: "Tell Skye your duty start + rest + flight hours to compute a release", detail: "Say: 'Release AMA-0810-01 — duty started 06:00 HST, 9h rest prior, 0h flight today, 214h this quarter, 612h this year.' Skye computes all §135.273 limits and issues RELEASED / CONDITIONAL / BLOCKED with citations. Missing any input = BLOCKED.", action: "Start release" },
           ] },
         ],
       },
@@ -488,19 +488,19 @@ export const AV_CANVAS = {
         label: "Pax Manifest",
         description: "Passenger manifest for active and upcoming flights — names, weights, mission type (medevac or charter), and W&B feed.",
         blocks: [
-          { type: "table", title: "LFN-0808-01 — active flight (air medical)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
+          { type: "table", title: "AMA-0808-01 — active flight (air medical)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
             ["Patient",     "180 lbs", "Patient",      "Air medical — PHOG → PHNL · Queen's Medical Center"],
-            ["Medic 1",     "195 lbs", "Flight nurse",  "Life Flight crew"],
-            ["Medic 2",     "175 lbs", "Paramedic",     "Life Flight crew"],
+            ["Medic 1",     "195 lbs", "Flight nurse",  "Aeromed crew"],
+            ["Medic 2",     "175 lbs", "Paramedic",     "Aeromed crew"],
           ] },
-          { type: "table", title: "LFN-0808-02 — charter flight (PHKO → PHOG 18:00Z)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
+          { type: "table", title: "AMA-0808-02 — charter flight (PHKO → PHOG 18:00Z)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
             ["Reyes, Maria",    "145 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
             ["Reyes, Carlos",   "185 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
             ["Tanaka, Yuki",    "130 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
             ["Baggage",          "85 lbs", "Cargo",     "2 soft bags · aft baggage · W&B verified"],
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "ADD PAX", title: "Tell Skye to add a passenger to any flight", detail: "Say: 'Add pax to LFN-0808-02 — [name], [weight], [role].' The manifest updates in the dispatch record and feeds W&B automatically. Charter and medevac pax handled the same way.", action: "Open chat" },
+            { band: "BLUE", label: "ADD PAX", title: "Tell Skye to add a passenger to any flight", detail: "Say: 'Add pax to AMA-0808-02 — [name], [weight], [role].' The manifest updates in the dispatch record and feeds W&B automatically. Charter and medevac pax handled the same way.", action: "Open chat" },
           ] },
         ],
       },
@@ -510,12 +510,12 @@ export const AV_CANVAS = {
         description: "Fleet airworthiness — current status of all tails available to dispatch.",
         blocks: [
           { type: "table", title: "Fleet status — Aug 8 2026", cols: ["Tail", "TTSN", "Next due", "MEL items", "Status"], rows: [
-            ["N661LF", "1,847", "100-hr @ 1,900h",  "1 Cat C — gear door light (no restriction)", "AIRWORTHY"],
-            ["N662LF", "2,301", "Annual Apr 2027",   "None",                                        "AIRWORTHY"],
-            ["N663LF", "1,412", "Annual Nov 2026",   "None",                                        "AIRWORTHY"],
+            ["N701AA", "1,847", "100-hr @ 1,900h",  "1 Cat C — gear door light (no restriction)", "AIRWORTHY"],
+            ["N702AA", "2,301", "Annual Apr 2027",   "None",                                        "AIRWORTHY"],
+            ["N703AA", "1,412", "Annual Nov 2026",   "None",                                        "AIRWORTHY"],
           ] },
           { type: "prose", items: [
-            { band: "GREEN", title: "All three tails available for dispatch today", text: "N661LF has one Cat C MEL deferral (gear door light) — no operational restriction. Placard installed. N661LF cleared for release." },
+            { band: "GREEN", title: "All three tails available for dispatch today", text: "N701AA has one Cat C MEL deferral (gear door light) — no operational restriction. Placard installed. N701AA cleared for release." },
           ] },
           { type: "cards", items: [
             { band: "WHITE", label: "MX DETAIL", title: "View full MX record for any tail", detail: "Click through to the MX worker for squawk history, open work orders, inspection status, and component life tracking for any tail.", action: "Open MX worker" },
@@ -525,7 +525,7 @@ export const AV_CANVAS = {
       {
         id: "notams",
         label: "NOTAMs",
-        description: "Active NOTAMs for Hawaii operations — relevant to today's Life Flight routes.",
+        description: "Active NOTAMs for Hawaii operations — relevant to today's Aeromed routes.",
         blocks: [
           { type: "cards", items: [
             { band: "BLUE", label: "LIVE NOTAMS", title: "Ask Alex to pull current NOTAMs for your route", detail: "Tell Alex: 'Get NOTAMs for PHOG to PHNL' — Alex pulls live NOTAMs from the FAA and summarizes operationally relevant items.", action: "Open chat" },
@@ -549,26 +549,26 @@ export const AV_CANVAS = {
         description: "All tails at a glance — status, TTSN, next inspection due, and any open items.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN",  title: "N662LF — Airworthy",    detail: "2,301 TTSN · 890 TSMOH · Next inspection: Apr 2027" },
-            { band: "GREEN",  title: "N663LF — Airworthy",    detail: "1,847 TTSN · 412 TSMOH · Next inspection: Nov 2026" },
-            { band: "RED",    title: "N661LF — OOS",          detail: "FCU squawk open · Pilot write-up 2026-07-30 · MX in progress" },
+            { band: "GREEN",  title: "N702AA — Airworthy",    detail: "2,301 TTSN · 890 TSMOH · Next inspection: Apr 2027" },
+            { band: "GREEN",  title: "N703AA — Airworthy",    detail: "1,847 TTSN · 412 TSMOH · Next inspection: Nov 2026" },
+            { band: "RED",    title: "N701AA — OOS",          detail: "FCU squawk open · Pilot write-up 2026-07-30 · MX in progress" },
           ] },
           { type: "table", title: "Fleet status", cols: ["Tail", "TTSN", "TSMOH", "Next Due", "Status"], rows: [
-            ["N661LF", "2,847", "1,240", "Annual Feb 2027", "GROUNDED"],
-            ["N662LF", "2,301", "890",   "Annual Apr 2027", "Airworthy"],
-            ["N663LF", "1,847", "412",   "Annual Nov 2026", "Airworthy"],
+            ["N701AA", "2,847", "1,240", "Annual Feb 2027", "GROUNDED"],
+            ["N702AA", "2,301", "890",   "Annual Apr 2027", "Airworthy"],
+            ["N703AA", "1,847", "412",   "Annual Nov 2026", "Airworthy"],
           ] },
           { type: "flags", items: [
-            { band: "RED",    title: "N661LF — FCU squawk open",          detail: "Pilot Martinez · 2026-07-30 14:23Z · MX triage in progress · Est return 48h" },
-            { band: "YELLOW", title: "N663LF — Annual due in 76 days",    detail: "Due Nov 2026 · Schedule now to avoid AOG at inspection time" },
-            { band: "WHITE",  title: "N661LF — Fuel cap MEL not applicable", detail: "MX confirmed: not MEL-deferrable. Aircraft OOS until repaired." },
+            { band: "RED",    title: "N701AA — FCU squawk open",          detail: "Pilot Martinez · 2026-07-30 14:23Z · MX triage in progress · Est return 48h" },
+            { band: "YELLOW", title: "N703AA — Annual due in 76 days",    detail: "Due Nov 2026 · Schedule now to avoid AOG at inspection time" },
+            { band: "WHITE",  title: "N701AA — Fuel cap MEL not applicable", detail: "MX confirmed: not MEL-deferrable. Aircraft OOS until repaired." },
           ] },
         ],
       },
       {
         id: "tail-detail",
         label: "Tail Detail",
-        description: "N661LF complete record — specs, configuration, open items, and document status.",
+        description: "N701AA complete record — specs, configuration, open items, and document status.",
         blocks: [
           { type: "heroes", items: [
             { band: "RED",    title: "OOS — FCU squawk",      detail: "Open since 2026-07-30 · MX in triage · Not MEL-deferrable" },
@@ -576,7 +576,7 @@ export const AV_CANVAS = {
             { band: "GREEN",  title: "AFM uploaded",          detail: "PC-12/47E AFM Rev 12 · W&B and performance tabs unlocked" },
           ] },
           { type: "kpis", items: [
-            { label: "Registration",   value: "N661LF", band: "WHITE" },
+            { label: "Registration",   value: "N701AA", band: "WHITE" },
             { label: "Model",          value: "PC-12/47E", band: "WHITE" },
             { label: "Serial",         value: "1661", band: "WHITE" },
             { label: "Year",           value: "2018", band: "WHITE" },
@@ -596,14 +596,14 @@ export const AV_CANVAS = {
         description: "All open squawks across the fleet — write-up, triage status, and resolution track.",
         blocks: [
           { type: "flags", items: [
-            { band: "RED",   title: "N661LF · WO-2026-047 · FCU / fuel cap — left wing",  detail: "Pilot Martinez 2026-07-30 · MX Chen in triage · Parts on hand · Est 4h repair · WO open" },
-            { band: "GREEN", title: "N663LF · Resolved · Nav light inoperative — 2026-07-18", detail: "Pilot Thompson 2026-07-18 · A&P Davis replaced nav light assembly 2026-07-19 · Signed off · Aircraft returned to service" },
+            { band: "RED",   title: "N701AA · WO-2026-047 · FCU / fuel cap — left wing",  detail: "Pilot Martinez 2026-07-30 · MX Chen in triage · Parts on hand · Est 4h repair · WO open" },
+            { band: "GREEN", title: "N703AA · Resolved · Nav light inoperative — 2026-07-18", detail: "Pilot Thompson 2026-07-18 · A&P Davis replaced nav light assembly 2026-07-19 · Signed off · Aircraft returned to service" },
           ] },
           { type: "table", title: "Squawk log — last 30 days", cols: ["Tail", "Date", "Description", "Status", "MX"], rows: [
-            ["N661LF", "2026-07-30", "FCU / left fuel cap missing",     "OPEN",     "Chen K."],
-            ["N663LF", "2026-07-18", "Nav light inoperative",            "CLOSED",   "Davis R."],
-            ["N662LF", "2026-07-12", "Autopilot disconnect caution",     "CLOSED",   "Chen K."],
-            ["N661LF", "2026-07-01", "Ice detector test fail — left",   "CLOSED",   "Davis R."],
+            ["N701AA", "2026-07-30", "FCU / left fuel cap missing",     "OPEN",     "Chen K."],
+            ["N703AA", "2026-07-18", "Nav light inoperative",            "CLOSED",   "Davis R."],
+            ["N702AA", "2026-07-12", "Autopilot disconnect caution",     "CLOSED",   "Chen K."],
+            ["N701AA", "2026-07-01", "Ice detector test fail — left",   "CLOSED",   "Davis R."],
           ] },
         ],
       },
@@ -630,7 +630,7 @@ export const AV_CANVAS = {
         blocks: [
           { type: "cards", items: [
             { band: "GREEN",  label: "AFM / POH",        title: "PC-12/47E AFM Rev 12", detail: "Uploaded 2026-02-15 · Authoritative for W&B and performance computation · 387 pages", action: "View" },
-            { band: "GREEN",  label: "REGISTRATION",     title: "N661LF FAA Registration", detail: "Expires 2028-12-31 · Class: Airplane · Category: Standard", action: "View" },
+            { band: "GREEN",  label: "REGISTRATION",     title: "N701AA FAA Registration", detail: "Expires 2028-12-31 · Class: Airplane · Category: Standard", action: "View" },
             { band: "GREEN",  label: "AIRWORTHINESS",    title: "Standard Airworthiness Certificate", detail: "Issued 2018-03-22 · No expiration · Aircraft remains airworthy while maintained per Part 91", action: "View" },
             { band: "YELLOW", label: "337 — STC",        title: "No STC 337s on file", detail: "No field approvals or STC modifications recorded. Upload if applicable.", action: "Upload" },
           ] },
@@ -642,7 +642,7 @@ export const AV_CANVAS = {
   // ─────────────────────────────── MX (FLEET) ───────────────────────────────
   "av-mx": {
     title: "MX",
-    subtitle: "N661LF · Pacific Air Partners · Maintenance Record",
+    subtitle: "N701AA · Pacific Air Partners · Maintenance Record",
     disclaimer: "All entries are append-only and require A&P or IA signature",
     cas: { RED: 1, YELLOW: 1, BLUE: 0, WHITE: 2, GREEN: 2 },
     tabs: [
@@ -652,15 +652,15 @@ export const AV_CANVAS = {
         description: "Open and recent work orders — every job from squawk to sign-off, append-only.",
         blocks: [
           { type: "heroes", items: [
-            { band: "RED",    title: "1 open — WO-2026-047", detail: "FCU / fuel cap · N661LF · Est 4h · Parts on hand" },
+            { band: "RED",    title: "1 open — WO-2026-047", detail: "FCU / fuel cap · N701AA · Est 4h · Parts on hand" },
             { band: "GREEN",  title: "Closed this month: 3",  detail: "Nav light, autopilot caution, ice detector — all signed off" },
             { band: "GREEN",  title: "Parts on hand",         detail: "PC12-FUELCAP-LH in stock · No AOG parts order required" },
           ] },
           { type: "table", title: "Work orders", cols: ["WO #", "Tail", "Description", "A&P", "Status", "Hours"], rows: [
-            ["WO-2026-047", "N661LF", "FCU / fuel cap — left wing",   "Chen K.",  "OPEN",     "4 est"],
-            ["WO-2026-044", "N663LF", "Nav light assembly replacement", "Davis R.", "CLOSED",   "1.5"],
-            ["WO-2026-041", "N662LF", "Autopilot disconnect — AHRS reset", "Chen K.", "CLOSED",  "0.5"],
-            ["WO-2026-038", "N661LF", "Ice detector — left sensor R&R",   "Davis R.", "CLOSED",   "2.0"],
+            ["WO-2026-047", "N701AA", "FCU / fuel cap — left wing",   "Chen K.",  "OPEN",     "4 est"],
+            ["WO-2026-044", "N703AA", "Nav light assembly replacement", "Davis R.", "CLOSED",   "1.5"],
+            ["WO-2026-041", "N702AA", "Autopilot disconnect — AHRS reset", "Chen K.", "CLOSED",  "0.5"],
+            ["WO-2026-038", "N701AA", "Ice detector — left sensor R&R",   "Davis R.", "CLOSED",   "2.0"],
           ] },
         ],
       },
@@ -670,17 +670,17 @@ export const AV_CANVAS = {
         description: "Time-limited component status across the fleet — engine, props, and life-limited parts.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN",  title: "N661LF engine — 1,240 / 3,600 TSMOH",  detail: "2,360 hrs remaining · 65% life used" },
-            { band: "GREEN",  title: "N662LF engine — 890 / 3,600 TSMOH",    detail: "2,710 hrs remaining · 25% life used" },
-            { band: "YELLOW", title: "N663LF prop — 412 / 2,400 TSMOH",      detail: "Approaching mid-life — 17% life remaining · Next O/H within 6 months" },
+            { band: "GREEN",  title: "N701AA engine — 1,240 / 3,600 TSMOH",  detail: "2,360 hrs remaining · 65% life used" },
+            { band: "GREEN",  title: "N702AA engine — 890 / 3,600 TSMOH",    detail: "2,710 hrs remaining · 25% life used" },
+            { band: "YELLOW", title: "N703AA prop — 412 / 2,400 TSMOH",      detail: "Approaching mid-life — 17% life remaining · Next O/H within 6 months" },
           ] },
           { type: "table", title: "Life-limited components", cols: ["Tail", "Component", "TTSN", "Interval", "Remaining", "Status"], rows: [
-            ["N661LF", "PT6A-67P engine",   "1,240", "3,600h",  "2,360h",  "GREEN"],
-            ["N661LF", "Propeller",          "1,240", "2,400h",  "1,160h",  "GREEN"],
-            ["N662LF", "PT6A-67P engine",    "890",  "3,600h",   "2,710h",  "GREEN"],
-            ["N662LF", "Propeller",           "890",  "2,400h",   "1,510h",  "GREEN"],
-            ["N663LF", "PT6A-67P engine",    "412",  "3,600h",   "3,188h",  "GREEN"],
-            ["N663LF", "Propeller",           "412",  "2,400h",   "412h",    "YELLOW"],
+            ["N701AA", "PT6A-67P engine",   "1,240", "3,600h",  "2,360h",  "GREEN"],
+            ["N701AA", "Propeller",          "1,240", "2,400h",  "1,160h",  "GREEN"],
+            ["N702AA", "PT6A-67P engine",    "890",  "3,600h",   "2,710h",  "GREEN"],
+            ["N702AA", "Propeller",           "890",  "2,400h",   "1,510h",  "GREEN"],
+            ["N703AA", "PT6A-67P engine",    "412",  "3,600h",   "3,188h",  "GREEN"],
+            ["N703AA", "Propeller",           "412",  "2,400h",   "412h",    "YELLOW"],
           ] },
         ],
       },
@@ -715,10 +715,10 @@ export const AV_CANVAS = {
         description: "Upcoming maintenance events — inspections, component overhauls, and scheduled checks.",
         blocks: [
           { type: "table", title: "Upcoming 12 months", cols: ["Tail", "Event", "Due Date", "Due Hours", "Days Out", "Status"], rows: [
-            ["N661LF", "WO-2026-047 FCU repair",  "2026-08-01", "—",     "2 days",  "OPEN"],
-            ["N663LF", "Annual inspection",         "2026-11-15", "2,000h", "108 days", "Schedule"],
-            ["N661LF", "Annual inspection",         "2027-02-15", "3,000h", "200 days", "OK"],
-            ["N662LF", "Annual inspection",         "2027-04-15", "2,600h", "259 days", "OK"],
+            ["N701AA", "WO-2026-047 FCU repair",  "2026-08-01", "—",     "2 days",  "OPEN"],
+            ["N703AA", "Annual inspection",         "2026-11-15", "2,000h", "108 days", "Schedule"],
+            ["N701AA", "Annual inspection",         "2027-02-15", "3,000h", "200 days", "OK"],
+            ["N702AA", "Annual inspection",         "2027-04-15", "2,600h", "259 days", "OK"],
           ] },
         ],
       },
@@ -738,14 +738,14 @@ export const AV_CANVAS = {
         description: "Today's trips — tail assignments, crew legality, and release status.",
         blocks: [
           { type: "heroes", items: [
-            { band: "RED",    title: "N661LF — OOS",          detail: "FCU squawk · No dispatch until cleared by MX · WO-2026-047 open" },
+            { band: "RED",    title: "N701AA — OOS",          detail: "FCU squawk · No dispatch until cleared by MX · WO-2026-047 open" },
             { band: "YELLOW", title: "Martinez — 6h duty remaining", detail: "Current duty period: 12h · 6h used · 6h remaining" },
-            { band: "GREEN",  title: "N662LF — Released",     detail: "Combs / Thompson · KTLH → KMCO · Departs 14:00Z · Package complete" },
+            { band: "GREEN",  title: "N702AA — Released",     detail: "Rivera / Thompson · KTLH → KMCO · Departs 14:00Z · Package complete" },
           ] },
           { type: "table", title: "Today's dispatch board", cols: ["Trip", "Tail", "Crew PIC", "Route", "Depart", "Legality", "Status"], rows: [
-            ["PAP-2026-112", "N662LF", "Combs S.",   "KTLH→KMCO", "14:00Z", "Legal", "Released"],
-            ["PAP-2026-113", "N661LF", "Martinez J.", "KMCO→KTPA", "16:00Z", "Legal", "Blocked — OOS"],
-            ["PAP-2026-114", "N663LF", "Thompson K.", "KTPA→KEYW", "18:00Z", "Legal", "Pending"],
+            ["PAP-2026-112", "N702AA", "Rivera A.",   "KTLH→KMCO", "14:00Z", "Legal", "Released"],
+            ["PAP-2026-113", "N701AA", "Martinez J.", "KMCO→KTPA", "16:00Z", "Legal", "Blocked — OOS"],
+            ["PAP-2026-114", "N703AA", "Thompson K.", "KTPA→KEYW", "18:00Z", "Legal", "Pending"],
           ] },
         ],
       },
@@ -769,7 +769,7 @@ export const AV_CANVAS = {
       {
         id: "wb",
         label: "W&B",
-        description: "Weight and balance computation — uses N662LF operator-uploaded AFM data.",
+        description: "Weight and balance computation — uses N702AA operator-uploaded AFM data.",
         blocks: [
           { type: "heroes", items: [
             { band: "GREEN", title: "W&B within limits",  detail: "9,124 lbs · Max 10,450 lbs · CG 154.2 in · Limit 150–160 in" },
@@ -802,9 +802,9 @@ export const AV_CANVAS = {
         description: "Live ADS-B position for Pacific Air Partners fleet.",
         blocks: [
           { type: "table", title: "Fleet position — live", cols: ["Tail", "Flight", "From", "To", "Status", "ETA"], rows: [
-            ["N662LF", "PAP-112", "KTLH", "KMCO", "En route", "15:52Z"],
-            ["N663LF", "Ground",  "KTPA", "—",    "Airworthy", "—"],
-            ["N661LF", "Ground",  "KTLH", "—",    "GROUNDED",  "—"],
+            ["N702AA", "PAP-112", "KTLH", "KMCO", "En route", "15:52Z"],
+            ["N703AA", "Ground",  "KTPA", "—",    "Airworthy", "—"],
+            ["N701AA", "Ground",  "KTLH", "—",    "GROUNDED",  "—"],
           ] },
         ],
       },
@@ -824,12 +824,12 @@ export const AV_CANVAS = {
         description: "All-pilots currency matrix — medical, BFR, IFR, type recurrent, and 135 checks.",
         blocks: [
           { type: "table", title: "Crew currency matrix", cols: ["Pilot", "Medical", "BFR", "IPC", "Type Recurrent", "135 Check", "Status"], rows: [
-            ["Combs S. (ATP)",     "Class 1 — Dec 2026",  "Feb 2026", "Feb 2026", "Nov 2026 ⚠",  "Jun 2027", "YELLOW"],
+            ["Rivera A. (ATP)",     "Class 1 — Dec 2026",  "Feb 2026", "Feb 2026", "Nov 2026 ⚠",  "Jun 2027", "YELLOW"],
             ["Martinez J. (ATP)",   "Class 1 — Aug 2026",  "Jan 2026", "Jan 2026", "Sep 2027",     "Sep 2027", "GREEN"],
             ["Thompson K. (CPL)",   "Class 2 — Mar 2027",  "Mar 2026", "Mar 2026", "N/A",          "Mar 2027", "GREEN"],
           ] },
           { type: "flags", items: [
-            { band: "YELLOW", title: "Combs S. — PC-12 type recurrent due Nov 2026", detail: "71 days · Schedule FSI/SimuFlite simulator now to avoid gap in schedule" },
+            { band: "YELLOW", title: "Rivera A. — PC-12 type recurrent due Nov 2026", detail: "71 days · Schedule FSI/SimuFlite simulator now to avoid gap in schedule" },
             { band: "YELLOW", title: "Martinez J. — Class 1 medical due Aug 2026",   detail: "32 days · Schedule AME appointment this week" },
           ] },
         ],
@@ -853,7 +853,7 @@ export const AV_CANVAS = {
         blocks: [
           { type: "table", title: "90-day expiration calendar", cols: ["Pilot", "Item", "Expires", "Days Out", "Action"], rows: [
             ["Martinez J.", "Class 1 Medical",      "Aug 2026", "32 days", "Schedule AME"],
-            ["Combs S.",    "PC-12 Type Recurrent", "Nov 2026", "71 days", "Schedule simulator"],
+            ["Rivera A.",    "PC-12 Type Recurrent", "Nov 2026", "71 days", "Schedule simulator"],
           ] },
         ],
       },
@@ -863,7 +863,7 @@ export const AV_CANVAS = {
         description: "Upcoming training events — simulator slots, checkrides, and ground training.",
         blocks: [
           { type: "cards", items: [
-            { band: "YELLOW", label: "UPCOMING", title: "Combs S. — PC-12 type recurrent", detail: "Due Nov 2026 · FSI Scottsdale preferred · Contact: 480-555-0131 · 2-day course + sim session", action: "Schedule" },
+            { band: "YELLOW", label: "UPCOMING", title: "Rivera A. — PC-12 type recurrent", detail: "Due Nov 2026 · FSI Scottsdale preferred · Contact: 480-555-0131 · 2-day course + sim session", action: "Schedule" },
             { band: "YELLOW", label: "UPCOMING", title: "Martinez J. — Class 1 AME appointment", detail: "Due Aug 2026 · FAA-designated AME required · Schedule with Dr. Chen, KLAS", action: "Schedule" },
           ] },
         ],
@@ -884,7 +884,7 @@ export const AV_CANVAS = {
         description: "This week's crew schedule — trips, duty periods, and rest blocks.",
         blocks: [
           { type: "table", title: "Week of 2026-07-28", cols: ["Pilot", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], rows: [
-            ["Combs S.",    "PAP-110", "PAP-112", "Rest", "Rest",    "PAP-116", "Rest",    "Rest"],
+            ["Rivera A.",    "PAP-110", "PAP-112", "Rest", "Rest",    "PAP-116", "Rest",    "Rest"],
             ["Martinez J.", "Rest",    "PAP-113", "Standby", "Rest",  "Rest",    "PAP-118", "Rest"],
             ["Thompson K.", "PAP-111", "Rest",    "PAP-114", "Rest", "PAP-117", "Rest",    "Rest"],
           ] },
@@ -896,13 +896,13 @@ export const AV_CANVAS = {
         description: "Duty time and currency status per pilot — queried by DISPATCH before every release.",
         blocks: [
           { type: "table", title: "Crew legality — current duty period", cols: ["Pilot", "Duty Used", "Duty Remaining", "Currency", "Medical", "Legality"], rows: [
-            ["Combs S.",    "4h",  "10h",  "Current",  "Current (Dec)", "GREEN"],
+            ["Rivera A.",    "4h",  "10h",  "Current",  "Current (Dec)", "GREEN"],
             ["Martinez J.", "6h",  "6h",   "Current",  "Due 32 days",  "YELLOW"],
             ["Thompson K.", "0h",  "14h",  "Current",  "Current (Mar)", "GREEN"],
           ] },
           { type: "flags", items: [
             { band: "YELLOW", title: "Martinez J. — medical approaching expiration", detail: "32 days to Class 1 renewal · Legal to fly now · Flag at 30-day threshold" },
-            { band: "RED",    title: "N661LF OOS — Martinez PAP-2026-113 blocked",  detail: "Assigned aircraft out of service · DISPATCH blocked release · Coordinate tail substitution" },
+            { band: "RED",    title: "N701AA OOS — Martinez PAP-2026-113 blocked",  detail: "Assigned aircraft out of service · DISPATCH blocked release · Coordinate tail substitution" },
           ] },
         ],
       },
@@ -912,7 +912,7 @@ export const AV_CANVAS = {
         description: "Reserve crew availability — duty-legal pilots available for substitution or coverage.",
         blocks: [
           { type: "cards", items: [
-            { band: "WHITE", label: "RESERVE", title: "No reserve crew on standby today", detail: "Contact Combs S. (off duty, rest period complete) or Martinez J. (on duty, 6h remaining) for any coverage needs.", action: "Contact crew" },
+            { band: "WHITE", label: "RESERVE", title: "No reserve crew on standby today", detail: "Contact Rivera A. (off duty, rest period complete) or Martinez J. (on duty, 6h remaining) for any coverage needs.", action: "Contact crew" },
           ] },
         ],
       },
@@ -922,7 +922,7 @@ export const AV_CANVAS = {
         description: "Scheduling conflicts — duty time, rest violations, or double-booking flags.",
         blocks: [
           { type: "flags", items: [
-            { band: "RED",    title: "PAP-2026-113 — tail conflict", detail: "N661LF assigned but OOS. Reassign to N663LF (airworthy, Thompson K. available) or cancel trip." },
+            { band: "RED",    title: "PAP-2026-113 — tail conflict", detail: "N701AA assigned but OOS. Reassign to N703AA (airworthy, Thompson K. available) or cancel trip." },
             { band: "GREEN",  title: "No duty time violations this week", detail: "All crew within Part 135.265 limits for the rolling 24h, 7-day, and 30-day windows." },
           ] },
         ],
@@ -960,8 +960,8 @@ export const AV_CANVAS = {
         description: "Operational hazard register — risk matrix and mitigation status.",
         blocks: [
           { type: "table", title: "Active hazards", cols: ["Hazard", "Likelihood", "Severity", "Risk", "Mitigation", "Owner"], rows: [
-            ["Summer thunderstorm exposure (Florida corridor)", "High", "High", "HIGH", "Go/no-go criteria in GOM Section 4", "Combs S."],
-            ["Single-engine exposure — long overwater legs",    "Low",  "High", "MED",  "Alternate fuel planning requirement",  "Combs S."],
+            ["Summer thunderstorm exposure (Florida corridor)", "High", "High", "HIGH", "Go/no-go criteria in GOM Section 4", "Rivera A."],
+            ["Single-engine exposure — long overwater legs",    "Low",  "High", "MED",  "Alternate fuel planning requirement",  "Rivera A."],
             ["Fatigue — multi-day trips away from base",        "Med",  "Med",  "MED",  "Trip duty limits in GOM Section 7",   "Martinez J."],
           ] },
         ],
@@ -973,7 +973,7 @@ export const AV_CANVAS = {
         blocks: [
           { type: "kpis", items: [
             { label: "Program status",     value: "Compliant — DOT Part 40", band: "GREEN" },
-            { label: "Last random",        value: "Combs S. — Jun 2026",     band: "GREEN" },
+            { label: "Last random",        value: "Rivera A. — Jun 2026",     band: "GREEN" },
             { label: "Pre-employment",     value: "All crew clear",           band: "GREEN" },
             { label: "Next random pool",   value: "Q3 2026 — Aug",           band: "YELLOW" },
           ] },
@@ -1009,7 +1009,7 @@ export const AV_CANVAS = {
   // ─────────────────────────── COPILOT (PERSONAL) ───────────────────────────
   "av-copilot": {
     title: "CoPilot",
-    subtitle: "Combs, Sean · Life Flight · PC-12/47E",
+    subtitle: "Rivera, Alex · Aeromed · PC-12/47E",
     disclaimer: "Advisory only — go/no-go authority rests with the PIC",
     cas: { RED: 0, YELLOW: 9, BLUE: 0, WHITE: 0, GREEN: 6 },
     tabs: [
@@ -1033,7 +1033,7 @@ export const AV_CANVAS = {
       {
         id: "currency",
         label: "Currency",
-        description: "Your Life Flight compliance tracker — real data from your FVO profile as of 2026-08-01. 9 items expire 09/30/2026.",
+        description: "Your Aeromed compliance tracker — real data from your FVO profile as of 2026-08-01. 9 items expire 09/30/2026.",
         blocks: [
           { type: "heroes", items: [
             { band: "YELLOW", title: "9 items expire 09/30/2026",       detail: "Recurrent window opens now. Schedule PC12 Flight, Emergency Training, Ground, and 5 other items before Sep 30." },
@@ -1064,14 +1064,14 @@ export const AV_CANVAS = {
       {
         id: "my-aircraft",
         label: "My Aircraft",
-        description: "Your primary aircraft — N661LF status and next flight readiness.",
+        description: "Your primary aircraft — N701AA status and next flight readiness.",
         blocks: [
           { type: "heroes", items: [
-            { band: "RED",   title: "N661LF — OOS",     detail: "FCU squawk · WO-2026-047 · Est return 2026-08-01" },
-            { band: "GREEN", title: "N662LF — Available", detail: "Airworthy · 2,301 TTSN · Prepped for PAP-112 today" },
+            { band: "RED",   title: "N701AA — OOS",     detail: "FCU squawk · WO-2026-047 · Est return 2026-08-01" },
+            { band: "GREEN", title: "N702AA — Available", detail: "Airworthy · 2,301 TTSN · Prepped for PAP-112 today" },
           ] },
           { type: "cards", items: [
-            { band: "RED",   label: "MY AIRCRAFT", title: "N661LF out of service", detail: "MX working WO-2026-047 (FCU/fuel cap). Next available: estimated 2026-08-01. Use N662LF for scheduled trips.", action: "Track WO" },
+            { band: "RED",   label: "MY AIRCRAFT", title: "N701AA out of service", detail: "MX working WO-2026-047 (FCU/fuel cap). Next available: estimated 2026-08-01. Use N702AA for scheduled trips.", action: "Track WO" },
           ] },
         ],
       },
@@ -1081,9 +1081,9 @@ export const AV_CANVAS = {
         description: "Your upcoming trips, training, and duty periods.",
         blocks: [
           { type: "table", title: "This week", cols: ["Date", "Trip", "Route", "Tail", "Depart", "Status"], rows: [
-            ["Jul 29", "PAP-112", "KTLH→KMCO", "N662LF", "14:00Z", "Released"],
+            ["Jul 29", "PAP-112", "KTLH→KMCO", "N702AA", "14:00Z", "Released"],
             ["Jul 31", "Rest",    "—",           "—",      "—",      "Rest day"],
-            ["Aug 1",  "PAP-116", "KMCO→KTLH", "N662LF", "16:00Z", "Pending"],
+            ["Aug 1",  "PAP-116", "KMCO→KTLH", "N702AA", "16:00Z", "Pending"],
           ] },
           { type: "kpis", items: [
             { label: "Duty this week",  value: "18h used / 40h limit",    band: "GREEN" },
@@ -1097,7 +1097,7 @@ export const AV_CANVAS = {
         description: "Flight planning for your next trip — tell Alex your departure and destination.",
         blocks: [
           { type: "cards", items: [
-            { band: "BLUE", label: "READY", title: "Tell Alex your route to build a preflight package", detail: "Alex will pull live weather, NOTAMs, compute W&B from your N661LF AFM, calculate FRAT score, and generate a release-ready package.", action: "Start planning" },
+            { band: "BLUE", label: "READY", title: "Tell Alex your route to build a preflight package", detail: "Alex will pull live weather, NOTAMs, compute W&B from your N701AA AFM, calculate FRAT score, and generate a release-ready package.", action: "Start planning" },
           ] },
         ],
       },
@@ -1200,12 +1200,12 @@ function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoI
   };
 }
 
-AV_CANVAS["av-copilot-pc12"]  = copilotVariant("PC-12/47E", "N661LF · PC-12/47E", "N661LF", "PC-12/47E", "PT6A-67P", "3,600h");
+AV_CANVAS["av-copilot-pc12"]  = copilotVariant("PC-12/47E", "N701AA · PC-12/47E", "N701AA", "PC-12/47E", "PT6A-67P", "3,600h");
 AV_CANVAS["av-copilot-b200"]  = copilotVariant("King Air B200", "N·B200 · King Air B200", "N·B200", "King Air B200", "PT6A-42", "3,600h");
 AV_CANVAS["av-copilot-b350"]  = copilotVariant("King Air B350", "N·B350 · King Air B350", "N·B350", "King Air B350", "PT6A-60A", "3,600h");
 AV_CANVAS["av-copilot-c90"]   = copilotVariant("King Air C90", "N·C90 · King Air C90", "N·C90", "King Air C90B", "PT6A-21", "3,500h");
 AV_CANVAS["av-copilot-208b"]  = copilotVariant("Caravan 208B", "N·208B · Cessna 208B", "N·208B", "208B Grand Caravan", "PT6A-114A", "3,600h");
-AV_CANVAS["av-copilot-sr22"]  = copilotVariant("Cirrus SR22 G5", "N663SR · Cirrus SR22 G5", "N663SR", "SR22 G5 POH", "IO-550-N", "2,000h");
+AV_CANVAS["av-copilot-sr22"]  = copilotVariant("Cirrus SR22 G5", "N705AA · Cirrus SR22 G5", "N705AA", "SR22 G5 POH", "IO-550-N", "2,000h");
 
 // ─────────────────────────── GROUND SCHOOL (PERSONAL) ─────────────────────
 AV_CANVAS["av-ground-school-001"] = {
@@ -1306,7 +1306,7 @@ AV_CANVAS["av-ground-school-001"] = {
           ["FW - 293 (a) 1, 4-8",   "—", "—"],
         ] },
         { type: "cards", items: [
-          { band: "YELLOW", label: "BOOK NOW", title: "Schedule FSI Scottsdale — PC-12 type recurrent", detail: "FSI Scottsdale (KSDL) or Denver (KAPA). 2-day course covers PC12 Flight + Ground + Emergency Training in one visit. After booking, tell Alex the date — he'll mark all three as scheduled and block your Life Flight schedule.", action: "Ask Skye to draft the request" },
+          { band: "YELLOW", label: "BOOK NOW", title: "Schedule FSI Scottsdale — PC-12 type recurrent", detail: "FSI Scottsdale (KSDL) or Denver (KAPA). 2-day course covers PC12 Flight + Ground + Emergency Training in one visit. After booking, tell Alex the date — he'll mark all three as scheduled and block your Aeromed schedule.", action: "Ask Skye to draft the request" },
         ] },
       ],
     },
@@ -1331,12 +1331,12 @@ AV_CANVAS["av-ground-school-001"] = {
           ["PT6A ITT continuous",         "820°C",                 "1,090°C for 5 sec start limit"],
           ["Prop reverse",                "Below 40 KIAS",          "Fine pitch available airborne emergency"],
         ] },
-        { type: "table", title: "Currency requirements (Part 135 · Life Flight)", cols: ["Requirement", "Interval", "Standard"], rows: [
+        { type: "table", title: "Currency requirements (Part 135 · Aeromed)", cols: ["Requirement", "Interval", "Standard"], rows: [
           ["PC-12 type recurrent",  "Annual (Sep 30 window)",        "FSI sim + ground + emergency + CTS"],
           ["IFR proficiency",       "6 approaches + holds in 6 mo",  "Or IPC with CFII"],
           ["Night pax currency",    "3 full-stop night ldgs / 90 d", "If carrying night pax"],
           ["Medical — Class 1",     "40+: 6 months",                 "AME exam required"],
-          ["FAR 61.293/297",        "Annual",                        "Life Flight-specific operations ground"],
+          ["FAR 61.293/297",        "Annual",                        "Aeromed-specific operations ground"],
         ] },
       ],
     },

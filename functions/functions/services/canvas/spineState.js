@@ -448,47 +448,90 @@ function renderOwnState(snapshot, currentSlug) {
   return lines.join("\n") + "\n";
 }
 
-// Aviation sibling demo data — mirrors the av-copilot-001 / av-mx-001 / av-dispatch-001
-// canvas specs in aviationCanvasData.js. Injected when the active worker is any
-// av-* slug; spine workers are excluded from this set.
-const AVIATION_DEMO_SAMPLES = {
-  "av-copilot-001": {
-    label: "CoPilot",
-    kpis: {
-      "Pilot": "Alex Rivera ATP",
-      "Medical": "Class 1 · current · Dec 2026",
-      "BFR/IPC": "Current · Feb 2026",
-      "Type recurrent": "Due Oct 2026 · YELLOW",
-      "Next trip": "KTEB → KPBI · Jul 21 · 4 pax",
-      "FRAT score": "8 / 50 Low Risk",
-      "Total logbook time": "4,316.4 hrs",
-    },
-  },
-  "av-mx-001": {
-    label: "Aircraft Record",
-    kpis: {
-      "Aircraft": "N662FW · PC-12/47E · S/N 1847",
-      "Airworthiness status": "AIRWORTHY",
-      "Open MEL items": "1 (Cat C — gear door light, no dispatch restriction)",
-      "Airframe time": "1,847 hrs",
-      "Engine time (SMOH)": "1,847 / 3,600 hrs",
-      "Next 100-hr due": "1,900 hrs (53 hrs remaining)",
-      "Annual due": "Dec 15 2026",
-    },
-  },
-  "av-dispatch-001": {
-    label: "Trip Release",
-    kpis: {
-      "Last trip": "PA26-0721 · KTEB–KPBI–KTEB · Jul 21 2026",
-      "Block time": "4.0 hrs",
-      "FRAT": "8 / 50 Low Risk",
-      "Billing": "$7,627.70 pending",
-      "Release status": "All items verified · Dispatched",
-    },
-  },
-};
+const AVIATION_SLUGS = new Set(["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-pc12-ng", "av-dispatch-board", "av-digital-logbook"]);
 
-const AVIATION_SLUGS = new Set(["av-copilot-001", "av-mx-001", "av-dispatch-001"]);
+/**
+ * Real aviation sibling-worker snapshot — CoPilot's currency/duty, MX's
+ * per-tail airworthiness, Dispatch's most recent trip request.
+ *
+ * Replaces AVIATION_DEMO_SAMPLES, a hardcoded object (Alex Rivera ATP,
+ * N704AA airworthy, a $7,627.70 trip) that was injected as "current readings
+ * from the sibling aviation worker" into EVERY session for EVERY user,
+ * regardless of demoMode — the exact "cross-worker synthesis" that looked
+ * like a real data join but was static text (flagged 2026-08). Reads the
+ * same real per-user collections the CoPilot/MX/Dispatch chat injections in
+ * index.js now read, so the sibling-state block and the worker's own answer
+ * can never contradict each other.
+ */
+async function buildAviationLiveSnapshot(db, uid, tenantId) {
+  if (!uid) return null;
+  try {
+    // Logbook/duty are per-pilot (this pilot's own record); fleet/dispatch are
+    // shared across a charter operator's tenant when one is present — same
+    // scopeId resolution as services/mx/aircraftRecords.js and
+    // services/dispatch/tripRequests.js.
+    const fleetScopeId = tenantId || uid;
+    const [entriesSnap, gtSnap, dutySnap, fleetSnap, tripSnap] = await Promise.all([
+      db.collection("logbooks").doc(uid).collection("entries").get(),
+      db.collection("logbooks").doc(uid).collection("groundTraining").get(),
+      db.collection("dutyPeriods").doc(uid).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
+      db.collection("aircraftRecords").doc(fleetScopeId).collection("aircraft").get(),
+      db.collection("dispatchTripRequests").doc(fleetScopeId).collection("requests").orderBy("createdAt", "desc").limit(1).get(),
+    ]);
+
+    const live = {};
+
+    // CoPilot — currency + duty
+    const entries = entriesSnap.docs.map(d => d.data());
+    if (entries.length) {
+      const groundTraining = gtSnap.docs.map(d => d.data());
+      const dutyPeriods = dutySnap.docs.map(d => d.data());
+      const activeDuty = dutyPeriods.find(p => !p.dutyEndZulu) || null;
+      const { computeCurrency } = require("../copilot/logic/currencyTracker");
+      const { computeDutyStatus } = require("../copilot/logic/dutyTimeTracker");
+      const currency = computeCurrency({}, entries, groundTraining);
+      const dutyStatus = computeDutyStatus(dutyPeriods, entries, activeDuty);
+      const currencyItems = Array.isArray(currency) ? currency : [];
+      const kpis = {};
+      for (const item of currencyItems.slice(0, 4)) kpis[item.label || item.id] = item.status;
+      kpis["On duty"] = dutyStatus?.currentDuty?.onDuty ? "YES" : "NO";
+      if (dutyStatus?.alerts?.length) kpis["Duty alerts"] = `${dutyStatus.alerts.length} active`;
+      live["av-copilot-001"] = { label: "CoPilot", kpis };
+    }
+
+    // MX — per-tail airworthiness
+    if (!fleetSnap.empty) {
+      const { computeAirworthiness } = require("../mx/airworthinessTracker");
+      const fleet = await Promise.all(fleetSnap.docs.map(async (d) => {
+        const squawksSnap = await d.ref.collection("squawks").get();
+        const squawks = squawksSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+        return computeAirworthiness(d.data(), squawks);
+      }));
+      const kpis = {};
+      for (const a of fleet.slice(0, 4)) kpis[`${a.tailNumber} status`] = a.status;
+      live["av-mx-001"] = { label: "Aircraft Record", kpis };
+    }
+
+    // Dispatch — most recent trip request
+    if (!tripSnap.empty) {
+      const trip = tripSnap.docs[0].data();
+      live["av-dispatch-001"] = {
+        label: "Trip Release",
+        kpis: {
+          "Last trip request": `${trip.departure || "?"} → ${trip.destination || "?"}`,
+          "Status": trip.status,
+          "Client": trip.client,
+        },
+      };
+    }
+
+    if (!Object.keys(live).length) return null;
+    return live;
+  } catch (err) {
+    console.warn("[spineState] aviation live snapshot failed:", err.message);
+    return null;
+  }
+}
 
 /**
  * Build the SIBLING WORKER STATE prompt block. Returns "" if no usable state.
@@ -504,13 +547,20 @@ async function buildSiblingStatePrompt({ db, uid, currentSlug, demoMode, tenantI
   // They do not receive spine worker (accounting/marketing/HR/contacts) sibling state,
   // and spine workers do not receive aviation state — the domains don't overlap.
   if (AVIATION_SLUGS.has(currentSlug)) {
-    const body = renderSnapshot(AVIATION_DEMO_SAMPLES, currentSlug);
+    const aviationSnapshot = await buildAviationLiveSnapshot(db, uid, tenantId);
+    if (!aviationSnapshot) {
+      return `SIBLING WORKER STATE: empty — no cross-worker aviation data on file yet (no logbook entries, aircraft records, or trip requests for this pilot).
+Do not quote numbers for CoPilot, MX, or Dispatch. If the user asks about a sibling worker's status, say you don't have a current reading and ask what they want to look at first.
+
+`;
+    }
+    const body = renderSnapshot(aviationSnapshot, currentSlug);
     if (!body) return "";
-    return `SIBLING WORKER STATE (DEMO — aviation suite):
+    return `SIBLING WORKER STATE (LIVE — aviation suite, computed just now from real Firestore records):
 ${body}
 
 Cross-worker attribution rules:
-- Cite the source worker by name when referencing these numbers (e.g. "Your Aircraft Record shows N662FW is airworthy with one Cat C MEL").
+- Cite the source worker by name when referencing these numbers (e.g. "Your Aircraft Record shows N704AA is airworthy").
 - Do NOT invent figures not in the snapshot. If a specific detail is missing, say "Let me check with the [Worker] — they own that one."
 - Treat these as current readings from the sibling aviation worker.
 

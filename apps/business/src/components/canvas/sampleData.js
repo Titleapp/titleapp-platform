@@ -876,7 +876,7 @@ const AVIATION_COPILOT_FIXTURES = {
     sections: [
       {
         heading: "2026-04-29 · KSEA → KPDX",
-        body: "Hobbs 1,284.6 → 1,285.8 (1.2) · Tach 1,178.2 → 1,179.3 · Cycles +1\nFuel: 750 lbs out, 545 lbs in · Block 1.4\nSquawks: NONE\nPIC: S. Combs · ATP · Medical Class 1",
+        body: "Hobbs 1,284.6 → 1,285.8 (1.2) · Tach 1,178.2 → 1,179.3 · Cycles +1\nFuel: 750 lbs out, 545 lbs in · Block 1.4\nSquawks: NONE\nPIC: A. Rivera · ATP · Medical Class 1",
       },
       {
         heading: "2026-04-22 · KPDX → KSEA",

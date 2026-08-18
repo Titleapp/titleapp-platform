@@ -574,6 +574,76 @@ async function buildTitleAbstractPayload(tabId) {
   return { view, title: titleMap[view], abstract: abstracts[0], abstracts };
 }
 
+// ──────────────────────────────────────────────────────────────────
+//  AVIATION PILOT DATA (av-pc12-ng, av-digital-logbook) — logbook,
+//  currency, duty, training, sign-off tabs. Previously these had no live
+//  endpoint at all and always showed the same static fixture regardless of
+//  what was actually in Firestore. Backed by
+//  services/copilot/handlers.js's handleDashboard (GET
+//  /v1/copilot:pc12:dashboard), which is the same real per-pilot data the
+//  chat-side injection in index.js reads.
+// ──────────────────────────────────────────────────────────────────
+
+const CURRENCY_STATUS_MAP = { GO: "current", EXPIRING: "expiring", NO_GO: "expired", UNVERIFIED: "expired" };
+
+// av-dispatch-board's whole product is a live map ("the Canvas IS the
+// map") — AviationMap already fetches its own weather/traffic/airspace,
+// this just supplies the operator's real fleet tails so their own
+// aircraft render gold instead of a generic default (Sean, 2026-08-17).
+async function buildDispatchBoardPayload(tabId) {
+  if (tabId !== "fleet-map") return null;
+  const r = await liveApiFetch("/v1/mx:listAircraft");
+  const fleetTails = (r?.fleet || [])
+    .map(a => a.tailNumber)
+    .filter(Boolean);
+  return { fleetTails };
+}
+
+async function buildAviationPilotPayload(tabId) {
+  const r = await liveApiFetch("/v1/copilot:pc12:dashboard");
+  if (!r?.ok) return null;
+
+  if (tabId === "currency") {
+    const items = (r.currency || []).map(c => ({
+      name: c.label || c.id, status: CURRENCY_STATUS_MAP[c.status] || "expired", expiry: c.detail || "", detail: c.requirement || "",
+    }));
+    return { title: "Currency Status", items };
+  }
+
+  if (tabId === "duty") {
+    const limits = r.dutyStatus?.limits || [];
+    if (!limits.length) return null;
+    return {
+      title: "Duty & Flight Time",
+      subtitle: r.dutyStatus?.currentDuty?.onDuty ? "Currently on duty" : "Off duty",
+      fields: limits.map(l => ({ label: l.label, value: `${l.used ?? "—"} / ${l.limit} hrs · ${l.status}` })),
+    };
+  }
+
+  if (tabId === "logbook") {
+    const entries = r.entries || [];
+    if (!entries.length) return null;
+    const rows = entries.slice(0, 20).map(e => `${e.date ? new Date(e.date).toLocaleDateString() : "—"} · ${e.departure || "—"}→${e.destination || "—"} · ${e.totalTime ?? 0}h · PIC ${e.picTime ?? 0} SIC ${e.sicTime ?? 0} Dual-rcvd ${e.dualReceived ?? 0} Dual-given ${e.dualGiven ?? 0} Solo ${e.soloTime ?? 0}`);
+    return { title: "Logbook", subtitle: `${entries.length} entries on file`, sections: [{ heading: "Recent flights", body: rows.join("\n") }] };
+  }
+
+  if (tabId === "training") {
+    const gt = r.groundTraining || [];
+    if (!gt.length) return null;
+    const rows = gt.map(g => `${g.date ? new Date(g.date).toLocaleDateString() : "—"} · ${g.type} · ${g.subject || ""} · ${g.hours || 0}h · ${g.signatureStatus === "signed" ? `Signed — ${g.instructorName}` : "Unsigned"}`);
+    return { title: "Training", subtitle: `${gt.length} records on file`, sections: [{ heading: "Ground training", body: rows.join("\n") }] };
+  }
+
+  if (tabId === "sign-off") {
+    const ends = r.endorsements || [];
+    if (!ends.length) return null;
+    const rows = ends.map(e => `${e.date ? new Date(e.date).toLocaleDateString() : "—"} · ${e.type} · ${e.signatureStatus === "signed" ? `Signed — ${e.instructorName} (${e.instructorCertNumber})` : "UNSIGNED — awaiting instructor sign-off"}`);
+    return { title: "Sign-Off", subtitle: `${ends.length} endorsement(s) on file`, sections: [{ heading: "Endorsements", body: rows.join("\n") }] };
+  }
+
+  return null;
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
@@ -590,6 +660,8 @@ export async function getLiveDataForTab(worker, tabId) {
     if (slug === "platform-contacts")       return await buildContactsPayload(tabId);
     if (slug === "platform-marketing")      return await buildMarketingPayload(tabId);
     if (slug === "spine-4-staff-credentials") return await buildStaffCredentialPayload(tabId);
+    if (slug === "av-pc12-ng" || slug === "av-digital-logbook" || slug === "av-copilot-001") return await buildAviationPilotPayload(tabId);
+    if (slug === "av-dispatch-board") return await buildDispatchBoardPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);
   }

@@ -86,11 +86,11 @@
       "description": "Published AI-governed Digital Workers across professional verticals.",
       "url": "https://sociii.ai/c/",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Title Abstract Worker", "url": "https://sociii.ai/c/title-abstract-worker-001", "description": "Searches property ownership history, liens, and encumbrances for real estate closings." },
-        { "@type": "ListItem", "position": 2, "name": "Nevada Real Estate CE", "url": "https://sociii.ai/c/re-ce-nevada-001", "description": "Continuing education tracking and course completion for Nevada real estate agents." },
-        { "@type": "ListItem", "position": 3, "name": "Aviation CoPilot", "url": "https://sociii.ai/c/aviation-copilot-001", "description": "Flight planning, currency tracking, NOTAM briefing, and logbook management for pilots." },
-        { "@type": "ListItem", "position": 4, "name": "Veterinary Practice Manager", "url": "https://sociii.ai/c/vet-practice-001", "description": "Patient records, dosing protocols, staff scheduling, and wellness plans for veterinary clinics." },
-        { "@type": "ListItem", "position": 5, "name": "Investor Relations Worker", "url": "https://sociii.ai/c/ir-worker-001", "description": "Cap table management, 83(b) deadline tracking, and investor pipeline for startup founders." }
+        { "@type": "ListItem", "position": 1, "name": "Alex Chief of Staff for Title and Escrow", "url": "https://sociii.ai/c/esc-alex-title-escrow", "description": "Monitors all active Escrow Lockers, surfaces anomalies and stalled transactions, escalates unresolved wire fraud alerts, and provides daily briefings." },
+        { "@type": "ListItem", "position": 2, "name": "Accounting", "url": "https://sociii.ai/c/accounting", "description": "P&L by property, balance sheet, cash flow, budget vs actual variance, and month-end close." },
+        { "@type": "ListItem", "position": 3, "name": "Caravan 208B CoPilot", "url": "https://sociii.ai/c/av-caravan-208b", "description": "Flight planning, currency tracking, and dispatch support for Cessna Caravan 208B operators." },
+        { "@type": "ListItem", "position": 4, "name": "Drug Dosing & Protocol", "url": "https://sociii.ai/c/vet-003-drug-dosing", "description": "Species-specific dosing, routes, and cautions for veterinary practices." },
+        { "@type": "ListItem", "position": 5, "name": "Investor Relations", "url": "https://sociii.ai/c/investor-relations", "description": "LP compliance, reporting, and capital calls for startup founders and fund managers." }
       ]
     }
     </script>
@@ -98,7 +98,35 @@
          causing unregister→register→activate→SW_UPDATED→reload infinite loop on mobile -->
   </head>
   <body style="margin:0;background:#FFFFFF">
-    <div id="root" style="min-height:100vh;background:#FFFFFF"></div>
+    <div id="root" style="min-height:100vh;background:#FFFFFF">
+      <!--
+        Crawler-visible fallback content for the homepage. React's createRoot()
+        (see src/main.jsx) fully replaces this on load for real visitors — this
+        exists only so crawlers that don't execute JavaScript (GPTBot, ClaudeBot,
+        PerplexityBot, OAI-SearchBot) see real content instead of an empty div.
+        Keep this in sync with services/seo/publicSeoRenderer.js's HOMEPAGE_COPY.
+      -->
+      <main>
+        <h1>SOCIII — Collaborative Intelligence · Participation</h1>
+        <p>SOCIII is an open SDK and marketplace for <strong>Digital Workers</strong> — AI-governed
+        services built by domain experts, billed by the platform, and accountable to a cryptographic
+        audit trail.</p>
+        <p>Each Digital Worker reads live business data, surfaces structured canvases (P&amp;L, deal
+        summaries, property abstracts, flight logs), and proposes actions that a human must approve
+        before anything is committed. Nothing executes silently.</p>
+        <h2>What SOCIII offers</h2>
+        <ul>
+          <li>Rule-constrained Digital Workers for real estate title, aviation, veterinary practice
+          management, education, HR, marketing, accounting, and legal/patent</li>
+          <li>SOCIII Vault — an immutable personal or business asset record (Digital Trust Certificate)</li>
+          <li>Shopify, Google Drive, Gmail, and aviation API integrations</li>
+          <li>An MCP server for LLM-native worker discovery and invocation</li>
+          <li>White-label client portals and multi-tenant workspace isolation</li>
+        </ul>
+        <p><a href="/marketplace">Browse the Digital Worker marketplace</a> ·
+        <a href="/docs">Read the docs</a></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

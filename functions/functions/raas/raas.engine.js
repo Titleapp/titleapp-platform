@@ -535,10 +535,14 @@ const WORKER_RULESET_MAP = {
   // other aviation workers use aviation_hard_stops_v1 as the chat-level baseline.
   // PC-12 specific ruleset (av_c02) deprecated — all CoPilot variants use av_c01.
   "av-copilot-001": "av_c01_copilot_v0",
+  "av-pc12-ng": "av_c01_copilot_v0",
+  "pc12-ng-copilot": "av_c01_copilot_v0",
+  "av-digital-logbook": "av_p01_digital_logbook_v0",
+  "av-crew-scheduling": "av_032_crew_scheduling_v0",
   "av-dispatch-001": "av_d01_dispatch_v0",
   "av-mx-001": "av_m01_mx_v0",
   "av-daily-ops-report": "aviation_hard_stops_v1",
-  "av-dispatch-board": "aviation_hard_stops_v1",
+  "av-dispatch-board": "av_d01_dispatch_v0",
   "av-flight-duty-enforcer": "aviation_hard_stops_v1",
   "av-safety-reporting": "aviation_hard_stops_v1",
   "av-weather-intel": "aviation_hard_stops_v1",

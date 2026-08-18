@@ -56,6 +56,14 @@
 
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
+/* html must stay non-scrollable — body already gets its own auto scrollbar
+   from the overflow-x:hidden rule below (per spec, hidden on one axis
+   computes the other to auto). Without this, html remains independently
+   window-scrollable, and any scrollIntoView()/focus-driven scroll (React
+   mount focus, anchor jump, extension) can move the window away from
+   body's fixed-height box with nothing below it in the DOM — silent blank
+   white screen, no console error, no failed network request. */
+html{ overflow:hidden; }
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";

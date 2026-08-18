@@ -1,0 +1,58 @@
+{
+  "id": "platform_distress_v1",
+  "version": "v1",
+  "domain": "platform-safety-distress-disclosure",
+  "level": 1,
+  "description": "Platform-wide, non-overridable distress-disclosure protocol. Applies to every worker with a named persona, consumer-facing or back-of-house. A tenant or creator can shape a persona's voice; they cannot remove or weaken this. See docs/codex/66-worker-persona-and-distress-protocol.md for the full spec — this ruleset is a summary/reference; the actual enforcement is implemented in functions/functions/services/safety/distressProtocol.js and wired into the /chat:message handler in index.js, not evaluated by the generic chat_rules regex-match system other rulesets use.",
+  "why_this_exists": "Users disclose more to AI than to a human in the same role because they feel less judged. This happens across every worker type: a nursing student telling Hannah about panic attacks before clinical shifts, a pilot telling CoPilot they're drinking before flights, a business owner telling their accounting worker they can't make payroll. None of our workers are equipped to counsel. All of them must handle this correctly.",
+  "detection_pipeline": {
+    "stage_1_regex_gate": {
+      "runs": "synchronously, on every message, ~0ms",
+      "behavior": "No match -> pass through, normal response. Match -> enter stage 2 before generating any response.",
+      "pattern": "(panic attack|can't cope|thinking of (quitting|ending|giving up)|suicid|self.harm|can't make (payroll|rent)|drinking (before|to cope)|don't want to (fly|go in|be here)|can't go on|feeling hopeless|harming (myself|themselves|himself|herself))",
+      "flags": "i"
+    },
+    "stage_2_classifier": {
+      "runs": "always synchronously, immediately after a regex match — severity must be known before any response is generated",
+      "input": "the flagged message + up to 3 prior turns of context",
+      "output_schema": { "isDistress": "boolean", "isSelf": "boolean", "severity": "none | yellow | red", "reason": "string" },
+      "fail_closed": "Any classifier error (rate limit, network, malformed JSON) defaults to severity=yellow minimum, holds the normal response, writes a distress_classifier_error flag, and releases a generic holding acknowledgment. Fail-open is explicitly not acceptable on a safety path."
+    }
+  },
+  "response_steps": [
+    { "step": 1, "label": "acknowledge_dont_deflect", "self": "\"That sounds really hard. I want to make sure you have support for this.\"", "third_party": "\"That's a serious situation. Here's how you can get the right people involved.\"" },
+    { "step": 2, "label": "refer_specifically", "note": "988 is additive for red severity — included alongside the domain resource, never instead of it." },
+    { "step": 3, "label": "flag_structured_metadata", "note": "Write to alertFeed/{uid}/items/{docId}. Never log the user's exact words — the classifier reason field is the reviewer-facing summary." },
+    { "step": 4, "label": "return_to_users_lead", "note": "Do not force a topic change. Do not repeat the referral in-session unless the user returns to crisis language." }
+  ],
+  "red_severity_system_behavior": {
+    "response": "substituted before delivery, branched on isSelf — task flow paused, worker does not continue the prior task in this response turn",
+    "alert": "written to alertFeed/{uid}/items/ with severity=red",
+    "sms": "immediate SMS via Twilio to tenant.safetyContact.phone",
+    "missing_contact_fallback": "platform_safety_unconfigured written to tenant admin's alert feed; safety_contact_missing logged"
+  },
+  "reviewer_access_model": {
+    "default": "session-link-gated",
+    "modes": {
+      "metadata_only": "Flag fields + classifier reason only. No session access.",
+      "session_link_gated": "Flag fields + time-limited (48h) access link to session transcript, logged. Platform default.",
+      "session_copy_retained": "Flag fields + copy of flagged turns in a restricted collection. Requires full FERPA DPA disclosure."
+    },
+    "ferpa_note": "Any mode that grants a human access to a student's conversation content — including session-link-gated — may constitute a FERPA-regulated educational record disclosure. Must be confirmed with the institution's privacy office and included in IRB consent documentation for student-facing deployments (e.g. Ruthie's NURS-366 study)."
+  },
+  "tenant_safety_contact": {
+    "schema": { "name": "string", "phone": "string", "email": "string" },
+    "required_before_production_activation": "Any worker loading this ruleset in a production context must have tenant.safetyContact.name and .phone configured, or activation is blocked. Development/staging tenants are exempt. NOTE: the runtime fallback (missing_contact_fallback above) is implemented; the deploy-time activation-blocking gate itself is not yet wired as of 2026-08-17 — tracked as a fast-follow, not silently dropped."
+  },
+  "not_this_protocol_is": [
+    "Not a mental health screening tool",
+    "Not a mandatory reporter — the AI is not a licensed professional; mandatory reporting obligations fall on human supervisors reviewing the flag",
+    "Not a replacement for institutional crisis protocols",
+    "Not a substitute for human connection"
+  ],
+  "cross_references": [
+    "docs/codex/66-worker-persona-and-distress-protocol.md",
+    "functions/functions/services/safety/distressProtocol.js",
+    "docs/codex/73-nurs366-hannah-student-tutor-and-study-pipeline.md"
+  ]
+}

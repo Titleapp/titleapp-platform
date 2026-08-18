@@ -230,6 +230,7 @@ async function handleAddLogEntry(req, res, { userId }) {
     totalTime: Number(entry.totalTime) || 0,
     picTime: Number(entry.picTime) || 0,
     sicTime: Number(entry.sicTime) || 0,
+    soloTime: Number(entry.soloTime) || 0,
     dualReceived: Number(entry.dualReceived) || 0,
     dualGiven: Number(entry.dualGiven) || 0,
     nightTime: Number(entry.nightTime) || 0,
@@ -253,6 +254,18 @@ async function handleAddLogEntry(req, res, { userId }) {
   const ref = db.collection("logbooks").doc(userId).collection("entries").doc();
   await ref.set(doc);
 
+  // Skye auto-initiates a sign-off request for dual instruction — Sean,
+  // 2026-08-17: initiated "ideally... at the conclusion of the flight or
+  // training period by Skye so we don't see that dependency fall through
+  // the cracks." This only raises the request; an instructor still has to
+  // actually sign via completeSignOff.
+  try {
+    const { autoInitiateSignOffIfNeeded } = require("./signOff");
+    await autoInitiateSignOffIfNeeded(db, { pilotId: userId, entryCollection: "entries", entryId: ref.id, entryData: doc });
+  } catch (signOffErr) {
+    console.warn("[copilot] auto sign-off initiation failed (non-blocking):", signOffErr.message);
+  }
+
   return res.json({ ok: true, entryId: ref.id });
 }
 
@@ -274,7 +287,11 @@ async function handleAddGroundTraining(req, res, { userId }) {
     hours: Number(gt.hours) || 0,
     instructorName: gt.instructorName || "",
     instructorCertNumber: gt.instructorCertNumber || "",
-    signatureStatus: "placeholder",
+    // Was previously "signed" if instructorName+certNumber were both
+    // present — that's just two text fields being filled in, not a
+    // signature. Real signing only happens through completeSignOff's actual
+    // hash-chain attestation (services/copilot/signOff.js).
+    signatureStatus: "unsigned",
     applicableTo: gt.applicableTo || "PC-12/47E",
     courseProvider: gt.courseProvider || "",
     remarks: gt.remarks || "",
@@ -284,6 +301,13 @@ async function handleAddGroundTraining(req, res, { userId }) {
 
   const ref = db.collection("logbooks").doc(userId).collection("groundTraining").doc();
   await ref.set(doc);
+
+  try {
+    const { autoInitiateSignOffIfNeeded } = require("./signOff");
+    await autoInitiateSignOffIfNeeded(db, { pilotId: userId, entryCollection: "groundTraining", entryId: ref.id, entryData: doc });
+  } catch (signOffErr) {
+    console.warn("[copilot] auto sign-off initiation failed (non-blocking):", signOffErr.message);
+  }
 
   return res.json({ ok: true, trainingId: ref.id });
 }
@@ -305,7 +329,10 @@ async function handleAddEndorsement(req, res, { userId }) {
     endorsementText: end.endorsementText || "",
     instructorName: end.instructorName || "",
     instructorCertNumber: end.instructorCertNumber || "",
-    signatureStatus: "placeholder",
+    // Was hardcoded "placeholder", then briefly a name+cert-present proxy —
+    // neither is a real signature. Real signing only happens through
+    // completeSignOff's actual hash-chain attestation (signOff.js).
+    signatureStatus: "unsigned",
     applicableTo: end.applicableTo || "PC-12/47E",
     remarks: end.remarks || "",
     userId,
@@ -314,6 +341,13 @@ async function handleAddEndorsement(req, res, { userId }) {
 
   const ref = db.collection("logbooks").doc(userId).collection("endorsements").doc();
   await ref.set(doc);
+
+  try {
+    const { requestSignOff } = require("./signOff");
+    await requestSignOff(db, { pilotId: userId, entryCollection: "endorsements", entryId: ref.id, initiatedBy: "skye" });
+  } catch (signOffErr) {
+    console.warn("[copilot] auto sign-off initiation failed (non-blocking):", signOffErr.message);
+  }
 
   return res.json({ ok: true, endorsementId: ref.id });
 }
@@ -372,6 +406,39 @@ async function handleStatus(req, res, { userId }) {
     },
     readiness,
   });
+}
+
+// ============================================================
+// 7b. dashboard — consolidated real data for the CoPilot/Logbook canvas
+// tabs (logbook, currency, duty, training, sign-off). Previously those
+// tabs had no live endpoint at all and rendered the same static fixture
+// regardless of what was actually in Firestore.
+// ============================================================
+async function handleDashboard(req, res, { userId }) {
+  const db = getDb();
+
+  const [profileSnap, entriesSnap, gtSnap, endSnap, dutySnap, activeDutySnap] = await Promise.all([
+    db.collection("copilotProfiles").doc(userId).get(),
+    db.collection("logbooks").doc(userId).collection("entries").orderBy("date", "desc").limit(50).get(),
+    db.collection("logbooks").doc(userId).collection("groundTraining").orderBy("date", "desc").limit(50).get(),
+    db.collection("logbooks").doc(userId).collection("endorsements").orderBy("date", "desc").limit(50).get(),
+    db.collection("dutyPeriods").doc(userId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
+    db.collection("dutyPeriods").doc(userId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
+  ]);
+
+  const profile = profileSnap.exists ? profileSnap.data() : {};
+  const entries = entriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const groundTraining = gtSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const endorsements = endSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const dutyPeriods = dutySnap.docs.map(d => d.data());
+  const activeDuty = activeDutySnap.empty ? null : activeDutySnap.docs[0].data();
+
+  const { computeCurrency } = require("./logic/currencyTracker");
+  const currency = computeCurrency(profile, entries, groundTraining);
+  const { computeDutyStatus } = require("./logic/dutyTimeTracker");
+  const dutyStatus = computeDutyStatus(dutyPeriods, entries, activeDuty);
+
+  return res.json({ ok: true, entries, groundTraining, endorsements, currency, dutyStatus });
 }
 
 // ============================================================
@@ -532,24 +599,23 @@ async function handleChat(req, res, { userId }) {
   }
 
   // ── Query ingested operator document chunks ──
+  // SECURITY: only ever serve a user's own uploaded documents here. The
+  // previous "isWhiteLabel==true" branch queried by workerId alone with no
+  // tenant/ownerUid scoping, so any authenticated user asking this worker a
+  // question would get another operator's real, unscrubbed documents merged
+  // into their prompt (with an explicit "always cite this" instruction).
+  // There is no real content-level scrubbing pipeline anywhere in this repo
+  // (isWhiteLabel only ever renamed a display label, never touched the
+  // actual chunk text) — so until a real per-tenant white-label pipeline
+  // exists, do not serve cross-owner documents at all.
   let operatorDocChunks = [];
   try {
-    const [operatorChunkSnap, whitelabelChunkSnap] = await Promise.all([
-      db.collection("workerDocumentChunks")
-        .where("workerId", "==", "pc12-ng-copilot")
-        .where("ownerUid", "==", userId)
-        .limit(5)
-        .get(),
-      db.collection("workerDocumentChunks")
-        .where("workerId", "==", "pc12-ng-copilot")
-        .where("isWhiteLabel", "==", true)
-        .limit(3)
-        .get(),
-    ]);
-    operatorDocChunks = [
-      ...operatorChunkSnap.docs.map(d => d.data()),
-      ...whitelabelChunkSnap.docs.map(d => d.data()),
-    ];
+    const operatorChunkSnap = await db.collection("workerDocumentChunks")
+      .where("workerId", "==", "pc12-ng-copilot")
+      .where("ownerUid", "==", userId)
+      .limit(5)
+      .get();
+    operatorDocChunks = operatorChunkSnap.docs.map(d => d.data());
   } catch (chunkErr) {
     console.warn("[copilot] workerDocumentChunks query failed (non-blocking):", chunkErr.message);
   }
@@ -665,6 +731,7 @@ module.exports = {
   handleAddGroundTraining,
   handleAddEndorsement,
   handleStatus,
+  handleDashboard,
   handleCurrency,
   handleGenerate8710,
   handleDutyEvent,

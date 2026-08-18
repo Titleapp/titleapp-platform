@@ -215,6 +215,14 @@ export const CANVAS_TYPES = {
     emptyPrompt: "Ask about traffic near an airport to see live ADS-B here.",
     _title: "Live Traffic",
   },
+  "card:aviation-fleet-map": {
+    component: "AviationFleetMapCard",
+    dataSource: "live",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to show fleet positions and the live map loads here.",
+    _title: "Fleet Map",
+  },
   "card:aviation-navdb": {
     component: "AviationNavDbCard",
     dataSource: "live",

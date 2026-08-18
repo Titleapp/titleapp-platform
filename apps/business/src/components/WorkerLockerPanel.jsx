@@ -178,7 +178,7 @@ export default function WorkerLockerPanel({ worker, onClose, token, tenantId }) 
               <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B", marginBottom: 6 }}>Document name</div>
               <input
                 style={{ width: "100%", padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, marginBottom: 12, boxSizing: "border-box" }}
-                placeholder='e.g. "LFN accreditation standards 2026"'
+                placeholder='e.g. "Operator accreditation standards 2026"'
                 value={pasteName} onChange={e => setPasteName(e.target.value)}
               />
               <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B", marginBottom: 6 }}>Content</div>

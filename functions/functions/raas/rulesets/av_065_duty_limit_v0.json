@@ -10,7 +10,7 @@
   ],
   "operation_categories": {
     "unscheduled_135": {
-      "description": "Unscheduled Part 135 — air medical (fixed-wing), charter, on-demand. Applies to Life Flight Network Hawaii PC-12 operations.",
+      "description": "Unscheduled Part 135 — air medical (fixed-wing), charter, on-demand.",
       "applicable_far": "§135.273",
       "flight_time_limits": {
         "per_duty_period_hrs": 8,

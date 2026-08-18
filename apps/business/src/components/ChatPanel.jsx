@@ -391,7 +391,7 @@ function WorkerChangeProposalCard({ proposalId, tenantId, summary }) {
   );
 }
 
-export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext }) {
+export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext, isVisible = true }) {
   const allWorkers = useWorkerCatalog();
   const visibleWorkers = useMemo(() => allWorkers.filter(w => !w.internal_only), [allWorkers]);
   const WORKER_SUITES = useMemo(() => ["All", ...Array.from(new Set(visibleWorkers.map(w => w.suite)))], [visibleWorkers]);
@@ -508,8 +508,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
   }, [dealContext]);
 
-  // Listen for worker selection from sidebar — set active worker, defer opener to workerReady
+  // Listen for worker selection from sidebar — set active worker, defer opener to workerReady.
+  // Desktop and mobile ChatPanel are both always-mounted (see AppShell isVisible
+  // comment) — only the visible one should register this and touch localStorage,
+  // otherwise both instances race on the same 'ta_chat_session_id'/'ta_session_*'
+  // keys on every worker switch (Sean, 2026-08-17).
   useEffect(() => {
+    if (!isVisible) return;
     function handleWorkerSelect(e) {
       const { slug, name } = e.detail || {};
       if (!name) return;
@@ -545,7 +550,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
     window.addEventListener('ta:select-worker', handleWorkerSelect);
     return () => window.removeEventListener('ta:select-worker', handleWorkerSelect);
-  }, []);
+  }, [isVisible]);
 
   // Language change notification — show brief system message when user switches language
   const [langToast, setLangToast] = useState(null);

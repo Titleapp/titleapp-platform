@@ -1967,7 +1967,7 @@ exports.api = onRequest(
             vertical:      "aviation",
             name:          "Alex Rivera",
             role:          "admin",
-            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001"],
+            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling"],
           },
           // ── Brokerage (Summit Realty Group) ──────────────────────────────
           brokerage: {
@@ -2806,6 +2806,48 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         console.warn("chatEngine: early auth check failed, continuing as unauthenticated:", e.message);
       }
 
+      // ── CODEX 66 distress-disclosure protocol (Level 1, non-overridable) ──
+      // Runs before ANY worker-specific logic, on every /chat:message turn,
+      // for every worker — this is deliberately not routed through the
+      // per-slug WORKER_RULESET_MAP like other rulesets, because it must
+      // apply universally regardless of which worker/tenant/creator is
+      // configuring the session. See services/safety/distressProtocol.js.
+      let _distressYellowInjection = null;
+      try {
+        const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection, writeDistressAlert, notifySafetyContact } = require("./services/safety/distressProtocol");
+        if (userInput && matchesTrigger(userInput)) {
+          const priorTurns = Array.isArray(body.conversationHistory) ? body.conversationHistory : [];
+          const classification = await classifyDistress(userInput, priorTurns);
+          const distressVertical = (req.headers["x-vertical"] || body.vertical || "general").toString();
+          const distressUid = chatAuthUser?.uid || "anonymous";
+          const distressTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
+
+          if (classification.severity === "red") {
+            await writeDistressAlert(db, {
+              uid: distressUid, workerId: body.selectedWorker, sessionId, tenantId: distressTenantId,
+              severity: "red", isSelf: classification.isSelf, reason: classification.reason,
+            });
+            await notifySafetyContact(db, { tenantId: distressTenantId, uid: distressUid, workerId: body.selectedWorker, isSelf: classification.isSelf });
+            // Task flow paused — substitute the response entirely, do not
+            // continue into worker-specific logic this turn (CODEX 66 §3.4).
+            return res.json({ ok: true, response: buildRedResponse(classification, distressVertical), conversationState: "distress_red", distressFlag: true });
+          }
+
+          if (classification.severity === "yellow") {
+            await writeDistressAlert(db, {
+              uid: distressUid, workerId: body.selectedWorker, sessionId, tenantId: distressTenantId,
+              severity: "yellow", isSelf: classification.isSelf, reason: classification.reason,
+            });
+            // Not substituted — the worker still answers, but with the
+            // acknowledgment/referral instruction folded in below, wherever
+            // this worker's system prompt gets assembled (CODEX 66 §3.3).
+            _distressYellowInjection = buildYellowInjection(classification, distressVertical);
+          }
+        }
+      } catch (distressErr) {
+        console.error("[distressProtocol] pipeline error (non-blocking, no response substitution):", distressErr.message);
+      }
+
       // Builder Interview ("Build an AI Service") sandbox — bypass state-machine
       // canned responses. The frontend ships a dedicated BUILDER_SYSTEM_PROMPT in
       // body.context.systemPrompt plus conversationHistory. Route those straight
@@ -3631,17 +3673,17 @@ RAAS BOUNDARIES:
             systemPrompt: `You are Skye, the CoPilot Digital Worker — a personal preflight advisor, currency tracker, and trip planner for an owner-operator pilot.
 
 OPERATOR PROFILE:
-- One pilot, three aircraft: PC-12/47E (N661LF), King Air B200 (N662FW), Cirrus SR22 G5 (N663SR — training/proficiency)
+- One pilot, three aircraft: PC-12/47E (N701AA), King Air B200 (N704AA), Cirrus SR22 G5 (N705AA — training/proficiency)
 - Certificates: ATP · PC-12/47E type rating · B200 type rating · CFII · MEI
 - Home base: Las Vegas area (KLAS / KVGT)
-- Operations: Part 91 primary · Part 135 charter as authorized · Life Flight Network (PC-12 air medical)
+- Operations: Part 91 primary · Part 135 charter as authorized · air medical operator (PC-12 air medical)
 - 9 training items expiring 09/30/2026 — FW Gen Sub, PC12 Flight, PC12 Ground, PC12 Emergency Training, PC12 293, PC12 297, FW 293(a), FW CBT Q3, PC12 CTS
 
 WHAT YOU DO:
 - Assemble preflight packages: pull live weather (weather_brief tool), NOTAMs, check W&B, compute FRAT — one conversation
 - Track currency for all certificates: medical (Class 1 expires 05/31/2027), BFR, IPC, type recurrent, 135 line check
 - Alert on the 9 items expiring 09/30/2026 — recurrent training window is now
-- Log flights to the pilot's Vault logbook on command: "Log a flight — N661LF, KBFL-KLAX, 1.2 hrs PIC"
+- Log flights to the pilot's Vault logbook on command: "Log a flight — N701AA, KBFL-KLAX, 1.2 hrs PIC"
 - Answer go/no-go questions using live weather data
 
 TOOLS YOU HAVE:
@@ -3659,20 +3701,12 @@ LANGUAGE RULES:
             display_name: "MX",
             name: "Skye",
             vertical: "aviation",
-            systemPrompt: `You are Skye, the Aircraft Record Digital Worker — maintenance tracker and squawk log for an owner-operator pilot's three-aircraft fleet.
+            systemPrompt: `You are Skye, the Aircraft Record Digital Worker — maintenance tracker and squawk log for an owner-operator pilot's fleet.
 
-FLEET:
-- N661LF · PC-12/47E · S/N 1661 · 2018 · 2,847 TTSN · PT6A-67P 1,240 TSMOH · Annual due Feb 2027
-- N662FW · King Air B200 · S/N BB-1847 · 1,847 TTSN · PT6A-42 1,847 TSMOH · Annual due Dec 2026
-- N663SR · Cirrus SR22 G5 · 847 TTSN · IO-550-N · Annual due Sep 2026
-
-CURRENT STATUS:
-- N661LF: 1 open MEL — gear door light R/M (Cat C · 30-day · no dispatch restriction)
-- N662FW: Airworthy — 1 MEL Cat C deferred (gear door light)
-- N663SR: Airworthy — no open items · annual due in <60 days (schedule now)
+FLEET AND STATUS: read from the LIVE AIRCRAFT/MEL RECORDS block appended below (computed just now from this pilot's real Firestore maintenance records). Do not use any other tail numbers, hours, or MEL status — there is no fixed fleet. If that block shows no aircraft on file, say so and ask the pilot to add one rather than inventing a tail number.
 
 WHAT YOU DO:
-- File squawks: "Log a squawk on N661LF — [describe the issue]" → timestamped, immutable entry
+- File squawks: "Log a squawk on [tail] — [describe the issue]" → timestamped, immutable entry
 - Track inspection due dates and component life (100-hr, annual, transponder, ELT)
 - Assist with MEL documentation and deferral tracking
 - Monitor AD/SB compliance reminders
@@ -3708,7 +3742,7 @@ WHAT YOU BUILD FOR EVERY TRIP:
 7. IRS documentation — business purpose, passengers, billing record
 
 TRIPS TO DATE (DEMO):
-- PA26-0721 · Jul 21 2026 · KTEB→KPBI · 4.0 hrs · 4 pax · N662FW · Billing: $7,627.70
+- PA26-0721 · Jul 21 2026 · KTEB→KPBI · 4.0 hrs · 4 pax · N704AA · Billing: $7,627.70
 
 TOOLS YOU HAVE:
 - weather_brief: pull live METARs + TAFs
@@ -3724,7 +3758,7 @@ Missing data is NOT permission to proceed.
 CONDITIONAL is only valid when data IS present but indicates a concern. Never CONDITIONAL when data is missing.
 
 ═══ CREW LEGALITY — 14 CFR §135.273 (UNSCHEDULED OPS) ═══
-Life Flight Network Hawaii PC-12 = fixed-wing unscheduled Part 135. §135.273 applies. NOT §135.271 (HEMES is helicopter-only).
+Air-medical PC-12 operation (Hawaii) = fixed-wing unscheduled Part 135. §135.273 applies. NOT §135.271 (HEMES is helicopter-only).
 
 To compute crew legality you MUST have from the pilot:
   • duty_period_start (local or UTC)
@@ -4172,6 +4206,118 @@ IDENTITY RULES:
 4. Never call yourself an AI assistant, chatbot, or helper.`;
               }
 
+              // ── PC-12 live pilot records (CoPilot + Dispatch) ──
+              // av-pc12-ng (the marketplace slug people actually open) had no
+              // dw.systemPrompt, so it fell straight to the generic raas_tier
+              // auto-template above with zero real data behind it — currency
+              // and duty answers were pure hallucination. Dispatch's hardcoded
+              // prompt (av-dispatch-001) fares better — it fails closed and
+              // asks the pilot to type in duty/rest numbers — but it doesn't
+              // pull the numbers that already exist in this same pilot's real
+              // records, so every trip release re-asks for data the platform
+              // already has. services/copilot/ already computes both for real
+              // from actual Firestore records (logbooks/{uid}/entries,
+              // dutyPeriods/{uid}), just on a separate, disconnected route
+              // (/v1/copilot:pc12:*). Reuse its pure compute functions here —
+              // cheapest way to make these workers' answers reflect real
+              // records instead of the template/re-ask, without merging the
+              // two chat routes/auth models.
+              const PILOT_RECORDS_SLUGS = new Set([
+                "av-pc12-ng", "av-copilot-001", "pc12-ng-copilot",
+                "av-dispatch-001", "av-dispatch-board",
+              ]);
+              if (workerPrompt && authUser && PILOT_RECORDS_SLUGS.has(workerSlug)) {
+                try {
+                  const [pc12ProfileSnap, pc12EntriesSnap, pc12GtSnap, pc12DutySnap] = await Promise.all([
+                    db.collection("copilotProfiles").doc(authUser.uid).get(),
+                    db.collection("logbooks").doc(authUser.uid).collection("entries").get(),
+                    db.collection("logbooks").doc(authUser.uid).collection("groundTraining").get(),
+                    db.collection("dutyPeriods").doc(authUser.uid).collection("periods")
+                      .orderBy("dutyStartZulu", "desc").limit(50).get(),
+                  ]);
+                  const pc12Profile = pc12ProfileSnap.exists ? pc12ProfileSnap.data() : {};
+                  const pc12Entries = pc12EntriesSnap.docs.map(d => d.data());
+                  const pc12GroundTraining = pc12GtSnap.docs.map(d => d.data());
+                  const pc12DutyPeriods = pc12DutySnap.docs.map(d => d.data());
+                  const pc12ActiveDuty = pc12DutyPeriods.find(p => !p.dutyEndZulu) || null;
+
+                  const { computeCurrency } = require("./services/copilot/logic/currencyTracker");
+                  const pc12Currency = computeCurrency(pc12Profile, pc12Entries, pc12GroundTraining);
+                  const { computeDutyStatus } = require("./services/copilot/logic/dutyTimeTracker");
+                  const pc12DutyStatus = computeDutyStatus(pc12DutyPeriods, pc12Entries, pc12ActiveDuty);
+
+                  let pendingSignOffsNote = "";
+                  try {
+                    const { listPendingSignOffs } = require("./services/copilot/signOff");
+                    const pending = await listPendingSignOffs(db, authUser.uid);
+                    if (pending.length) {
+                      pendingSignOffsNote = `\n\nPENDING SIGN-OFFS (${pending.length} — surface this proactively, don't wait to be asked; this is exactly the kind of thing that falls through the cracks if nobody's reminded): ${JSON.stringify(pending, null, 2)}\nTell the pilot which entries need an instructor sign-off and offer to help route it — do not sign anything yourself, only a real instructor can attest.`;
+                    }
+                  } catch { /* non-fatal */ }
+
+                  workerPrompt += `\n\nLIVE PILOT RECORDS (computed just now from this signed-in pilot's actual logbook/duty Firestore records — this is real, not hypothetical; cite it directly, and do not re-ask the pilot for numbers already shown here):\nCURRENCY:\n${JSON.stringify(pc12Currency, null, 2)}\n\nDUTY STATUS:\n${JSON.stringify(pc12DutyStatus, null, 2)}\n\nIf an item above is UNVERIFIED, missing, or the entry list is empty, say so plainly — do not assume currency or invent flight history.${pendingSignOffsNote}`;
+                } catch (pc12Err) {
+                  console.warn("worker chat: PC-12 live data injection failed (non-blocking):", pc12Err.message);
+                }
+              }
+
+              // ── Real aircraft/MEL records (MX + Dispatch) ──
+              // av-mx-001's hardcoded DEMO_WORKER_FALLBACKS prompt baked in a
+              // fixed 3-tail fleet (N701AA/N704AA/N705AA) with fixed hours and
+              // a fixed open MEL item — same numbers for every user, forever,
+              // which av_m01_mx_v0's own chat_rules explicitly forbid ("Never
+              // state aircraft time figures as fact unless they come from
+              // maintenance records present in this session"). Dispatch had
+              // no aircraft data at all — it asked the pilot to state current
+              // squawks manually. Both now read the same real per-user
+              // aircraftRecords/{uid}/aircraft records via
+              // airworthinessTracker.computeAirworthiness.
+              const MX_SLUGS = new Set(["av-mx-001", "av-dispatch-001", "av-dispatch-board"]);
+              if (workerPrompt && authUser && MX_SLUGS.has(workerSlug)) {
+                try {
+                  // A charter operator's fleet is shared across its pilots/dispatchers —
+                  // not any one person's private record — so read by tenant when in a
+                  // tenant workspace, matching services/mx/aircraftRecords.js's scoping.
+                  const mxScopeId = reqTenantId || authUser.uid;
+                  const fleetSnap = await db.collection("aircraftRecords").doc(mxScopeId).collection("aircraft").get();
+                  const { computeAirworthiness } = require("./services/mx/airworthinessTracker");
+                  let fleet = [];
+                  if (fleetSnap.empty) {
+                    fleet = [computeAirworthiness(null, [])];
+                  } else {
+                    fleet = await Promise.all(fleetSnap.docs.map(async (d) => {
+                      const squawksSnap = await d.ref.collection("squawks").get();
+                      const squawks = squawksSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+                      return computeAirworthiness(d.data(), squawks);
+                    }));
+                  }
+                  workerPrompt += `\n\nLIVE AIRCRAFT/MEL RECORDS (computed just now from real Firestore maintenance records — cite directly, do not use any other tail numbers or hours from earlier in this prompt):\n${JSON.stringify(fleet, null, 2)}\n\nIf status is UNVERIFIED (no record on file), say so plainly and do not assume airworthy — per 14 CFR §43.9, absence of a record is not permission to dispatch. Return-to-service determinations remain the certificated A&P/IA's authority regardless of what this record shows.`;
+                } catch (mxErr) {
+                  console.warn("worker chat: MX live data injection failed (non-blocking):", mxErr.message);
+                }
+              }
+
+              // ── Crew scheduling (roster, swap/release/pickup, OT) ──
+              // av-crew-scheduling existed only as a bare 3-tab stub with no
+              // systemPrompt — falls to the generic raas_tier auto-template
+              // above. Same treatment as av-pc12-ng in Item 2: append real
+              // data over whatever prompt was built, rather than requiring a
+              // hand-authored fallback. See services/scheduling/crewScheduling.js.
+              if (workerPrompt && authUser && workerSlug === "av-crew-scheduling") {
+                try {
+                  const schedScopeId = reqTenantId || authUser.uid;
+                  const schedSnap = await db.collection("crewSchedule").doc(schedScopeId).collection("assignments")
+                    .orderBy("dutyStartZulu", "desc").limit(50).get();
+                  const assignments = schedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                  const swapSnap = await db.collection("crewSchedule").doc(schedScopeId).collection("swapRequests")
+                    .where("status", "==", "open").limit(20).get();
+                  const openSwaps = swapSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                  workerPrompt += `\n\nLIVE CREW SCHEDULE (computed just now from real Firestore records — cite directly):\nASSIGNMENTS (most recent 50):\n${JSON.stringify(assignments, null, 2)}\n\nOPEN SWAP/RELEASE/PICKUP REQUESTS:\n${JSON.stringify(openSwaps, null, 2)}\n\nYou manage roster assignments and shift trading — release, pickup, and swap — each checked against overtime policy before it's approved (see otCheck on any swap request; approvalRequired:true means it needs an explicit override, not a rubber stamp). Pilots and MX trade shifts far more than Dispatch — that's normal, not a red flag. If assignments/requests are empty, say so plainly rather than inventing a roster.`;
+                } catch (schedErr) {
+                  console.warn("worker chat: crew scheduling live data injection failed (non-blocking):", schedErr.message);
+                }
+              }
+
               // Inject subscriber name into worker prompt (44.2 — Bug 3a: prevent name hallucination)
               const _isDemoTenant = reqTenantId && reqTenantId.startsWith("demo-");
               if (authUser && workerPrompt && !_isDemoTenant) {
@@ -4200,6 +4346,16 @@ IDENTITY RULES:
                     }
                   }
                 } catch (_ae) { /* non-fatal */ }
+              }
+
+              // CODEX 66 yellow-severity distress injection — set at the top of
+              // this /chat:message turn (before any worker was even selected).
+              // Not a substitution; the worker still answers the user's actual
+              // message, just with the acknowledgment/referral instruction
+              // folded in. Level 1 — appended regardless of demo mode or which
+              // worker this is.
+              if (_distressYellowInjection && workerPrompt) {
+                workerPrompt += _distressYellowInjection;
               }
 
               // Demo sessions — never address the user by their persona name;
@@ -8288,7 +8444,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                   input_schema: {
                     type: "object",
                     properties: {
-                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N661LF" },
+                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N701AA" },
                       date: { type: "string", description: "Flight date in YYYY-MM-DD format" },
                       depIcao: { type: "string", description: "Departure airport ICAO" },
                       arrIcao: { type: "string", description: "Arrival airport ICAO" },
@@ -8310,7 +8466,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                   input_schema: {
                     type: "object",
                     properties: {
-                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N661LF" },
+                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N701AA" },
                       description: { type: "string", description: "Squawk description — be specific: system affected, observed symptom, when observed" },
                       pilotName: { type: "string", description: "Pilot reporting the squawk" },
                     },
@@ -8379,6 +8535,24 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                 }, { timeoutMs: 90000 });
                 let _txt = "";
                 let _cosGeneratedDoc = null;
+                // CODEX S52.55 morning fix — a real, reproduced bug: when the model's
+                // FIRST turn (before the tool call) includes its own narration text
+                // ("I'll add this now, starting with...") and the follow-up call (after
+                // the tool result) has nothing new to add on top of that, the follow-up's
+                // text comes back empty. Every one of the ~23 tool handlers below then
+                // fell back to the raw internal tool-result string (e.g. "Alert pushed to
+                // Operating Feed. ID: ...") — a real, live, reproduced leak, not
+                // hypothetical: confirmed via two direct API calls, one with a single
+                // goal (worked, no first-turn text) and one with a multi-item message
+                // (leaked, reliably reproducible). Fix: never silently drop the first
+                // turn's own text — combine it with whatever the follow-up adds, and
+                // only fall back to the raw tool-result string if BOTH are empty.
+                const _cosFirstTurnText = _resp.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
+                const _composeTxt = (followUpResp, fallback) => {
+                  const followUpText = (followUpResp && Array.isArray(followUpResp.content))
+                    ? followUpResp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() : "";
+                  return [_cosFirstTurnText, followUpText].filter(Boolean).join("\n\n").trim() || fallback;
+                };
                 if (_resp.stop_reason === "tool_use") {
                   const _cosTool = _resp.content.find(b => b.type === "tool_use");
                   if (_cosTool && _cosTool.name === "generate_document") {
@@ -8419,7 +8593,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         tools: _cosTools,
                         tool_choice: { type: "none" },
                       }, { timeoutMs: 60000 });
-                      _txt = _cosFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Your document is ready.";
+                      _txt = _composeTxt(_cosFollowUp, "Your document is ready.");
                     } catch (_cosDocErr) {
                       console.warn("[COS] generate_document exception:", _cosDocErr.message);
                       _txt = "I ran into an issue generating the document. Let me give you the content as text instead.";
@@ -8454,7 +8628,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                         messages: _cosFollowUpMsgs(_resp, _cosTool.id, _fetchedText),
                         // No tools — model must respond with text only
                       }, { timeoutMs: 90000 });
-                      _txt = _fetchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I couldn't load that page, but I can answer from my built-in knowledge — ask me what you'd like to know.";
+                      _txt = _composeTxt(_fetchFollowUp, "I couldn't load that page, but I can answer from my built-in knowledge — ask me what you'd like to know.");
                     } catch (_fetchFollowErr) {
                       console.warn("[COS:fetch_url] follow-up failed:", _fetchFollowErr.message);
                       _txt = "I had trouble processing that page. Ask me directly what you'd like to know and I'll answer from my built-in knowledge.";
@@ -8519,7 +8693,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                           tools: _cosTools,
                           tool_choice: { type: "none" },
                         }, { timeoutMs: 90000 });
-                        _txt = _searchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
+                        _txt = _composeTxt(_searchFollowUp, "");
                         if (!_txt) {
                           console.warn("[COS:web_search] follow-up returned empty — retrying from knowledge");
                           const _knowledgeFallback = await anthropic.messages.create({
@@ -8528,7 +8702,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                             system: cosPrompt,
                             messages: _msgs,
                           }, { timeoutMs: 90000 });
-                          _txt = _knowledgeFallback.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "How can I help you?";
+                          _txt = _composeTxt(_knowledgeFallback, "How can I help you?");
                         }
                       } catch (_searchFollowErr) {
                         console.warn("[COS:web_search] follow-up failed:", _searchFollowErr.message);
@@ -8570,7 +8744,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _driveSearchResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _driveSearchFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _driveSearchResult;
+                    _txt = _composeTxt(_driveSearchFollowUp, _driveSearchResult);
                   } else if (_cosTool && _cosTool.name === "read_drive_file") {
                     let _driveFileContent;
                     try {
@@ -8674,10 +8848,10 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                           messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }, { role: "assistant", content: _driveReadFollowUp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _driveFollowTool.id, content: _docToolResult }] }],
                           tools: _cosTools, tool_choice: { type: "none" },
                         }, { timeoutMs: 60000 });
-                        _txt = _docFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Your document is ready.";
+                        _txt = _composeTxt(_docFollowUp, "Your document is ready.");
                       } catch (_driveDocErr) {
                         console.warn("[COS] drive→generate_document exception:", _driveDocErr.message);
-                        _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but hit an error generating the document.";
+                        _txt = _composeTxt(_driveReadFollowUp, "I read the file but hit an error generating the document.");
                       }
                     } else if (_driveFollowTool && _driveFollowTool.name === "write_accounting_transactions") {
                       try {
@@ -8695,12 +8869,12 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                           messages: [..._msgs, { role: "assistant", content: _resp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _cosTool.id, content: _driveFileContent || "File content unavailable." }] }, { role: "assistant", content: _driveReadFollowUp.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: _driveFollowTool.id, content: _acctResult }] }],
                           tools: _cosTools, tool_choice: { type: "none" },
                         }, { timeoutMs: 60000 });
-                        _txt = _acctDocFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
+                        _txt = _composeTxt(_acctDocFollowUp, _acctResult);
                       } catch (_acctErr) {
-                        _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Read the file but couldn't write transactions.";
+                        _txt = _composeTxt(_driveReadFollowUp, "Read the file but couldn't write transactions.");
                       }
                     } else {
-                      _txt = _driveReadFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "I read the file but couldn't summarize it.";
+                      _txt = _composeTxt(_driveReadFollowUp, "I read the file but couldn't summarize it.");
                     }
                   } else if (_cosTool && _cosTool.name === "write_accounting_transactions") {
                     let _acctResult;
@@ -8726,7 +8900,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _acctResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _acctFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _acctResult;
+                    _txt = _composeTxt(_acctFollowUp, _acctResult);
                   } else if (_cosTool && _cosTool.name === "search_emails") {
                     let _emailResults;
                     try {
@@ -8746,7 +8920,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _emailResults),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _emailFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _emailResults;
+                    _txt = _composeTxt(_emailFollowUp, _emailResults);
                   } else if (_cosTool && _cosTool.name === "send_email") {
                     let _sendResult;
                     try {
@@ -8764,7 +8938,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _sendResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
-                    _txt = _sendFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _sendResult;
+                    _txt = _composeTxt(_sendFollowUp, _sendResult);
                   } else if (_cosTool && _cosTool.name === "list_events") {
                     let _calResult;
                     try {
@@ -8789,7 +8963,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _calResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _calFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _calResult;
+                    _txt = _composeTxt(_calFollowUp, _calResult);
                   } else if (_cosTool && _cosTool.name === "search_apollo") {
                     let _apolloResult;
                     try {
@@ -8823,7 +8997,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _apolloResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _apolloFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _apolloResult;
+                    _txt = _composeTxt(_apolloFollowUp, _apolloResult);
                   } else if (_cosTool && _cosTool.name === "enrich_contact") {
                     let _enrichResult;
                     try {
@@ -8854,7 +9028,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _enrichResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
-                    _txt = _enrichFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _enrichResult;
+                    _txt = _composeTxt(_enrichFollowUp, _enrichResult);
                   } else if (_cosTool && _cosTool.name === "generate_image") {
                     let _imgResult = "";
                     let _imgUrl = null;
@@ -8885,7 +9059,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _imgResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 60000 });
-                    _txt = _imgFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || "Image ready.";
+                    _txt = _composeTxt(_imgFollowUp, "Image ready.");
                     if (_imgUrl) {
                       return res.json({ ok: true, message: _txt, structuredData: { imageUrl: _imgUrl }, sessionId });
                     }
@@ -8917,7 +9091,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _wxResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
-                    _txt = _wxFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _wxResult;
+                    _txt = _composeTxt(_wxFollowUp, _wxResult);
                   } else if (_cosTool && _cosTool.name === "get_notams") {
                     let _notamResult;
                     try {
@@ -8947,7 +9121,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _notamResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 30000 });
-                    _txt = _notamFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _notamResult;
+                    _txt = _composeTxt(_notamFollowUp, _notamResult);
                   } else if (_cosTool && _cosTool.name === "log_flight") {
                     let _logResult;
                     try {
@@ -8987,7 +9161,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _logResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
-                    _txt = _logFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _logResult;
+                    _txt = _composeTxt(_logFollowUp, _logResult);
                   } else if (_cosTool && _cosTool.name === "file_squawk") {
                     let _squawkResult;
                     try {
@@ -9017,7 +9191,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _squawkResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
-                    _txt = _squawkFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _squawkResult;
+                    _txt = _composeTxt(_squawkFollowUp, _squawkResult);
                   } else if (_cosTool && _cosTool.name === "push_alert") {
                     let _alertResult;
                     try {
@@ -9044,7 +9218,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _alertResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
-                    _txt = _alertFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _alertResult;
+                    _txt = _composeTxt(_alertFollowUp, _alertResult);
                   } else if (_cosTool && _cosTool.name === "resolve_alert") {
                     let _resolveResult;
                     try {
@@ -9068,7 +9242,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _resolveResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
-                    _txt = _resolveFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _resolveResult;
+                    _txt = _composeTxt(_resolveFollowUp, _resolveResult);
                   } else if (_cosTool && _cosTool.name === "snooze_alert") {
                     let _snoozeResult;
                     try {
@@ -9087,7 +9261,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       messages: _cosFollowUpMsgs(_resp, _cosTool.id, _snoozeResult),
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
-                    _txt = _snoozeFollowUp.content.filter(b => b.type === "text").map(b => b.text).join("").trim() || _snoozeResult;
+                    _txt = _composeTxt(_snoozeFollowUp, _snoozeResult);
                   }
                 }
                 if (!_txt) {
@@ -30849,6 +31023,9 @@ Analyze now:`;
         case "status":
           if (method !== "GET") return jsonError(res, 405, "GET required");
           return await handlers.handleStatus(req, res, ctx);
+        case "dashboard":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await handlers.handleDashboard(req, res, ctx);
         case "currency":
           if (method !== "GET") return jsonError(res, 405, "GET required");
           return await handlers.handleCurrency(req, res, ctx);
@@ -30864,11 +31041,159 @@ Analyze now:`;
         case "acknowledge":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await handlers.handleAcknowledge(req, res, ctx);
+        case "requestSignOff": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { requestSignOff } = require("./services/copilot/signOff");
+          const rsBody = req.body || {};
+          const rsResult = await requestSignOff(db, {
+            pilotId: ctx.userId, entryCollection: rsBody.entryCollection, entryId: rsBody.entryId,
+            initiatedBy: rsBody.initiatedBy, requestedByUid: ctx.userId,
+          });
+          return rsResult.ok ? res.json(rsResult) : jsonError(res, 400, rsResult.error);
+        }
+        case "completeSignOff": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { completeSignOff } = require("./services/copilot/signOff");
+          const csBody = req.body || {};
+          const csResult = await completeSignOff(db, {
+            pilotId: ctx.userId, signOffRequestId: csBody.signOffRequestId, signer: csBody.signer,
+          });
+          return csResult.ok ? res.json(csResult) : jsonError(res, 400, csResult.error);
+        }
+        case "listPendingSignOffs": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const { listPendingSignOffs } = require("./services/copilot/signOff");
+          const pending = await listPendingSignOffs(db, ctx.userId);
+          return res.json({ ok: true, pending });
+        }
         default:
           return jsonError(res, 404, "Unknown copilot action: " + copilotAction);
         }
       } catch (e) {
         console.error("copilot:pc12 failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // AVIATION DISPATCH — trip requests (CODEX aviation-suite item 4)
+    // Real trip-generation object model: client, destination/alternate, pax
+    // manifest, ground transport, assigned crew. Backed by
+    // dispatchTripRequests/{userId}/requests — see
+    // services/dispatch/tripRequests.js for the schema and rationale.
+    // ----------------------------
+    if (route && route.startsWith("/dispatch:")) {
+      const dispatchAction = route.replace("/dispatch:", "");
+      const tripHandlers = require("./services/dispatch/tripRequests");
+      const dctx = getCtx(req, req.body || {}, auth.user);
+      try {
+        switch (dispatchAction) {
+        case "createTripRequest":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await tripHandlers.handleCreateTripRequest(req, res, dctx);
+        case "listTripRequests":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await tripHandlers.handleListTripRequests(req, res, dctx);
+        case "getTripRequest":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await tripHandlers.handleGetTripRequest(req, res, dctx);
+        case "updateTripRequestStatus":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await tripHandlers.handleUpdateTripRequestStatus(req, res, dctx);
+        case "uploadTripHistoryCsv":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await tripHandlers.handleUploadTripHistoryCsv(req, res, dctx);
+        default:
+          return jsonError(res, 404, "Unknown dispatch action: " + dispatchAction);
+        }
+      } catch (e) {
+        console.error("dispatch failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // AVIATION MX — real per-tail aircraft/MEL records (CODEX aviation-suite
+    // MX real-data buildout). Replaces the hardcoded N701AA/N704AA/N705AA
+    // fleet text in DEMO_WORKER_FALLBACKS["av-mx-001"] with real records —
+    // see services/mx/aircraftRecords.js and airworthinessTracker.js.
+    // ----------------------------
+    if (route && route.startsWith("/mx:")) {
+      const mxAction = route.replace("/mx:", "");
+      const mxHandlers = require("./services/mx/aircraftRecords");
+      const mctx = getCtx(req, req.body || {}, auth.user);
+      try {
+        switch (mxAction) {
+        case "upsertAircraft":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleUpsertAircraft(req, res, mctx);
+        case "addSquawk":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleAddSquawk(req, res, mctx);
+        case "updateSquawkStatus":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleUpdateSquawkStatus(req, res, mctx);
+        case "getAirworthiness":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await mxHandlers.handleGetAirworthiness(req, res, mctx);
+        case "listAircraft":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await mxHandlers.handleListAircraft(req, res, mctx);
+        case "uploadSquawksCsv":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleUploadSquawksCsv(req, res, mctx);
+        case "uploadAircraftRosterCsv":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleUploadAircraftRosterCsv(req, res, mctx);
+        default:
+          return jsonError(res, 404, "Unknown mx action: " + mxAction);
+        }
+      } catch (e) {
+        console.error("mx failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // AVIATION CREW SCHEDULING — roster, swap/release/pickup within OT
+    // rules, bid windows (CODEX aviation-suite crew-scheduling buildout,
+    // Sean 2026-08-17). See services/scheduling/crewScheduling.js.
+    // ----------------------------
+    if (route && route.startsWith("/scheduling:")) {
+      const schedAction = route.replace("/scheduling:", "");
+      const schedHandlers = require("./services/scheduling/crewScheduling");
+      const sctx = getCtx(req, req.body || {}, auth.user);
+      try {
+        switch (schedAction) {
+        case "createAssignment":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await schedHandlers.handleCreateAssignment(req, res, sctx);
+        case "listSchedule":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await schedHandlers.handleListSchedule(req, res, sctx);
+        case "requestSwap":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await schedHandlers.handleRequestSwap(req, res, sctx);
+        case "respondToSwap":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await schedHandlers.handleRespondToSwap(req, res, sctx);
+        case "getOtSummary":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await schedHandlers.handleGetOtSummary(req, res, sctx);
+        case "createBidWindow":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await schedHandlers.handleCreateBidWindow(req, res, sctx);
+        case "submitBid":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await schedHandlers.handleSubmitBid(req, res, sctx);
+        case "listBids":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await schedHandlers.handleListBids(req, res, sctx);
+        default:
+          return jsonError(res, 404, "Unknown scheduling action: " + schedAction);
+        }
+      } catch (e) {
+        console.error("scheduling failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
@@ -33079,4 +33404,36 @@ exports.createSignatureRequest = onRequest({ region: "us-central1" }, async (req
 
 exports.hellosignWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
   return handleHellosignHook(req, res);
+});
+
+// ----------------------------
+// PUBLIC SEO RENDERER — homepage / marketplace / worker catalog pages.
+// Isolated function (own Cloud Run service) so a bug here can't affect the
+// main `api` function. See services/seo/publicSeoRenderer.js for the "why".
+// ----------------------------
+const { renderPublicPage } = require("./services/seo/publicSeoRenderer");
+
+exports.publicSeo = onRequest({ region: "us-central1", memory: "256MiB", timeoutSeconds: 10 }, async (req, res) => {
+  try {
+    const html = await renderPublicPage(db, req.path || "/");
+    if (!html) {
+      // Not a route we enrich — fall back to the plain shell rather than 404.
+      const { fetchOriginShell } = require("./services/seo/publicSeoRenderer");
+      res.set("Content-Type", "text/html; charset=utf-8");
+      return res.status(200).send(await fetchOriginShell());
+    }
+    res.set("Content-Type", "text/html; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=300");
+    return res.status(200).send(html);
+  } catch (e) {
+    console.error("publicSeo render failed:", e);
+    // Fail open: never break the page for a real visitor over an SEO enhancement.
+    try {
+      const { fetchOriginShell } = require("./services/seo/publicSeoRenderer");
+      res.set("Content-Type", "text/html; charset=utf-8");
+      return res.status(200).send(await fetchOriginShell());
+    } catch (e2) {
+      return res.status(502).send("temporarily unavailable");
+    }
+  }
 });

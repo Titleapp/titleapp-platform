@@ -19,8 +19,14 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 async function apiGet(path) {
   const auth = getAuth();
   const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
   const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
-  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+  });
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
 }
@@ -123,7 +129,7 @@ function squawksToBlocks(squawks) {
   const list = squawks || [];
   if (!list.length) return [{
     type: "cards",
-    items: [{ band: "GREEN", label: "NO OPEN SQUAWKS", title: "Fleet is clean", detail: "No squawks on file. File a new squawk by telling Alex: 'File a squawk on N661LF — [describe the issue].' It goes into the aircraft record immediately.", action: "Open chat" }],
+    items: [{ band: "GREEN", label: "NO OPEN SQUAWKS", title: "Fleet is clean", detail: "No squawks on file. File a new squawk by telling Alex: 'File a squawk on N701AA — [describe the issue].' It goes into the aircraft record immediately.", action: "Open chat" }],
   }];
   const open   = list.filter(s => s.status === "open");
   const closed = list.filter(s => s.status !== "open");
@@ -143,7 +149,43 @@ function squawksToBlocks(squawks) {
   if (flags.length) blocks.push({ type: "flags", items: flags });
   if (open.length === 0) blocks.push({ type: "prose", items: [{ band: "GREEN", title: "No open squawks", text: "All fleet items are closed or resolved." }] });
   blocks.push({ type: "table", title: "Squawk log — live from Firestore", cols: ["Tail", "Date", "Description", "Status", "WO #"], rows });
-  blocks.push({ type: "cards", items: [{ band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'File a squawk on N661LF — [describe the issue].' Alex creates a timestamped entry and notifies MX. Immutable once filed.", action: "Open chat" }] });
+  blocks.push({ type: "cards", items: [{ band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'File a squawk on N701AA — [describe the issue].' Alex creates a timestamped entry and notifies MX. Immutable once filed.", action: "Open chat" }] });
+  return blocks;
+}
+
+// Real per-tail airworthiness from services/mx/airworthinessTracker.js
+// (computeAirworthiness), fetched via GET /v1/mx:listAircraft. Replaces the
+// static "AIRWORTHY · PC-12/47E ... 1,847 TTSN" hero block that was the same
+// hardcoded fixture for every user, forever.
+function airworthinessToBlocks(fleet) {
+  const list = fleet || [];
+  if (!list.length) {
+    return [{
+      type: "cards",
+      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Alex the tail number, type, and current hours — or say 'add N701AA, PC-12/47E' to get started. Nothing here is real yet, so nothing is assumed airworthy.", action: "Open chat" }],
+    }];
+  }
+  const bandFor = { GREEN: "GREEN", YELLOW: "YELLOW", RED: "RED", UNVERIFIED: "BLUE" };
+  const heroes = list.map(a => ({
+    band: bandFor[a.status] || "BLUE",
+    title: `${a.status} · ${a.tailNumber || "Unknown tail"}${a.type ? " · " + a.type : ""}`,
+    detail: a.summary || "",
+  }));
+  const flags = [];
+  list.forEach(a => {
+    (a.blockingItems || []).forEach(item => flags.push({ band: "RED", title: a.tailNumber || "Unknown tail", detail: item }));
+  });
+  const rows = list.map(a => [
+    a.tailNumber || "—",
+    a.type || "—",
+    a.status,
+    String((a.openSquawks || []).length),
+    a.inspection?.detail || "—",
+    a.adCompliance?.status || "—",
+  ]);
+  const blocks = [{ type: "heroes", items: heroes }];
+  if (flags.length) blocks.push({ type: "flags", items: flags });
+  blocks.push({ type: "table", title: "Fleet — live from Firestore", cols: ["Tail", "Type", "Status", "Open squawks", "Inspection", "AD status"], rows });
   return blocks;
 }
 
@@ -400,11 +442,16 @@ const LIVE_TABS = {
     "logbook":    { kind: "logbook" },
   },
   "av-mx-001": {
+    "aircraft": { kind: "airworthiness" },
     "squawks": { kind: "squawks" },
   },
   "av-dispatch-001": {
-    "trip-package": { kind: "weather", ids: "KLAS,KPHX,KLAX",
-                      mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX" } },
+    // Was "trip-package" — that tab id doesn't exist in this worker's spec
+    // (real tabs are fleet-map/schedule/crew/pax-manifest/aircraft-status/
+    // notams), so this never fired. aircraft-status is the real target —
+    // same real MX data MX Tracker now reads, so Dispatch can't show a
+    // different airworthiness answer than the record it's supposed to defer to.
+    "aircraft-status": { kind: "airworthiness" },
   },
   "av-ground-school-001": {
     "quiz-zone": { kind: "currency" },
@@ -473,6 +520,9 @@ export default function AviationWorkerCanvas({ workerSlug }) {
             const data = await apiGet(`/v1/aviation:squawks${qs}`);
             if (data.squawks) blocks = squawksToBlocks(data.squawks);
           }
+        } else if (cfg.kind === "airworthiness") {
+          const data = await apiGet(`/v1/mx:listAircraft`);
+          if (data.fleet) blocks = airworthinessToBlocks(data.fleet);
         }
         if (blocks) setLiveBlocks(prev => ({ ...prev, [key]: blocks }));
       } catch (e) {

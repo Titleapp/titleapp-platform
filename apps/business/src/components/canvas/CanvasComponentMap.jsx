@@ -27,6 +27,7 @@ import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
 import AviationWeatherCard from "./AviationWeatherCard";
 import AviationNavDbCard from "./AviationNavDbCard";
+import AviationFleetMapCard from "./AviationFleetMapCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
 import WorkProductCard from "./WorkProductCard";
 import ChartCard from "./ChartCard";
@@ -69,6 +70,7 @@ const CANVAS_COMPONENT_MAP = {
   AviationCurrencyCard,
   AviationWeatherCard,
   AviationNavDbCard,
+  AviationFleetMapCard,
   RealEstateClosingCard,
   WorkProductCard,
   ChartCard,

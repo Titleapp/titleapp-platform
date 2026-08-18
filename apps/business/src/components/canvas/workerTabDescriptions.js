@@ -183,10 +183,10 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "logbook":    "Your digital pilot logbook — append-only, chain-signed, portable. Every entry includes business purpose recorded at time of flight for IRS documentation.",
   },
   "av-mx-001": {
-    "airworthiness": "N662FW's complete airworthiness picture — current inspections, engine time, and any open MEL items at a glance.",
+    "airworthiness": "N704AA's complete airworthiness picture — current inspections, engine time, and any open MEL items at a glance.",
     "timeline":      "Complete maintenance history — every entry append-only and chain-signed. The full chronological story of this aircraft from acquisition to today.",
     "squawks":       "Open discrepancies and their resolution status. Tell Alex about any issue to log it immediately — timestamped and notified to your A&P.",
-    "upcoming":      "What's coming due on N662FW, by hours and by calendar. Nothing should surprise you at a pre-buy or an FAA ramp check.",
+    "upcoming":      "What's coming due on N704AA, by hours and by calendar. Nothing should surprise you at a pre-buy or an FAA ramp check.",
   },
   "av-dispatch-001": {
     "trip-package":  "Alex's pre-assembled trip release package — every release item verified from live data before you dispatch. No manual re-entry.",

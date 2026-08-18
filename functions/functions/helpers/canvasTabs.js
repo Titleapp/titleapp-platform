@@ -167,6 +167,19 @@ const AVIATION_MX_TABS = [
   { id: "upcoming",      label: "Upcoming",      signal: "card:work-product", order: 3 },
 ];
 
+// Aviation Digital Logbook — system-of-record for flight time, currency,
+// and instructor sign-off. Not a CoPilot (no flight-planning/checklist/QRH
+// tabs) — av-digital-logbook was wrongly carrying catalogId AV-P01, which
+// pulled in the full 11-tab AVIATION_COPILOT_TABS template via the AV-P\d
+// pattern match below. Matched on slug, ahead of that pattern check, so it
+// wins regardless of the doc's catalogId.
+const AVIATION_LOGBOOK_TABS = [
+  { id: "logbook",  label: "Logbook",  signal: "card:work-product",      default: true, order: 0 },
+  { id: "currency", label: "Currency", signal: "card:aviation-currency", order: 1 },
+  { id: "sign-off", label: "Sign-Off", signal: "card:work-product",      order: 2 },
+  { id: "training", label: "Training", signal: "card:work-product",      order: 3 },
+];
+
 // Aviation Dispatch / Trip Release — owner-operator trip package flow.
 // Trip release package first, then the FRAT breakdown, then the billing record.
 const AVIATION_DISPATCH_TABS = [
@@ -259,6 +272,12 @@ function generateDefaultTabs(worker) {
   // 2. Aviation workers — route by slug first, then catalogId pattern.
   const catalogId = (worker.catalogId || "").toUpperCase();
 
+  // Digital Logbook — must be checked before the AV-P\d CoPilot pattern
+  // below, since this worker's catalogId (AV-P01) incorrectly matches it.
+  if (slug === "av-digital-logbook") {
+    return AVIATION_LOGBOOK_TABS.map(t => ({ ...t }));
+  }
+
   // MX (maintenance/airworthiness) — slug or AV-M catalogId prefix
   if (slug === "av-mx-001" || /^AV-M\d/.test(catalogId)) {
     return AVIATION_MX_TABS.map(t => ({ ...t }));
@@ -267,6 +286,14 @@ function generateDefaultTabs(worker) {
   // Dispatch / Trip Release — slug or AV-D catalogId prefix
   if (slug === "av-dispatch-001" || /^AV-D\d/.test(catalogId)) {
     return AVIATION_DISPATCH_TABS.map(t => ({ ...t }));
+  }
+
+  // Aviation Dispatch Board — "the Canvas IS the map" (live ADS-B fleet
+  // tracking on AviationMap). Distinct product from av-dispatch-001's
+  // trip-release desk — checked before the AV-D\d pattern above would
+  // otherwise misroute it to the trip-package tabs.
+  if (slug === "av-dispatch-board") {
+    return [{ id: "fleet-map", label: "Fleet Map", signal: "card:aviation-fleet-map", default: true, order: 0 }];
   }
 
   // CODEX 60 consolidated workers
@@ -324,6 +351,7 @@ module.exports = {
   // Exported for tests / authoring tools
   SPINE_TABS,
   AVIATION_COPILOT_TABS,
+  AVIATION_LOGBOOK_TABS,
   AVIATION_MX_TABS,
   AVIATION_DISPATCH_TABS,
   AVIATION_AIRCRAFT_TABS,

@@ -247,9 +247,13 @@ function checkRecurring(id, label, months, eventTypes, profile, groundTraining, 
     lastDate = new Date(profile[profileKey]);
   }
 
-  // Check ground training records
+  // Check ground training records. Unsigned records (no instructor name +
+  // cert number attached) don't count — 135.293/135.297 and flight-review
+  // currency require an authorized instructor's sign-off, not just a
+  // self-logged entry.
   if (groundTraining && groundTraining.length) {
     for (const gt of groundTraining) {
+      if (gt.signatureStatus !== "signed") continue;
       const type = (gt.type || "").toLowerCase();
       if (eventTypes.some(t => type.includes(t.toLowerCase()))) {
         const d = new Date(gt.date);

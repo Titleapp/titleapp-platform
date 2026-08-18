@@ -184,7 +184,7 @@ export default function AviationMap({
   height = 500,
   icaos = ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH"],
   compact = false,
-  fleetTails = [],   // e.g. ["N661LF","N662LF","N663LF"] — rendered gold with halo
+  fleetTails = [],   // e.g. ["N701AA","N702AA","N703AA"] — rendered gold with halo
 }) {
   const fleetSet = new Set((fleetTails || []).map(t => t.toUpperCase()));
   const [weather, setWeather] = useState({ data: null, loading: true });
