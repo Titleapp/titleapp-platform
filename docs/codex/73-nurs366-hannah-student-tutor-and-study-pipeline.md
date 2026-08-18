@@ -1,20 +1,25 @@
 # CODEX 73 — NURS-366 Student Tutor + Clinical Evaluator Study Pipeline
 
-**Status:** 🟡 draft for discussion — not yet built
+**Status:** 🟢 unblocked, building — Ruthie answered the open questions in §7 on 2026-08-18
 **Owner:** Sean / Claude Code
-**Date:** 2026-08-17
+**Date:** 2026-08-17 (updated 2026-08-18)
 **Trigger:** Ruthie sent her real NURS-366 (Advanced Cardiopulmonary) D2L course and asked for it to become a Digital Worker — a student tutor (Hannah) tied to the clinical evaluator the teacher sees — while her team's AACN Faculty Scholars grant proposal (submitted; IRB submitted, no signal until after semester start) runs a pilot study on whether this approach lifts clinical competency outcomes.
 
-**This is not a demo scoping exercise.** NURS-366 is the actual intervention course in an actual (if outcome-pending) IRB study, per Sean's confirmation. Build accordingly — real data discipline from day one, even while some pieces (IRB determination, final consent language) are still pending.
+**This is not a demo scoping exercise.** NURS-366 is the real course being taught this term. Per Ruthie's 2026-08-18 answers (§7), it is **not yet the funded research arm-comparison study** — this term it's a test site for the tool and the process/research-survey design. The actual quasi-experimental study (if the grant is approved) can't start before Spring 2027. See §1 for what that changes.
 
 ---
 
 ## 1. What the study actually needs (grounding, not invention)
 
-Per `docs/AACN-Faculty-Scholars-Proposal-Skeleton.md` (submitted; treat as directional, not locked — outcome pending):
+**Timeline reality, per Ruthie directly (2026-08-18):** NURS-366 this term is a **test site for the tool and the research process/surveys** — not the funded arm-comparison study itself.
+- If the AACN grant is approved (awardees announced November 2026), the actual quasi-experimental research module cannot start before **Spring 2027**, and IRB submission for that study can't go in until after grant approval.
+- If the grant is **not** approved, Ruthie's fallback is a research paper drawn from NURS-366 data directly, needing consent from her Department Chair and likely the students (a consent blurb) — she's still confirming the exact shape with a colleague (Jackie).
+- **What this means for the build:** nothing this term needs to satisfy full active-study data-handling requirements (§6's export/consent-event design is still worth building since it's cheap and correct, but it is not gating anything live right now). The real near-term job is: make the tutor genuinely good against NURS-366's real content, with no research-data pressure yet.
+
+Per `docs/AACN-Faculty-Scholars-Proposal-Skeleton.md` (submitted; treat as directional, not locked — outcome pending), for **if/when the Spring 2027 study happens:**
 
 - **Design:** quasi-experimental, cohort-assigned (not individually randomized), intervention vs. comparison arm.
-- **Arm assignment mechanism (Sean, 2026-08-17):** intervention-arm students get a real SOCIII sign-in for the course; comparison-arm students get none and continue the traditional course. This is the actual arm-separation control — no separate "arm flag" field needed anywhere; access to Hannah's student mode is the treatment, and the absence of an account is the control. Simple and enforceable at the account-provisioning level. Sean flagged this as "I think — open to a better methodology," so treat it as the working plan, revisit if a cleaner approach surfaces.
+- **Arm assignment mechanism (Sean, 2026-08-17):** intervention-arm students get a real SOCIII sign-in for the course; comparison-arm students get none and continue the traditional course. This is the actual arm-separation control — no separate "arm flag" field needed anywhere; access to Hannah's student mode is the treatment, and the absence of an account is the control. Simple and enforceable at the account-provisioning level. Sean flagged this as "I think — open to a better methodology," so treat it as the working plan, revisit if a cleaner approach surfaces. **Not active this term** — see timeline above.
 - **Primary outcome:** average clinical competency rating (1–5, faculty-scored) per student at study end.
 - **Secondary outcomes:** clinical hours documented, faculty evaluation completion rate, assessment score percentile.
 - **Required procedural step:** "Students formally enrolled in the research arm via a platform consent event (recorded as an immutable logbook entry before any outcome data is collected)." This is a real feature, not paperwork — a consent-capture step that writes an append-only record, gating everything downstream.
@@ -36,9 +41,13 @@ Per `docs/AACN-Faculty-Scholars-Proposal-Skeleton.md` (submitted; treat as direc
 
 **Hannah is hardcoded faculty-only.** Her system prompt (`index.js:3511-3554`) states outright: *"The user in front of you is an instructor or program director, not a student."* The student demo route just swaps the greeting text; the backend persona doesn't change. Building a real student-tutor mode is genuinely new work, not wiring together two things that already exist.
 
-**Hannah's cohort data is the same fake-baseline-vs-real-tools bug already fixed in aviation this session.** Lines 3523-3536 hardcode 8 named students with fake GPAs and a fake "REFLECTIONS INBOX" directly into the prompt, even though `get_nursing_cohort`/`get_nursing_student` are real tools that query real Firestore. The static block primes the model with specific fabricated names/numbers before any tool call — same pattern, same fix as MX Tracker: strip the hardcoded roster, let the tools be the only source of cohort data.
+**Hannah's cohort data is the same fake-baseline-vs-real-tools bug already fixed in aviation this session.** ~~Lines 3523-3536 hardcode 8 named students with fake GPAs and a fake "REFLECTIONS INBOX" directly into the prompt~~ **Fixed 2026-08-18** — the hardcoded roster/inbox is stripped from `nursing-education-001`'s systemPrompt; verified live that Hannah now cites real students from `get_nursing_cohort` (Jordan Chen, Marcus Webb, Noah Ferreira — real Firestore records) instead of the fabricated Sarah K./Maya L./James C. roster.
+
+**Found but NOT fixed (2026-08-18) — a bigger, separate item:** the cohort/reflections/SLO/audit-trail **canvas** (right-panel dashboard, not the chat) is a completely different, much larger fixture — `apps/business/src/data/nursingEducationData.json` (4,685 lines: tenant/courses/slos/reflectionTemplates/sites/instructors/cohorts/students/logbookEntries) rendered by `apps/business/src/sections/NursingEducationPanel.jsx` (978 lines). It still shows the same fake Sarah K./Maya L./James C. roster even after the chat fix above, since it's an entirely separate static data path with no connection to the real `nursingStudents`/`nursingCourses` Firestore collections. This is a real, substantial rebuild (comparable in scope to today's aviation MX/Dispatch work, not a quick fixture swap) — flagging it as its own scoped item rather than attempting it inline. Not yet added to the build order in §8; worth its own pass.
 
 **Hannah doesn't know NURS-366.** Her known-course list is NURS 210/220/230/320/360. Per Sean, NURS-366 is confirmed as the actual intervention course — needs to be added, and its real content ingested via the Studio Locker (same mechanism already proven for `nursing-courses-001`), not hand-authored into a prompt.
+
+**Correction (Ruthie, 2026-08-18):** Hannah's existing 45-SLO framework is **not** for her other courses — it belongs to the Clinical Evaluation Tool (CET) specifically, and the CET is strictly separate from NURS-366's course content ("the CET will be the entry into getting the university to have buy-in to the entire system" — i.e. it's the separate wedge product, not part of this build). NURS-366's real learning framework comes from its syllabus's Course Learning Outcomes (CLOs), not from Hannah's 45-SLO set. Every module in the real course follows the same shape: Learning Outcomes → Lectures → Class PowerPoints → Essential/Optional Video Resources → Supplemental Resources → Assignments. Do not map NURS-366 content onto the CET's SLOs — pull the real CLOs from the syllabus instead.
 
 ## 4. Hard prerequisite: the distress-disclosure protocol is spec'd, not built
 
@@ -66,7 +75,7 @@ Branch Hannah's actual behavior on role (not just the greeting), gated by accoun
 
 **Update (2026-08-17, from Ruthie directly):** Honu is Ruthie's own personal avatar, not a fixed course mascot — "she changes what she's wearing" depending on what's being taught (the flight-nurse costume Sean shared was presumably for a specific unit). If/when the student-mode canvas gets built, consider whether the avatar should shift appearance per module/unit rather than using one fixed image — matches how Ruthie already runs it herself.
 
-**Hold status (2026-08-17):** Ruthie asked to pause anything beyond "building up the shell" — she's actively still authoring NURS-366 (through Module 6 of 16 as of this note) and wants to import her latest content herself before further build work happens against it. She's also without power at home and will respond to Sean's 3 open questions (§7) "this evening." Nothing beyond `platform_distress_v1` (platform-wide, not NURS-366-specific) should proceed until she responds.
+**Hold status: lifted (2026-08-18).** Ruthie answered all of §7's open questions plus two more (assessment instrument, her definition of "good tutoring" — now the actual spec for §E below). She was through Module 6 of 16 as of 2026-08-17; the sandbox has all content for Modules 1-7, Modules 8-16 are hidden pending her revisions to the Assignments section but will mostly follow the same structure. Building proceeds — see §8 for order.
 
 ### B — Real NURS-366 content, not hand-authored curriculum
 
@@ -78,9 +87,21 @@ Ingest NURS-366's actual materials into a Studio Locker scoped to this course (s
 
 What tutor sessions *should* produce: structured, SLO-tagged activity records (what topic, what Tanner phase, self-assessed confidence, timestamp) that become **input evidence** a faculty member reviews when writing their signed evaluation — closing the loop described in `NURSING-LMS-BRIEF.md` §10 (propose → faculty approves + signs → appends to student Vault → anchored) without letting the tutor substitute for the instructor.
 
-### E — What "expand the scope of interactions" concretely means
+### E — What "good tutoring" means for NURS-366 (Ruthie's own words, 2026-08-18 — this is the spec)
 
-Recommend: Socratic-first tutoring modeled on the existing "Morgan" pattern (question the student toward the answer rather than stating it), quiz mode against NURS-366's real respiratory/cardiac/ACLS content, and reflection-writing coaching against the Tanner framework (Noticing → Interpreting → Responding → Reflecting) — Hannah's existing domain expertise, just now actually reachable by a student. This should be discussed further with Ruthie directly — she's the domain expert on what "better tutoring" looks like for this specific course.
+> "Good tutoring in NURS 366 should help students understand and apply critical care concepts rather than memorize information or simply arrive at the correct answer. The tutor should guide students through the why behind what is happening with the patient and help them connect pathophysiology, assessment findings, hemodynamics, labs, medications, and interventions.
+>
+> Because this course focuses heavily on critical care and clinical judgment, tutoring should emphasize recognizing patterns, identifying priorities, anticipating deterioration, and deciding what the nurse should do next. Students should be encouraged to explain their reasoning and work through questions instead of being given answers.
+>
+> Tutoring should also help students identify gaps in foundational knowledge that may be making the more complex concepts difficult. When necessary, the tutor should break concepts down, rebuild that foundation, and then bring the student back to the clinical situation.
+>
+> Ultimately, good tutoring for NURS 366 should help students become more independent thinkers — students who can look at a changing patient situation, recognize what matters, understand why it matters, and determine the safest nursing response."
+
+Concretely, this becomes the student-mode system prompt's core behavior, layered on top of the existing "Morgan" Socratic pattern (question toward the answer, never state it) and the Tanner framework (Noticing → Interpreting → Responding → Reflecting) already used for reflection coaching:
+1. Never give the answer directly — ask the question that gets the student to connect pathophys → assessment → hemodynamics → labs → meds → interventions themselves.
+2. Explicitly train pattern recognition and prioritization — "what matters most right now, and why" — over rote recall.
+3. When a student is stuck, diagnose whether it's a foundational-knowledge gap first; if so, rebuild that piece explicitly before returning to the original clinical scenario, rather than pushing forward on a shaky base.
+4. The end goal stated by name is independent clinical thinking, not correct-answer completion — quiz mode and reflection coaching should both be built to reinforce that, not just to score correctness.
 
 ## 6. Study data-collection design (Sean's data-for-the-study ask)
 
@@ -92,23 +113,28 @@ Every surface above should double as study instrumentation from the start:
 - **The informed-consent event** (§1) as an immutable logbook entry, written before any other data collection for that student — this is a concrete feature to build, not a paperwork afterthought.
 - **Export:** the grant explicitly calls for "platform export at the end of the study period" — whatever we build needs a real export path for the eval/competency/hours data, not just chat-readable answers.
 
-## 7. Open questions for Ruthie specifically (not Sean's or Claude's to invent)
+## 7. Questions for Ruthie — answered 2026-08-18
 
-- Which specific SLOs / ANA Standards map to NURS-366's respiratory, cardiac, and ACLS units? Hannah's existing 45-SLO framework is for her other 5 courses — need the NURS-366 mapping.
-- What does her actual IRB consent form say about data access, session-link-gated review, and the FERPA disclosure CODEX 66 requires? (This should inform, not be invented by, the platform's consent-event feature.)
-- Does she want a pre/post assessment score integrated (the grant's optional research question #3, NCLEX-readiness instrument) — if so, which instrument, and is it something students take on-platform or off-platform and get manually entered?
-- What counts as "engagement" or "better tutoring" to her, concretely — this directly shapes item E.
+- **Q: Which SLOs/ANA Standards map to NURS-366's respiratory, cardiac, and ACLS units?**
+  **A:** Wrong framework entirely — Hannah's 45-SLO set belongs to the CET, not this course. NURS-366 has its own Course Learning Outcomes (CLOs) in the syllabus; use those. See the correction in §3.
+- **Q: What does her IRB consent form say about data access, session review, FERPA disclosure?**
+  **A:** No active study yet, so no consent form exists to match yet. NURS-366 this term is a test site for the tool/process, not the funded study — see the timeline in §1. She's begun the IRB process herself (finishing required training before submission) and is separately emailing Dr. Tanner for permission to use her rubric.
+- **Q: Does she want a pre/post NCLEX-readiness assessment integrated?**
+  **A:** Yes eventually, but she hasn't designed what it would look like yet. Not a near-term build item — revisit once she has a concrete instrument in mind.
+- **Q: What does "good tutoring" mean to her, concretely?**
+  **A:** Answered in full — now the actual spec in §E.
 
-## 8. Suggested build order
+**Also from the same message:** she's reading the UH IRB eProtocol submission process, plans a couple more focused hours on this before pivoting to prep for Thursday's faculty training, and will read this CODEX more thoroughly. She shared a nursing-practice forum link (`nursingpractice.annualforums.com`) without further context — worth asking her directly what she wants us to do with it before assuming.
 
-1. `platform_distress_v1.json` + alert pipeline (§4) — prerequisite, do first, in parallel with everything below.
+## 8. Suggested build order (updated 2026-08-18 — timeline de-risked, no active study yet)
+
+1. `platform_distress_v1.json` + alert pipeline (§4) — still a real prerequisite regardless of study status. Any real student talking to a real tutor needs this live. Do first.
 2. Fix Hannah's hardcoded fake cohort (§3) — small, contained, same fix already proven in aviation.
-3. Add NURS-366 to Hannah's known courses; ingest real course content into her locker (§B).
-4. Build the consent-event feature (§6) — gates all downstream data collection for a given student.
-5. Build student-tutor role branching (§A) behind the sign-in-gated arm model (§1).
-6. Wire structured, SLO-tagged activity logging from tutor sessions as evidence for faculty evaluation (§D) — not self-signed.
-7. Export path for study outcome data (§6).
-8. Discuss §E and the open questions in §7 directly with Ruthie before finalizing tutor style/scope.
+3. Add NURS-366 to Hannah's known courses; ingest real Module 1-7 content from the sandbox into her locker (§B), pulling real CLOs per module (not the CET's SLOs — §3 correction).
+4. Build student-tutor role branching (§A) with the tutoring philosophy in §E as the actual system-prompt spec — this is the real near-term deliverable now that the research-arm timeline has moved to Spring 2027 at the earliest.
+5. Wire structured, activity logging from tutor sessions as evidence for faculty evaluation (§D) — not self-signed. Useful regardless of study status.
+6. Consent-event feature (§6) and export path — still worth building since it's cheap and correct, but not gating anything this term. Lower urgency than 1-5 above.
+7. Revisit §7's still-open items (pre/post assessment instrument, the forum link) with Ruthie once she has more to share.
 
 ---
 
