@@ -174,16 +174,17 @@ export default function Accounting() {
     <div>
       {/* Top bar */}
       <div className="pageHeader" style={{ alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, rowGap: 6, flexWrap: "wrap" }}>
           <h1 className="h1" style={{ margin: 0 }}>Accounting</h1>
           <span
             title="Active workspace — accounting data is isolated per workspace"
             style={{
               padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600,
               background: "#ede9fe", color: "#6d28d9", display: "inline-flex", alignItems: "center", gap: 6,
+              whiteSpace: "nowrap",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
             {workspaceLabel()}
           </span>
         </div>
