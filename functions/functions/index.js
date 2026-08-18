@@ -4336,6 +4336,27 @@ IDENTITY RULES:
                 }
               }
 
+              // ── Vet CE & License Tracker (real staff credential data) ──
+              // vet-ce-license-001 is a creator-published worker with no
+              // hardcoded record at all (unlike pet-health-client, it never
+              // had fabricated data) — but the real staff_credentials it
+              // should read from had its own bug: days_remaining/status were
+              // frozen at seed time, not recomputed on read (Dr. Chen's DEA
+              // registration still showed "expiring_soon" weeks after it had
+              // actually lapsed). Fixed in credentialTracker.js; this worker
+              // is the first to read that corrected, live-recomputed data.
+              if (workerPrompt && authUser && workerSlug === "vet-ce-license-001") {
+                try {
+                  const licScopeId = reqTenantId || authUser.uid;
+                  const credSnap = await db.collection("staff_credentials").where("tenantId", "==", licScopeId).get();
+                  const { recomputeStaffCredentials } = require("./services/staffCredentials/credentialTracker");
+                  const staff = recomputeStaffCredentials(credSnap.docs.map(d => d.data()));
+                  workerPrompt += `\n\nLIVE STAFF CREDENTIAL RECORDS (computed just now from real Firestore records, status/days_remaining freshly recomputed against today's date — cite directly, do not invent a name, license number, or date):\n${JSON.stringify(staff, null, 2)}\n\nIf the list above is empty, no credential records are on file for this workspace yet — say so plainly and offer to help add one, rather than inventing data.`;
+                } catch (licErr) {
+                  console.warn("worker chat: vet CE license live data injection failed (non-blocking):", licErr.message);
+                }
+              }
+
               // Inject subscriber name into worker prompt (44.2 — Bug 3a: prevent name hallucination)
               const _isDemoTenant = reqTenantId && reqTenantId.startsWith("demo-");
               if (authUser && workerPrompt && !_isDemoTenant) {
@@ -25532,7 +25553,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           db.collection("training_completions").where("tenantId", "==", ctx.tenantId).get(),
           db.collection("credential_reminders").where("tenantId", "==", ctx.tenantId).get(),
         ]);
-        const staff = credSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const { recomputeStaffCredentials } = require("./services/staffCredentials/credentialTracker");
+        const staff = recomputeStaffCredentials(credSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         const training = trainSnap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => String(b.completion_date || "").localeCompare(String(a.completion_date || "")));
         const reminders = remSnap.docs.map(d => ({ id: d.id, ...d.data() }))

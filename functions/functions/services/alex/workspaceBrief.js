@@ -98,8 +98,9 @@ async function buildWorkspaceBrief({ uid, tenantId }) {
       // credentials[] array, not a flat status. Walk the array for overdue /
       // expiring_soon items (the same data the HR + Credentials canvases show).
       const snap = await db().collection("staff_credentials").where("tenantId", "==", tenantId).get();
+      const { recomputeStaffCredentials } = require("../staffCredentials/credentialTracker");
       const flagged = [];
-      snap.docs.map((d) => d.data()).forEach((s) => {
+      recomputeStaffCredentials(snap.docs.map((d) => d.data())).forEach((s) => {
         (s.credentials || []).forEach((c) => {
           if (c.status === "overdue" || c.status === "expiring_soon") {
             flagged.push({ name: s.full_name || s.staff_id, role: s.role, cred: c.credential_name, status: c.status, days: c.days_remaining });
