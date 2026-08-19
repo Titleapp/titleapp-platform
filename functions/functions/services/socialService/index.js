@@ -9,6 +9,7 @@ function getDb() { return admin.firestore(); }
 const X_ALIASES = new Set(["x", "twitter", "twitter/x", "x (twitter)"]);
 const YT_ALIASES = new Set(["youtube", "youtube (google)", "google/youtube"]);
 const TT_ALIASES = new Set(["tiktok", "tik tok"]);
+const LI_ALIASES = new Set(["linkedin", "linked in"]);
 
 // Generate a short-lived signed public URL for a Storage object so TikTok
 // can pull the video from an HTTPS URL without Firebase auth.
@@ -72,6 +73,10 @@ async function postToPlatforms(userId, { content, platforms, title, mediaStorage
           });
           platformResults[platform] = { ok: r.ok, id: r.publishId || null, url: r.url || null };
         }
+      } else if (LI_ALIASES.has(p)) {
+        const { postToLinkedIn } = require("../social/linkedin");
+        const r = await postToLinkedIn(userId, { text: content });
+        platformResults[platform] = { ok: r.ok, id: r.postId || null, url: r.url || null };
       } else {
         platformResults[platform] = { ok: false, error: `${platform} posting is not yet available — connect it in Settings` };
       }

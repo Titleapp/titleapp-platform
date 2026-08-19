@@ -146,7 +146,7 @@ function detectCrossWorkerIntent(message, activeWorkerSlug) {
   const lc = message.toLowerCase();
   const rules = [
     {
-      slug: "platform-marketing-content",
+      slug: "platform-marketing",
       name: "Marketing & Content",
       triggers: [
         /\blinkedin\b/, /\btwitter\b/, /\bx\.com\b/,
@@ -228,14 +228,14 @@ function augmentPromptWithChatContext(prompt, body) {
 RAAS ISOLATION (PLATFORM INVARIANT) — You are operating strictly inside the RAAS (Rules + AI-as-a-Service) context of: ${activeWorker}. The system-prompt content above this block IS this worker's RAAS tier 0–3 constraint set. Do not invoke capabilities, field names, workflows, or compliance rules from other workers, even if the user mentions them.
 
 CROSS-WORKER ROUTING (HARD RULE) — This applies ONLY to the specific spine-worker domains listed in the map below. If the user's request is within YOUR OWN domain as the active worker, or is anything NOT clearly one of the domains in the map below, ANSWER IT DIRECTLY and fully — never deflect your own work, and never invent or name a target worker that is not in this map. ONLY when the request clearly belongs to a DIFFERENT worker that is explicitly listed below do you refuse to produce it yourself: say one sentence — "That belongs to <correct worker> — want me to switch you over?" — and STOP. Do not ask clarifying questions about the cross-domain task. Do not begin drafting. The routing map:
-  • LinkedIn posts, X/Twitter posts, blog posts, social posts, email campaigns, press releases, newsletters, landing copy, ad copy, brand voice, content drafts → Marketing & Content worker — slug: platform-marketing-content
+  • LinkedIn posts, X/Twitter posts, blog posts, social posts, email campaigns, press releases, newsletters, landing copy, ad copy, brand voice, content drafts → Marketing & Content worker — slug: platform-marketing
   • Burn rate, P&L, runway, transactions, expenses, invoices, bills, chart of accounts, reconciliation, tax → Accounting worker — slug: platform-accounting
   • Contacts, leads, prospects, segments, contact import, Apollo, CRM list → Contacts worker — slug: platform-contacts
   • Hiring, payroll, scheduling, time off, employee records, roster, coverage → HR & People worker — slug: platform-hr
 
 EXECUTING THE SWITCH (HARD RULE) — When the user agrees to switch ("yes", "switch me", "go ahead", "do it", "ok", "yep", "sure", "please"), you MUST emit the marker [[SWITCH_WORKER:<slug>]] on its own line in your response, using the exact slug from the routing map above. The frontend detects this marker and performs the actual UI switch. Do not describe the switch ("Switching you now…", "In a live deployment this would…"). Do not write a paragraph. Your full response in this case is one short sentence plus the marker, e.g.:
 "Switching you to Marketing & Content now.
-[[SWITCH_WORKER:platform-marketing-content]]"
+[[SWITCH_WORKER:platform-marketing]]"
 After emitting the marker, STOP. Do not continue drafting the cross-worker output.
 
 The ONLY exception to refusing cross-worker work: if the active worker is a Chief-of-Staff worker (Alex, slug contains "chief-of-staff" or equals "alex"), you MAY delegate by emitting the same SWITCH_WORKER marker, but you still do not produce the cross-domain output yourself.
@@ -31380,6 +31380,121 @@ Analyze now:`;
         }
       } catch (e) {
         console.error("youtube action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // TIKTOK — per-user OAuth2+PKCE connect + video publish. Tokens at
+    // users/{uid}/integrations/tiktok. The handler logic in
+    // services/social/tiktok.js already existed but was never wired to a
+    // route — Settings.jsx's "Connect" button called these exact paths
+    // and 404'd. Wiring only; no new credentials needed (TIKTOK_CLIENT_KEY/
+    // SECRET already configured).
+    // ----------------------------
+    if (route && route.startsWith("/tiktok:")) {
+      const ttAction = route.replace("/tiktok:", "");
+      try {
+        const tt = require("./services/social/tiktok");
+        switch (ttAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await tt.handleTikTokAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await tt.handleTikTokExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await tt.handleTikTokStatus(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await tt.handleTikTokDisconnect(req, res, { userId: auth.user.uid });
+        }
+        default:
+          return jsonError(res, 404, "Unknown tiktok action: " + ttAction);
+        }
+      } catch (e) {
+        console.error("tiktok action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // X (TWITTER) — per-user OAuth2+PKCE connect + post-as-user. Separate
+    // from the platform @SOCIIIai OAuth 1.0a poster in services/social/x.js.
+    // Tokens at users/{uid}/integrations/twitter. Same unwired-route bug as
+    // TikTok above — Settings.jsx's XRow already calls these exact paths.
+    // Needs X_OAUTH2_CLIENT_ID/SECRET (a separate X Developer app registration)
+    // before it actually connects; until then it fails with a clear
+    // "not configured" message instead of a silent 404.
+    // ----------------------------
+    if (route && route.startsWith("/x:")) {
+      const xAction = route.replace("/x:", "");
+      try {
+        const xu = require("./services/social/xUserAuth");
+        switch (xAction) {
+        case "userAuthUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await xu.handleXAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "userExchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await xu.handleXExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "userStatus": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await xu.handleXStatus(req, res, { userId: auth.user.uid });
+        }
+        case "userDisconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await xu.handleXDisconnect(req, res, { userId: auth.user.uid });
+        }
+        default:
+          return jsonError(res, 404, "Unknown x action: " + xAction);
+        }
+      } catch (e) {
+        console.error("x action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // LINKEDIN — per-user OAuth2 connect + post-to-own-feed. Tokens at
+    // users/{uid}/integrations/linkedin. Needs LINKEDIN_CLIENT_ID/SECRET
+    // (a LinkedIn Developer app) before it connects; until then it fails
+    // with a clear "not configured" message. Posts to the member's own
+    // feed only — Company Page posting needs LinkedIn's gated Community
+    // Management API and isn't implemented (see services/social/linkedin.js).
+    // ----------------------------
+    if (route && route.startsWith("/linkedin:")) {
+      const liAction = route.replace("/linkedin:", "");
+      try {
+        const li = require("./services/social/linkedin");
+        switch (liAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await li.handleLinkedInAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await li.handleLinkedInExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await li.handleLinkedInStatus(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await li.handleLinkedInDisconnect(req, res, { userId: auth.user.uid });
+        }
+        default:
+          return jsonError(res, 404, "Unknown linkedin action: " + liAction);
+        }
+      } catch (e) {
+        console.error("linkedin action failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

@@ -204,6 +204,60 @@ function TikTokRow() {
   );
 }
 
+function LinkedInRow() {
+  const [status, setStatus] = useState({ loading: true, connected: false, name: null });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const refresh = useCallback(async () => {
+    try { const r = await _socialFetch("/v1/linkedin:status"); setStatus({ loading: false, connected: !!r.connected, name: r.name || null }); }
+    catch { setStatus({ loading: false, connected: false, name: null }); }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await _socialFetch("/v1/linkedin:authUrl");
+      if (!r.authUrl) throw new Error("Could not start LinkedIn connection");
+      const popup = window.open(r.authUrl, "linkedin-auth", "width=600,height=700");
+      if (!popup) throw new Error("Popup blocked — allow popups for this site.");
+      const code = await new Promise((resolve, reject) => {
+        let done = false;
+        const h = (e) => { if (!e.data || e.data.type !== "linkedin-auth-code" || !e.data.code) return; window.removeEventListener("message", h); done = true; resolve(e.data.code); };
+        window.addEventListener("message", h);
+        const t = setInterval(() => { try { if (popup.closed) { clearInterval(t); if (!done) { window.removeEventListener("message", h); reject(new Error("Cancelled.")); } } } catch { /* ignore closed-window race */ } }, 500);
+      });
+      await _socialFetch("/v1/linkedin:exchangeCode", "POST", { code });
+      await refresh();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect LinkedIn?")) return;
+    setBusy(true);
+    try { await _socialFetch("/v1/linkedin:disconnect", "POST"); await refresh(); } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <BrandIcon name="linkedin" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>LinkedIn</div>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+            {status.loading ? "Checking…" : status.connected ? `Connected: ${status.name || "your LinkedIn account"}. Alex can post to your own feed.` : "Connect your LinkedIn account so Alex can post to your feed."}
+          </div>
+          {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+        </div>
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "…" : "Disconnect"}</button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{busy ? "Connecting…" : "Connect"}</button>
+      )}
+    </div>
+  );
+}
+
 function XRow() {
   const [status, setStatus] = useState({ loading: true, connected: false, handle: null });
   const [busy, setBusy] = useState(false);
@@ -1852,7 +1906,7 @@ function BusinessSettings() {
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <IntRow icon="instagram" name="Instagram" desc="Publish photos and reels to your Instagram account" badge="Coming Soon" />
-          <IntRow icon="linkedin" name="LinkedIn" desc="Publish posts and articles to your company page" badge="Coming Soon" />
+          <LinkedInRow />
           <TikTokRow />
           <XRow />
           <YouTubeRow />
