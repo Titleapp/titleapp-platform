@@ -323,15 +323,33 @@ async function getLockerContext(tenantId, workerId) {
       .where("deletedAt", "==", null)
       .orderBy("createdAt", "asc")
       .get();
+    // CODEX S52.57/S52.48 addendum (2026-08-20): the per-document clamp() already
+    // warns in-band when a single doc is cut at MAX_CHARS_PER_DOC. This total-cap
+    // path had no equivalent — documents were silently dropped once MAX_CHARS_INJECTION
+    // was hit, and since docs are walked oldest-first, it was always the newest
+    // uploads that went missing with no signal anywhere. Track and disclose them.
+    const omittedNames = [];
     snap.forEach(d => {
       const text = d.data().text || "";
-      if (text && total < MAX_CHARS_INJECTION) {
+      if (!text) return;
+      if (total < MAX_CHARS_INJECTION) {
         const name = d.data().name || "Document";
         const chunk = `## ${name}\n${text}`;
         parts.push(chunk);
         total += chunk.length;
+      } else {
+        omittedNames.push(d.data().name || "Untitled document");
       }
     });
+    if (omittedNames.length) {
+      parts.push(
+        `## Note: Additional Documents Not Shown\n` +
+        `${omittedNames.length} more document(s) in this workspace's locker were not included above ` +
+        `(total content budget reached): ${omittedNames.join(", ")}. ` +
+        `Tell the user their most recently uploaded documents may be omitted from this conversation's context ` +
+        `and ask them to remove older/less-relevant documents if these are needed.`
+      );
+    }
     return parts.length ? parts.join("\n\n") : null;
   } catch {
     return null;

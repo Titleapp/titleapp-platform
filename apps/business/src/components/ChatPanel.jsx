@@ -403,6 +403,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
   const prevMsgLen = useRef(0);
+  // Tracks whether the user is currently scrolled away from the bottom, so
+  // the streaming auto-scroll below (line ~1098) doesn't yank them back down
+  // mid-read (Elise, 2026-08-19 — reported as "impossible to scroll up").
+  const userScrolledAwayRef = useRef(false);
   const [activeWorkerName, setActiveWorkerName] = useState(null);
   const [activeWorkerSlug, setActiveWorkerSlug] = useState(null);
 
@@ -545,8 +549,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         setTimeout(() => {
           if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
         }, 100);
+        return;
       }
-      // Other workers: opener fires from workerReady useEffect below
+
+      // Every other worker: actually resume this worker's real history
+      // (Elise, 2026-08-19 — history is stored per-worker sessionId and was
+      // never lost, but switching workers never called this, so it always
+      // looked empty). The opener effect below still runs on top of
+      // whatever loads here — "Back to it." for a return visit, a fresh
+      // greeting for a first one — same as it already does after a reload.
+      loadConversationHistory();
     }
     window.addEventListener('ta:select-worker', handleWorkerSelect);
     return () => window.removeEventListener('ta:select-worker', handleWorkerSelect);
@@ -1064,6 +1076,19 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
   }, [onboardingStep, currentSection]);
 
+  // Track whether the user has manually scrolled away from the bottom, so the
+  // streaming-update branch below can skip forcing scrollTop back down.
+  useEffect(() => {
+    const el = conversationRef.current;
+    if (!el) return;
+    function onScroll() {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      userScrolledAwayRef.current = distanceFromBottom > 80;
+    }
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     if (!conversationRef.current) return;
     const lastMsg = messages[messages.length - 1];
@@ -1085,8 +1110,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         if (last) last.scrollIntoView({ behavior: "smooth", block: "start" });
         else conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
       });
-    } else {
-      // User message sent or streaming update — scroll to bottom to track live output
+    } else if (isNewMsg && lastMsg?.role === 'user') {
+      // User just sent a message — always jump to bottom, this is their own action.
+      conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+    } else if (!userScrolledAwayRef.current) {
+      // Streaming update to the in-progress message — only follow it to the
+      // bottom if the user hasn't deliberately scrolled up to read something
+      // else; otherwise this fights every manual scroll during a response.
       conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
     }
   }, [messages, isTyping, showDisclaimer]);
@@ -1119,6 +1149,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   async function loadConversationHistory() {
     try {
+      // Live read, not the closed-over `currentUser` — this function is called
+      // from handleWorkerSelect's ta:select-worker listener, whose closure can
+      // be stale/null from an early mount before auth resolved (2026-08-19,
+      // Elise/spot-check: this crashed with "Cannot read properties of null
+      // (reading 'uid')" on every worker switch in every vertical, so history
+      // never loaded — same class of bug as the earlier workspaceRole race).
+      const liveUser = getAuth().currentUser;
+      if (!liveUser) return;
+
       const platformSid = sessionStorage.getItem('ta_platform_sid');
       const localSid = localStorage.getItem('ta_chat_session_id');
 
@@ -1130,7 +1169,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
       const constraints = [
-        where('userId', '==', currentUser.uid),
+        where('userId', '==', liveUser.uid),
         ...(tenantIdFilter ? [where('tenantId', '==', tenantIdFilter)] : []),
         orderBy('createdAt', 'asc'),
         limit(50),
@@ -1157,6 +1196,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           loadedMessages.push({ role: 'assistant', content: evt.response });
           const url = evt.structuredData?.imageUrl;
           if (url) lastImagePayload = { imageUrl: url, prompt: evt.structuredData?.imagePrompt || '', title: 'Generated Image' };
+        } else if (evt.type === 'chat:message:worker' || evt.type === 'chat:message:worker:stream') {
+          // Worker chat turns are audit-logged as one combined record (message +
+          // response together), not the received/responded pair above — same
+          // 2026-08-19 fix. Split back into the two chat bubbles.
+          if (evt.message) loadedMessages.push({ role: 'user', content: evt.message });
+          if (evt.response) loadedMessages.push({ role: 'assistant', content: evt.response });
         }
       });
       if (platformSid && loadedMessages.length > 0) {

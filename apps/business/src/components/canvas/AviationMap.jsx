@@ -294,9 +294,13 @@ export default function AviationMap({
         zoomControl={!compact}
         attributionControl={false}
       >
-        {/* Dark Matter tiles — dark ocean, aviation-readable */}
+        {/* Voyager tiles — day/VFR-style: light terrain, water, and geographic
+            labels (cities, coastlines, roads) instead of the near-blank dark
+            basemap. Overlay colors (airspace, METAR, traffic) already match
+            real FAA sectional conventions (blue=B, magenta=C, indigo=D) and
+            read fine on a light base — no overlay color changes needed. */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution="&copy; OpenStreetMap contributors &copy; CARTO"
           subdomains="abcd"
           maxZoom={19}

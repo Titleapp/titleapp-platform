@@ -133,7 +133,7 @@ export default function FlightPlanningCard({ resolved = {}, context = {}, onDism
   return (
     <CanvasCardShell
       title={title}
-      emptyPrompt={resolved?.emptyPrompt || "Ask Alex to plan a flight to see the route and brief here."}
+      emptyPrompt={resolved?.emptyPrompt || "Ask Skye to plan a flight to see the route and brief here."}
       onDismiss={onDismiss}
     >
       {hasContent && (

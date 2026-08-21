@@ -9,7 +9,7 @@ import CanvasPanel from "../canvas/CanvasPanel";
 import CanvasTabBar from "../canvas/CanvasTabBar";
 import WorkerCanvas from "../canvas/WorkerCanvas";
 import { isREWorker } from "../canvas/RealEstateWorkerCanvas";
-import { getLiveDataForTab } from "../canvas/liveData";
+import { getLiveDataForTabWithTimeout } from "../canvas/liveData";
 import { getFixtureForTab } from "../canvas/sampleData";
 import { isDiscoveryCanvas } from "../../config/canvasTypes";
 import BetaNotice from "../BetaNotice";
@@ -715,7 +715,7 @@ export default function RightPanel() {
               // App.jsx handleTabSelect so both render paths behave the same.
               const w = workerState?.activeWorkerData || panel.activeWorkerData;
               let payload = null;
-              try { payload = await getLiveDataForTab(w, _tab.id); } catch { /* ignore */ }
+              try { payload = await getLiveDataForTabWithTimeout(w, _tab.id); } catch { /* ignore — timeout or fetch error, fall through to fixture */ }
               if (!payload) payload = getFixtureForTab(w, _tab.id);
               panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
             }}
@@ -766,7 +766,7 @@ export default function RightPanel() {
               // App.jsx handleTabSelect so both render paths behave the same.
               const w = workerState?.activeWorkerData || panel.activeWorkerData;
               let payload = null;
-              try { payload = await getLiveDataForTab(w, _tab.id); } catch { /* ignore */ }
+              try { payload = await getLiveDataForTabWithTimeout(w, _tab.id); } catch { /* ignore — timeout or fetch error, fall through to fixture */ }
               if (!payload) payload = getFixtureForTab(w, _tab.id);
               panel.showCanvas(resolved, { worker: w, ...(payload ? { payload } : {}) });
             }}

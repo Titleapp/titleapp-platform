@@ -19,7 +19,7 @@ export default function AviationFleetMapCard({ context, onDismiss }) {
   return (
     <CanvasCardShell
       title="Fleet Map"
-      emptyPrompt="Ask Alex to show fleet positions and the live map loads here."
+      emptyPrompt="Ask Skye to show fleet positions and the live map loads here."
       onDismiss={onDismiss}
     >
       <AviationMap

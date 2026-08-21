@@ -1,6 +1,15 @@
 // services/re/advocate.js — Real Estate Advocate: CMA, deep property dive, disclosure package.
 // All ATTOM calls use the shared attomGet pattern from liveLookup.js.
-// Fallback chain: ATTOM (recorded data) → Realtor.com MLS (listings) → county assessor guidance.
+// Fallback chain: LOCAL propertyCache (same DB the title vertical reads/writes)
+// → ATTOM (recorded data) → Realtor.com MLS (listings) → county assessor guidance.
+// ATTOM is a live supplement, not a hard dependency — cached/seeded properties
+// (see scripts/bulkPullPropertyCache.js) serve CMA and deep-dive requests with
+// zero live API calls.
+
+const admin = require("firebase-admin");
+const { normalizeAddressKey } = require("./liveLookup");
+
+function getDb() { return admin.firestore(); }
 
 const ATTOM_BASE = "https://api.gateway.attomdata.com/propertyapi/v1.0.0";
 
@@ -28,12 +37,106 @@ function median(arr) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// ─── local propertyCache fallback (title's DB, reused here) ─────────────────
+
+async function _getCachedProperty(address) {
+  const key = normalizeAddressKey(address);
+  const snap = await getDb().collection("propertyCache").doc(key).get();
+  return snap.exists ? { key, ...snap.data() } : null;
+}
+
+// Comparable sales sourced from other cached/seeded properties in the same
+// state — not a live radius search, but real structured data (not fabricated
+// on the spot). Prefers same demoCategory (sfr/multifamily/office/etc.) when
+// enough matches exist, falls back to any same-state property otherwise.
+async function _findCachedComps(state, excludeKey, demoCategory, limit = 10) {
+  if (!state) return [];
+  const snap = await getDb().collection("propertyCache").where("attom.state", "==", state).limit(40).get();
+  const all = snap.docs.filter((d) => d.id !== excludeKey).map((d) => d.data());
+  const sameCategory = demoCategory ? all.filter((d) => d.demoCategory === demoCategory) : [];
+  return (sameCategory.length >= 3 ? sameCategory : all).slice(0, limit);
+}
+
+function _cmaFromCache(cached, address) {
+  const a = cached.attom || {};
+  const subject = {
+    address: a.address || address,
+    beds: null,
+    baths: null,
+    sqft: a.bldgSqft || null,
+    yearBuilt: a.yearBuilt || null,
+    lastSalePrice: a.lastSaleAmt || null,
+    lastSaleDate: a.lastSaleDate || null,
+  };
+  return { subject, state: a.state || null, demoCategory: cached.demoCategory || null };
+}
+
+async function _runCmaFromCache(cached, address) {
+  const { subject, state, demoCategory } = _cmaFromCache(cached, address);
+  const compDocs = await _findCachedComps(state, cached.key, demoCategory).catch(() => []);
+  const comps = compDocs
+    .map((d) => {
+      const c = d.attom || {};
+      const saleAmt = c.lastSaleAmt || null;
+      const sqft = c.bldgSqft || null;
+      return {
+        address: c.address || null,
+        beds: null,
+        baths: null,
+        sqft: sqft ? Number(sqft) : null,
+        salePrice: saleAmt ? Number(saleAmt) : null,
+        saleDate: c.lastSaleDate || null,
+        pricePerSqft: saleAmt && sqft ? Math.round(Number(saleAmt) / Number(sqft)) : null,
+        daysOnMarket: null,
+        listSaleRatio: null,
+      };
+    })
+    .filter((c) => c.salePrice);
+
+  const salePrices = comps.map((c) => c.salePrice);
+  const pricePerSqfts = comps.filter((c) => c.pricePerSqft).map((c) => c.pricePerSqft);
+  const medianPrice = median(salePrices);
+  const medianPpsf = median(pricePerSqfts);
+
+  const estimate = medianPrice ? {
+    low: money(Math.round(medianPrice * 0.93)),
+    mid: money(Math.round(medianPrice)),
+    high: money(Math.round(medianPrice * 1.07)),
+    confidence: comps.length >= 5 ? "high" : comps.length >= 3 ? "medium" : "low",
+    methodology: "Local property database comparable sales — no live ATTOM connection",
+  } : null;
+
+  const warning = comps.length < 3
+    ? `Only ${comps.length} comp${comps.length === 1 ? "" : "s"} found in the local property database for this state. This is offline/cached data, not a live radius search — treat the estimate as directional.`
+    : `Comparable sales are drawn from the local property database (offline), not a live 0.5mi radius search — treat as directional.`;
+
+  return {
+    ok: true,
+    subject,
+    comps,
+    marketMetrics: {
+      medianSalePrice: medianPrice ? money(medianPrice) : null,
+      medianPricePerSqft: medianPpsf ? money(medianPpsf) + "/sqft" : null,
+      avgDaysOnMarket: null,
+      avgListSaleRatio: null,
+      compsUsed: comps.length,
+    },
+    estimate,
+    warning,
+    fromCache: true,
+  };
+}
+
 // ─── runCMA ──────────────────────────────────────────────────────────────────
 
 async function runCMA(address, apiKey, rapidApiKey) {
-  if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
   const parsed = splitAddress(address);
   if (!parsed) return { ok: false, error: 'Use "street, city, ST" — e.g. "1234 Oak St, Oakland, CA".' };
+
+  const cached = await _getCachedProperty(address).catch(() => null);
+  if (cached && cached.attom) return _runCmaFromCache(cached, address);
+
+  if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
 
   const [detailRes, compsRes] = await Promise.all([
     attomGet("/property/detail", parsed, apiKey),
@@ -177,10 +280,51 @@ async function runCMA(address, apiKey, rapidApiKey) {
 
 // ─── getPropertyDeep ─────────────────────────────────────────────────────────
 
+function _propertyDeepFromCache(cached, address) {
+  const a = cached.attom || {};
+  return {
+    ok: true,
+    address: a.address || address,
+    apn: a.apn || null,
+    beds: null,
+    baths: null,
+    sqft: a.bldgSqft || null,
+    yearBuilt: a.yearBuilt || null,
+    propType: a.propType || null,
+    lotSizeAcres: a.lotSizeAcres || null,
+    zoning: a.zoning || null,
+    schoolDistrict: null,
+    floodZone: null,
+    ownerHistory: (a.salesHistory || []).map((s) => ({
+      date: s.date || null,
+      price: s.amount != null ? money(s.amount) : null,
+      seller: s.grantor || null,
+      buyer: s.grantee || null,
+    })),
+    assessHistory: a.assessedTotal ? [{
+      year: a.taxYear || null,
+      totalAssessed: money(a.assessedTotal),
+      landAssessed: null,
+      improvAssessed: null,
+    }] : [],
+    avmEstimate: a.marketTotal ? {
+      value: money(a.marketTotal), low: null, high: null, confidence: null, calculatedDate: null,
+    } : null,
+    liensCount: 0,
+    county: a.county || null,
+    state: a.state || null,
+    fromCache: true,
+  };
+}
+
 async function getPropertyDeep(address, apiKey, rapidApiKey) {
-  if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
   const parsed = splitAddress(address);
   if (!parsed) return { ok: false, error: 'Use "street, city, ST" — e.g. "1234 Oak St, Oakland, CA".' };
+
+  const cached = await _getCachedProperty(address).catch(() => null);
+  if (cached && cached.attom) return _propertyDeepFromCache(cached, address);
+
+  if (!apiKey) return { ok: false, error: "ATTOM key not configured" };
 
   const [detailRes, salesRes, assessRes, avmRes] = await Promise.all([
     attomGet("/property/detail", parsed, apiKey),

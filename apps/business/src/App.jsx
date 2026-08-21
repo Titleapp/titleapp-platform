@@ -116,21 +116,7 @@ import { useRightPanel } from "./context/RightPanelContext";
 import CanvasPanel from "./components/canvas/CanvasPanel";
 import CanvasTabBar from "./components/canvas/CanvasTabBar";
 import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas/sampleData";
-import { getLiveDataForTab } from "./components/canvas/liveData";
-
-// A hanging tab-data fetch (slow/broken backend call) used to block first
-// paint of the entire canvas forever — no thrown error, so AppErrorBoundary
-// never caught it, just a permanent blank screen (Sean, 2026-08-17, reproduced
-// on Caravan CoPilot / PC12-NG CoPilot / Dispatch / Digital Logbook from a
-// fresh tab). Race every call against a deadline so a slow tab degrades to
-// "no data yet" (fixture fallback) instead of hanging the whole canvas.
-const LIVE_DATA_TIMEOUT_MS = 9000;
-function getLiveDataForTabWithTimeout(worker, tabId) {
-  return Promise.race([
-    getLiveDataForTab(worker, tabId),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("getLiveDataForTab timed out")), LIVE_DATA_TIMEOUT_MS)),
-  ]);
-}
+import { getLiveDataForTabWithTimeout } from "./components/canvas/liveData";
 import { lookupSignal, isDiscoveryCanvas } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
 import { isREWorker } from "./components/canvas/RealEstateWorkerCanvas";
@@ -5161,7 +5147,8 @@ export default function App() {
   const isAviationCoPilotDemo  = _dp === "/demo/av-copilot"  || _dp === "/demo/av-copilot/";
   const isAviationMXDemo       = _dp === "/demo/av-mx"       || _dp === "/demo/av-mx/";
   const isAviationDispatchDemo = _dp === "/demo/av-dispatch" || _dp === "/demo/av-dispatch/";
-  const isTitleDemo            = _dp.startsWith("/demo/title");
+  const isTitleClientDemo      = _dp === "/demo/title/customer" || _dp === "/demo/title/customer/";
+  const isTitleDemo            = _dp.startsWith("/demo/title") && !isTitleClientDemo;
   const isBrokerageDemo        = _dp === "/demo/brokerage"   || _dp === "/demo/brokerage/";
   const isEducationDemo        = _dp === "/demo/education"   || _dp === "/demo/education/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
@@ -6036,6 +6023,10 @@ export default function App() {
   }
   if (isUHAdminDemo) {
     const C = React.lazy(() => import("./pages/UHAdminDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isTitleClientDemo) {
+    const C = React.lazy(() => import("./pages/TitleClientDemoSignIn"));
     return <React.Suspense fallback={null}><C /></React.Suspense>;
   }
   if (isTitleDemo) {

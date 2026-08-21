@@ -542,7 +542,7 @@ export default function AviationWorkerCanvas({ workerSlug }) {
   if (!spec) {
     return (
       <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
-        No canvas data for {workerSlug}. Ask Alex to run a briefing.
+        No canvas data for {workerSlug}. Ask Skye to run a briefing.
       </div>
     );
   }

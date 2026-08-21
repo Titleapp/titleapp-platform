@@ -34,7 +34,7 @@ export default function ChartOfAccountsCard({ resolved, context, onDismiss }) {
   return (
     <CanvasCardShell
       title="Chart of Accounts"
-      emptyPrompt={resolved?.emptyPrompt || "Ask Alex to categorize your transactions to see your Chart of Accounts here."}
+      emptyPrompt={resolved?.emptyPrompt || "Ask Max to categorize your transactions to see your Chart of Accounts here."}
       onDismiss={onDismiss}
     >
       {accounts && Object.entries(groups).map(([type, accts]) => (

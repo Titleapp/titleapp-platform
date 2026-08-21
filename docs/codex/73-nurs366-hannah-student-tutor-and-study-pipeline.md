@@ -1,6 +1,6 @@
 # CODEX 73 — NURS-366 Student Tutor + Clinical Evaluator Study Pipeline
 
-**Status:** 🟢 unblocked, building — Ruthie answered the open questions in §7 on 2026-08-18
+**Status:** 🟢 unblocked, building — Ruthie answered the open questions in §7 on 2026-08-18; submitted a conference abstract on this work on 2026-08-19 (§7A)
 **Owner:** Sean / Claude Code
 **Date:** 2026-08-17 (updated 2026-08-18)
 **Trigger:** Ruthie sent her real NURS-366 (Advanced Cardiopulmonary) D2L course and asked for it to become a Digital Worker — a student tutor (Hannah) tied to the clinical evaluator the teacher sees — while her team's AACN Faculty Scholars grant proposal (submitted; IRB submitted, no signal until after semester start) runs a pilot study on whether this approach lifts clinical competency outcomes.
@@ -125,6 +125,20 @@ Every surface above should double as study instrumentation from the start:
   **A:** Answered in full — now the actual spec in §E.
 
 **Also from the same message:** she's reading the UH IRB eProtocol submission process, plans a couple more focused hours on this before pivoting to prep for Thursday's faculty training, and will read this CODEX more thoroughly. She shared a nursing-practice forum link (`nursingpractice.annualforums.com`) without further context — worth asking her directly what she wants us to do with it before assuming.
+
+### 7A — Conference abstract (Ruthie, 2026-08-19)
+
+Ruthie submitted a ~300-word abstract, titled **"Developing Clinical Judgment Using AI Digital Workers in Nursing Education,"** for a presentation at UH Maui College — almost certainly tied to the `nursingpractice.annualforums.com` link from §7 (still unconfirmed with her directly).
+
+Substantively, it lines up with what's actually being built, not ahead of it:
+- Frames Digital Workers explicitly against Tanner's Clinical Judgment Model (Noticing → Interpreting → Responding → Reflecting) — matches the framework already cited in §5's tutoring spec.
+- Correctly scopes the work to "cardiopulmonary nursing education" via "unfolding clinical scenarios" — i.e. NURS-366, not a full-LMS claim.
+- Names "faculty oversight, academic integrity, student engagement, data governance, and preservation of human accountability" as considerations to be addressed — these map directly onto still-open build items: data governance → the consent-event/export design (§6, not yet built); human accountability → the signed-evaluation pipeline (§2, already real) plus the distress protocol (§4, still not built, still the hard prerequisite before any real student uses this).
+- Correctly describes Digital Workers as distinct from "stand-alone generative AI tools" doing "content generation, retrieving information, and completing discrete tasks" — this is an accurate contrast, not overclaiming.
+
+**No gap found between the abstract and reality** — she's describing the target design, not asserting something already shipped. The one live risk: if this presentation happens before §4 (distress protocol) and §3's remaining item (the NursingEducationPanel canvas fixture) are resolved, "data governance" and "human accountability" are claims made in public before they're fully true. Worth knowing her presentation date once she shares it, so the build order in §8 can be checked against it.
+
+This is also independent external validation of the "Digital Worker" framing for pitch/marketing use — a real academic conference abstract using this exact language, unprompted by SOCIII.
 
 ## 8. Suggested build order (updated 2026-08-18 — timeline de-risked, no active study yet)
 

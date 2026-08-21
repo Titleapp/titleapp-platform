@@ -1889,7 +1889,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Scott Harrington",
             role:          "admin",
-            activeWorkers: ["re-salesperson", "cre-analyst", "site-recon-001", "feasibility-001", "law-landuse-001"],
+            activeWorkers: ["re-salesperson", "cre-analyst", "site-recon-001", "feasibility-001", "law-landuse-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           // ── Nursing (Makai) ───────────────────────────────────────────────
           "nursing-admin": {
@@ -1899,7 +1899,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Kealani Moku",
             role:          "admin",
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           "nursing-student": {
             uid:           "sara-kahele-demo",
@@ -1918,7 +1918,7 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Noa Kahananui",
             role:          "admin",
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           "uh-student": {
             uid:           "sara-kahele-demo",
@@ -1957,7 +1957,23 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Sarah Garris",
             role:          "admin",
-            activeWorkers: ["re-title-search-001", "re-escrow-001", "re-salesperson", "law-landuse-001", "cre-analyst"],
+            activeWorkers: ["re-title-search-001", "re-escrow-001", "re-salesperson", "law-landuse-001", "cre-analyst", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+          },
+          // ── Title client (James Hawkins as buyer, CODEX S52.56) ───────────
+          // Mirrors the vet-client/re-tenant pattern exactly: fixed demo uid,
+          // no real email/password account, member role. Redirects into the
+          // real customer-facing ClientPortal.jsx (not the operator app), for
+          // order title_order_001 (313 Mayfair Dr, ABC-2026-0031) — see
+          // TitleClientDemoSignIn.jsx. uid must match the `uid` field on
+          // seedTitleDemo.js's title_client_001 contact for entitlement to work.
+          "title-client": {
+            uid:           "demo-title-buyer-001",
+            tenantId:      "demo-attorneys-title-001",
+            workspaceName: "ABC Title Company",
+            vertical:      "real-estate",
+            name:          "James Hawkins",
+            role:          "member",
+            activeWorkers: ["re-title-search-001"],
           },
           // ── Aviation (Pacific Air Partners) ──────────────────────────────
           aviation: {
@@ -1967,7 +1983,7 @@ exports.api = onRequest(
             vertical:      "aviation",
             name:          "Alex Rivera",
             role:          "admin",
-            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling"],
+            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           // ── Brokerage (Summit Realty Group) ──────────────────────────────
           brokerage: {
@@ -1977,7 +1993,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Jordan Blake",
             role:          "admin",
-            activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001"],
+            activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           // ── Education K-12 (Westview Elementary) — CODEX S52.54/S52.55 ──────
           // Was wired to nursing-education-001 (a nursing CE worker) under a
@@ -1995,7 +2011,7 @@ exports.api = onRequest(
             vertical:      "education",
             name:          "Dr. Patricia Wells",
             role:          "admin",
-            activeWorkers: ["watercyclehelper-mswpe8no"],
+            activeWorkers: ["watercyclehelper-mswpe8no", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           // ── TRAITLY / EU Battery DPP (Volta Advisory) ─────────────────────
           traitly: {
@@ -2014,6 +2030,10 @@ exports.api = onRequest(
               "eu-battery-dpp-001",
               "eu-passport-registry-001",
               "eu-supply-chain-tracer-001",
+              "platform-accounting",
+              "platform-hr",
+              "platform-marketing",
+              "platform-contacts",
             ],
           },
         };
@@ -4768,6 +4788,25 @@ END DELIVERY RULES.
                 }
               }
 
+              // CODEX S52.56 (Garcia customer portal) — a customer-facing chat
+              // (ClientPortal.jsx buyer/seller personas) uses the SAME worker
+              // and the SAME Studio Locker grounding as the operator's internal
+              // chat, but must not answer as if giving legal/closing advice —
+              // no UPL/Texas Department of Insurance research has been done to
+              // establish that boundary (see the codex). This is a real,
+              // server-side restriction, not just a client-side hint: a
+              // request from the portal is marked via context.source, checked
+              // here, independent of whatever the client claims elsewhere.
+              if (workerPrompt && body?.context?.source === "client_portal") {
+                const _scopeNotice = `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
+You are speaking directly with the CUSTOMER (buyer/seller/borrower on their own transaction), not an employee of this business. Stay strictly within:
+  - process and status information (where their file/order stands, what's needed from them, timelines)
+  - explaining documents that are already part of their own file
+  - directing them to a licensed human at this business for anything else
+Do NOT give legal advice, closing advice, or any interpretation of legal rights, obligations, or document terms beyond describing what a document says. If asked for advice, say this needs a licensed professional at the business and offer to connect them. This restriction exists because no regulatory research on the advice/unauthorized-practice-of-law boundary has been done for this vertical yet (CODEX S52.56) — treat it as a hard limit, not a suggestion.\n\n`;
+                workerPrompt = _scopeNotice + workerPrompt;
+              }
+
               // Load conversation history — strip prior assistant turns that
               // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
@@ -5499,9 +5538,14 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
 
                 // Streaming audit log — every streaming response is audited
                 // regardless of delivery path (CODEX 42, patent alignment).
+                // 2026-08-19 — was writing a hardcoded "titleapp-worker" tenantId
+                // with no sessionId, so ChatPanel's loadConversationHistory() could
+                // never find these records for its own tenant/session filter —
+                // persistent memory silently never worked for any worker chat.
                 try {
                   await db.collection("messageEvents").add({
-                    tenantId: "titleapp-worker",
+                    tenantId: reqTenantId || "titleapp-worker",
+                    sessionId: sessionId || null,
                     userId: authUser ? authUser.uid : `anon_${sessionId}`,
                     type: "chat:message:worker:stream",
                     message: userInput,
@@ -6768,9 +6812,14 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               }, { merge: true });
 
               // Audit log (with enforcement metadata — 49.9, constraint metadata — CODEX 50.17 P0-7)
+              // 2026-08-19 — was writing a hardcoded "titleapp-worker" tenantId
+              // with no sessionId, so ChatPanel's loadConversationHistory() could
+              // never find these records for its own tenant/session filter —
+              // persistent memory silently never worked for any worker chat.
               try {
                 await db.collection("messageEvents").add({
-                  tenantId: "titleapp-worker",
+                  tenantId: reqTenantId || "titleapp-worker",
+                  sessionId: sessionId || null,
                   userId: authUser ? authUser.uid : `anon_${sessionId}`,
                   type: "chat:message:worker",
                   message: userInput,
@@ -7265,7 +7314,19 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
               if (dwSnap.exists) {
                 const dw = dwSnap.data();
-                const workerName = dw.display_name || dw.name || workerSlug;
+                // Suite persona names — same override as the primary worker-chat
+                // path (~line 3985). Without this, back-of-house spine workers
+                // whose digitalWorkers.display_name still carries a stale "Alex "
+                // prefix (e.g. platform-accounting -> "Alex Business Accounting")
+                // would tell the model "You are Alex Business Accounting... never
+                // say you are Alex" -- a direct self-contradiction that leaks
+                // "Alex" into the reply instead of the real persona (Max/Jordan/Ivy/etc).
+                const _SUITE_PERSONAS = {
+                  "platform-accounting": "Max", "platform-hr": "Jordan",
+                  "platform-contacts": "Sage", "platform-marketing": "Ivy",
+                  "investor-relations": "Reed", "ir-worker": "Reed",
+                };
+                const workerName = dw.persona_name || _SUITE_PERSONAS[workerSlug] || dw.display_name || dw.name || workerSlug;
                 const headline = dw.headline || dw.capabilitySummary || "";
                 const capabilities = dw.capabilitySummary || headline || "";
 
@@ -19986,6 +20047,95 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/title:customer:order?orderId=xxx — CODEX S52.56 (Garcia customer
+    // portal). Returns a title order's status/documents scoped to the specific
+    // customer (buyer/seller/borrower) entitled to it, for the client-facing
+    // portal (ClientPortal.jsx buyer/seller personas). Capability:
+    // title.customer.get_order_status_v1.
+    //
+    // Entitlement-safety (CODEX S52.56 §"entitlement check must not become an
+    // enumeration oracle" — required, not optional): a real order the caller
+    // isn't a party to, and an order that doesn't exist at all, MUST return an
+    // identical response. Enforced structurally: exactly ONE Firestore query
+    // runs regardless of outcome (contacts filtered by tenantId + orderId only,
+    // a small result set — at most a handful of contacts per order), and the
+    // match against the caller's identity happens in-memory afterward against
+    // whatever that query returns. "Wrong party" and "no such order" both mean
+    // the in-memory check finds nothing, so they're the same code path with the
+    // same query cost, not two branches that happen to look alike.
+    //
+    // Two identity paths, checked in-memory, not two separate queries:
+    //   - email match — a real future customer account (password or magic-link).
+    //   - uid match — the fixed demo persona (/demo/title/customer), which signs
+    //     in via a minted custom token with no real email at all (same pattern
+    //     as every other member-role demo persona on this platform — vet-client,
+    //     re-tenant, nursing/uh-student all use a fixed uid, no email).
+    if (route === "/title:customer:order" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const orderId = (req.query?.orderId || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+
+        // Deliberately the SAME generic response for every failure mode below —
+        // missing params, wrong party, and nonexistent order are indistinguishable
+        // to the caller. Do not add a more specific message per branch.
+        const NOT_FOUND = () => jsonError(res, 404, "Order not found");
+        if (!tenantId || !orderId || (!callerEmail && !callerUid)) return NOT_FOUND();
+
+        const contactsForOrderSnap = await db.collection("contacts")
+          .where("tenantId", "==", tenantId)
+          .where("orderId", "==", orderId)
+          .get();
+        const contact = contactsForOrderSnap.docs
+          .map(d => d.data())
+          .find(c => (callerEmail && (c.email || "").toString().trim().toLowerCase() === callerEmail)
+                  || (callerUid && c.uid === callerUid));
+        if (!contact) return NOT_FOUND();
+
+        const orderSnap = await db.collection("titleOrders").doc(orderId).get();
+        // Should be unreachable (the contacts query above already proved this
+        // order exists for this tenant) — kept as the same generic response
+        // anyway, defensively, rather than a distinct error for a "shouldn't
+        // happen" case.
+        if (!orderSnap.exists) return NOT_FOUND();
+        const order = orderSnap.data();
+        if (order.tenantId !== tenantId) return NOT_FOUND();
+
+        const eventsSnap = await db.collection("titleOrders").doc(orderId)
+          .collection("events").orderBy("createdAt", "asc").get();
+        const events = eventsSnap.docs.map(d => {
+          const e = d.data();
+          return { type: e.type || null, description: e.description || null, createdAt: e.createdAt || null };
+        });
+
+        // Deliberately narrow response shape — this is the customer's own view,
+        // not the operator's internal record. No internal notes, no other
+        // party's contact info beyond name (already visible to them via CRM
+        // correspondence in the real world), no other tenant/operator fields.
+        return res.json({
+          ok: true,
+          order: {
+            orderId,
+            orderCode: order.orderCode || null,
+            address: order.address || null,
+            buyerName: order.buyerName || null,
+            sellerName: order.sellerName || null,
+            status: order.status || null,
+            purchasePrice: order.purchasePrice || null,
+            events,
+          },
+          viewerRole: contact.type || null,
+        });
+      } catch (e) {
+        console.error("title:customer:order failed:", e);
+        return jsonError(res, 404, "Order not found");
+      }
+    }
+
     // ──────────────────────────────────────────────────────────
     // IR Phase 2 — Advisor flow endpoints (mirror of investor)
     // ──────────────────────────────────────────────────────────
@@ -24829,6 +24979,50 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ dtc:list failed:", e);
         return jsonError(res, 500, "Failed to load DTCs");
+      }
+    }
+
+    // GET /v1/vault:transactions — business-Vault "Transactions" folders
+    // (Sean, 2026-08-20): the Company Vault must be FOLDER>FILE per case file,
+    // not a flat pile of cards. One folder per open/closed matter, newest
+    // first, holding that matter's Drive files. Today this reads `titleOrders`
+    // (the only transaction-shaped collection that exists) — returns an empty
+    // list for tenants with none, so this is safe to call from every vertical.
+    // Generalizing the source collection to other verticals' own "matter" type
+    // is future work, not done here.
+    if (route === "/vault:transactions" && method === "GET") {
+      try {
+        const ordersSnap = await db.collection("titleOrders")
+          .where("tenantId", "==", ctx.tenantId)
+          .get();
+        const orders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        orders.sort((a, b) => {
+          const ad = a.openedDate || "";
+          const bd = b.openedDate || "";
+          return bd.localeCompare(ad); // newest-opened first
+        });
+
+        const filesSnap = await db.collection("driveFiles")
+          .where("tenantId", "==", ctx.tenantId)
+          .get();
+        const filesByOrder = {};
+        filesSnap.docs.forEach(d => {
+          const f = { id: d.id, ...d.data() };
+          const key = f.orderId || "_unassigned";
+          if (!filesByOrder[key]) filesByOrder[key] = [];
+          filesByOrder[key].push(f);
+        });
+
+        const transactions = orders.map(o => ({
+          ...o,
+          folderLabel: `${o.orderCode || o.id} — ${o.address || "Untitled matter"}`,
+          documents: filesByOrder[o.id] || [],
+        }));
+
+        return res.json({ ok: true, transactions });
+      } catch (e) {
+        console.error("❌ vault:transactions failed:", e);
+        return jsonError(res, 500, "Failed to load Vault transactions");
       }
     }
 

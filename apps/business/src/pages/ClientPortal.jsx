@@ -18,10 +18,26 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { auth } from "../firebase";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 
 // Same authed-API pattern the rest of the app uses (liveData.js): the Cloudflare
 // frontdoor at /api?path=/v1/... with a Firebase bearer token.
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+// CODEX S52.56 (Garcia customer portal) — which tenant a title company's
+// portal company-key belongs to, so buyer/seller can hit the real
+// entitlement-checked order endpoint (GET /v1/title:customer:order) and the
+// real chat pipeline with the right X-Tenant-Id. Only companies with a real,
+// verified tenant get real data; anything else stays on the scripted demo
+// (isTitlePersona still works, it just won't have live order data behind it).
+const TENANT_IDS = {
+  "attorneys-title": "demo-attorneys-title-001",
+};
+// Real, live worker slug for the title vertical (verified: functions/functions/
+// index.js references workers/re-title-search-001/handler.js; persona name in
+// the internal app is "Petra" — kept internal-only here, the customer-facing
+// greeting doesn't name it, see CODEX S52.56's identity-scope note).
+const TITLE_WORKER_SLUG = "re-title-search-001";
 
 const SKINS = {
   "meadow-vet": {
@@ -275,11 +291,15 @@ function RecordsCanvasLike({ rows, note }) {
   );
 }
 
-function TitleOrderCanvas({ skin, persona }) {
+function TitleOrderCanvas({ skin, persona, order }) {
   const params = new URLSearchParams(window.location.search);
   const orderId = params.get("orderId");
 
-  // Demo order state — in production loaded from /v1/title:order/:id
+  // CODEX S52.56 — step/date/risk-score visualization below is still
+  // demo-styled (not verified against real event-type values in
+  // titleOrders/{id}/events — mapping those to these 7 named steps is real
+  // work not done in this pass). What IS real when `order` is loaded: the
+  // property address and order code, replacing the hardcoded fixture.
   const steps = [
     { label: "Title Search", done: true,  date: "Jul 25" },
     { label: "Defect Review", done: true,  date: "Jul 25" },
@@ -290,16 +310,19 @@ function TitleOrderCanvas({ skin, persona }) {
     { label: "Policy Issued", done: false, date: "Pending" },
   ];
   const currentStep = steps.find(s => !s.done) || steps[steps.length - 1];
+  const address = order?.address || "313 Mayfair Dr, Athens, TX 75751";
 
   return (
     <div>
       {orderId && (
-        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontFamily: "monospace" }}>Order: {orderId.slice(0, 12)}…</div>
+        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontFamily: "monospace" }}>
+          Order: {order?.orderCode || orderId.slice(0, 12) + "…"}
+        </div>
       )}
       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: "#1e40af", fontWeight: 700, marginBottom: 2 }}>CURRENT STEP</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{currentStep.label}</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>313 Mayfair Dr, Athens, TX 75751</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{address}</div>
       </div>
       {steps.map((s, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < steps.length - 1 ? "1px solid #f1f5f9" : "none" }}>
@@ -315,9 +338,11 @@ function TitleOrderCanvas({ skin, persona }) {
           <div style={{ fontSize: 12, color: s.done ? "#15803d" : "#94a3b8", fontWeight: s.done ? 700 : 400 }}>{s.date}</div>
         </div>
       ))}
-      <div style={{ marginTop: 14, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-        Risk Score: <strong style={{ color: "#15803d" }}>15 / 100 — Clean</strong> · No open defects · Title chain verified
-      </div>
+      {!order && (
+        <div style={{ marginTop: 14, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+          Risk Score: <strong style={{ color: "#15803d" }}>15 / 100 — Clean</strong> · No open defects · Title chain verified
+        </div>
+      )}
     </div>
   );
 }
@@ -365,10 +390,15 @@ function TitleDocsCanvas({ skin, persona }) {
   );
 }
 
-function TitleVaultCanvas({ skin }) {
+function TitleVaultCanvas({ skin, order }) {
+  // CODEX S52.56 — deliberately out of scope for this pass: minting these as
+  // real DTC records (the way the advisor persona's /v1/ir:advisor:step
+  // already does) is its own, bigger piece of work, not built here. What's
+  // real when `order` is loaded: the order code and purchase price, replacing
+  // the fabricated recording number / coverage figure that were here before.
   const vaultDocs = [
-    ["Recorded Deed", "Recording #: TX-2025-107442 · Jul 25", "HASH ANCHORED"],
-    ["Owner's Title Policy", "ALTA 2021 · $650,000 coverage", "HASH ANCHORED"],
+    ["Recorded Deed", order ? `${order.orderCode || "Recording pending"}` : "Recording #: TX-2025-107442 · Jul 25", "HASH ANCHORED"],
+    ["Owner's Title Policy", order?.purchasePrice ? `ALTA 2021 · $${Number(order.purchasePrice).toLocaleString()} coverage` : "ALTA 2021 · $650,000 coverage", "HASH ANCHORED"],
     ["Closing Disclosure", "Final settlement statement", "IN YOUR VAULT"],
     ["Title Commitment", "With all exceptions noted", "IN YOUR VAULT"],
   ];
@@ -376,6 +406,7 @@ function TitleVaultCanvas({ skin }) {
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
         These are your permanent copies — tamper-evident, owned by you, not the title company. Share with your lender, attorney, or next buyer in seconds.
+        {order && <span style={{ display: "block", marginTop: 6, fontSize: 11, color: "#94a3b8" }}>Document types shown reflect your real order — the actual anchored records are minted at recording (not yet built for title in this release).</span>}
       </div>
       {vaultDocs.map(([title, sub, badge]) => (
         <div key={title} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
@@ -403,14 +434,108 @@ function Confirmed({ title, sub }) {
   );
 }
 
+// CODEX S52.56 — sign-in gate for real (non-fixture) title customers. This is
+// the simplest CORRECT default (real Firebase Auth email/password, verified
+// server-side via the ID token — never a client-supplied email), not
+// presented as Sean's final decision: the codex flags identity/entitlement
+// mechanism as an open item, and a magic-link flow (services/magicLink.js
+// exists for a different flow today — send/verify — and would need a decision
+// on whether to reuse or extend it) is the likely better fit for a real
+// non-technical customer who doesn't want to set a password. Left as a
+// concrete, working placeholder rather than blocking the whole build on that
+// decision.
+function SignInGate({ skin, onSignedIn }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function doSignIn(e) {
+    e.preventDefault();
+    if (!email.trim() || !password || busy) return;
+    setBusy(true); setErr(null);
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      onSignedIn?.();
+    } catch {
+      setErr("We couldn't sign you in with that email and password. Check with your title company if you're not sure how to access your file.");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <form onSubmit={doSignIn} style={{ width: "100%", maxWidth: 360 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 11, background: skin.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{skin.glyph}</div>
+        <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sign in to view your file</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>{skin.name} sent you access to your closing. Enter the email and password from that invite.</div>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" autoComplete="email"
+          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", marginBottom: 10, outline: "none" }} />
+        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password"
+          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", marginBottom: 14, outline: "none" }} />
+        {err && <div style={{ fontSize: 13, color: "#b45309", marginBottom: 12, lineHeight: 1.4 }}>{err}</div>}
+        <button type="submit" disabled={busy || !email.trim() || !password} style={{
+          width: "100%", padding: "13px", borderRadius: 10, border: "none", fontSize: 15, fontWeight: 700,
+          cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1, background: skin.accent, color: "#fff",
+        }}>{busy ? "Signing in…" : "Sign in"}</button>
+      </form>
+    </div>
+  );
+}
+
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
   const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
-  const person = PEOPLE[persona] || PEOPLE.petowner;
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
   const isTitlePersona = persona === "buyer" || persona === "seller";
+  const orderId = params.get("orderId");
+  const tenantId = TENANT_IDS[companyKey] || null;
+  // Real title data available for this persona only when we have a tenant we
+  // trust, an orderId, and (checked below) an authenticated + entitled user.
+  const hasRealTitleBacking = isTitlePersona && !!tenantId && !!orderId;
+
+  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller only:
+  // petowner/advisor keep their existing scripted behavior untouched.
+  const [user, setUser] = useState(auth.currentUser);
+  useEffect(() => {
+    if (!hasRealTitleBacking) return;
+    const unsub = onAuthStateChanged(auth, setUser);
+    return unsub;
+  }, [hasRealTitleBacking]);
+
+  // Real order data, fetched only once the customer is authenticated. Entitlement
+  // is enforced server-side (GET /v1/title:customer:order) — this fetch either
+  // returns the caller's own order or a generic "not found" for anyone else's.
+  const [order, setOrder] = useState(null);
+  const [orderStatus, setOrderStatus] = useState(hasRealTitleBacking ? "pending" : "unavailable"); // pending | ok | denied | unavailable
+  useEffect(() => {
+    if (!hasRealTitleBacking || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(
+          `${API_BASE}/api?path=${encodeURIComponent("/v1/title:customer:order")}&orderId=${encodeURIComponent(orderId)}`,
+          { headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId } }
+        );
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (j && j.ok && j.order) { setOrder(j.order); setOrderStatus("ok"); }
+        else setOrderStatus("denied");
+      } catch { if (!cancelled) setOrderStatus("denied"); }
+    })();
+    return () => { cancelled = true; };
+  }, [hasRealTitleBacking, user, orderId, tenantId]);
+
+  // person: real name once the order loads (first name only, for the casual
+  // greeting), falling back to the existing fixture identity otherwise — so
+  // petowner/advisor and any not-yet-loaded/denied title case are unaffected.
+  const realFullName = order ? (persona === "seller" ? order.sellerName : order.buyerName) : null;
+  const person = realFullName
+    ? { name: realFullName.split(/[\s&]/)[0], full: realFullName, role: persona === "seller" ? "Seller" : "Buyer" }
+    : (PEOPLE[persona] || PEOPLE.petowner);
 
   const greeting = persona === "advisor"
     ? `Hi ${person.name} 👋 Your advisor paperwork is ready — let's get it affirmed.`
@@ -425,6 +550,15 @@ export default function ClientPortal() {
   const [thinking, setThinking] = useState(false);
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas, thinking]);
+
+  // Patch the greeting in-place once the real name loads (avoids a visible
+  // fixture-name-then-real-name flicker if the order fetch resolves after the
+  // first render, which it always will — it's an async fetch).
+  useEffect(() => {
+    if (!realFullName) return;
+    setMessages(m => (m.length === 1 && m[0].from === "them" ? [{ from: "them", text: greeting }] : m));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realFullName]);
 
   const lsKey = `portal-welcomed-${companyKey}-${persona}`;
   const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
@@ -460,13 +594,48 @@ export default function ClientPortal() {
     return "I'm here for Clover 24/7. Ask me about care questions, records, or booking a visit.";
   }
 
+  // CODEX S52.56 — real chat for buyer/seller once entitled (order loaded).
+  // Same worker + same universal Studio Locker grounding every other chat in
+  // this app gets (see CODEX S52.57) — scoped server-side to process/status
+  // only via context.source (see index.js's client_portal scope-limit block).
+  const chatSessionIdRef = useRef(`portal_${companyKey}_${persona}_${orderId || "noorder"}_${Date.now()}`);
+  async function sendRealTitleChat(t) {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/chat:message")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({
+        message: t,
+        userInput: t,
+        sessionId: chatSessionIdRef.current,
+        selectedWorker: TITLE_WORKER_SLUG,
+        context: { source: "client_portal", orderId, persona },
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    return j.response || j.message || "I'm not able to answer that right now — please try again in a moment.";
+  }
+
   async function sendMessage(text) {
     if (!text.trim() || thinking) return;
     const t = text.trim();
     setInputVal("");
     setMessages(m => [...m, { from: "me", text: t }]);
     setThinking(true);
-    // Simulate a brief thinking delay, then reply locally
+    if (hasRealTitleBacking && user && orderStatus === "ok") {
+      try {
+        const reply = await sendRealTitleChat(t);
+        setMessages(m => [...m, { from: "them", text: reply }]);
+      } catch {
+        setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your file just now — please try again in a moment, or call us directly." }]);
+      }
+      setThinking(false);
+      return;
+    }
+    // Fallback: scripted reply — used for petowner/advisor always, and for
+    // title personas when there's no real backing (no tenant mapping for this
+    // company, no orderId, not signed in yet, or not entitled to this order).
     await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
     setMessages(m => [...m, { from: "them", text: portalReply(t) }]);
     setThinking(false);
@@ -518,6 +687,14 @@ export default function ClientPortal() {
         { label: "Appointments", icon: I(<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>), action: () => setCanvas({ type: "booking" }) },
         { label: "Bills & account", icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>), action: () => say("Nothing due right now — your last visit was paid in full. I'll text you before anything's coming up.") },
       ];
+
+  // CODEX S52.56 — for a real (non-fixture) title company, buyer/seller must
+  // sign in before anything real loads. Not shown for petowner/advisor or for
+  // companies without a verified tenant mapping (those stay on the existing
+  // scripted demo, unaffected).
+  if (hasRealTitleBacking && !user) {
+    return <SignInGate skin={skin} onSignedIn={() => {}} />;
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", maxWidth: isDesktop ? 1140 : 920, margin: "0 auto" }}>
@@ -650,9 +827,9 @@ export default function ClientPortal() {
             {canvas.type === "records" && <RecordsCanvas skin={skin} />}
             {canvas.type === "affirm" && <AffirmCanvas skin={skin} />}
             {canvas.type === "documents" && <DocumentsCanvas skin={skin} />}
-            {canvas.type === "title-order" && <TitleOrderCanvas skin={skin} persona={persona} />}
+            {canvas.type === "title-order" && <TitleOrderCanvas skin={skin} persona={persona} order={order} />}
             {canvas.type === "title-docs" && <TitleDocsCanvas skin={skin} persona={persona} />}
-            {canvas.type === "title-vault" && <TitleVaultCanvas skin={skin} />}
+            {canvas.type === "title-vault" && <TitleVaultCanvas skin={skin} order={order} />}
           </aside>
         )}
       </div>

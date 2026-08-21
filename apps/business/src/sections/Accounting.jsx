@@ -2541,7 +2541,7 @@ function LoansPane({ listLoans }) {
       <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>No loans on file</div>
         <div style={{ fontSize: 14, color: "#64748b", maxWidth: 480, margin: "0 auto" }}>
-          Ask Alex to record a loan, or seed the loan register from the accounting session.
+          Ask Max to record a loan, or seed the loan register from the accounting session.
         </div>
       </div>
     );

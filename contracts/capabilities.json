@@ -1280,6 +1280,17 @@
       "requiredRoles": [],
       "emitsEvent": false,
       "writesAudit": false
+    },
+    {
+      "id": "title.customer.get_order_status_v1",
+      "class": "title",
+      "summary": "CODEX S52.56 (Garcia customer portal) — read a title order's status, documents, and closing details for the specific customer (buyer/seller/borrower) entitled to that order, via the client-facing portal. Read-only; process/status information only, not legal or closing advice. Entitlement enforced by matching the caller's authenticated email against the contact record linked to the requested order.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
     }
   ]
 }

@@ -667,3 +667,17 @@ export async function getLiveDataForTab(worker, tabId) {
   }
   return null;
 }
+
+// A hanging tab-data fetch (slow/broken backend call) used to block first
+// paint of the entire canvas forever — no thrown error, so AppErrorBoundary
+// never caught it, just a permanent blank screen (Sean, 2026-08-17, reproduced
+// on Caravan CoPilot / PC12-NG CoPilot / Dispatch / Digital Logbook from a
+// fresh tab). Race every call against a deadline so a slow tab degrades to
+// "no data yet" (fixture fallback) instead of hanging the whole canvas.
+const LIVE_DATA_TIMEOUT_MS = 9000;
+export function getLiveDataForTabWithTimeout(worker, tabId) {
+  return Promise.race([
+    getLiveDataForTab(worker, tabId),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("getLiveDataForTab timed out")), LIVE_DATA_TIMEOUT_MS)),
+  ]);
+}
