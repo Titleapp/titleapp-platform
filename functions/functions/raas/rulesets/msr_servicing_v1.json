@@ -2,7 +2,7 @@
   "id": "msr_servicing_v1",
   "version": "v1",
   "domain": "mortgage-servicing-compliance",
-  "description": "MSR Servicing & Compliance Worker (CODEX S52.60) — federal-only Phase 1 ruleset covering Reg X (RESPA, 12 CFR 1024) servicing requirements and Reg Z (TILA, 12 CFR 1026) payment/statement requirements. Every rule below carries a citation independently verified against consumerfinance.gov and law.cornell.edu on 2026-08-21 — no rule beyond this set is production-ready. State-law layer is NOT included (see CODEX S52.60 §7) — do not treat this ruleset as covering more than the 8 federal citations it names.",
+  "description": "MSR Servicing & Compliance Worker (CODEX S52.60) — federal-only Phase 1 ruleset covering Reg X (RESPA, 12 CFR 1024) servicing requirements and Reg Z (TILA, 12 CFR 1026) payment/statement requirements. Every rule below carries a citation independently verified against consumerfinance.gov and law.cornell.edu, re-checked at the subsection level on 2026-08-21 after a red-team pass caught real precision gaps in the first pass (NOE/RFI deadlines are tiered by category, not flat; periodic-statement delinquency content is conditional, not standard) — no rule beyond this set is production-ready. State-law layer is NOT included (see CODEX S52.60 §7) — do not treat this ruleset as covering more than the 8 federal citations it names. IMPORTANT: hard_stops in this file are NOT server-side enforced as of this pass — see CODEX S52.60 §3.1. They reach the model only as prompt-level instruction (via tenantLocker.js's system-doc injection), not a mechanical block.",
 
   "appliesTo": [
     "msr-servicing-001"
@@ -18,10 +18,10 @@
     },
     {
       "id": "msr-early-intervention-two-triggers",
-      "label": "Early intervention has two independent deadlines, not one",
-      "logic": "12 CFR 1024.39 requires (a) a live-contact attempt by day 36 of delinquency, repeating every 36 days, AND (b) a separate written notice by day 45, repeating every 180 days. These are independently tracked deadlines — completing one does not satisfy the other.",
-      "trigger": "AI describes early-intervention compliance as satisfied, complete, or on-track based on only one of the two triggers (live-contact OR written notice) without addressing the other.",
-      "on_fail": "State the status of BOTH triggers separately by their actual due dates from the loan record — never collapse them into a single 'day 36' status."
+      "label": "Early intervention has two independent deadlines in two subsections, not one",
+      "logic": "12 CFR 1024.39(a) requires a live-contact attempt by day 36 of delinquency, repeating every 36 days. 12 CFR 1024.39(b)(1) separately requires a written notice by day 45; that same subsection (not a separate one) sets the recurrence cap of once per 180-day period and requires a follow-up notice within 180 days if still delinquent. These are independently tracked deadlines across (a) and (b)(1) — completing one does not satisfy the other, and the 180-day figure is not its own citation, it's inside (b)(1).",
+      "trigger": "AI describes early-intervention compliance as satisfied, complete, or on-track based on only one of the two triggers (live-contact OR written notice) without addressing the other, or cites '180 days' as if it were a separate subsection from the day-45 written notice.",
+      "on_fail": "State the status of BOTH triggers separately by their actual due dates from the loan record, each with its correct subsection — never collapse them into a single 'day 36' status, and never cite the 180-day cadence as a separate provision from §1024.39(b)(1)."
     },
     {
       "id": "msr-no-fabricated-compliance-date",
@@ -39,10 +39,10 @@
     },
     {
       "id": "msr-force-placed-insurance-notice-gate",
-      "label": "Force-placed insurance requires a reasonable basis and 45-day prior notice (12 CFR 1024.37)",
-      "logic": "A servicer needs a reasonable basis that the borrower lacks required hazard insurance before assessing a force-placed insurance charge, and must deliver a written notice at least 45 days before the charge — with a second notice required before actually purchasing coverage. This is a documented, real CFPB enforcement finding when skipped.",
-      "trigger": "A force-placed insurance charge is being assessed, described, or proposed without both (a) a documented reasonable basis in the loan record and (b) a 45-day-prior notice event already logged.",
-      "on_fail": "Block the charge. State which of the two prerequisites (reasonable basis, 45-day notice) is missing from the record, citing 12 CFR 1024.37."
+      "label": "Force-placed insurance requires three prerequisites, not two (12 CFR 1024.37(b), (c)(1)(i), (d)(1))",
+      "logic": "A servicer needs (b) a reasonable basis that the borrower lacks required hazard insurance, (c)(1)(i) a written notice at least 45 days before assessing the charge, and (d)(1) a second notice at least 15 days before the charge is actually assessed — three distinct prerequisites in three subsections, not 'a notice, then a second notice before purchase' loosely. This is a documented, real CFPB enforcement finding when skipped.",
+      "trigger": "A force-placed insurance charge is being assessed, described, or proposed without all three of: (b) a documented reasonable basis, (c)(1)(i) a 45-day-prior notice event, and (d)(1) a 15-day-prior second notice event, each logged in the loan record.",
+      "on_fail": "Block the charge. State which of the three prerequisites (reasonable basis, 45-day notice, 15-day second notice) is missing from the record, citing the specific subsection — 12 CFR 1024.37(b)/(c)(1)(i)/(d)(1)."
     },
     {
       "id": "msr-prompt-payment-crediting",
@@ -79,7 +79,7 @@
       "id": "msr-noe-rfi-deadline-language",
       "pattern": "(notice of error|request for information|NOE|RFI).{0,80}(acknowledge|respond|response|deadline|due)",
       "flags": "i",
-      "message": "State the acknowledgment deadline (5 business days) and substantive response deadline (30 business days, extendable 15 more days with written notice before the original period ends for RFIs) computed from the actual received date in the record — 12 CFR 1024.35/.36."
+      "message": "Acknowledgment is 5 business days (12 CFR 1024.35(d) for NOE, 1024.36(c) for RFI) — one deadline. Substantive response is NOT one number: for an NOE, classify the error category first — 7 business days for payoff-balance errors (1024.35(e)(3)(i), the (b)(6) category), 30 days or before a scheduled foreclosure sale (whichever is earlier) for foreclosure-related errors ((b)(9)/(10)), 30 days for everything else. For an RFI, classify the request first — 10 business days for owner/assignee-identity requests (1024.36(d)(2)(i)(A)), 30 days for general requests ((d)(2)(i)(B)), the 30-day tier extendable 15 more days with written notice before the original period ends. Never default to 30 days without confirming the category/request type doesn't fall in a faster tier."
     },
     {
       "id": "msr-modification-decision-language",
@@ -127,5 +127,5 @@
 
   "disclaimer": "This worker surfaces servicing status, applicable federal compliance deadlines, and required disclosures based on records in this workspace. It does not provide legal or debt-counseling advice, and does not make loss-mitigation, modification, or enforcement decisions — those are human servicing/compliance judgments. Phase 1 covers 8 verified federal citations only (12 CFR 1024.17/.35/.36/.37/.39/.41(c), 12 CFR 1026.36(c)(1)(i)/.41) — state-law requirements are not yet included (CODEX S52.60 §7). Verify all compliance-critical decisions with qualified compliance/legal staff.",
 
-  "system_context": "You operate under CODEX S52.60's Phase 1 federal-only ruleset. Constraint architecture: (1) You never issue a loss-mitigation decision (approve/deny/offer) — that's an authorized human's call; you surface eligibility data only. (2) Early intervention has two independently-tracked deadlines (day 36 live-contact, day 45 written notice) — never collapse them. (3) Every deadline you state must be computed from an actual date in the loan record — never estimated. (4) Escrow charges are capped at 1/12 + 1/6 cushion; force-placed insurance needs a documented reasonable basis and 45-day notice before charging. (5) Payments credit as of date of receipt unless the narrow no-harm exception applies. (6) You give process/status information to borrowers, never debt-counseling or legal advice. (7) Active cease-communication flags block outreach except FDCPA-permitted exceptions. (8) Every regulatory claim you make must cite one of this ruleset's 8 verified CFR sections — if a question falls outside that set (most likely a state-law question), say so explicitly rather than inventing a citation."
+  "system_context": "You operate under CODEX S52.60's Phase 1 federal-only ruleset. Constraint architecture: (1) You never issue a loss-mitigation decision (approve/deny/offer) — that's an authorized human's call; you surface eligibility data only. (2) Early intervention has two independently-tracked deadlines (day 36 live-contact, day 45 written notice) — never collapse them. (3) Every deadline you state must be computed from an actual date in the loan record — never estimated. (4) Escrow charges are capped at 1/12 + 1/6 cushion; force-placed insurance needs a documented reasonable basis, a 45-day prior notice, AND a second 15-day-prior notice before charging — three prerequisites, not two. (5) Payments credit as of date of receipt unless the narrow no-harm exception applies. (6) You give process/status information to borrowers, never debt-counseling or legal advice. (7) Active cease-communication flags block outreach except FDCPA-permitted exceptions. (8) Every regulatory claim you make must cite one of this ruleset's 8 verified CFR sections — if a question falls outside that set (most likely a state-law question), say so explicitly rather than inventing a citation."
 }

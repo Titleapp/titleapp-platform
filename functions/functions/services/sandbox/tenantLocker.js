@@ -75,6 +75,24 @@ const WORKER_SYSTEM_DOCS = {
     ],
   },
   "ir-worker": { rulesetFile: "ir_compliance_v0.json", legalRefs: [] },
+  // CODEX S52.60 — added 2026-08-21 after a red-team pass found the ruleset's
+  // hard_stops were written but never actually injected into a live prompt
+  // for this worker (or for nursing-education-001, which has the identical
+  // gap — this map was the only real injection path and neither vertical was
+  // in it). This brings MSR to the same level every worker in this map gets:
+  // hard_stops/soft_flags/chat_rules text folded into the system prompt as
+  // instructions. This is NOT server-side blocking — a paraphrased violation
+  // (e.g. a soft-worded loss-mit denial that never uses a blocked phrase)
+  // would still get through. Real blocking would need either structured
+  // (analyst-mode) output with real eval specs, or a new constraintCheck.js
+  // module — neither exists yet, flagged as open work, not done here.
+  "msr-servicing-001": {
+    rulesetFile: "msr_servicing_v1.json",
+    legalRefs: [
+      { name: "12 CFR 1024 (Reg X / RESPA servicing)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1024/" },
+      { name: "12 CFR 1026 (Reg Z / TILA)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1026/" },
+    ],
+  },
 };
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");

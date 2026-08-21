@@ -3,12 +3,13 @@
 
 ---
 
-## 12 CFR 1024.17 — Escrow accounts
+## 12 CFR 1024.17(c)(1)(i)/(ii) and (i) — Escrow accounts
 
-Verified against [CFPB](https://www.consumerfinance.gov/rules-policy/regulations/1024/17/), 2026-08-21.
+Verified against [CFPB](https://www.consumerfinance.gov/rules-policy/regulations/1024/17/), 2026-08-21; subsection-level re-check 2026-08-21 — substance held up, citations now precise across three distinct subsections.
 
-- Escrow charge per payment is capped at **1/12 of the annual escrow total**, plus the servicer may hold up to **1/6 of the annual total as a cushion**.
-- An **annual escrow account statement** is due within **30 days** of the computation year's end, showing the account history and projecting the next year.
+- **§1024.17(c)(1)(ii)**: escrow charge per payment is capped at **1/12 of the annual escrow total**.
+- **§1024.17(c)(1)(i)**: the servicer may additionally hold up to **1/6 of the annual total as a cushion**.
+- **§1024.17(i)**: an **annual escrow account statement** is due within **30 days** of the computation year's end, showing the account history and projecting the next year.
 
 ### AI Behavior
 - Any computed or proposed escrow charge must be checked against the 1/12 + 1/6 cap using the loan's actual annual escrow total — never approximate.
