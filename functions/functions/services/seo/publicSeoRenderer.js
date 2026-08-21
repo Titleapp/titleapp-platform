@@ -71,11 +71,16 @@ function injectIntoShell(shellHtml, { title, description, bodyHtml }) {
       `<meta name="description" content="${escapeHtml(description)}" />`
     );
   }
-  // Widen the root div's opening tag match (it carries an inline style attr) and
-  // inject real content just inside it, before the closing </div>.
+  // Replace whatever's inside the root div, not just an empty/whitespace-only
+  // div — index.html itself carries static homepage fallback content baked in
+  // at build time (its own crawler-safety net for when this function is down),
+  // so for any OTHER route the div is never actually empty and a match that
+  // assumed emptiness would silently no-op, leaving the homepage content in
+  // place. Matches up to the LAST </div> before </body> so nested divs inside
+  // bodyHtml/the existing content don't truncate the match early.
   html = html.replace(
-    /(<div id="root"[^>]*>)(\s*)(<\/div>)/s,
-    (_m, open, _ws, close) => `${open}${bodyHtml}${close}`
+    /(<div id="root"[^>]*>)([\s\S]*)(<\/div>\s*<\/body>)/,
+    (_m, open, _existing, close) => `${open}${bodyHtml}${close}`
   );
   return html;
 }

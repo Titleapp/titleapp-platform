@@ -90,6 +90,16 @@ async function createIdentitySession(input) {
     updated_at: ts(),
   }, { merge: true });
 
+  // Pass-through billing (2026-08-20): $1.50/session actual cost, never
+  // charged before today. Fire-and-forget — a billing hiccup must never
+  // block a verification session that was already, genuinely, created.
+  try {
+    const { recordDataFee } = require("../billing/dataFee");
+    await recordDataFee({ source: "stripe:identity_verification", userId: uid, units: 1, metadata: { sessionId: session.id, purpose } });
+  } catch (feeErr) {
+    console.warn("[stripeIdentity] dataFee record failed (non-fatal, session already created):", feeErr.message);
+  }
+
   return {
     ok: true,
     sessionId: session.id,

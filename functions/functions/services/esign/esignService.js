@@ -139,6 +139,16 @@ async function _sendViaBoldSign({ res, userId, tenantId, title, signers, message
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // Pass-through billing (2026-08-20): BoldSign costs the platform $0.75/doc;
+  // nothing charged this before today. Fire-and-forget — a billing hiccup
+  // must never block a document that already, genuinely, sent.
+  try {
+    const { recordDataFee } = require("../billing/dataFee");
+    await recordDataFee({ source: "boldsign:document", userId, tenantId, units: 1, metadata: { documentId, requestId: reqRef.id } });
+  } catch (feeErr) {
+    console.warn("[esign] dataFee record failed (non-fatal, document already sent):", feeErr.message);
+  }
+
   return res.json({
     ok: true,
     requestId: reqRef.id,

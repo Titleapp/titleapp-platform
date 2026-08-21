@@ -74,6 +74,22 @@ const SOURCE_REGISTRY = {
   // ~$0.50/clip; 2× markup ⇒ creator pays $1.00. Wired so the Marketing
   // worker can charge for every render the platform produces server-side.
   "kling:video":         { actualCentsPerUnit: 50, markup: 2.0, label: "Kling AI video generation" },
+
+  // E-signatures — BoldSign (services/esign/esignService.js Track A). Per
+  // that file's own documented cost: $0.75/document, platform-level API
+  // key. 2× markup (same standard rate as most of this registry) ⇒
+  // subscriber pays $1.50/document. Confirmed 2026-08-20: nothing charged
+  // this before today. Dropbox Sign/HelloSign (services/signatureService/)
+  // is a separate, narrower integration used only for IR investor/advisor
+  // flows — Sean canceled that Dropbox Sign account (unused, $200/mo);
+  // those flows migrate to BoldSign next week, not covered by this entry.
+  "boldsign:document":  { actualCentsPerUnit: 75, markup: 2.0, label: "BoldSign e-signature document" },
+
+  // Identity verification — Stripe Identity. Confirmed 2026-08-20 (code
+  // comment + Sean directly + Stripe's own current published rate all
+  // agree): $1.50/session actual cost. Same standard 2x markup ⇒ $3.00
+  // charged. Nothing charged this before today.
+  "stripe:identity_verification": { actualCentsPerUnit: 150, markup: 2.0, label: "Stripe Identity verification session" },
 };
 
 function getSourceConfig(source) {

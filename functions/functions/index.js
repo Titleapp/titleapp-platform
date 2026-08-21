@@ -23377,6 +23377,16 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           updatedAt: nowServerTs(),
         });
 
+        // Pass-through billing (2026-08-20): $1.50/session actual cost,
+        // never charged before today. Fire-and-forget - a billing hiccup
+        // must never block a session that was already, genuinely, created.
+        try {
+          const { recordDataFee } = require("./services/billing/dataFee");
+          await recordDataFee({ source: "stripe:identity_verification", userId: auth.user.uid, tenantId: ctx.tenantId, units: 1, metadata: { sessionId: session.id, purpose: String(purpose) } });
+        } catch (feeErr) {
+          console.warn("[identity:session:create] dataFee record failed (non-fatal, session already created):", feeErr.message);
+        }
+
         // Return minimal data to run Stripe UI
         return res.json({
           ok: true,
@@ -33103,6 +33113,22 @@ const { followUpCadence: handleFollowUpCadence } = require("./communications/fol
 exports.followUpCadence = onSchedule(
   { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await handleFollowUpCadence(); }
+);
+
+// ----------------------------
+// BILLING: QUARTERLY BOX PLAN SEAT SYNC (Sean, 2026-08-20)
+// Business/Academia in a Box seatCount was set once at Checkout and never
+// re-synced - a tenant that grows keeps paying the old seat price forever.
+// Reviewed once a quarter, not real-time, per Sean's direction.
+// ----------------------------
+const { syncBoxPlanSeats } = require("./billing/seatSync");
+
+exports.boxPlanSeatSyncQuarterly = onSchedule(
+  { schedule: "0 4 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1", timeoutSeconds: 300 },
+  async () => {
+    const result = await syncBoxPlanSeats();
+    console.log("[boxPlanSeatSyncQuarterly] complete:", JSON.stringify(result));
+  }
 );
 
 // ----------------------------
