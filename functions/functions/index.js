@@ -15448,6 +15448,34 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // GET /v1/canvas:live-kpis?workerSlug=platform-accounting — real-time KPI
+    // tiles for the Back-of-House "Intelligence Dashboard" (WorkerCanvas.jsx),
+    // computed directly from the tenant's actual records (transactions,
+    // campaigns, teamMembers, etc.) via the same buildTenantLiveSnapshot()
+    // already used to ground chat's sibling-worker context — see CODEX
+    // S52.48/S52.57 addendum investigation (2026-08-20). Found live: the
+    // dashboard previously read ONLY briefings/{uid}, a per-user doc populated
+    // by a daily digest cron — so a tenant seeded with real data today (e.g. a
+    // demo) showed "--" on every KPI until the next cron run, sometimes never,
+    // since the cron target is a user, not this tenant. This route gives the
+    // frontend a live alternative that doesn't depend on cron timing at all.
+    if (route === "/canvas:live-kpis" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const workerSlug = (req.query?.workerSlug || "").toString().trim();
+        if (!tenantId || !workerSlug) return res.json({ ok: false, error: "Missing tenantId or workerSlug" });
+        const { buildTenantLiveSnapshot } = require("./services/canvas/spineState");
+        const snapshot = await buildTenantLiveSnapshot(db, tenantId, auth.user.uid);
+        const worker = snapshot ? snapshot[workerSlug] : null;
+        return res.json({ ok: true, kpis: worker ? worker.kpis : null });
+      } catch (e) {
+        console.error("canvas:live-kpis failed:", e);
+        return jsonError(res, 500, "Live KPI fetch failed");
+      }
+    }
+
     // ── Tenant Studio Locker (per-subscriber knowledge layer) ────────────
 
     // GET /v1/worker:locker:list?workerId=... — List tenant's locker docs for a worker.

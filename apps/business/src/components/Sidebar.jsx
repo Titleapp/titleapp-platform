@@ -1824,8 +1824,18 @@ export default function Sidebar({
                 Server-enforced via enforceRoleGate; shown here whenever a
                 business workspace is active (non-admins just see a 403).
                 Also hidden client-side for member-role users — no reason
-                for a customer to see this at all (Sean, 2026-08-18). */}
-            {!isPersonal && workspaceRole !== "member" && (
+                for a customer to see this at all (Sean, 2026-08-18).
+                Found live (2026-08-20): this rendered for EVERY vertical,
+                but the underlying fast-path flow (teacherFastPath.js) is
+                education-only per S52.55's own "what's still open" section
+                ("education is the only vertical exercised so far —
+                generalizing beyond it is unstarted"). A title-company (or
+                any non-education) workspace saw this + "Build a Helper"
+                bleed through with hardcoded teacher/classroom copy, since
+                nothing was actually built to serve them. Gating to the one
+                vertical this is real for until it's genuinely generalized —
+                that's its own scoped project, not a nav-visibility fix. */}
+            {!isPersonal && workspaceRole !== "member" && vertical === "education" && (
               <button className={`navItem ${currentSection === "worker-review-queue" ? "navItemActive" : ""}`}
                 onClick={() => handleNavClick("worker-review-queue")}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -1837,10 +1847,12 @@ export default function Sidebar({
               </button>
             )}
 
-            {/* S52.55 — upload-first fast path, any business workspace.
-                Operator-only — hidden for member-role users, same reasoning
-                as Worker Reviews above. */}
-            {!isPersonal && workspaceRole !== "member" && (
+            {/* S52.55 — upload-first fast path. Comment originally said "any
+                business workspace" (that's the intended end-state per the
+                codex), but the actual build (teacherFastPath.js) is
+                education-only today — gated the same way as Worker Reviews
+                above, see that comment for the found-live bug this fixes. */}
+            {!isPersonal && workspaceRole !== "member" && vertical === "education" && (
               <button className={`navItem ${currentSection === "teacher-fast-path" ? "navItemActive" : ""}`}
                 onClick={() => handleNavClick("teacher-fast-path")}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>

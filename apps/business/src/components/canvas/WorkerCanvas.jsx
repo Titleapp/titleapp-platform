@@ -407,6 +407,52 @@ const BRIEFING_KPI_MAP = {
   },
 };
 
+// Found live (2026-08-20): the Intelligence Dashboard only ever read
+// briefings/{uid}, populated by a daily digest CRON — so a tenant seeded with
+// real data (e.g. a demo, or any brand-new tenant) shows "--" everywhere until
+// the next cron run, which may be hours away or may never target this uid at
+// all. GET /v1/canvas:live-kpis computes the same numbers on-demand, straight
+// from the tenant's real records, with no cron dependency. Maps this
+// component's internal kpi ids to the human-readable label keys
+// buildTenantLiveSnapshot() returns (see functions/functions/services/canvas/spineState.js).
+const LIVE_KPI_LABEL_MAP = {
+  "platform-accounting": {
+    "revenue": "Revenue (MTD)",
+    "expenses": "Expenses (MTD)",
+    "net-income": "Net (MTD)",
+    "cash-flow": null, // not computed live yet — same gap as the briefings path
+  },
+  "platform-marketing": {
+    "campaign-roi": null, // not computed live yet
+    "leads": null,
+    "email-open-rate": null,
+    "social-reach": "Social posts (7d)",
+  },
+  "platform-hr": {
+    "team-size": "Team size",
+    "open-positions": "Open positions",
+    "reviews-due": "Reviews due",
+    "compliance-score": null,
+  },
+  "platform-contacts": {
+    "total-contacts": "Total Contacts",
+    "active-clients": "Customers",
+    "followups-due": null,
+    "new-this-month": "New This Month",
+  },
+};
+
+function resolveLiveKpiValue(liveKpis, workerSlug, kpiId, unit) {
+  if (!liveKpis) return null;
+  const labelKey = LIVE_KPI_LABEL_MAP[workerSlug]?.[kpiId];
+  if (!labelKey) return null;
+  const raw = liveKpis[labelKey];
+  if (raw == null) return null;
+  // Live snapshot values are often already formatted strings (e.g. "$47,500",
+  // "not tracked — ..."); only numbers need formatKpiValue's unit suffix.
+  return typeof raw === "number" ? formatKpiValue(raw, unit) : String(raw);
+}
+
 function resolveBriefingPath(obj, path) {
   return path.split(".").reduce((o, k) => (o && o[k] != null ? o[k] : null), obj);
 }
@@ -443,7 +489,7 @@ function getChecklistCompletion(workerSlug) {
   return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
 }
 
-function InsightPreview({ workerSlug, accent, stage, briefingData, verticalKey }) {
+function InsightPreview({ workerSlug, accent, stage, briefingData, liveKpis, verticalKey }) {
   const intel = WORKER_INTELLIGENCE[workerSlug] || (verticalKey ? VERTICAL_INTELLIGENCE[verticalKey] : null);
 
   // 49.30 — re-render on demo-mode toggle (localStorage flag)
@@ -464,7 +510,10 @@ function InsightPreview({ workerSlug, accent, stage, briefingData, verticalKey }
   // Compute KPI display values up front so we know whether any sample is shown
   const demoActive = isDemoMode() && hasSampleData(workerSlug, verticalKey);
   const renderedKpis = intel.kpis.map((kpi) => {
-    const realValue = resolveKpiValue(briefingData, workerSlug, kpi.id, kpi.unit);
+    // Prefer the live, on-demand snapshot (no cron dependency) over the
+    // cron-populated briefings/{uid} doc, which may be stale or nonexistent.
+    const realValue = resolveLiveKpiValue(liveKpis, workerSlug, kpi.id, kpi.unit)
+      ?? resolveKpiValue(briefingData, workerSlug, kpi.id, kpi.unit);
     let displayValue = realValue;
     let isSample = false;
     if (realValue == null && demoActive) {
@@ -935,6 +984,33 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     return () => { cancelled = true; };
   }, [workerSlug, hasIntelligence]);
 
+  // Live, on-demand alternative to the cron-populated briefings doc above —
+  // see resolveLiveKpiValue's comment for why this exists.
+  const [liveKpis, setLiveKpis] = useState(null);
+  useEffect(() => {
+    if (!hasIntelligence) return;
+    let cancelled = false;
+    async function loadLiveKpis() {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID");
+        if (!tenantId || tenantId === "vault") return;
+        const token = await user.getIdToken();
+        const res = await fetch(
+          `${API_BASE}/api?path=${encodeURIComponent("/v1/canvas:live-kpis")}&workerSlug=${encodeURIComponent(workerSlug)}`,
+          { headers: { Authorization: `Bearer ${token}`, "x-tenant-id": tenantId } }
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!cancelled && j && j.ok && j.kpis) setLiveKpis(j.kpis);
+      } catch (err) {
+        console.warn("WorkerCanvas: live KPI load failed:", err.message);
+      }
+    }
+    loadLiveKpis();
+    return () => { cancelled = true; };
+  }, [workerSlug, hasIntelligence]);
+
   // Operating mode configuration
   const MODE_CONFIG = {
     pro: {
@@ -1373,7 +1449,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 }}
               >
                 {hasIntelligence && !consumerWorker && (
-                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} verticalKey={verticalKey} />
+                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} liveKpis={liveKpis} verticalKey={verticalKey} />
                 )}
                 {hasIntelligence && canvasStage >= 2 ? (
                   <CollapsibleChecklist

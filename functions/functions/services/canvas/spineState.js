@@ -89,7 +89,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       coaSnap, txSnap, connSnap,
       contactsSnap,
       draftsSnap, socialSnap, msgQSnap, campaignsSnap, listsSnap,
-      employeesSnap, staffCredsSnap,
+      employeesSnap, staffCredsSnap, teamMembersSnap,
       tenantSnap, subsSnap,
       emailProposalsSnap, emailSendsSnap,
     ] = await Promise.all([
@@ -113,6 +113,10 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       // read. The legacy `employees` collection is empty for real tenants, so the
       // chat used to claim "zero employees" while the canvas showed five.
       safe(db.collection("staff_credentials").where("tenantId", "==", tenantId).limit(500).get()),
+      // General-business HR (e.g. title, real estate) writes here — confirmed
+      // via HRSchedulePanel.jsx and seedTitleDemo.js, neither of which use
+      // `employees` or `staff_credentials` at all.
+      safe(db.collection("tenants").doc(tenantId).collection("teamMembers").limit(500).get()),
 
       safe(db.collection("tenants").doc(tenantId).get()),
       safe(db.collection("subscriptions").where("tenantId", "==", tenantId).where("status", "==", "active").get()),
@@ -304,11 +308,31 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       ...(topEmailBatches.length ? { investorBatches: topEmailBatches } : {}),
     };
 
-    // ── HR & People ── prefer the canonical staff_credentials roster (the same
-    // source the HR + Credentials canvases use); fall back to legacy employees.
+    // ── HR & People ── prefer tenants/{tenantId}/teamMembers (the actual
+    // collection HRSchedulePanel.jsx and the general-business HR & People
+    // section read/write — confirmed via grep, 2026-08-20). staff_credentials
+    // is clinical/nursing-vertical-specific (credentials/expiry tracking);
+    // legacy employees is the oldest fallback. A tenant using the general
+    // Back-of-House HR worker (e.g. ABC Title) was showing an empty dashboard
+    // despite having real staff on file, because this function never queried
+    // teamMembers at all.
+    const teamMembers = teamMembersSnap.docs.map(d => d.data());
     const employees = employeesSnap.docs.map(d => d.data());
     const staffCreds = staffCredsSnap.docs.map(d => d.data());
-    if (staffCreds.length > 0) {
+    if (teamMembers.length > 0) {
+      const active = teamMembers.filter(m => (m.status || "active") === "active").length;
+      const roster = teamMembers.slice(0, 12).map(m => `${m.name}${m.role ? ` — ${m.role}` : ""}`);
+      live["platform-hr"] = {
+        label: "HR & People",
+        kpis: {
+          "Team size":      active,
+          "Total on roster": teamMembers.length,
+          "Open positions": "not tracked — no positions/openings module on file yet",
+          "Reviews due":    "not tracked — no review-schedule module on file yet",
+        },
+        roster,
+      };
+    } else if (staffCreds.length > 0) {
       const overdue = staffCreds.reduce((n, s) => n + ((s.credentials || []).filter(c => c.status === "overdue").length), 0);
       const expiringSoon = staffCreds.reduce((n, s) => n + ((s.credentials || []).filter(c => c.status === "expiring_soon").length), 0);
       const roster = staffCreds.slice(0, 12).map(s => `${s.full_name || s.staff_id}${s.role ? ` — ${s.role}` : ""}`);
@@ -608,4 +632,4 @@ Cross-worker attribution rules:
   return ownBlock + siblingBlock;
 }
 
-module.exports = { buildSiblingStatePrompt, DEMO_WORKER_SAMPLES };
+module.exports = { buildSiblingStatePrompt, DEMO_WORKER_SAMPLES, buildTenantLiveSnapshot };
