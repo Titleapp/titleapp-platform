@@ -13,7 +13,7 @@ The fastest path in: read [`docs/CREATOR-ONBOARDING.md`](docs/CREATOR-ONBOARDING
 If you're a domain expert (nursing, real estate, aviation, accounting, legal, education, etc.) and you want to build a worker that solves a problem in your domain:
 
 1. **Fork** this repo on GitHub.
-2. **Clone** your fork locally: `git clone https://github.com/<you>/sociii-platform.git`
+2. **Clone** your fork locally: `git clone https://github.com/<you>/titleapp-platform.git`
 3. **Install Claude Code**: `npm install -g @anthropic-ai/claude-code` (then `claude /login`)
 4. **Copy the template**: `cp -r creators/_template creators/<your-handle>/<your-worker-slug>`
 5. **Fill in the five files**:
@@ -22,7 +22,7 @@ If you're a domain expert (nursing, real estate, aviation, accounting, legal, ed
    - `service.js` — your worker's exposed functions (pure event proposals)
    - `sample-data.js` — fixture data for first-visit users
    - `tests/assertions.md` — QA-001 assertions that must pass before merge
-6. **Open a PR** to upstream `sociii/sociii-platform:main`
+6. **Open a PR** to upstream `Titleapp/titleapp-platform:main`
 
 A maintainer reviews within 48 hours. Most workers ship in 1-2 review rounds.
 
@@ -97,7 +97,7 @@ Violations get a single warning. Repeat violations get banned.
 | Situation | Where to go |
 |---|---|
 | "How do I do X in the codebase?" | Ask Claude. It has the full codebase context. Most "how does X work" questions resolve in one prompt. |
-| "Is X a good idea for my worker?" | Open a GitHub Discussion at `github.com/sociii/sociii-platform/discussions` |
+| "Is X a good idea for my worker?" | Open a GitHub Discussion at `github.com/Titleapp/titleapp-platform/discussions` |
 | "How do I test this without running prod?" | Firebase emulators: `cd functions && firebase emulators:start` |
 | "I think I found a bug in the platform itself" | Open a GitHub Issue with reproduction steps |
 | "I want feedback on my worker before opening a PR" | Open a draft PR — reviewers will engage |

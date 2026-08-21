@@ -86,6 +86,6 @@ Run through this checklist (also in [`docs/CREATOR-WORKER-BUILD.md`](../docs/CRE
 - Build pattern: [`docs/CREATOR-WORKER-BUILD.md`](../docs/CREATOR-WORKER-BUILD.md)
 - Onboarding flow: [`docs/CREATOR-ONBOARDING.md`](../docs/CREATOR-ONBOARDING.md)
 - License + IP: [`LICENSE`](../LICENSE), [`CONTRIBUTING.md`](../CONTRIBUTING.md)
-- Discussions: github.com/sociii/sociii-platform/discussions
+- Discussions: github.com/Titleapp/titleapp-platform/discussions
 
 Happy building.

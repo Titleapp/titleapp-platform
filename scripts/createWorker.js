@@ -130,7 +130,7 @@ function main() {
   console.log(`  6. Edit tests/assertions.md — write ≥ 5 testable assertions`);
   console.log(`  7. (optional) Add a preview.html so reviewers can see your worker visually`);
   console.log("");
-  console.log(`When ready, open a PR to upstream sociii/sociii-platform:main.`);
+  console.log(`When ready, open a PR to upstream Titleapp/titleapp-platform:main.`);
   console.log("");
   console.log(`Reference example: creators/ruthie/nursing-education-001/`);
   console.log(`Build pattern:     docs/CREATOR-WORKER-BUILD.md`);

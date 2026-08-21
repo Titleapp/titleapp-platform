@@ -1,6 +1,7 @@
 {
   "slug": "REPLACE-with-your-worker-slug",
   "label": "REPLACE — Display name (under 50 chars)",
+  "persona_name": "REPLACE — your worker's chat persona name (e.g. \"Max\", \"Skye\") — shown as the chat speaker instead of a generic assistant name",
   "vertical": "REPLACE — e.g. healthcare, real-estate, auto, aviation, legal, finance",
   "jurisdiction": "GLOBAL",
   "creator": "REPLACE-with-your-github-handle",

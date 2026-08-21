@@ -57,12 +57,18 @@ How to structure the worker itself (the 5 files, canvas tabs, service.js) is in 
 **Hook:** the `generate_image` tool in the chat runtime (governed by RAAS imagery rules so it's provenance-tied, not made-up). Store the result against the relevant record.
 **Example:** "the sim has heart rate 130 + ST depression — show the actual ECG strip."
 
-### 7. Reach the user's existing tools (MCP)
+### 7. Generate real documents — PDF, Word, Excel, PowerPoint
+**What:** the worker can produce a downloadable one-pager, report, brief, deck, whitepaper, memo, or model — not a description of one, an actual file. If the user has Drive connected, it's saved there automatically as a native Google Doc/Sheet/Slide.
+**Why it's easy:** one tool call does the whole thing — you don't build a template engine.
+**Hook:** the `generate_document` tool in the chat runtime, available to every worker. Call it with a `templateId` and populated content; the user gets a download link (and a Drive copy, if connected).
+**Example:** "give me a one-pager explaining what this worker does" or "build me an Excel model of this deal" → `generate_document` produces the actual file.
+
+### 8. Reach the user's existing tools (MCP)
 **What:** your worker can read/return files and email **in the systems the user already uses** — Google Drive, Gmail, Google Calendar — instead of making them upload everything.
 **Why it's easy:** these are connected MCP tools; your Code can call them.
 **Hook:** the Google Drive / Gmail / Google Calendar MCP tools. "Read the rubric from their Drive and pre-fill the form."
 
-### 8. Rules + approval gates (so nothing happens by accident)
+### 9. Rules + approval gates (so nothing happens by accident)
 **What:** consequential actions go **propose → human approves → commit**. The worker suggests; the user confirms; only then does a record append. Business logic lives in rules, not in a prompt.
 **Why it's easy:** it's the platform default; you declare what needs approval.
 **Hook:** the RAAS rules engine + approval gates; capability declarations in `contracts/capabilities.json`. This is also what makes the platform safe for regulated buyers (schools, clinics).
@@ -77,7 +83,8 @@ How to structure the worker itself (the 5 files, canvas tabs, service.js) is in 
 | "Records live in a spreadsheet I maintain" | Records are append-only, owned by the user, portable for life (§2) |
 | "Signatures need DocuSign / a PDF" | Built-in signing + anchoring, re-verifiable by anyone (§3) |
 | "Pictures are stock images I find" | Generate the exact visual from the data (§6) |
-| "Each tool is a separate login" | Reach their Google Drive/Gmail directly (§7) |
+| "A deliverable means I write it myself in Word/Excel" | The worker generates the actual file — PDF, Word, Excel, PowerPoint (§7) |
+| "Each tool is a separate login" | Reach their Google Drive/Gmail directly (§8) |
 | "I'm limited to what the builder gives me" | Your Code builds new capabilities as workers + connectors |
 
 **The one rule:** talking about it doesn't matter — *doing* it does. Ask your Code to render the smallest working version in a tab, click it, then grow it.
@@ -87,7 +94,7 @@ How to structure the worker itself (the 5 files, canvas tabs, service.js) is in 
 ## Study these working examples (in this repo)
 - `services/education/clinicalEvaluation.js` + `ClinicalEvalCard.jsx` — sign → Vault → anchor → verified (the full §2+§3+§4 loop).
 - `components/canvas/StaffRosterCard.jsx` — people + red/yellow/green status, live data (§4).
-- `components/canvas/VetDosingCard.jsx` — propose → approve, with sourced data (§4+§8).
+- `components/canvas/VetDosingCard.jsx` — propose → approve, with sourced data (§4+§9).
 - `config/connectors.js` — the whole connector menu (§1).
 
 ## Want it in chat too?

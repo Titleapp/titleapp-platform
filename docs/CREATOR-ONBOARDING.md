@@ -23,14 +23,14 @@ Your worker lives in `creators/<your-handle>/<worker-slug>/` in the repo. When i
 
 ### 1. Fork the repo
 
-Go to https://github.com/sociii/sociii-platform and click **Fork** in the top right. GitHub creates a copy at `github.com/<your-username>/sociii-platform`. You own it. You can push to it freely.
+Go to https://github.com/Titleapp/titleapp-platform and click **Fork** in the top right. GitHub creates a copy at `github.com/<your-username>/titleapp-platform`. You own it. You can push to it freely.
 
 ### 2. Clone your fork locally
 
 ```bash
-git clone https://github.com/<your-username>/sociii-platform.git
-cd sociii-platform
-git remote add upstream https://github.com/sociii/sociii-platform.git
+git clone https://github.com/<your-username>/titleapp-platform.git
+cd titleapp-platform
+git remote add upstream https://github.com/Titleapp/titleapp-platform.git
 ```
 
 The `upstream` remote lets you pull future changes from the official repo. You'll use it later.
@@ -104,7 +104,7 @@ git commit -m "feat(creator): add <worker-slug> worker — first draft"
 git push origin worker/<your-handle>-<worker-slug>
 ```
 
-Then open a pull request on GitHub from your branch to `sociii/sociii-platform:main`.
+Then open a pull request on GitHub from your branch to `Titleapp/titleapp-platform:main`.
 
 A SOCIII maintainer (Sean or his delegate) will review within 48 hours. Expect at least one round of feedback — that's normal. Once approved, your worker merges and goes live in the marketplace.
 
@@ -138,7 +138,7 @@ See `docs/CREATOR-EARNINGS.md` for the full economics (warrants, milestone vesti
 
 - **Read the relevant existing worker** — `creators/_template/` is the skeleton; `creators/ruthie/nurse-eval-001/` is the reference example for evaluation-style workers.
 - **Ask Claude** — it has the full codebase context. Most "how does X work in this codebase" questions resolve in one prompt.
-- **Open a discussion on GitHub** — github.com/sociii/sociii-platform/discussions. SOCIII maintainers and other creators help here.
+- **Open a discussion on GitHub** — github.com/Titleapp/titleapp-platform/discussions. SOCIII maintainers and other creators help here.
 - **Slack** — once you have a merged PR, you get an invite to the SOCIII Creators Slack.
 
 ## What this doc is not
