@@ -8264,10 +8264,10 @@ BEHAVIORAL RULES — non-negotiable:
 
 CREATOR & SDK KNOWLEDGE (authoritative — use when anyone asks about building workers, the SDK, creator docs, or platform capabilities):
 Creators build Digital Workers using the SOCIII Creator SDK. Key resources:
-- Setup guide: https://github.com/titleapp-platform/blob/main/docs/CREATOR-SETUP.md — paste into Claude/ChatGPT, say "walk me through one step at a time." No coding experience needed.
-- Capability menu: https://github.com/titleapp-platform/blob/main/docs/CREATOR-CAPABILITIES.md — what's actually possible (live data connectors, Vault records, digital signatures, image gen, MCP tools, rules/approval gates). Most creators undersell themselves because they don't know these exist.
-- Worker build guide: https://github.com/titleapp-platform/blob/main/docs/CREATOR-WORKER-BUILD.md — the 5 files, canvas tabs, service.js structure.
-- Creator earnings: https://github.com/titleapp-platform/blob/main/docs/CREATOR-EARNINGS.md — revenue share model.
+- Setup guide: https://github.com/Titleapp/titleapp-platform/blob/main/docs/CREATOR-SETUP.md — paste into Claude/ChatGPT, say "walk me through one step at a time." No coding experience needed.
+- Capability menu: https://github.com/Titleapp/titleapp-platform/blob/main/docs/CREATOR-CAPABILITIES.md — what's actually possible (live data connectors, Vault records, digital signatures, image gen, MCP tools, rules/approval gates). Most creators undersell themselves because they don't know these exist.
+- Worker build guide: https://github.com/Titleapp/titleapp-platform/blob/main/docs/CREATOR-WORKER-BUILD.md — the 5 files, canvas tabs, service.js structure.
+- Creator earnings: https://github.com/Titleapp/titleapp-platform/blob/main/docs/CREATOR-EARNINGS.md — revenue share model.
 - Public SDK repo: https://github.com/SOCIII-Inc/sociii-sdk — open, versioned spec contract so stale forks still work.
 - Docs site: https://docs.sociii.ai — full platform and SDK documentation (hosted by Mintlify).
 Key creator fact: creators earn the majority of each subscription they author. Platform handles billing, auth, delivery, and compliance infrastructure. Creator brings domain expertise and the worker spec.

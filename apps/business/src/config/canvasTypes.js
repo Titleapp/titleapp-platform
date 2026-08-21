@@ -41,35 +41,35 @@ export const CANVAS_TYPES = {
     dataSource: "api",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your P&L to see it here.",
+    emptyPrompt: "Ask Max about your P&L to see it here.",
   },
   "card:accounting-invoice": {
     component: "InvoiceListCard",
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your invoices to see them here.",
+    emptyPrompt: "Ask Max about your invoices to see them here.",
   },
   "card:accounting-coa": {
     component: "ChartOfAccountsCard",
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to categorize your transactions to see your Chart of Accounts here.",
+    emptyPrompt: "Ask Max to categorize your transactions to see your Chart of Accounts here.",
   },
   "card:accounting-balance-sheet": {
     component: "BalanceSheetCard",
     dataSource: "api",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to build a balance sheet to see it here.",
+    emptyPrompt: "Ask Max to build a balance sheet to see it here.",
   },
   "card:accounting-cashflow": {
     component: "CashFlowStatementCard",
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex for a cash flow statement to see it here.",
+    emptyPrompt: "Ask Max for a cash flow statement to see it here.",
   },
 
   // HR cards
@@ -78,7 +78,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your employees to see them here.",
+    emptyPrompt: "Ask Jordan about your employees to see them here.",
   },
   "checklist:hr-onboarding": {
     component: "ChecklistCard",
@@ -92,7 +92,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about performance reviews to see details here.",
+    emptyPrompt: "Ask Jordan about performance reviews to see details here.",
   },
 
   // Marketing cards
@@ -101,14 +101,14 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to plan your content to see it here.",
+    emptyPrompt: "Ask Ivy to plan your content to see it here.",
   },
   "card:marketing-email": {
     component: "EmailCampaignCard",
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your email campaigns to see them here.",
+    emptyPrompt: "Ask Ivy about your email campaigns to see them here.",
   },
 
   // Aviation
@@ -138,7 +138,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to walk through a checklist to see it here.",
+    emptyPrompt: "Ask Skye to walk through a checklist to see it here.",
     acceptsUpload: true,
     uploadCategory: "checklists",
     uploadTitle: "No operator checklists uploaded.",
@@ -151,7 +151,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about an emergency procedure to see the QRH excerpt here.",
+    emptyPrompt: "Ask Skye about an emergency procedure to see the QRH excerpt here.",
     acceptsUpload: true,
     uploadCategory: "qrh",
     uploadTitle: "No operator QRH uploaded.",
@@ -164,7 +164,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to plan a flight to see the route and brief here.",
+    emptyPrompt: "Ask Skye to plan a flight to see the route and brief here.",
     acceptsUpload: true,
     uploadCategory: "flight-planning-sop",
     uploadTitle: "No flight-planning SOP uploaded.",
@@ -177,7 +177,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex for takeoff/landing performance to see the numbers here.",
+    emptyPrompt: "Ask Skye for takeoff/landing performance to see the numbers here.",
     acceptsUpload: true,
     uploadCategory: "performance",
     uploadTitle: "No performance tables uploaded.",
@@ -190,7 +190,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to run a weight & balance to see the calculation here.",
+    emptyPrompt: "Ask Skye to run a weight & balance to see the calculation here.",
     acceptsUpload: true,
     uploadCategory: "weight-balance",
     uploadTitle: "No weight & balance template uploaded.",
@@ -220,7 +220,7 @@ export const CANVAS_TYPES = {
     dataSource: "live",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to show fleet positions and the live map loads here.",
+    emptyPrompt: "Ask Skye to show fleet positions and the live map loads here.",
     _title: "Fleet Map",
   },
   "card:aviation-navdb": {
@@ -248,7 +248,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about a property and the map updates here.",
+    emptyPrompt: "Ask Rudy about a property and the map updates here.",
     _title: "Map",
   },
   "card:re-property-analysis": {
@@ -256,7 +256,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to analyze a property to see the report here.",
+    emptyPrompt: "Ask Rudy to analyze a property to see the report here.",
     _title: "Property Analysis",
   },
   "card:re-market-report": {
@@ -264,7 +264,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex for a market report to see it here.",
+    emptyPrompt: "Ask Rudy for a market report to see it here.",
     _title: "Market Report",
   },
   "card:re-comp-analysis": {
@@ -272,7 +272,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to run comps to see the analysis here.",
+    emptyPrompt: "Ask Rudy to run comps to see the analysis here.",
     _title: "Comparable Sales Analysis",
   },
 
@@ -282,7 +282,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to analyze a deal to see it here.",
+    emptyPrompt: "Ask Vinny to analyze a deal to see it here.",
     _title: "Deal Analysis",
   },
   "card:auto-fi-compliance": {
@@ -290,7 +290,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to review F&I compliance to see the report here.",
+    emptyPrompt: "Ask Vinny to review F&I compliance to see the report here.",
     _title: "F&I Compliance Review",
   },
   "card:auto-inventory": {
@@ -298,7 +298,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about inventory to see the report here.",
+    emptyPrompt: "Ask Vinny about inventory to see the report here.",
     _title: "Inventory Snapshot",
   },
 
@@ -398,7 +398,7 @@ export const CANVAS_TYPES = {
     dataSource: "static",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to show you the Business-in-a-Box to get all 5 workers at once.",
+    emptyPrompt: "Ask to see the Business-in-a-Box to get all 5 workers at once.",
     _title: "Business-in-a-Box",
   },
   "bundle:offer:re-in-a-box": {
@@ -457,7 +457,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your portfolio to see units, rent status, and MX here.",
+    emptyPrompt: "Ask Rudy about your portfolio to see units, rent status, and MX here.",
     _title: "Portfolio",
   },
   "card:pm-leaseup": {
@@ -473,7 +473,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to screen an applicant — Fair Housing rules enforced.",
+    emptyPrompt: "Ask Rudy to screen an applicant — Fair Housing rules enforced.",
     _title: "Screening",
   },
   "card:pm-maintenance": {
@@ -497,7 +497,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about upcoming deadlines to see your compliance calendar here.",
+    emptyPrompt: "Ask Rudy about upcoming deadlines to see your compliance calendar here.",
     _title: "Compliance",
   },
 
@@ -507,7 +507,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to schedule a showing to see your showing calendar here.",
+    emptyPrompt: "Ask to schedule a showing to see your showing calendar here.",
     _title: "Showings",
   },
 
@@ -545,7 +545,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to chart something for you to see it here.",
+    emptyPrompt: "Ask to chart something for you to see it here.",
     _title: "Chart",
   },
   "card:chart-funnel": {
@@ -553,7 +553,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex about your pipeline to see a funnel here.",
+    emptyPrompt: "Ask about your pipeline to see a funnel here.",
     _title: "Pipeline Funnel",
   },
   "card:chart-heatmap": {
@@ -561,7 +561,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to compare metrics to see a heatmap here.",
+    emptyPrompt: "Ask to compare metrics to see a heatmap here.",
     _title: "Heatmap",
   },
 
@@ -606,7 +606,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Alex to run Site Recon on an address to see parcel analysis here.",
+    emptyPrompt: "Ask to run Site Recon on an address to see parcel analysis here.",
     _title: "Site Recon",
   },
 };

@@ -17,20 +17,20 @@ export const WORKER_TAB_DESCRIPTIONS = {
   // ── Accounting ────────────────────────────────────────────────────────────
   "platform-accounting": {
     "overview":       "High-level snapshot of your financial health this period — revenue, expenses, net income, and cash flow at a glance.",
-    "pl":             "Full profit & loss statement broken down by revenue stream and expense category. Ask Alex to explain any line or project forward.",
-    "balance-sheet":  "Assets, liabilities, and equity as of the end of the period. Ask Alex to flag anything that looks out of balance.",
+    "pl":             "Full profit & loss statement broken down by revenue stream and expense category. Ask Max to explain any line or project forward.",
+    "balance-sheet":  "Assets, liabilities, and equity as of the end of the period. Ask Max to flag anything that looks out of balance.",
     "cash-flow":      "Operating, investing, and financing cash flows for the period. Your actual cash position, not just book income.",
-    "invoices":       "Open, overdue, and recently paid invoices. Ask Alex to draft a follow-up or flag anything past due.",
-    "tax":            "Quarterly estimate status, upcoming filing deadlines, and open tax tasks. Ask Alex to prepare a summary for your CPA.",
+    "invoices":       "Open, overdue, and recently paid invoices. Ask Max to draft a follow-up or flag anything past due.",
+    "tax":            "Quarterly estimate status, upcoming filing deadlines, and open tax tasks. Ask Max to prepare a summary for your CPA.",
   },
 
   // ── HR & People ───────────────────────────────────────────────────────────
   "platform-hr": {
-    "people":         "Your full team roster — humans and Digital Workers — with roles and status. Ask Alex to add a new person or pull up anyone's profile.",
-    "onboarding":     "In-flight onboardings and their current step. Ask Alex to draft the next onboarding task or send a welcome message.",
+    "people":         "Your full team roster — humans and Digital Workers — with roles and status. Ask Jordan to add a new person or pull up anyone's profile.",
+    "onboarding":     "In-flight onboardings and their current step. Ask Jordan to draft the next onboarding task or send a welcome message.",
     "schedule":       "Today's coverage: who's on shift, who's out, and which Digital Workers are running 24×7.",
-    "compliance":     "Open HR compliance obligations, hard-stops, and upcoming deadlines. Ask Alex to explain any item or draft a resolution.",
-    "documents":      "Agreements, signed packets, and expiring credentials. Ask Alex to send a signature request or pull any document.",
+    "compliance":     "Open HR compliance obligations, hard-stops, and upcoming deadlines. Ask Jordan to explain any item or draft a resolution.",
+    "documents":      "Agreements, signed packets, and expiring credentials. Ask Jordan to send a signature request or pull any document.",
     "notices":        "Recent and queued outbound HR communications — reminders, compliance notices, and onboarding messages.",
     "my-onboarding":  "Your personal onboarding status — what's complete and what's waiting on you.",
     "my-documents":   "Your signed HR documents and anything pending your signature.",
@@ -41,18 +41,18 @@ export const WORKER_TAB_DESCRIPTIONS = {
   "platform-marketing": {
     "overview":          "Campaign performance at a glance — ROI, reach, and top creative across all channels.",
     "kpis":              "Your core marketing metrics: ROI, leads, email open rate, and social reach.",
-    "campaigns":         "Active campaigns by channel. Ask Alex to draft a new campaign, analyze performance, or suggest improvements.",
-    "creative":          "Your creative asset library. Ask Alex to generate new images, repurpose existing assets, or schedule a refresh.",
-    "content-calendar":  "Your upcoming content schedule. Ask Alex to fill gaps, reschedule posts, or draft copy for any slot.",
-    "email":             "Email performance metrics — sends, opens, clicks, and unsubscribes. Ask Alex to run a comparison or draft a new sequence.",
+    "campaigns":         "Active campaigns by channel. Ask Ivy to draft a new campaign, analyze performance, or suggest improvements.",
+    "creative":          "Your creative asset library. Ask Ivy to generate new images, repurpose existing assets, or schedule a refresh.",
+    "content-calendar":  "Your upcoming content schedule. Ask Ivy to fill gaps, reschedule posts, or draft copy for any slot.",
+    "email":             "Email performance metrics — sends, opens, clicks, and unsubscribes. Ask Ivy to run a comparison or draft a new sequence.",
   },
 
   // ── Contacts ─────────────────────────────────────────────────────────────
   "platform-contacts": {
     "overview":     "Your full contact list with recent activity and follow-up status.",
     "pipeline":     "Active relationship pipeline — leads, prospects, and clients by stage.",
-    "follow-ups":   "Contacts that need attention this week. Ask Alex to draft a message or log an interaction.",
-    "segments":     "Contact segments and lists. Ask Alex to build a new segment or update an existing one.",
+    "follow-ups":   "Contacts that need attention this week. Ask Sage to draft a message or log an interaction.",
+    "segments":     "Contact segments and lists. Ask Sage to build a new segment or update an existing one.",
   },
 
   // ── Chief of Staff (Alex) ─────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
   "vet-drug-dosing": {
     "calculator":  "Enter patient weight and drug to get weight-based dosing with route-specific adjustments. All outputs are clinical reference — verify against your formulary.",
     "history":     "Order history for this practice — recent drug calculations with patient context.",
-    "protocols":   "Standing protocols for common procedures. Ask Alex to pull up a protocol or adapt one for a specific patient.",
+    "protocols":   "Standing protocols for common procedures. Ask to pull up a protocol or adapt one for a specific patient.",
     "schedule":    "Controlled substance log entries. Confirm and sign off directly from here.",
   },
 
@@ -90,8 +90,8 @@ export const WORKER_TAB_DESCRIPTIONS = {
   "vet-spine4": {
     "dashboard":    "Your full team roster — clinical staff plus Digital Workers — with status and active credentials.",
     "credentials":  "License expiry and CE credit status per staff member. Items expiring within 60 days are flagged.",
-    "training":     "Completed and scheduled training records by staff member. Ask Alex to log a new completion or draft a reminder.",
-    "calendar":     "Upcoming license renewals and mandatory re-certifications. Ask Alex to set a reminder.",
+    "training":     "Completed and scheduled training records by staff member. Ask to log a new completion or draft a reminder.",
+    "calendar":     "Upcoming license renewals and mandatory re-certifications. Ask to set a reminder.",
     "reminders":    "Active reminders for credentials, CE deadlines, and compliance items.",
   },
 
@@ -168,7 +168,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
   // ── CRE / Deal Analyst ────────────────────────────────────────────────────
   "cre-analyst": {
     "overview":     "Deal summary — property basics, key metrics, and status at a glance.",
-    "underwriting": "Underwriting model inputs and NOI outputs. Ask Alex to run a sensitivity or stress-test a scenario.",
+    "underwriting": "Underwriting model inputs and NOI outputs. Ask Rudy to run a sensitivity or stress-test a scenario.",
     "comparables":  "Comparable sales and lease comps for this market and asset class.",
     "risk":         "Risk flags, market risk factors, and deal-level CAS scores.",
     "documents":    "Deal documents, LOIs, and due diligence materials.",
@@ -177,7 +177,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
   // ── Aviation ──────────────────────────────────────────────────────────────
   "av-copilot-001": {
     "dashboard":  "Your operational status at shift start — currency, aircraft airworthiness, and any open items before your next flight.",
-    "preflight":  "Alex's assembled go/no-go package: live weather at origin and destination, FRAT score, W&B, and NOTAMs. Review and approve to open the trip record.",
+    "preflight":  "Skye's assembled go/no-go package: live weather at origin and destination, FRAT score, W&B, and NOTAMs. Review and approve to open the trip record.",
     "trip":       "The immutable trip record — every event from preflight release through landing, timestamped and signed. Your IRS business-purpose log and compliance record in one place.",
     "debrief":    "Post-flight debrief auto-populated from trip data. Review the FOQA questions, add remarks, and approve. Takes 90 seconds. Filed, signed, and chained to the trip record.",
     "logbook":    "Your digital pilot logbook — append-only, chain-signed, portable. Every entry includes business purpose recorded at time of flight for IRS documentation.",
@@ -185,11 +185,11 @@ export const WORKER_TAB_DESCRIPTIONS = {
   "av-mx-001": {
     "airworthiness": "N704AA's complete airworthiness picture — current inspections, engine time, and any open MEL items at a glance.",
     "timeline":      "Complete maintenance history — every entry append-only and chain-signed. The full chronological story of this aircraft from acquisition to today.",
-    "squawks":       "Open discrepancies and their resolution status. Tell Alex about any issue to log it immediately — timestamped and notified to your A&P.",
+    "squawks":       "Open discrepancies and their resolution status. Tell Skye about any issue to log it immediately — timestamped and notified to your A&P.",
     "upcoming":      "What's coming due on N704AA, by hours and by calendar. Nothing should surprise you at a pre-buy or an FAA ramp check.",
   },
   "av-dispatch-001": {
-    "trip-package":  "Alex's pre-assembled trip release package — every release item verified from live data before you dispatch. No manual re-entry.",
+    "trip-package":  "Skye's pre-assembled trip release package — every release item verified from live data before you dispatch. No manual re-entry.",
     "frat":          "Flight Risk Assessment score auto-calculated from weather, crew currency, aircraft status, and mission type.",
     "trip-record":   "The trip record, billing summary, and IRS business-purpose log. Chain-signed and exportable for your CPA.",
   },
@@ -239,13 +239,13 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "currency":        "All your certificates and recency requirements at a glance — go/no-go currency status.",
     "my-aircraft":     "Your primary aircraft — current airworthiness status and next flight readiness.",
     "schedule":        "Your upcoming trips, training events, and duty periods.",
-    "flight-planning": "Flight planning for your next trip — Alex builds the preflight package from live data.",
+    "flight-planning": "Flight planning for your next trip — Skye builds the preflight package from live data.",
   },
   "re-title-defects-001": {
     "active":        "All open title defects by severity — P0 (blocking), P1 (curative required), P2 (advisory). Nothing closes until every P0 and P1 is green.",
-    "curative":      "Documents and curative steps to clear each defect. Alex drafts standard language — one-click send to the relevant party via Gmail.",
+    "curative":      "Documents and curative steps to clear each defect. Petra drafts standard language — one-click send to the relevant party via Gmail.",
     "cleared":       "Immutable record of every defect that was found and cleared. Hash-chained with the title order — permanent proof of cure.",
-    "critical-path": "Open defects mapped against the projected close date. Alex alerts if any curative deadline is at risk of delaying close.",
+    "critical-path": "Open defects mapped against the projected close date. Petra alerts if any curative deadline is at risk of delaying close.",
   },
   "re-title-commitment-001": {
     "schedule-a": "The facts: current vesting, legal description, proposed insured, policy type, and consideration — pulled from the title order, no manual entry.",
