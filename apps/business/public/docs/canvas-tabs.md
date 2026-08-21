@@ -107,7 +107,7 @@ Tabs are the organizing surface. **What renders inside a tab** is the content. T
 |---|---|---|
 | `text` | Chat-style message or paragraph | Chat thread, inline card |
 | `structured_data` | JSON object rendered as a typed card (e.g., a SOAP note, a deal summary, a flight plan) | Card on canvas |
-| `document` | PDF / DOCX / spreadsheet | Inline preview + download |
+| `document` | PDF / DOCX / spreadsheet / PPTX, generated on request via `GENERATE_DOCUMENT` | Inline preview + download, auto-saved to the subscriber's Drive |
 | `image` | PNG / JPG / SVG (Fal.ai-rendered or uploaded) | Card on canvas, gallery view |
 | `audio` | TTS voiceover, generated music, narration | Inline player |
 | `video` | Generated explainer clip, demo walkthrough, narrative — including externally-linked YouTube embeds | Inline player, full-canvas modal |
@@ -126,6 +126,7 @@ Examples already live today:
 - **Marketing Worker** generates campaign videos (Kling-rendered character clips) and renders them directly into the canvas with a price quote against your data credits before each render
 - **Brand Voice Studio Worker** generates branded images (Fal.ai) into the canvas and saves them to your Drive
 - **IR Worker** generates investor-update documents and renders them as previewable PDFs in the canvas before any send
+- **Any worker** can call `GENERATE_DOCUMENT` when a subscriber explicitly asks for a downloadable file (a report, a statement, a spreadsheet) — not for every structured answer, only when a real file is what's actually wanted. It's reserved for that case specifically so a worker doesn't turn every answer into a PDF nobody asked for.
 
 The pattern is consistent: the worker proposes the content with a cost-quote, you approve, the render happens, the audit log captures it (rule version pinned, cost recorded, data-credit charge logged), and the rendered artifact lands in the canvas.
 

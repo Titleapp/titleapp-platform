@@ -30,6 +30,7 @@ What the marketplace lists. Read by Firestore at deploy time.
   "jurisdiction": "GLOBAL",
   "creator": "ruthie-smith",
   "tagline": "Draft SOAP notes from charts with protocol-aware flagging.",
+  "persona_name": "Ruthie",
   "pricing": {
     "monthly": 49,
     "currency": "USD",
@@ -47,6 +48,10 @@ What the marketplace lists. Read by Firestore at deploy time.
 ```
 
 **Required fields:** `slug`, `label`, `vertical`, `creator`, `tagline`, `pricing`, `lane`.
+
+### persona_name (recommended)
+
+Give your worker's chat a name, not just a job title. Users respond better to talking to "Ruthie" than to "Nurse Eval — SOAP Note Drafting" — every worker on the platform already has one (Max for accounting, Skye for aviation workers, and so on), and a fork that skips this field falls back to a generic, nameless "{label} · Worker" header in the chat UI. Pick something short and human; it shows up as the chat header and in how the worker refers to itself. There's no separate registry to update — set it here and it's live.
 
 `lane` is one of `open` / `marketplace` / `experimental`. **[See three lanes →](/docs/three-lanes)**
 

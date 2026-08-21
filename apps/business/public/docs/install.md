@@ -2,7 +2,7 @@
 
 Three free accounts. Most creators set them up in one focused sitting (45–90 minutes if you've never opened a terminal before; 15 minutes if you have).
 
-> **If you've never used a terminal or coded before — this page is written for you.** Every step assumes nothing. We'll cover *how* to open the apps, *how* to arrange them on your screen, *how* to take a screenshot and paste it into Claude Chat when you get stuck. The first time is the only hard time.
+> **If you've never used a terminal or coded before — this page is written for you.** Every step assumes nothing. We'll cover *how* to open the apps, *how* to arrange them on your screen, and *how* to get unstuck when something looks wrong — most of the time now with **Claude in Chrome** looking directly at your screen instead of you screenshotting it yourself. The first time is the only hard time.
 
 ---
 
@@ -36,6 +36,7 @@ That's the workspace. Once you have those three windows arranged, you're set.
 | **Anthropic Claude account** | A free account at claude.ai | One sign-in covers both Claude Chat (browser) and Claude Code (terminal) |
 | **Claude Code** | A program that runs in your computer's terminal | Talk to it about your worker. It edits files and runs commands for you. |
 | **GitHub account** | Free service that stores code | Where your worker lives once it's built. The SOCIII platform reads from here. |
+| **Claude in Chrome** (recommended, free) | A browser extension at [claude.ai/chrome](https://claude.ai/chrome) | Lets Claude Chat directly see and click around your `sociii.ai` tab — you stop needing to screenshot anything happening *in a browser tab* and just ask about it. Covered in Step 6. |
 
 No databases. No servers. No API keys. The platform handles all of it.
 
@@ -193,9 +194,26 @@ When you're stuck in Terminal — switch to the browser, paste a screenshot of T
 
 ---
 
-## Step 6 — Learn the screenshot + paste workflow
+## Step 6 — Getting unstuck: Claude in Chrome (for the browser), screenshots (for Terminal)
 
-This is the single most important skill for a non-coder using Claude Code: **when you don't know what's happening, show Claude what you're seeing.**
+This used to be one workflow — screenshot everything, paste it into Claude Chat. **It's now two workflows, and which one you use depends on where the problem is.**
+
+### Install Claude in Chrome first
+
+1. Go to [claude.ai/chrome](https://claude.ai/chrome) and add the extension to Chrome (a few clicks, free).
+2. Sign in with the same Claude account from Step 1.
+
+That's it. Once it's installed, Claude Chat can be pointed at any tab in your browser and actually look at it — read the page, see what's on screen, even click things — without you doing anything to capture it.
+
+### If the problem is on `sociii.ai` (or any browser tab) — just ask, no screenshot needed
+
+This is the main change: **you no longer do the screenshot-copy-paste dance for anything happening in your browser.** See something confusing on the platform? Don't reach for a screenshot — just tell Claude what tab you're on and what's wrong ("look at my sociii.ai tab, what does this error mean?", "is this what a finished worker is supposed to look like?"). With the extension active, Claude looks directly at the live page instead of a picture of it — which also means it can help you click through something, not just describe what it sees.
+
+**And it's not only Claude Chat — Claude Code (the one in your Terminal, building your worker) can use the same extension directly.** Once Claude in Chrome is installed, you can stay in Terminal and just ask Claude Code itself to check your `sociii.ai` tab ("open my worker's page and tell me if the new canvas is showing up right") — it'll drive the browser and look, same as Claude Chat would, without you switching tabs or copying anything over. This is especially useful once your worker is built: Claude Code can test it in the real browser and iterate, not just write the code and hope it looks right.
+
+### If the problem is in Terminal — you still screenshot
+
+Terminal is a separate app on your computer, not a browser tab, so Claude in Chrome can't see into it. For anything Terminal-related — an error, a confusing message, "did that command work?" — the screenshot + paste workflow below still applies.
 
 ### How to take a screenshot on Mac
 
