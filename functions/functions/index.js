@@ -3097,6 +3097,18 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         // Session continuity: if session is empty and user is authenticated,
         // try to resume their most recent session from any surface.
         // SKIP for special surfaces — they always get a fresh session.
+        //
+        // Bounded to SESSION_RESUME_MAX_AGE_MS (Sean, 2026-08-20): this
+        // previously resumed the user's last session regardless of age —
+        // a demo/title walkthrough from yesterday was silently carried into
+        // today's session, which reads as stale chat history bleeding
+        // across visits, not "the AI remembers me" (that continuity already
+        // comes from subscriberProfile/briefings/own-data grounding
+        // elsewhere, not from replaying yesterday's raw message thread).
+        // A same-day-ish window keeps genuine short continuity (closed the
+        // tab 10 minutes ago) without carrying a demo's history into the
+        // next day's session.
+        const SESSION_RESUME_MAX_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
         if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
             const recentSnap = await db.collection("chatSessions")
@@ -3106,11 +3118,17 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
               .get();
             if (!recentSnap.empty) {
               const recentDoc = recentSnap.docs[0];
-              effectiveSessionId = recentDoc.id;
-              sessionRef = db.collection("chatSessions").doc(effectiveSessionId);
-              sessionSnap = recentDoc;
-              sessionState = recentDoc.data().state || {};
-              console.log("chatEngine: resumed session", effectiveSessionId, "for user", authUser.uid);
+              const recentUpdatedAt = recentDoc.data().updatedAt;
+              const ageMs = recentUpdatedAt?.toMillis ? (Date.now() - recentUpdatedAt.toMillis()) : Infinity;
+              if (ageMs <= SESSION_RESUME_MAX_AGE_MS) {
+                effectiveSessionId = recentDoc.id;
+                sessionRef = db.collection("chatSessions").doc(effectiveSessionId);
+                sessionSnap = recentDoc;
+                sessionState = recentDoc.data().state || {};
+                console.log("chatEngine: resumed session", effectiveSessionId, "for user", authUser.uid, "age(ms)=", ageMs);
+              } else {
+                console.log("chatEngine: most recent session too old to resume, starting fresh", "age(ms)=", ageMs);
+              }
             }
           } catch (e) {
             console.warn("chatEngine: session resume lookup failed:", e.message);
