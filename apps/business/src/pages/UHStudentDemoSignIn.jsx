@@ -1,4 +1,6 @@
-// /demo/uh/student — auto-signs in as Sara Kahele (student, UH Mānoa)
+// /demo/uh/student — auto-signs in as Sara Kahele (student, UH Mānoa), then
+// redirects into the real customer-facing ClientPortal.jsx — NOT the
+// operator app. Fixed 2026-08-20, mirrors NursingStudentDemoSignIn.jsx.
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -18,25 +20,10 @@ export default function UHStudentDemoSignIn() {
         const res = await fetch(`${API_BASE}/api?path=/v1/demo:token&persona=uh-student`, { signal: ctrl.signal });
         const data = await res.json();
         if (!data.ok || !data.token) throw new Error(data.error || "Demo unavailable.");
-        const cred = await signInWithCustomToken(auth, data.token);
-        const idToken = await cred.user.getIdToken(true);
+        await signInWithCustomToken(auth, data.token);
         if (cancelled) return;
         clearTimeout(watchdog);
-        localStorage.setItem("ID_TOKEN", idToken);
-        if (data.tenantId) {
-          localStorage.setItem("TENANT_ID", data.tenantId);
-          localStorage.setItem("WORKSPACE_ID", data.tenantId);
-        }
-        if (data.workspaceName) {
-          localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
-          localStorage.setItem("COMPANY_NAME", data.workspaceName);
-          localStorage.setItem("TENANT_NAME", data.workspaceName);
-        }
-        if (data.vertical) localStorage.setItem("VERTICAL", data.vertical);
-        if (data.personaName) localStorage.setItem("DISPLAY_NAME", data.personaName);
-        localStorage.removeItem("USER_EMAIL");
-        localStorage.setItem("IS_CREATOR", "true");
-        window.location.replace("/?demo=1&persona=uh-student");
+        window.location.replace("/portal?company=uh-nursing&persona=student&demo=1");
       } catch (e) {
         if (!cancelled) {
           clearTimeout(watchdog);

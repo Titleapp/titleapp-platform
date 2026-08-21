@@ -1,4 +1,8 @@
-// /demo/nursing/student — auto-signs in as Sara Kahele (BSN student, Makai)
+// /demo/nursing/student — auto-signs in as Sara Kahele (BSN student, Makai),
+// then redirects into the real customer-facing ClientPortal.jsx — NOT the
+// operator app. Fixed 2026-08-20 (Sean: "a true student would probably be
+// the counterparty" — same gap class as the re-tenant fix earlier). Mirrors
+// TitleClientDemoSignIn.jsx's pattern exactly.
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -18,25 +22,12 @@ export default function NursingStudentDemoSignIn() {
         const res = await fetch(`${API_BASE}/api?path=/v1/demo:token&persona=nursing-student`, { signal: ctrl.signal });
         const data = await res.json();
         if (!data.ok || !data.token) throw new Error(data.error || "Demo unavailable.");
-        const cred = await signInWithCustomToken(auth, data.token);
-        const idToken = await cred.user.getIdToken(true);
+        await signInWithCustomToken(auth, data.token);
         if (cancelled) return;
         clearTimeout(watchdog);
-        localStorage.setItem("ID_TOKEN", idToken);
-        if (data.tenantId) {
-          localStorage.setItem("TENANT_ID", data.tenantId);
-          localStorage.setItem("WORKSPACE_ID", data.tenantId);
-        }
-        if (data.workspaceName) {
-          localStorage.setItem("WORKSPACE_NAME", data.workspaceName);
-          localStorage.setItem("COMPANY_NAME", data.workspaceName);
-          localStorage.setItem("TENANT_NAME", data.workspaceName);
-        }
-        if (data.vertical) localStorage.setItem("VERTICAL", data.vertical);
-        if (data.personaName) localStorage.setItem("DISPLAY_NAME", data.personaName);
-        localStorage.removeItem("USER_EMAIL");
-        localStorage.setItem("IS_CREATOR", "true");
-        window.location.replace("/?demo=1&persona=nursing-student");
+        // ClientPortal.jsx reads company/persona from its own URL params +
+        // onAuthStateChanged, not localStorage — same as title-client/re-tenant.
+        window.location.replace("/portal?company=makai-nursing&persona=student&demo=1");
       } catch (e) {
         if (!cancelled) {
           clearTimeout(watchdog);

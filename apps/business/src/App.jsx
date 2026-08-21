@@ -5152,6 +5152,14 @@ export default function App() {
   const isBrokerageDemo        = _dp === "/demo/brokerage"   || _dp === "/demo/brokerage/";
   const isEducationDemo        = _dp === "/demo/education"   || _dp === "/demo/education/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
+  // /passport/:id — the DPP end-consumer scan URL (Sean, 2026-08-20: "the DPP
+  // could have two use cases... the end consumer... the whole purpose of the
+  // law"). Public, no sign-in, no demo-token flow — a real shopper reaches
+  // this by scanning a product's QR code, so it just rewrites straight into
+  // the portal's "consumer" persona rather than going through any of the
+  // auth-first demo sign-in pages the other personas use.
+  const isDppScan = _dp.startsWith("/passport/");
+  const dppPassportId = isDppScan ? _dp.replace(/^\/passport\//, "").replace(/\/$/, "") : null;
 
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
@@ -6080,6 +6088,10 @@ export default function App() {
   if (isPortal) {
     const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
     return <React.Suspense fallback={null}><ClientPortal /></React.Suspense>;
+  }
+  if (isDppScan) {
+    window.location.replace(`/portal?company=nordholm&persona=consumer&passportId=${encodeURIComponent(dppPassportId)}`);
+    return null;
   }
 
   // ── Alex Workspace: standalone experience ──────────────────

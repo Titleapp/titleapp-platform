@@ -15,6 +15,9 @@
  *         /portal?company=attorneys-title&persona=buyer&orderId=xxx   (Henderson County TX demo)
  *         /portal?company=attorneys-title&persona=seller&orderId=xxx
  *         /portal?company=merritt-capital&persona=tenant             (Merritt Capital Group demo — CODEX title/RE merge, 2026-08-20)
+ *         /portal?company=makai-nursing&persona=student               (Makai School of Nursing demo, 2026-08-20)
+ *         /portal?company=uh-nursing&persona=student                  (UH Mānoa demo, 2026-08-20)
+ *         /passport/:passportId                                       (DPP end-consumer scan — public, no login, rewrites to ?company=nordholm&persona=consumer&passportId=..., 2026-08-20)
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -34,12 +37,17 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const TENANT_IDS = {
   "attorneys-title": "demo-attorneys-title-001",
   "merritt-capital": "ws_1783659066844_o7m1pm",
+  "makai-nursing": "demo-makai-nursing",
+  "uh-nursing": "demo-uh-nursing",
 };
 // Real, live worker slug for the title vertical (verified: functions/functions/
 // index.js references workers/re-title-search-001/handler.js; persona name in
 // the internal app is "Petra" — kept internal-only here, the customer-facing
 // greeting doesn't name it, see CODEX S52.56's identity-scope note).
 const TITLE_WORKER_SLUG = "re-title-search-001";
+// Real, live worker for student chat — same content the operator app's
+// nursing-education-001 uses, scoped server-side via context.persona="student".
+const STUDENT_WORKER_SLUG = "nursing-education-001";
 
 const SKINS = {
   "meadow-vet": {
@@ -77,6 +85,27 @@ const SKINS = {
     glyph: "🏢",
     tagline: "Your residence, in one place",
   },
+  "makai-nursing": {
+    name: "Makai School of Nursing",
+    short: "Makai Nursing",
+    accent: "#7c3aed", accentSoft: "#faf5ff", border: "#ddd6fe",
+    glyph: "🎓",
+    tagline: "Your clinical progress, in one place",
+  },
+  "uh-nursing": {
+    name: "UH Mānoa School of Nursing",
+    short: "UH Mānoa Nursing",
+    accent: "#065f46", accentSoft: "#ecfdf5", border: "#a7f3d0",
+    glyph: "🎓",
+    tagline: "Your clinical progress, in one place",
+  },
+  "nordholm": {
+    name: "Nordholm",
+    short: "Nordholm",
+    accent: "#1c1917", accentSoft: "#fafaf9", border: "#e7e5e4",
+    glyph: "🌿",
+    tagline: "Digital Product Passport",
+  },
 };
 
 // Demo identities — in production these are matched from the operator's CRM
@@ -87,6 +116,8 @@ const PEOPLE = {
   buyer: { name: "Sara", full: "Sara Kahele", role: "Buyer" },
   seller: { name: "Troy", full: "Troy Garris", role: "Seller" },
   tenant: { name: "Sara", full: "Sara Kahele", unit: "Unit 214", property: "Merritt Capital — Lakeview Commons" },
+  student: { name: "Sara", full: "Sara Kahele" },
+  consumer: { name: "there" }, // anonymous — no identity at all, this is a public product scan
 };
 
 const SCRIPTS = {
@@ -160,6 +191,30 @@ const SCRIPTS = {
     {
       chip: "My lease documents",
       canvas: { type: "tenant-docs" },
+    },
+  ],
+  student: [
+    {
+      chip: "How am I doing on clinical hours?",
+      canvas: { type: "progress" },
+    },
+    {
+      chip: "My verified competencies",
+      canvas: { type: "competencies" },
+    },
+  ],
+  consumer: [
+    {
+      chip: "What's this made of?",
+      canvas: { type: "passport" },
+    },
+    {
+      chip: "Can I recycle this?",
+      canvas: { type: "passport" },
+    },
+    {
+      chip: "Where was this made?",
+      canvas: { type: "passport" },
     },
   ],
 };
@@ -553,6 +608,108 @@ function TenantDocsCanvas({ skin, lease }) {
   ]} note="Your lease documents — always available here." />;
 }
 
+function ProgressCanvas({ skin, student }) {
+  const hours = student?.clinicalHours ?? 0;
+  const required = student?.clinicalHoursRequired ?? 500;
+  const pct = Math.min(100, Math.round((hours / required) * 100));
+  const rows = [
+    ["Clinical hours", `${hours} / ${required}`, "#0f172a"],
+    ["ATI score", student?.atiScore != null ? student.atiScore : "—", "#0f172a"],
+    ["Courses completed", student?.coursesComplete != null ? student.coursesComplete : "—", "#0f172a"],
+    ["Status", student?.status === "ready" ? "NCLEX ready" : student?.status === "in-progress" ? "In progress" : (student?.status || "—"), "#7c3aed"],
+  ];
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+          <span>Clinical hours progress</span><span>{pct}%</span>
+        </div>
+        <div style={{ height: 8, borderRadius: 8, background: "#f1f5f9", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: skin.accent, borderRadius: 8 }} />
+        </div>
+      </div>
+      {rows.map(([t, s]) => (
+        <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
+          <div style={{ fontSize: 14, color: s === "#0f172a" ? "#64748b" : s, fontWeight: 600 }}>{s}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompetenciesCanvas({ skin, competencies }) {
+  if (!competencies || competencies.length === 0) {
+    return <div style={{ fontSize: 13, color: "#64748b" }}>No competencies recorded yet — check back after your next clinical rotation.</div>;
+  }
+  return (
+    <div>
+      {competencies.map((c, i) => (
+        <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{c.competency}</div>
+            <span style={{
+              fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", padding: "2px 8px", borderRadius: 20,
+              color: c.status === "verified" ? "#15803d" : "#b45309",
+              background: c.status === "verified" ? "#dcfce7" : "#fef3c7",
+            }}>{(c.status || "").toUpperCase()}</span>
+          </div>
+          {c.notes && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{c.notes}</div>}
+          {c.attestedAt && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Attested {c.attestedAt}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PassportCanvas({ passport }) {
+  if (!passport) return <div style={{ fontSize: 13, color: "#64748b" }}>Loading passport…</div>;
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{passport.brandName}</div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 2 }}>{passport.productName}</div>
+      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>{passport.category} · {passport.sku}</div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Materials</div>
+      {(passport.materials || []).map((m, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 13, color: "#0f172a" }}>{m.name} <span style={{ color: "#94a3b8" }}>· {m.origin}</span></div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{m.percent}%</div>
+        </div>
+      ))}
+
+      {passport.manufacturing && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "16px 0 8px" }}>Manufacturing</div>
+          <div style={{ fontSize: 13, color: "#0f172a" }}>{passport.manufacturing.facility}, {passport.manufacturing.country}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{(passport.manufacturing.certifications || []).join(" · ")}</div>
+        </>
+      )}
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "16px 0 8px" }}>Carbon footprint</div>
+      <div style={{ fontSize: 13, color: "#0f172a" }}>{passport.carbonFootprintKgCO2e} kg CO₂e</div>
+
+      {passport.recyclability && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "16px 0 8px" }}>Recyclability</div>
+          <div style={{ fontSize: 13, color: "#0f172a" }}>{passport.recyclability.instructions}</div>
+        </>
+      )}
+
+      {passport.careInstructions && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, margin: "16px 0 8px" }}>Care</div>
+          <div style={{ fontSize: 13, color: "#0f172a" }}>{passport.careInstructions}</div>
+        </>
+      )}
+
+      {passport.complianceStandard && (
+        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 18, lineHeight: 1.5 }}>{passport.complianceStandard}</div>
+      )}
+    </div>
+  );
+}
+
 function Confirmed({ title, sub }) {
   return (
     <div style={{ textAlign: "center", padding: "24px 8px" }}>
@@ -615,22 +772,31 @@ function SignInGate({ skin, onSignedIn }) {
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
-  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : companyKey === "merritt-capital" ? "tenant" : "petowner");
+  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : companyKey === "merritt-capital" ? "tenant" : (companyKey === "makai-nursing" || companyKey === "uh-nursing") ? "student" : companyKey === "nordholm" ? "consumer" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
   const isTitlePersona = persona === "buyer" || persona === "seller";
   const isTenantPersona = persona === "tenant";
+  const isStudentPersona = persona === "student";
+  const isConsumerPersona = persona === "consumer";
   const orderId = params.get("orderId");
+  const passportId = params.get("passportId");
   const tenantId = TENANT_IDS[companyKey] || null;
   // Real title data available for this persona only when we have a tenant we
   // trust, an orderId, and (checked below) an authenticated + entitled user.
   const hasRealTitleBacking = isTitlePersona && !!tenantId && !!orderId;
   // Real lease data — same idea, no orderId concept for a tenancy.
   const hasRealTenantBacking = isTenantPersona && !!tenantId;
-  const hasRealBacking = hasRealTitleBacking || hasRealTenantBacking;
+  // Real student profile — same idea, keyed by the student's own uid instead of an orderId.
+  const hasRealStudentBacking = isStudentPersona && !!tenantId;
+  const hasRealBacking = hasRealTitleBacking || hasRealTenantBacking || hasRealStudentBacking;
+  // Consumer/DPP is deliberately NOT part of hasRealBacking — it's real data
+  // but genuinely public (no sign-in at all, like scanning a nutrition
+  // label), so it must never trigger the SignInGate below.
+  const hasConsumerBacking = isConsumerPersona && !!passportId;
 
-  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller/tenant only:
-  // petowner/advisor keep their existing scripted behavior untouched.
+  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller/tenant/student
+  // only: petowner/advisor/consumer keep their existing unauthenticated behavior.
   const [user, setUser] = useState(auth.currentUser);
   useEffect(() => {
     if (!hasRealBacking) return;
@@ -685,6 +851,49 @@ export default function ClientPortal() {
     return () => { cancelled = true; };
   }, [hasRealTenantBacking, user, tenantId]);
 
+  // Real student profile + competencies — GET /v1/student:customer:profile,
+  // same entitlement pattern as the lease fetch above.
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [competencies, setCompetencies] = useState([]);
+  const [studentStatus, setStudentStatus] = useState(hasRealStudentBacking ? "pending" : "unavailable");
+  useEffect(() => {
+    if (!hasRealStudentBacking || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/student:customer:profile")}`, {
+          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (j && j.ok && j.student) { setStudentProfile(j.student); setCompetencies(j.competencies || []); setStudentStatus("ok"); }
+        else setStudentStatus("denied");
+      } catch { if (!cancelled) setStudentStatus("denied"); }
+    })();
+    return () => { cancelled = true; };
+  }, [hasRealStudentBacking, user, tenantId]);
+
+  // Real DPP passport — GET /v1/dpp:passport:public. Deliberately NOT gated
+  // on `user` — this is a public, unauthenticated read, same as scanning a
+  // physical product's tag. Runs as soon as a passportId is present.
+  const [passport, setPassport] = useState(null);
+  const [passportStatus, setPassportStatus] = useState(hasConsumerBacking ? "pending" : "unavailable");
+  useEffect(() => {
+    if (!hasConsumerBacking) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/dpp:passport:public")}&passportId=${encodeURIComponent(passportId)}`);
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (j && j.ok && j.passport) { setPassport(j.passport); setPassportStatus("ok"); }
+        else setPassportStatus("denied");
+      } catch { if (!cancelled) setPassportStatus("denied"); }
+    })();
+    return () => { cancelled = true; };
+  }, [hasConsumerBacking, passportId]);
+
   // person: real name once the order loads (first name only, for the casual
   // greeting), falling back to the existing fixture identity otherwise — so
   // petowner/advisor and any not-yet-loaded/denied title case are unaffected.
@@ -693,6 +902,8 @@ export default function ClientPortal() {
     ? { name: realFullName.split(/[\s&]/)[0], full: realFullName, role: persona === "seller" ? "Seller" : "Buyer" }
     : lease
     ? { name: (lease.residentName || "").split(/[\s&]/)[0] || PEOPLE.tenant.name, unit: lease.unitLabel, property: `${lease.propertyName}${lease.unitLabel ? ` — ${lease.unitLabel}` : ""}` }
+    : studentProfile
+    ? { name: (studentProfile.name || "").split(/[\s&]/)[0] || PEOPLE.student.name }
     : (PEOPLE[persona] || PEOPLE.petowner);
 
   const greeting = persona === "advisor"
@@ -701,6 +912,10 @@ export default function ClientPortal() {
     ? `Hi ${person.name} 👋 I'm your title order assistant. Your file is in progress — let me show you where things stand and what's needed from you.`
     : isTenantPersona
     ? `Hi ${person.name} 👋 I'm here for ${person.property}, 24/7. Ask about rent, submit a maintenance request, or pull up your lease.`
+    : isStudentPersona
+    ? `Hi ${person.name} 👋 I'm here to help with your clinical progress — hours, ATI scores, and verified competencies. Ask me anything, or check your progress on the right.`
+    : isConsumerPersona
+    ? `Hi 👋 This is the Digital Product Passport for ${passport?.productName || "this product"}. Ask what it's made of, where it was made, or how to recycle it.`
     : `Hi ${person.name} 👋 I'm here for ${person.pet} (${person.petKind}), 24/7. Ask me anything, or book a visit.`;
 
   const [messages, setMessages] = useState([{ from: "them", text: greeting }]);
@@ -715,10 +930,10 @@ export default function ClientPortal() {
   // fixture-name-then-real-name flicker if the order fetch resolves after the
   // first render, which it always will — it's an async fetch).
   useEffect(() => {
-    if (!realFullName && !lease) return;
+    if (!realFullName && !lease && !studentProfile && !passport) return;
     setMessages(m => (m.length === 1 && m[0].from === "them" ? [{ from: "them", text: greeting }] : m));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realFullName, lease]);
+  }, [realFullName, lease, studentProfile, passport]);
 
   const lsKey = `portal-welcomed-${companyKey}-${persona}`;
   const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
@@ -760,6 +975,27 @@ export default function ClientPortal() {
       if (/maintenance|repair|broken|leak|fix|issue|not working/.test(t)) { setTimeout(() => setCanvas({ type: "maintenance" }), 200); return "Sorry to hear that — I've opened a maintenance request for you. Pick a category and describe what's going on, and Merritt Capital's team will follow up within 24 hours."; }
       if (/lease|document|renew|move.?out|notice/.test(t)) { setTimeout(() => setCanvas({ type: "tenant-docs" }), 200); return `Here are your lease documents. Your current lease runs through ${leaseEnd} — let me know if you're thinking about renewing or need to give notice.`; }
       return `I'm here for ${lease?.propertyName || "Lakeview Commons"}, ${unitLabel}. Ask me about rent, maintenance requests, or your lease.`;
+    }
+    // student persona — scripted fallback only (real chat below handles the
+    // authenticated case); still reads real data when loaded.
+    if (isStudentPersona) {
+      const hours = studentProfile?.clinicalHours ?? 486;
+      const required = studentProfile?.clinicalHoursRequired ?? 500;
+      const ati = studentProfile?.atiScore ?? "—";
+      if (/hour|clinical|progress|how am i doing/.test(t)) { setTimeout(() => setCanvas({ type: "progress" }), 200); return `You're at ${hours} of ${required} clinical hours, ATI score ${ati}. Opened your full progress on the right.`; }
+      if (/competenc|verif|sign.?off|attest/.test(t)) { setTimeout(() => setCanvas({ type: "competencies" }), 200); return "Here are your verified competencies — opened on the right."; }
+      return "I can help with your clinical progress, hours, and competencies. What would you like to know?";
+    }
+    // consumer/DPP persona — always scripted (public, anonymous, no worker
+    // chat wired for unauthenticated visitors); reads real passport data.
+    if (isConsumerPersona) {
+      if (!passport) return "One moment — loading this product's passport…";
+      if (/material|made of|fabric|contain/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return `This is ${(passport.materials || []).map(m => `${m.percent}% ${m.name}`).join(", ")}. Full details on the right.`; }
+      if (/recycl|dispose|end of life|throw/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return passport.recyclability?.instructions || "Recyclability info is on the right."; }
+      if (/where|made|manufactur|origin|from/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return passport.manufacturing ? `Made at ${passport.manufacturing.facility}, ${passport.manufacturing.country}.` : "Manufacturing info is on the right."; }
+      if (/carbon|footprint|emission|co2/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return `This product's footprint is ${passport.carbonFootprintKgCO2e} kg CO₂e.`; }
+      if (/care|wash|clean/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return passport.careInstructions || "Care instructions are on the right."; }
+      return `Ask me what ${passport.productName} is made of, where it was made, its carbon footprint, or how to recycle it.`;
     }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
@@ -831,6 +1067,33 @@ export default function ClientPortal() {
     return null;
   }
 
+  // Same real-chat pattern as sendRealTitleChat, different worker + persona
+  // scope note (see index.js's client_portal scope-limit block — student
+  // gets its own scope text, not the buyer/seller legal-advice one).
+  async function sendRealStudentChat(t) {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/chat:message")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({
+        message: t,
+        userInput: t,
+        sessionId: chatSessionIdRef.current,
+        selectedWorker: STUDENT_WORKER_SLUG,
+        context: { source: "client_portal", persona: "student" },
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    return j.response || j.message || "I'm not able to answer that right now — please try again in a moment.";
+  }
+
+  function canvasForStudentMessage(t) {
+    if (/hour|clinical|progress|how am i doing|ati/.test(t)) return { type: "progress" };
+    if (/competenc|verif|sign.?off|attest/.test(t)) return { type: "competencies" };
+    return null;
+  }
+
   async function sendMessage(text) {
     if (!text.trim() || thinking) return;
     const t = text.trim();
@@ -845,6 +1108,18 @@ export default function ClientPortal() {
         if (c) setCanvas(c);
       } catch {
         setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your file just now — please try again in a moment, or call us directly." }]);
+      }
+      setThinking(false);
+      return;
+    }
+    if (hasRealStudentBacking && user && studentStatus === "ok") {
+      try {
+        const reply = await sendRealStudentChat(t);
+        setMessages(m => [...m, { from: "them", text: reply }]);
+        const c = canvasForStudentMessage(t.toLowerCase());
+        if (c) setCanvas(c);
+      } catch {
+        setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your record just now — please try again in a moment." }]);
       }
       setThinking(false);
       return;
@@ -902,6 +1177,17 @@ export default function ClientPortal() {
         { label: "Rent & lease", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "lease" }) },
         { label: "Maintenance request", icon: I(<><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></>), action: () => setCanvas({ type: "maintenance" }) },
         { label: "Lease documents", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "tenant-docs" }) },
+        { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
+      ]
+    : isStudentPersona
+    ? [
+        { label: "Clinical progress", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "progress" }) },
+        { label: "Competencies", icon: I(<path d="M9 11l3 3L22 4"/>), action: () => setCanvas({ type: "competencies" }) },
+        { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
+      ]
+    : isConsumerPersona
+    ? [
+        { label: "Product passport", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "passport" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
     : [
@@ -968,7 +1254,7 @@ export default function ClientPortal() {
               alignItems: "flex-start",
               gap: 14,
             }}>
-              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : isTenantPersona ? skin.glyph : "🩺"}</div>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : isTenantPersona ? skin.glyph : isStudentPersona ? skin.glyph : isConsumerPersona ? skin.glyph : "🩺"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
                   {persona === "advisor"
@@ -977,6 +1263,10 @@ export default function ClientPortal() {
                     ? `Your title order is in progress`
                     : isTenantPersona
                     ? `Your residence, in one place`
+                    : isStudentPersona
+                    ? `Your clinical progress, in one place`
+                    : isConsumerPersona
+                    ? `Digital Product Passport`
                     : `${person.pet}'s health record lives here`}
                 </div>
                 <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
@@ -986,6 +1276,10 @@ export default function ClientPortal() {
                     ? `Track your closing, review documents, and sign — everything in one place. After recording, your deed and title policy live in your personal SOCIII Vault.`
                     : isTenantPersona
                     ? `Rent, maintenance requests, and lease documents for ${person.property} — everything in one place.`
+                    : isStudentPersona
+                    ? `Clinical hours, ATI scores, and verified competencies — everything in one place.`
+                    : isConsumerPersona
+                    ? `Materials, origin, care, and recyclability for ${passport?.productName || "this product"} — required under EU sustainable product rules.`
                     : `Tamper-evident, owned by you — not the clinic. Share with any vet, boarding, or travel carrier in seconds.`}
                 </div>
               </div>
@@ -1049,6 +1343,9 @@ export default function ClientPortal() {
                   : canvas.type === "lease" ? "Rent & lease"
                   : canvas.type === "maintenance" ? "Maintenance request"
                   : canvas.type === "tenant-docs" ? "Lease documents"
+                  : canvas.type === "progress" ? "Clinical progress"
+                  : canvas.type === "competencies" ? "Verified competencies"
+                  : canvas.type === "passport" ? "Product passport"
                   : "Your documents"}
               </div>
               <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
@@ -1063,6 +1360,9 @@ export default function ClientPortal() {
             {canvas.type === "lease" && <LeaseCanvas skin={skin} lease={lease} />}
             {canvas.type === "maintenance" && <MaintenanceCanvas skin={skin} history={maintenanceHistory} onSubmit={submitMaintenanceRequest} />}
             {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} lease={lease} />}
+            {canvas.type === "progress" && <ProgressCanvas skin={skin} student={studentProfile} />}
+            {canvas.type === "competencies" && <CompetenciesCanvas skin={skin} competencies={competencies} />}
+            {canvas.type === "passport" && <PassportCanvas passport={passport} />}
           </aside>
         )}
       </div>

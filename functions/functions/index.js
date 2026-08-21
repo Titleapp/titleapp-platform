@@ -4842,16 +4842,24 @@ END DELIVERY RULES.
               }
 
               // CODEX S52.56 (Garcia customer portal) — a customer-facing chat
-              // (ClientPortal.jsx buyer/seller personas) uses the SAME worker
-              // and the SAME Studio Locker grounding as the operator's internal
-              // chat, but must not answer as if giving legal/closing advice —
-              // no UPL/Texas Department of Insurance research has been done to
-              // establish that boundary (see the codex). This is a real,
-              // server-side restriction, not just a client-side hint: a
-              // request from the portal is marked via context.source, checked
-              // here, independent of whatever the client claims elsewhere.
+              // (ClientPortal.jsx) uses the SAME worker and the SAME Studio
+              // Locker grounding as the operator's internal chat, but the
+              // scope limit differs by persona — a title buyer/seller and a
+              // nursing student are not the same kind of "customer" and don't
+              // share a restriction. This is a real, server-side restriction,
+              // not just a client-side hint: a request from the portal is
+              // marked via context.source, checked here, independent of
+              // whatever the client claims elsewhere.
               if (workerPrompt && body?.context?.source === "client_portal") {
-                const _scopeNotice = `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
+                const _portalPersona = body?.context?.persona;
+                const _scopeNotice = (_portalPersona === "student")
+                  ? `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
+You are speaking directly with a NURSING STUDENT about their own coursework and clinical progress, not an instructor or the school administration. Stay strictly within:
+  - explaining their own progress data (clinical hours, ATI scores, competency status) already shown to them
+  - general educational/study support on nursing coursework topics (concepts, study strategies, practice questions)
+  - directing them to their instructor or the school for anything requiring official action (grade disputes, competency re-attestation, accommodations)
+Do NOT complete graded assignments, case studies, or exam questions on the student's behalf, and do not provide clinical guidance intended for use on a real patient — this is educational support only, not clinical practice. If asked to do their graded work for them, decline and explain why.\n\n`
+                  : `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
 You are speaking directly with the CUSTOMER (buyer/seller/borrower on their own transaction), not an employee of this business. Stay strictly within:
   - process and status information (where their file/order stands, what's needed from them, timelines)
   - explaining documents that are already part of their own file
@@ -20318,6 +20326,105 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("tenant:customer:maintenance failed:", e);
         return jsonError(res, 500, "Could not submit request");
+      }
+    }
+
+    // GET /v1/student:customer:profile — the nursing-student counterpart of
+    // /tenant:customer:lease (Sean, 2026-08-20: "a true student would
+    // probably be the counterparty" for the education vertical — same
+    // pattern applies). Real data already existed richly in
+    // tenants/{tenantId}/nursingStudents — this endpoint is the first thing
+    // to read it on the student's own behalf rather than an instructor's.
+    // Entitlement-safety: nursingStudents is a per-tenant SUBCOLLECTION (not
+    // a top-level collection with a tenantId field like leases/titleOrders),
+    // so the tenant scope is already structural — still exactly one query,
+    // still an in-memory identity match, still an identical response for
+    // wrong-party vs nonexistent.
+    if (route === "/student:customer:profile" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+
+        const NOT_FOUND = () => jsonError(res, 404, "Student record not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+
+        const studentsSnap = await db.collection("tenants").doc(tenantId).collection("nursingStudents").get();
+        const studentDoc = studentsSnap.docs.find(d => {
+          const s = d.data();
+          return (callerEmail && (s.email || "").toString().trim().toLowerCase() === callerEmail)
+              || (callerUid && s.uid === callerUid);
+        });
+        if (!studentDoc) return NOT_FOUND();
+        const student = studentDoc.data();
+
+        const compSnap = await db.collection("tenants").doc(tenantId).collection("nursingCompetencies")
+          .where("studentId", "==", studentDoc.id).get();
+        const competencies = compSnap.docs.map(d => {
+          const c = d.data();
+          return { competency: c.competency || null, status: c.status || null, attestedAt: c.attestedAt || null, notes: c.notes || null };
+        });
+
+        return res.json({
+          ok: true,
+          student: {
+            name: student.name || null,
+            status: student.status || null,
+            clinicalHours: student.clinicalHours ?? null,
+            clinicalHoursRequired: student.clinicalHoursRequired ?? null,
+            atiScore: student.atiScore ?? null,
+            coursesComplete: student.coursesComplete ?? null,
+          },
+          competencies,
+        });
+      } catch (e) {
+        console.error("student:customer:profile failed:", e);
+        return jsonError(res, 404, "Student record not found");
+      }
+    }
+
+    // GET /v1/dpp:passport:public?passportId=xxx — Digital Product Passport,
+    // end-consumer view (Sean, 2026-08-20: "the DPP could have two use
+    // cases... the end consumer... that was the whole purpose of the law").
+    // Deliberately NOT an entitlement-checked endpoint like the two above —
+    // a product passport is meant to be publicly readable by anyone who
+    // scans the product (like a nutrition label), so this is genuinely
+    // unauthenticated, no requireFirebaseUser call. The narrow response
+    // shape below is the safety mechanism instead: only public-appropriate
+    // product/compliance fields, never tenantId, internal notes, or
+    // anything about Volta Advisory's own business relationship with the
+    // brand. New data model — productPassports collection did not exist
+    // before this (confirmed empty), seeded by seedDppPassport.js.
+    if (route === "/dpp:passport:public" && method === "GET") {
+      try {
+        const passportId = (req.query?.passportId || "").toString().trim();
+        if (!passportId) return jsonError(res, 404, "Passport not found");
+
+        const doc = await db.collection("productPassports").doc(passportId).get();
+        if (!doc.exists) return jsonError(res, 404, "Passport not found");
+        const p = doc.data();
+
+        return res.json({
+          ok: true,
+          passport: {
+            brandName: p.brandName || null,
+            productName: p.productName || null,
+            category: p.category || null,
+            sku: p.sku || null,
+            materials: p.materials || [],
+            manufacturing: p.manufacturing || null,
+            careInstructions: p.careInstructions || null,
+            carbonFootprintKgCO2e: p.carbonFootprintKgCO2e ?? null,
+            recyclability: p.recyclability || null,
+            complianceStandard: p.complianceStandard || null,
+          },
+        });
+      } catch (e) {
+        console.error("dpp:passport:public failed:", e);
+        return jsonError(res, 404, "Passport not found");
       }
     }
 
