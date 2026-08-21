@@ -32,14 +32,39 @@ const VERTICAL_COLORS = {
   "Aviation":    { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
   "Auto Dealer": { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
   "Real Estate": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
+  "Title & Research": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
+  "Sales & Leasing":  { accent: "#0d9488", gradient: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)" },
+  "Operations":       { accent: "#65a30d", gradient: "linear-gradient(135deg, #65a30d 0%, #4d7c0f 100%)" },
   "Web3":        { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
   "Solar":       { accent: "#0891b2", gradient: "linear-gradient(135deg, #0891b2 0%, #0e7490 100%)" },
   "Government":  { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
   "Other":       { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
 };
 
+// Real estate/title sub-categories (Sean, 2026-08-20: "help the user
+// understand what categories the tools are for — title and research, sales
+// and leasing, operations"). Explicit per-slug so it's exact, not guessed
+// from prefixes; anything real-estate-shaped but not listed here still
+// falls into the general "Real Estate" bucket below rather than disappearing.
+// Same pattern extends to other verticals later (Sean: "academic and
+// medicine... fields of study or courses") — just add another map.
+const RE_SUBCATEGORY = {
+  "re-title-search-001": "Title & Research",
+  "re-defect-tracker-001": "Title & Research",
+  "re-commitment-001": "Title & Research",
+  "site-recon-001": "Title & Research",
+  "feasibility-001": "Title & Research",
+  "re-salesperson": "Sales & Leasing",
+  "re-marketing-001": "Sales & Leasing",
+  "cre-analyst": "Sales & Leasing",
+  "re-escrow-001": "Operations",
+  "re-underwriting-001": "Operations",
+  "law-landuse-001": "Operations",
+};
+
 function normalizeVertical(slug) {
   if (!slug) return "Other";
+  if (RE_SUBCATEGORY[slug]) return RE_SUBCATEGORY[slug];
   if (slug.startsWith("platform-") || slug === "chief-of-staff") return "Back of House";
   if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
   if (slug.startsWith("av-")) return "Aviation";
@@ -169,10 +194,13 @@ export default function WorkerHome() {
       price: cat.price || 0,
     });
   }
-  // Sort groups: Back of House first, Other last, rest alphabetical
+  // Sort groups: Back of House first, RE sub-categories in Sean's stated
+  // order (Title & Research / Sales & Leasing / Operations), Other last,
+  // rest alphabetical.
+  const GROUP_ORDER = ["Back of House", "Title & Research", "Sales & Leasing", "Operations"];
   const sortedGroups = Object.entries(grouped).sort(([a], [b]) => {
-    if (a === "Back of House") return -1;
-    if (b === "Back of House") return 1;
+    const ai = GROUP_ORDER.indexOf(a), bi = GROUP_ORDER.indexOf(b);
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     if (a === "Other") return 1;
     if (b === "Other") return -1;
     return a.localeCompare(b);

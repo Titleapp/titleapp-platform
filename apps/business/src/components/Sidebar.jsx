@@ -1094,9 +1094,26 @@ const VERTICAL_LABELS = {
   government: "Government",
 };
 
+// Real estate/title sub-categories — same override as WorkerHome.jsx's copy,
+// keep the two in sync. See that file for the rationale.
+const RE_SUBCATEGORY = {
+  "re-title-search-001": "Title & Research",
+  "re-defect-tracker-001": "Title & Research",
+  "re-commitment-001": "Title & Research",
+  "site-recon-001": "Title & Research",
+  "feasibility-001": "Title & Research",
+  "re-salesperson": "Sales & Leasing",
+  "re-marketing-001": "Sales & Leasing",
+  "cre-analyst": "Sales & Leasing",
+  "re-escrow-001": "Operations",
+  "re-underwriting-001": "Operations",
+  "law-landuse-001": "Operations",
+};
+
 // Determine vertical from worker slug prefix
 function normalizeVertical(slug) {
   if (!slug) return "Other";
+  if (RE_SUBCATEGORY[slug]) return RE_SUBCATEGORY[slug];
   // CODEX 49.16 — platform workers grouped under "Back of House"
   if (slug.startsWith("platform-")) return "Back of House";
   if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
@@ -1351,12 +1368,16 @@ export default function Sidebar({
     for (const v in groups) {
       groups[v].sort((a, b) => a.name.localeCompare(b.name));
     }
-    // Sort groups: vertical workers first (alphabetical), Back of House last
+    // Sort groups: vertical workers first (RE sub-categories in Sean's
+    // stated order, rest alphabetical), Back of House and Other last.
+    const RE_GROUP_ORDER = ["Title & Research", "Sales & Leasing", "Operations"];
     const sorted = Object.entries(groups).sort(([a], [b]) => {
       if (a === "Back of House") return 1;
       if (b === "Back of House") return -1;
       if (a === "Other") return 1;
       if (b === "Other") return -1;
+      const ai = RE_GROUP_ORDER.indexOf(a), bi = RE_GROUP_ORDER.indexOf(b);
+      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
       return a.localeCompare(b);
     });
     return { cos, groups: sorted };

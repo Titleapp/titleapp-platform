@@ -20217,6 +20217,110 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/tenant:customer:lease — CODEX title/RE merge (2026-08-20),
+    // property-management tenant persona (ClientPortal.jsx "tenant"). Same
+    // entitlement-safety shape as /title:customer:order directly above:
+    // exactly one Firestore query runs regardless of outcome (leases
+    // filtered by tenantId only — a small per-operator set), identity match
+    // happens in-memory after, so "wrong resident" and "no such lease" are
+    // the same code path, not two branches that happen to look alike.
+    if (route === "/tenant:customer:lease" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+
+        const NOT_FOUND = () => jsonError(res, 404, "Lease not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+
+        const leasesSnap = await db.collection("leases")
+          .where("tenantId", "==", tenantId)
+          .get();
+        const leaseDoc = leasesSnap.docs
+          .find(d => {
+            const l = d.data();
+            return (callerEmail && (l.residentEmail || "").toString().trim().toLowerCase() === callerEmail)
+                || (callerUid && l.uid === callerUid);
+          });
+        if (!leaseDoc) return NOT_FOUND();
+        const lease = leaseDoc.data();
+
+        const reqSnap = await db.collection("leases").doc(leaseDoc.id)
+          .collection("maintenanceRequests").orderBy("createdAt", "desc").get();
+        const maintenanceRequests = reqSnap.docs.map(d => {
+          const m = d.data();
+          return { id: d.id, category: m.category || null, description: m.description || null, status: m.status || null, createdAt: m.createdAt || null, resolvedAt: m.resolvedAt || null };
+        });
+
+        return res.json({
+          ok: true,
+          leaseId: leaseDoc.id,
+          lease: {
+            propertyName: lease.propertyName || null,
+            unitLabel: lease.unitLabel || null,
+            residentName: lease.residentName || null,
+            rentAmountCents: lease.rentAmountCents ?? null,
+            rentDueDay: lease.rentDueDay ?? null,
+            leaseStart: lease.leaseStart || null,
+            leaseEnd: lease.leaseEnd || null,
+            securityDepositCents: lease.securityDepositCents ?? null,
+            paidThroughDate: lease.paidThroughDate || null,
+            status: lease.status || null,
+          },
+          maintenanceRequests,
+        });
+      } catch (e) {
+        console.error("tenant:customer:lease failed:", e);
+        return jsonError(res, 404, "Lease not found");
+      }
+    }
+
+    // POST /v1/tenant:customer:maintenance — CODEX title/RE merge (2026-08-20).
+    // Files a real maintenance request against the caller's own lease. Same
+    // entitlement check as the GET above (re-run here rather than trusting a
+    // client-supplied leaseId) before writing.
+    if (route === "/tenant:customer:maintenance" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const category = (body?.category || "").toString().trim().slice(0, 60);
+        const description = (body?.description || "").toString().trim().slice(0, 2000);
+
+        const NOT_FOUND = () => jsonError(res, 404, "Lease not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!category || !description) return jsonError(res, 400, "Missing category or description");
+
+        const leasesSnap = await db.collection("leases")
+          .where("tenantId", "==", tenantId)
+          .get();
+        const leaseDoc = leasesSnap.docs
+          .find(d => {
+            const l = d.data();
+            return (callerEmail && (l.residentEmail || "").toString().trim().toLowerCase() === callerEmail)
+                || (callerUid && l.uid === callerUid);
+          });
+        if (!leaseDoc) return NOT_FOUND();
+
+        const ref = await db.collection("leases").doc(leaseDoc.id)
+          .collection("maintenanceRequests").add({
+            category, description, status: "submitted",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            submittedByUid: callerUid || null,
+          });
+        return res.json({ ok: true, requestId: ref.id });
+      } catch (e) {
+        console.error("tenant:customer:maintenance failed:", e);
+        return jsonError(res, 500, "Could not submit request");
+      }
+    }
+
     // ──────────────────────────────────────────────────────────
     // IR Phase 2 — Advisor flow endpoints (mirror of investor)
     // ──────────────────────────────────────────────────────────

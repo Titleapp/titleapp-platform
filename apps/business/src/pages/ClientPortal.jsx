@@ -33,6 +33,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 // (isTitlePersona still works, it just won't have live order data behind it).
 const TENANT_IDS = {
   "attorneys-title": "demo-attorneys-title-001",
+  "merritt-capital": "ws_1783659066844_o7m1pm",
 };
 // Real, live worker slug for the title vertical (verified: functions/functions/
 // index.js references workers/re-title-search-001/handler.js; persona name in
@@ -448,16 +449,25 @@ function TitleVaultCanvas({ skin, order }) {
   );
 }
 
-function LeaseCanvas({ skin }) {
+function fmtDate(iso) {
+  if (!iso) return null;
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function LeaseCanvas({ skin, lease }) {
+  const rent = lease?.rentAmountCents ? `$${(lease.rentAmountCents / 100).toLocaleString()} / month` : "$1,850 / month";
+  const paidThrough = lease?.paidThroughDate ? fmtDate(lease.paidThroughDate) : "September 1, 2026";
+  const leaseEnd = lease?.leaseEnd ? fmtDate(lease.leaseEnd) : "May 31, 2027";
+  const deposit = lease?.securityDepositCents ? `$${(lease.securityDepositCents / 100).toLocaleString()} · on file` : "$1,850 · on file";
   const rows = [
-    ["Rent", "$1,850 / month", "#0f172a"],
-    ["Paid through", "September 1, 2026", "#0f766e"],
-    ["Lease term", "12 months · ends May 31, 2027", "#0f172a"],
-    ["Security deposit", "$1,850 · on file", "#0f172a"],
+    ["Rent", rent, "#0f172a"],
+    ["Paid through", paidThrough, "#0f766e"],
+    ["Lease term", `ends ${leaseEnd}`, "#0f172a"],
+    ["Security deposit", deposit, "#0f172a"],
   ];
   return (
     <div>
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>Unit 214 · Lakeview Commons</div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>{lease?.unitLabel || "Unit 214"} · {lease?.propertyName || "Lakeview Commons"}</div>
       {rows.map(([t, s]) => (
         <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
@@ -472,14 +482,41 @@ function LeaseCanvas({ skin }) {
   );
 }
 
-function MaintenanceCanvas({ skin }) {
+function MaintenanceCanvas({ skin, history, onSubmit }) {
   const [issue, setIssue] = useState("");
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
   const categories = ["Plumbing", "Electrical", "Appliance", "HVAC", "Other"];
   const [cat, setCat] = useState(null);
+  async function submit() {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      await onSubmit?.(cat, issue.trim());
+      setDone(true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
   if (done) return <Confirmed skin={skin} title="Request submitted" sub="Merritt Capital's maintenance team will reach out within 24 hours to schedule a visit." />;
   return (
     <div>
+      {history && history.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Past requests</div>
+          {history.map(h => (
+            <div key={h.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f1f5f9" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{h.category}</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{h.description}</div>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: h.status === "resolved" ? "#15803d" : "#b45309", background: h.status === "resolved" ? "#dcfce7" : "#fef3c7", padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{(h.status || "").toUpperCase()}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>What's the issue?</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         {categories.map(c => (
@@ -497,19 +534,21 @@ function MaintenanceCanvas({ skin }) {
         rows={4}
         style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", outline: "none", resize: "vertical" }}
       />
-      <button disabled={!cat || !issue.trim()} onClick={() => setDone(true)} style={{
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>{err}</div>}
+      <button disabled={!cat || !issue.trim() || busy} onClick={submit} style={{
         width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none",
-        fontSize: 15, fontWeight: 700, cursor: (cat && issue.trim()) ? "pointer" : "not-allowed",
-        background: (cat && issue.trim()) ? skin.accent : "#e2e8f0", color: "#fff",
-      }}>Submit request</button>
+        fontSize: 15, fontWeight: 700, cursor: (cat && issue.trim() && !busy) ? "pointer" : "not-allowed",
+        background: (cat && issue.trim() && !busy) ? skin.accent : "#e2e8f0", color: "#fff",
+      }}>{busy ? "Submitting…" : "Submit request"}</button>
     </div>
   );
 }
 
-function TenantDocsCanvas({ skin }) {
+function TenantDocsCanvas({ skin, lease }) {
+  const moveIn = lease?.leaseStart ? fmtDate(lease.leaseStart) : "Jun 1, 2026";
   return <RecordsCanvasLike skin={skin} rows={[
-    ["Lease Agreement.pdf", "Signed · Jun 1, 2026"],
-    ["Move-in Inspection.pdf", "Jun 1, 2026"],
+    ["Lease Agreement.pdf", `Signed · ${moveIn}`],
+    ["Move-in Inspection.pdf", moveIn],
     ["Renter's Insurance Certificate.pdf", "On file"],
   ]} note="Your lease documents — always available here." />;
 }
@@ -586,15 +625,18 @@ export default function ClientPortal() {
   // Real title data available for this persona only when we have a tenant we
   // trust, an orderId, and (checked below) an authenticated + entitled user.
   const hasRealTitleBacking = isTitlePersona && !!tenantId && !!orderId;
+  // Real lease data — same idea, no orderId concept for a tenancy.
+  const hasRealTenantBacking = isTenantPersona && !!tenantId;
+  const hasRealBacking = hasRealTitleBacking || hasRealTenantBacking;
 
-  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller only:
+  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller/tenant only:
   // petowner/advisor keep their existing scripted behavior untouched.
   const [user, setUser] = useState(auth.currentUser);
   useEffect(() => {
-    if (!hasRealTitleBacking) return;
+    if (!hasRealBacking) return;
     const unsub = onAuthStateChanged(auth, setUser);
     return unsub;
-  }, [hasRealTitleBacking]);
+  }, [hasRealBacking]);
 
   // Real order data, fetched only once the customer is authenticated. Entitlement
   // is enforced server-side (GET /v1/title:customer:order) — this fetch either
@@ -620,12 +662,37 @@ export default function ClientPortal() {
     return () => { cancelled = true; };
   }, [hasRealTitleBacking, user, orderId, tenantId]);
 
+  // Real lease + maintenance history — GET /v1/tenant:customer:lease, same
+  // entitlement pattern as the title order fetch above.
+  const [lease, setLease] = useState(null);
+  const [maintenanceHistory, setMaintenanceHistory] = useState([]);
+  const [leaseStatus, setLeaseStatus] = useState(hasRealTenantBacking ? "pending" : "unavailable");
+  useEffect(() => {
+    if (!hasRealTenantBacking || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/tenant:customer:lease")}`, {
+          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (j && j.ok && j.lease) { setLease(j.lease); setMaintenanceHistory(j.maintenanceRequests || []); setLeaseStatus("ok"); }
+        else setLeaseStatus("denied");
+      } catch { if (!cancelled) setLeaseStatus("denied"); }
+    })();
+    return () => { cancelled = true; };
+  }, [hasRealTenantBacking, user, tenantId]);
+
   // person: real name once the order loads (first name only, for the casual
   // greeting), falling back to the existing fixture identity otherwise — so
   // petowner/advisor and any not-yet-loaded/denied title case are unaffected.
   const realFullName = order ? (persona === "seller" ? order.sellerName : order.buyerName) : null;
   const person = realFullName
     ? { name: realFullName.split(/[\s&]/)[0], full: realFullName, role: persona === "seller" ? "Seller" : "Buyer" }
+    : lease
+    ? { name: (lease.residentName || "").split(/[\s&]/)[0] || PEOPLE.tenant.name, unit: lease.unitLabel, property: `${lease.propertyName}${lease.unitLabel ? ` — ${lease.unitLabel}` : ""}` }
     : (PEOPLE[persona] || PEOPLE.petowner);
 
   const greeting = persona === "advisor"
@@ -648,10 +715,10 @@ export default function ClientPortal() {
   // fixture-name-then-real-name flicker if the order fetch resolves after the
   // first render, which it always will — it's an async fetch).
   useEffect(() => {
-    if (!realFullName) return;
+    if (!realFullName && !lease) return;
     setMessages(m => (m.length === 1 && m[0].from === "them" ? [{ from: "them", text: greeting }] : m));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realFullName]);
+  }, [realFullName, lease]);
 
   const lsKey = `portal-welcomed-${companyKey}-${persona}`;
   const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
@@ -677,12 +744,22 @@ export default function ClientPortal() {
       if (/wire.*fraud|fraud|impersonat|scam|email.*change/.test(t)) return "**Important:** We will NEVER change wire instructions by email. If you receive any email asking you to send funds to a different account, call us at (903) 675-2100 before doing anything. Wire fraud is the #1 threat in real estate closings.";
       return "I'm your title order assistant for file ATH-2026-0743 — 313 Mayfair Dr, Athens TX. Ask me where your order stands, what you need to sign, or when proceeds are released.";
     }
-    // tenant persona
+    // tenant persona — uses real lease data (GET /v1/tenant:customer:lease)
+    // once loaded, falls back to fixture figures otherwise (matches the
+    // title persona's realFullName/order fallback pattern).
     if (isTenantPersona) {
-      if (/rent|due|pay|balance|owe/.test(t)) { setTimeout(() => setCanvas({ type: "lease" }), 200); return "Rent for Unit 214 is $1,850/mo — you're paid through September 1, nothing due right now. Opened your lease details on the right."; }
+      const unitLabel = lease?.unitLabel || "Unit 214";
+      const rent = lease?.rentAmountCents ? `$${(lease.rentAmountCents / 100).toLocaleString()}` : "$1,850";
+      const paidThrough = lease?.paidThroughDate
+        ? new Date(lease.paidThroughDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" })
+        : "September 1";
+      const leaseEnd = lease?.leaseEnd
+        ? new Date(lease.leaseEnd + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "May 31, 2027";
+      if (/rent|due|pay|balance|owe/.test(t)) { setTimeout(() => setCanvas({ type: "lease" }), 200); return `Rent for ${unitLabel} is ${rent}/mo — you're paid through ${paidThrough}, nothing due right now. Opened your lease details on the right.`; }
       if (/maintenance|repair|broken|leak|fix|issue|not working/.test(t)) { setTimeout(() => setCanvas({ type: "maintenance" }), 200); return "Sorry to hear that — I've opened a maintenance request for you. Pick a category and describe what's going on, and Merritt Capital's team will follow up within 24 hours."; }
-      if (/lease|document|renew|move.?out|notice/.test(t)) { setTimeout(() => setCanvas({ type: "tenant-docs" }), 200); return "Here are your lease documents. Your current lease runs through May 31, 2027 — let me know if you're thinking about renewing or need to give notice."; }
-      return "I'm here for Lakeview Commons, Unit 214. Ask me about rent, maintenance requests, or your lease.";
+      if (/lease|document|renew|move.?out|notice/.test(t)) { setTimeout(() => setCanvas({ type: "tenant-docs" }), 200); return `Here are your lease documents. Your current lease runs through ${leaseEnd} — let me know if you're thinking about renewing or need to give notice.`; }
+      return `I'm here for ${lease?.propertyName || "Lakeview Commons"}, ${unitLabel}. Ask me about rent, maintenance requests, or your lease.`;
     }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
@@ -692,6 +769,24 @@ export default function ClientPortal() {
     if (/hay|food|diet|feed|eat/.test(t)) return "For a Holland Lop like Clover, 80% of the diet should be Timothy hay — unlimited. Supplement with leafy greens (romaine, cilantro, parsley) and a small amount of plain pellets. Avoid sugary treats and starchy vegetables.";
     if (/cost|price|fee|bill|charge/.test(t)) return "Exam visits are $65. Specialist consultations and procedures are priced transparently upfront — no surprise bills. You'll see the total before confirming any treatment.";
     return "I'm here for Clover 24/7. Ask me about care questions, records, or booking a visit.";
+  }
+
+  // Real write — files an actual maintenanceRequests doc via
+  // POST /v1/tenant:customer:maintenance (entitlement re-checked server-side,
+  // same pattern as the advisor persona's real affirm write). Chat itself
+  // stays scripted for tenant (no dedicated property-management worker
+  // exists yet — see CODEX title/RE merge notes), but the underlying record
+  // this creates is real, not a fixture.
+  async function submitMaintenanceRequest(category, description) {
+    if (!hasRealTenantBacking || !user) return; // scripted-only companies: nothing to submit against
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/tenant:customer:maintenance")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ category, description }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
   }
 
   // CODEX S52.56 — real chat for buyer/seller once entitled (order loaded).
@@ -816,11 +911,11 @@ export default function ClientPortal() {
         { label: "Bills & account", icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>), action: () => say("Nothing due right now — your last visit was paid in full. I'll text you before anything's coming up.") },
       ];
 
-  // CODEX S52.56 — for a real (non-fixture) title company, buyer/seller must
-  // sign in before anything real loads. Not shown for petowner/advisor or for
-  // companies without a verified tenant mapping (those stay on the existing
-  // scripted demo, unaffected).
-  if (hasRealTitleBacking && !user) {
+  // CODEX S52.56 — for a real (non-fixture) title company or property, the
+  // customer must sign in before anything real loads. Not shown for
+  // petowner/advisor or for companies without a verified tenant mapping
+  // (those stay on the existing scripted demo, unaffected).
+  if (hasRealBacking && !user) {
     return <SignInGate skin={skin} onSignedIn={() => {}} />;
   }
 
@@ -965,9 +1060,9 @@ export default function ClientPortal() {
             {canvas.type === "title-order" && <TitleOrderCanvas skin={skin} persona={persona} order={order} />}
             {canvas.type === "title-docs" && <TitleDocsCanvas skin={skin} persona={persona} />}
             {canvas.type === "title-vault" && <TitleVaultCanvas skin={skin} order={order} />}
-            {canvas.type === "lease" && <LeaseCanvas skin={skin} />}
-            {canvas.type === "maintenance" && <MaintenanceCanvas skin={skin} />}
-            {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} />}
+            {canvas.type === "lease" && <LeaseCanvas skin={skin} lease={lease} />}
+            {canvas.type === "maintenance" && <MaintenanceCanvas skin={skin} history={maintenanceHistory} onSubmit={submitMaintenanceRequest} />}
+            {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} lease={lease} />}
           </aside>
         )}
       </div>
