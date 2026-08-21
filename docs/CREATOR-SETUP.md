@@ -71,27 +71,27 @@ claude --version
 
 **Step 6 — Create a GitHub account** (if they don't have one). In the browser: **github.com → Sign up.** A Google sign-in (SSO) is fine. Have them note their **username** — they'll need it in Step 8.
 
-**Step 7 — Fork the SOCIII repo** (make their own copy). In the browser, logged into GitHub:
-- Go to **github.com/Titleapp/titleapp-platform**
+**Step 7 — Fork the SOCIII SDK** (make their own copy). In the browser, logged into GitHub:
+- Go to **github.com/SOCIII-Inc/sociii-sdk**
 - Click **Fork** (top-right) → on the next screen click the green **Create fork**.
-- Wait a few seconds. This lands them on **github.com/THEIR-USERNAME/titleapp-platform** — their personal copy. This repo is **public**, so no special access is needed.
+- Wait a few seconds. This lands them on **github.com/THEIR-USERNAME/sociii-sdk** — their personal copy. This repo is **public** and small (the open creator kit — not the platform itself), so no special access is needed.
 
 **Step 8 — Download (clone) their fork.** Back in the Terminal (replace `THEIR-USERNAME`):
 ```
-git clone https://github.com/THEIR-USERNAME/titleapp-platform.git
+git clone https://github.com/THEIR-USERNAME/sociii-sdk.git
 ```
-This downloads ~16,000 files. Takes a moment. If it errors, see Gotcha B (404 / could-not-read-Username).
+This is a small, fast clone (the SDK + worker-spec template — not the platform). If it errors, see Gotcha B (404 / could-not-read-Username).
 
 **Step 9 — Go into the folder and launch Claude Code.**
 ```
-cd titleapp-platform
+cd sociii-sdk
 claude
 ```
 On first launch, Claude Code will ask them to **log in** (it opens a browser to authenticate). That's expected — have them complete it.
 
 **Step 10 — The handoff (this is the finish line).** Once Claude Code is running *inside the repo*, the browser assistant is done. Tell the creator to type this to Claude Code:
 ```
-Read the folder creators/ and find my worker, then explain in plain
+Read the folder template/ — that's my worker spec — and explain in plain
 English what it does and one thing I could improve. I'm not a coder.
 ```
 When Claude Code answers about *their* worker, they're in. 🎉
@@ -119,8 +119,8 @@ The tool installed fine; the Terminal just doesn't know where it is yet.
 **B. `git clone` fails with `Repository not found` / `404` / `could not read Username for 'https://github.com'`.**
 This almost always means one of three things:
 1. **They haven't forked yet** — go back to Step 7 and create the fork first.
-2. **Wrong username in the URL** — the URL must contain *their own* GitHub username, not "Titleapp" and not a guess. Have them confirm their username at github.com (top-right avatar).
-3. **A typo** in the repo name. It is exactly `titleapp-platform`.
+2. **Wrong username in the URL** — the URL must contain *their own* GitHub username, not "SOCIII-Inc" and not a guess. Have them confirm their username at github.com (top-right avatar).
+3. **A typo** in the repo name. It is exactly `sociii-sdk`.
 Note: they are cloning a **public** repo, so it should never ask for a password. If it asks for a username/password, the URL is pointing at something private or nonexistent — recheck the fork.
 
 **C. "Should I install Homebrew?" — No.**
@@ -133,7 +133,7 @@ Run `xcode-select --install` to trigger the developer-tools installer, accept th
 No output is often *success* (git config, cd). Have them run the next step. If unsure, `pwd` shows the current folder and `ls` lists what's in it.
 
 **F. They closed the Terminal and lost their place.**
-Reopen Terminal, then `cd titleapp-platform` and `claude` to get right back in. The download from Step 8 is saved on their computer — they don't repeat it.
+Reopen Terminal, then `cd sociii-sdk` and `claude` to get right back in. The download from Step 8 is saved on their computer — they don't repeat it.
 
 ---
 
@@ -141,8 +141,8 @@ Reopen Terminal, then `cd titleapp-platform` and `claude` to get right back in. 
 
 - [ ] `git --version` and `claude --version` both print a version.
 - [ ] `git config --global user.name` / `user.email` are set.
-- [ ] They have a GitHub account and **forked** Titleapp/titleapp-platform.
-- [ ] They cloned their fork and are inside the `titleapp-platform` folder.
+- [ ] They have a GitHub account and **forked** SOCIII-Inc/sociii-sdk.
+- [ ] They cloned their fork and are inside the `sociii-sdk` folder.
 - [ ] `claude` launches and they completed login.
 - [ ] **Claude Code answered a question about their own worker** (Step 10).
 

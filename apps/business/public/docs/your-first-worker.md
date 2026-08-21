@@ -11,12 +11,12 @@ You should have already completed **[Install the tools](/docs/install)** — Cla
 In your terminal:
 
 ```
-git clone https://github.com/SOCIII-Inc/sociii.git
-cd sociii
+git clone https://github.com/SOCIII-Inc/sociii-sdk.git
+cd sociii-sdk
 claude
 ```
 
-The `claude` command starts Claude Code in the repo directory. The first thing Claude Code will do is read the `CLAUDE.md` file in the repo — that's the platform's own instructions for how to author a worker.
+The `claude` command starts Claude Code in the repo directory. The first thing worth having it read is `CREATOR-SETUP.md` and the `template/` folder — that's the worker-spec contract you'll be filling in.
 
 ## Step 2 — Tell Claude Code what you're building
 
@@ -98,7 +98,7 @@ git commit -m "Add nurse-eval-001 worker"
 git push origin nurse-eval-001
 ```
 
-Then open a PR on github.com/SOCIII-Inc/sociii. CI runs the validator + an AI reviewer. Most PRs merge automatically. If the reviewer flags something, Claude Code can address the feedback and push again.
+Then open a PR on github.com/SOCIII-Inc/sociii-sdk. CI runs the validator + an AI reviewer. Most PRs merge automatically. If the reviewer flags something, Claude Code can address the feedback and push again.
 
 ## Step 8 — Watch your worker go live
 
