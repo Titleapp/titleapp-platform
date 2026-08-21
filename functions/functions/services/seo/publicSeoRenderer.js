@@ -121,6 +121,58 @@ async function renderMarketplace(db) {
   };
 }
 
+// Lightweight, crawler-only markdown -> HTML. Not a full renderer — good
+// enough for semantic SEO content (headers/paragraphs/lists/links/bold/code),
+// not pixel-perfect. Real users never see this; DocsShell.jsx renders the
+// same .md properly client-side and takes over immediately on load.
+function mdToHtml(md) {
+  const lines = md.split("\n");
+  const out = [];
+  let inList = false;
+  let inCodeBlock = false;
+  const closeList = () => { if (inList) { out.push("</ul>"); inList = false; } };
+  const inline = (s) => escapeHtml(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, href) => `<a href="${escapeHtml(href)}">${text}</a>`);
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (line.trim().startsWith("```")) { inCodeBlock = !inCodeBlock; if (!inCodeBlock) out.push("</pre>"); else out.push("<pre>"); continue; }
+    if (inCodeBlock) { out.push(escapeHtml(line)); continue; }
+    if (!line.trim()) { closeList(); continue; }
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    if (h) { closeList(); const lvl = h[1].length; out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); continue; }
+    if (/^[-*]\s+/.test(line)) { if (!inList) { out.push("<ul>"); inList = true; } out.push(`<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`); continue; }
+    if (line.startsWith(">")) { closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/, ""))}</blockquote>`); continue; }
+    if (line.startsWith("|")) { closeList(); out.push(`<p>${inline(line.replace(/\|/g, " · ").trim())}</p>`); continue; }
+    closeList();
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return out.join("\n");
+}
+
+async function renderDocPage(slug) {
+  let resp;
+  try {
+    resp = await fetch(`https://sociii.ai/docs/${slug}.md`, { headers: { "User-Agent": "SOCIII-internal-seo-renderer" } });
+  } catch (e) {
+    return null;
+  }
+  if (!resp.ok) return null;
+  const md = await resp.text();
+  const titleMatch = md.match(/^#\s+(.*)/m);
+  const title = titleMatch ? titleMatch[1].trim() : slug;
+  // First non-empty, non-heading line makes a reasonable meta description.
+  const descLine = md.split("\n").find((l, i) => l.trim() && !l.trim().startsWith("#") && i > 0);
+  const description = (descLine || `${title} — SOCIII creator documentation.`).replace(/[*`>]/g, "").trim().slice(0, 300);
+  return {
+    title: `${title} — SOCIII Docs`,
+    description,
+    bodyHtml: `<main>${mdToHtml(md)}\n<p><a href="/docs">&larr; Back to all docs</a></p></main>`,
+  };
+}
+
 async function renderWorkerPage(db, slug) {
   const snap = await db.collection("digitalWorkers").doc(slug).get();
   if (!snap.exists) return null;
@@ -157,6 +209,9 @@ async function renderPublicPage(db, path) {
   } else if (path.startsWith("/c/")) {
     const slug = path.slice(3).replace(/\/+$/, "");
     if (slug) routeContent = await renderWorkerPage(db, slug);
+  } else if (path.startsWith("/docs/") && !path.endsWith(".md")) {
+    const slug = path.slice("/docs/".length).replace(/\/+$/, "");
+    if (slug) routeContent = await renderDocPage(slug);
   }
 
   if (!routeContent) return null;

@@ -18,7 +18,7 @@ SOCIII replaces the back-office SaaS stack for small businesses and professional
 - [Docs and guides](https://sociii.ai/docs/): Developer and creator documentation
 - [Whitepaper](https://sociii.ai/whitepaper): Technical architecture and trust model
 - [Worker gallery](https://sociii.ai/c/): Published Digital Workers (public access, some require auth to run)
-- [Creator guide](https://sociii.ai/docs/creator-setup): How to build and publish a Digital Worker
+- [Creator guide](https://sociii.ai/docs/install): How to build and publish a Digital Worker
 
 ## Available Digital Workers
 
@@ -28,18 +28,18 @@ SOCIII replaces the back-office SaaS stack for small businesses and professional
 - **Marketing Worker** (`platform-marketing`): AI-powered campaign creation, content drafts, and direct publishing to X/Twitter, YouTube, and TikTok. Tracks campaign performance.
 - **Contacts Worker** (`platform-contacts`): Customer and vendor relationship management. Tracks interactions, follow-ups, and deal pipeline. Syncs with Gmail.
 - **Control Center Pro** (`platform-control-center-pro`): Executive dashboard — KPIs, alerts, and cross-worker business health at a glance.
-- **Investor Relations Worker** (`platform-investor-relations`): SAFE/equity management, cap table tracking, 83(b) deadline monitoring, and investor update drafting.
+- **Investor Relations Worker** (`investor-relations`): SAFE/equity management, cap table tracking, 83(b) deadline monitoring, and investor update drafting.
 
-### Real Estate (RE Suite)
-- **Real Estate Title Worker — California** (`re-title-ca`): California parcel research, title chain analysis, ownership history, lien search, and property reports. For title agents, escrow officers, and RE attorneys.
-- **Real Estate Title Worker — Nevada** (`re-title-nv`): Nevada parcel research and title abstract. Full property data via ATTOM — APN lookup, ownership, deed chain, and encumbrances.
-- **Property Research Worker — California** (`platform-real-estate-ca`): Residential property research for buyers and homeowners. APN lookup, recent sales, tax history, and neighborhood data.
+### Real Estate / Title (RE Suite)
+- **Title Search Worker** (`re-title-search-001`): Title order intake, chain-of-title research, and defect tracking for title companies and escrow officers.
+- **Escrow Manager Worker** (`re-escrow-001`): Closing and escrow coordination — order status, document tracking, and disbursement for real estate closings.
+- **Real Estate Advocate Worker** (`re-salesperson`): Buy-side/sell-side real estate agent support — listings, offers, and client coordination.
 - **Nevada CE Courses Worker** (`re-ce-nevada-001`): Nevada real estate continuing education tracker. Manages CE requirements, course completions, and license renewal deadlines.
 
 ### Aviation
-- **Aviation CoPilot Worker** (`av-copilot`): Flight planning assistant: live weather (METAR/TAF), NOTAMs, fuel planning, weight-and-balance, and route optimization. For Part 91 and charter operators.
-- **Aviation MX Worker** (`av-mx`): Aircraft maintenance tracking: airworthiness directives, 100-hour/annual inspection schedules, logbook entries, and squawk management.
-- **Aviation Dispatch Worker** (`av-dispatch`): Flight dispatch and crew scheduling. Weather releases, weight-and-balance sign-offs, and ATIS/clearance lookups.
+- **Aviation CoPilot Worker** (`av-copilot-001`): Flight planning assistant: live weather (METAR/TAF), NOTAMs, fuel planning, weight-and-balance, and route optimization. For Part 91 and charter operators.
+- **Aviation MX Worker** (`av-mx-001`): Aircraft maintenance tracking: airworthiness directives, 100-hour/annual inspection schedules, logbook entries, and squawk management.
+- **Aviation Dispatch Worker** (`av-dispatch-001`): Flight dispatch and crew scheduling. Weather releases, weight-and-balance sign-offs, and ATIS/clearance lookups.
 
 ## API / MCP
 

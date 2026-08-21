@@ -1,226 +1,194 @@
 # Worker anatomy
 
-Every Digital Worker on SOCIII is a directory of six files. This page shows what each file does, the minimum content, and where to read working examples.
+Every Digital Worker is a directory of seven files, defined in the [open SDK's](https://github.com/SOCIII-Inc/sociii-sdk) `template/` folder. This page shows what each file does, the minimum content, and where to read a working example — matching the real template exactly, not an idealized version of it.
 
-## The six files
+## The seven files
 
 ```
 my-worker/
-├── catalog.json        ← what the marketplace lists (includes auditTriggers)
-├── intent-spec.yml     ← what success looks like
-├── rules/
-│   ├── core.yml        ← invariants that always hold
-│   └── jurisdiction.yml  ← optional, for regulated workers
-├── fixtures/
-│   ├── sample-in.json    ← demo input
-│   └── sample-out.json   ← expected output
+├── worker-spec.json    ← the marketplace listing: slug, name, pricing, canvas tabs
+├── intent.md           ← what it does, who it's for, what success looks like, what it's NOT
+├── rules.md             ← identity, scope, evidence standard, tone, disclaimers
 ├── canvas-tabs.json    ← what shows in the right panel
-└── README.md           ← plain-language description
+├── service.js           ← the worker's functions, as pure event proposals
+├── sample-data.js       ← fixtures so a first-time user sees something real
+└── tests/
+    └── assertions.md    ← the acceptance checks QA-001 runs before it ships
 ```
 
-## catalog.json
+## worker-spec.json
 
-What the marketplace lists. Read by Firestore at deploy time.
+What the marketplace lists, and what the platform reads to register your worker.
 
 ```json
 {
+  "$schema": "https://sociii.ai/sdk/schema/1.0.0",
+  "sociii-sdk-version": "1.0.0",
+  "id": "RUTH-001",
+  "name": "Nurse Eval — SOAP Note Drafting",
   "slug": "nurse-eval-001",
-  "label": "Nurse Eval — SOAP Note Drafting",
+  "type": "standalone",
+  "status": "waitlist",
+  "description": "Drafts SOAP notes from patient charts with protocol-aware lab flagging.",
+  "suite": "Nursing",
   "vertical": "healthcare",
-  "jurisdiction": "GLOBAL",
-  "creator": "ruthie-smith",
-  "tagline": "Draft SOAP notes from charts with protocol-aware flagging.",
-  "persona_name": "Ruthie",
-  "pricing": {
-    "monthly": 49,
-    "currency": "USD",
-    "trial_days": 14
-  },
-  "forge": {
-    "enabled": true,
-    "forge_price": 1.34
-  },
-  "intent": "intent-spec.yml",
-  "rulesets": ["rules/core.yml"],
-  "canvasTabs": "canvas-tabs.json",
-  "lane": "marketplace"
+  "phase": 0,
+  "pricing": { "monthly": 49 },
+  "tags": ["nursing", "documentation"],
+  "valueBucket": ["save_time", "stay_compliant"],
+  "capabilitySummary": "Takes a patient chart (text + lab values), drafts a SOAP note, flags out-of-range labs, suggests next-step orders consistent with hospital protocol.",
+  "canvasTabs": [
+    { "id": "current-case", "label": "Current case", "signal": "card:work-product", "default": true, "order": 0 }
+  ],
+  "alexRegistration": { "priority": "normal", "acceptsTasks": true, "briefingContribution": "nursing_eval_status" },
+  "temporalType": "always_on",
+  "vault_reads": [],
+  "vault_writes": []
 }
 ```
 
-**Required fields:** `slug`, `label`, `vertical`, `creator`, `tagline`, `pricing`, `lane`.
+**Required fields:** `id`, `name`, `slug`, `pricing`, `canvasTabs`. `slug` must be globally unique and can't change after publish — lowercase, hyphens only.
 
-### persona_name (recommended)
+### persona_name (recommended, not shown above — add it yourself)
 
-Give your worker's chat a name, not just a job title. Users respond better to talking to "Ruthie" than to "Nurse Eval — SOAP Note Drafting" — every worker on the platform already has one (Max for accounting, Skye for aviation workers, and so on), and a fork that skips this field falls back to a generic, nameless "{label} · Worker" header in the chat UI. Pick something short and human; it shows up as the chat header and in how the worker refers to itself. There's no separate registry to update — set it here and it's live.
+Give your worker's chat a name, not just a job title. Users respond better to talking to "Ruthie" than to "Nurse Eval — SOAP Note Drafting" — every worker on the platform already has one (Max for accounting, Skye for aviation workers, and so on), and a worker that skips this field falls back to a generic, nameless "{name} · Worker" header in the chat UI. Add a `persona_name` field alongside `name` above; pick something short and human. There's no separate registry to update — set it here and it's live.
 
-`lane` is one of `open` / `marketplace` / `experimental`. **[See three lanes →](/docs/three-lanes)**
+`valueBucket` options: `make_money`, `save_money`, `save_time`, `stay_organized`, `stay_compliant`, `delight_customers`.
 
-### auditTriggers (recommended for any regulated worker)
+## intent.md
 
-Workers that touch regulated work declare which of their actions get individually anchored vs batched. The **Deposition Rule** decides: would this matter in a deposition, financial audit, safety investigation, or performance review? Yes → individual; no → batched.
+The formal spec, in plain language — what your worker does, who it's for, what success looks like, and what it explicitly is *not*. **This is the file worth spending the most time on** — a sharper intent.md makes every later step faster, because there's less to discover mid-build.
 
-```json
-{
-  "auditTriggers": {
-    "individual": [
-      {
-        "id": "chart-note-signed",
-        "description": "Clinical chart note signed and committed",
-        "lenses": ["deposition", "performance"],
-        "capturedFields": ["noteId", "patientId", "signedBy", "timestamp", "contentHash"]
-      }
-    ],
-    "batched": [
-      {
-        "id": "vital-round",
-        "description": "Routine vital sign collection across patients on shift",
-        "rollupPeriod": "shift",
-        "lenses": ["performance"],
-        "summaryFields": ["nurseId", "shiftId", "patientCount", "outOfRangeCount"]
-      }
-    ]
-  }
-}
+```markdown
+# Worker: nurse-eval-001
+
+**Creator:** Ruthie Smith (ruthie@example.com)
+**Status:** Draft
+
+## What it does
+
+Takes a patient's chart (text + lab values) and drafts a SOAP note,
+flagging any out-of-range labs and suggesting next-step orders
+consistent with the subscribing hospital's protocols.
+
+## Who uses it
+
+**Operators** (the subscribing hospital/unit): bedside and charge nurses
+who need a first-pass SOAP note drafted quickly during a busy shift.
+
+## What success looks like
+
+- A nurse can review and sign a drafted note in under 2 minutes
+- Every flagged lab includes the reference range it's being compared against
+- Every suggested order cites the protocol section it came from
+
+## What this worker is NOT
+
+Not a replacement for clinical judgment — every note requires a human
+sign-off before it's final. Not a diagnostic tool. Never accepts a real
+patient name — de-identified input only.
 ```
 
-Lens values: `deposition`, `financial-audit`, `safety`, `performance` (one or more per trigger).
-Rollup periods: `hourly`, `shift`, `daily`, `weekly`, `monthly`.
+## rules.md
 
-The platform handles the actual anchoring — composition hash, identity binding, public-registry receipt, backup custody. You just declare what gets anchored. **[See Audit Trail →](/docs/audit-trail)**
+Your worker's behavioral rules: identity, scope, evidence standard, tone, and required disclaimers.
 
-`forge.enabled` defaults to `true` for the Marketplace lane. Set `forge.enabled: false` if you want to skip the platform-funded first-month review on your first ship. `forge.forge_price` defaults to `1.34` (USD); this is the one-time, one-month amount SOCIII pays — the creator receives a flat **$1.00 net**. There is no recurring Forge payment; the subscription auto-cancels at day 30. **[See Forge Reviews →](/docs/review-cycle)**
+```markdown
+## Identity
+You are Ruthie, a Digital Worker built on the SOCIII platform.
+Your specialty: drafting SOAP notes from patient charts for bedside nurses.
 
-## intent-spec.yml
+## Scope
+You ONLY help with: SOAP note drafting, lab flagging, protocol-cited order suggestions.
 
-The formal spec — what your worker accepts, what it produces, what it refuses. **[Full Intent Spec format →](/docs/intent-spec)**
+You NEVER:
+- Give clinical advice outside a drafted note a human must sign off on.
+- Claim to be a licensed nurse or physician.
+- Fabricate lab values, reference ranges, or protocol citations.
 
-```yaml
-inputs:
-  - name: patient_chart
-    type: text
-    description: De-identified chart with vitals + lab values
-  - name: hospital_protocol
-    type: text
-    optional: true
+## Evidence Standard
+Every flagged lab and every suggested order must trace to (1) data the
+user provided this conversation, or (2) the hospital's connected protocol
+document. If you don't have a source, say so — don't estimate silently.
 
-outputs:
-  - name: soap_note
-    type: structured
-    schema: soap_note_v1
-  - name: flagged_labs
-    type: array
-  - name: next_step_orders
-    type: array
-
-refuses:
-  - "any input naming a real patient"
-  - "any case outside scope of nursing assessment"
-
-assertions:
-  - "out-of-range labs are always flagged with reference range"
-  - "every order recommendation cites the protocol section"
+## Disclaimer (required)
+> "This is a drafted note for clinical review — not a final record until
+> a licensed nurse signs it."
 ```
 
-## rules/*.yml
-
-Your worker's behavioral invariants. The platform merges these with global Level 0 + Level 1 + your vertical Level 2 baseline. **[See RAAS docs →](/docs/raas)**
-
-```yaml
-- id: medication-indication-check
-  description: Never recommend a medication outside its FDA-approved indication
-  enforce: hard
-  refuse_message: "That medication is not FDA-approved for this indication."
-
-- id: allergy-contraindication
-  description: Refuse if patient allergy list shows a contraindication
-  enforce: hard
-  check: patient.allergies INTERSECT recommended_medications NOT EMPTY
-```
-
-## fixtures/*.json
-
-Sample inputs + expected outputs. The QA-001 validator uses these. **[See QA-001 →](/docs/qa-001)**
-
-```json
-{
-  "case-001": {
-    "input": {
-      "patient_chart": "65yo F, c/o chest pain x2hr...",
-      "hospital_protocol": "ACS pathway v3"
-    },
-    "expected": {
-      "flagged_labs": ["troponin: 0.4 (elevated)"],
-      "next_step_orders": ["serial troponin q6h", "12-lead ECG"]
-    }
-  }
-}
-```
-
-You don't have to predict the exact output — assertions are at the structural and semantic level (`flagged_labs` must include any troponin > 0.04 ng/mL, etc.), not byte-exact.
+Platform-level invariants (safety, audit, epistemic honesty) apply on top of whatever you write here automatically — you don't declare those yourself, and a worker-level rule may tighten them but never loosen them. **[See RAAS docs →](/docs/raas)**
 
 ## canvas-tabs.json
 
-What renders in the right panel of the worker UI. **[Full canvas tabs schema →](/docs/canvas-tabs)**
+What renders in the right panel of the worker UI.
 
 ```json
 {
-  "tabs": [
-    {
-      "id": "current-case",
-      "title": "Current case",
-      "signal": "card:current-case",
-      "default": true
-    },
-    {
-      "id": "protocols",
-      "title": "Protocols",
-      "signal": "card:protocols",
-      "data_source": "hospital-protocol-locker"
-    },
-    {
-      "id": "history",
-      "title": "Past evaluations",
-      "signal": "card:history"
-    }
+  "workerSlug": "nurse-eval-001",
+  "version": "0.1.0",
+  "canvasTabs": [
+    { "id": "current-case", "label": "Current case", "signal": "card:work-product", "order": 0, "default": true, "view": "operator" },
+    { "id": "protocols", "label": "Protocols", "signal": "card:work-product", "order": 1, "view": "operator" },
+    { "id": "history", "label": "Past evaluations", "signal": "card:work-product", "order": 2, "view": "operator" }
   ]
 }
 ```
 
-## README.md
+Tab `id`s are referenced by `service.js` and `sample-data.js` — don't rename after first merge. Exactly one tab needs `default: true`. Aim for 3–7 tabs. **[Full canvas tabs schema →](/docs/canvas-tabs)**
 
-Plain language. This is what shows on your worker's marketplace listing and your Creator Profile.
+## service.js
 
-```markdown
-# Nurse Eval — SOAP Note Drafting
+The worker's functions — pure event proposals, not direct mutations. The platform's rules engine validates each proposal before it commits.
 
-A Digital Worker that takes a patient chart (text + lab values) and drafts
-a SOAP note, flagging out-of-range labs and suggesting next-step orders
-consistent with your hospital's protocols.
+```javascript
+export const SERVICE_ID = "nurse-eval-001";
+export const REQUIRED_CAPABILITIES = []; // e.g. "notify.email_user_v1" if you need one
 
-**Built for:** Bedside nurses, charge nurses, nursing supervisors
-**Vertical:** Healthcare (nursing assessment)
-**Compliance posture:** HIPAA — accepts only de-identified inputs
-
-## How it works
-
-(plain-language description of the worker's behavior)
-
-## What's included
-
-- Protocol-aware lab flagging
-- Order suggestions cited to protocol section
-- Past evaluation history scoped to your hospital
+export function proposeSoapNote({ patientChart, hospitalProtocol }) {
+  if (!patientChart) return { error: "patientChart is required" };
+  return {
+    type: "nurseEval.soapNoteProposed",
+    payload: { patientChart, hospitalProtocol: hospitalProtocol || null, proposed_at_iso: new Date().toISOString() },
+    requires: ["operator_role", "active_subscription"],
+  };
+}
 ```
 
-The README is also what Alex reads when explaining your worker to a prospective customer in chat.
+## sample-data.js
+
+Fixtures so a first-time user sees something real, not an empty state — same field names and shape as live data.
+
+```javascript
+export const SAMPLE_CANVAS_PAYLOADS = {
+  "current-case": {
+    title: "65yo F — chest pain x2hr",
+    subtitle: "Sample data · ACS pathway v3",
+    flaggedLabs: ["troponin: 0.4 ng/mL (elevated — ref range 0.00–0.04)"],
+    suggestedOrders: ["serial troponin q6h (ACS pathway §4.2)", "12-lead ECG (ACS pathway §3.1)"],
+  },
+};
+```
+
+## tests/assertions.md
+
+The acceptance checks QA-001 runs before your worker ships — aim for at least 5, better workers have 10–15.
+
+```markdown
+### Current case tab
+- TC-###: First-visit user sees the sample fixture, not an empty state
+- TC-###: Out-of-range labs are always flagged with their reference range
+- TC-###: Every suggested order cites the protocol section it came from
+
+### Negative tests
+- TC-###: A chart naming a real (non-de-identified) patient is refused
+- TC-###: A non-operator user cannot draft a note
+```
+
+You don't have to predict exact output — assertions are structural/semantic (e.g. "flagged labs must include any troponin > 0.04 ng/mL"), not byte-exact matches. **[See QA-001 →](/docs/qa-001)**
 
 ## Read an existing worker
 
-The best documentation is an existing worker. Three to study:
-
-- `creator-templates/_skeleton/` — the canonical minimal worker (use this as your starting point)
-- `digitalWorkers/healthcare/nurse-triage-001/` — a real-world healthcare worker
-- `digitalWorkers/auto/illinois-dealer-001/` — a real-world state-augmented worker
+The best documentation is the real thing. Start from the [SDK's own `template/` folder](https://github.com/SOCIII-Inc/sociii-sdk/tree/main/template) — copy it as your starting point. To see what a shipped worker looks like from the outside (its code isn't public, but its behavior and canvas are), browse a published worker on the [SOCIII Marketplace](https://sociii.ai/marketplace).
 
 ## What comes next
 

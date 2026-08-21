@@ -29,6 +29,7 @@ Available today (offer these, don't make people guess):
 - DATA-DRIVEN CANVAS — describe what you want and it renders as a real, clickable tab.
 - CHAT DRIVES THE CANVAS — you talk, the worker acts and updates the tab live.
 - GENERATE VISUALS FROM DATA — charts, diagrams, a real ECG strip from the numbers — not clip-art, generated from the actual data.
+- GENERATE REAL DOWNLOADABLE DOCUMENTS — a PDF, Word doc, Excel file, or slide deck, produced on request and auto-saved to the subscriber's Drive, not a wall of text pretending to be a file.
 - REACH EXISTING TOOLS — read/return files and email in the user's Google Drive, Gmail, Calendar.
 - RULES + HUMAN APPROVAL GATES — consequential actions go propose → the user approves → it commits. Nothing happens by accident.
 
