@@ -96,6 +96,8 @@ English what it does and one thing I could improve. I'm not a coder.
 ```
 When Claude Code answers about *their* worker, they're in. 🎉
 
+**Step 11 (optional, recommended) — Install Claude in Chrome.** Once their worker is running and they're testing it in a browser tab at `sociii.ai`, this saves the screenshot-and-paste dance. Go to **claude.ai/chrome** and add the extension (free, a few clicks). After that, Claude Code (in Terminal) can be told to open their worker's page and look at it directly — "check my worker's canvas and tell me if it's showing up right" — instead of them screenshotting and pasting it in. It only sees **browser tabs**, not the Terminal itself, so the paste-back workflow above still applies to anything Terminal-related.
+
 ---
 
 ## THE CANONICAL PATH — Windows (less-tested; adapt carefully)
@@ -146,7 +148,7 @@ Reopen Terminal, then `cd sociii-sdk` and `claude` to get right back in. The dow
 - [ ] `claude` launches and they completed login.
 - [ ] **Claude Code answered a question about their own worker** (Step 10).
 
-When all six are checked: congratulate them, tell them the browser assistant's job is finished, and that from here they talk to **Claude Code** in the Terminal to build. Stop.
+When all six are checked: congratulate them, tell them the browser assistant's job is finished, and that from here they talk to **Claude Code** in the Terminal to build. Mention Step 11 (Claude in Chrome) as an optional next install if they haven't done it yet — not required, just makes testing their worker easier. Stop.
 
 **Hand-off to Claude Code:** the first thing the creator's Claude Code should read is **`docs/CREATOR-CAPABILITIES.md`** — the menu of what the platform can actually do — then **`docs/CREATOR-WORKER-BUILD.md`** for how to assemble a worker. (Tell the creator: "ask your Code, *what can I build here?* — it will read the capability menu and show you.")
 
