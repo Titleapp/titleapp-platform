@@ -18,6 +18,7 @@
  *         /portal?company=makai-nursing&persona=student               (Makai School of Nursing demo, 2026-08-20)
  *         /portal?company=uh-nursing&persona=student                  (UH Mānoa demo, 2026-08-20)
  *         /passport/:passportId                                       (DPP end-consumer scan — public, no login, rewrites to ?company=nordholm&persona=consumer&passportId=..., 2026-08-20)
+ *         /portal?company=meridian-servicing&persona=borrower           (Meridian Loan Servicing demo — MSR Servicing & Compliance, CODEX S52.60, 2026-08-21)
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -39,6 +40,7 @@ const TENANT_IDS = {
   "merritt-capital": "ws_1783659066844_o7m1pm",
   "makai-nursing": "demo-makai-nursing",
   "uh-nursing": "demo-uh-nursing",
+  "meridian-servicing": "demo-meridian-servicing-001",
 };
 // Real, live worker slug for the title vertical (verified: functions/functions/
 // index.js references workers/re-title-search-001/handler.js; persona name in
@@ -48,6 +50,9 @@ const TITLE_WORKER_SLUG = "re-title-search-001";
 // Real, live worker for student chat — same content the operator app's
 // nursing-education-001 uses, scoped server-side via context.persona="student".
 const STUDENT_WORKER_SLUG = "nursing-education-001";
+// Real, live worker for MSR borrower chat — CODEX S52.60, scoped server-side
+// via context.persona="borrower". Persona name is "Dana" internally.
+const MSR_WORKER_SLUG = "msr-servicing-001";
 
 const SKINS = {
   "meadow-vet": {
@@ -106,6 +111,13 @@ const SKINS = {
     glyph: "🌿",
     tagline: "Digital Product Passport",
   },
+  "meridian-servicing": {
+    name: "Meridian Loan Servicing",
+    short: "Meridian",
+    accent: "#1e3a5f", accentSoft: "#f0f4f8", border: "#b0c4de",
+    glyph: "🏦",
+    tagline: "Your mortgage, in one place",
+  },
 };
 
 // Demo identities — in production these are matched from the operator's CRM
@@ -118,6 +130,7 @@ const PEOPLE = {
   tenant: { name: "Sara", full: "Sara Kahele", unit: "Unit 214", property: "Merritt Capital — Lakeview Commons" },
   student: { name: "Sara", full: "Sara Kahele" },
   consumer: { name: "there" }, // anonymous — no identity at all, this is a public product scan
+  borrower: { name: "Denise", full: "Denise Okafor" },
 };
 
 const SCRIPTS = {
@@ -215,6 +228,20 @@ const SCRIPTS = {
     {
       chip: "Where was this made?",
       canvas: { type: "passport" },
+    },
+  ],
+  borrower: [
+    {
+      chip: "What's my loan status?",
+      canvas: { type: "loan-status" },
+    },
+    {
+      chip: "Request hardship assistance",
+      canvas: { type: "hardship" },
+    },
+    {
+      chip: "My open disputes",
+      canvas: { type: "error-requests" },
     },
   ],
 };
@@ -710,6 +737,93 @@ function PassportCanvas({ passport }) {
   );
 }
 
+function LoanStatusCanvas({ skin, loan }) {
+  if (!loan) return <div style={{ fontSize: 13, color: "#64748b" }}>Loading your loan status…</div>;
+  const rows = [
+    ["Property", loan.propertyAddress || "—", "#0f172a"],
+    ["Unpaid principal balance", loan.upb != null ? `$${Number(loan.upb).toLocaleString()}` : "—", "#0f172a"],
+    ["Status", loan.status === "delinquent" ? "Delinquent" : loan.status === "current" ? "Current" : (loan.status || "—"), loan.status === "delinquent" ? "#b45309" : "#15803d"],
+    ["Escrow shortage", loan.escrowShortage ? `$${Number(loan.escrowShortage).toLocaleString()}` : "None", loan.escrowShortage ? "#b45309" : "#15803d"],
+  ];
+  return (
+    <div>
+      {rows.map(([t, s, c]) => (
+        <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
+          <div style={{ fontSize: 14, color: c, fontWeight: 600 }}>{s}</div>
+        </div>
+      ))}
+      {loan.hasActiveForbearance && (
+        <div style={{ marginTop: 14, padding: "10px 12px", background: "#eff6ff", borderRadius: 8, fontSize: 12, color: "#1e40af" }}>
+          You have an active forbearance on this loan. Fees that would otherwise apply during delinquency are suspended while it's active.
+        </div>
+      )}
+      <button style={{
+        width: "100%", marginTop: 16, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: "pointer", background: skin.accent, color: "#fff",
+      }}>Make a payment →</button>
+    </div>
+  );
+}
+
+function HardshipCanvas({ skin, onSubmit }) {
+  const [reason, setReason] = useState("");
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  async function submit() {
+    if (busy || !reason.trim()) return;
+    setBusy(true); setErr(null);
+    try {
+      await onSubmit?.(reason.trim());
+      setDone(true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
+  if (done) return <Confirmed skin={skin} title="Request submitted" sub="Meridian's servicing team will review your situation and reach out about options. This does not itself grant or deny any assistance — a servicing team member makes that determination." />;
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>
+        Tell us what's going on. This starts your loss-mitigation review — Meridian's servicing team evaluates every option available to you before any decision is made (12 CFR 1024.41(c)).
+      </div>
+      <textarea
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        placeholder="Briefly describe your situation…"
+        rows={5}
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", outline: "none", resize: "vertical" }}
+      />
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>{err}</div>}
+      <button disabled={!reason.trim() || busy} onClick={submit} style={{
+        width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: (reason.trim() && !busy) ? "pointer" : "not-allowed",
+        background: (reason.trim() && !busy) ? skin.accent : "#e2e8f0", color: "#fff",
+      }}>{busy ? "Submitting…" : "Submit request"}</button>
+    </div>
+  );
+}
+
+function ErrorRequestsCanvas({ errorRequests }) {
+  if (!errorRequests || errorRequests.length === 0) {
+    return <div style={{ fontSize: 13, color: "#64748b" }}>No open disputes or information requests on file.</div>;
+  }
+  return (
+    <div>
+      {errorRequests.map(e => (
+        <div key={e.id} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{e.subject || (e.type === "notice_of_error" ? "Notice of Error" : "Request for Information")}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Received {e.receivedDate || "—"}</div>
+          <div style={{ fontSize: 12, marginTop: 4, color: e.responseLogged ? "#15803d" : "#b45309" }}>
+            {e.responseLogged ? "Response sent" : `Response due ${e.responseDeadline || "—"}`}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Confirmed({ title, sub }) {
   return (
     <div style={{ textAlign: "center", padding: "24px 8px" }}>
@@ -772,13 +886,14 @@ function SignInGate({ skin, onSignedIn }) {
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
-  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : companyKey === "merritt-capital" ? "tenant" : (companyKey === "makai-nursing" || companyKey === "uh-nursing") ? "student" : companyKey === "nordholm" ? "consumer" : "petowner");
+  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : companyKey === "merritt-capital" ? "tenant" : (companyKey === "makai-nursing" || companyKey === "uh-nursing") ? "student" : companyKey === "nordholm" ? "consumer" : companyKey === "meridian-servicing" ? "borrower" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
   const isTitlePersona = persona === "buyer" || persona === "seller";
   const isTenantPersona = persona === "tenant";
   const isStudentPersona = persona === "student";
   const isConsumerPersona = persona === "consumer";
+  const isBorrowerPersona = persona === "borrower";
   const orderId = params.get("orderId");
   const passportId = params.get("passportId");
   const tenantId = TENANT_IDS[companyKey] || null;
@@ -789,14 +904,16 @@ export default function ClientPortal() {
   const hasRealTenantBacking = isTenantPersona && !!tenantId;
   // Real student profile — same idea, keyed by the student's own uid instead of an orderId.
   const hasRealStudentBacking = isStudentPersona && !!tenantId;
-  const hasRealBacking = hasRealTitleBacking || hasRealTenantBacking || hasRealStudentBacking;
+  // Real loan data — CODEX S52.60, keyed by the borrower's own uid.
+  const hasRealBorrowerBacking = isBorrowerPersona && !!tenantId;
+  const hasRealBacking = hasRealTitleBacking || hasRealTenantBacking || hasRealStudentBacking || hasRealBorrowerBacking;
   // Consumer/DPP is deliberately NOT part of hasRealBacking — it's real data
   // but genuinely public (no sign-in at all, like scanning a nutrition
   // label), so it must never trigger the SignInGate below.
   const hasConsumerBacking = isConsumerPersona && !!passportId;
 
-  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller/tenant/student
-  // only: petowner/advisor/consumer keep their existing unauthenticated behavior.
+  // CODEX S52.56 — real auth state, not a fixture. Buyer/seller/tenant/student/
+  // borrower only: petowner/advisor/consumer keep their existing unauthenticated behavior.
   const [user, setUser] = useState(auth.currentUser);
   useEffect(() => {
     if (!hasRealBacking) return;
@@ -874,6 +991,29 @@ export default function ClientPortal() {
     return () => { cancelled = true; };
   }, [hasRealStudentBacking, user, tenantId]);
 
+  // Real loan status + open error requests — GET /v1/msr:customer:loan,
+  // CODEX S52.60, same entitlement pattern as the lease/student fetches.
+  const [loan, setLoan] = useState(null);
+  const [errorRequests, setErrorRequests] = useState([]);
+  const [loanStatus, setLoanStatus] = useState(hasRealBorrowerBacking ? "pending" : "unavailable");
+  useEffect(() => {
+    if (!hasRealBorrowerBacking || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:loan")}`, {
+          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (j && j.ok && j.loan) { setLoan(j.loan); setErrorRequests(j.errorRequests || []); setLoanStatus("ok"); }
+        else setLoanStatus("denied");
+      } catch { if (!cancelled) setLoanStatus("denied"); }
+    })();
+    return () => { cancelled = true; };
+  }, [hasRealBorrowerBacking, user, tenantId]);
+
   // Real DPP passport — GET /v1/dpp:passport:public. Deliberately NOT gated
   // on `user` — this is a public, unauthenticated read, same as scanning a
   // physical product's tag. Runs as soon as a passportId is present.
@@ -904,6 +1044,8 @@ export default function ClientPortal() {
     ? { name: (lease.residentName || "").split(/[\s&]/)[0] || PEOPLE.tenant.name, unit: lease.unitLabel, property: `${lease.propertyName}${lease.unitLabel ? ` — ${lease.unitLabel}` : ""}` }
     : studentProfile
     ? { name: (studentProfile.name || "").split(/[\s&]/)[0] || PEOPLE.student.name }
+    : loan
+    ? { name: (loan.borrowerName || "").split(/[\s&]/)[0] || PEOPLE.borrower.name, full: loan.borrowerName || PEOPLE.borrower.full }
     : (PEOPLE[persona] || PEOPLE.petowner);
 
   const greeting = persona === "advisor"
@@ -916,6 +1058,8 @@ export default function ClientPortal() {
     ? `Hi ${person.name} 👋 I'm here to help with your clinical progress — hours, ATI scores, and verified competencies. Ask me anything, or check your progress on the right.`
     : isConsumerPersona
     ? `Hi 👋 This is the Digital Product Passport for ${passport?.productName || "this product"}. Ask what it's made of, where it was made, or how to recycle it.`
+    : isBorrowerPersona
+    ? `Hi ${person.name} 👋 I'm here for your mortgage account. Ask about your loan status, request hardship assistance, or check on an open dispute.`
     : `Hi ${person.name} 👋 I'm here for ${person.pet} (${person.petKind}), 24/7. Ask me anything, or book a visit.`;
 
   const [messages, setMessages] = useState([{ from: "them", text: greeting }]);
@@ -930,10 +1074,10 @@ export default function ClientPortal() {
   // fixture-name-then-real-name flicker if the order fetch resolves after the
   // first render, which it always will — it's an async fetch).
   useEffect(() => {
-    if (!realFullName && !lease && !studentProfile && !passport) return;
+    if (!realFullName && !lease && !studentProfile && !passport && !loan) return;
     setMessages(m => (m.length === 1 && m[0].from === "them" ? [{ from: "them", text: greeting }] : m));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realFullName, lease, studentProfile, passport]);
+  }, [realFullName, lease, studentProfile, passport, loan]);
 
   const lsKey = `portal-welcomed-${companyKey}-${persona}`;
   const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
@@ -997,6 +1141,16 @@ export default function ClientPortal() {
       if (/care|wash|clean/.test(t)) { setTimeout(() => setCanvas({ type: "passport" }), 200); return passport.careInstructions || "Care instructions are on the right."; }
       return `Ask me what ${passport.productName} is made of, where it was made, its carbon footprint, or how to recycle it.`;
     }
+    // borrower persona — scripted fallback only (real chat below handles the
+    // authenticated case); reads real loan data when loaded. Never states a
+    // loss-mitigation decision — that's always a human call (CODEX S52.60).
+    if (isBorrowerPersona) {
+      if (!loan) return "One moment — loading your loan information…";
+      if (/status|balance|delinquen|current|behind/.test(t)) { setTimeout(() => setCanvas({ type: "loan-status" }), 200); return `Your loan is ${loan.status === "delinquent" ? "currently delinquent" : "current"}${loan.escrowShortage ? `, with a $${Number(loan.escrowShortage).toLocaleString()} escrow shortage` : ""}. Opened your full status on the right.`; }
+      if (/hardship|help|assist|can't pay|struggling|forbear|modif/.test(t)) { setTimeout(() => setCanvas({ type: "hardship" }), 200); return "I've opened a hardship request for you. Meridian's servicing team evaluates every option available before any decision is made — this isn't something I can approve or deny myself."; }
+      if (/dispute|error|complain|wrong|incorrect/.test(t)) { setTimeout(() => setCanvas({ type: "error-requests" }), 200); return "Here are your open disputes and information requests, with their response deadlines."; }
+      return "I can help with your loan status, hardship assistance, or an open dispute. What would you like to know?";
+    }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
     if (/chocolate|toxic|poison|dangerous|eat|ingested/.test(t)) return "Rabbits should never eat chocolate — it contains theobromine they can't metabolize. Even a small amount can cause a racing heart, tremors, or seizures.\n\n**Right now:** Take away any remaining chocolate. Note how much and when. Watch for drooling, fast breathing, or restlessness.\n\n**Come in immediately** if Clover shows any of those signs or ate more than a nibble — don't wait.";
@@ -1020,6 +1174,22 @@ export default function ClientPortal() {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
       body: JSON.stringify({ category, description }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+  }
+
+  // Real write — CODEX S52.60. Files a real hardshipRequests doc via
+  // POST /v1/msr:customer:hardship. This only creates the intake record —
+  // the loss-mitigation evaluation and any modification/forbearance
+  // decision is always an authorized human's call, never this worker's.
+  async function submitHardshipRequest(reason) {
+    if (!hasRealBorrowerBacking || !user) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:hardship")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ reason }),
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
@@ -1094,6 +1264,34 @@ export default function ClientPortal() {
     return null;
   }
 
+  // Same real-chat pattern as sendRealTitleChat/sendRealStudentChat, for
+  // the MSR borrower persona — CODEX S52.60's own borrower scope note
+  // (index.js's client_portal scope-limit block) applies server-side.
+  async function sendRealBorrowerChat(t) {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/chat:message")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({
+        message: t,
+        userInput: t,
+        sessionId: chatSessionIdRef.current,
+        selectedWorker: MSR_WORKER_SLUG,
+        context: { source: "client_portal", persona: "borrower" },
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    return j.response || j.message || "I'm not able to answer that right now — please try again in a moment.";
+  }
+
+  function canvasForBorrowerMessage(t) {
+    if (/status|balance|delinquen|current|behind/.test(t)) return { type: "loan-status" };
+    if (/hardship|help|assist|can't pay|struggling|forbear|modif/.test(t)) return { type: "hardship" };
+    if (/dispute|error|complain|wrong|incorrect/.test(t)) return { type: "error-requests" };
+    return null;
+  }
+
   async function sendMessage(text) {
     if (!text.trim() || thinking) return;
     const t = text.trim();
@@ -1120,6 +1318,18 @@ export default function ClientPortal() {
         if (c) setCanvas(c);
       } catch {
         setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your record just now — please try again in a moment." }]);
+      }
+      setThinking(false);
+      return;
+    }
+    if (hasRealBorrowerBacking && user && loanStatus === "ok") {
+      try {
+        const reply = await sendRealBorrowerChat(t);
+        setMessages(m => [...m, { from: "them", text: reply }]);
+        const c = canvasForBorrowerMessage(t.toLowerCase());
+        if (c) setCanvas(c);
+      } catch {
+        setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your account just now — please try again in a moment, or call us directly." }]);
       }
       setThinking(false);
       return;
@@ -1190,6 +1400,13 @@ export default function ClientPortal() {
         { label: "Product passport", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "passport" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
+    : isBorrowerPersona
+    ? [
+        { label: "Loan status", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "loan-status" }) },
+        { label: "Hardship assistance", icon: I(<><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></>), action: () => setCanvas({ type: "hardship" }) },
+        { label: "Open disputes", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "error-requests" }) },
+        { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
+      ]
     : [
         { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
         { label: `${person.pet || "Pet"}'s records`, icon: I(<><path d="M9 11H5a2 2 0 0 0-2 2v7h6z"/><path d="M9 7h6v13H9z"/><path d="M15 4h4a2 2 0 0 1 2 2v14h-6z"/></>), action: () => setCanvas({ type: "records" }) },
@@ -1254,7 +1471,7 @@ export default function ClientPortal() {
               alignItems: "flex-start",
               gap: 14,
             }}>
-              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : isTenantPersona ? skin.glyph : isStudentPersona ? skin.glyph : isConsumerPersona ? skin.glyph : "🩺"}</div>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : isTenantPersona ? skin.glyph : isStudentPersona ? skin.glyph : isConsumerPersona ? skin.glyph : isBorrowerPersona ? skin.glyph : "🩺"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
                   {persona === "advisor"
@@ -1267,6 +1484,8 @@ export default function ClientPortal() {
                     ? `Your clinical progress, in one place`
                     : isConsumerPersona
                     ? `Digital Product Passport`
+                    : isBorrowerPersona
+                    ? `Your mortgage, in one place`
                     : `${person.pet}'s health record lives here`}
                 </div>
                 <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
@@ -1280,6 +1499,8 @@ export default function ClientPortal() {
                     ? `Clinical hours, ATI scores, and verified competencies — everything in one place.`
                     : isConsumerPersona
                     ? `Materials, origin, care, and recyclability for ${passport?.productName || "this product"} — required under EU sustainable product rules.`
+                    : isBorrowerPersona
+                    ? `Loan status, hardship assistance, and open disputes — everything in one place. Meridian's servicing team makes every loss-mitigation decision; this just keeps you informed.`
                     : `Tamper-evident, owned by you — not the clinic. Share with any vet, boarding, or travel carrier in seconds.`}
                 </div>
               </div>
@@ -1346,6 +1567,9 @@ export default function ClientPortal() {
                   : canvas.type === "progress" ? "Clinical progress"
                   : canvas.type === "competencies" ? "Verified competencies"
                   : canvas.type === "passport" ? "Product passport"
+                  : canvas.type === "loan-status" ? "Loan status"
+                  : canvas.type === "hardship" ? "Hardship assistance"
+                  : canvas.type === "error-requests" ? "Open disputes"
                   : "Your documents"}
               </div>
               <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
@@ -1363,6 +1587,9 @@ export default function ClientPortal() {
             {canvas.type === "progress" && <ProgressCanvas skin={skin} student={studentProfile} />}
             {canvas.type === "competencies" && <CompetenciesCanvas skin={skin} competencies={competencies} />}
             {canvas.type === "passport" && <PassportCanvas passport={passport} />}
+            {canvas.type === "loan-status" && <LoanStatusCanvas skin={skin} loan={loan} />}
+            {canvas.type === "hardship" && <HardshipCanvas skin={skin} onSubmit={submitHardshipRequest} />}
+            {canvas.type === "error-requests" && <ErrorRequestsCanvas errorRequests={errorRequests} />}
           </aside>
         )}
       </div>

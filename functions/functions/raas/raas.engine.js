@@ -550,6 +550,8 @@ const WORKER_RULESET_MAP = {
   "av-currency-tracker": "aviation_hard_stops_v1",
   "av-alex": "aviation_hard_stops_v1",
   "av-alex-personal": "aviation_hard_stops_v1",
+  // MSR Servicing & Compliance Worker (CODEX S52.60) — federal-only Phase 1.
+  "msr-servicing-001": "msr_servicing_v1",
 };
 
 /** Cache compiled chat rules per ruleset */

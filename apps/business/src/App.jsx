@@ -5151,6 +5151,11 @@ export default function App() {
   const isTitleDemo            = _dp.startsWith("/demo/title") && !isTitleClientDemo;
   const isBrokerageDemo        = _dp === "/demo/brokerage"   || _dp === "/demo/brokerage/";
   const isEducationDemo        = _dp === "/demo/education"   || _dp === "/demo/education/";
+  // CODEX S52.60 — MSR Servicing & Compliance Worker (Meridian Loan Servicing,
+  // placeholder entity name pending Mike's real one). isMsrBorrowerDemo is
+  // the customer-portal counterpart (borrower is never an operator).
+  const isMsrServicingDemo     = _dp === "/demo/msr" || _dp === "/demo/msr/";
+  const isMsrBorrowerDemo      = _dp === "/demo/msr/borrower" || _dp === "/demo/msr/borrower/";
   const isPortal             = _dp === "/portal" || _dp === "/portal/";
   // /passport/:id — the DPP end-consumer scan URL (Sean, 2026-08-20: "the DPP
   // could have two use cases... the end consumer... the whole purpose of the
@@ -6031,6 +6036,14 @@ export default function App() {
   }
   if (isUHAdminDemo) {
     const C = React.lazy(() => import("./pages/UHAdminDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isMsrBorrowerDemo) {
+    const C = React.lazy(() => import("./pages/MsrBorrowerDemoSignIn"));
+    return <React.Suspense fallback={null}><C /></React.Suspense>;
+  }
+  if (isMsrServicingDemo) {
+    const C = React.lazy(() => import("./pages/MsrServicingDemoSignIn"));
     return <React.Suspense fallback={null}><C /></React.Suspense>;
   }
   if (isTitleClientDemo) {

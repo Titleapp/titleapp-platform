@@ -2032,6 +2032,28 @@ exports.api = onRequest(
             role:          "member",
             activeWorkers: [],
           },
+          // ── MSR Servicing & Compliance (Meridian Loan Servicing, CODEX S52.60) ──
+          // Meridian is a placeholder name — Mike's real entity name is a
+          // Sean's-call open item (CODEX S52.60 §8), trivial to rename.
+          "msr-servicing": {
+            uid:           "demo-msr-compliance-001",
+            tenantId:      "demo-meridian-servicing-001",
+            workspaceName: "Meridian Loan Servicing",
+            vertical:      "mortgage-servicing",
+            name:          "Compliance Officer Demo",
+            role:          "admin",
+            activeWorkers: ["msr-servicing-001"],
+          },
+          // ── MSR borrower (customer portal) ──────────────────────────────
+          "msr-borrower": {
+            uid:           "demo-msr-borrower-001",
+            tenantId:      "demo-meridian-servicing-001",
+            workspaceName: "Meridian Loan Servicing",
+            vertical:      "mortgage-servicing",
+            name:          "Denise Okafor",
+            role:          "member",
+            activeWorkers: [],
+          },
           // ── Title (ABC Title Company) ─────────────────────────────────────
           title: {
             uid:           "demo-title-admin-001",
@@ -4907,6 +4929,13 @@ You are speaking directly with a NURSING STUDENT about their own coursework and 
   - general educational/study support on nursing coursework topics (concepts, study strategies, practice questions)
   - directing them to their instructor or the school for anything requiring official action (grade disputes, competency re-attestation, accommodations)
 Do NOT complete graded assignments, case studies, or exam questions on the student's behalf, and do not provide clinical guidance intended for use on a real patient — this is educational support only, not clinical practice. If asked to do their graded work for them, decline and explain why.\n\n`
+                  : (_portalPersona === "borrower" && workerSlug === "msr-servicing-001")
+                  ? `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
+You are speaking directly with a BORROWER about their own mortgage servicing account, not the licensee's compliance or servicing staff. Stay strictly within:
+  - their own loan status, delinquency/escrow/fee information already shown to them
+  - explaining a notice or disclosure that's part of their own file
+  - directing them to the licensee's servicing staff, a HUD-approved housing counselor, or an attorney for anything requiring judgment
+Do NOT give debt-counseling or legal advice, and do NOT state or imply a loss-mitigation decision (modification/forbearance approval or denial) — that is always an authorized human decision at the licensee, never this worker's call, per CODEX S52.60. If asked for advice on their situation, say this needs a housing counselor or attorney and offer to connect them to the licensee's staff.\n\n`
                   : `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
 You are speaking directly with the CUSTOMER (buyer/seller/borrower on their own transaction), not an employee of this business. Stay strictly within:
   - process and status information (where their file/order stands, what's needed from them, timelines)
@@ -20431,6 +20460,100 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("student:customer:profile failed:", e);
         return jsonError(res, 404, "Student record not found");
+      }
+    }
+
+    // GET /v1/msr:customer:loan — CODEX S52.60, MSR borrower customer
+    // portal. Same entitlement-safe pattern as /tenant:customer:lease:
+    // exactly one query scoped by tenantId, in-memory identity match, same
+    // response for wrong-party vs. nonexistent.
+    if (route === "/msr:customer:loan" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+
+        const loansSnap = await db.collection("msrLoans").where("tenantId", "==", tenantId).get();
+        const loanDoc = loansSnap.docs.find(d => {
+          const l = d.data();
+          return (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+              || (callerUid && l.borrowerUid === callerUid);
+        });
+        if (!loanDoc) return NOT_FOUND();
+        const loan = loanDoc.data();
+
+        const errSnap = await db.collection("msrLoans").doc(loanDoc.id).collection("errorRequests").get();
+        const errorRequests = errSnap.docs.map(d => {
+          const e = d.data();
+          return { id: d.id, type: e.type || null, subject: e.subject || null, receivedDate: e.receivedDate || null, responseDeadline: e.responseDeadline || null, responseLogged: !!e.responseLogged };
+        });
+
+        // Narrow, borrower-appropriate shape — no internal servicing notes,
+        // no other-loan data, no operator-only fields.
+        return res.json({
+          ok: true,
+          loanId: loanDoc.id,
+          loan: {
+            borrowerName: loan.borrowerName || null,
+            propertyAddress: loan.propertyAddress || null,
+            upb: loan.upb ?? null,
+            status: loan.status || null,
+            delinquencyStartDate: loan.delinquencyStartDate || null,
+            escrowAnnualTotal: loan.escrowAnnualTotal ?? null,
+            escrowShortage: loan.escrowShortage ?? null,
+            hasActiveForbearance: !!loan.hasActiveForbearance,
+          },
+          errorRequests,
+        });
+      } catch (e) {
+        console.error("msr:customer:loan failed:", e);
+        return jsonError(res, 404, "Loan not found");
+      }
+    }
+
+    // POST /v1/msr:customer:hardship — CODEX S52.60. Files a real hardship /
+    // loss-mitigation request against the caller's own loan. Never a
+    // decision — 12 CFR 1024.41(c) evaluation and any modification/
+    // forbearance offer is an authorized human's call (msr_servicing_v1.json's
+    // msr-no-unilateral-modification-decision hard stop). This endpoint only
+    // creates the intake record.
+    if (route === "/msr:customer:hardship" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const reason = (body?.reason || "").toString().trim().slice(0, 2000);
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!reason) return jsonError(res, 400, "Missing reason");
+
+        const loansSnap = await db.collection("msrLoans").where("tenantId", "==", tenantId).get();
+        const loanDoc = loansSnap.docs.find(d => {
+          const l = d.data();
+          return (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+              || (callerUid && l.borrowerUid === callerUid);
+        });
+        if (!loanDoc) return NOT_FOUND();
+
+        const ref = await db.collection("msrLoans").doc(loanDoc.id).collection("hardshipRequests").add({
+          reason, status: "submitted",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          submittedByUid: callerUid || null,
+        });
+        return res.json({ ok: true, requestId: ref.id });
+      } catch (e) {
+        console.error("msr:customer:hardship failed:", e);
+        return jsonError(res, 500, "Could not submit request");
       }
     }
 

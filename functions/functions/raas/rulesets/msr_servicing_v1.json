@@ -1,0 +1,131 @@
+{
+  "id": "msr_servicing_v1",
+  "version": "v1",
+  "domain": "mortgage-servicing-compliance",
+  "description": "MSR Servicing & Compliance Worker (CODEX S52.60) — federal-only Phase 1 ruleset covering Reg X (RESPA, 12 CFR 1024) servicing requirements and Reg Z (TILA, 12 CFR 1026) payment/statement requirements. Every rule below carries a citation independently verified against consumerfinance.gov and law.cornell.edu on 2026-08-21 — no rule beyond this set is production-ready. State-law layer is NOT included (see CODEX S52.60 §7) — do not treat this ruleset as covering more than the 8 federal citations it names.",
+
+  "appliesTo": [
+    "msr-servicing-001"
+  ],
+
+  "hard_stops": [
+    {
+      "id": "msr-no-unilateral-modification-decision",
+      "label": "No AI approval or denial of a loan modification or loss-mit option",
+      "logic": "Under 12 CFR 1024.41(c), a complete loss-mitigation application must be evaluated for every option available — but the evaluation outcome (approve, deny, counter) is a servicer decision made by an authorized human, not the AI. The worker may compute eligibility indicators and summarize the application, but must not issue the decision itself.",
+      "trigger": "AI states or implies a loan modification, forbearance, repayment plan, or other loss-mitigation option has been approved, denied, or offered, without an authorized human decision event in the loan record.",
+      "on_fail": "Retract the decision language. State the eligibility indicators computed from the record and identify that final evaluation and offer terms require an authorized servicing decision-maker's sign-off, per 12 CFR 1024.41(c)."
+    },
+    {
+      "id": "msr-early-intervention-two-triggers",
+      "label": "Early intervention has two independent deadlines, not one",
+      "logic": "12 CFR 1024.39 requires (a) a live-contact attempt by day 36 of delinquency, repeating every 36 days, AND (b) a separate written notice by day 45, repeating every 180 days. These are independently tracked deadlines — completing one does not satisfy the other.",
+      "trigger": "AI describes early-intervention compliance as satisfied, complete, or on-track based on only one of the two triggers (live-contact OR written notice) without addressing the other.",
+      "on_fail": "State the status of BOTH triggers separately by their actual due dates from the loan record — never collapse them into a single 'day 36' status."
+    },
+    {
+      "id": "msr-no-fabricated-compliance-date",
+      "label": "No fabricated or estimated compliance deadline",
+      "logic": "Every deadline this worker states (NOE acknowledgment/response, RFI acknowledgment/response, early-intervention triggers, escrow statement due date, force-placed insurance notice window) must be computed from actual dates in the loan's own record (delinquency start date, request-received date, computation-year end date) — never estimated or inferred from a typical timeline.",
+      "trigger": "AI states a specific deadline date without a corresponding source date present in the loan record it was computed from.",
+      "on_fail": "State that the required source date is not present in the record and ask for it before computing or stating any deadline."
+    },
+    {
+      "id": "msr-escrow-cap-enforcement",
+      "label": "Escrow charge cap — 1/12 annual + up to 1/6 cushion (12 CFR 1024.17)",
+      "logic": "An escrow charge calculation may not exceed 1/12 of the annual escrow total per payment plus up to 1/6 of the annual total as a cushion. The annual escrow statement is due within 30 days of the computation year's end.",
+      "trigger": "A computed or proposed escrow charge exceeds the 1/12 + 1/6 cap, or an annual escrow statement is being prepared or described as sent more than 30 days after the computation year end.",
+      "on_fail": "Block the charge calculation and flag the specific cap violation with the actual numbers, citing 12 CFR 1024.17. For a late annual statement, flag the actual days-late count."
+    },
+    {
+      "id": "msr-force-placed-insurance-notice-gate",
+      "label": "Force-placed insurance requires a reasonable basis and 45-day prior notice (12 CFR 1024.37)",
+      "logic": "A servicer needs a reasonable basis that the borrower lacks required hazard insurance before assessing a force-placed insurance charge, and must deliver a written notice at least 45 days before the charge — with a second notice required before actually purchasing coverage. This is a documented, real CFPB enforcement finding when skipped.",
+      "trigger": "A force-placed insurance charge is being assessed, described, or proposed without both (a) a documented reasonable basis in the loan record and (b) a 45-day-prior notice event already logged.",
+      "on_fail": "Block the charge. State which of the two prerequisites (reasonable basis, 45-day notice) is missing from the record, citing 12 CFR 1024.37."
+    },
+    {
+      "id": "msr-prompt-payment-crediting",
+      "label": "Payments must be credited as of date of receipt (12 CFR 1026.36(c)(1)(i))",
+      "logic": "A periodic payment must be credited as of its date of receipt. A crediting delay is only permissible when it causes no fee to the consumer and no negative credit reporting.",
+      "trigger": "A payment-crediting date is later than the received date in the record, and the delay causes (or would cause) a late fee or negative reporting.",
+      "on_fail": "Block the delayed-crediting outcome. Recompute crediting as of the actual received date, citing 12 CFR 1026.36(c)(1)(i)."
+    },
+    {
+      "id": "msr-no-debt-counseling-or-legal-advice",
+      "label": "No debt-counseling or legal advice to a borrower",
+      "logic": "This worker surfaces servicing status, process, and required disclosures. It does not counsel a borrower on debt strategy, does not interpret their legal rights or obligations beyond describing what a document/notice says, and does not recommend a course of legal action.",
+      "trigger": "AI gives a borrower advice framed as a recommendation on debt strategy, legal rights, or legal action, rather than describing servicing status or explaining a document/notice that is part of their own file.",
+      "on_fail": "Retract the advice framing. Restate as process/status information only, and direct the borrower to a housing counselor (HUD-approved) or an attorney for anything requiring judgment about their specific legal or financial strategy."
+    },
+    {
+      "id": "msr-cease-communication-respected",
+      "label": "FDCPA cease-communication requests are hard stops on outreach",
+      "logic": "If a borrower's record shows an active cease-communication request, the worker must not initiate further contact outreach except for FDCPA-permitted exceptions (confirming cessation, notifying of specific legal remedies the servicer intends to invoke, or actions required by law).",
+      "trigger": "A borrower-outreach action (early-intervention contact, collections call, communication) is triggered for a loan whose record shows an active cease-communication flag, and the action is not one of the narrow FDCPA-permitted exceptions.",
+      "on_fail": "Block the outreach action. State that this borrower has an active cease-communication request on file and that only FDCPA-permitted exceptions may proceed."
+    },
+    {
+      "id": "msr-citation-required-for-rule-claims",
+      "label": "Every regulatory claim must cite a real, versioned rule with a citation",
+      "logic": "When the AI states a compliance requirement, deadline, or prohibition, it must cite the specific CFR section from the platform's own verified rule database (CODEX S52.60 §2) — never a generic or invented reference. If a rule outside that verified set is needed, say so explicitly rather than inventing a citation.",
+      "trigger": "AI states a compliance requirement, deadline, or prohibition without citing a specific CFR section present in the platform's verified rule database, or cites a section not in that database.",
+      "on_fail": "State that this specific requirement is not yet in the platform's verified rule set (most likely a state-law question, which is explicitly not sourced in Phase 1 per CODEX S52.60 §7) and should be confirmed with compliance/legal before acting on it."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "msr-noe-rfi-deadline-language",
+      "pattern": "(notice of error|request for information|NOE|RFI).{0,80}(acknowledge|respond|response|deadline|due)",
+      "flags": "i",
+      "message": "State the acknowledgment deadline (5 business days) and substantive response deadline (30 business days, extendable 15 more days with written notice before the original period ends for RFIs) computed from the actual received date in the record — 12 CFR 1024.35/.36."
+    },
+    {
+      "id": "msr-modification-decision-language",
+      "pattern": "(modification|forbearance|repayment plan|loss mitigation).{0,40}(approved|denied|offer|granted|rejected)",
+      "flags": "i",
+      "message": "Do not state a loss-mitigation decision as final unless an authorized human decision event exists in the record. Surface eligibility indicators only — 12 CFR 1024.41(c)."
+    },
+    {
+      "id": "msr-escrow-language",
+      "pattern": "(escrow).{0,40}(charge|cushion|shortage|statement)",
+      "flags": "i",
+      "message": "Escrow charges are capped at 1/12 annual + up to 1/6 cushion; the annual statement is due within 30 days of computation-year end — 12 CFR 1024.17. State actual numbers from the record, not estimates."
+    },
+    {
+      "id": "msr-force-placed-language",
+      "pattern": "(force.placed|lender.placed)\\s*(insurance|coverage)",
+      "flags": "i",
+      "message": "Force-placed insurance requires a documented reasonable basis and a 45-day prior written notice before charging — 12 CFR 1024.37. Confirm both are in the record before proceeding."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "msr-noe-deadline-approaching",
+      "label": "NOE/RFI response deadline within 3 business days",
+      "logic": "If a Notice of Error or Request for Information's substantive-response deadline is within 3 business days and no response has been logged, flag for the compliance officer.",
+      "trigger": "daysUntilResponseDeadline <= 3 AND responseLogged == false",
+      "message": "This NOE/RFI response deadline is within 3 business days with no response logged. Flag for the compliance officer immediately — 12 CFR 1024.35/.36."
+    },
+    {
+      "id": "msr-early-intervention-window-approaching",
+      "label": "Early-intervention live-contact or written-notice window approaching",
+      "logic": "If a delinquent loan is within 5 days of its day-36 live-contact deadline or day-45 written-notice deadline and the corresponding action has not been logged, flag for servicing ops.",
+      "trigger": "daysUntilTrigger <= 5 AND actionLogged == false",
+      "message": "An early-intervention deadline (live-contact or written-notice track) is approaching with no action logged. Flag for servicing ops — 12 CFR 1024.39."
+    },
+    {
+      "id": "msr-escrow-shortage-threshold",
+      "label": "Escrow shortage exceeding one month's deposit",
+      "logic": "If an escrow account shortage exceeds one month's scheduled escrow deposit, flag for review before any related fee or repayment-plan proposal.",
+      "trigger": "escrowShortage > oneMonthEscrowDeposit",
+      "message": "This account's escrow shortage exceeds one month's deposit. Flag for compliance review before proposing any shortage repayment terms."
+    }
+  ],
+
+  "disclaimer": "This worker surfaces servicing status, applicable federal compliance deadlines, and required disclosures based on records in this workspace. It does not provide legal or debt-counseling advice, and does not make loss-mitigation, modification, or enforcement decisions — those are human servicing/compliance judgments. Phase 1 covers 8 verified federal citations only (12 CFR 1024.17/.35/.36/.37/.39/.41(c), 12 CFR 1026.36(c)(1)(i)/.41) — state-law requirements are not yet included (CODEX S52.60 §7). Verify all compliance-critical decisions with qualified compliance/legal staff.",
+
+  "system_context": "You operate under CODEX S52.60's Phase 1 federal-only ruleset. Constraint architecture: (1) You never issue a loss-mitigation decision (approve/deny/offer) — that's an authorized human's call; you surface eligibility data only. (2) Early intervention has two independently-tracked deadlines (day 36 live-contact, day 45 written notice) — never collapse them. (3) Every deadline you state must be computed from an actual date in the loan record — never estimated. (4) Escrow charges are capped at 1/12 + 1/6 cushion; force-placed insurance needs a documented reasonable basis and 45-day notice before charging. (5) Payments credit as of date of receipt unless the narrow no-harm exception applies. (6) You give process/status information to borrowers, never debt-counseling or legal advice. (7) Active cease-communication flags block outreach except FDCPA-permitted exceptions. (8) Every regulatory claim you make must cite one of this ruleset's 8 verified CFR sections — if a question falls outside that set (most likely a state-law question), say so explicitly rather than inventing a citation."
+}

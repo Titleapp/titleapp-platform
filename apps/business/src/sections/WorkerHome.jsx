@@ -72,6 +72,7 @@ function normalizeVertical(slug) {
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
   if (slug.startsWith("gov-")) return "Government";
   if (slug.startsWith("solar")) return "Solar";
+  if (slug.startsWith("msr-")) return "Mortgage Servicing";
   if (slug.startsWith("esc-")) return "Real Estate";
   const reStarts = ["cre-", "re-", "investor-", "construction-", "mortgage-", "capital-", "property-", "bid-", "insurance-", "quality-", "safety-", "mep-", "labor-", "materials-", "mezzanine-", "crowdfunding-", "site-", "land-", "permit-", "lease-", "accounting-", "market-", "architecture-", "engineering-", "environmental-", "energy-", "accessibility-", "government-", "fire-", "opportunity-", "appraisal-", "tenant-", "rent-", "maintenance-", "utility-", "hoa-", "warranty-", "vendor-", "disposition-", "exchange-", "entity-", "legal-", "compliance-", "law-", "feasibility-"];
   for (const p of reStarts) {
