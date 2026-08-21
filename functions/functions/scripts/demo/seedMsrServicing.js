@@ -153,6 +153,19 @@ const daysFromNow = (n) => {
   }, { merge: true });
   console.log(`  ✓ msrLoans/msr-loan-002/errorRequests/noe-001 — response due in 2 days, not yet logged`);
 
+  // ── 4b. Loss mitigation — one hardship request in progress ───────────
+  // Fixed doc id, replacing the ad hoc test entry created while QA-testing
+  // the borrower portal's live submit flow (real write, real uid, just not
+  // demo-polished copy) — this is that same real flow, seeded cleanly.
+  await db.collection("msrLoans").doc("msr-loan-001").collection("hardshipRequests").doc("hardship-001").set({
+    reason: "Reduced work hours since June due to a schedule change at my employer — asking about a temporary repayment plan to catch up.",
+    status: "submitted",
+    submittedByUid: BORROWER_UID,
+    tenantId: TENANT_ID,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  console.log(`  ✓ msrLoans/msr-loan-001/hardshipRequests/hardship-001 — Denise Okafor, submitted`);
+
   // ── 5. State licensing tracker — schema populated, one demo state ───
   await db.collection("tenants").doc(TENANT_ID).collection("msrLicensing").doc("TX").set({
     state: "TX",
