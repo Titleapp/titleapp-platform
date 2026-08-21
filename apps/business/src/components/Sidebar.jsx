@@ -1108,7 +1108,7 @@ function normalizeVertical(slug) {
   if (slug.startsWith("solar")) return "Solar";
   if (slug.startsWith("esc-")) return "Real Estate";
   // RE workers: cre-, investor-, construction-, mortgage-, property-, etc.
-  const reStarts = ["cre-", "re-", "investor-", "construction-", "mortgage-", "capital-", "property-", "bid-", "insurance-", "quality-", "safety-", "mep-", "labor-", "materials-", "mezzanine-", "crowdfunding-", "site-", "land-", "permit-", "lease-", "accounting-", "market-", "architecture-", "engineering-", "environmental-", "energy-", "accessibility-", "government-", "fire-", "opportunity-", "appraisal-", "tenant-", "rent-", "maintenance-", "utility-", "hoa-", "warranty-", "vendor-", "disposition-", "exchange-", "entity-", "legal-", "compliance-"];
+  const reStarts = ["cre-", "re-", "investor-", "construction-", "mortgage-", "capital-", "property-", "bid-", "insurance-", "quality-", "safety-", "mep-", "labor-", "materials-", "mezzanine-", "crowdfunding-", "site-", "land-", "permit-", "lease-", "accounting-", "market-", "architecture-", "engineering-", "environmental-", "energy-", "accessibility-", "government-", "fire-", "opportunity-", "appraisal-", "tenant-", "rent-", "maintenance-", "utility-", "hoa-", "warranty-", "vendor-", "disposition-", "exchange-", "entity-", "legal-", "compliance-", "law-", "feasibility-"];
   for (const p of reStarts) {
     if (slug.startsWith(p)) return "Real Estate";
   }
