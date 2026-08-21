@@ -1720,6 +1720,54 @@ exports.api = onRequest(
     // UNAUTHENTICATED ENDPOINTS (before auth check)
     // ----------------------------
 
+    // GET /v1/dpp:passport:public?passportId=xxx — Digital Product Passport,
+    // end-consumer view (Sean, 2026-08-20: "the DPP could have two use
+    // cases... the end consumer... that was the whole purpose of the law").
+    // Deliberately NOT entitlement-checked — a product passport is meant to
+    // be publicly readable by anyone who scans the product (like a
+    // nutrition label). The narrow response shape below is the safety
+    // mechanism instead: only public-appropriate product/compliance fields,
+    // never tenantId, internal notes, or anything about Volta Advisory's own
+    // business relationship with the brand. New data model —
+    // productPassports collection did not exist before this (confirmed
+    // empty), seeded by seedDppPassport.js.
+    //
+    // MUST live in this unauthenticated section, before the global
+    // "All other routes require Firebase auth" gate further down — a route
+    // defined after that gate gets requireFirebaseUser enforced on it
+    // regardless of whether its own handler calls it. (Found live 2026-08-20:
+    // this route 401'd from the gate before ever reaching its own code, which
+    // never calls requireFirebaseUser at all — moved here to fix it.)
+    if (route === "/dpp:passport:public" && method === "GET") {
+      try {
+        const passportId = (req.query?.passportId || "").toString().trim();
+        if (!passportId) return jsonError(res, 404, "Passport not found");
+
+        const doc = await db.collection("productPassports").doc(passportId).get();
+        if (!doc.exists) return jsonError(res, 404, "Passport not found");
+        const p = doc.data();
+
+        return res.json({
+          ok: true,
+          passport: {
+            brandName: p.brandName || null,
+            productName: p.productName || null,
+            category: p.category || null,
+            sku: p.sku || null,
+            materials: p.materials || [],
+            manufacturing: p.manufacturing || null,
+            careInstructions: p.careInstructions || null,
+            carbonFootprintKgCO2e: p.carbonFootprintKgCO2e ?? null,
+            recyclability: p.recyclability || null,
+            complianceStandard: p.complianceStandard || null,
+          },
+        });
+      } catch (e) {
+        console.error("dpp:passport:public failed:", e);
+        return jsonError(res, 404, "Passport not found");
+      }
+    }
+
     // POST /v1/auth:signup — create user from landing page chat
     if (route === "/auth:signup" && method === "POST") {
       const { email, name, accountType, companyName, companyDescription, utmAttribution } = body || {};
@@ -20383,48 +20431,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("student:customer:profile failed:", e);
         return jsonError(res, 404, "Student record not found");
-      }
-    }
-
-    // GET /v1/dpp:passport:public?passportId=xxx — Digital Product Passport,
-    // end-consumer view (Sean, 2026-08-20: "the DPP could have two use
-    // cases... the end consumer... that was the whole purpose of the law").
-    // Deliberately NOT an entitlement-checked endpoint like the two above —
-    // a product passport is meant to be publicly readable by anyone who
-    // scans the product (like a nutrition label), so this is genuinely
-    // unauthenticated, no requireFirebaseUser call. The narrow response
-    // shape below is the safety mechanism instead: only public-appropriate
-    // product/compliance fields, never tenantId, internal notes, or
-    // anything about Volta Advisory's own business relationship with the
-    // brand. New data model — productPassports collection did not exist
-    // before this (confirmed empty), seeded by seedDppPassport.js.
-    if (route === "/dpp:passport:public" && method === "GET") {
-      try {
-        const passportId = (req.query?.passportId || "").toString().trim();
-        if (!passportId) return jsonError(res, 404, "Passport not found");
-
-        const doc = await db.collection("productPassports").doc(passportId).get();
-        if (!doc.exists) return jsonError(res, 404, "Passport not found");
-        const p = doc.data();
-
-        return res.json({
-          ok: true,
-          passport: {
-            brandName: p.brandName || null,
-            productName: p.productName || null,
-            category: p.category || null,
-            sku: p.sku || null,
-            materials: p.materials || [],
-            manufacturing: p.manufacturing || null,
-            careInstructions: p.careInstructions || null,
-            carbonFootprintKgCO2e: p.carbonFootprintKgCO2e ?? null,
-            recyclability: p.recyclability || null,
-            complianceStandard: p.complianceStandard || null,
-          },
-        });
-      } catch (e) {
-        console.error("dpp:passport:public failed:", e);
-        return jsonError(res, 404, "Passport not found");
       }
     }
 
