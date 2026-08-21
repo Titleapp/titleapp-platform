@@ -130,15 +130,17 @@ Carried over from Draft v1, unchanged, still open:
 - Who owns ongoing state-rule sourcing and maintenance.
 - Licensing/commercial terms (exclusivity period, pricing) — doesn't block technical scoping.
 - **New, from this refinement:** Mike's operating entity has no name yet in either draft. Phase 1's demo data uses a placeholder ("Meridian Loan Servicing") purely so the mechanism has something to point at — rename trivially once the real entity name exists; nothing structural depends on the placeholder name.
-- **New:** Sean mentioned wanting this worker to also use "our title worker" — likely relevant for foreclosure/REO-adjacent title work downstream of loss mitigation, but that's not in Draft v1's module list and isn't scoped here. Flagging so it doesn't get silently assumed into Phase 1 or silently dropped — worth a short conversation on what the actual title-worker interop point is (REO title curative work? Foreclosure trustee sale title? Something else?).
+- ~~Sean mentioned wanting this worker to also use "our title worker"...~~ **Answered (2026-08-21): REO/foreclosure title curative work after a loss-mitigation denial.** Scoped as Phase 5 below, not silently folded into Phase 1.
 
 ## 9. Build Phasing
 
-Unchanged from Draft v1:
+Draft v1's four phases, plus a fifth named explicitly rather than left as a footnote (§8):
+
 1. Phase 1 — core compliance engine + audit trail, federal rules only, single-state pilot for Mike's licensee. **(This CODEX scopes Phase 1.)**
 2. Phase 2 — borrower portal + communication engine.
 3. Phase 3 — multistate rule expansion, prioritized by Mike's actual portfolio states.
 4. Phase 4 — escrow/float and advance-ledger automation.
+5. **Phase 5 — REO/foreclosure title curative interop, triggered by a loss-mitigation denial.** When `msr-no-unilateral-modification-decision` records an authorized human denial and the loan proceeds toward foreclosure, this phase would hand off to the existing title-suite workers (`re-title-search-001`, `re-defect-tracker-001`, `re-commitment-001`) to run a fresh title search and clear defects/liens ahead of a foreclosure sale and eventual REO disposition — the same real, live workers already unified into the title/RE product (2026-08-20). Not scoped in detail here: this needs its own trigger design (what exact loan-record event fires the handoff), its own data contract between `msrLoans` and the title workers' existing schemas, and its own decision on whether SOCIII or the licensee's outside counsel/trustee actually executes the foreclosure process (this worker doesn't do that — it only feeds the title work upstream of it). Real, named, and explicitly deferred — not silently absorbed into Phase 1 and not silently dropped.
 
 ---
 *Citations in §2 sourced from consumerfinance.gov and law.cornell.edu, 2026-08-21, verified twice: once at section level, once at subsection level after Sean's red-team pass. §3's architecture claims carry file/line evidence after the same red-team caught one of them (hard_stops enforcement) asserted-but-wrong. No rule beyond §2's table is production-ready or claimed as such. State-law layer is schema-only pending a real legal-sourcing engagement per Draft v1's own requirement. The small-servicer exemption (§2.2) and the enforcement-mechanism gap (§3.1/§7) are both real, both unresolved, and both stated as open rather than papered over.*
