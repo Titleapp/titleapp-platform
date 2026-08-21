@@ -617,6 +617,25 @@ export default function ClientPortal() {
     return j.response || j.message || "I'm not able to answer that right now — please try again in a moment.";
   }
 
+  // Bug found live (2026-08-20): the real chat path set reply text but never
+  // called setCanvas — the model can *say* "I'll open that on the right" (it's
+  // in its own system prompt's vocabulary) but has no mechanism to actually do
+  // it, since re-title-search-001 doesn't know this portal's fixed canvas set
+  // (title-order/title-docs/title-vault are UI-shell concepts, not something a
+  // general worker can request). Reproduced live: at a normal desktop width,
+  // asking via chat opened nothing; clicking the identical left-nav item at
+  // the same width worked instantly — so this was never a responsive/CSS bug,
+  // just a missing wire. Fix: detect canvas intent from the user's own message
+  // the same way the scripted fallback below already does, independent of
+  // whatever the real AI response says — this is a UI mechanism, not a claim
+  // the model needs to make true.
+  function canvasForTitleMessage(t) {
+    if (/where.*order|status|progress|stand|step/.test(t)) return { type: "title-order" };
+    if (/sign|document|deed|commit/.test(t)) return { type: "title-docs" };
+    if (/vault|record|policy|copies|permanent/.test(t)) return { type: "title-vault" };
+    return null;
+  }
+
   async function sendMessage(text) {
     if (!text.trim() || thinking) return;
     const t = text.trim();
@@ -627,6 +646,8 @@ export default function ClientPortal() {
       try {
         const reply = await sendRealTitleChat(t);
         setMessages(m => [...m, { from: "them", text: reply }]);
+        const c = canvasForTitleMessage(t.toLowerCase());
+        if (c) setCanvas(c);
       } catch {
         setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your file just now — please try again in a moment, or call us directly." }]);
       }
