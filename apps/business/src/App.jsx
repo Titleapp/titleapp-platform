@@ -6042,8 +6042,16 @@ export default function App() {
     return <React.Suspense fallback={null}><C /></React.Suspense>;
   }
   if (isREDemo) {
-    const REDemoSignIn = React.lazy(() => import("./pages/REDemoSignIn"));
-    return <React.Suspense fallback={null}><REDemoSignIn /></React.Suspense>;
+    // Merged into /demo/title 2026-08-20 (Sean: "why not just have /title
+    // and we'll market the same product to real estate and title
+    // companies") — title's demo tenant now carries the full unified
+    // worker catalog (see UNIFIED_TITLE_RE_WORKERS in index.js), so a
+    // separate real-estate demo entry point is redundant. Redirects rather
+    // than deleting REDemoSignIn.jsx, in case old marketing links point
+    // here. Loses that page's email/password Vault-gate test path (title's
+    // demo signs in via custom token) — flagged, not preserved.
+    window.location.replace("/demo/title");
+    return null;
   }
   if (isDPPDemo) {
     const TraitlyDemoSignIn = React.lazy(() => import("./pages/TraitlyDemoSignIn"));

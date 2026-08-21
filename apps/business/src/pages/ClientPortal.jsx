@@ -14,6 +14,7 @@
  *         /portal?company=texas-title&persona=seller&orderId=xxx
  *         /portal?company=attorneys-title&persona=buyer&orderId=xxx   (Henderson County TX demo)
  *         /portal?company=attorneys-title&persona=seller&orderId=xxx
+ *         /portal?company=merritt-capital&persona=tenant             (Merritt Capital Group demo — CODEX title/RE merge, 2026-08-20)
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -68,6 +69,13 @@ const SKINS = {
     glyph: "⚖",
     tagline: "Henderson County, Texas — Athens, TX",
   },
+  "merritt-capital": {
+    name: "Merritt Capital Group",
+    short: "Merritt Capital",
+    accent: "#0f766e", accentSoft: "#f0fdfa", border: "#99f6e4",
+    glyph: "🏢",
+    tagline: "Your residence, in one place",
+  },
 };
 
 // Demo identities — in production these are matched from the operator's CRM
@@ -77,6 +85,7 @@ const PEOPLE = {
   advisor: { name: "Kent", full: "Kent Maxwell" },
   buyer: { name: "Sara", full: "Sara Kahele", role: "Buyer" },
   seller: { name: "Troy", full: "Troy Garris", role: "Seller" },
+  tenant: { name: "Sara", full: "Sara Kahele", unit: "Unit 214", property: "Merritt Capital — Lakeview Commons" },
 };
 
 const SCRIPTS = {
@@ -135,6 +144,21 @@ const SCRIPTS = {
     {
       chip: "My signed documents",
       canvas: { type: "title-vault" },
+    },
+  ],
+  tenant: [
+    {
+      chip: "When is rent due?",
+      reply: "Rent for **Unit 214** is $1,850/mo, due on the 1st with a 5-day grace period. You're paid through **September 1** — nothing due right now.",
+      canvas: { type: "lease" },
+    },
+    {
+      chip: "Submit a maintenance request",
+      canvas: { type: "maintenance" },
+    },
+    {
+      chip: "My lease documents",
+      canvas: { type: "tenant-docs" },
     },
   ],
 };
@@ -424,6 +448,72 @@ function TitleVaultCanvas({ skin, order }) {
   );
 }
 
+function LeaseCanvas({ skin }) {
+  const rows = [
+    ["Rent", "$1,850 / month", "#0f172a"],
+    ["Paid through", "September 1, 2026", "#0f766e"],
+    ["Lease term", "12 months · ends May 31, 2027", "#0f172a"],
+    ["Security deposit", "$1,850 · on file", "#0f172a"],
+  ];
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>Unit 214 · Lakeview Commons</div>
+      {rows.map(([t, s]) => (
+        <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
+          <div style={{ fontSize: 14, color: s === "#0f172a" ? "#64748b" : s, fontWeight: 600 }}>{s}</div>
+        </div>
+      ))}
+      <button style={{
+        width: "100%", marginTop: 16, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: "pointer", background: skin.accent, color: "#fff",
+      }}>Pay rent →</button>
+    </div>
+  );
+}
+
+function MaintenanceCanvas({ skin }) {
+  const [issue, setIssue] = useState("");
+  const [done, setDone] = useState(false);
+  const categories = ["Plumbing", "Electrical", "Appliance", "HVAC", "Other"];
+  const [cat, setCat] = useState(null);
+  if (done) return <Confirmed skin={skin} title="Request submitted" sub="Merritt Capital's maintenance team will reach out within 24 hours to schedule a visit." />;
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>What's the issue?</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        {categories.map(c => (
+          <button key={c} onClick={() => setCat(c)} style={{
+            padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+            border: `1.5px solid ${cat === c ? skin.accent : "#e2e8f0"}`,
+            background: cat === c ? skin.accentSoft : "#fff", color: "#0f172a",
+          }}>{c}</button>
+        ))}
+      </div>
+      <textarea
+        value={issue}
+        onChange={e => setIssue(e.target.value)}
+        placeholder="Briefly describe what's going on…"
+        rows={4}
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", outline: "none", resize: "vertical" }}
+      />
+      <button disabled={!cat || !issue.trim()} onClick={() => setDone(true)} style={{
+        width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: (cat && issue.trim()) ? "pointer" : "not-allowed",
+        background: (cat && issue.trim()) ? skin.accent : "#e2e8f0", color: "#fff",
+      }}>Submit request</button>
+    </div>
+  );
+}
+
+function TenantDocsCanvas({ skin }) {
+  return <RecordsCanvasLike skin={skin} rows={[
+    ["Lease Agreement.pdf", "Signed · Jun 1, 2026"],
+    ["Move-in Inspection.pdf", "Jun 1, 2026"],
+    ["Renter's Insurance Certificate.pdf", "On file"],
+  ]} note="Your lease documents — always available here." />;
+}
+
 function Confirmed({ title, sub }) {
   return (
     <div style={{ textAlign: "center", padding: "24px 8px" }}>
@@ -486,10 +576,11 @@ function SignInGate({ skin, onSignedIn }) {
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const companyKey = params.get("company") || "meadow-vet";
-  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : "petowner");
+  const persona = params.get("persona") || (companyKey === "sociii-advisors" ? "advisor" : (companyKey === "texas-title" || companyKey === "attorneys-title") ? "buyer" : companyKey === "merritt-capital" ? "tenant" : "petowner");
   const skin = SKINS[companyKey] || SKINS["meadow-vet"];
   const scripts = SCRIPTS[persona] || SCRIPTS.petowner;
   const isTitlePersona = persona === "buyer" || persona === "seller";
+  const isTenantPersona = persona === "tenant";
   const orderId = params.get("orderId");
   const tenantId = TENANT_IDS[companyKey] || null;
   // Real title data available for this persona only when we have a tenant we
@@ -541,6 +632,8 @@ export default function ClientPortal() {
     ? `Hi ${person.name} 👋 Your advisor paperwork is ready — let's get it affirmed.`
     : isTitlePersona
     ? `Hi ${person.name} 👋 I'm your title order assistant. Your file is in progress — let me show you where things stand and what's needed from you.`
+    : isTenantPersona
+    ? `Hi ${person.name} 👋 I'm here for ${person.property}, 24/7. Ask about rent, submit a maintenance request, or pull up your lease.`
     : `Hi ${person.name} 👋 I'm here for ${person.pet} (${person.petKind}), 24/7. Ask me anything, or book a visit.`;
 
   const [messages, setMessages] = useState([{ from: "them", text: greeting }]);
@@ -583,6 +676,13 @@ export default function ClientPortal() {
       if (/proceeds|money|wire|pay|disburs|net/.test(t)) return persona === "seller" ? "Your net proceeds are **$278,540**, wired same-day after recording. Troy, you should receive it by end of business today." : "The wire of $289,450 was confirmed received and cleared. You're all set on funds — we're in the recording step now.";
       if (/wire.*fraud|fraud|impersonat|scam|email.*change/.test(t)) return "**Important:** We will NEVER change wire instructions by email. If you receive any email asking you to send funds to a different account, call us at (903) 675-2100 before doing anything. Wire fraud is the #1 threat in real estate closings.";
       return "I'm your title order assistant for file ATH-2026-0743 — 313 Mayfair Dr, Athens TX. Ask me where your order stands, what you need to sign, or when proceeds are released.";
+    }
+    // tenant persona
+    if (isTenantPersona) {
+      if (/rent|due|pay|balance|owe/.test(t)) { setTimeout(() => setCanvas({ type: "lease" }), 200); return "Rent for Unit 214 is $1,850/mo — you're paid through September 1, nothing due right now. Opened your lease details on the right."; }
+      if (/maintenance|repair|broken|leak|fix|issue|not working/.test(t)) { setTimeout(() => setCanvas({ type: "maintenance" }), 200); return "Sorry to hear that — I've opened a maintenance request for you. Pick a category and describe what's going on, and Merritt Capital's team will follow up within 24 hours."; }
+      if (/lease|document|renew|move.?out|notice/.test(t)) { setTimeout(() => setCanvas({ type: "tenant-docs" }), 200); return "Here are your lease documents. Your current lease runs through May 31, 2027 — let me know if you're thinking about renewing or need to give notice."; }
+      return "I'm here for Lakeview Commons, Unit 214. Ask me about rent, maintenance requests, or your lease.";
     }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
@@ -702,6 +802,13 @@ export default function ClientPortal() {
         { label: "My Vault copies", icon: I(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>), action: () => setCanvas({ type: "title-vault" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
+    : isTenantPersona
+    ? [
+        { label: "Rent & lease", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "lease" }) },
+        { label: "Maintenance request", icon: I(<><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></>), action: () => setCanvas({ type: "maintenance" }) },
+        { label: "Lease documents", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "tenant-docs" }) },
+        { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
+      ]
     : [
         { label: "Ask anything", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
         { label: `${person.pet || "Pet"}'s records`, icon: I(<><path d="M9 11H5a2 2 0 0 0-2 2v7h6z"/><path d="M9 7h6v13H9z"/><path d="M15 4h4a2 2 0 0 1 2 2v14h-6z"/></>), action: () => setCanvas({ type: "records" }) },
@@ -766,13 +873,15 @@ export default function ClientPortal() {
               alignItems: "flex-start",
               gap: 14,
             }}>
-              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : "🩺"}</div>
+              <div style={{ fontSize: 26, lineHeight: 1 }}>{persona === "advisor" ? "📋" : isTitlePersona ? skin.glyph : isTenantPersona ? skin.glyph : "🩺"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
                   {persona === "advisor"
                     ? "Your advisor papers are ready to affirm"
                     : isTitlePersona
                     ? `Your title order is in progress`
+                    : isTenantPersona
+                    ? `Your residence, in one place`
                     : `${person.pet}'s health record lives here`}
                 </div>
                 <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
@@ -780,6 +889,8 @@ export default function ClientPortal() {
                     ? "Advisor agreement + 83(b) election — secured in your personal Vault, owned by you, forever."
                     : isTitlePersona
                     ? `Track your closing, review documents, and sign — everything in one place. After recording, your deed and title policy live in your personal SOCIII Vault.`
+                    : isTenantPersona
+                    ? `Rent, maintenance requests, and lease documents for ${person.property} — everything in one place.`
                     : `Tamper-evident, owned by you — not the clinic. Share with any vet, boarding, or travel carrier in seconds.`}
                 </div>
               </div>
@@ -840,6 +951,9 @@ export default function ClientPortal() {
                   : canvas.type === "title-order" ? "Your title order"
                   : canvas.type === "title-docs" ? "Documents"
                   : canvas.type === "title-vault" ? "Your Vault copies"
+                  : canvas.type === "lease" ? "Rent & lease"
+                  : canvas.type === "maintenance" ? "Maintenance request"
+                  : canvas.type === "tenant-docs" ? "Lease documents"
                   : "Your documents"}
               </div>
               <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
@@ -851,6 +965,9 @@ export default function ClientPortal() {
             {canvas.type === "title-order" && <TitleOrderCanvas skin={skin} persona={persona} order={order} />}
             {canvas.type === "title-docs" && <TitleDocsCanvas skin={skin} persona={persona} />}
             {canvas.type === "title-vault" && <TitleVaultCanvas skin={skin} order={order} />}
+            {canvas.type === "lease" && <LeaseCanvas skin={skin} />}
+            {canvas.type === "maintenance" && <MaintenanceCanvas skin={skin} />}
+            {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} />}
           </aside>
         )}
       </div>

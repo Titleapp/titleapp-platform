@@ -1873,6 +1873,22 @@ exports.api = onRequest(
     if ((route === "/demo:token" || route === "/demo/token") && method === "GET") {
       try {
         const persona = req.query.persona || "vet";
+        // Merged title + real estate product suite (Sean, 2026-08-20: "why
+        // not just have /title and we'll market the same product to real
+        // estate and title companies... better give them more tools rather
+        // than less"). Verified against the real digitalWorkers collection —
+        // only status "live"/"active" workers included; excludes the
+        // separate legacy esc-* "Alex Chief of Staff for Title and Escrow"
+        // suite (parallel/older architecture, not yet reconciled with
+        // re-title-search-001/re-escrow-001 — flagged in CODEX S52.59
+        // addendum, not merged blindly here) and re-ce-nevada-001
+        // (jurisdiction-specific CE compliance, not core to the base suite).
+        const UNIFIED_TITLE_RE_WORKERS = [
+          "re-title-search-001", "re-escrow-001", "re-defect-tracker-001", "re-underwriting-001", "re-commitment-001",
+          "re-salesperson", "site-recon-001", "re-marketing-001",
+          "cre-analyst", "feasibility-001", "law-landuse-001", "investor-relations",
+          "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts",
+        ];
         const PERSONAS = {
           vet: {
             uid:           "NHVBEVFSiBUFUzHUq5a9Xioc3hH2", // demo@sociii.ai
@@ -1882,6 +1898,13 @@ exports.api = onRequest(
             name:          "Dr. Maya Chen, DVM",
             role:          "admin",
           },
+          // Merged into the title suite 2026-08-20 (Sean: "why not just have
+          // /title and market the same product to real estate and title
+          // companies") — same unified UNIFIED_TITLE_RE_WORKERS list as
+          // `title` below. Route itself now redirects to /demo/title
+          // (App.jsx); this entry stays only so any stale bookmarked
+          // /demo/real-estate link (which calls persona=realestate directly
+          // against /v1/demo:token) still resolves to a real, live tenant.
           realestate: {
             uid:           "qJZesWZclFZO0Xwp1l5PxE16Bnj2", // re-demo@sociii.ai / Scott Harrington
             tenantId:      "ws_1783659066844_o7m1pm",        // Merritt Capital Group
@@ -1889,7 +1912,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Scott Harrington",
             role:          "admin",
-            activeWorkers: ["re-salesperson", "cre-analyst", "site-recon-001", "feasibility-001", "law-landuse-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: UNIFIED_TITLE_RE_WORKERS,
           },
           // ── Nursing (Makai) ───────────────────────────────────────────────
           "nursing-admin": {
@@ -1940,6 +1963,18 @@ exports.api = onRequest(
             activeWorkers: ["pet-health-client"],
           },
           // ── RE tenant (Sara as renter) ────────────────────────────────────
+          // Found 2026-08-20 while merging title+RE: this referenced
+          // "tenant-portal-001", which does not exist in digitalWorkers —
+          // confirmed directly against Firestore. No dedicated
+          // property-management worker exists yet (the frontend's
+          // "re-property-manager" label is equally dangling — no matching
+          // doc). activeWorkers is empty because this persona now redirects
+          // straight into the customer-facing /portal (App.jsx's
+          // isRETenantDemo → RETenantDemoSignIn.jsx) rather than the operator
+          // app sidebar, so it never needs an operator worker list. The
+          // portal itself runs on a scripted (non-real-backed) experience
+          // for now — same honesty tier as petowner/advisor — until a real
+          // leases/units data model and worker exist to back it for real.
           "re-tenant": {
             uid:           "sara-kahele-demo",
             tenantId:      "ws_1783659066844_o7m1pm",
@@ -1947,7 +1982,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Sara Kahele",
             role:          "member",
-            activeWorkers: ["tenant-portal-001"],
+            activeWorkers: [],
           },
           // ── Title (ABC Title Company) ─────────────────────────────────────
           title: {
@@ -1957,7 +1992,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Sarah Garris",
             role:          "admin",
-            activeWorkers: ["re-title-search-001", "re-escrow-001", "re-salesperson", "law-landuse-001", "cre-analyst", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: UNIFIED_TITLE_RE_WORKERS,
           },
           // ── Title client (James Hawkins as buyer, CODEX S52.56) ───────────
           // Mirrors the vet-client/re-tenant pattern exactly: fixed demo uid,
@@ -2118,7 +2153,7 @@ exports.api = onRequest(
                 workspaceName: "Merritt Capital Group",
                 vertical:      "real-estate",
                 role:          "member",
-                activeWorkers: ["tenant-portal-001"],
+                activeWorkers: [], // tenant-portal-001 doesn't exist — see re-tenant persona note above
               },
             ];
             await Promise.all(SARA_EXTRA_ORGS.flatMap(org => {
