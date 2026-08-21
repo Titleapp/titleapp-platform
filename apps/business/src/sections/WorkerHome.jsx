@@ -22,6 +22,7 @@ const WORKER_NAMES = {
   "property-management": "Property Manager",
   "compliance-tracker": "Compliance Tracker",
   "legal-contracts": "Legal Contracts",
+  "msr-servicing-001": "MSR Servicing & Compliance",
 };
 
 // CODEX 49.16 — Alex variants that should not appear as duplicate cards (shared via workerConstants)
