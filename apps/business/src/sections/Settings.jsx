@@ -63,7 +63,26 @@ async function _socialFetch(path, method = "GET", body = null) {
 
 // Platform services are always-on — surfaced by Alex when relevant, metered on Billing.
 // This card shows what's active so users can see what's running on their behalf.
+// Entries mirror functions/functions/services/billing/dataFee.js's SOURCE_REGISTRY
+// (the real pass-through billing list) — universal ones always show; vertical-specific
+// ones only show for the workspace's own vertical, so a title company isn't shown
+// aviation NOTAMs and a pilot isn't shown MLS listings.
+const PLATFORM_INTELLIGENCE_SERVICES = [
+  { name: "Apollo Intelligence", desc: "Search 275M+ B2B contacts. Ask Alex to find investors, VCs, or decision-makers by title, firm, or location — with verified emails.", verticals: null },
+  { name: "BoldSign E-Signature", desc: "Send and track legally binding e-signature requests directly from chat.", verticals: null },
+  { name: "ATTOM Property Data", desc: "Real estate records, ownership history, and valuation for any US address.", verticals: ["real-estate", "real_estate_development", "property-mgmt"] },
+  { name: "Realtor / MLS Data", desc: "Live MLS listing pulls — price, status, and property details.", verticals: ["real-estate", "real_estate_development", "property-mgmt"] },
+  { name: "First American Title Data", desc: "Title chain-of-ownership and encumbrance detail for a parcel.", verticals: ["real-estate", "real_estate_development", "property-mgmt"] },
+  { name: "OFAC Sanctions Screen", desc: "Screens counterparties against the Treasury SDN list before closing.", verticals: ["real-estate", "real_estate_development", "property-mgmt"] },
+  { name: "NOTAMIFY", desc: "Live NOTAM pulls by airport or route.", verticals: ["aviation"] },
+  { name: "ADS-B Exchange", desc: "Live aircraft traffic lookups.", verticals: ["aviation"] },
+  { name: "Kling AI Video", desc: "AI-generated video clips for marketing content.", verticals: null },
+];
 function ApolloServiceCard() {
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
+  const services = PLATFORM_INTELLIGENCE_SERVICES.filter(
+    (s) => !s.verticals || s.verticals.includes(vertical)
+  );
   return (
     <div className="card" style={{ marginBottom: "16px" }}>
       <div className="cardHeader">
@@ -73,24 +92,15 @@ function ApolloServiceCard() {
         </div>
       </div>
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>Apollo Intelligence</div>
-            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-              Search 275M+ B2B contacts. Ask Alex to find investors, VCs, or decision-makers by title, firm, or location — with verified emails.
+        {services.map((s) => (
+          <div key={s.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600 }}>{s.name}</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>{s.desc}</div>
             </div>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#dcfce7", color: "#15803d", whiteSpace: "nowrap", flexShrink: 0 }}>Active</span>
           </div>
-          <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#dcfce7", color: "#15803d", whiteSpace: "nowrap", flexShrink: 0 }}>Active</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>ATTOM Property Data</div>
-            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-              Real estate records, ownership history, and valuation for any US address.
-            </div>
-          </div>
-          <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "9999px", background: "#dcfce7", color: "#15803d", whiteSpace: "nowrap", flexShrink: 0 }}>Active</span>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -1985,12 +1995,16 @@ function BusinessSettings() {
                 When enabled, every meaningful action your workers take is sealed into a tamper-evident receipt and anchored to an independent public registry. You hold the receipts; SOCIII keeps a backup copy for recovery. Records survive even catastrophic infrastructure loss.
               </div>
 
-              {/* Coinbase Wallet — optional. If set, receipts ship to wallet + SOCIII backup. If empty, SOCIII keeps the only copy. */}
+              {/* Independent backup address — optional, advanced. Kept off customer-facing
+                  copy: no wallet/chain/address-format language, per Sean 2026-08-20
+                  ("don't want to have to explain all the crypto stuff" to title-company
+                  customers). If set, receipts also ship to this address; SOCIII always
+                  keeps a backup copy regardless. */}
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Coinbase Wallet Address <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional)</span></label>
+                <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Independent backup address <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional, advanced)</span></label>
                 <input
                   type="text"
-                  placeholder="0x… (leave empty for SOCIII-only custody)"
+                  placeholder="Leave empty for SOCIII-only custody"
                   value={auditTrailWalletInput}
                   onChange={(e) => setAuditTrailWalletInput(e.target.value.trim())}
                   onBlur={() => {
@@ -2004,7 +2018,7 @@ function BusinessSettings() {
                   }}
                 />
                 <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                  EVM-compatible address on Base. When set, receipts ship to your wallet automatically; SOCIII keeps a backup copy for recovery. Leave empty to have SOCIII hold the only copy.
+                  For teams that want records mirrored to an independent address they control. SOCIII always keeps a backup copy for recovery either way. Most teams leave this empty.
                 </div>
               </div>
 
@@ -2086,12 +2100,18 @@ function BusinessSettings() {
         <div className="cardHeader">
           <div>
             <div className="cardTitle">Alex Rules</div>
-            <div className="cardSub">Custom rules and compliance settings for Alex</div>
+            <div className="cardSub">Custom rules, compliance settings, and autonomy level for Alex</div>
           </div>
+          <button
+            className="btn"
+            onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "rules" } }))}
+          >
+            Manage rules & autonomy →
+          </button>
         </div>
         <div style={{ padding: "16px" }}>
           <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "8px" }}>
-            These rules were set during onboarding. You can update them anytime.
+            These rules were set during onboarding. Open Worker Rules to update the autonomy level or custom rules anytime.
           </div>
           <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", fontSize: "14px", lineHeight: 1.6, minHeight: "60px", color: "#374151" }}>
             {localStorage.getItem("RAAS_RULES") || "Standard rules (no custom rules set)"}
