@@ -32,10 +32,10 @@
     },
     {
       "id": "msr-escrow-cap-enforcement",
-      "label": "Escrow charge cap — 1/12 annual + up to 1/6 cushion (12 CFR 1024.17)",
-      "logic": "An escrow charge calculation may not exceed 1/12 of the annual escrow total per payment plus up to 1/6 of the annual total as a cushion. The annual escrow statement is due within 30 days of the computation year's end.",
-      "trigger": "A computed or proposed escrow charge exceeds the 1/12 + 1/6 cap, or an annual escrow statement is being prepared or described as sent more than 30 days after the computation year end.",
-      "on_fail": "Block the charge calculation and flag the specific cap violation with the actual numbers, citing 12 CFR 1024.17. For a late annual statement, flag the actual days-late count."
+      "label": "Escrow charge cap — 1/12 annual + up to 1/6 cushion, both in (c)(1)(ii) (12 CFR 1024.17)",
+      "logic": "12 CFR 1024.17(c)(1)(ii) caps BOTH the monthly escrow charge (1/12 of the annual total) AND the ongoing cushion (1/6 of the annual total) in the same subsection — this governs ongoing servicing. (c)(1)(i) is a separate, at-settlement-only rule (initial deposit cushion) and is out of scope for this worker, which only handles ongoing servicing, not origination/settlement. The annual escrow statement (§1024.17(i)) is due within 30 days of the computation year's end.",
+      "trigger": "A computed or proposed escrow charge exceeds the 1/12 + 1/6 cap under (c)(1)(ii), or an annual escrow statement is being prepared or described as sent more than 30 days after the computation year end.",
+      "on_fail": "Block the charge calculation and flag the specific cap violation with the actual numbers, citing 12 CFR 1024.17(c)(1)(ii). For a late annual statement, flag the actual days-late count and cite §1024.17(i)."
     },
     {
       "id": "msr-force-placed-insurance-notice-gate",
@@ -91,7 +91,7 @@
       "id": "msr-escrow-language",
       "pattern": "(escrow).{0,40}(charge|cushion|shortage|statement)",
       "flags": "i",
-      "message": "Escrow charges are capped at 1/12 annual + up to 1/6 cushion; the annual statement is due within 30 days of computation-year end — 12 CFR 1024.17. State actual numbers from the record, not estimates."
+      "message": "Escrow charges (monthly, capped at 1/12 annual) and the ongoing cushion (capped at 1/6 annual) are both governed by 12 CFR 1024.17(c)(1)(ii) — not (c)(1)(i), which is an at-settlement-only rule. The annual statement is due within 30 days of computation-year end — 12 CFR 1024.17(i). State actual numbers from the record, not estimates."
     },
     {
       "id": "msr-force-placed-language",
