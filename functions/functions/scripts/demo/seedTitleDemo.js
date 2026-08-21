@@ -294,11 +294,38 @@ const REFERRAL_PARTNERS = [
   },
 ];
 
+// ─── 3b. Clients — buyers/sellers on current + past closings ──────────────────
+// Sean, 2026-08-20: 5 referral partners isn't "clients" -- a title company's
+// contact book is mostly the people whose closings it has actually handled.
+// Current 3 open orders' buyers/sellers, plus a past-client roster so the
+// Contacts view reads like a real book of business, not a handful of cards.
+
+const CLIENTS = [
+  // Buyers/sellers on the 3 currently-open orders (see TITLE_ORDERS below)
+  { id: "title_client_001", name: "James Hawkins", company: null, email: "james.hawkins@gmail.com", uid: "demo-title-buyer-001", phone: "903-555-1102", type: "buyer", segments: ["client", "buyer", "active-order"], orderId: "title_order_001", note: "Buyer — 313 Mayfair Dr (ABC-2026-0031), with Lisa Hawkins. uid field is the fixed demo persona (CODEX S52.56, /demo/title/customer) — entitlement can match by uid (demo sign-in, no real email/password) or by email (future real customer accounts).", demo: true },
+  { id: "title_client_002", name: "Lisa Hawkins", company: null, email: "lisa.hawkins@gmail.com", phone: "903-555-1103", type: "buyer", segments: ["client", "buyer", "active-order"], orderId: "title_order_001", note: "Buyer — 313 Mayfair Dr (ABC-2026-0031), with James Hawkins.", demo: true },
+  { id: "title_client_003", name: "Roy Belton", company: null, email: "rbelton@outlook.com", phone: "903-555-1187", type: "seller", segments: ["client", "seller", "active-order"], orderId: "title_order_001", note: "Seller — 313 Mayfair Dr (ABC-2026-0031).", demo: true },
+  { id: "title_client_004", name: "Cortez Family Trust", company: null, email: "acortez@gmail.com", phone: "903-555-1244", type: "buyer", segments: ["client", "buyer", "active-order", "cash-close"], orderId: "title_order_002", note: "Buyer (trust) — 1422 Oak Ridge Ln (ABC-2026-0029). Cash close, waterfront.", demo: true },
+  { id: "title_client_005", name: "Sandra Whitfield", company: null, email: "swhitfield55@yahoo.com", phone: "903-555-1298", type: "seller", segments: ["client", "seller", "active-order"], orderId: "title_order_002", note: "Seller — 1422 Oak Ridge Ln (ABC-2026-0029).", demo: true },
+  { id: "title_client_006", name: "Michael Odom", company: null, email: "michael.odom@gmail.com", phone: "903-555-1356", type: "borrower", segments: ["client", "refi", "active-order"], orderId: "title_order_003", note: "Refinance borrower — 847 Henderson Hwy (ABC-2026-0034), with Teri Odom.", demo: true },
+  { id: "title_client_007", name: "Teri Odom", company: null, email: "teri.odom@gmail.com", phone: "903-555-1357", type: "borrower", segments: ["client", "refi", "active-order"], orderId: "title_order_003", note: "Refinance borrower — 847 Henderson Hwy (ABC-2026-0034), with Michael Odom.", demo: true },
+  // Past clients — closed matters, prior years
+  { id: "title_client_008", name: "Walter Pruitt", company: null, email: "wpruitt@gmail.com", phone: "903-555-2011", type: "buyer", segments: ["past-client", "buyer"], note: "Purchase closed 2025 — 2210 Willow Bend Rd, Athens TX. Referred by Kimberly Reese.", demo: true },
+  { id: "title_client_009", name: "Donna Ferris", company: null, email: "dferris@yahoo.com", phone: "903-555-2044", type: "seller", segments: ["past-client", "seller"], note: "Sale closed 2025 — 118 Pecan St, Athens TX.", demo: true },
+  { id: "title_client_010", name: "Gregory Alston", company: null, email: "galston@gmail.com", phone: "903-555-2087", type: "buyer", segments: ["past-client", "buyer", "repeat"], note: "Two closings (2024, 2025) — repeat buyer, both via Bobby Tanner.", demo: true },
+  { id: "title_client_011", name: "Vanessa Cho", company: null, email: "vcho@outlook.com", phone: "903-555-2119", type: "refi", segments: ["past-client", "refi"], note: "Refinance closed 2025 — 940 Cedar Bluff Dr, Athens TX.", demo: true },
+  { id: "title_client_012", name: "Harold & Bettye Simms", company: null, email: "hsimms@gmail.com", phone: "903-555-2156", type: "seller", segments: ["past-client", "seller", "repeat"], note: "Sale closed 2024, prior refi 2021 — long-time clients, referred 2 buyers since.", demo: true },
+  { id: "title_client_013", name: "Priya Ramachandran", company: null, email: "pramachandran@gmail.com", phone: "903-555-2203", type: "buyer", segments: ["past-client", "buyer"], note: "Purchase closed 2025 — 76 Overlook Dr, Athens TX. Cash close.", demo: true },
+  { id: "title_client_014", name: "Terrence Boykins", company: "Boykins Rental Properties LLC", email: "tboykins@boykinsrentals.com", phone: "903-555-2247", type: "investor", segments: ["past-client", "investor", "repeat"], note: "3 investment-property closings 2023-2025. Recurring commercial/investor client.", demo: true },
+  { id: "title_client_015", name: "Marjorie Deal", company: null, email: "mdeal@yahoo.com", phone: "903-555-2298", type: "seller", segments: ["past-client", "seller"], note: "Sale closed 2024 — estate sale, 512 Fielder Rd, Athens TX. Troy Garris handled probate curative.", demo: true },
+];
+
 // ─── 4. Active Title Orders ────────────────────────────────────────────────────
 
 const TITLE_ORDERS = [
   {
     id: "title_order_001",
+    orderCode: "ABC-2026-0031",
     address: "313 Mayfair Dr, Athens, TX 75751",
     parcelId: "HC-2023-04712",
     county: "Henderson",
@@ -322,6 +349,7 @@ const TITLE_ORDERS = [
   },
   {
     id: "title_order_002",
+    orderCode: "ABC-2026-0029",
     address: "1422 Oak Ridge Ln, Athens, TX 75751",
     parcelId: "HC-2019-08834",
     county: "Henderson",
@@ -345,6 +373,7 @@ const TITLE_ORDERS = [
   },
   {
     id: "title_order_003",
+    orderCode: "ABC-2026-0034",
     address: "847 Henderson Hwy, Athens, TX 75751",
     parcelId: "HC-2015-02291",
     county: "Henderson",
@@ -470,8 +499,14 @@ const DRIVE_FILES = [
 
 // ─── Runner ────────────────────────────────────────────────────────────────────
 
+// CRITICAL: scoped by tenantId. An earlier unscoped version of this helper
+// (`.where("demo","==",true)` with no tenant filter) deleted every demo:true
+// doc in the collection platform-wide, not just this tenant's — that exact
+// bug caused a real data-loss incident (2026-08-20) that wiped other demo
+// tenants' pre-existing good data whenever an unrelated seed script ran. See
+// the same fix already applied in seedSpineCanvasDemo.js's clearDemo().
 async function clearCollection(col, field = "demo") {
-  const snap = await col.where(field, "==", true).get();
+  const snap = await col.where("tenantId", "==", TITLE_TENANT).where(field, "==", true).get();
   if (snap.empty) return 0;
   const batch = db.batch();
   snap.docs.forEach(d => batch.delete(d.ref));
@@ -500,11 +535,11 @@ async function clearCollection(col, field = "demo") {
     console.log(`  ✓ Tx: ${t.description.slice(0, 60)}`);
   }
 
-  // ── Contacts / Referral Partners ───────────────────────────────────────────
+  // ── Contacts / Referral Partners + Clients ─────────────────────────────────
   const contactCol = db.collection("contacts");
   const clearedContacts = await clearCollection(contactCol);
   console.log(`\n• Cleared ${clearedContacts} existing contacts`);
-  for (const c of REFERRAL_PARTNERS) {
+  for (const c of [...REFERRAL_PARTNERS, ...CLIENTS]) {
     await contactCol.doc(c.id).set({ ...c, tenantId: TITLE_TENANT, ownerUid: TITLE_UID, createdAt: now() });
     console.log(`  ✓ Contact: ${c.name} (${c.role || c.type})`);
   }
@@ -598,6 +633,7 @@ async function clearCollection(col, field = "demo") {
   HR staff:             ${STAFF.length}
   Accounting txns:      ${TRANSACTIONS.length}
   Referral partners:    ${REFERRAL_PARTNERS.length}
+  Clients:              ${CLIENTS.length}
   Title orders:         ${TITLE_ORDERS.length}
   Vault DTCs:           ${DTCS.length}
   Drive files:          ${DRIVE_FILES.length}

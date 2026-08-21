@@ -166,3 +166,52 @@ export function useBusinessDtcCatalog(tenantId) {
 
   return { dtcs, loading, error, tenantId };
 }
+
+// Business-Vault "Transactions" folders (S52.53 follow-up, Sean 2026-08-20):
+// one folder per matter/case file (currently backed by titleOrders — the only
+// transaction-shaped collection that exists), newest-first, each carrying its
+// linked Drive files. Empty for tenants with no matters, so safe to call from
+// every vertical. Fetches via /v1/vault:transactions (auth-required, scoped
+// to the active tenant).
+export function useBusinessTransactions(tenantId) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId || tenantId === PERSONAL_VAULT_TENANT || tenantId === "personal") {
+      setTransactions([]); setLoading(false); setError(null);
+      return;
+    }
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        headers["x-tenant-id"] = tenantId;
+        const res = await fetch(`${API_BASE}/api?path=/v1/vault:transactions`, { headers });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.ok && Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+        } else {
+          setTransactions([]);
+          if (data?.error) setError(data.error);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message || "Failed to load Vault transactions");
+          setTransactions([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  return { transactions, loading, error, tenantId };
+}
