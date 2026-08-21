@@ -55,12 +55,12 @@ const daysFromNow = (n) => {
     status: "active",
     visibility: "org-only",
     canvasTabs: [
-      { id: "delinquency-queue", label: "Delinquency Queue", signal: "card:work-product", default: true, order: 0 },
-      { id: "loss-mitigation", label: "Loss Mitigation", signal: "card:work-product", order: 1 },
-      { id: "error-resolution", label: "NOE / RFI Tracker", signal: "card:work-product", order: 2 },
-      { id: "escrow", label: "Escrow", signal: "card:work-product", order: 3 },
-      { id: "licensing", label: "State Licensing", signal: "card:work-product", order: 4 },
-      { id: "audit-log", label: "Compliance Audit Log", signal: "card:work-product", order: 5 },
+      { id: "delinquency-queue", label: "Delinquency Queue", signal: "card:msr-delinquency-queue", default: true, order: 0 },
+      { id: "loss-mitigation", label: "Loss Mitigation", signal: "card:msr-loss-mitigation", order: 1 },
+      { id: "error-resolution", label: "NOE / RFI Tracker", signal: "card:msr-error-resolution", order: 2 },
+      { id: "escrow", label: "Escrow", signal: "card:msr-escrow", order: 3 },
+      { id: "licensing", label: "State Licensing", signal: "card:msr-licensing", order: 4 },
+      { id: "audit-log", label: "Compliance Audit Log", signal: "card:msr-audit-log", order: 5 },
     ],
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });

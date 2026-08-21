@@ -46,6 +46,12 @@ import SiteReconCanvas from "./SiteReconCanvas";
 import ShowingScheduleCard from "./ShowingScheduleCard";
 import PropertyManagerCanvas from "./PropertyManagerCanvas";
 import Valuation409ACard from "./Valuation409ACard";
+import MsrDelinquencyQueueCard from "./MsrDelinquencyQueueCard";
+import MsrLossMitigationCard from "./MsrLossMitigationCard";
+import MsrErrorResolutionCard from "./MsrErrorResolutionCard";
+import MsrEscrowCard from "./MsrEscrowCard";
+import MsrLicensingCard from "./MsrLicensingCard";
+import MsrAuditLogCard from "./MsrAuditLogCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -89,6 +95,12 @@ const CANVAS_COMPONENT_MAP = {
   ShowingScheduleCard,
   PropertyManagerCanvas,
   Valuation409ACard,
+  MsrDelinquencyQueueCard,
+  MsrLossMitigationCard,
+  MsrErrorResolutionCard,
+  MsrEscrowCard,
+  MsrLicensingCard,
+  MsrAuditLogCard,
 };
 
 /**

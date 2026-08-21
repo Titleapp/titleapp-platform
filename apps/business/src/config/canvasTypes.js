@@ -511,6 +511,58 @@ export const CANVAS_TYPES = {
     _title: "Showings",
   },
 
+  // MSR Servicing & Compliance Worker cards (CODEX S52.60) — all Pattern B,
+  // self-fetch from /v1/msr:operator:*, AI payload ignored, same shape as
+  // card:accounting-pl above.
+  "card:msr-delinquency-queue": {
+    component: "MsrDelinquencyQueueCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about the delinquency queue to see it here.",
+    _title: "Delinquency Queue",
+  },
+  "card:msr-loss-mitigation": {
+    component: "MsrLossMitigationCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about hardship requests to see them here.",
+    _title: "Loss Mitigation",
+  },
+  "card:msr-error-resolution": {
+    component: "MsrErrorResolutionCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about open NOEs or RFIs to see them here.",
+    _title: "NOE / RFI Tracker",
+  },
+  "card:msr-escrow": {
+    component: "MsrEscrowCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about escrow status to see it here.",
+    _title: "Escrow",
+  },
+  "card:msr-licensing": {
+    component: "MsrLicensingCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about state licensing status to see it here.",
+    _title: "State Licensing",
+  },
+  "card:msr-audit-log": {
+    component: "MsrAuditLogCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana about the compliance audit log to see it here.",
+    _title: "Compliance Audit Log",
+  },
+
   // Generic work product (any worker, fallback)
   "card:work-product": {
     component: "WorkProductCard",

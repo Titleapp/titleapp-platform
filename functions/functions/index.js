@@ -18040,6 +18040,112 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/msr:operator:loans — CODEX S52.60 Pattern B (self-fetching
+    // canvas card, same shape as /accounting:pl above). Operator-side view
+    // for the compliance officer/servicing ops persona — all loans for the
+    // tenant, not scoped to one borrower like the customer-portal endpoint.
+    if (route === "/msr:operator:loans" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const loansSnap = await db.collection("msrLoans").where("tenantId", "==", tenantId).get();
+        const loans = loansSnap.docs.map(d => {
+          const l = d.data();
+          return {
+            loanId: d.id,
+            borrowerName: l.borrowerName || null,
+            propertyAddress: l.propertyAddress || null,
+            upb: l.upb ?? null,
+            status: l.status || null,
+            delinquencyStartDate: l.delinquencyStartDate || null,
+            liveContactLoggedAt: l.liveContactLoggedAt || null,
+            writtenNoticeLoggedAt: l.writtenNoticeLoggedAt || null,
+            ceaseCommunication: !!l.ceaseCommunication,
+            escrowAnnualTotal: l.escrowAnnualTotal ?? null,
+            escrowShortage: l.escrowShortage ?? null,
+            hasActiveForbearance: !!l.hasActiveForbearance,
+          };
+        });
+        // Error/information requests across all loans, for the NOE/RFI tracker.
+        const errorRequests = [];
+        // Hardship/loss-mitigation requests across all loans. Never includes a
+        // decision field — this worker doesn't record modification approvals/
+        // denials, only the intake (msr-no-unilateral-modification-decision).
+        const hardshipRequests = [];
+        for (const loan of loans) {
+          const errSnap = await db.collection("msrLoans").doc(loan.loanId).collection("errorRequests").get();
+          errSnap.docs.forEach(d => {
+            const e = d.data();
+            errorRequests.push({
+              id: d.id, loanId: loan.loanId, borrowerName: loan.borrowerName,
+              type: e.type || null, subject: e.subject || null,
+              receivedDate: e.receivedDate || null, responseDeadline: e.responseDeadline || null,
+              responseLogged: !!e.responseLogged,
+            });
+          });
+          const hsSnap = await db.collection("msrLoans").doc(loan.loanId).collection("hardshipRequests").get();
+          hsSnap.docs.forEach(d => {
+            const h = d.data();
+            hardshipRequests.push({
+              id: d.id, loanId: loan.loanId, borrowerName: loan.borrowerName,
+              reason: h.reason || null, status: h.status || null,
+              createdAt: h.createdAt || null,
+            });
+          });
+        }
+        return res.json({ ok: true, loans, errorRequests, hardshipRequests });
+      } catch (e) {
+        console.error("msr:operator:loans failed:", e);
+        return jsonError(res, 500, "Could not load loans");
+      }
+    }
+
+    // GET /v1/msr:operator:auditlog — recent msrComplianceEvents for the
+    // tenant, for the compliance-audit-log canvas card.
+    if (route === "/msr:operator:auditlog" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const snap = await db.collection("msrComplianceEvents")
+          .where("tenantId", "==", tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        const events = snap.docs.map(d => {
+          const e = d.data();
+          return {
+            id: d.id, loanId: e.loanId || null, type: e.type || null,
+            ruleId: e.ruleId || null, outcome: e.outcome || null, note: e.note || null,
+            occurredAt: e.occurredAt || null,
+          };
+        });
+        return res.json({ ok: true, events });
+      } catch (e) {
+        console.error("msr:operator:auditlog failed:", e);
+        return jsonError(res, 500, "Could not load audit log");
+      }
+    }
+
+    // GET /v1/msr:operator:licensing — state licensing status tracker.
+    if (route === "/msr:operator:licensing" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const snap = await db.collection("tenants").doc(tenantId).collection("msrLicensing").get();
+        const states = snap.docs.map(d => {
+          const s = d.data();
+          return {
+            state: d.id, licenseStatus: s.licenseStatus || null, licenseNumber: s.licenseNumber || null,
+            renewalDate: s.renewalDate || null, heightenedScrutiny: !!s.heightenedScrutiny,
+          };
+        });
+        return res.json({ ok: true, states });
+      } catch (e) {
+        console.error("msr:operator:licensing failed:", e);
+        return jsonError(res, 500, "Could not load licensing status");
+      }
+    }
+
     // GET /v1/accounting:pl — CODEX 43 Pattern B.
     // Returns server-computed P&L so PLSummaryCard can self-fetch.
     if (route === "/accounting:pl" && method === "GET") {
