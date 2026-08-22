@@ -311,6 +311,13 @@ const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "title-app-alpha.firebasest
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
+// CODEX S52.62 — server-side-only key for the verified-identity HMAC
+// (cross-tenant Person/Identity resolution). Backend-only secret, never
+// sent to a client, declared as a Firebase Functions v2 secret the same
+// way as the Stripe keys above (see the `secrets: [...]` array on
+// exports.api). NEVER log this value.
+const IDENTITY_HMAC_KEY = process.env.IDENTITY_HMAC_KEY || "";
+
 // Anthropic API key (set via env / secrets)
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -1636,7 +1643,7 @@ exports.api = onRequest(
   // S52.31c (2026-06-06) — ATTOM_API_KEY restored to secrets array after Sean
   // set the (sandbox) secret in Secret Manager via firebase functions:secrets:set.
   // Live ATTOM calls confirmed on the ATTOM dashboard post-deploy.
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY", "BOLDSIGN_API_KEY"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY", "BOLDSIGN_API_KEY", "IDENTITY_HMAC_KEY"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1682,6 +1689,56 @@ exports.api = onRequest(
         const status = obj.status || null; // e.g. "requires_input" | "processing" | "verified" | "canceled"
         const lastError = obj.last_error || null;
 
+        // CODEX S52.62 — capture verified output instead of discarding it.
+        // Only runs once the session is actually verified. Computes a keyed
+        // HMAC over Stripe's verified name/DOB/document-number and uses it
+        // to find-or-create a cross-tenant verifiedIdentities record. On
+        // any failure this logs a status-only warning (NEVER the raw
+        // inputs) and the webhook still succeeds — a KYC pass/fail record
+        // must never be lost because the newer cross-tenant linking step
+        // had a problem.
+        let verifiedIdentityResult = null;
+        if (status === "verified") {
+          try {
+            const verifiedOutputs = obj.verified_outputs || {};
+            let documentNumber = verifiedOutputs.id_number || null;
+
+            // "document"-type sessions (what this endpoint creates) don't
+            // populate verified_outputs.id_number unless an id-number check
+            // was explicitly requested — the document number instead lives
+            // on the verification report. Fall back to fetching it there.
+            if (!documentNumber && obj.last_verification_report) {
+              try {
+                const stripe = getStripe();
+                const reportId = typeof obj.last_verification_report === "string"
+                  ? obj.last_verification_report
+                  : obj.last_verification_report.id;
+                const report = await stripe.identity.verificationReports.retrieve(reportId);
+                documentNumber = report?.document?.number || null;
+              } catch (reportErr) {
+                console.warn("[verifiedIdentity] verification report fetch failed (status only):", reportErr.message);
+              }
+            }
+
+            const { buildIdentifierFromVerifiedOutputs, findOrCreateVerifiedIdentity } =
+              require("./services/identity/verifiedIdentityResolution");
+
+            const identifier = buildIdentifierFromVerifiedOutputs({
+              hmacKey: IDENTITY_HMAC_KEY,
+              firstName: verifiedOutputs.first_name,
+              lastName: verifiedOutputs.last_name,
+              dob: verifiedOutputs.dob,
+              documentNumber,
+            });
+
+            verifiedIdentityResult = await findOrCreateVerifiedIdentity({ db, identifier });
+          } catch (identityErr) {
+            // Deliberately status-only — never include raw name/DOB/document
+            // fields or identityErr's stack if it could echo them back.
+            console.warn("[verifiedIdentity] resolution skipped for this webhook event (status only):", identityErr.message);
+          }
+        }
+
         if (uid && tenantId) {
           const docId = identityDocId({ uid, tenantId, purpose });
 
@@ -1701,6 +1758,7 @@ exports.api = onRequest(
               lastError,
               createdAt: nowServerTs(),
               updatedAt: nowServerTs(),
+              ...(verifiedIdentityResult ? { verifiedIdentityId: verifiedIdentityResult.verifiedIdentityId } : {}),
             });
           } else {
             // Subsequent webhook — explicit field update only
@@ -1709,6 +1767,7 @@ exports.api = onRequest(
               stripeStatus: status,
               lastError,
               updatedAt: nowServerTs(),
+              ...(verifiedIdentityResult ? { verifiedIdentityId: verifiedIdentityResult.verifiedIdentityId } : {}),
             });
           }
 
@@ -1722,11 +1781,34 @@ exports.api = onRequest(
                   stripeSessionId: sessionId,
                   stripeStatus: status,
                   updatedAt: nowServerTs(),
+                  ...(verifiedIdentityResult ? { verifiedIdentityId: verifiedIdentityResult.verifiedIdentityId } : {}),
                 },
               },
             },
             { merge: true } // OK here: users collection is not append-only ledger
           );
+        }
+
+        // CODEX S52.61 — correlate this verification back to the specific
+        // Contacts row that triggered it, when it was started from client
+        // onboarding. createIdentitySessionForUid() is called (from
+        // clientOnboarding.js's onDisclosureSigned) with purpose exactly
+        // "client_onboarding" — onIdentityVerifiedForContact finds the
+        // contact via uid+tenantId (stamped by stampClientUid), not a
+        // contactId embedded in purpose. Minimal, additive fix to a real
+        // gap identified in CODEX S52.61 §3 — does not change any existing
+        // identityVerifications/users behavior above for any other purpose.
+        if (status === "verified" && verifiedIdentityResult && uid && tenantId && purpose === "client_onboarding") {
+          try {
+            const { onIdentityVerifiedForContact } = require("./services/clients/clientOnboarding");
+            await onIdentityVerifiedForContact({
+              db, uid, tenantId, verifiedIdentityId: verifiedIdentityResult.verifiedIdentityId,
+            });
+          } catch (correlateErr) {
+            // Status-only log — never let a correlation failure break the
+            // webhook's core job of recording the KYC pass/fail itself.
+            console.warn("[verifiedIdentity] client-onboarding correlation failed (non-fatal):", correlateErr.message);
+          }
         }
 
         return res.json({ ok: true });
@@ -4528,6 +4610,7 @@ IDENTITY RULES:
               if (authUser && workerPrompt && !_isDemoTenant) {
                 try {
                   const _anchorsSnap = await db.collection("users").doc(authUser.uid)
+                    .collection("workspaces").doc(reqTenantId || authUser.uid)
                     .collection("driveAnchors").where("workerSlug", "==", workerSlug).limit(20).get();
                   if (!_anchorsSnap.empty) {
                     const _anchored = _anchorsSnap.docs.map(d => d.data()).filter(a => a.fileName);
@@ -5183,15 +5266,15 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 },
               });
 
-              // Drive tools — available to ALL workers when the user has connected Google Drive.
+              // Drive tools — available to workers in THIS tenant/workspace only,
+              // when the user has connected Google Drive for it (fixed 2026-08-22:
+              // previously gated on a uid-only connection shared across every
+              // workspace the user could access — see services/vault/driveAuth.js).
               let _driveConnected = false;
               if (authUser) {
                 try {
-                  const _driveIntSnap = await db.collection("users").doc(authUser.uid)
-                    .collection("integrations").doc("googleDrive").get();
-                  _driveConnected = _driveIntSnap.exists
-                    && !!(_driveIntSnap.data() || {}).connected
-                    && !(_driveIntSnap.data() || {}).tokenInvalid;
+                  const { isDriveConnectedForTenant } = require("./services/vault/driveAuth");
+                  _driveConnected = await isDriveConnectedForTenant(authUser.uid, reqTenantId || authUser.uid);
                 } catch (_) {}
               }
               if (_driveConnected) {
@@ -6606,7 +6689,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     _driveToolResult = await _execOwnDataTool(toolBlock.name, toolBlock.input);
                   } else {
                   const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
-                  _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                  _driveClient = await getAuthenticatedDriveClient(authUser.uid, reqTenantId || authUser.uid);
 
                   // Shared file reader — used by both search_drive auto-read and read_drive_file.
                   // xlsx binary downloads use a 20s timeout race so the function never hangs
@@ -6679,7 +6762,9 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     const _trunc = _raw.length > 20000;
                     // Persist driveAnchor (non-blocking)
                     if (authUser) {
-                      db.collection("users").doc(authUser.uid).collection("driveAnchors").doc(fileId)
+                      db.collection("users").doc(authUser.uid)
+                        .collection("workspaces").doc(reqTenantId || authUser.uid)
+                        .collection("driveAnchors").doc(fileId)
                         .set({ fileId, fileName: _meta.name, mimeType: _m, workerSlug, lastReadAt: require("firebase-admin").firestore.FieldValue.serverTimestamp() }, { merge: true })
                         .catch(() => {});
                     }
@@ -8966,7 +9051,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     let _driveSearchResult;
                     try {
                       const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
-                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid, _cosTenantId || authUser.uid);
                       const _dq = (_cosTool.input.query || "").replace(/'/g, "\\'");
                       const _driveList = await _driveClient.files.list({
                         q: `(fullText contains '${_dq}' or name contains '${_dq}') and trashed = false`,
@@ -9002,7 +9087,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     let _driveFileContent;
                     try {
                       const { getAuthenticatedDriveClient } = require("./services/vault/driveAuth");
-                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid);
+                      const _driveClient = await getAuthenticatedDriveClient(authUser.uid, _cosTenantId || authUser.uid);
                       let _fileId = _cosTool.input.file_id;
                       let _fileName = _cosTool.input.file_name || "";
                       // Auto-search by name if no ID
@@ -9158,7 +9243,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     let _emailResults;
                     try {
                       const { searchEmailsAllAccounts } = require("./services/social/gmail");
-                      const results = await searchEmailsAllAccounts(authUser.uid, _cosTool.input.query, { maxResults: Math.min(_cosTool.input.maxResults || 10, 20) });
+                      const results = await searchEmailsAllAccounts(authUser.uid, _cosTenantId || authUser.uid, _cosTool.input.query, { maxResults: Math.min(_cosTool.input.maxResults || 10, 20) });
                       if (!results.length) {
                         _emailResults = `No emails found matching "${_cosTool.input.query}".`;
                       } else {
@@ -9179,7 +9264,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     try {
                       const { sendEmail } = require("./services/social/gmail");
                       const { to, subject, body, cc } = _cosTool.input;
-                      const sent = await sendEmail(authUser.uid, { to, subject, body, cc });
+                      const sent = await sendEmail(authUser.uid, _cosTenantId || authUser.uid, { to, subject, body, cc });
                       _sendResult = sent.ok
                         ? `Email sent to ${Array.isArray(to) ? to.join(", ") : to}. Subject: "${subject}". Confirm to the user it was sent.`
                         : `Email send failed. Let the user know and suggest they check Gmail is connected in Settings.`;
@@ -9198,7 +9283,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       const { listUpcomingEvents } = require("./services/calendar/googleCalendarService");
                       const days = Math.min(_cosTool.input.days || 7, 30);
                       const maxResults = Math.min(_cosTool.input.maxResults || 15, 30);
-                      const events = await listUpcomingEvents(authUser.uid, { days, maxResults });
+                      const events = await listUpcomingEvents(authUser.uid, _cosTenantId || authUser.uid, { days, maxResults });
                       if (!events.length) {
                         _calResult = `No upcoming events in the next ${days} days.`;
                       } else {
@@ -13596,6 +13681,46 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         });
       } catch (e) {
         console.error("workspace:invite:details failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/clients:invite:details — CODEX S52.61. Unauthenticated lookup
+    // so the client-onboarding landing page can show who's inviting them and
+    // to which workspace/workers before they sign in or create an account.
+    // Mirrors /workspace:invite:details above but reads clientPortalInvites —
+    // a separate collection/token-namespace since a client is not a
+    // workspace teammate.
+    if (route === "/clients:invite:details" && method === "GET") {
+      try {
+        const token = (req.query && req.query.token) || (body && body.token);
+        if (!token) return jsonError(res, 400, "MISSING_TOKEN");
+        if (!/^[a-f0-9]{64}$/.test(String(token))) {
+          return jsonError(res, 400, "INVALID_TOKEN_FORMAT");
+        }
+
+        // clientPortalInvites is keyed by tokenId (sha256(token).slice(0,20)),
+        // never by the raw token — see clientPortalInvite.js.
+        const tokenId = require("crypto").createHash("sha256").update(String(token)).digest("hex").substring(0, 20);
+        const inviteRef = db.collection("clientPortalInvites").doc(tokenId);
+        const snap = await inviteRef.get();
+        if (!snap.exists) return jsonError(res, 404, "INVITE_NOT_FOUND");
+        const inv = snap.data();
+
+        if (inv.expiresAt && inv.expiresAt.toMillis() < Date.now()) {
+          return jsonError(res, 410, "INVITE_EXPIRED");
+        }
+
+        return res.json({
+          ok: true,
+          workspaceName: inv.workspaceName || "Workspace",
+          inviterName: "Your onboarding contact",
+          workerSlugs: inv.workerSlugs || [],
+          alreadyRedeemed: inv.status === "redeemed",
+          expiresAt: inv.expiresAt ? inv.expiresAt.toDate().toISOString() : null,
+        });
+      } catch (e) {
+        console.error("clients:invite:details failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
@@ -19780,79 +19905,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // construction off the user's stated reason rather than guess.
     if (route === "/contacts:add" && method === "POST") {
       try {
-        const {
-          synthesizePersonaFromSingular, derivePersonaIndex, derivePrimaryMirrors,
-          VALID_TYPES, VALID_TIERS,
-        } = require("./api/routes/_contactsHelpers");
+        const { buildContactDoc } = require("./services/contacts/contactsService");
         const b = body || {};
         const fullName = b.name || [b.first_name, b.last_name].filter(Boolean).join(" ").trim();
         if (!fullName) return jsonError(res, 400, "name or first_name+last_name required");
-
-        // Intent → persona defaults
-        const intent = (b.intent || "manual").toLowerCase();
-        const INTENT_MAP = {
-          sales_lead:  { type: "customer", tier: "prospect",      segments: ["sales-leads"] },
-          investor:    { type: "investor", tier: "investor",      segments: ["investor-pipeline"] },
-          accredited_investor: { type: "investor", tier: "investor", segments: ["investor-pipeline", "accredited-candidates"] },
-          media:       { type: "journalist", tier: "professional", segments: ["media-list"] },
-          creator:     { type: "creator", tier: "professional",    segments: ["creator-candidates"] },
-          vendor:      { type: "vendor", tier: "vendor",           segments: ["vendors"] },
-          partner:     { type: "partner", tier: "partner",         segments: ["partners"] },
-          advisor:     { type: "advisor", tier: "partner",         segments: ["advisors"] },
-          regulator:   { type: "regulator", tier: "professional",  segments: ["regulators"] },
-          professional_services: { type: "professional_services", tier: "vendor", segments: ["professional-services"] },
-          employee:    { type: "employee", tier: "professional",   segments: ["team"] },
-          manual:      { type: "customer", tier: "professional",   segments: [] },
-        };
-        const dflt = INTENT_MAP[intent] || INTENT_MAP.manual;
-        const personaType = VALID_TYPES.includes(b.persona_type) ? b.persona_type : dflt.type;
-        const personaTier = VALID_TIERS.includes(b.persona_tier) ? b.persona_tier : dflt.tier;
-        const segments = Array.isArray(b.segments) && b.segments.length
-          ? Array.from(new Set([...b.segments, ...dflt.segments]))
-          : dflt.segments;
-
-        const persona = synthesizePersonaFromSingular({
-          type: personaType,
-          tier: personaTier,
-          lifecycle_stage: "cold",
-          lead_score: 0,
-          role_label: b.title || personaType,
-          tags: Array.isArray(b.tags) ? b.tags : [],
-          notes: b.notes || null,
-          owner: ctx.userId,
-        });
-
-        const doc = {
-          tenantId: ctx.tenantId,
-          schema_version: "spine_v2.1",
-          name: fullName,
-          first_name: b.first_name || null,
-          last_name: b.last_name || null,
-          email: b.email ? b.email.toLowerCase() : null,
-          phone: b.phone || null,
-          company: b.company || null,
-          title: b.title || null,
-          source: b.source || `manual-add-${intent}`,
-          enrichment: b.linkedin_url ? { linkedin_url: b.linkedin_url } : null,
-          segments,
-          primary_persona_id: persona.id,
-          personas: [persona],
-          tiers_index: derivePersonaIndex([persona]),
-          types_index: [persona.type],
-          ...derivePrimaryMirrors([persona]),
-          created_at: admin.firestore.FieldValue.serverTimestamp(),
-          updated_at: admin.firestore.FieldValue.serverTimestamp(),
-          created_by: ctx.userId,
-          // Provenance — see docs/CODEX-50.23 contact ownership model.
-          // source_member_uid identifies WHO inside the workspace brought
-          // this contact in. imported_at fixes the time. enrichment_history
-          // is append-only — every paid Apollo (or other) enrichment adds a
-          // row, making the value-add chain auditable for the data-ownership
-          // policy (member-imported vs platform-enriched fields).
-          source_member_uid: ctx.userId,
-          imported_at: admin.firestore.FieldValue.serverTimestamp(),
-          enrichment_history: [],
-        };
+        // buildContactDoc() is the same logic this route always ran — pulled
+        // into a shared helper (2026-08-22, CODEX S52.61) so /v1/clients:add
+        // can reuse it instead of duplicating persona/segment defaulting.
+        const doc = buildContactDoc({ tenantId: ctx.tenantId, userId: ctx.userId, b });
         const ref = await db.collection("contacts").add(doc);
         return res.json({ ok: true, id: ref.id, contact: { id: ref.id, ...doc, created_at: null, updated_at: null } });
       } catch (e) {
@@ -19947,6 +20007,92 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[contacts:bulkImport] error:", e.message);
         return jsonError(res, 500, "Failed to bulk import contacts");
+      }
+    }
+
+    // POST /v1/clients:add — CODEX S52.61 Phase 1. The shared, vertical-
+    // agnostic "add client" capability: idempotent Contacts create-or-reuse,
+    // e-signature disclosure gating, portal-access invite, and (per §3) a
+    // KYC flag for verticals that require it. Body:
+    //   { contactId? , newContact?: {name|first_name/last_name, email, phone},
+    //     workerSlugs: [worker-slug,...], verticalContext: "re-escrow"|
+    //     "law-landuse"|"re-title-search"|"re-defect-tracker"|"msr"|"dpp",
+    //     requestKyc?: bool (staff-discretion opt-in outside MSR/DPP),
+    //     workspaceName?, vertical? }
+    if (route === "/clients:add" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const b = body || {};
+        if (!Array.isArray(b.workerSlugs) || !b.workerSlugs.length) {
+          return jsonError(res, 400, "workerSlugs (at least one) required");
+        }
+        const nc = b.newContact || {};
+
+        const { addClient } = require("./services/clients/clientOnboarding");
+        const result = await addClient({
+          db,
+          ctx: { tenantId: ctx.tenantId, userId: ctx.userId },
+          contactId: b.contactId || null,
+          name: nc.name || null,
+          first_name: nc.first_name || null,
+          last_name: nc.last_name || null,
+          email: nc.email || null,
+          phone: nc.phone || null,
+          company: nc.company || null,
+          title: nc.title || null,
+          workerSlugs: b.workerSlugs,
+          kycRequired: b.requestKyc === true,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[clients:add] error:", e.message);
+        return jsonError(res, e.statusCode || 500, e.message || "Failed to add client");
+      }
+    }
+
+    // POST /v1/clients:revoke — CODEX S52.61 §3. Removes a client's portal
+    // access to one or more workers (omit workerSlugs to revoke all). Writes
+    // its own "client_access_revoked" audit event — never just flips a
+    // status field in place, per the platform's append-only invariant.
+    if (route === "/clients:revoke" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const ctx = getCtx(req, body, auth.user);
+        const b = body || {};
+        if (!b.contactId) return jsonError(res, 400, "contactId required");
+        const { revokeClientAccess } = require("./services/clients/clientOnboarding");
+        const result = await revokeClientAccess({
+          db,
+          ctx: { tenantId: ctx.tenantId, userId: ctx.userId },
+          contactId: b.contactId,
+          workerSlugs: Array.isArray(b.workerSlugs) ? b.workerSlugs : null,
+          reason: b.reason || null,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[clients:revoke] error:", e.message);
+        return jsonError(res, e.statusCode || 500, e.message || "Failed to revoke client access");
+      }
+    }
+
+    // POST /v1/clients:invite:redeem — CODEX S52.61. Public, unauthenticated
+    // (per clientPortalInvite.js's header: a brand-new client has no account
+    // yet, so this can't require prior sign-in like /workspace:invite:redeem
+    // does). Finds-or-creates the client's Firebase Auth account and hands
+    // back a custom token for client-side signInWithCustomToken.
+    if (route === "/clients:invite:redeem" && method === "POST") {
+      try {
+        const { token } = body || {};
+        if (!token) return jsonError(res, 400, "MISSING_TOKEN");
+        if (!/^[a-f0-9]{64}$/.test(String(token))) return jsonError(res, 400, "INVALID_TOKEN_FORMAT");
+
+        const { redeemClientPortalInvite } = require("./services/clients/clientPortalInvite");
+        const result = await redeemClientPortalInvite({ db, token });
+        return res.json(result);
+      } catch (e) {
+        console.error("clients:invite:redeem failed:", e.message);
+        return jsonError(res, e.statusCode || 500, e.message);
       }
     }
 
@@ -20642,6 +20788,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             investorId,
             uid: auth.user.uid,
             returnUrl: body.returnUrl || null,
+            consent: body.identityConsent || null, // CODEX S52.62 platform-level KYC consent
           });
           return res.json(result);
         }
@@ -21426,6 +21573,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             advisorId,
             uid: auth.user.uid,
             returnUrl: body.returnUrl || null,
+            consent: body.identityConsent || null, // CODEX S52.62 platform-level KYC consent
           });
           return res.json(result);
         }
@@ -21743,6 +21891,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             advisorId,
             uid: auth.user.uid,
             returnUrl: body.returnUrl || null,
+            consent: body.identityConsent || null, // CODEX S52.62 platform-level KYC consent
           });
           return res.json(result);
         }
@@ -21841,6 +21990,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             creatorId,
             uid: auth.user.uid,
             returnUrl: body.returnUrl || null,
+            consent: body.identityConsent || null, // CODEX S52.62 platform-level KYC consent
           });
           return res.json(result);
         }
@@ -24528,7 +24678,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
     // POST /v1/identity:session:create
     if (route === "/identity:session:create" && method === "POST") {
-      const { purpose = "general", returnUrl } = body || {};
+      const { purpose = "general", returnUrl, identityConsent } = body || {};
+
+      // CODEX S52.62 §1.5/§4 item 9 — platform-level consent, bundled into
+      // the KYC step itself, distinct from any per-tenant e-signature
+      // agreement. Required before the identity check proceeds.
+      if (!identityConsent || identityConsent.accepted !== true) {
+        return jsonError(res, 400, "Platform identity consent required before starting identity verification");
+      }
 
       try {
         const stripe = getStripe();
@@ -24554,6 +24711,15 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           stripeStatus: session.status || "created",
           createdAt: nowServerTs(),
           updatedAt: nowServerTs(),
+          // Platform-level consent captured alongside the verification
+          // record — timestamp + what was agreed to (simple/factual copy
+          // for now; real legal wordsmithing is a documented follow-up,
+          // CODEX S52.62 §1.5).
+          platformIdentityConsent: {
+            accepted: true,
+            acceptedAt: identityConsent.acceptedAt || new Date().toISOString(),
+            text: identityConsent.text || null,
+          },
         });
 
         // Pass-through billing (2026-08-20): $1.50/session actual cost,
@@ -24604,7 +24770,35 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         status,
         stripeStatus,
         updatedAt: data.updatedAt || null,
+        // Opaque cross-tenant identity reference only (CODEX S52.62 §4 item
+        // 5/7) — never the HMAC value, never any info about other
+        // tenants/contexts that reference the same verifiedIdentityId.
+        verifiedIdentityId: data.verifiedIdentityId || null,
       });
+    }
+
+    // POST /v1/identity:resolve:delete — CODEX S52.62 §5 item 3 interim
+    // retention/deletion default. Platform-admin only (this removes a
+    // cross-tenant record, not a single tenant's own data). Given a
+    // verifiedIdentityId, removes the HMAC value (not recoverable after
+    // this runs) and writes an anonymized audit entry. No UI in this pass —
+    // a real, working mechanism is the requirement, not a screen.
+    if (route === "/identity:resolve:delete" && method === "POST") {
+      const PLATFORM_ADMIN_UIDS = new Set(["WResykI56hW16silsOtvlw1UjJK2"]);
+      if (!PLATFORM_ADMIN_UIDS.has(auth.user?.uid)) {
+        return res.status(403).json({ ok: false, error: "Forbidden", code: "FORBIDDEN" });
+      }
+      const { verifiedIdentityId } = body || {};
+      if (!verifiedIdentityId) return jsonError(res, 400, "verifiedIdentityId required");
+      try {
+        const { deleteVerifiedIdentity } = require("./services/identity/verifiedIdentityResolution");
+        const result = await deleteVerifiedIdentity({ db, verifiedIdentityId: String(verifiedIdentityId) });
+        if (!result.ok) return jsonError(res, 404, "verifiedIdentityId not found");
+        return res.json(result);
+      } catch (e) {
+        console.error("❌ identity:resolve:delete failed:", e.message);
+        return jsonError(res, 500, "Identity deletion failed");
+      }
     }
 
     // ----------------------------
@@ -32710,6 +32904,10 @@ Analyze now:`;
     // ----------------------------
     if (route && route.startsWith("/calendar:")) {
       const calAction = route.replace("/calendar:", "");
+      // Tenant-scoped since 2026-08-22 (CODEX cross-tenant Google integration fix) —
+      // Calendar connections are keyed by (uid, tenantId), not uid alone.
+      const _calCtx = getCtx(req, body, auth.user);
+      const _calTenantId = _calCtx.tenantId || auth.user.uid;
       try {
         switch (calAction) {
         case "authUrl": {
@@ -32720,32 +32918,32 @@ Analyze now:`;
         case "exchangeCode": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const auth_ = require("./services/calendar/googleCalendarAuth");
-          return await auth_.handleCalendarExchangeCode(req, res, { userId: auth.user.uid });
+          return await auth_.handleCalendarExchangeCode(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         case "disconnect": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const auth_ = require("./services/calendar/googleCalendarAuth");
-          return await auth_.handleCalendarDisconnect(req, res, { userId: auth.user.uid });
+          return await auth_.handleCalendarDisconnect(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         case "status": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
           const auth_ = require("./services/calendar/googleCalendarAuth");
-          return await auth_.handleCalendarStatus(req, res, { userId: auth.user.uid });
+          return await auth_.handleCalendarStatus(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         case "events": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
           const svc = require("./services/calendar/googleCalendarService");
-          return await svc.handleListEvents(req, res, { userId: auth.user.uid });
+          return await svc.handleListEvents(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         case "events:create": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const svc = require("./services/calendar/googleCalendarService");
-          return await svc.handleCreateEvent(req, res, { userId: auth.user.uid });
+          return await svc.handleCreateEvent(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         case "events:propose": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const svc = require("./services/calendar/googleCalendarService");
-          return await svc.handleProposeEvent(req, res, { userId: auth.user.uid });
+          return await svc.handleProposeEvent(req, res, { userId: auth.user.uid, tenantId: _calTenantId });
         }
         default:
           return jsonError(res, 404, "Unknown calendar action: " + calAction);
@@ -32758,11 +32956,19 @@ Analyze now:`;
 
     // ----------------------------
     // GMAIL — OAuth + operations. Same Google OAuth client as Calendar/Drive.
-    // Tokens at users/{uid}/integrations/gmail (primary) and
-    // users/{uid}/gmailAccounts/{accountId} (additional accounts).
+    // Tokens at users/{uid}/workspaces/{tenantId}/integrations/gmail (primary)
+    // and users/{uid}/workspaces/{tenantId}/gmailAccounts/{accountId} (additional
+    // accounts) — tenant-scoped since 2026-08-22 (CODEX cross-tenant Google
+    // integration fix). Old uid-only path (users/{uid}/integrations/gmail) is
+    // migrated forward, per tenant, on first use — see
+    // services/_shared/tenantIntegrationMigration.js.
     // ----------------------------
     if (route && route.startsWith("/gmail:")) {
       const gmailAction = route.replace("/gmail:", "");
+      // Tenant-scoped since 2026-08-22 (CODEX cross-tenant Google integration fix) —
+      // Gmail connections are keyed by (uid, tenantId), not uid alone.
+      const _gmailCtx = getCtx(req, body, auth.user);
+      const _gmailTenantId = _gmailCtx.tenantId || auth.user.uid;
       try {
         const gm = require("./services/social/gmail");
         switch (gmailAction) {
@@ -32772,19 +32978,19 @@ Analyze now:`;
         }
         case "exchangeCode": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          return await gm.handleGmailExchangeCode(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailExchangeCode(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "status": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
-          return await gm.handleGmailStatus(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailStatus(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "disconnect": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          return await gm.handleGmailDisconnect(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailDisconnect(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "listAccounts": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
-          return await gm.handleGmailListAccounts(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailListAccounts(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "addAccountUrl": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
@@ -32792,23 +32998,22 @@ Analyze now:`;
         }
         case "addAccountExchange": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          return await gm.handleGmailAddAccountExchange(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailAddAccountExchange(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "removeAccount": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          return await gm.handleGmailRemoveAccount(req, res, { userId: auth.user.uid });
+          return await gm.handleGmailRemoveAccount(req, res, { userId: auth.user.uid, tenantId: _gmailTenantId });
         }
         case "syncContacts": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
-          const ctx = getCtx(req, body, auth.user);
-          const result = await gm.syncContacts(auth.user.uid, ctx.tenantId || body.tenantId, {});
+          const result = await gm.syncContacts(auth.user.uid, _gmailTenantId, {});
           return res.json({ ok: true, ...result });
         }
         case "send": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments } = body || {};
           if (!to || !subject) return jsonError(res, 400, "to + subject required");
-          const result = await gm.sendEmail(auth.user.uid, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
+          const result = await gm.sendEmail(auth.user.uid, _gmailTenantId, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
           return res.json(result);
         }
         default:
@@ -33007,6 +33212,10 @@ Analyze now:`;
     // ----------------------------
     if (route && route.startsWith("/drive:")) {
       const driveAction = route.replace("/drive:", "");
+      // Tenant-scoped since 2026-08-22 (CODEX cross-tenant Google integration fix) —
+      // Drive connections are keyed by (uid, tenantId), not uid alone.
+      const _driveCtx = getCtx(req, body, auth.user);
+      const _driveTenantId = _driveCtx.tenantId || auth.user.uid;
       try {
         switch (driveAction) {
         case "authUrl": {
@@ -33017,27 +33226,27 @@ Analyze now:`;
         case "exchangeCode": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const driveAuth = require("./services/vault/driveAuth");
-          return await driveAuth.handleDriveExchangeCode(req, res, { userId: auth.user.uid });
+          return await driveAuth.handleDriveExchangeCode(req, res, { userId: auth.user.uid, tenantId: _driveTenantId });
         }
         case "disconnect": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const driveAuth = require("./services/vault/driveAuth");
-          return await driveAuth.handleDriveDisconnect(req, res, { userId: auth.user.uid });
+          return await driveAuth.handleDriveDisconnect(req, res, { userId: auth.user.uid, tenantId: _driveTenantId });
         }
         case "status": {
           if (method !== "GET") return jsonError(res, 405, "GET required");
           const driveAuth = require("./services/vault/driveAuth");
-          return await driveAuth.handleDriveStatus(req, res, { userId: auth.user.uid });
+          return await driveAuth.handleDriveStatus(req, res, { userId: auth.user.uid, tenantId: _driveTenantId });
         }
         case "browse": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const driveBrowser = require("./services/vault/driveBrowser");
-          return await driveBrowser.handleDriveBrowse(req, res, { userId: auth.user.uid });
+          return await driveBrowser.handleDriveBrowse(req, res, { userId: auth.user.uid, tenantId: _driveTenantId });
         }
         case "search": {
           if (method !== "POST") return jsonError(res, 405, "POST required");
           const driveBrowser = require("./services/vault/driveBrowser");
-          return await driveBrowser.handleDriveSearch(req, res, { userId: auth.user.uid });
+          return await driveBrowser.handleDriveSearch(req, res, { userId: auth.user.uid, tenantId: _driveTenantId });
         }
         default:
           return jsonError(res, 404, "Unknown drive action: " + driveAction);

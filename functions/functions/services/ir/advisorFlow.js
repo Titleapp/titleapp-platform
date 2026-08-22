@@ -316,7 +316,7 @@ function _publicAdvisor(d) {
 //  STEP 1 — START STRIPE IDENTITY
 // ═══════════════════════════════════════════════════════════════
 
-async function startIdentityVerification({ advisorId, uid, returnUrl = null }) {
+async function startIdentityVerification({ advisorId, uid, returnUrl = null, consent = null }) {
   const { data } = await _getAdvisor(advisorId);
   if (!data) throw new Error(`advisor ${advisorId} not found`);
 
@@ -331,6 +331,7 @@ async function startIdentityVerification({ advisorId, uid, returnUrl = null }) {
     returnUrl,
     email: data.email,
     name: data.name,
+    consent, // CODEX S52.62 — platform-level identity consent, required by createIdentitySession
   });
 
   await markStepComplete(advisorId, "identity_pending", {

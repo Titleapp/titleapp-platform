@@ -59,17 +59,21 @@ async function processMessageQueue() {
           textBody: msg.textBody || undefined,
         });
       } else if (msg.channel === "gmail" && msg.userId) {
-        // Personal Gmail send — uses the sender's own OAuth token.
-        // Falls back to SendGrid if the user has no Gmail token.
+        // Personal Gmail send — uses the sender's own OAuth token, scoped to
+        // the tenant this message was queued for (Gmail connections are
+        // per-(uid, tenantId) since 2026-08-22 — see services/social/gmail.js).
+        // Falls back to SendGrid if the user has no Gmail token connected for
+        // that tenant.
         const gmail = require("../services/social/gmail");
-        const tokenSnap = await getDb().doc(`users/${msg.userId}/integrations/gmail`).get();
-        if (tokenSnap.exists && tokenSnap.data().accessToken) {
-          await gmail.sendEmail(msg.userId, {
+        const gmailTenantId = msg.tenantId || msg.userId;
+        try {
+          await gmail.sendEmail(msg.userId, gmailTenantId, {
             to: msg.to,
             subject: msg.subject || "(no subject)",
             body: msg.body || "",
           });
-        } else {
+        } catch (gmailErr) {
+          console.warn(`[messageProcessor] Gmail send failed for uid=${msg.userId} tenant=${gmailTenantId}, falling back to SendGrid:`, gmailErr.message);
           // Fallback: transactional email via SendGrid
           const { sendViaSendGrid } = require("../services/marketingService/emailNotify");
           await sendViaSendGrid({

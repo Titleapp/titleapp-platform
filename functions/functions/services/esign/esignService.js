@@ -283,6 +283,27 @@ async function handleESignSign(req, res) {
 
     await ref.update({ signers, status: allSigned ? "completed" : "partial", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
 
+    // CODEX S52.61 — if this esign request was created by /v1/clients:add,
+    // mark the disclosure step complete on the contact and check whether
+    // onboarding is now fully done (e-sign + KYC-if-required). Additive only:
+    // metadata.clientOnboarding is unset for every other esign caller, so
+    // this never runs for non-client-onboarding signing requests.
+    const clientOnboardingMeta = d.metadata;
+    if (allSigned && clientOnboardingMeta?.clientOnboarding && clientOnboardingMeta.contactId) {
+      try {
+        const { onDisclosureSigned } = require("../clients/clientOnboarding");
+        await onDisclosureSigned({
+          db,
+          tenantId: clientOnboardingMeta.tenantId,
+          contactId: clientOnboardingMeta.contactId,
+          kycRequired: !!clientOnboardingMeta.kycRequired,
+          signedAt: new Date().toISOString(),
+        });
+      } catch (activateErr) {
+        console.warn("[esign] client-onboarding activation check failed (non-fatal):", activateErr.message);
+      }
+    }
+
     return res.json({ ok: true, allSigned, message: allSigned ? "Document fully signed." : "Signature recorded. Waiting for remaining signers." });
   } catch (e) {
     return res.status(400).json({ ok: false, error: "Signing failed: " + e.message });

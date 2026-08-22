@@ -208,6 +208,25 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // CODEX S52.62 — cross-tenant verified-identity records. Server-only,
+    // no client reads or writes: this collection holds a keyed HMAC of
+    // verified KYC output (never raw name/DOB/document number) used to
+    // resolve the same real person across tenants. The isolation boundary
+    // (never expose which other tenants reference an identity) is enforced
+    // in application code (services/identity/verifiedIdentityResolution.js)
+    // — denying all direct client access here is the backstop, not the
+    // only control. Already covered by the catch-all below; stated
+    // explicitly given how sensitive this collection is.
+    match /verifiedIdentities/{docId} {
+      allow read, write: if false;
+    }
+
+    // CODEX S52.62 §5 item 3 — anonymized deletion audit trail for the
+    // above. No reconstructible PII is ever written here; still server-only.
+    match /verifiedIdentityDeletions/{docId} {
+      allow read, write: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

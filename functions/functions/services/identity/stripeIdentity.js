@@ -48,13 +48,19 @@ function getStripe() {
  * @returns {Promise<{ok, sessionId, client_secret, url}>}
  */
 async function createIdentitySession(input) {
-  const { uid, fundraiseId, investorId, advisorId, creatorId, returnUrl = null, email = null, name = null } = input || {};
+  const { uid, fundraiseId, investorId, advisorId, creatorId, returnUrl = null, email = null, name = null, consent = null } = input || {};
   if (!uid) throw new Error("createIdentitySession: uid required");
   const isAdvisor = !!advisorId;
   const isInvestor = !!(fundraiseId && investorId);
   const isCreator = !!creatorId;
   if (!isAdvisor && !isInvestor && !isCreator) {
     throw new Error("createIdentitySession: advisorId, creatorId, OR (fundraiseId + investorId) required");
+  }
+  // CODEX S52.62 §1.5/§4 item 9 — platform-level consent, bundled into the
+  // KYC step itself, distinct from any per-tenant/deal e-signature
+  // agreement. Required before the identity check proceeds.
+  if (!consent || consent.accepted !== true) {
+    throw new Error("createIdentitySession: platform identity consent required before starting identity verification");
   }
 
   const purpose = isAdvisor ? "ir_advisor_identity"
@@ -88,6 +94,14 @@ async function createIdentitySession(input) {
     stripeIdentityStatus: session.status || "created",
     stripeIdentityCreatedAt: ts(),
     updated_at: ts(),
+    // Platform-level identity consent, captured once alongside the KYC
+    // step itself (CODEX S52.62 §1.5/§4 item 9) — kept simple/factual per
+    // the codex; real legal wordsmithing is a documented follow-up.
+    platformIdentityConsent: {
+      accepted: true,
+      acceptedAt: consent.acceptedAt || new Date().toISOString(),
+      text: consent.text || null,
+    },
   }, { merge: true });
 
   // Pass-through billing (2026-08-20): $1.50/session actual cost, never

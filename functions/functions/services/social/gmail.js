@@ -5,7 +5,11 @@
  *
  * Same Google OAuth client (GOOGLE_OAUTH_*) and token encryption
  * (GDRIVE_ENCRYPTION_KEY) as YouTube/Drive/Calendar. Tokens stored at
- * users/{uid}/integrations/gmail.
+ * users/{uid}/workspaces/{tenantId}/integrations/gmail — SCOPED BY BOTH
+ * uid AND tenantId (fixed 2026-08-22; previously users/{uid}/integrations/gmail,
+ * keyed by uid only, which meant every workspace a user could access shared
+ * the SAME connected Gmail account. See services/_shared/tenantIntegrationMigration.js
+ * for the one-time, per-tenant migration behavior off the old uid-only path).
  *
  * What this unlocks for workers:
  *  - syncContacts: pull sent-to/received-from addresses → enrich contacts
@@ -21,6 +25,7 @@
 
 const crypto = require("crypto");
 const admin = require("firebase-admin");
+const { resolveTenantIntegrationDoc, resolveTenantIntegrationCollection } = require("../_shared/tenantIntegrationMigration");
 
 function getDb() { return admin.firestore(); }
 
@@ -82,11 +87,32 @@ function buildOAuthClient() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  TOKEN STORAGE
+//  TOKEN STORAGE — tenant-scoped, with fallback migration off the
+//  old uid-only path (see services/_shared/tenantIntegrationMigration.js)
 // ═══════════════════════════════════════════════════════════════
 
-async function storeTokens(uid, tokens) {
-  const db = getDb();
+function requireTenantId(tenantId) {
+  if (!tenantId) throw new Error("Gmail operations require a tenantId (workspace context)");
+  return tenantId;
+}
+
+function primaryRef(uid, tenantId) {
+  return getDb().doc(`users/${uid}/workspaces/${tenantId}/integrations/gmail`);
+}
+function legacyPrimaryRef(uid) {
+  return getDb().doc(`users/${uid}/integrations/gmail`);
+}
+function extraAccountsColl(uid, tenantId) {
+  return getDb().collection(`users/${uid}/workspaces/${tenantId}/gmailAccounts`);
+}
+function legacyExtraAccountsColl(uid) {
+  return getDb().collection(`users/${uid}/gmailAccounts`);
+}
+
+const isGmailConnected = (d) => !!(d && d.accessToken);
+
+async function storeTokens(uid, tenantId, tokens) {
+  requireTenantId(tenantId);
   const data = {
     accessToken: encrypt(tokens.access_token),
     refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
@@ -94,12 +120,17 @@ async function storeTokens(uid, tokens) {
     scope: tokens.scope || SCOPES.join(" "),
     connectedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
-  await db.doc(`users/${uid}/integrations/gmail`).set(data, { merge: true });
+  await primaryRef(uid, tenantId).set(data, { merge: true });
 }
 
-async function loadTokens(uid) {
-  const db = getDb();
-  const snap = await db.doc(`users/${uid}/integrations/gmail`).get();
+async function loadTokens(uid, tenantId) {
+  requireTenantId(tenantId);
+  const { snap } = await resolveTenantIntegrationDoc({
+    newRef: primaryRef(uid, tenantId),
+    legacyRef: legacyPrimaryRef(uid),
+    isConnected: isGmailConnected,
+    tenantId,
+  });
   if (!snap.exists) return null;
   const data = snap.data();
   if (!data.accessToken) return null;
@@ -111,14 +142,15 @@ async function loadTokens(uid) {
   };
 }
 
-async function buildAuthedClient(uid) {
-  const tokens = await loadTokens(uid);
+async function buildAuthedClient(uid, tenantId) {
+  requireTenantId(tenantId);
+  const tokens = await loadTokens(uid, tenantId);
   if (!tokens) throw new Error("Gmail not connected — call /v1/gmail:authUrl first");
   const auth = buildOAuthClient();
   auth.setCredentials(tokens);
   // Auto-refresh and persist
   auth.on("tokens", async (newTokens) => {
-    await storeTokens(uid, { ...tokens, ...newTokens });
+    await storeTokens(uid, tenantId, { ...tokens, ...newTokens });
   });
   return auth;
 }
@@ -138,12 +170,13 @@ async function handleGmailAuthUrl(req, res, { userId }) {
   return res.json({ ok: true, authUrl: url });
 }
 
-async function handleGmailExchangeCode(req, res, { userId }) {
+async function handleGmailExchangeCode(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
   const { code } = req.body || {};
   if (!code) return res.status(400).json({ ok: false, error: "code required" });
   const auth = buildOAuthClient();
   const { tokens } = await auth.getToken(code);
-  await storeTokens(userId, tokens);
+  await storeTokens(userId, tenantId, tokens);
 
   // Immediately pull connected account email for display
   auth.setCredentials(tokens);
@@ -153,14 +186,20 @@ async function handleGmailExchangeCode(req, res, { userId }) {
   try {
     const profile = await gmail.users.getProfile({ userId: "me" });
     email = profile.data.emailAddress;
-    await getDb().doc(`users/${userId}/integrations/gmail`).update({ email });
+    await primaryRef(userId, tenantId).update({ email });
   } catch (_) {}
 
   return res.json({ ok: true, email });
 }
 
-async function handleGmailStatus(req, res, { userId }) {
-  const snap = await getDb().doc(`users/${userId}/integrations/gmail`).get();
+async function handleGmailStatus(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.json({ ok: true, connected: false });
+  const { snap } = await resolveTenantIntegrationDoc({
+    newRef: primaryRef(userId, tenantId),
+    legacyRef: legacyPrimaryRef(userId),
+    isConnected: isGmailConnected,
+    tenantId,
+  });
   if (!snap.exists || !snap.data().accessToken) {
     return res.json({ ok: true, connected: false });
   }
@@ -168,8 +207,9 @@ async function handleGmailStatus(req, res, { userId }) {
   return res.json({ ok: true, connected: true, email: data.email || null, connectedAt: data.connectedAt || null });
 }
 
-async function handleGmailDisconnect(req, res, { userId }) {
-  await getDb().doc(`users/${userId}/integrations/gmail`).delete();
+async function handleGmailDisconnect(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
+  await primaryRef(userId, tenantId).delete();
   return res.json({ ok: true, disconnected: true });
 }
 
@@ -183,8 +223,9 @@ async function handleGmailDisconnect(req, res, { userId }) {
  * Returns { added, updated, total }.
  */
 async function syncContacts(uid, tenantId, opts = {}) {
+  requireTenantId(tenantId);
   const { maxMessages = 500 } = opts;
-  const auth = await buildAuthedClient(uid);
+  const auth = await buildAuthedClient(uid, tenantId);
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
   const people = google.people({ version: "v1", auth });
@@ -305,9 +346,9 @@ async function syncContacts(uid, tenantId, opts = {}) {
  * searchEmails — keyword search over the user's inbox.
  * Returns [{subject, from, snippet, date, messageId}] trimmed to maxResults.
  */
-async function searchEmails(uid, query, opts = {}) {
+async function searchEmails(uid, tenantId, query, opts = {}) {
   const { maxResults = 10 } = opts;
-  const auth = await buildAuthedClient(uid);
+  const auth = await buildAuthedClient(uid, tenantId);
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
 
@@ -336,14 +377,19 @@ async function searchEmails(uid, query, opts = {}) {
  * This handles the case where a user removes+re-adds their account via "+ Add account" (which goes
  * to the extra-accounts subcollection, leaving the primary slot empty).
  */
-async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attachments, fromEmail }) {
+async function sendEmail(uid, tenantId, { to, subject, body, htmlBody, cc, replyTo, attachments, fromEmail }) {
+  requireTenantId(tenantId);
   let auth;
   try {
-    auth = await buildAuthedClient(uid);
+    auth = await buildAuthedClient(uid, tenantId);
   } catch (primaryErr) {
-    // Primary slot missing or failed — try extra accounts
-    const db = getDb();
-    const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+    // Primary slot missing or failed — try extra accounts (tenant-scoped)
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
     if (extras.empty) throw primaryErr;
     let targetDoc = null;
     if (fromEmail) {
@@ -355,7 +401,7 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
       targetDoc = extras.docs.find(d => (d.data().email || "").includes("sociii.ai")) || extras.docs[0];
     }
     if (!targetDoc || !targetDoc.data().accessToken) throw primaryErr;
-    auth = await buildAuthedClientForAccount(uid, targetDoc.id);
+    auth = await buildAuthedClientForAccount(uid, tenantId, targetDoc.id);
   }
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
@@ -412,7 +458,7 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
           // Google Drive file — download via Drive API with user's OAuth token
           const fileId = att.url.replace("gdrive://", "");
           const { getAuthenticatedDriveClient } = require("../vault/driveAuth");
-          const driveClient = await getAuthenticatedDriveClient(uid);
+          const driveClient = await getAuthenticatedDriveClient(uid, tenantId);
           const driveResp = await driveClient.files.get(
             { fileId, alt: "media" },
             { responseType: "arraybuffer" }
@@ -446,9 +492,9 @@ async function sendEmail(uid, { to, subject, body, htmlBody, cc, replyTo, attach
  * listRecentSummary — compact summary of recent inbox for chat context injection.
  * Returns a short text block.
  */
-async function listRecentSummary(uid, opts = {}) {
+async function listRecentSummary(uid, tenantId, opts = {}) {
   const { maxResults = 8 } = opts;
-  const auth = await buildAuthedClient(uid);
+  const auth = await buildAuthedClient(uid, tenantId);
   const google = getGoogle();
   const gmail = google.gmail({ version: "v1", auth });
 
@@ -464,8 +510,8 @@ async function listRecentSummary(uid, opts = {}) {
 
 // ═══════════════════════════════════════════════════════════════
 //  MULTI-ACCOUNT SUPPORT
-//  Primary account: users/{uid}/integrations/gmail (unchanged)
-//  Additional accounts: users/{uid}/gmailAccounts/{accountId}
+//  Primary account: users/{uid}/workspaces/{tenantId}/integrations/gmail
+//  Additional accounts: users/{uid}/workspaces/{tenantId}/gmailAccounts/{accountId}
 //  accountId = email.replace(/[@.+]/g, "_")
 // ═══════════════════════════════════════════════════════════════
 
@@ -473,8 +519,8 @@ function accountId(email) {
   return (email || "").toLowerCase().replace(/[@.+]/g, "_").replace(/[^a-z0-9_]/g, "");
 }
 
-async function storeExtraAccount(uid, email, tokens) {
-  const db = getDb();
+async function storeExtraAccount(uid, tenantId, email, tokens) {
+  requireTenantId(tenantId);
   const aId = accountId(email);
   const data = {
     email,
@@ -485,13 +531,18 @@ async function storeExtraAccount(uid, email, tokens) {
     scope: tokens.scope || SCOPES.join(" "),
     connectedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
-  await db.doc(`users/${uid}/gmailAccounts/${aId}`).set(data, { merge: true });
+  await extraAccountsColl(uid, tenantId).doc(aId).set(data, { merge: true });
   return aId;
 }
 
-async function loadExtraAccountTokens(uid, aId) {
-  const db = getDb();
-  const snap = await db.doc(`users/${uid}/gmailAccounts/${aId}`).get();
+async function loadExtraAccountTokens(uid, tenantId, aId) {
+  requireTenantId(tenantId);
+  const { snap } = await resolveTenantIntegrationDoc({
+    newRef: extraAccountsColl(uid, tenantId).doc(aId),
+    legacyRef: legacyExtraAccountsColl(uid).doc(aId),
+    isConnected: isGmailConnected,
+    tenantId,
+  });
   if (!snap.exists) return null;
   const data = snap.data();
   if (!data.accessToken) return null;
@@ -504,13 +555,13 @@ async function loadExtraAccountTokens(uid, aId) {
   };
 }
 
-async function buildAuthedClientForAccount(uid, aId) {
-  const tokens = await loadExtraAccountTokens(uid, aId);
+async function buildAuthedClientForAccount(uid, tenantId, aId) {
+  const tokens = await loadExtraAccountTokens(uid, tenantId, aId);
   if (!tokens) throw new Error(`Gmail account ${aId} not found`);
   const auth = buildOAuthClient();
   auth.setCredentials(tokens);
   auth.on("tokens", async (newTokens) => {
-    await storeExtraAccount(uid, tokens.email, { ...tokens, ...newTokens });
+    await storeExtraAccount(uid, tenantId, tokens.email, { ...tokens, ...newTokens });
   });
   return auth;
 }
@@ -526,7 +577,8 @@ async function handleGmailAddAccountUrl(req, res, { userId }) {
   return res.json({ ok: true, authUrl: url });
 }
 
-async function handleGmailAddAccountExchange(req, res, { userId }) {
+async function handleGmailAddAccountExchange(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
   const { code } = req.body || {};
   if (!code) return res.status(400).json({ ok: false, error: "code required" });
   const auth = buildOAuthClient();
@@ -542,23 +594,33 @@ async function handleGmailAddAccountExchange(req, res, { userId }) {
   } catch (_) {}
   if (!email) return res.status(400).json({ ok: false, error: "Could not determine account email" });
 
-  // Check if this is already the primary account
-  const primary = await getDb().doc(`users/${userId}/integrations/gmail`).get();
+  // Check if this is already the primary account (tenant-scoped, with legacy fallback)
+  const { snap: primary } = await resolveTenantIntegrationDoc({
+    newRef: primaryRef(userId, tenantId),
+    legacyRef: legacyPrimaryRef(userId),
+    isConnected: isGmailConnected,
+    tenantId,
+  });
   if (primary.exists && primary.data().email === email) {
     return res.status(409).json({ ok: false, error: `${email} is already connected as your primary Gmail account.` });
   }
 
-  const aId = await storeExtraAccount(userId, email, tokens);
+  const aId = await storeExtraAccount(userId, tenantId, email, tokens);
   return res.json({ ok: true, email, accountId: aId });
 }
 
-async function handleGmailListAccounts(req, res, { userId }) {
-  const db = getDb();
+async function handleGmailListAccounts(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.json({ ok: true, accounts: [] });
   const accounts = [];
 
   // Primary
   try {
-    const snap = await db.doc(`users/${userId}/integrations/gmail`).get();
+    const { snap } = await resolveTenantIntegrationDoc({
+      newRef: primaryRef(userId, tenantId),
+      legacyRef: legacyPrimaryRef(userId),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
     if (snap.exists && snap.data().accessToken) {
       accounts.push({
         accountId: "primary",
@@ -571,7 +633,12 @@ async function handleGmailListAccounts(req, res, { userId }) {
 
   // Extra accounts
   try {
-    const extras = await db.collection(`users/${userId}/gmailAccounts`).get();
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(userId, tenantId),
+      legacyColl: legacyExtraAccountsColl(userId),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
     for (const doc of extras.docs) {
       const data = doc.data();
       if (data.accessToken) {
@@ -588,13 +655,14 @@ async function handleGmailListAccounts(req, res, { userId }) {
   return res.json({ ok: true, accounts });
 }
 
-async function handleGmailRemoveAccount(req, res, { userId }) {
+async function handleGmailRemoveAccount(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
   const { accountId: aId } = req.body || {};
   if (!aId) return res.status(400).json({ ok: false, error: "accountId required" });
   if (aId === "primary") {
-    await getDb().doc(`users/${userId}/integrations/gmail`).delete();
+    await primaryRef(userId, tenantId).delete();
   } else {
-    await getDb().doc(`users/${userId}/gmailAccounts/${aId}`).delete();
+    await extraAccountsColl(userId, tenantId).doc(aId).delete();
   }
   return res.json({ ok: true });
 }
@@ -603,29 +671,39 @@ async function handleGmailRemoveAccount(req, res, { userId }) {
  * Merge inbox summaries from primary + all extra accounts.
  * Cap 6 threads per account so context doesn't bloat.
  */
-async function listRecentSummaryAllAccounts(uid, opts = {}) {
+async function listRecentSummaryAllAccounts(uid, tenantId, opts = {}) {
+  requireTenantId(tenantId);
   const { maxPerAccount = 6 } = opts;
-  const db = getDb();
   const sections = [];
 
   // Primary
   try {
-    const primarySnap = await db.doc(`users/${uid}/integrations/gmail`).get();
+    const { snap: primarySnap } = await resolveTenantIntegrationDoc({
+      newRef: primaryRef(uid, tenantId),
+      legacyRef: legacyPrimaryRef(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
     if (primarySnap.exists && primarySnap.data().accessToken) {
       const primaryEmail = primarySnap.data().email || "primary";
-      const summary = await listRecentSummary(uid, { maxResults: maxPerAccount });
+      const summary = await listRecentSummary(uid, tenantId, { maxResults: maxPerAccount });
       if (summary) sections.push(`[${primaryEmail}]\n${summary}`);
     }
   } catch (_) {}
 
   // Extra accounts
   try {
-    const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
     for (const doc of extras.docs) {
       const data = doc.data();
       if (!data.accessToken) continue;
       try {
-        const auth = await buildAuthedClientForAccount(uid, doc.id);
+        const auth = await buildAuthedClientForAccount(uid, tenantId, doc.id);
         const google = getGoogle();
         const gmail = google.gmail({ version: "v1", auth });
         const snap = await gmail.users.messages.list({ userId: "me", maxResults: maxPerAccount, labelIds: ["INBOX"] });
@@ -647,9 +725,9 @@ async function listRecentSummaryAllAccounts(uid, opts = {}) {
  * searchEmailsAllAccounts — fan-out keyword search across primary + all extra Gmail accounts.
  * account: "all" (default) | "primary" | specific accountId (sanitized email)
  */
-async function searchEmailsAllAccounts(uid, query, opts = {}) {
+async function searchEmailsAllAccounts(uid, tenantId, query, opts = {}) {
+  requireTenantId(tenantId);
   const { maxResults = 15, account = "all" } = opts;
-  const db = getDb();
   const results = [];
 
   const fetchForAuth = async (oauthClient, emailLabel) => {
@@ -667,8 +745,13 @@ async function searchEmailsAllAccounts(uid, query, opts = {}) {
 
   if (account === "all" || account === "primary") {
     try {
-      const auth = await buildAuthedClient(uid);
-      const primarySnap = await db.doc(`users/${uid}/integrations/gmail`).get();
+      const auth = await buildAuthedClient(uid, tenantId);
+      const { snap: primarySnap } = await resolveTenantIntegrationDoc({
+        newRef: primaryRef(uid, tenantId),
+        legacyRef: legacyPrimaryRef(uid),
+        isConnected: isGmailConnected,
+        tenantId,
+      });
       const primaryEmail = (primarySnap.exists && primarySnap.data().email) || "primary";
       results.push(...await fetchForAuth(auth, primaryEmail));
     } catch (_) {}
@@ -676,13 +759,18 @@ async function searchEmailsAllAccounts(uid, query, opts = {}) {
 
   if (account === "all" || account !== "primary") {
     try {
-      const extras = await db.collection(`users/${uid}/gmailAccounts`).get();
+      const extras = await resolveTenantIntegrationCollection({
+        newColl: extraAccountsColl(uid, tenantId),
+        legacyColl: legacyExtraAccountsColl(uid),
+        isConnected: isGmailConnected,
+        tenantId,
+      });
       for (const doc of extras.docs) {
         const data = doc.data();
         if (!data.accessToken) continue;
         if (account !== "all" && doc.id !== account) continue;
         try {
-          const auth = await buildAuthedClientForAccount(uid, doc.id);
+          const auth = await buildAuthedClientForAccount(uid, tenantId, doc.id);
           results.push(...await fetchForAuth(auth, data.email || doc.id));
         } catch (_) {}
       }

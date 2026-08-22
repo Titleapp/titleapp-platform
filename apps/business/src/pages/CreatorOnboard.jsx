@@ -24,6 +24,13 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// CODEX S52.62 §1.5/§4 item 9 — platform-level consent for cross-tenant
+// identity resolution, bundled into the KYC step itself and distinct from
+// the Creator License agreement (Step 1 above). Kept simple and factual for
+// now; real legal wordsmithing is a documented follow-up.
+const IDENTITY_CONSENT_TEXT =
+  "I understand this verification may be used to recognize me as the same person across other SOCIII-powered businesses I interact with, without sharing my data between them.";
+
 function setHead() {
   document.title = "SOCIII — Creator onboarding";
   const set = (sel, attr, val) => {
@@ -43,6 +50,7 @@ export default function CreatorOnboard() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [showFullTerms, setShowFullTerms] = useState(false);
+  const [identityConsentChecked, setIdentityConsentChecked] = useState(false);
   const pollingRef = useRef(false);
 
   useEffect(() => { setHead(); }, []);
@@ -299,13 +307,27 @@ export default function CreatorOnboard() {
                   Check status
                 </button>
               ) : (
-                <button
-                  style={{ ...S.btn, ...(busy ? S.btnDisabled : {}) }}
-                  onClick={() => step("start_identity", { returnUrl: window.location.href })}
-                  disabled={busy}
-                >
-                  {busy ? "Starting…" : "Start ID verification"}
-                </button>
+                <>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "10px 0", fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={identityConsentChecked}
+                      onChange={(e) => setIdentityConsentChecked(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>{IDENTITY_CONSENT_TEXT}</span>
+                  </label>
+                  <button
+                    style={{ ...S.btn, ...(busy || !identityConsentChecked ? S.btnDisabled : {}) }}
+                    onClick={() => step("start_identity", {
+                      returnUrl: window.location.href,
+                      identityConsent: { accepted: true, acceptedAt: new Date().toISOString(), text: IDENTITY_CONSENT_TEXT },
+                    })}
+                    disabled={busy || !identityConsentChecked}
+                  >
+                    {busy ? "Starting…" : "Start ID verification"}
+                  </button>
+                </>
               )}
             </div>
           )}

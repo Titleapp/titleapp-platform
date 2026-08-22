@@ -84,8 +84,8 @@ function shapeEvent(g) {
 //  LIST UPCOMING EVENTS
 // ═══════════════════════════════════════════════════════════════
 
-async function listUpcomingEvents(userId, { calendarId = "primary", days = 7, maxResults = 50, workerSlug = null, projectId = null } = {}) {
-  const calendar = await getAuthenticatedCalendarClient(userId);
+async function listUpcomingEvents(userId, tenantId, { calendarId = "primary", days = 7, maxResults = 50, workerSlug = null, projectId = null } = {}) {
+  const calendar = await getAuthenticatedCalendarClient(userId, tenantId);
   const now = new Date();
   const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
@@ -106,14 +106,15 @@ async function listUpcomingEvents(userId, { calendarId = "primary", days = 7, ma
   return events;
 }
 
-async function handleListEvents(req, res, { userId }) {
+async function handleListEvents(req, res, { userId, tenantId }) {
   try {
+    if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
     const days = Math.min(Math.max(parseInt(req.query.days || "7", 10) || 7, 1), 90);
     const maxResults = Math.min(Math.max(parseInt(req.query.maxResults || "50", 10) || 50, 1), 250);
     const workerSlug = req.query.workerSlug || null;
     const projectId = req.query.projectId || null;
     const calendarId = req.query.calendarId || "primary";
-    const events = await listUpcomingEvents(userId, { calendarId, days, maxResults, workerSlug, projectId });
+    const events = await listUpcomingEvents(userId, tenantId, { calendarId, days, maxResults, workerSlug, projectId });
     res.json({ ok: true, events, count: events.length });
   } catch (e) {
     const msg = e?.message || "Calendar list failed";
@@ -139,7 +140,7 @@ function asDateTime(v) {
   return null;
 }
 
-async function createEvent(userId, {
+async function createEvent(userId, tenantId, {
   calendarId = "primary",
   summary,
   description = "",
@@ -154,7 +155,7 @@ async function createEvent(userId, {
   if (!summary) throw new Error("summary is required");
   if (!start || !end) throw new Error("start and end are required");
 
-  const calendar = await getAuthenticatedCalendarClient(userId);
+  const calendar = await getAuthenticatedCalendarClient(userId, tenantId);
   const hasAttendees = Array.isArray(attendees) && attendees.length > 0;
   const resource = {
     summary,
@@ -184,9 +185,10 @@ async function createEvent(userId, {
   return shapeEvent(result.data);
 }
 
-async function handleCreateEvent(req, res, { userId }) {
+async function handleCreateEvent(req, res, { userId, tenantId }) {
   try {
-    const event = await createEvent(userId, req.body || {});
+    if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
+    const event = await createEvent(userId, tenantId, req.body || {});
     res.json({ ok: true, event });
   } catch (e) {
     const msg = e?.message || "Calendar create failed";
@@ -203,7 +205,7 @@ async function handleCreateEvent(req, res, { userId }) {
 //  ChatPanel surfaces these as approval cards.
 // ═══════════════════════════════════════════════════════════════
 
-async function handleProposeEvent(req, res, { userId }) {
+async function handleProposeEvent(req, res, { userId, tenantId }) {
   try {
     const admin = require("firebase-admin");
     const db = admin.firestore();
@@ -214,6 +216,7 @@ async function handleProposeEvent(req, res, { userId }) {
 
     const ref = await db.collection("proposedCalendarEvents").add({
       userId,
+      tenantId: tenantId || null,
       status: "pending",
       summary,
       description: description || null,

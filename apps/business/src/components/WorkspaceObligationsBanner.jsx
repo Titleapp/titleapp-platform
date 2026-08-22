@@ -23,6 +23,14 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// CODEX S52.62 §1.5/§4 item 9 — platform-level consent for cross-tenant
+// identity resolution, bundled into the KYC step itself and presented as
+// its own distinct screen, separate from any per-role e-signature/terms
+// review (the acknowledge-* modal below). Kept simple and factual for now;
+// real legal wordsmithing is a documented follow-up, not blocking here.
+const IDENTITY_CONSENT_TEXT =
+  "I understand this verification may be used to recognize me as the same person across other SOCIII-powered businesses I interact with, without sharing my data between them.";
+
 const ROLE_LABEL = {
   advisor: "Advisor",
   investor: "Investor",
@@ -97,6 +105,10 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
   // on the "Start" button for an acknowledge-* obligation opens this modal;
   // confirming inside the modal calls runAction.
   const [termsModal, setTermsModal] = useState(null);
+  // CODEX S52.62 — distinct platform-level identity-consent screen, shown
+  // before any verify-identity obligation's Stripe Identity redirect fires.
+  const [identityConsentModal, setIdentityConsentModal] = useState(null);
+  const [identityConsentChecked, setIdentityConsentChecked] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -226,7 +238,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
     }
   }, [loading, openInvites, onAllComplete]);
 
-  const runAction = useCallback(async (invite, obligation) => {
+  const runAction = useCallback(async (invite, obligation, extraPayload = {}) => {
     setError("");
     setInfo("");
     const resolved = resolveAction(obligation.action, invite);
@@ -238,7 +250,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
     try {
       const data = await apiFetch(resolved.endpoint, {
         method: "POST",
-        body: JSON.stringify({ ...resolved.payload, returnUrl: window.location.href }),
+        body: JSON.stringify({ ...resolved.payload, returnUrl: window.location.href, ...extraPayload }),
       });
       if (!data.ok) {
         setError(data.error || "Action failed");
@@ -335,8 +347,15 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                           // review modal first; everything else fires the
                           // backend action directly (Stripe Identity redirect,
                           // DBX Sign packet, etc.).
+                          // CODEX S52.62 — verify-identity obligations get
+                          // their own distinct platform-level identity-
+                          // consent screen first, separate from the
+                          // acknowledge-* per-role terms review above.
                           const needsReview = /acknowledge|accept-license|accept-terms/i.test(o.id);
-                          if (needsReview) {
+                          const isIdentityObligation = /verify-identity/.test(o.id);
+                          if (isIdentityObligation) {
+                            setIdentityConsentModal({ invite, obligation: o });
+                          } else if (needsReview) {
                             setTermsModal({ invite, obligation: o });
                           } else {
                             runAction(invite, o);
@@ -417,6 +436,74 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                 style={{ padding: "9px 18px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 I acknowledge and agree to proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {identityConsentModal && (
+        <div
+          onClick={() => setIdentityConsentModal(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: 20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 14, padding: 28, maxWidth: 520,
+              width: "100%", maxHeight: "85vh", overflowY: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+              Identity verification · platform consent
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a202c", margin: "0 0 14px" }}>
+              Before we verify your identity
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#334155", marginTop: 0 }}>
+              This is separate from any agreement specific to this business relationship —
+              it's a one-time, platform-level consent about how SOCIII uses the result of
+              your identity check across the SOCIII platform.
+            </p>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, margin: "18px 0", fontSize: 14, color: "#1a202c", lineHeight: 1.5 }}>
+              <input
+                type="checkbox"
+                checked={identityConsentChecked}
+                onChange={(e) => setIdentityConsentChecked(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span>{IDENTITY_CONSENT_TEXT}</span>
+            </label>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
+              <button
+                onClick={() => { setIdentityConsentModal(null); setIdentityConsentChecked(false); }}
+                style={{ padding: "9px 18px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+              >
+                Not yet
+              </button>
+              <button
+                onClick={() => {
+                  const { invite, obligation } = identityConsentModal;
+                  setIdentityConsentModal(null);
+                  setIdentityConsentChecked(false);
+                  runAction(invite, obligation, {
+                    identityConsent: { accepted: true, acceptedAt: new Date().toISOString(), text: IDENTITY_CONSENT_TEXT },
+                  });
+                }}
+                disabled={!identityConsentChecked}
+                style={{
+                  padding: "9px 18px",
+                  background: identityConsentChecked ? "#7c3aed" : "#c4b5fd",
+                  color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600,
+                  cursor: identityConsentChecked ? "pointer" : "not-allowed",
+                }}
+              >
+                Agree and continue
               </button>
             </div>
           </div>

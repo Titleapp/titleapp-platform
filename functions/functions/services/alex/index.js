@@ -118,7 +118,7 @@ async function buildAlexPrompt(options = {}) {
   if (userId) {
     try {
       const cal = require("../calendar/googleCalendarService");
-      calendarEvents = await cal.listUpcomingEvents(userId, { days: 7, maxResults: 20 });
+      calendarEvents = await cal.listUpcomingEvents(userId, workspaceId || userId, { days: 7, maxResults: 20 });
     } catch (e) {
       // Not connected, or transient API error — drop silently.
     }

@@ -11,6 +11,13 @@
  * (GDRIVE_ENCRYPTION_KEY) — single shared key for all Google OAuth refresh
  * tokens. Different doc per integration; no cross-leak.
  *
+ * TENANT SCOPING (fixed 2026-08-22): tokens are now stored at
+ * users/{uid}/workspaces/{tenantId}/integrations/googleCalendar — previously
+ * users/{uid}/integrations/googleCalendar, keyed by uid only, which meant
+ * every workspace a user could access shared the SAME connected Calendar
+ * account. See services/_shared/tenantIntegrationMigration.js for the
+ * one-time, per-tenant migration behavior off the old uid-only path.
+ *
  * Exports: handleCalendarAuthUrl, handleCalendarExchangeCode,
  *          handleCalendarDisconnect, handleCalendarStatus,
  *          getAuthenticatedCalendarClient
@@ -18,6 +25,7 @@
 
 const crypto = require("crypto");
 const admin = require("firebase-admin");
+const { resolveTenantIntegrationDoc } = require("../_shared/tenantIntegrationMigration");
 
 function getDb() { return admin.firestore(); }
 
@@ -76,6 +84,28 @@ function createOAuth2Client() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  TENANT-SCOPED DOC REFS
+// ═══════════════════════════════════════════════════════════════
+
+function newCalendarRef(uid, tenantId) {
+  return getDb().doc(`users/${uid}/workspaces/${tenantId}/integrations/googleCalendar`);
+}
+function legacyCalendarRef(uid) {
+  return getDb().collection("users").doc(uid).collection("integrations").doc("googleCalendar");
+}
+const isCalendarConnected = (d) => !!(d && d.connected);
+
+async function resolveCalendarDoc(uid, tenantId) {
+  if (!tenantId) throw new Error("Google Calendar operations require tenantId (workspace context)");
+  return resolveTenantIntegrationDoc({
+    newRef: newCalendarRef(uid, tenantId),
+    legacyRef: legacyCalendarRef(uid),
+    isConnected: isCalendarConnected,
+    tenantId,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  HANDLERS
 // ═══════════════════════════════════════════════════════════════
 
@@ -95,7 +125,8 @@ async function handleCalendarAuthUrl(req, res, { userId }) {
   return res.json({ ok: true, authUrl });
 }
 
-async function handleCalendarExchangeCode(req, res, { userId }) {
+async function handleCalendarExchangeCode(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
   const { code } = req.body || {};
   if (!code) return res.status(400).json({ ok: false, error: "Missing authorization code" });
 
@@ -113,24 +144,21 @@ async function handleCalendarExchangeCode(req, res, { userId }) {
 
   const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-  const db = getDb();
-  await db.collection("users").doc(userId)
-    .collection("integrations").doc("googleCalendar").set({
-      connected: true,
-      email,
-      encryptedRefreshToken,
-      scopes: SCOPES,
-      connectedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastUsedAt: null,
-    });
+  await newCalendarRef(userId, tenantId).set({
+    connected: true,
+    email,
+    encryptedRefreshToken,
+    scopes: SCOPES,
+    connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastUsedAt: null,
+  });
 
   return res.json({ ok: true, email });
 }
 
-async function handleCalendarDisconnect(req, res, { userId }) {
-  const db = getDb();
-  const docRef = db.collection("users").doc(userId)
-    .collection("integrations").doc("googleCalendar");
+async function handleCalendarDisconnect(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.status(400).json({ ok: false, error: "tenantId required (x-tenant-id header)" });
+  const docRef = newCalendarRef(userId, tenantId);
   const snap = await docRef.get();
 
   if (snap.exists) {
@@ -150,10 +178,9 @@ async function handleCalendarDisconnect(req, res, { userId }) {
   return res.json({ ok: true });
 }
 
-async function handleCalendarStatus(req, res, { userId }) {
-  const db = getDb();
-  const snap = await db.collection("users").doc(userId)
-    .collection("integrations").doc("googleCalendar").get();
+async function handleCalendarStatus(req, res, { userId, tenantId }) {
+  if (!tenantId) return res.json({ ok: true, connected: false });
+  const { snap } = await resolveCalendarDoc(userId, tenantId);
 
   if (!snap.exists) return res.json({ ok: true, connected: false });
 
@@ -171,10 +198,8 @@ async function handleCalendarStatus(req, res, { userId }) {
 //  INTERNAL — Authenticated Calendar client for other modules
 // ═══════════════════════════════════════════════════════════════
 
-async function getAuthenticatedCalendarClient(userId) {
-  const db = getDb();
-  const snap = await db.collection("users").doc(userId)
-    .collection("integrations").doc("googleCalendar").get();
+async function getAuthenticatedCalendarClient(userId, tenantId) {
+  const { snap } = await resolveCalendarDoc(userId, tenantId);
 
   if (!snap.exists || !snap.data().connected) {
     throw new Error("Google Calendar not connected. Please connect in Settings.");
@@ -190,8 +215,7 @@ async function getAuthenticatedCalendarClient(userId) {
   oauth2Client.setCredentials({ refresh_token: refreshToken });
 
   // Touch lastUsedAt — non-blocking
-  db.collection("users").doc(userId)
-    .collection("integrations").doc("googleCalendar")
+  newCalendarRef(userId, tenantId)
     .update({ lastUsedAt: admin.firestore.FieldValue.serverTimestamp() })
     .catch(() => {});
 

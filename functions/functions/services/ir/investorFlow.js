@@ -391,6 +391,7 @@ async function startIdentityVerification({
   investorId,
   uid,
   returnUrl = null,
+  consent = null,
 }) {
   const { data } = await _getInvestor(fundraiseId, investorId);
   if (!data) throw new Error(`investor ${investorId} not found`);
@@ -403,6 +404,7 @@ async function startIdentityVerification({
     returnUrl,
     email: data.email,
     name: data.name,
+    consent, // CODEX S52.62 — platform-level identity consent, required by createIdentitySession
   });
 
   await markStepComplete(fundraiseId, investorId, "identity_pending", {

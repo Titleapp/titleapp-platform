@@ -335,7 +335,7 @@ async function acceptTerms({ creatorId, uid, userAgent = null, ip = null }) {
 //  STEP 2 — STRIPE IDENTITY
 // ═══════════════════════════════════════════════════════════════
 
-async function startIdentityVerification({ creatorId, uid, returnUrl = null }) {
+async function startIdentityVerification({ creatorId, uid, returnUrl = null, consent = null }) {
   const { data } = await _getCreator(creatorId);
   if (!data) throw new Error(`creator ${creatorId} not found`);
 
@@ -348,6 +348,7 @@ async function startIdentityVerification({ creatorId, uid, returnUrl = null }) {
     uid,
     creatorId,
     returnUrl,
+    consent, // CODEX S52.62 — platform-level identity consent, required by createIdentitySession
     metadata: {
       flow: "creator",
       creatorId,

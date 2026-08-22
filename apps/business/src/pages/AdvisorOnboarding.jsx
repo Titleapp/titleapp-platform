@@ -23,6 +23,13 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// CODEX S52.62 §1.5/§4 item 9 — platform-level consent for cross-tenant
+// identity resolution, bundled into the KYC step itself and distinct from
+// the per-tenant Advisor Agreement e-signature (Step 3 below). Kept simple
+// and factual for now; real legal wordsmithing is a documented follow-up.
+const IDENTITY_CONSENT_TEXT =
+  "I understand this verification may be used to recognize me as the same person across other SOCIII-powered businesses I interact with, without sharing my data between them.";
+
 export default function AdvisorOnboarding() {
   const params = new URLSearchParams(window.location.search);
   const advisorId = params.get("advisorId");
@@ -31,6 +38,7 @@ export default function AdvisorOnboarding() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [identityConsentChecked, setIdentityConsentChecked] = useState(false);
   const pollingRef = useRef(false);
 
   const load = useCallback(async () => {
@@ -110,12 +118,19 @@ export default function AdvisorOnboarding() {
   }
 
   async function startKyc() {
+    if (!identityConsentChecked) {
+      setError("Please check the identity-recognition consent box before continuing.");
+      return;
+    }
     setBusy(true); setError("");
     try {
       const returnUrl = window.location.origin + `/onboard/advisor?advisorId=${encodeURIComponent(advisorId)}`;
       const res = await apiFetch("/v1/ir:advisor:step", {
         method: "POST",
-        body: JSON.stringify({ advisorId, action: "start_identity", returnUrl }),
+        body: JSON.stringify({
+          advisorId, action: "start_identity", returnUrl,
+          identityConsent: { accepted: true, acceptedAt: new Date().toISOString(), text: IDENTITY_CONSENT_TEXT },
+        }),
       });
       if (res.url) {
         window.location.href = res.url;
@@ -258,7 +273,16 @@ export default function AdvisorOnboarding() {
             <p style={muted}>
               We use Stripe Identity to verify a government-issued ID. Verified contact information auto-fills the agreement in Step 3.
             </p>
-            <button style={btn} onClick={startKyc} disabled={busy}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "12px 0", fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+              <input
+                type="checkbox"
+                checked={identityConsentChecked}
+                onChange={(e) => setIdentityConsentChecked(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>{IDENTITY_CONSENT_TEXT}</span>
+            </label>
+            <button style={btn} onClick={startKyc} disabled={busy || !identityConsentChecked}>
               {busy ? "Opening…" : "Verify identity"}
             </button>
             {kycInFlight && (

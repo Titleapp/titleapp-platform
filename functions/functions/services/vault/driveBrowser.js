@@ -87,9 +87,9 @@ async function buildBreadcrumbs(drive, folderId) {
  * Body: { folderId?: string, pageToken?: string }
  * Returns: { ok, files[], nextPageToken, breadcrumbs[] }
  */
-async function handleDriveBrowse(req, res, { userId }) {
+async function handleDriveBrowse(req, res, { userId, tenantId }) {
   const { folderId = "root", pageToken } = req.body || {};
-  const drive = await getAuthenticatedDriveClient(userId);
+  const drive = await getAuthenticatedDriveClient(userId, tenantId);
 
   const query = `'${folderId}' in parents and trashed = false`;
   const listRes = await drive.files.list({
@@ -117,13 +117,13 @@ async function handleDriveBrowse(req, res, { userId }) {
  * Body: { query: string, pageToken?: string }
  * Returns: { ok, files[], nextPageToken }
  */
-async function handleDriveSearch(req, res, { userId }) {
+async function handleDriveSearch(req, res, { userId, tenantId }) {
   const { query, pageToken } = req.body || {};
   if (!query || typeof query !== "string" || query.trim().length === 0) {
     return res.status(400).json({ ok: false, error: "Search query required" });
   }
 
-  const drive = await getAuthenticatedDriveClient(userId);
+  const drive = await getAuthenticatedDriveClient(userId, tenantId);
 
   // Escape single quotes in the query
   const safeQuery = query.replace(/'/g, "\\'");

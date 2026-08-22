@@ -24,11 +24,16 @@ async function calendarApi(action, method = "GET", body = null) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   const token = await user.getIdToken();
+  // Calendar connections are scoped per (uid, tenantId) since 2026-08-22 — the
+  // active workspace must ride along on every call so the backend knows which
+  // tenant-scoped connection to read/write. Mirrors useGmail.js.
+  const tenantId = localStorage.getItem("CURRENT_TENANT_ID") || localStorage.getItem("TENANT_ID") || "";
   const opts = {
     method,
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
+      ...(tenantId ? { "x-tenant-id": tenantId } : {}),
     },
   };
   if (body && method !== "GET") opts.body = JSON.stringify(body);
