@@ -44,6 +44,16 @@ import { WORKER_CHECKLISTS, WORKER_INTELLIGENCE } from './canvas/WorkerCanvas';
 import { lookupSignal } from '../config/canvasTypes';
 import { isDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from './canvas/sampleData';
 import SupportEscalationCard from './SupportEscalationCard.jsx';
+import WorkerDocsPanel from './WorkerDocsPanel.jsx';
+import { WORKER_DOCS_MANIFEST } from '../pages/docs/workerDocsManifest.generated.js';
+
+// O(1) lookup for "does this worker have a generated /docs page" — gates the
+// in-app docs affordance so it never links/opens to a 404. Built once from
+// the auto-generated manifest (functions/functions/scripts/generateWorkerDocs.js).
+const WORKER_DOCS_SLUGS = new Set(WORKER_DOCS_MANIFEST.map((p) => p.slug));
+function hasWorkerDoc(workerId) {
+  return !!workerId && WORKER_DOCS_SLUGS.has(`worker-${workerId}`);
+}
 
 // WORKER_SUITES computed lazily inside component (useMemo) — workers come
 // from the Firestore-backed useWorkerCatalog hook now (CODEX 50.10 Phase 2).
@@ -409,6 +419,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const userScrolledAwayRef = useRef(false);
   const [activeWorkerName, setActiveWorkerName] = useState(null);
   const [activeWorkerSlug, setActiveWorkerSlug] = useState(null);
+  // "About this worker" panel — Sean, 2026-08-21: the product itself needs to
+  // link to the auto-generated worker docs, not just the public /docs site.
+  const [showWorkerDocs, setShowWorkerDocs] = useState(false);
 
   const [dealContext, setDealContext] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -2695,6 +2708,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   const chatDisabled = !disclaimerAccepted || isSending || fileUploading;
 
+  // Same worker-id preference order used elsewhere in this file
+  // (workerId || slug || the locally-tracked activeWorkerSlug) — this is the
+  // digitalWorkers catalog id, the same id generateWorkerDocs.js uses to name
+  // worker-<id>.md, so it's the right key to check against the doc manifest.
+  const _docsWorkerId = workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug || null;
+  const _showDocsAffordance = activeWorkerSlug !== 'chief-of-staff' && hasWorkerDoc(_docsWorkerId);
+
   return (
     <div className="chatPanelContainer">
       <div className="chatPanelHeader" style={activeWorkerSlug ? { background: `linear-gradient(135deg, ${getWorkerColor(activeWorkerSlug).primary} 0%, ${getWorkerColor(activeWorkerSlug).primary}dd 100%)` } : undefined}>
@@ -2815,7 +2835,31 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             return cfg.name ? `${cfg.name} · Chief of Staff` : 'Alex · Chief of Staff';
           } catch { return 'Alex · Chief of Staff'; }
         })()}</span>
+        {_showDocsAffordance && (
+          <button
+            type="button"
+            onClick={() => setShowWorkerDocs(true)}
+            title="How to use this worker"
+            aria-label="How to use this worker"
+            style={{
+              marginLeft: 'auto', flexShrink: 0, width: 22, height: 22, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.35)',
+              color: '#fff', fontSize: 12, fontWeight: 700, lineHeight: 1, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            ?
+          </button>
+        )}
       </div>
+
+      {showWorkerDocs && _docsWorkerId && (
+        <WorkerDocsPanel
+          workerId={_docsWorkerId}
+          workerName={activeWorkerName}
+          onClose={() => setShowWorkerDocs(false)}
+        />
+      )}
 
       {/* S52.45 — explicit BETA/in-development warning in the chat surface */}
       {currentSection !== 'creator-journey' && !isDemoMode() && new URLSearchParams(window.location.search).get("demo") !== "1" && <BetaNotice />}

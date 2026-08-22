@@ -3,10 +3,101 @@
 // All 5 workers share this canvas; the active tab set switches by worker slug.
 
 import React, { useState } from "react";
+import { getAuth } from "firebase/auth";
 import TabDescription from "./TabDescription";
 import { getTabDescription } from "./workerTabDescriptions";
 
 const tabToKey = (t) => t.toLowerCase().replace(/ /g, "-");
+
+// 2026-08-21 gap-audit fix — POST helper for "+ Add Student".
+const NURSING_API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+async function addStudent(payload) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const res = await fetch(`${NURSING_API_BASE}/api?path=${encodeURIComponent("/v1/education:student:add")}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) throw new Error(json.error || json.message || `Request failed (${res.status})`);
+  return json;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AddStudentModal — 2026-08-21 gap-audit fix. Calls POST
+// /v1/education:student:add (capability education.create_student_v1),
+// writing to tenants/{tenantId}/nursingStudents. Visual pattern matches
+// Contacts.jsx's ManualAddModal (purple-gradient primary button, white
+// card shell). Note: the Cohort Overview list above is fixture data seeded
+// per-demo-school (schoolData prop) — the new record is real and
+// persisted, but won't retroactively appear in that fixture list.
+// ─────────────────────────────────────────────────────────────────────────
+function AddStudentModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ name: "", email: "", status: "on-track", clinicalHoursRequired: "500" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.name.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      const j = await addStudent({
+        name: form.name.trim(),
+        email: form.email.trim() || undefined,
+        status: form.status,
+        clinicalHoursRequired: form.clinicalHoursRequired ? Number(form.clinicalHoursRequired) : undefined,
+      });
+      setStatus({ state: "done", studentId: j.studentId });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add a student</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Enrolls a new student record for this cohort.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Full name *</label><input style={fieldStyle} value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+          <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Email</label><input type="email" style={fieldStyle} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="optional" /></div>
+          <div>
+            <label style={labelStyle}>Status</label>
+            <select style={fieldStyle} value={form.status} onChange={(e) => set("status", e.target.value)}>
+              <option value="on-track">On track</option>
+              <option value="at-risk">At risk</option>
+              <option value="ready">Ready</option>
+            </select>
+          </div>
+          <div><label style={labelStyle}>Clinical hours required</label><input type="number" style={fieldStyle} value={form.clinicalHoursRequired} onChange={(e) => set("clinicalHoursRequired", e.target.value)} /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Student added. Student ID: {status.studentId}</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Adding…" : "Add student"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Slug registry ─────────────────────────────────────────────────────────────
 
@@ -358,6 +449,7 @@ function RecordsCanvas({ slug, schoolData }) {
   const { students: STUDENTS, school: SCHOOL, pendingAttestations: PENDING_ATTESTATIONS } = schoolData;
   const [tab, setTab] = useState("Cohort Overview");
   const [selected, setSelected] = useState(null);
+  const [showAddStudent, setShowAddStudent] = useState(false);
   const TABS = ["Cohort Overview", "Student Record", "Clinical Hours", "Competency Log", "Vault Export"];
 
   const atRisk = STUDENTS.filter(s => s.status === "at-risk").length;
@@ -371,6 +463,20 @@ function RecordsCanvas({ slug, schoolData }) {
 
       {tab === "Cohort Overview" && (
         <div>
+          {/* 2026-08-21 gap-audit fix — prominent "+ Add Student" button,
+              matching Contacts.jsx's "+ Add Contacts" purple-gradient pattern. */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+            <button
+              type="button"
+              onClick={() => setShowAddStudent(true)}
+              style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              + Add Student
+            </button>
+          </div>
+          {showAddStudent && (
+            <AddStudentModal onClose={() => setShowAddStudent(false)} onAdded={() => setShowAddStudent(false)} />
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
             {[
               { label: "At Risk", value: atRisk, color: "#fee2e2", text: "#991b1b" },

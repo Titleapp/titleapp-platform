@@ -55,12 +55,13 @@ const daysFromNow = (n) => {
     status: "active",
     visibility: "org-only",
     canvasTabs: [
-      { id: "delinquency-queue", label: "Delinquency Queue", signal: "card:msr-delinquency-queue", default: true, order: 0 },
-      { id: "loss-mitigation", label: "Loss Mitigation", signal: "card:msr-loss-mitigation", order: 1 },
-      { id: "error-resolution", label: "NOE / RFI Tracker", signal: "card:msr-error-resolution", order: 2 },
-      { id: "escrow", label: "Escrow", signal: "card:msr-escrow", order: 3 },
-      { id: "licensing", label: "State Licensing", signal: "card:msr-licensing", order: 4 },
-      { id: "audit-log", label: "Compliance Audit Log", signal: "card:msr-audit-log", order: 5 },
+      { id: "portfolio", label: "Portfolio", signal: "card:msr-portfolio", default: true, order: 0 },
+      { id: "delinquency-queue", label: "Delinquency Queue", signal: "card:msr-delinquency-queue", order: 1 },
+      { id: "loss-mitigation", label: "Loss Mitigation", signal: "card:msr-loss-mitigation", order: 2 },
+      { id: "error-resolution", label: "NOE / RFI Tracker", signal: "card:msr-error-resolution", order: 3 },
+      { id: "escrow", label: "Escrow", signal: "card:msr-escrow", order: 4 },
+      { id: "licensing", label: "State Licensing", signal: "card:msr-licensing", order: 5 },
+      { id: "audit-log", label: "Compliance Audit Log", signal: "card:msr-audit-log", order: 6 },
     ],
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
@@ -75,7 +76,7 @@ const daysFromNow = (n) => {
     tagline: "Mortgage servicing, done by the rules.",
     status: "active",
     plan: "business",
-    activeWorkers: [WORKER_SLUG],
+    activeWorkers: [WORKER_SLUG, "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
     chiefOfStaff: { enabled: true, name: "Alex", unlockedAt: new Date().toISOString() },
     isDemo: true,
   }, { merge: true });
@@ -133,6 +134,11 @@ const daysFromNow = (n) => {
       escrowAnnualTotal: 11400,
       escrowShortage: 0,
       hasActiveForbearance: false,
+      // Force-placed insurance self-service story (borrower capability #2) —
+      // Priya is "current" status, so this gives her a second, distinct
+      // storyline instead of piling onto the two delinquent loans above.
+      forcePlacedInsuranceActive: true,
+      forcePlacedNoticeDate: daysAgo(20),
     },
   ];
   for (const loan of loans) {
@@ -157,9 +163,22 @@ const daysFromNow = (n) => {
   // Fixed doc id, replacing the ad hoc test entry created while QA-testing
   // the borrower portal's live submit flow (real write, real uid, just not
   // demo-polished copy) — this is that same real flow, seeded cleanly.
+  // Document checklist (borrower capability #3) backfilled onto the existing
+  // seeded request. Note: re-running this script resets documentsSubmitted to
+  // [] (Firestore merge:true replaces array fields wholesale, it doesn't
+  // union them) — same as every other seed field here, this script always
+  // resets the demo back to its scripted starting state.
+  const REQUIRED_HARDSHIP_DOCUMENTS = [
+    "Hardship affidavit or explanation letter",
+    "Two most recent pay stubs or proof of income",
+    "Most recent bank statement",
+    "Most recent tax return (if self-employed)",
+  ];
   await db.collection("msrLoans").doc("msr-loan-001").collection("hardshipRequests").doc("hardship-001").set({
     reason: "Reduced work hours since June due to a schedule change at my employer — asking about a temporary repayment plan to catch up.",
     status: "submitted",
+    documentsRequired: REQUIRED_HARDSHIP_DOCUMENTS,
+    documentsSubmitted: [],
     submittedByUid: BORROWER_UID,
     tenantId: TENANT_ID,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),

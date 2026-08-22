@@ -14,16 +14,17 @@ If you've ever written a configuration file (`.yml`, `.json`, `.env`), you alrea
 
 ## The core idea
 
-A Digital Worker on SOCIII is a directory with **six files**, each answering one question:
+A Digital Worker on SOCIII is a directory with **seven files**, each answering one question:
 
 | File | Question it answers |
 |---|---|
-| `catalog.json` | What is this worker, who's it for, what does it cost? |
-| `intent-spec.yml` | What does success look like? What are the inputs, outputs, refusal modes? |
-| `rules/*.yml` | What rules govern its behavior? (RAAS — three-level hierarchy) |
-| `fixtures/*.json` | What sample data does the canvas render in demo mode? |
+| `worker-spec.json` | What is this worker, who's it for, what does it cost? |
+| `intent.md` | What does success look like? Who's it for? What is it NOT? |
+| `rules.md` | What rules govern its behavior? (RAAS — layered on top of platform invariants) |
+| `sample-data.js` | What sample data does the canvas render in demo mode? |
 | `canvas-tabs.json` | What tabs show in the right panel, what does each one display? |
-| `README.md` | Plain-language description of the worker's domain expertise |
+| `service.js` | What functions does the worker expose, as pure event proposals? |
+| `tests/assertions.md` | What does QA-001 check before this worker ships? |
 
 That's the entire SDK contract. **[See full Worker anatomy →](/docs/worker-anatomy)**
 
@@ -80,10 +81,10 @@ The current SDK contract is stable enough for a creator to author and ship a wor
 - **QA-001 validator** — runs assertions defined in intent-spec on each PR. v1 partial. **[See QA-001 →](/docs/qa-001)**
 - **Canvas tab schema** — v1 stable, the platform's 1,000+ workers carry the schema. **[See canvas tabs →](/docs/canvas-tabs)**
 
-When in doubt about a convention, **read an existing worker** in the [open-source repo](https://github.com/SOCIII-Inc/sociii) — every worker is itself documentation.
+When in doubt about a convention, **read an existing worker** in the [open-source repo](https://github.com/SOCIII-Inc/sociii-sdk) — every worker is itself documentation.
 
 ## What comes next
 
-**[→ Worker anatomy](/docs/worker-anatomy)** — the six files in detail
+**[→ Worker anatomy](/docs/worker-anatomy)** — the seven files in detail
 **[→ Your first worker](/docs/your-first-worker)** — start to finish, in conversation with Claude Code
 **[→ Three lanes](/docs/three-lanes)** — Open fork · Marketplace · Experimental — which one your worker lives in

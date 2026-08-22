@@ -243,6 +243,18 @@ const SCRIPTS = {
       chip: "My open disputes",
       canvas: { type: "error-requests" },
     },
+    {
+      chip: "Report a problem or request info",
+      canvas: { type: "error-request-form" },
+    },
+    {
+      chip: "Submit proof of insurance",
+      canvas: { type: "insurance-proof" },
+    },
+    {
+      chip: "Request a payoff statement",
+      canvas: { type: "payoff-request" },
+    },
   ],
 };
 
@@ -766,11 +778,12 @@ function LoanStatusCanvas({ skin, loan }) {
   );
 }
 
-function HardshipCanvas({ skin, onSubmit }) {
+function HardshipCanvas({ skin, onSubmit, existingRequest, onSubmitDocument }) {
   const [reason, setReason] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [checkBusy, setCheckBusy] = useState(null);
   async function submit() {
     if (busy || !reason.trim()) return;
     setBusy(true); setErr(null);
@@ -781,6 +794,44 @@ function HardshipCanvas({ skin, onSubmit }) {
       setErr("Couldn't submit that just now — please try again in a moment.");
     }
     setBusy(false);
+  }
+  async function toggleDoc(docName) {
+    if (checkBusy) return;
+    setCheckBusy(docName);
+    try { await onSubmitDocument?.(existingRequest.id, docName); } catch { /* leave unchecked, borrower can retry */ }
+    setCheckBusy(null);
+  }
+  // Loss-mitigation document checklist (CODEX S52.60 borrower capability #3)
+  // — shown once a hardship request already exists, in place of the intake
+  // form. Comparing documentsRequired vs documentsSubmitted is informational,
+  // never an eligibility decision (12 CFR 1024.41(c) stays a human call).
+  if (existingRequest) {
+    const required = existingRequest.documentsRequired || [];
+    const submitted = existingRequest.documentsSubmitted || [];
+    return (
+      <div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>
+          Your hardship request is <strong>{(existingRequest.status || "submitted")}</strong>. Meridian's servicing team evaluates every option available to you before any decision is made (12 CFR 1024.41(c)).
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Documents needed</div>
+        {required.length === 0 && <div style={{ fontSize: 13, color: "#94a3b8" }}>No documents required yet.</div>}
+        {required.map(doc => {
+          const has = submitted.includes(doc);
+          return (
+            <label key={doc} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9", cursor: has ? "default" : "pointer" }}>
+              <input type="checkbox" checked={has} disabled={has || checkBusy === doc} onChange={() => toggleDoc(doc)} />
+              <span style={{ flex: 1, fontSize: 13, color: has ? "#15803d" : "#0f172a", textDecoration: has ? "line-through" : "none" }}>{doc}</span>
+              {checkBusy === doc && <span style={{ fontSize: 11, color: "#94a3b8" }}>Saving…</span>}
+            </label>
+          );
+        })}
+        {required.length > 0 && (
+          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 12, lineHeight: 1.5 }}>
+            Checking a box tells us you've sent that document separately (mail, upload, or in person) — it doesn't upload the file itself.
+          </div>
+        )}
+      </div>
+    );
   }
   if (done) return <Confirmed skin={skin} title="Request submitted" sub="Meridian's servicing team will review your situation and reach out about options. This does not itself grant or deny any assistance — a servicing team member makes that determination." />;
   return (
@@ -801,6 +852,196 @@ function HardshipCanvas({ skin, onSubmit }) {
         fontSize: 15, fontWeight: 700, cursor: (reason.trim() && !busy) ? "pointer" : "not-allowed",
         background: (reason.trim() && !busy) ? skin.accent : "#e2e8f0", color: "#fff",
       }}>{busy ? "Submitting…" : "Submit request"}</button>
+    </div>
+  );
+}
+
+// ErrorRequestIntakeCanvas — CODEX S52.60 borrower self-service capability
+// #1. A structured form (type toggle + subject + description), not free-text
+// parsed by the AI — the model deciding "this counts as a formal NOE/RFI"
+// would start a regulatory response clock on its own say-so, which is a real
+// risk. This always uses the 30-day general-tier deadline server-side; the
+// faster payoff-balance/owner-assignee tiers are intentionally not
+// auto-detected here.
+function ErrorRequestIntakeCanvas({ skin, onSubmit }) {
+  const [type, setType] = useState("notice_of_error");
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  async function submit() {
+    if (busy || !subject.trim() || !description.trim()) return;
+    setBusy(true); setErr(null);
+    try {
+      await onSubmit?.(type, subject.trim(), description.trim());
+      setDone(true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
+  if (done) return <Confirmed skin={skin} title="Request filed" sub="We'll acknowledge this within 5 business days and respond within 30 days. Check My open disputes anytime for the status." />;
+  const optionStyle = (active) => ({
+    flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    border: `1.5px solid ${active ? skin.accent : "#e2e8f0"}`,
+    background: active ? skin.accentSoft : "#fff",
+    color: active ? skin.accent : "#64748b",
+  });
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12, lineHeight: 1.5 }}>
+        A <strong>Notice of Error</strong> reports something you believe is wrong on your account (a fee, a payment application, an escrow calculation). A <strong>Request for Information</strong> asks for information about your loan (who owns it, your payment history, your escrow account). Both start a formal response clock.
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button onClick={() => setType("notice_of_error")} style={optionStyle(type === "notice_of_error")}>Report a problem</button>
+        <button onClick={() => setType("request_for_information")} style={optionStyle(type === "request_for_information")}>Request information</button>
+      </div>
+      <input
+        value={subject}
+        onChange={e => setSubject(e.target.value)}
+        placeholder="Short subject (e.g. 'Late fee charged in error')"
+        style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", marginBottom: 10, outline: "none" }}
+      />
+      <textarea
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder="Describe what's wrong or what information you need…"
+        rows={5}
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", outline: "none", resize: "vertical" }}
+      />
+      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 10 }}>We'll acknowledge this within 5 business days and respond within 30 days.</div>
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>{err}</div>}
+      <button disabled={!subject.trim() || !description.trim() || busy} onClick={submit} style={{
+        width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: (subject.trim() && description.trim() && !busy) ? "pointer" : "not-allowed",
+        background: (subject.trim() && description.trim() && !busy) ? skin.accent : "#e2e8f0", color: "#fff",
+      }}>{busy ? "Submitting…" : "Submit request"}</button>
+    </div>
+  );
+}
+
+// InsuranceProofCanvas — CODEX S52.60 borrower self-service capability #2.
+// Intake only — submitting proof never itself waives or reverses a
+// force-placed insurance charge, that's a human/servicing-system review.
+function InsuranceProofCanvas({ skin, loan, insuranceSubmissions, onSubmit }) {
+  const [insurerName, setInsurerName] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const [expirationDate, setExpirationDate] = useState("");
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const hasPending = (insuranceSubmissions || []).length > 0;
+  async function submit() {
+    if (busy || !insurerName.trim() || !policyNumber.trim() || !effectiveDate || !expirationDate) return;
+    setBusy(true); setErr(null);
+    try {
+      await onSubmit?.(insurerName.trim(), policyNumber.trim(), effectiveDate, expirationDate);
+      setDone(true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
+  if (done || hasPending) return <Confirmed skin={skin} title="Proof submitted — pending review" sub="Meridian's servicing team will review your policy information. This doesn't by itself waive or reverse any force-placed insurance charge — that's confirmed once review is complete." />;
+  const fieldStyle = { display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", marginBottom: 10, outline: "none" };
+  return (
+    <div>
+      {loan?.forcePlacedInsuranceActive && (
+        <div style={{ marginBottom: 14, padding: "10px 12px", background: "#fef3c7", borderRadius: 8, fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>
+          We sent a force-placed insurance notice on your file{loan.forcePlacedNoticeDate ? ` on ${loan.forcePlacedNoticeDate}` : ""}. Submit your own policy proof below to have it reviewed.
+        </div>
+      )}
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>
+        If you already have hazard insurance, submit your policy details so Meridian's team can review it.
+      </div>
+      <input value={insurerName} onChange={e => setInsurerName(e.target.value)} placeholder="Insurance company name" style={fieldStyle} />
+      <input value={policyNumber} onChange={e => setPolicyNumber(e.target.value)} placeholder="Policy number" style={fieldStyle} />
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Effective date</div>
+          <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} style={{ ...fieldStyle, marginBottom: 0 }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Expiration date</div>
+          <input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} style={{ ...fieldStyle, marginBottom: 0 }} />
+        </div>
+      </div>
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>{err}</div>}
+      <button disabled={!insurerName.trim() || !policyNumber.trim() || !effectiveDate || !expirationDate || busy} onClick={submit} style={{
+        width: "100%", marginTop: 14, padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: (insurerName.trim() && policyNumber.trim() && effectiveDate && expirationDate && !busy) ? "pointer" : "not-allowed",
+        background: (insurerName.trim() && policyNumber.trim() && effectiveDate && expirationDate && !busy) ? skin.accent : "#e2e8f0", color: "#fff",
+      }}>{busy ? "Submitting…" : "Submit proof of insurance"}</button>
+    </div>
+  );
+}
+
+// PayoffRequestCanvas — CODEX S52.60 borrower self-service capability #4.
+// Single-button intake, no fields — never states or estimates a dollar
+// amount (msr-no-fabricated-payoff-amount).
+function PayoffRequestCanvas({ skin, onSubmit }) {
+  const [done, setDone] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  async function submit() {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      const dueBy = await onSubmit?.();
+      setDone(dueBy || true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
+  if (done) return <Confirmed skin={skin} title="Payoff statement requested" sub={`You'll receive your payoff statement within 7 business days${typeof done === "string" ? ` (by ${done})` : ""}. We can't provide a specific payoff amount here in chat — it requires the servicing system's live calculation.`} />;
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
+        Requesting a payoff statement logs a formal request with Meridian's servicing team. You'll receive the exact amount needed to pay off your loan as of a specific date within 7 business days (12 CFR 1024.35(b)(6)). We can't state a payoff amount here in chat — it requires a live calculation from the servicing system.
+      </div>
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginBottom: 8 }}>{err}</div>}
+      <button disabled={busy} onClick={submit} style={{
+        width: "100%", padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer",
+        background: skin.accent, color: "#fff", opacity: busy ? 0.7 : 1,
+      }}>{busy ? "Requesting…" : "Request a payoff statement"}</button>
+    </div>
+  );
+}
+
+// CeaseCommunicationCanvas — CODEX S52.60 borrower self-service capability
+// #5. Confirm-style action; msr-cease-communication-respected already exists
+// as a hard stop, this just gives the borrower a real way to trigger the flag.
+function CeaseCommunicationCanvas({ skin, loan, onSubmit }) {
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  async function submit() {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      await onSubmit?.();
+      setDone(true);
+    } catch {
+      setErr("Couldn't submit that just now — please try again in a moment.");
+    }
+    setBusy(false);
+  }
+  if (done || loan?.ceaseCommunication) return <Confirmed skin={skin} title="Request on file" sub="We've noted your request to stop contacting you about this account. This doesn't stop notices we're legally required to send, and it doesn't pause your loan obligations." />;
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
+        You can ask Meridian to stop contacting you about this account (calls, letters, outreach). This does <strong>not</strong> stop notices we're legally required to send you, and it doesn't pause your loan obligations.
+      </div>
+      {err && <div style={{ fontSize: 12, color: "#b45309", marginBottom: 8 }}>{err}</div>}
+      <button disabled={busy} onClick={submit} style={{
+        width: "100%", padding: "13px", borderRadius: 12, border: "none",
+        fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer",
+        background: skin.accent, color: "#fff", opacity: busy ? 0.7 : 1,
+      }}>{busy ? "Submitting…" : "Yes, stop contacting me about this account"}</button>
     </div>
   );
 }
@@ -993,8 +1234,14 @@ export default function ClientPortal() {
 
   // Real loan status + open error requests — GET /v1/msr:customer:loan,
   // CODEX S52.60, same entitlement pattern as the lease/student fetches.
+  // Also carries the borrower's own hardship/insurance/payoff requests, for
+  // the six self-service capabilities added below.
   const [loan, setLoan] = useState(null);
+  const [loanId, setLoanId] = useState(null);
   const [errorRequests, setErrorRequests] = useState([]);
+  const [hardshipRequests, setHardshipRequests] = useState([]);
+  const [insuranceSubmissions, setInsuranceSubmissions] = useState([]);
+  const [payoffRequests, setPayoffRequests] = useState([]);
   const [loanStatus, setLoanStatus] = useState(hasRealBorrowerBacking ? "pending" : "unavailable");
   useEffect(() => {
     if (!hasRealBorrowerBacking || !user) return;
@@ -1007,7 +1254,15 @@ export default function ClientPortal() {
         });
         const j = await res.json().catch(() => ({}));
         if (cancelled) return;
-        if (j && j.ok && j.loan) { setLoan(j.loan); setErrorRequests(j.errorRequests || []); setLoanStatus("ok"); }
+        if (j && j.ok && j.loan) {
+          setLoan(j.loan);
+          setLoanId(j.loanId || null);
+          setErrorRequests(j.errorRequests || []);
+          setHardshipRequests(j.hardshipRequests || []);
+          setInsuranceSubmissions(j.insuranceSubmissions || []);
+          setPayoffRequests(j.payoffRequests || []);
+          setLoanStatus("ok");
+        }
         else setLoanStatus("denied");
       } catch { if (!cancelled) setLoanStatus("denied"); }
     })();
@@ -1148,8 +1403,12 @@ export default function ClientPortal() {
       if (!loan) return "One moment — loading your loan information…";
       if (/status|balance|delinquen|current|behind/.test(t)) { setTimeout(() => setCanvas({ type: "loan-status" }), 200); return `Your loan is ${loan.status === "delinquent" ? "currently delinquent" : "current"}${loan.escrowShortage ? `, with a $${Number(loan.escrowShortage).toLocaleString()} escrow shortage` : ""}. Opened your full status on the right.`; }
       if (/hardship|help|assist|can't pay|struggling|forbear|modif/.test(t)) { setTimeout(() => setCanvas({ type: "hardship" }), 200); return "I've opened a hardship request for you. Meridian's servicing team evaluates every option available before any decision is made — this isn't something I can approve or deny myself."; }
+      if (/notice of error|request for information|\bnoe\b|\brfi\b|report a problem|file.*(error|dispute)|request.*information/.test(t)) { setTimeout(() => setCanvas({ type: "error-request-form" }), 200); return "A Notice of Error reports something wrong on your account; a Request for Information asks about your loan. I've opened the intake form — we'll acknowledge within 5 business days and respond within 30."; }
       if (/dispute|error|complain|wrong|incorrect/.test(t)) { setTimeout(() => setCanvas({ type: "error-requests" }), 200); return "Here are your open disputes and information requests, with their response deadlines."; }
-      return "I can help with your loan status, hardship assistance, or an open dispute. What would you like to know?";
+      if (/force.?placed|insurance/.test(t)) { setTimeout(() => setCanvas({ type: "insurance-proof" }), 200); return loan.forcePlacedInsuranceActive ? "There's a force-placed insurance notice on your file — I've opened the form to submit your own policy proof for review." : "I've opened the form to submit proof of insurance on your account."; }
+      if (/payoff/.test(t)) { setTimeout(() => setCanvas({ type: "payoff-request" }), 200); return "I can log a formal payoff-statement request — you'll receive it within 7 business days. I can't state a specific payoff amount here in chat; that needs the servicing system's live calculation."; }
+      if (/stop contact|cease communication|stop calling|don'?t contact|leave me alone/.test(t)) { setTimeout(() => setCanvas({ type: "cease-communication" }), 200); return "I've opened a request to stop contacting you about this account. It won't stop notices we're legally required to send."; }
+      return "I can help with your loan status, hardship assistance, an open dispute, filing a Notice of Error/RFI, insurance proof, a payoff statement request, or asking us to stop contacting you. What would you like to do?";
     }
     // petowner persona
     if (/book|appointment|visit|schedule|see|come in/.test(t)) return "I can get you in with Dr. Chen. Tap **Book a visit for Clover** above to see available slots — or just tell me when works and I'll find the nearest opening.";
@@ -1193,6 +1452,98 @@ export default function ClientPortal() {
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setHardshipRequests(hrs => [...hrs, { id: j.requestId, reason, status: "submitted", documentsRequired: j.documentsRequired || [], documentsSubmitted: [] }]);
+  }
+
+  // Real write — CODEX S52.60, borrower self-service capability #3. Checks
+  // off one required loss-mitigation document against the caller's own
+  // hardship request. Informational bookkeeping only — never a completeness
+  // or eligibility decision (that's still 12 CFR 1024.41(c) human territory).
+  async function submitHardshipDocument(hardshipRequestId, documentName) {
+    if (!hasRealBorrowerBacking || !user || !loanId) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:hardship-documents")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ loanId, hardshipRequestId, documentName }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setHardshipRequests(hrs => hrs.map(h => h.id === hardshipRequestId
+      ? { ...h, documentsSubmitted: [...(h.documentsSubmitted || []), documentName] }
+      : h));
+  }
+
+  // Real write — CODEX S52.60, borrower self-service capability #1. Files a
+  // real Notice of Error or Request for Information via POST
+  // /v1/msr:customer:error-request. A structured form, not free-text-chat
+  // parsed — letting the AI itself decide "this message counts as a formal
+  // NOE" is a real risk (it starts a regulatory response clock), so this is
+  // deliberately a submit action the borrower explicitly confirms, same as
+  // the hardship intake above.
+  async function submitErrorRequest(type, subject, description) {
+    if (!hasRealBorrowerBacking || !user || !loanId) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:error-request")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ loanId, type, subject, description }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setErrorRequests(er => [...er, { id: j.requestId, type, subject, receivedDate: j.receivedDate, responseDeadline: j.responseDeadline, responseLogged: false }]);
+    return j;
+  }
+
+  // Real write — CODEX S52.60, borrower self-service capability #2. Submits
+  // proof of hazard insurance via POST /v1/msr:customer:insurance-proof.
+  // Intake only — never itself waives or reverses a force-placed charge.
+  async function submitInsuranceProof(insurerName, policyNumber, effectiveDate, expirationDate) {
+    if (!hasRealBorrowerBacking || !user || !loanId) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:insurance-proof")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ loanId, insurerName, policyNumber, effectiveDate, expirationDate }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setInsuranceSubmissions(s => [...s, { id: j.submissionId, insurerName, policyNumber, effectiveDate, expirationDate, status: "submitted" }]);
+  }
+
+  // Real write — CODEX S52.60, borrower self-service capability #4. Logs a
+  // formal payoff-statement request via POST /v1/msr:customer:payoff-request.
+  // Never returns or implies a dollar amount — that requires the live
+  // servicing system's calculation (msr-no-fabricated-payoff-amount).
+  async function submitPayoffRequest() {
+    if (!hasRealBorrowerBacking || !user || !loanId) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:payoff-request")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ loanId }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setPayoffRequests(p => [...p, { id: j.requestId, dueBy: j.dueBy, status: "pending" }]);
+    return j.dueBy;
+  }
+
+  // Real write — CODEX S52.60, borrower self-service capability #5. Sets the
+  // existing ceaseCommunication flag via POST
+  // /v1/msr:customer:cease-communication (already read by the Delinquency
+  // Queue card and enforced by msr-cease-communication-respected).
+  async function submitCeaseCommunicationRequest() {
+    if (!hasRealBorrowerBacking || !user || !loanId) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/msr:customer:cease-communication")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({ loanId }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    setLoan(l => l ? { ...l, ceaseCommunication: true } : l);
   }
 
   // CODEX S52.56 — real chat for buyer/seller once entitled (order loaded).
@@ -1288,7 +1639,11 @@ export default function ClientPortal() {
   function canvasForBorrowerMessage(t) {
     if (/status|balance|delinquen|current|behind/.test(t)) return { type: "loan-status" };
     if (/hardship|help|assist|can't pay|struggling|forbear|modif/.test(t)) return { type: "hardship" };
+    if (/notice of error|request for information|\bnoe\b|\brfi\b|report a problem|file.*(error|dispute)|request.*information/.test(t)) return { type: "error-request-form" };
     if (/dispute|error|complain|wrong|incorrect/.test(t)) return { type: "error-requests" };
+    if (/force.?placed|insurance/.test(t)) return { type: "insurance-proof" };
+    if (/payoff/.test(t)) return { type: "payoff-request" };
+    if (/stop contact|cease communication|stop calling|don'?t contact|leave me alone/.test(t)) return { type: "cease-communication" };
     return null;
   }
 
@@ -1405,6 +1760,10 @@ export default function ClientPortal() {
         { label: "Loan status", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "loan-status" }) },
         { label: "Hardship assistance", icon: I(<><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></>), action: () => setCanvas({ type: "hardship" }) },
         { label: "Open disputes", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "error-requests" }) },
+        { label: "Report a problem / request info", icon: I(<><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.71 3.86a2 2 0 0 0-3.42 0z"/></>), action: () => setCanvas({ type: "error-request-form" }) },
+        { label: "Proof of insurance", icon: I(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>), action: () => setCanvas({ type: "insurance-proof" }) },
+        { label: "Payoff statement", icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>), action: () => setCanvas({ type: "payoff-request" }) },
+        { label: "Stop contacting me", icon: I(<><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></>), action: () => setCanvas({ type: "cease-communication" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
     : [
@@ -1570,6 +1929,10 @@ export default function ClientPortal() {
                   : canvas.type === "loan-status" ? "Loan status"
                   : canvas.type === "hardship" ? "Hardship assistance"
                   : canvas.type === "error-requests" ? "Open disputes"
+                  : canvas.type === "error-request-form" ? "File a Notice of Error / RFI"
+                  : canvas.type === "insurance-proof" ? "Proof of insurance"
+                  : canvas.type === "payoff-request" ? "Payoff statement"
+                  : canvas.type === "cease-communication" ? "Stop contacting me"
                   : "Your documents"}
               </div>
               <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
@@ -1588,8 +1951,12 @@ export default function ClientPortal() {
             {canvas.type === "competencies" && <CompetenciesCanvas skin={skin} competencies={competencies} />}
             {canvas.type === "passport" && <PassportCanvas passport={passport} />}
             {canvas.type === "loan-status" && <LoanStatusCanvas skin={skin} loan={loan} />}
-            {canvas.type === "hardship" && <HardshipCanvas skin={skin} onSubmit={submitHardshipRequest} />}
+            {canvas.type === "hardship" && <HardshipCanvas skin={skin} onSubmit={submitHardshipRequest} existingRequest={hardshipRequests[0]} onSubmitDocument={submitHardshipDocument} />}
             {canvas.type === "error-requests" && <ErrorRequestsCanvas errorRequests={errorRequests} />}
+            {canvas.type === "error-request-form" && <ErrorRequestIntakeCanvas skin={skin} onSubmit={submitErrorRequest} />}
+            {canvas.type === "insurance-proof" && <InsuranceProofCanvas skin={skin} loan={loan} insuranceSubmissions={insuranceSubmissions} onSubmit={submitInsuranceProof} />}
+            {canvas.type === "payoff-request" && <PayoffRequestCanvas skin={skin} onSubmit={submitPayoffRequest} />}
+            {canvas.type === "cease-communication" && <CeaseCommunicationCanvas skin={skin} loan={loan} onSubmit={submitCeaseCommunicationRequest} />}
           </aside>
         )}
       </div>

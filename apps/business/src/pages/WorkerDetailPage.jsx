@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 import DocumentControlTab from "./vault/DocumentControlTab";
+import { WORKER_DOCS_MANIFEST } from "./docs/workerDocsManifest.generated.js";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
+
+// Only link to a worker's doc page when one was actually generated for it
+// (functions/functions/scripts/generateWorkerDocs.js) — otherwise the link
+// would 404 for workers that aren't publicly documented yet.
+const WORKER_DOCS_SLUGS = new Set(WORKER_DOCS_MANIFEST.map((p) => p.slug));
+function hasWorkerDoc(workerId) {
+  return !!workerId && WORKER_DOCS_SLUGS.has(`worker-${workerId}`);
+}
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
@@ -243,6 +252,16 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 12, maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
           <strong>In development.</strong> This worker is free while in beta — it partly works and will be glitchy. Treat it as a test session, not a production tool.
         </p>
+        {hasWorkerDoc(worker.slug) && (
+          <p style={{ marginTop: 14 }}>
+            <a
+              href={`/docs/worker-${worker.slug}`}
+              style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", textDecoration: "underline" }}
+            >
+              How to use this worker &rarr;
+            </a>
+          </p>
+        )}
       </div>
 
       {/* Tab bar — visible for subscribed users */}

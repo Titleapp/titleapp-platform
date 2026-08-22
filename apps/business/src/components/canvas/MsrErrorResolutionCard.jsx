@@ -43,6 +43,8 @@ export default function MsrErrorResolutionCard({ resolved, context, onDismiss })
   }, []);
 
   const requests = data?.errorRequests || [];
+  const payoffRequests = data?.payoffRequests || [];
+  const openPayoffRequests = payoffRequests.filter(p => p.status !== "fulfilled");
 
   return (
     <CanvasCardShell
@@ -65,6 +67,20 @@ export default function MsrErrorResolutionCard({ resolved, context, onDismiss })
           </div>
         </div>
       ))}
+      {!loading && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Open Payoff Requests</div>
+          {openPayoffRequests.length === 0 && <div style={{ fontSize: 12, color: "#94a3b8" }}>No open payoff-statement requests.</div>}
+          {openPayoffRequests.map(p => (
+            <div key={p.id} style={S.row}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div style={S.name}>{p.borrowerName}</div>
+                <span style={S.badge("#fef3c7", "#b45309")}>DUE BY {p.dueBy || "—"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </CanvasCardShell>
   );
 }

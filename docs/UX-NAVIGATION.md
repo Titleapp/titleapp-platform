@@ -179,7 +179,7 @@ listed worker has full UI sovereignty inside its canvas.
 
 The codebase has two halves:
 
-- **Open** (Apache 2.0, github.com/sociii) — `creators/`, `packages/sdk/`,
+- **Open** (Apache 2.0, github.com/Titleapp/titleapp-platform) — `creators/`, `packages/sdk/`,
   `apps/business/src/components/canvas/`, worker authoring docs (`docs/CREATOR-
   ONBOARDING.md`, `docs/CREATOR-WORKER-BUILD.md`). Devs fork freely and build.
 - **Closed** (proprietary, runs only on app.sociii.ai) — `functions/functions/`

@@ -524,6 +524,26 @@ function jsonError(res, status, error, extra = {}) {
   return res.status(status).json({ ok: false, error, code, ...extra });
 }
 
+// CODEX S52.60 — date-math helpers for the MSR borrower self-service intake
+// endpoints below. Deliberately simple (UTC calendar-day math, business-day
+// skip of Saturday/Sunday only, no federal-holiday calendar) — matches the
+// spec's explicit scope for this chat-submitted intake path.
+function _addCalendarDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function _addBusinessDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  let added = 0;
+  while (added < days) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const dow = d.getUTCDay();
+    if (dow !== 0 && dow !== 6) added++;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
 function getAuthBearerToken(req) {
   const raw = req.headers?.authorization || "";
   const parts = raw.split(" ");
@@ -2042,7 +2062,9 @@ exports.api = onRequest(
             vertical:      "mortgage-servicing",
             name:          "Compliance Officer Demo",
             role:          "admin",
-            activeWorkers: ["msr-servicing-001"],
+            // Found live (2026-08-21, Sean): the back-of-house workers every
+            // other operator demo persona gets were missing here entirely.
+            activeWorkers: ["msr-servicing-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           // ── MSR borrower (customer portal) ──────────────────────────────
           "msr-borrower": {
@@ -4934,8 +4956,14 @@ Do NOT complete graded assignments, case studies, or exam questions on the stude
 You are speaking directly with a BORROWER about their own mortgage servicing account, not the licensee's compliance or servicing staff. Stay strictly within:
   - their own loan status, delinquency/escrow/fee information already shown to them
   - explaining a notice or disclosure that's part of their own file
+  - helping them file a formal Notice of Error or Request for Information through the account's intake form, and explaining what qualifies as each and the response timeline (acknowledgment in 5 business days; this intake path always uses the 30-day general-tier substantive response, not the faster payoff-balance or owner/assignee tiers — never imply the outcome of the dispute itself, per msr-no-unilateral-error-resolution-decision)
+  - explaining the force-placed insurance notice and timeline on their file, and helping them submit proof of insurance through the account's intake form (never state that force-placed charges have been waived or reversed — only that proof was received and is pending review)
+  - comparing their hardship request's required-documents checklist against what they've already submitted, so they know exactly what's still missing (informational, not an eligibility decision)
+  - helping them log a formal payoff-statement request through the account's intake form, and citing the 7-business-day timeline (12 CFR 1024.35(b)(6)) — never stating or estimating a specific payoff dollar amount, per msr-no-fabricated-payoff-amount
+  - helping them submit a cease-communication request through the account's intake form, and explaining its scope (it does not stop legally required notices)
+  - general, non-account-specific education on Reg X/Reg Z concepts — what a Notice of Error/RFI is, what a "complete" loss-mitigation application means, what escrow/force-placed insurance/forbearance mean, general regulatory timelines — as long as you're explaining the CONCEPT, not asserting an outcome for this borrower's own situation
   - directing them to the licensee's servicing staff, a HUD-approved housing counselor, or an attorney for anything requiring judgment
-Do NOT give debt-counseling or legal advice, and do NOT state or imply a loss-mitigation decision (modification/forbearance approval or denial) — that is always an authorized human decision at the licensee, never this worker's call, per CODEX S52.60. If asked for advice on their situation, say this needs a housing counselor or attorney and offer to connect them to the licensee's staff.\n\n`
+Do NOT give debt-counseling or legal advice, and do NOT state or imply a loss-mitigation decision (modification/forbearance approval or denial) or an error-dispute outcome — those are always authorized human decisions at the licensee, never this worker's call, per CODEX S52.60. If asked for advice on their situation, say this needs a housing counselor or attorney and offer to connect them to the licensee's staff.\n\n`
                   : `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
 You are speaking directly with the CUSTOMER (buyer/seller/borrower on their own transaction), not an employee of this business. Stay strictly within:
   - process and status information (where their file/order stands, what's needed from them, timelines)
@@ -11598,25 +11626,42 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     }
 
     // ── TITLE PRODUCTION SUITE (CODEX 48) ────────────────────────────────────
-    // POST /v1/title:order — open a new title order + run initial ATTOM search
+    // POST /v1/title:order — open a new title order + run initial ATTOM search.
+    // Backs capability title.open_title_order_v1 (contracts/capabilities.json)
+    // and the "+ New Title Order" button on the Title Search worker canvas
+    // (apps/business/src/components/canvas/RealEstateWorkerCanvas.jsx). Same
+    // handler the chat-based open_title_order tool calls (index.js ~5967) —
+    // real Firestore writes, duplicate detection, risk scoring either way.
+    // 2026-08-21: added the same propertyCache fallback the chat tool already
+    // had — without it this route 503'd on any demo address whenever
+    // ATTOM_API_KEY wasn't set, even though propertyCache had the data.
     if (route === "/title:order" && method === "POST") {
       const auth = await requireFirebaseUser(req, res);
       if (auth.handled) return auth.res;
       const ctx = getCtx(req, body, auth.user);
       try {
+        if (!body.address || !String(body.address).trim()) {
+          return jsonError(res, 400, "address is required");
+        }
         const { openTitleOrder } = require("./workers/re-title-search-001/handler");
-        const attomApiKey = process.env.ATTOM_API_KEY;
-        if (!attomApiKey) return jsonError(res, 503, "ATTOM key not configured");
+        const { normalizeAddressKey } = require("./services/re/liveLookup");
+        const addrKey = normalizeAddressKey(String(body.address));
+        const cacheSnap = await db.collection("propertyCache").doc(addrKey).get().catch(() => null);
+        const attomApiKey = (cacheSnap && cacheSnap.exists) ? null : (process.env.ATTOM_API_KEY || null);
+        if (!attomApiKey && !(cacheSnap && cacheSnap.exists)) {
+          return jsonError(res, 503, `"${body.address}" is not in the demo portfolio and ATTOM_API_KEY is not configured. Try a Henderson County TX address.`);
+        }
         const result = await openTitleOrder({
           address: body.address,
           tenantId: ctx.tenantId,
           userId: auth.user.uid,
           buyerName: body.buyerName || null,
           sellerName: body.sellerName || null,
-          purchasePrice: body.purchasePrice || null,
+          purchasePrice: body.purchasePrice ? Math.round(Number(body.purchasePrice) * 100) : null,
           orderType: body.orderType || "purchase",
           db,
           attomApiKey,
+          cachedPropertyData: (cacheSnap && cacheSnap.exists) ? cacheSnap.data() : null,
         });
         return res.json({ ok: true, ...result });
       } catch (e) {
@@ -11659,6 +11704,85 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("[title:defect] failed:", e);
         return jsonError(res, e.message.includes("TX-T-001") ? 422 : 500, e.message);
+      }
+    }
+
+    // ── AUTO DEALER — VEHICLE / DEAL (2026-08-21 gap-audit fix) ──────────────
+    // POST /v1/auto:vehicle:add — dealer adds a new vehicle + deal record.
+    // Backs capability auto.create_vehicle_deal_v1. Writes to a NEW
+    // dealerVehicles collection — MyVehicles.jsx / the "vehicles" personal-
+    // vault feature is an unrelated consumer feature and was never dealer
+    // inventory, so this is a genuinely new data model, not a rewire of an
+    // existing unused one. VIN-anchored per the auto vertical's event-sourced
+    // vehicle-lifecycle design (raas/auto/IL). Wired to the "+ New Deal"
+    // button on the Desking a Deal worker canvas.
+    if (route === "/auto:vehicle:add" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      try {
+        const b = body || {};
+        if (!b.vin || !String(b.vin).trim()) return jsonError(res, 400, "vin is required");
+        if (!ctx.tenantId) return jsonError(res, 400, "Open a dealer workspace to add a vehicle");
+        const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+
+        const vin = String(b.vin).trim().toUpperCase();
+        // VIN-first: refuse a duplicate open deal on the same VIN for this tenant
+        // rather than silently minting a second record for the same vehicle.
+        const existingSnap = await db.collection("dealerVehicles")
+          .where("tenantId", "==", ctx.tenantId)
+          .where("vin", "==", vin)
+          .limit(1)
+          .get();
+        if (!existingSnap.empty) {
+          const ex = existingSnap.docs[0];
+          return res.json({ ok: true, vehicleId: ex.id, existingRecord: true, ...ex.data() });
+        }
+
+        const ref = db.collection("dealerVehicles").doc();
+        const record = {
+          vehicleId: ref.id,
+          tenantId: ctx.tenantId,
+          vin,
+          year: b.year || null,
+          make: b.make || null,
+          model: b.model || null,
+          trim: b.trim || null,
+          stockNumber: b.stockNumber || null,
+          buyerName: b.buyerName || null,
+          salePrice: b.salePrice != null ? Number(b.salePrice) : null,
+          dealType: ["cash", "finance", "lease"].includes(b.dealType) ? b.dealType : "cash",
+          status: "open",
+          createdBy: auth.user.uid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await ref.set(record);
+        return res.json({ ok: true, vehicleId: ref.id, existingRecord: false, ...record });
+      } catch (e) {
+        console.error("[auto:vehicle:add] failed:", e);
+        return jsonError(res, 500, "Failed to add vehicle/deal", { details: e.message });
+      }
+    }
+
+    // GET /v1/auto:vehicle:list — recent dealer inventory/deals for the current tenant.
+    if (route === "/auto:vehicle:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return auth.res;
+      const ctx = getCtx(req, body, auth.user);
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Open a dealer workspace to list vehicles");
+        const snap = await db.collection("dealerVehicles")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        const vehicles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, vehicles });
+      } catch (e) {
+        console.error("[auto:vehicle:list] failed:", e);
+        return jsonError(res, 500, "Failed to list vehicles");
       }
     }
 
@@ -12429,6 +12553,87 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("aviation:squawks failed:", e);
         return jsonError(res, 500, "Squawks fetch failed");
+      }
+    }
+
+    // POST /v1/aviation:dispatch:releaseFlight — 2026-08-21 gap-audit fix (2b).
+    // Backs capability aviation.dispatch_release_flight_v1. Dispatch/releasing
+    // authority issues a flight release BEFORE a pilot may fly it — the
+    // Part 135 operational-control concept (14 CFR 135.77 and neighboring
+    // sections govern dispatch/operational control for Part 135; Part 91
+    // has no equivalent formal requirement, hence the operationType selector
+    // rather than encoding real regulatory logic). This is DELIBERATELY
+    // independent of /logbook:flight:add (the pilot's own log_flight tool/
+    // button) — whether a pilot's flight log should be required to
+    // reference an active release here is an open design question, not
+    // decided by this endpoint.
+    if (route === "/aviation:dispatch:releaseFlight" && method === "POST") {
+      try {
+        const relAuth = await requireFirebaseUser(req, res);
+        if (relAuth.handled) return relAuth.res;
+        const relCtx = getCtx(req, body, relAuth.user);
+        const b = body || {};
+        const required = ["tailNumber", "depIcao", "arrIcao", "proposedDepartureTime", "pic", "operationType", "releasingAuthority"];
+        const missing = required.filter((k) => b[k] === undefined || b[k] === null || b[k] === "");
+        if (b.weatherBriefingAcknowledged !== true) missing.push("weatherBriefingAcknowledged (must be true)");
+        if (b.weightBalanceAcknowledged !== true) missing.push("weightBalanceAcknowledged (must be true)");
+        if (b.fuelLoad === undefined || b.fuelLoad === null || b.fuelLoad === "") missing.push("fuelLoad");
+        if (missing.length) return jsonError(res, 400, `Missing required field(s): ${missing.join(", ")}`);
+        if (!["part91", "part135"].includes(b.operationType)) {
+          return jsonError(res, 400, "operationType must be 'part91' or 'part135'");
+        }
+        if (!relCtx.tenantId) return jsonError(res, 400, "Open an operator workspace to release a flight");
+        const memberGate = await requireMembershipIfNeeded({ uid: relAuth.user.uid, tenantId: relCtx.tenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+
+        const releaseRef = db.collection("flightReleases").doc();
+        await releaseRef.set({
+          releaseId: releaseRef.id,
+          tenantId: relCtx.tenantId,
+          tailNumber: b.tailNumber,
+          aircraft: b.aircraft || null,
+          depIcao: b.depIcao,
+          arrIcao: b.arrIcao,
+          proposedDepartureTime: b.proposedDepartureTime,
+          pic: b.pic,
+          sic: b.sic || null,
+          operationType: b.operationType,
+          weatherBriefingAcknowledged: true,
+          weightBalanceAcknowledged: true,
+          fuelLoad: b.fuelLoad,
+          releasingAuthority: b.releasingAuthority,
+          status: "released",
+          releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+          releasedBy: relAuth.user.uid,
+        });
+        return res.json({ ok: true, releaseId: releaseRef.id, status: "released" });
+      } catch (e) {
+        console.error("aviation:dispatch:releaseFlight failed:", e);
+        return jsonError(res, 500, "Failed to release flight");
+      }
+    }
+
+    // GET /v1/aviation:dispatch:releases?tenantId=xxx — list flight releases for the
+    // dispatch board (most recent first). Companion read to the release endpoint above.
+    if (route === "/aviation:dispatch:releases" && method === "GET") {
+      try {
+        const relAuth = await requireFirebaseUser(req, res);
+        if (relAuth.handled) return relAuth.res;
+        const relCtx = getCtx(req, body, relAuth.user);
+        const relTenantId = req.query?.tenantId?.toString() || relCtx.tenantId;
+        if (!relTenantId) return jsonError(res, 400, "tenantId required");
+        const memberGate = await requireMembershipIfNeeded({ uid: relAuth.user.uid, tenantId: relTenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+        const snap = await db.collection("flightReleases")
+          .where("tenantId", "==", relTenantId)
+          .orderBy("releasedAt", "desc")
+          .limit(50)
+          .get();
+        const releases = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, releases });
+      } catch (e) {
+        console.error("aviation:dispatch:releases failed:", e);
+        return jsonError(res, 500, "Failed to load flight releases");
       }
     }
 
@@ -18064,6 +18269,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             escrowAnnualTotal: l.escrowAnnualTotal ?? null,
             escrowShortage: l.escrowShortage ?? null,
             hasActiveForbearance: !!l.hasActiveForbearance,
+            // Force-placed insurance notice tracking (12 CFR 1024.37) — see
+            // msr-force-placed-insurance-notice-gate. Self-service proof
+            // submission (below) never itself clears this flag — a human/
+            // servicing-system review does that.
+            forcePlacedInsuranceActive: !!l.forcePlacedInsuranceActive,
+            forcePlacedNoticeDate: l.forcePlacedNoticeDate || null,
           };
         });
         // Error/information requests across all loans, for the NOE/RFI tracker.
@@ -18072,6 +18283,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // decision field — this worker doesn't record modification approvals/
         // denials, only the intake (msr-no-unilateral-modification-decision).
         const hardshipRequests = [];
+        // Force-placed insurance proof-of-coverage submissions — intake only,
+        // never a waiver/reversal of charges (that's a human/servicing-system
+        // action, see the borrower scope-limit prompt).
+        const insuranceSubmissions = [];
+        // Payoff-statement requests — intake + due-by date only. This worker
+        // never states or estimates a specific payoff dollar amount
+        // (msr-no-fabricated-payoff-amount).
+        const payoffRequests = [];
         for (const loan of loans) {
           const errSnap = await db.collection("msrLoans").doc(loan.loanId).collection("errorRequests").get();
           errSnap.docs.forEach(d => {
@@ -18090,13 +18309,83 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
               id: d.id, loanId: loan.loanId, borrowerName: loan.borrowerName,
               reason: h.reason || null, status: h.status || null,
               createdAt: h.createdAt || null,
+              documentsRequired: Array.isArray(h.documentsRequired) ? h.documentsRequired : [],
+              documentsSubmitted: Array.isArray(h.documentsSubmitted) ? h.documentsSubmitted : [],
+            });
+          });
+          const insSnap = await db.collection("msrLoans").doc(loan.loanId).collection("insuranceSubmissions").get();
+          insSnap.docs.forEach(d => {
+            const i = d.data();
+            insuranceSubmissions.push({
+              id: d.id, loanId: loan.loanId, borrowerName: loan.borrowerName,
+              insurerName: i.insurerName || null, policyNumber: i.policyNumber || null,
+              effectiveDate: i.effectiveDate || null, expirationDate: i.expirationDate || null,
+              status: i.status || null, createdAt: i.createdAt || null,
+            });
+          });
+          const payoffSnap = await db.collection("msrLoans").doc(loan.loanId).collection("payoffRequests").get();
+          payoffSnap.docs.forEach(d => {
+            const p = d.data();
+            payoffRequests.push({
+              id: d.id, loanId: loan.loanId, borrowerName: loan.borrowerName,
+              requestedAt: p.requestedAt || null, dueBy: p.dueBy || null, status: p.status || null,
             });
           });
         }
-        return res.json({ ok: true, loans, errorRequests, hardshipRequests });
+        return res.json({ ok: true, loans, errorRequests, hardshipRequests, insuranceSubmissions, payoffRequests });
       } catch (e) {
         console.error("msr:operator:loans failed:", e);
         return jsonError(res, 500, "Could not load loans");
+      }
+    }
+
+    // POST /v1/msr:operator:loan:add — 2026-08-21 gap-audit fix. Compliance
+    // officer / operator onboards a NEW loan (distinct from the borrower
+    // self-service actions on EXISTING loans built earlier the same day —
+    // NOE intake, insurance proof, hardship checklist, payoff requests,
+    // cease-communication — none of which create a new loan record). Backs
+    // capability msr.onboard_loan_v1. Writes msrLoans with the exact same
+    // field shape scripts/demo/seedMsrServicing.js uses, so the new loan
+    // shows up in every existing operator card (Portfolio, Delinquency
+    // Queue, etc.) without any special-casing.
+    if (route === "/msr:operator:loan:add" && method === "POST") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const b = body || {};
+        if (!b.borrowerName || !String(b.borrowerName).trim()) return jsonError(res, 400, "borrowerName is required");
+        if (!b.propertyAddress || !String(b.propertyAddress).trim()) return jsonError(res, 400, "propertyAddress is required");
+        if (b.upb === undefined || b.upb === null || b.upb === "") return jsonError(res, 400, "upb is required");
+        const memberGate = await requireMembershipIfNeeded({ uid: ctx.userId, tenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+
+        const status = ["current", "delinquent"].includes(b.status) ? b.status : "current";
+        const ref = db.collection("msrLoans").doc();
+        const record = {
+          tenantId,
+          borrowerUid: b.borrowerUid || null,
+          borrowerName: String(b.borrowerName).trim(),
+          propertyAddress: String(b.propertyAddress).trim(),
+          upb: Number(b.upb),
+          status,
+          delinquencyStartDate: status === "delinquent" ? (b.delinquencyStartDate || new Date().toISOString().slice(0, 10)) : null,
+          liveContactLoggedAt: null,
+          writtenNoticeLoggedAt: null,
+          ceaseCommunication: false,
+          escrowAnnualTotal: b.escrowAnnualTotal != null ? Number(b.escrowAnnualTotal) : 0,
+          escrowShortage: 0,
+          hasActiveForbearance: false,
+          forcePlacedInsuranceActive: false,
+          forcePlacedNoticeDate: null,
+          createdBy: ctx.userId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await ref.set(record);
+        return res.json({ ok: true, loanId: ref.id, ...record });
+      } catch (e) {
+        console.error("[msr:operator:loan:add] failed:", e);
+        return jsonError(res, 500, "Failed to onboard loan", { details: e.message });
       }
     }
 
@@ -18143,6 +18432,88 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("msr:operator:licensing failed:", e);
         return jsonError(res, 500, "Could not load licensing status");
+      }
+    }
+
+    // GET /v1/msr:operator:portfolio — CODEX S52.60 Pattern B. Portfolio-wide
+    // aggregates for the compliance officer's landing dashboard — same loan/
+    // request/event reads as the three endpoints above, rolled up into totals
+    // instead of row-level detail.
+    if (route === "/msr:operator:portfolio" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const [loansSnap, licensingSnap] = await Promise.all([
+          db.collection("msrLoans").where("tenantId", "==", tenantId).get(),
+          db.collection("tenants").doc(tenantId).collection("msrLicensing").get(),
+        ]);
+        const loans = loansSnap.docs.map(d => ({ loanId: d.id, ...d.data() }));
+
+        const totalLoans = loans.length;
+        const totalUpb = loans.reduce((sum, l) => sum + (typeof l.upb === "number" ? l.upb : 0), 0);
+        const delinquentLoans = loans.filter(l => l.status === "delinquent");
+        const delinquencyRate = totalLoans > 0 ? delinquentLoans.length / totalLoans : 0;
+        const ceaseCommunicationCount = loans.filter(l => l.ceaseCommunication).length;
+
+        // 12 CFR 1024.39(a)/(b)(1) — same two-trigger window used by the
+        // Delinquency Queue card, rolled up into a count instead of per-row flags.
+        const now = Date.now();
+        const earlyInterventionLoans = delinquentLoans.filter(l => {
+          if (!l.delinquencyStartDate) return false;
+          const start = new Date(l.delinquencyStartDate + "T00:00:00");
+          const days = Math.floor((now - start.getTime()) / 86400000);
+          const liveContactDue = !l.liveContactLoggedAt && days >= 31;
+          const writtenNoticeDue = !l.writtenNoticeLoggedAt && days >= 40;
+          return liveContactDue || writtenNoticeDue;
+        });
+
+        const loansWithShortage = loans.filter(l => typeof l.escrowShortage === "number" && l.escrowShortage > 0);
+        const totalEscrowShortage = loansWithShortage.reduce((sum, l) => sum + l.escrowShortage, 0);
+
+        let openNoeRfiCount = 0;
+        let noeRfiPastDueCount = 0;
+        let openHardshipCount = 0;
+        const hardshipByStatus = {};
+        for (const loan of loans) {
+          const errSnap = await db.collection("msrLoans").doc(loan.loanId).collection("errorRequests").get();
+          errSnap.docs.forEach(d => {
+            const e = d.data();
+            if (e.responseLogged) return;
+            openNoeRfiCount++;
+            if (e.responseDeadline && new Date(e.responseDeadline + "T00:00:00").getTime() < now) noeRfiPastDueCount++;
+          });
+          const hsSnap = await db.collection("msrLoans").doc(loan.loanId).collection("hardshipRequests").get();
+          hsSnap.docs.forEach(d => {
+            const h = d.data();
+            const status = h.status || "submitted";
+            hardshipByStatus[status] = (hardshipByStatus[status] || 0) + 1;
+            if (status === "submitted" || status === "under_review") openHardshipCount++;
+          });
+        }
+
+        const activeLicenseCount = licensingSnap.docs.filter(d => d.data().licenseStatus === "active").length;
+
+        return res.json({
+          ok: true,
+          totalLoans,
+          totalUpb,
+          delinquentLoanCount: delinquentLoans.length,
+          delinquencyRate,
+          earlyInterventionCount: earlyInterventionLoans.length,
+          ceaseCommunicationCount,
+          escrowShortageLoanCount: loansWithShortage.length,
+          totalEscrowShortage,
+          avgEscrowShortage: loansWithShortage.length > 0 ? totalEscrowShortage / loansWithShortage.length : 0,
+          openNoeRfiCount,
+          noeRfiPastDueCount,
+          openHardshipCount,
+          hardshipByStatus,
+          activeLicenseCount,
+          licensedStateCount: licensingSnap.size,
+        });
+      } catch (e) {
+        console.error("msr:operator:portfolio failed:", e);
+        return jsonError(res, 500, "Could not load portfolio overview");
       }
     }
 
@@ -20569,6 +20940,49 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/education:student:add — 2026-08-21 gap-audit fix. Creates a
+    // new student enrollment record. Backs capability
+    // education.create_student_v1. Writes to tenants/{tenantId}/nursingStudents
+    // — the SAME subcollection /v1/student:customer:profile (above) already
+    // reads from, so a newly-enrolled student can immediately look up their
+    // own profile via that endpoint. Wired to the "+ Add Student" button on
+    // the Student Record worker canvas (nursing-records-001 /
+    // uh-nursing-records-001, NursingWorkerCanvas.jsx's RecordsCanvas).
+    if (route === "/education:student:add" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const b = body || {};
+        if (!b.name || !String(b.name).trim()) return jsonError(res, 400, "name is required");
+        const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
+        if (memberGate && memberGate.handled) return memberGate.res;
+
+        const status = ["on-track", "at-risk", "ready"].includes(b.status) ? b.status : "on-track";
+        const ref = db.collection("tenants").doc(ctx.tenantId).collection("nursingStudents").doc();
+        const record = {
+          name: String(b.name).trim(),
+          email: b.email ? String(b.email).trim().toLowerCase() : null,
+          uid: b.uid || null,
+          status,
+          clinicalHours: b.clinicalHours != null ? Number(b.clinicalHours) : 0,
+          clinicalHoursRequired: b.clinicalHoursRequired != null ? Number(b.clinicalHoursRequired) : 500,
+          atiScore: b.atiScore != null ? Number(b.atiScore) : null,
+          coursesComplete: b.coursesComplete != null ? Number(b.coursesComplete) : 0,
+          notes: b.notes || null,
+          createdBy: auth.user.uid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await ref.set(record);
+        return res.json({ ok: true, studentId: ref.id, ...record });
+      } catch (e) {
+        console.error("[education:student:add] failed:", e);
+        return jsonError(res, 500, "Failed to add student", { details: e.message });
+      }
+    }
+
     // GET /v1/msr:customer:loan — CODEX S52.60, MSR borrower customer
     // portal. Same entitlement-safe pattern as /tenant:customer:lease:
     // exactly one query scoped by tenantId, in-memory identity match, same
@@ -20600,6 +21014,35 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           return { id: d.id, type: e.type || null, subject: e.subject || null, receivedDate: e.receivedDate || null, responseDeadline: e.responseDeadline || null, responseLogged: !!e.responseLogged };
         });
 
+        // Hardship/loss-mitigation requests on the caller's own loan, including
+        // the document checklist — informational (comparing two arrays), never
+        // a decision. See msr-no-unilateral-modification-decision.
+        const hsSnap = await db.collection("msrLoans").doc(loanDoc.id).collection("hardshipRequests").get();
+        const hardshipRequests = hsSnap.docs.map(d => {
+          const h = d.data();
+          return {
+            id: d.id, reason: h.reason || null, status: h.status || null,
+            documentsRequired: Array.isArray(h.documentsRequired) ? h.documentsRequired : [],
+            documentsSubmitted: Array.isArray(h.documentsSubmitted) ? h.documentsSubmitted : [],
+          };
+        });
+
+        // Force-placed insurance proof-of-coverage submissions on the caller's
+        // own loan — intake status only, never a waiver/reversal claim.
+        const insSnap = await db.collection("msrLoans").doc(loanDoc.id).collection("insuranceSubmissions").get();
+        const insuranceSubmissions = insSnap.docs.map(d => {
+          const i = d.data();
+          return { id: d.id, insurerName: i.insurerName || null, policyNumber: i.policyNumber || null, effectiveDate: i.effectiveDate || null, expirationDate: i.expirationDate || null, status: i.status || null };
+        });
+
+        // Payoff-statement requests on the caller's own loan — never a dollar
+        // amount, only the request + due-by date. See msr-no-fabricated-payoff-amount.
+        const payoffSnap = await db.collection("msrLoans").doc(loanDoc.id).collection("payoffRequests").get();
+        const payoffRequests = payoffSnap.docs.map(d => {
+          const p = d.data();
+          return { id: d.id, requestedAt: p.requestedAt || null, dueBy: p.dueBy || null, status: p.status || null };
+        });
+
         // Narrow, borrower-appropriate shape — no internal servicing notes,
         // no other-loan data, no operator-only fields.
         return res.json({
@@ -20614,14 +21057,31 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             escrowAnnualTotal: loan.escrowAnnualTotal ?? null,
             escrowShortage: loan.escrowShortage ?? null,
             hasActiveForbearance: !!loan.hasActiveForbearance,
+            ceaseCommunication: !!loan.ceaseCommunication,
+            forcePlacedInsuranceActive: !!loan.forcePlacedInsuranceActive,
+            forcePlacedNoticeDate: loan.forcePlacedNoticeDate || null,
           },
           errorRequests,
+          hardshipRequests,
+          insuranceSubmissions,
+          payoffRequests,
         });
       } catch (e) {
         console.error("msr:customer:loan failed:", e);
         return jsonError(res, 404, "Loan not found");
       }
     }
+
+    // Reasonable, not regulator-perfect — a realistic set of documents a
+    // servicer typically asks for to make a loss-mitigation application
+    // "complete" under 12 CFR 1024.41. Static list, server-side, so the
+    // checklist can't be gamed or hallucinated per-request.
+    const REQUIRED_HARDSHIP_DOCUMENTS = [
+      "Hardship affidavit or explanation letter",
+      "Two most recent pay stubs or proof of income",
+      "Most recent bank statement",
+      "Most recent tax return (if self-employed)",
+    ];
 
     // POST /v1/msr:customer:hardship — CODEX S52.60. Files a real hardship /
     // loss-mitigation request against the caller's own loan. Never a
@@ -20653,12 +21113,250 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         const ref = await db.collection("msrLoans").doc(loanDoc.id).collection("hardshipRequests").add({
           reason, status: "submitted",
+          documentsRequired: REQUIRED_HARDSHIP_DOCUMENTS,
+          documentsSubmitted: [],
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           submittedByUid: callerUid || null,
         });
-        return res.json({ ok: true, requestId: ref.id });
+        return res.json({ ok: true, requestId: ref.id, documentsRequired: REQUIRED_HARDSHIP_DOCUMENTS });
       } catch (e) {
         console.error("msr:customer:hardship failed:", e);
+        return jsonError(res, 500, "Could not submit request");
+      }
+    }
+
+    // POST /v1/msr:customer:hardship-documents — CODEX S52.60. Marks one
+    // required loss-mitigation document as submitted against the caller's own
+    // hardship request. Purely informational bookkeeping (comparing
+    // documentsRequired vs documentsSubmitted) — never a completeness or
+    // eligibility decision, that's still 12 CFR 1024.41(c) human territory.
+    if (route === "/msr:customer:hardship-documents" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const loanId = (body?.loanId || "").toString().trim();
+        const hardshipRequestId = (body?.hardshipRequestId || "").toString().trim();
+        const documentName = (body?.documentName || "").toString().trim().slice(0, 200);
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!loanId || !hardshipRequestId || !documentName) return jsonError(res, 400, "Missing loanId, hardshipRequestId, or documentName");
+
+        const loanDoc = await db.collection("msrLoans").doc(loanId).get();
+        if (!loanDoc.exists) return NOT_FOUND();
+        const l = loanDoc.data();
+        if (l.tenantId !== tenantId) return NOT_FOUND();
+        const isOwner = (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+                     || (callerUid && l.borrowerUid === callerUid);
+        if (!isOwner) return NOT_FOUND();
+
+        const hsRef = db.collection("msrLoans").doc(loanId).collection("hardshipRequests").doc(hardshipRequestId);
+        const hsDoc = await hsRef.get();
+        if (!hsDoc.exists) return NOT_FOUND();
+
+        await hsRef.update({
+          documentsSubmitted: admin.firestore.FieldValue.arrayUnion(documentName),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("msr:customer:hardship-documents failed:", e);
+        return jsonError(res, 500, "Could not submit document");
+      }
+    }
+
+    // POST /v1/msr:customer:error-request — CODEX S52.60. Files a real Notice
+    // of Error or Request for Information against the caller's own loan.
+    // receivedDate is ALWAYS server-computed (never client-supplied) — it
+    // starts the regulatory response clock (12 CFR 1024.35(d) NOE ack /
+    // 1024.36(c) RFI ack, both 5 business days). This intake path always uses
+    // the general-tier substantive-response deadline (30 calendar days —
+    // 1024.35(b)(9)/(10) for NOE, 1024.36(d)(2)(i)(B) for RFI) — it does not
+    // attempt to auto-classify into a faster tier (7-business-day payoff-
+    // balance NOE under (b)(6)/(e)(3)(i), or 10-business-day owner/assignee
+    // RFI under (d)(2)(i)(A)) from free text, per msr-noe-rfi-deadline-language.
+    // acknowledgedDate is set to the same server timestamp, representing an
+    // immediate automated acknowledgment — real practice, and it trivially
+    // satisfies the 5-business-day ack requirement.
+    if (route === "/msr:customer:error-request" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const loanId = (body?.loanId || "").toString().trim();
+        const type = (body?.type || "").toString().trim();
+        const subject = (body?.subject || "").toString().trim().slice(0, 300);
+        const description = (body?.description || "").toString().trim().slice(0, 4000);
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (type !== "notice_of_error" && type !== "request_for_information") return jsonError(res, 400, "type must be notice_of_error or request_for_information");
+        if (!subject || !description) return jsonError(res, 400, "Missing subject or description");
+        if (!loanId) return jsonError(res, 400, "Missing loanId");
+
+        const loanDoc = await db.collection("msrLoans").doc(loanId).get();
+        if (!loanDoc.exists) return NOT_FOUND();
+        const l = loanDoc.data();
+        if (l.tenantId !== tenantId) return NOT_FOUND();
+        const isOwner = (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+                     || (callerUid && l.borrowerUid === callerUid);
+        if (!isOwner) return NOT_FOUND();
+
+        const receivedDate = new Date().toISOString().slice(0, 10);
+        const responseDeadline = _addCalendarDays(receivedDate, 30);
+        const ref = await db.collection("msrLoans").doc(loanId).collection("errorRequests").add({
+          type, subject, description,
+          receivedDate,
+          acknowledgedDate: receivedDate,
+          responseDeadline,
+          status: "open",
+          responseLogged: false,
+          tenantId,
+          submittedByUid: callerUid || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return res.json({ ok: true, requestId: ref.id, receivedDate, responseDeadline });
+      } catch (e) {
+        console.error("msr:customer:error-request failed:", e);
+        return jsonError(res, 500, "Could not submit request");
+      }
+    }
+
+    // POST /v1/msr:customer:insurance-proof — CODEX S52.60. Submits proof of
+    // hazard insurance against the caller's own loan. Intake only — never
+    // itself waives or reverses a force-placed insurance charge (that's a
+    // human/servicing-system review action). See the borrower scope-limit
+    // prompt and msr-force-placed-insurance-notice-gate.
+    if (route === "/msr:customer:insurance-proof" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const loanId = (body?.loanId || "").toString().trim();
+        const insurerName = (body?.insurerName || "").toString().trim().slice(0, 200);
+        const policyNumber = (body?.policyNumber || "").toString().trim().slice(0, 100);
+        const effectiveDate = (body?.effectiveDate || "").toString().trim().slice(0, 10);
+        const expirationDate = (body?.expirationDate || "").toString().trim().slice(0, 10);
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!loanId || !insurerName || !policyNumber || !effectiveDate || !expirationDate) return jsonError(res, 400, "Missing required fields");
+
+        const loanDoc = await db.collection("msrLoans").doc(loanId).get();
+        if (!loanDoc.exists) return NOT_FOUND();
+        const l = loanDoc.data();
+        if (l.tenantId !== tenantId) return NOT_FOUND();
+        const isOwner = (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+                     || (callerUid && l.borrowerUid === callerUid);
+        if (!isOwner) return NOT_FOUND();
+
+        const ref = await db.collection("msrLoans").doc(loanId).collection("insuranceSubmissions").add({
+          insurerName, policyNumber, effectiveDate, expirationDate,
+          status: "submitted",
+          tenantId,
+          submittedByUid: callerUid || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return res.json({ ok: true, submissionId: ref.id });
+      } catch (e) {
+        console.error("msr:customer:insurance-proof failed:", e);
+        return jsonError(res, 500, "Could not submit proof of insurance");
+      }
+    }
+
+    // POST /v1/msr:customer:payoff-request — CODEX S52.60. Logs a formal
+    // payoff-statement request against the caller's own loan. Never states or
+    // estimates a dollar amount — see msr-no-fabricated-payoff-amount. The
+    // 7-business-day timeline is 12 CFR 1024.35(b)(6)'s NOE payoff-balance
+    // tier reused as the servicing-standard payoff turnaround for this intake
+    // (skips Saturday/Sunday only, not federal holidays).
+    if (route === "/msr:customer:payoff-request" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const loanId = (body?.loanId || "").toString().trim();
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!loanId) return jsonError(res, 400, "Missing loanId");
+
+        const loanDoc = await db.collection("msrLoans").doc(loanId).get();
+        if (!loanDoc.exists) return NOT_FOUND();
+        const l = loanDoc.data();
+        if (l.tenantId !== tenantId) return NOT_FOUND();
+        const isOwner = (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+                     || (callerUid && l.borrowerUid === callerUid);
+        if (!isOwner) return NOT_FOUND();
+
+        const today = new Date().toISOString().slice(0, 10);
+        const dueBy = _addBusinessDays(today, 7);
+        const ref = await db.collection("msrLoans").doc(loanId).collection("payoffRequests").add({
+          requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+          dueBy,
+          status: "pending",
+          tenantId,
+          submittedByUid: callerUid || null,
+        });
+        return res.json({ ok: true, requestId: ref.id, dueBy });
+      } catch (e) {
+        console.error("msr:customer:payoff-request failed:", e);
+        return jsonError(res, 500, "Could not submit payoff request");
+      }
+    }
+
+    // POST /v1/msr:customer:cease-communication — CODEX S52.60. Sets the
+    // caller's own loan's existing ceaseCommunication flag (already read by
+    // the Delinquency Queue card and enforced by the existing
+    // msr-cease-communication-respected hard stop) and logs a matching
+    // compliance event, same shape as the seeded events.
+    if (route === "/msr:customer:cease-communication" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+
+        const tenantId = (req.headers["x-tenant-id"] || "").toString().trim();
+        const callerEmail = (auth.user.email || "").toString().trim().toLowerCase();
+        const callerUid = (auth.user.uid || "").toString().trim();
+        const loanId = (body?.loanId || "").toString().trim();
+
+        const NOT_FOUND = () => jsonError(res, 404, "Loan not found");
+        if (!tenantId || (!callerEmail && !callerUid)) return NOT_FOUND();
+        if (!loanId) return jsonError(res, 400, "Missing loanId");
+
+        const loanDoc = await db.collection("msrLoans").doc(loanId).get();
+        if (!loanDoc.exists) return NOT_FOUND();
+        const l = loanDoc.data();
+        if (l.tenantId !== tenantId) return NOT_FOUND();
+        const isOwner = (callerEmail && (l.borrowerEmail || "").toString().trim().toLowerCase() === callerEmail)
+                     || (callerUid && l.borrowerUid === callerUid);
+        if (!isOwner) return NOT_FOUND();
+
+        await db.collection("msrLoans").doc(loanId).update({
+          ceaseCommunication: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection("msrComplianceEvents").add({
+          loanId, type: "rule_check", ruleId: "msr-cease-communication-respected",
+          outcome: "logged", note: "Cease-communication request submitted by borrower via portal.",
+          tenantId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("msr:customer:cease-communication failed:", e);
         return jsonError(res, 500, "Could not submit request");
       }
     }
@@ -25980,6 +26678,54 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ logbook:list failed:", e);
         return jsonError(res, 500, "Failed to load logbook entries");
+      }
+    }
+
+    // POST /v1/logbook:flight:add — 2026-08-21 gap-audit fix (2a). Backs
+    // capability aviation.log_flight_v1. Writes the SAME aviation.flight
+    // shape as the existing chat-based log_flight tool (index.js ~9378, on
+    // the universal Alex Chief-of-Staff persona) — this is a direct REST
+    // path to that write so the CoPilot worker's "+ Log Flight" button
+    // fires reliably without depending on the LLM choosing to call a tool.
+    if (route === "/logbook:flight:add" && method === "POST") {
+      try {
+        const b = body || {};
+        const required = ["tailNumber", "date", "depIcao", "arrIcao", "flightTime", "flightType"];
+        const missing = required.filter((k) => b[k] === undefined || b[k] === null || b[k] === "");
+        if (missing.length) return jsonError(res, 400, `Missing required field(s): ${missing.join(", ")}`);
+        if (!["part91", "part135", "training", "checkride"].includes(b.flightType)) {
+          return jsonError(res, 400, "flightType must be one of: part91, part135, training, checkride");
+        }
+        const logRef = db.collection("logbookEntries").doc();
+        await logRef.set({
+          userId: ctx.userId,
+          tenantId: "vault",
+          entryType: "aviation.flight",
+          data: {
+            tailNumber: b.tailNumber,
+            date: b.date,
+            depIcao: b.depIcao,
+            arrIcao: b.arrIcao,
+            flightTime: Number(b.flightTime),
+            picTime: b.picTime != null ? Number(b.picTime) : Number(b.flightTime),
+            sicTime: b.sicTime != null ? Number(b.sicTime) : 0,
+            nightTime: b.nightTime != null ? Number(b.nightTime) : 0,
+            instrumentTime: b.instrumentTime != null ? Number(b.instrumentTime) : 0,
+            approachCount: b.approachCount != null ? Number(b.approachCount) : 0,
+            approachTypes: Array.isArray(b.approachTypes) ? b.approachTypes : [],
+            holdCount: b.holdCount != null ? Number(b.holdCount) : 0,
+            flightType: b.flightType,
+            businessPurpose: b.businessPurpose || "",
+            remarks: b.remarks || "",
+            operatorId: ctx.tenantId || null,
+          },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: "copilot_button",
+        });
+        return res.json({ ok: true, entryId: logRef.id });
+      } catch (e) {
+        console.error("❌ logbook:flight:add failed:", e);
+        return jsonError(res, 500, "Failed to log flight");
       }
     }
 

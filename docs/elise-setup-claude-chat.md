@@ -113,7 +113,7 @@ It should show a version number.
 ---
 
 **Step 6 — Fork the SOCIII codebase on GitHub.**
-Have her go to: `github.com/titleapp/titleapp-platform`
+Have her go to: `github.com/Titleapp/titleapp-platform`
 (She'll need to be logged into GitHub.)
 
 Click **Fork** in the top right. On the next screen, click **Create fork**. This creates her own copy of the codebase under her GitHub account. The URL will look like: `github.com/HER-USERNAME/titleapp-platform`

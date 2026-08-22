@@ -7,6 +7,8 @@
 //   2. Add the entry to the matching section below
 //   3. Add the slug to apps/business/public/sitemap.xml
 
+import { WORKER_DOCS_MANIFEST } from "./workerDocsManifest.generated.js";
+
 export const DOCS_MANIFEST = [
   {
     section: "Get started",
@@ -19,10 +21,17 @@ export const DOCS_MANIFEST = [
     ],
   },
   {
+    section: "Blog",
+    pages: [
+      { slug: "blog-nvidia-validates-raas-thesis", title: "Nvidia Just Validated What We Built RAAS Around", description: "Nvidia's own research shows the harness — not the model — drives agent reliability. That's the architecture RAAS has been since day one." },
+      { slug: "blog-medevac-safety-case-the-system-held-because", title: "What do you fucking hate about your job that's obvious to you and invisible to your manager?", description: "The \"OF for smart people\" principle, told through the case of why nobody has fixed medevac dispatch yet." },
+    ],
+  },
+  {
     section: "The SDK",
     pages: [
       { slug: "sdk",          title: "SDK overview",         description: "What a worker is, what's in it, and how the platform binds it." },
-      { slug: "worker-anatomy", title: "Worker anatomy",    description: "The six files every worker carries — catalog, intent, rules, fixtures, canvas tabs, README." },
+      { slug: "worker-anatomy", title: "Worker anatomy",    description: "The seven files every worker carries — worker-spec, intent, rules, canvas tabs, service, sample data, tests." },
       { slug: "intent-spec",  title: "Intent Spec",         description: "How to describe what success looks like before any code exists." },
       { slug: "canvas-tabs",  title: "Canvas",              description: "The right-panel surface — tabs, content types (text · structured · image · video · sequence), runtime content creation, and wearable render contexts." },
       { slug: "raas",         title: "RAAS (Rules + AI)",   description: "Five-tier rule hierarchy: platform safety · operations · vertical baselines (jurisdictional law) · workspace overlays (Studio Locker) · per-transaction rules." },
@@ -51,6 +60,14 @@ export const DOCS_MANIFEST = [
       { slug: "api",          title: "API reference",       description: "Stable HTTP surface for worker authoring + runtime." },
       { slug: "glossary",     title: "Glossary",            description: "Worker · RAAS · DTC · Vault · Drive · Locker · Fellow · Lane." },
     ],
+  },
+  {
+    // Auto-generated from Firestore's digitalWorkers catalog — see
+    // functions/functions/scripts/generateWorkerDocs.js. One "how to use"
+    // page per publicly-visible worker. Re-run the script to regenerate
+    // after the catalog changes; don't hand-edit workerDocsManifest.generated.js.
+    section: "Worker guides",
+    pages: WORKER_DOCS_MANIFEST,
   },
 ];
 

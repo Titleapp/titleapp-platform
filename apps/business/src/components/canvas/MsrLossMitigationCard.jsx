@@ -54,15 +54,30 @@ export default function MsrLossMitigationCard({ resolved, context, onDismiss }) 
     >
       {loading && <div style={S.loading}>Loading from live data…</div>}
       {!loading && requests.length === 0 && <div style={S.loading}>No hardship requests on file yet.</div>}
-      {!loading && requests.map(r => (
-        <div key={r.id} style={S.row}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <div style={S.name}>{r.borrowerName}</div>
-            <span style={S.badge}>{(r.status || "").toUpperCase()}</span>
+      {!loading && requests.map(r => {
+        const required = r.documentsRequired || [];
+        const submitted = r.documentsSubmitted || [];
+        const outstanding = required.filter(d => !submitted.includes(d));
+        return (
+          <div key={r.id} style={S.row}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <div style={S.name}>{r.borrowerName}</div>
+              <span style={S.badge}>{(r.status || "").toUpperCase()}</span>
+            </div>
+            <div style={S.reason}>{r.reason}</div>
+            {required.length > 0 && (
+              <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.6 }}>
+                <div style={{ color: "#15803d" }}>
+                  Submitted ({submitted.length}/{required.length}): {submitted.length > 0 ? submitted.join(", ") : "none yet"}
+                </div>
+                {outstanding.length > 0 && (
+                  <div style={{ color: "#b45309" }}>Outstanding: {outstanding.join(", ")}</div>
+                )}
+              </div>
+            )}
           </div>
-          <div style={S.reason}>{r.reason}</div>
-        </div>
-      ))}
+        );
+      })}
       {!loading && requests.length > 0 && (
         <div style={S.note}>Every complete application is evaluated for all available options (12 CFR 1024.41(c)(1)) — the evaluation outcome is a servicing team decision, not made here.</div>
       )}

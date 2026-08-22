@@ -53,7 +53,7 @@ For this you'll need:
 
 1. **An Anthropic Team seat** — Sean is creating SOCIII's Anthropic Team plan Sunday and inviting you. You'll get a `ruthie@sociii.ai` email + login to Claude/Claude Code.
 
-2. **GitHub access** — the SOCIII codebase is public at `github.com/Titleapp/titleapp-platform` (moving to `github.com/sociii-Inc/sociii-platform` Sunday). You can fork it under your GitHub account.
+2. **GitHub access** — the SOCIII codebase is public at `github.com/Titleapp/titleapp-platform`. You can fork it under your GitHub account.
 
 3. **Claude Code on your Mac** — Anthropic's command-line AI pair programmer. Install:
    ```

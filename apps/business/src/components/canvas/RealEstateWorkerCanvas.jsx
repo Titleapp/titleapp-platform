@@ -305,8 +305,11 @@ export default function RealEstateWorkerCanvas({ worker }) {
   const [financingErr, setFinancingErr] = useState(null);
   // Demo portfolio — list of pre-seeded properties for the property picker.
   const [portfolio, setPortfolio] = useState([]);
+  // 2026-08-21 gap-audit fix — "+ New Title Order" button (Title Search worker only).
+  const [showNewOrder, setShowNewOrder] = useState(false);
 
   const isREAdvocate = slug === "re-salesperson";
+  const isTitleSearch = slug === "re-title-search-001";
 
   useEffect(() => { setActive(0); setLiveSpec(null); setLiveErr(null); setQuery(""); setLiveTransactions(null); setFinancingData(null); setFinancingErr(null); setPortfolio([]); }, [slug]);
   useEffect(() => { setActive(0); }, [liveSpec]);
@@ -478,6 +481,24 @@ export default function RealEstateWorkerCanvas({ worker }) {
 
   return (
     <div style={{ marginBottom: 24 }}>
+      {isTitleSearch && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={() => setShowNewOrder(true)}
+            className="iconBtn"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer" }}
+          >
+            + New Title Order
+          </button>
+        </div>
+      )}
+      {showNewOrder && (
+        <NewTitleOrderModal
+          onClose={() => setShowNewOrder(false)}
+          onOpened={(addr) => { setShowNewOrder(false); doLookup(null, addr); }}
+        />
+      )}
       {isRE && (
         <form onSubmit={doLookup} style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
           <input
@@ -581,6 +602,99 @@ export default function RealEstateWorkerCanvas({ worker }) {
       <TabDescription slug={slug} tabId={tab.id} description={tab.description} />
 
       {tab.blocks.map((b, i) => <Block key={i} block={b} />)}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// NewTitleOrderModal — 2026-08-21 gap-audit fix. Calls the real POST
+// /v1/title:order endpoint (capability title.open_title_order_v1), which
+// dispatches to the SAME workers/re-title-search-001/handler.js#openTitleOrder
+// the chat-based open_title_order AI tool uses — real Firestore writes,
+// duplicate detection, risk scoring. Matches Contacts.jsx's ManualAddModal
+// visual pattern (purple-gradient primary button, white card shell).
+// ─────────────────────────────────────────────────────────────────────────
+function NewTitleOrderModal({ onClose, onOpened }) {
+  const [form, setForm] = useState({ address: "", buyerName: "", sellerName: "", purchasePrice: "", orderType: "purchase" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+
+  async function run() {
+    if (!form.address.trim()) return;
+    setStatus({ state: "running" });
+    try {
+      const auth = getAuth();
+      const token = auth.currentUser ? await auth.currentUser.getIdToken(false) : null;
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/title:order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          address: form.address.trim(),
+          buyerName: form.buyerName.trim() || undefined,
+          sellerName: form.sellerName.trim() || undefined,
+          purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
+          orderType: form.orderType,
+        }),
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (resp.ok && j.ok) {
+        setStatus({ state: "done", result: j });
+      } else {
+        setStatus({ state: "error", message: j.error || j.message || "Failed to open title order" });
+      }
+    } catch (e) {
+      setStatus({ state: "error", message: e.message || "Failed to open title order" });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>New title order</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Opens a real title order and pulls chain-of-title, liens, and tax status. Try a Henderson County, TX address for full demo data.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Property address *</label>
+            <input style={fieldStyle} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="313 Mayfair Dr, Athens, TX 75751" />
+          </div>
+          <div><label style={labelStyle}>Buyer name</label><input style={fieldStyle} value={form.buyerName} onChange={(e) => set("buyerName", e.target.value)} /></div>
+          <div><label style={labelStyle}>Seller name</label><input style={fieldStyle} value={form.sellerName} onChange={(e) => set("sellerName", e.target.value)} /></div>
+          <div><label style={labelStyle}>Purchase price</label><input type="number" style={fieldStyle} value={form.purchasePrice} onChange={(e) => set("purchasePrice", e.target.value)} placeholder="optional" /></div>
+          <div>
+            <label style={labelStyle}>Order type</label>
+            <select style={fieldStyle} value={form.orderType} onChange={(e) => set("orderType", e.target.value)}>
+              <option value="purchase">Purchase</option>
+              <option value="refi">Refi</option>
+              <option value="search-only">Search only</option>
+            </select>
+          </div>
+        </div>
+        {status?.state === "error" && (
+          <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>
+        )}
+        {status?.state === "done" && (
+          <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>
+            {status.result.existingOrder ? "Order already existed for this address — not opening a duplicate." : "Title order opened."} Order ID: {status.result.orderId}
+            {status.result.riskScore != null && ` · Risk score ${status.result.riskScore}/100`}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} className="iconBtn" style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={() => onOpened(form.address.trim())} className="iconBtn" style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }}>View order</button>
+          ) : (
+            <button onClick={run} disabled={!form.address.trim() || status?.state === "running"} className="iconBtn" style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", padding: "8px 16px", borderRadius: 8, cursor: "pointer", opacity: (!form.address.trim() || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Opening…" : "Open title order"}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

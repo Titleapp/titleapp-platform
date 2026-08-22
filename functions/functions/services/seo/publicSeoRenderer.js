@@ -178,6 +178,133 @@ async function renderDocPage(slug) {
   };
 }
 
+// The bare /docs index isn't a <slug>.md file — it's its own React page
+// (DocsIndex.jsx) listing every section. `/docs/**` in firebase.json's
+// hosting rewrites doesn't reliably match the exact path with no trailing
+// segment, so it needs its own explicit route here (and its own hosting
+// rewrite) rather than falling through to renderDocPage.
+const DOCS_INDEX_COPY = {
+  title: "SOCIII Docs — Open SDK for Digital Workers",
+  description:
+    "Documentation for SOCIII — the open SDK and marketplace for Digital Workers. Build a worker in Claude Code, ship it via GitHub, list on sociii.ai, earn 75% of net revenue.",
+  bodyHtml: `
+    <main>
+      <h1>SOCIII Docs</h1>
+      <p>Documentation for SOCIII — the open SDK and marketplace for Digital Workers.</p>
+      <h2>Get started</h2>
+      <ul>
+        <li><a href="/docs/what-is-sociii">What is SOCIII?</a></li>
+        <li><a href="/docs/sandbox-walkthrough">Sandbox walkthrough</a></li>
+        <li><a href="/docs/install">Install the tools</a></li>
+        <li><a href="/docs/your-first-worker">Your first worker</a></li>
+      </ul>
+      <h2>The SDK</h2>
+      <ul>
+        <li><a href="/docs/sdk">SDK overview</a></li>
+        <li><a href="/docs/worker-anatomy">Worker anatomy</a></li>
+        <li><a href="/docs/intent-spec">Intent Spec</a></li>
+        <li><a href="/docs/canvas-tabs">Canvas</a></li>
+        <li><a href="/docs/raas">RAAS (Rules + AI)</a></li>
+        <li><a href="/docs/audit-trail">Audit Trail</a></li>
+        <li><a href="/docs/qa-001">QA-001 validator</a></li>
+      </ul>
+      <h2>Marketplace</h2>
+      <ul>
+        <li><a href="/docs/three-lanes">The three lanes</a></li>
+        <li><a href="/docs/earnings">Earnings & payouts</a></li>
+        <li><a href="/docs/creator-agreement">Creator Agreement</a></li>
+        <li><a href="/docs/review-cycle">Review cycle</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="/docs/api">API reference</a></li>
+        <li><a href="/docs/glossary">Glossary</a></li>
+      </ul>
+    </main>
+  `,
+};
+
+const WHITEPAPER_COPY = {
+  title: "SOCIII Whitepaper — Governed AI Workers for Regulated Professions",
+  description:
+    "How SOCIII captures expert judgment into rule-governed AI workers with cryptographic audit trails. The multi-tier RAAS rules engine, no-code authoring, and why regulation is local.",
+  bodyHtml: `
+    <main>
+      <h1>Governed AI Workers for Regulated Professions</h1>
+      <p>SOCIII's whitepaper describes how the platform captures a domain expert's professional
+      judgment into a rule-governed AI Digital Worker — one whose actions are constrained by a
+      layered rules engine (RAAS) and sealed into a tamper-evident, append-only audit trail before
+      anything executes.</p>
+      <h2>What it covers</h2>
+      <ul>
+        <li>The RAAS rules engine — platform safety, platform operations, vertical (jurisdictional)
+        baselines, workspace overlays, and per-transaction rules</li>
+        <li>No-code worker authoring — how a domain expert's expertise becomes a working Digital
+        Worker without writing the platform's infrastructure themselves</li>
+        <li>Why regulation is local — jurisdictional rule composition instead of one-size-fits-all
+        compliance</li>
+        <li>The append-only audit trail and cryptographic anchoring model</li>
+      </ul>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/docs">Read the docs</a></p>
+    </main>
+  `,
+};
+
+const CREATORS_JOURNEY_COPY = {
+  title: "Creator's Journey — Build a Digital Worker on SOCIII",
+  description:
+    "The step-by-step path from idea to a live, earning Digital Worker on SOCIII: discover, sign up, design with Alex, build in Claude Code, validate, ship, and earn 75% of net revenue.",
+  bodyHtml: `
+    <main>
+      <h1>Creator's Journey</h1>
+      <p>SOCIII is a marketplace for Digital Workers built by domain experts. You bring the
+      expertise — the platform handles billing, hosting, marketplace listing, and the legal
+      scaffolding. Creators earn 75% of net revenue on their workers.</p>
+      <h2>The journey, step by step</h2>
+      <ol>
+        <li><strong>Discover SOCIII</strong> — read the whitepaper or ask Alex what SOCIII is</li>
+        <li><strong>Sign up</strong> — accept the Creator Agreement and tell us about yourself</li>
+        <li><strong>Design your worker with Alex</strong> — name, voice, intent, rules, and canvas
+        before any code exists</li>
+        <li><strong>Build your worker in Claude Code</strong> — fork the open SDK and author the
+        worker's real files with Claude Code</li>
+        <li><strong>Validate it works</strong> — run the QA-001 validator against your assertions</li>
+        <li><strong>Get a shareable preview</strong> — a URL you can send a colleague before you ship</li>
+        <li><strong>Ship it</strong> — open a pull request; CI runs the validator plus an AI reviewer</li>
+        <li><strong>Your first customer</strong> — Forge Reviews subscribes and writes a structured
+        first review</li>
+        <li><strong>Earn</strong> — share your worker with your network and start earning</li>
+      </ol>
+      <p><a href="/docs/sandbox-walkthrough">Read the sandbox walkthrough &rarr;</a> ·
+      <a href="/docs/your-first-worker">Read the terminal walkthrough &rarr;</a></p>
+    </main>
+  `,
+};
+
+const SANDBOX_WORKER_COPY = {
+  title: "Worker Sandbox — Scope Your Digital Worker on SOCIII",
+  description:
+    "The pre-terminal half of building a Digital Worker: define what it does, its intent, its rules, and its canvas — before any code exists — then fork the open SDK to build it for real.",
+  bodyHtml: `
+    <main>
+      <h1>Worker Sandbox</h1>
+      <p>The Worker Sandbox is the guided, pre-terminal step in building a SOCIII Digital Worker.
+      Before any code exists, you work through what your worker does, who it's for, what rules it
+      always follows, and what the user sees in its canvas.</p>
+      <h2>What the sandbox produces</h2>
+      <ul>
+        <li>An intent — what the worker does, who uses it, and what success looks like</li>
+        <li>A first pass at its behavioral rules</li>
+        <li>A canvas layout — the tabs a user sees when they open the worker</li>
+      </ul>
+      <p>Once scoped, the actual worker gets built by forking the
+      <a href="https://github.com/SOCIII-Inc/sociii-sdk">open SDK</a> and building with Claude Code
+      against it. <a href="/docs/your-first-worker">See Your first worker &rarr;</a></p>
+      <p><a href="/docs/sandbox-walkthrough">Read the full sandbox walkthrough &rarr;</a></p>
+    </main>
+  `,
+};
+
 async function renderWorkerPage(db, slug) {
   const snap = await db.collection("digitalWorkers").doc(slug).get();
   if (!snap.exists) return null;
@@ -214,9 +341,20 @@ async function renderPublicPage(db, path) {
   } else if (path.startsWith("/c/")) {
     const slug = path.slice(3).replace(/\/+$/, "");
     if (slug) routeContent = await renderWorkerPage(db, slug);
+  } else if (path === "/docs" || path === "/docs/") {
+    routeContent = DOCS_INDEX_COPY;
   } else if (path.startsWith("/docs/") && !path.endsWith(".md")) {
+    // Generic — covers every /docs/<slug> page, including nested slugs like
+    // /docs/workers/<worker-slug>, as long as a matching <slug>.md exists
+    // under public/docs/. No per-page wiring needed for new docs pages.
     const slug = path.slice("/docs/".length).replace(/\/+$/, "");
     if (slug) routeContent = await renderDocPage(slug);
+  } else if (path === "/whitepaper" || path === "/whitepaper/") {
+    routeContent = WHITEPAPER_COPY;
+  } else if (path === "/creators/journey" || path === "/creators/journey/") {
+    routeContent = CREATORS_JOURNEY_COPY;
+  } else if (path === "/sandbox/worker" || path === "/sandbox/worker/") {
+    routeContent = SANDBOX_WORKER_COPY;
   }
 
   if (!routeContent) return null;
@@ -225,4 +363,13 @@ async function renderPublicPage(db, path) {
   return injectIntoShell(shell, routeContent);
 }
 
-module.exports = { renderPublicPage, injectIntoShell, fetchOriginShell, HOMEPAGE_COPY };
+module.exports = {
+  renderPublicPage,
+  injectIntoShell,
+  fetchOriginShell,
+  HOMEPAGE_COPY,
+  DOCS_INDEX_COPY,
+  WHITEPAPER_COPY,
+  CREATORS_JOURNEY_COPY,
+  SANDBOX_WORKER_COPY,
+};

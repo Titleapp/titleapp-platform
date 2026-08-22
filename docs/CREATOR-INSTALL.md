@@ -117,7 +117,7 @@ You can also just type `claude` and it'll prompt you to log in automatically if 
 
 ## Step 6 — Fork the SOCIII repo to your account (2 minutes)
 
-Go to https://github.com/Titleapp/titleapp-platform (this becomes `github.com/sociii-Inc/sociii-platform` soon — same place).
+Go to https://github.com/Titleapp/titleapp-platform.
 
 Click the **Fork** button in the top right of the page. GitHub asks where to fork it; choose your personal account. Wait 10 seconds.
 

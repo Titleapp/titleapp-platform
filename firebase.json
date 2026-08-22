@@ -15,7 +15,11 @@
       { "source": "/", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "/marketplace", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "/c/**", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/docs", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "/docs/**", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/whitepaper", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/creators/journey", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/sandbox/worker", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [

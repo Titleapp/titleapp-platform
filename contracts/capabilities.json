@@ -1291,6 +1291,72 @@
       "requiredRoles": [],
       "emitsEvent": false,
       "writesAudit": false
+    },
+    {
+      "id": "title.open_title_order_v1",
+      "class": "title",
+      "summary": "2026-08-21 gap-audit fix — open a new title order for a property (writes titleOrders/{orderId} + immutable chain-of-title events from ATTOM or the demo propertyCache). Dispatched by POST /v1/title:order (functions/functions/index.js) via workers/re-title-search-001/handler.js#openTitleOrder — the SAME handler the chat-based open_title_order AI tool calls. Wired to the \"+ New Title Order\" button on the Title Search worker canvas.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.log_flight_v1",
+      "class": "aviation",
+      "summary": "2026-08-21 gap-audit fix — pilot logs a flight to their personal Vault logbook (append-only aviation.flight record in logbookEntries). Dispatched by POST /v1/logbook:flight:add (functions/functions/index.js), the same write shape as the existing chat-based log_flight tool on the universal Alex Chief-of-Staff persona. Wired to the \"+ Log Flight\" button on the Aviation CoPilot worker canvas (AviationWorkerCanvas.jsx). No requirement (yet) that the flight reference an active dispatch flight release — open design question, not resolved here.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.dispatch_release_flight_v1",
+      "class": "aviation",
+      "summary": "2026-08-21 — dispatch/releasing-authority issues a flight release BEFORE a pilot may fly it (Part 135 operational control / Part 91 dispatch record — see 14 CFR 135.77 and neighboring sections for the Part 135 operational-control area). Writes a new flightReleases/{releaseId} record: tail number, route, proposed departure time, PIC/SIC, operation type, weather-briefing and W&B acknowledgement, fuel load, releasing authority, status. Dispatched by POST /v1/aviation:dispatch:releaseFlight (functions/functions/index.js). Wired to the \"+ Release Flight\" button on the Dispatch worker canvas (av-dispatch / av-dispatch-001). Independent of aviation.log_flight_v1 — whether a pilot's flight log should be required to reference an active release is an open design question, intentionally not enforced here.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "auto.create_vehicle_deal_v1",
+      "class": "auto",
+      "summary": "2026-08-21 gap-audit fix — dealer creates a new vehicle/deal record in dealer inventory (dealerVehicles collection; distinct from the unrelated personal-vault MyVehicles.jsx feature). Dispatched by POST /v1/auto:vehicle:add (functions/functions/index.js). Wired to the \"+ Add Vehicle\" button on the Desking / Deal worker canvas.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "msr.onboard_loan_v1",
+      "class": "msr",
+      "summary": "2026-08-21 gap-audit fix — compliance officer / operator onboards a new loan into the MSR servicing portfolio (msrLoans collection, same schema seedMsrServicing.js uses). Distinct from the borrower self-service actions (NOE intake, insurance proof, hardship, payoff, cease-communication) built earlier the same day, none of which create a new loan. Dispatched by POST /v1/msr:operator:loan:add (functions/functions/index.js). Wired to the \"+ Add Loan\" button on the Portfolio Dashboard canvas card.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "education.create_student_v1",
+      "class": "education",
+      "summary": "2026-08-21 gap-audit fix — creates a new student enrollment record for the nursing/education vertical, in tenants/{tenantId}/nursingStudents (the SAME subcollection /v1/student:customer:profile already reads for the student's own portal). Dispatched by POST /v1/education:student:add (functions/functions/index.js). Wired to the \"+ Add Student\" button on the Student Record worker canvas (nursing-records-001 / uh-nursing-records-001, NursingWorkerCanvas.jsx).",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
     }
   ]
 }

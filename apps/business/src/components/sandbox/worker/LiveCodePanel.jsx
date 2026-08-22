@@ -2,9 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 
 // LiveCodePanel — the "woo, I'm building this" view. As the creator talks to
 // Alex, the worker spec the conversation produces is rendered here AS CODE,
-// live — intent.md, canvas-tabs.json, and the rules — so they watch their
-// worker write itself. It reads the same session state the form fills from
-// (no terminal yet — this surfaces the real artifacts we already derive).
+// live — the real 7-file SOCIII SDK worker template (worker-spec.json,
+// intent.md, rules.md, canvas-tabs.json, service.js, sample-data.js,
+// tests/assertions.md — see github.com/SOCIII-Inc/sociii-sdk's template/
+// folder and /docs/worker-anatomy) — so they watch their worker write
+// itself. It reads the same session state the form fills from (no terminal
+// yet — this surfaces the real artifacts we already derive). Two of the
+// seven files (service.js, sample-data.js) need real endpoint/logic detail
+// the guided flow doesn't collect, so those render as clearly-labeled
+// scaffolds for the creator's terminal Claude Code session to fill in.
 
 const TOK = { key: "#c4b5fd", str: "#86efac", com: "#64748b", text: "#e2e8f0" };
 
@@ -14,47 +20,205 @@ function toLines(v) {
   return [];
 }
 
+function slugify(v, fallback) {
+  const s = String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return s || fallback;
+}
+
+const PRICING_MONTHLY = { 0: 0, 1: 29, 2: 49, 3: 79 };
+
 function buildFiles(session) {
   const spec = (session && session.spec) || {};
   const steps = (session && session.workerSteps) || {};
   const design = (steps.design && steps.design.data) || {};
   const rules = (steps.rules && steps.rules.data) || {};
-  const tabs = Array.isArray(design.tabs) ? design.tabs : [];
+  const tools = (steps.tools && steps.tools.data) || {};
+  const test = (steps.test && steps.test.data) || {};
+  const tabsIn = (Array.isArray(design.tabs) ? design.tabs : []).filter((t) => t && (t.label || t.name));
 
   const ph = (v, hint) => (v && String(v).trim() ? String(v).trim() : `// ${hint}`);
+  const slug = slugify(spec.slug || spec.name, "your-worker");
+  const tabIds = tabsIn.map((t, i) => slugify(t.id || t.label || t.name, `tab-${i + 1}`));
 
+  // ── 1. worker-spec.json — the marketplace listing SOCIII reads to register the worker ──
+  const canvasTabsForSpec = tabsIn.length
+    ? tabsIn.map((t, i) => ({
+        id: tabIds[i],
+        label: t.label || t.name || `Tab ${i + 1}`,
+        signal: "card:work-product",
+        default: i === 0,
+        order: i,
+      }))
+    : [{ id: "main", label: "TODO — design your canvas tabs in the Design step", signal: "card:work-product", default: true, order: 0 }];
+  const workerSpecJson = JSON.stringify({
+    "$schema": "https://sociii.ai/sdk/schema/1.0.0",
+    "sociii-sdk-version": "1.0.0",
+    id: (slug.toUpperCase().replace(/-/g, "_").slice(0, 20) || "WORKER") + "-001",
+    name: spec.name || "Untitled Worker",
+    ...(design.personaName ? { persona_name: design.personaName } : {}),
+    slug,
+    type: "standalone",
+    status: "waitlist",
+    description: spec.description || spec.problemSolves || "TODO — what your worker does, in one sentence",
+    vertical: spec.category || spec.vertical || "TODO — your worker's vertical",
+    phase: 0,
+    pricing: { monthly: PRICING_MONTHLY[spec.pricingTier] ?? 29 },
+    tags: [],
+    capabilitySummary: spec.problemSolves || "TODO — 1-2 sentence capability summary",
+    canvasTabs: canvasTabsForSpec,
+    alexRegistration: { priority: "normal", acceptsTasks: true, briefingContribution: `${slug.replace(/-/g, "_")}_status` },
+    temporalType: "always_on",
+    vault_reads: [],
+    vault_writes: [],
+  }, null, 2);
+
+  // ── 2. intent.md — the formal spec in plain language ──
   const intent = [
-    `# ${spec.name || "Untitled Worker"}`,
+    `# Worker: ${slug}`,
+    ``,
+    `**Status:** Draft`,
     ``,
     `## What it does`,
     ph(design.headlineOutcome, "the one outcome — coming from your chat…"),
     ``,
-    `## Who it's for`,
+    `## Who uses it`,
     ph(spec.targetAudience, "who uses this…"),
+    ``,
+    `## What success looks like`,
+    "// the sandbox doesn't collect this yet — write 2-3 concrete, checkable outcomes here",
+    ``,
+    `## What this worker is NOT`,
+    "// what it explicitly refuses to do — not collected yet, but your rules below (Rules step) are a starting point",
     ``,
     `## The problem it kills`,
     ph(spec.problemSolves, "the problem…"),
-    ``,
-    `## Field`,
-    ph(spec.category || spec.vertical, "vertical…"),
   ].join("\n");
 
-  const tabsJson = tabs.length
-    ? "[\n" + tabs.map((t) => `  { "label": ${JSON.stringify(t.label || "")}, "job": ${JSON.stringify(t.job || t.headline || "")} }`).join(",\n") + "\n]"
+  // ── 3. rules.md — identity, scope, evidence standard, tone, disclaimers ──
+  // (the real SDK template uses .md here, not .yaml)
+  const tier0 = toLines(rules.tier0);
+  const tier1 = toLines(rules.tier1);
+  const tier2 = toLines(rules.tier2);
+  const tier3 = toLines(rules.tier3);
+  const bullets = (arr, hint) => (arr.length ? arr.map((r) => `- ${r}`).join("\n") : `- // ${hint}`);
+  const rulesMd = [
+    `## Identity`,
+    `You are ${design.personaName || ph(null, "your worker's name")}, a Digital Worker built on the SOCIII platform.`,
+    `Your specialty: ${ph(spec.problemSolves, "what you specialize in…")}`,
+    ``,
+    `## Scope`,
+    `You ONLY help with:`,
+    bullets(tier1, "list what this worker is allowed to do (from your ALWAYS rules)"),
+    ``,
+    `You NEVER:`,
+    bullets(tier2, "list what this worker must never do (from your NEVER rules)"),
+    ``,
+    `## Style (LAWS — never break)`,
+    bullets(tier0, "tone/voice invariants"),
+    ``,
+    `## Escalate to a human`,
+    bullets(tier3, "conditions where this worker must hand off to a person"),
+    ``,
+    `## Evidence Standard`,
+    "// not collected yet — state what every claim/output must trace back to (user-provided data, a connected document, etc.)",
+    ``,
+    `## Disclaimer (required)`,
+    `> "// the required disclaimer shown to every user of this worker"`,
+  ].join("\n");
+
+  // ── 4. canvas-tabs.json — what renders in the right panel ──
+  const tabsJson = tabsIn.length
+    ? JSON.stringify({
+        workerSlug: slug,
+        version: "0.1.0",
+        canvasTabs: tabsIn.map((t, i) => ({
+          id: tabIds[i],
+          label: t.label || t.name || `Tab ${i + 1}`,
+          signal: "card:work-product",
+          order: i,
+          default: i === 0,
+          view: "operator",
+        })),
+      }, null, 2)
     : "// your tabs appear here as you design the canvas…";
 
-  const ruleBlock = (title, arr) => (arr.length ? `${title}:\n` + arr.map((r) => `  - ${r}`).join("\n") : `${title}:\n  // none yet`);
-  const rulesTxt = [
-    ruleBlock("LAWS (never break)", toLines(rules.tier0)),
-    ruleBlock("ALWAYS", toLines(rules.tier1)),
-    ruleBlock("NEVER", toLines(rules.tier2)),
-    ruleBlock("ESCALATE to a human", toLines(rules.tier3)),
-  ].join("\n\n");
+  // ── 5. service.js — SCAFFOLD. The sandbox never collects real endpoint/logic ──
+  // detail (that's discovered in the terminal build), so this renders as a
+  // clearly-labeled starting point, not a finished file.
+  const connectedTools = Array.isArray(tools.connectedTools) ? tools.connectedTools : [];
+  const capabilityLines = connectedTools.length
+    ? connectedTools.map((t) => `  // "${typeof t === "string" ? t : (t.name || "capability")}",`).join("\n")
+    : `  // e.g. "notify.email_user_v1" — leave empty if you don't need one`;
+  const proposeFnName = "propose" + slug.split("-").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join("");
+  const serviceJs = [
+    `// SCAFFOLD — the sandbox doesn't collect endpoint/logic detail, so this is a`,
+    `// starting point, not a finished file. Fill in real functions with Claude`,
+    `// Code in your terminal session, using intent.md above as the spec.`,
+    ``,
+    `export const SERVICE_ID = "${slug}";`,
+    ``,
+    `// Capabilities this worker needs for real-world side effects (email, payment,`,
+    `// chain anchor, etc.). Leave empty if this worker only reads/proposes data.`,
+    `export const REQUIRED_CAPABILITIES = [`,
+    capabilityLines,
+    `];`,
+    ``,
+    `// TODO — replace with your worker's real function(s), one per action a user`,
+    `// can take. Functions are PURE: validate input, return an event proposal —`,
+    `// the platform's rules engine validates and commits it, you never mutate`,
+    `// state directly.`,
+    `export function ${proposeFnName}(input) {`,
+    `  if (!input) return { error: "input is required" };`,
+    `  return {`,
+    `    type: "${slug.replace(/-/g, "_")}.actionProposed",`,
+    `    payload: { ...input, proposed_at_iso: new Date().toISOString() },`,
+    `    requires: ["operator_role", "active_subscription"],`,
+    `  };`,
+    `}`,
+  ].join("\n");
+
+  // ── 6. sample-data.js — SCAFFOLD fixtures, one per canvas tab id ──
+  const sampleEntries = (tabIds.length ? tabIds : ["main"]).map((id, i) => {
+    const label = (tabsIn[i] && (tabsIn[i].label || tabsIn[i].name)) || "Main";
+    return `  "${id}": {\n    title: "${label} — sample",\n    subtitle: "Sample data · replace with a realistic fixture",\n    // TODO — same field names/shape your real service.js will return\n  },`;
+  }).join("\n");
+  const sampleDataJs = [
+    `// SCAFFOLD — one entry per canvas tab id above, so first-time users see`,
+    `// something real instead of an empty state. Fill in with Claude Code.`,
+    ``,
+    `export const SAMPLE_CANVAS_PAYLOADS = {`,
+    sampleEntries,
+    `};`,
+  ].join("\n");
+
+  // ── 7. tests/assertions.md — SCAFFOLD, seeded from Test-step data when present ──
+  const issuesFound = Array.isArray(test.issuesFound) ? test.issuesFound : [];
+  const questionsAsked = Array.isArray(test.questionsAsked) ? test.questionsAsked : [];
+  const tabSections = (tabsIn.length ? tabsIn : [{ label: "Main" }])
+    .map((t) => `### ${t.label || t.name}\n\n- TC-###: First-visit user sees the sample fixture, not an empty state\n- TC-###: // add an assertion specific to this tab`)
+    .join("\n\n");
+  const assertionsMd = [
+    `# QA-001 Assertions — \`${slug}\``,
+    ``,
+    `Aim for at least 5. Better workers have 10-15.`,
+    ``,
+    tabSections,
+    ``,
+    `### Negative tests`,
+    ``,
+    `- TC-###: A non-operator user cannot take this worker's primary action`,
+    ...(issuesFound.length ? issuesFound.map((i) => `- TC-###: regression check — ${i.title || "issue"} (${i.resolution || "resolved"})`) : []),
+    ...(questionsAsked.length ? [``, `### From your Test-step red-teaming`, ``, ...questionsAsked.map((q) => `- TC-###: // turn "${q}" into a pass/fail assertion`)] : []),
+  ].join("\n");
 
   return [
+    { name: "worker-spec.json", body: workerSpecJson },
     { name: "intent.md", body: intent },
+    { name: "rules.md", body: rulesMd },
     { name: "canvas-tabs.json", body: tabsJson },
-    { name: "rules.yaml", body: rulesTxt },
+    { name: "service.js", body: serviceJs },
+    { name: "sample-data.js", body: sampleDataJs },
+    { name: "tests/assertions.md", body: assertionsMd },
   ];
 }
 

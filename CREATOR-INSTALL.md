@@ -12,8 +12,8 @@ This is the repo-root cheat sheet. The full walk-through lives at **[sociii.ai/d
 
 ```
 # 1. Clone the repo
-git clone https://github.com/sociii/sociii.git
-cd sociii
+git clone https://github.com/Titleapp/titleapp-platform.git
+cd titleapp-platform
 
 # 2. Start Claude Code
 claude

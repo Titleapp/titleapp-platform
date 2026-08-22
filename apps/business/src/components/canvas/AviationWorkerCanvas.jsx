@@ -31,6 +31,27 @@ async function apiGet(path) {
   return res.json();
 }
 
+// 2026-08-21 gap-audit fix — POST helper for the "+ Log Flight" and
+// "+ Release Flight" buttons below. Mirrors apiGet's auth/tenant headers.
+async function apiPost(path, payload) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) throw new Error(json.error || json.message || `Request failed (${res.status})`);
+  return json;
+}
+
 // Ceiling from raw METAR text — returns "CLR", "SKC", or e.g. "OVC030"
 function parseCeiling(raw) {
   if (!raw) return "—";
@@ -458,6 +479,198 @@ const LIVE_TABS = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// LogFlightModal — 2026-08-21 gap-audit fix (2a). Surfaces the pilot's own
+// flight-logging as a first-class action on the CoPilot worker canvas
+// instead of leaving it buried as a generic Alex Chief-of-Staff chat tool.
+// Calls POST /v1/logbook:flight:add (capability aviation.log_flight_v1) —
+// same aviation.flight write shape as the existing chat-based log_flight
+// tool. Visual pattern matches Contacts.jsx's ManualAddModal.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function LogFlightModal({ onClose, onLogged }) {
+  const [form, setForm] = useState({
+    tailNumber: "", date: new Date().toISOString().slice(0, 10), depIcao: "", arrIcao: "",
+    flightTime: "", picTime: "", nightTime: "", instrumentTime: "", approachCount: "",
+    flightType: "part91", businessPurpose: "", remarks: "",
+  });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.date && form.depIcao.trim() && form.arrIcao.trim() && form.flightTime;
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      const j = await apiPost("/v1/logbook:flight:add", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        date: form.date,
+        depIcao: form.depIcao.trim().toUpperCase(),
+        arrIcao: form.arrIcao.trim().toUpperCase(),
+        flightTime: Number(form.flightTime),
+        picTime: form.picTime ? Number(form.picTime) : undefined,
+        nightTime: form.nightTime ? Number(form.nightTime) : undefined,
+        instrumentTime: form.instrumentTime ? Number(form.instrumentTime) : undefined,
+        approachCount: form.approachCount ? Number(form.approachCount) : undefined,
+        flightType: form.flightType,
+        businessPurpose: form.businessPurpose || undefined,
+        remarks: form.remarks || undefined,
+      });
+      setStatus({ state: "done", entryId: j.entryId });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Log a flight</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Appends an immutable entry to your personal Vault logbook. Cannot be edited after logging.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Date *</label><input type="date" style={fieldStyle} value={form.date} onChange={(e) => set("date", e.target.value)} /></div>
+          <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="KLAS" /></div>
+          <div><label style={labelStyle}>Arrival ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="KPHX" /></div>
+          <div><label style={labelStyle}>Total flight time (hrs) *</label><input type="number" step="0.1" style={fieldStyle} value={form.flightTime} onChange={(e) => set("flightTime", e.target.value)} placeholder="2.1" /></div>
+          <div><label style={labelStyle}>PIC time (hrs)</label><input type="number" step="0.1" style={fieldStyle} value={form.picTime} onChange={(e) => set("picTime", e.target.value)} placeholder="defaults to total" /></div>
+          <div><label style={labelStyle}>Night time (hrs)</label><input type="number" step="0.1" style={fieldStyle} value={form.nightTime} onChange={(e) => set("nightTime", e.target.value)} /></div>
+          <div><label style={labelStyle}>Instrument time (hrs)</label><input type="number" step="0.1" style={fieldStyle} value={form.instrumentTime} onChange={(e) => set("instrumentTime", e.target.value)} /></div>
+          <div><label style={labelStyle}>Approaches</label><input type="number" style={fieldStyle} value={form.approachCount} onChange={(e) => set("approachCount", e.target.value)} /></div>
+          <div>
+            <label style={labelStyle}>Flight type *</label>
+            <select style={fieldStyle} value={form.flightType} onChange={(e) => set("flightType", e.target.value)}>
+              <option value="part91">Part 91</option>
+              <option value="part135">Part 135</option>
+              <option value="training">Training</option>
+              <option value="checkride">Checkride</option>
+            </select>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Business purpose</label><input style={fieldStyle} value={form.businessPurpose} onChange={(e) => set("businessPurpose", e.target.value)} placeholder="optional — IRS-required if claiming business use" /></div>
+          <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Remarks</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Flight logged. Entry ID: {status.entryId}</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onLogged} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Logging…" : "Log flight"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ReleaseFlightModal — 2026-08-21 gap-audit fix (2b). Dispatch/releasing
+// authority issues a flight release BEFORE a pilot may fly it — a distinct,
+// prerequisite action from the pilot's own log_flight, per Sean: "Dispatch
+// has to issue the flight in a Part 135 (or even 91) operation before the
+// pilot can do so." Calls POST /v1/aviation:dispatch:releaseFlight
+// (capability aviation.dispatch_release_flight_v1), writing flightReleases.
+// This does NOT gate or reference log_flight in any way — that link is an
+// open design question, intentionally left undecided here.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function ReleaseFlightModal({ onClose, onReleased }) {
+  const [form, setForm] = useState({
+    tailNumber: "", aircraft: "", depIcao: "", arrIcao: "", proposedDepartureTime: "",
+    pic: "", sic: "", operationType: "part135", weatherBriefingAcknowledged: false,
+    weightBalanceAcknowledged: false, fuelLoad: "", releasingAuthority: "",
+  });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim() && form.proposedDepartureTime
+    && form.pic.trim() && form.operationType && form.releasingAuthority.trim() && form.fuelLoad
+    && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged;
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      const j = await apiPost("/v1/aviation:dispatch:releaseFlight", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        aircraft: form.aircraft.trim() || undefined,
+        depIcao: form.depIcao.trim().toUpperCase(),
+        arrIcao: form.arrIcao.trim().toUpperCase(),
+        proposedDepartureTime: form.proposedDepartureTime,
+        pic: form.pic.trim(),
+        sic: form.sic.trim() || undefined,
+        operationType: form.operationType,
+        weatherBriefingAcknowledged: form.weatherBriefingAcknowledged,
+        weightBalanceAcknowledged: form.weightBalanceAcknowledged,
+        fuelLoad: form.fuelLoad,
+        releasingAuthority: form.releasingAuthority.trim(),
+      });
+      setStatus({ state: "done", releaseId: j.releaseId });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(600px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Release a flight</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Formal dispatch release — required for Part 135 operational control (14 CFR 135.77 and neighboring sections) before departure.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Aircraft type</label><input style={fieldStyle} value={form.aircraft} onChange={(e) => set("aircraft", e.target.value)} placeholder="PC-12/47E" /></div>
+          <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="PHOG" /></div>
+          <div><label style={labelStyle}>Destination ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="PHNL" /></div>
+          <div><label style={labelStyle}>Proposed departure (UTC) *</label><input type="datetime-local" style={fieldStyle} value={form.proposedDepartureTime} onChange={(e) => set("proposedDepartureTime", e.target.value)} /></div>
+          <div>
+            <label style={labelStyle}>Operation type *</label>
+            <select style={fieldStyle} value={form.operationType} onChange={(e) => set("operationType", e.target.value)}>
+              <option value="part135">Part 135</option>
+              <option value="part91">Part 91</option>
+            </select>
+          </div>
+          <div><label style={labelStyle}>PIC *</label><input style={fieldStyle} value={form.pic} onChange={(e) => set("pic", e.target.value)} placeholder="Rivera A." /></div>
+          <div><label style={labelStyle}>SIC</label><input style={fieldStyle} value={form.sic} onChange={(e) => set("sic", e.target.value)} placeholder="optional" /></div>
+          <div><label style={labelStyle}>Fuel load *</label><input style={fieldStyle} value={form.fuelLoad} onChange={(e) => set("fuelLoad", e.target.value)} placeholder="280 gal" /></div>
+          <div><label style={labelStyle}>Releasing authority *</label><input style={fieldStyle} value={form.releasingAuthority} onChange={(e) => set("releasingAuthority", e.target.value)} placeholder="Dispatcher name" /></div>
+        </div>
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
+            <input type="checkbox" checked={form.weatherBriefingAcknowledged} onChange={(e) => set("weatherBriefingAcknowledged", e.target.checked)} />
+            Weather briefing obtained and acknowledged *
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
+            <input type="checkbox" checked={form.weightBalanceAcknowledged} onChange={(e) => set("weightBalanceAcknowledged", e.target.checked)} />
+            Weight & balance computed and within limits *
+          </label>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Flight released. Release ID: {status.releaseId}</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onReleased} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Releasing…" : "Release flight"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AviationWorkerCanvas({ workerSlug }) {
   const spec = getAvCanvas(workerSlug);
@@ -465,6 +678,11 @@ export default function AviationWorkerCanvas({ workerSlug }) {
   const [liveBlocks, setLiveBlocks] = useState({});
   const [loading, setLoading] = useState({});
   const pollingRef = useRef(null);
+  // 2026-08-21 gap-audit fix — "+ Log Flight" (CoPilot) / "+ Release Flight" (Dispatch)
+  const [showLogFlight, setShowLogFlight] = useState(false);
+  const [showReleaseFlight, setShowReleaseFlight] = useState(false);
+  const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
+  const isDispatchWorker = (workerSlug || "").startsWith("av-dispatch");
 
   const currentTabId = activeTab || spec?.tabs[0]?.id;
 
@@ -556,14 +774,41 @@ export default function AviationWorkerCanvas({ workerSlug }) {
     <div style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{spec.title}</span>
-          <span style={{ fontSize: 12, color: "#64748b" }}>{spec.subtitle}</span>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{spec.title}</span>
+              <span style={{ fontSize: 12, color: "#64748b" }}>{spec.subtitle}</span>
+            </div>
+            {spec.disclaimer && (
+              <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>{spec.disclaimer}</div>
+            )}
+          </div>
+          {/* 2026-08-21 gap-audit fix — prominent primary actions, matching
+              Contacts.jsx's "+ Add Contacts" purple-gradient button pattern. */}
+          {isCopilotWorker && (
+            <button
+              type="button"
+              onClick={() => setShowLogFlight(true)}
+              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              + Log Flight
+            </button>
+          )}
+          {isDispatchWorker && (
+            <button
+              type="button"
+              onClick={() => setShowReleaseFlight(true)}
+              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              + Release Flight
+            </button>
+          )}
         </div>
-        {spec.disclaimer && (
-          <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>{spec.disclaimer}</div>
-        )}
       </div>
+
+      {showLogFlight && <LogFlightModal onClose={() => setShowLogFlight(false)} onLogged={() => setShowLogFlight(false)} />}
+      {showReleaseFlight && <ReleaseFlightModal onClose={() => setShowReleaseFlight(false)} onReleased={() => setShowReleaseFlight(false)} />}
 
       {/* CAS instrument panel */}
       <CasPanel counts={spec.cas} />

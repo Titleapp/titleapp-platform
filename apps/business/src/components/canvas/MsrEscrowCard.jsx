@@ -44,7 +44,9 @@ export default function MsrEscrowCard({ resolved, context, onDismiss }) {
   }, []);
 
   const loans = data?.loans || [];
+  const insuranceSubmissions = data?.insuranceSubmissions || [];
   const oneMonth = (l) => (l.escrowAnnualTotal || 0) / 12;
+  const hasSubmission = (loanId) => insuranceSubmissions.some(s => s.loanId === loanId);
 
   return (
     <CanvasCardShell
@@ -61,6 +63,7 @@ export default function MsrEscrowCard({ resolved, context, onDismiss }) {
               <th style={S.th}>Borrower</th>
               <th style={S.th}>Annual Escrow</th>
               <th style={S.th}>Shortage</th>
+              <th style={S.th}>Force-Placed Insurance</th>
             </tr>
           </thead>
           <tbody>
@@ -76,13 +79,20 @@ export default function MsrEscrowCard({ resolved, context, onDismiss }) {
                       ? <span style={S.badge(overThreshold ? "#fef3c7" : "#f1f5f9", overThreshold ? "#b45309" : "#64748b")}>${shortage.toLocaleString()}{overThreshold ? " — REVIEW" : ""}</span>
                       : <span style={{ color: "#15803d" }}>None</span>}
                   </td>
+                  <td style={S.td}>
+                    {hasSubmission(l.loanId)
+                      ? <span style={S.badge("#dbeafe", "#1e40af")}>PROOF SUBMITTED — PENDING REVIEW</span>
+                      : l.forcePlacedInsuranceActive
+                      ? <span style={S.badge("#fef3c7", "#b45309")}>NOTICE ACTIVE{l.forcePlacedNoticeDate ? ` (${l.forcePlacedNoticeDate})` : ""}</span>
+                      : <span style={{ color: "#94a3b8" }}>—</span>}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       )}
-      <div style={S.note}>Escrow charges and cushion are both capped under 12 CFR 1024.17(c)(1)(ii): 1/12 annual (monthly) + up to 1/6 annual (cushion). Shortages over one month's deposit are flagged for review — this worker does not propose repayment terms unilaterally.</div>
+      <div style={S.note}>Escrow charges and cushion are both capped under 12 CFR 1024.17(c)(1)(ii): 1/12 annual (monthly) + up to 1/6 annual (cushion). Shortages over one month's deposit are flagged for review — this worker does not propose repayment terms unilaterally. Force-placed insurance requires a reasonable basis, a 45-day prior notice, and a second 15-day-prior notice (12 CFR 1024.37) — a borrower's submitted proof is intake only, reviewed and cleared by servicing staff, never auto-waived here.</div>
     </CanvasCardShell>
   );
 }

@@ -4486,6 +4486,18 @@ function WorkerHomeRenderer({ onBack, panelRef, autoFiredRef }) {
       if (worker.slug !== slug) return; // worker changed mid-scan
       const resolved = lookupSignal(tab.signal);
       if (!resolved) continue;
+      // Self-fetch (Pattern B) cards — e.g. MSR's operator dashboard —
+      // ignore the AI payload and fetch their own data on mount, so an empty
+      // payload here doesn't mean "no data," it means "not applicable." Land
+      // immediately instead of running them through the live/fixture gate,
+      // which starved every dataSource:"api" tab of an auto-land and left
+      // the generic onboarding card showing under a highlighted default tab
+      // (Sean, 2026-08-21, MSR Dana).
+      if (resolved.dataSource === "api") {
+        setActiveTabId(tab.id);
+        if (showCanvasRef.current) showCanvasRef.current(resolved, { worker });
+        return;
+      }
       let payload = null;
       try { payload = await getLiveDataForTabWithTimeout(worker, tab.id); } catch { /* ignore — timeout or fetch error, fall through to fixture */ }
       if (!payload) payload = getFixtureForTab(worker, tab.id);

@@ -15,10 +15,11 @@ SOCIII replaces the back-office SaaS stack for small businesses and professional
 ## Key public pages
 
 - [Platform overview](https://sociii.ai): Main product landing
-- [Docs and guides](https://sociii.ai/docs/): Developer and creator documentation
+- [Docs and guides](https://sociii.ai/docs): Developer and creator documentation
 - [Whitepaper](https://sociii.ai/whitepaper): Technical architecture and trust model
-- [Worker gallery](https://sociii.ai/c/): Published Digital Workers (public access, some require auth to run)
+- [Worker gallery](https://sociii.ai/marketplace): Published Digital Workers (public access, some require auth to run)
 - [Creator guide](https://sociii.ai/docs/install): How to build and publish a Digital Worker
+- [Creator's Journey](https://sociii.ai/creators/journey): Step-by-step path from idea to a live, earning Digital Worker
 
 ## Available Digital Workers
 
@@ -59,4 +60,4 @@ LLMs can connect to the SOCIII MCP server with a SOCIII bearer token to discover
 
 - [Sitemap](https://sociii.ai/sitemap.xml)
 - [Policies](https://sociii.ai/sociii-policies.html)
-- [MCP server docs](https://sociii.ai/docs/mcp)
+- [API reference](https://sociii.ai/docs/api) — full HTTP surface (the MCP endpoint and tools above are also documented in this file)

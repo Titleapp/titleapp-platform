@@ -514,6 +514,14 @@ export const CANVAS_TYPES = {
   // MSR Servicing & Compliance Worker cards (CODEX S52.60) — all Pattern B,
   // self-fetch from /v1/msr:operator:*, AI payload ignored, same shape as
   // card:accounting-pl above.
+  "card:msr-portfolio": {
+    component: "MsrPortfolioDashboardCard",
+    dataSource: "api",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Dana for a portfolio overview to see it here.",
+    _title: "Portfolio Overview",
+  },
   "card:msr-delinquency-queue": {
     component: "MsrDelinquencyQueueCard",
     dataSource: "api",
