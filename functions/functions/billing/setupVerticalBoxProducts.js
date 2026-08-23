@@ -43,8 +43,23 @@ async function setupVerticalBoxProducts(req, res) {
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
   const results = {};
 
+  // Idempotent by product name — a prior partial run (e.g. failed mid-way on
+  // a later price) can leave an orphaned Product from an earlier vertical;
+  // skip re-creating any product whose exact name already exists rather than
+  // duplicating it.
+  async function findExistingProduct(name) {
+    const existing = await stripe.products.search({ query: `name:"${name}" AND active:"true"` });
+    return existing.data[0] || null;
+  }
+
   try {
     for (const v of BUSINESS_VERTICALS) {
+      const already = await findExistingProduct(v.name);
+      if (already) {
+        console.warn(`[setupVerticalBoxProducts] "${v.name}" already exists (${already.id}) — skipping, resolve manually if it's an orphaned partial run`);
+        results[v.key] = { productId: already.id, skipped: true };
+        continue;
+      }
       const product = await stripe.products.create({ name: v.name, description: v.description });
       const basePrice = await stripe.prices.create({
         product: product.id,
@@ -55,7 +70,6 @@ async function setupVerticalBoxProducts(req, res) {
       });
       const seatPrice = await stripe.prices.create({
         product: product.id,
-        unit_amount: pricing.businessInABox.perActiveSeatMonthly * 100,
         currency: "usd",
         recurring: { interval: "month" },
         billing_scheme: "tiered",
@@ -70,6 +84,12 @@ async function setupVerticalBoxProducts(req, res) {
     }
 
     for (const v of ACADEMIA_VERTICALS) {
+      const already = await findExistingProduct(v.name);
+      if (already) {
+        console.warn(`[setupVerticalBoxProducts] "${v.name}" already exists (${already.id}) — skipping, resolve manually if it's an orphaned partial run`);
+        results[v.key] = { productId: already.id, skipped: true };
+        continue;
+      }
       const product = await stripe.products.create({ name: v.name, description: v.description });
       const basePrice = await stripe.prices.create({
         product: product.id,
@@ -80,7 +100,6 @@ async function setupVerticalBoxProducts(req, res) {
       });
       const studentPrice = await stripe.prices.create({
         product: product.id,
-        unit_amount: pricing.education.perActiveStudentMonthly * 100,
         currency: "usd",
         recurring: { interval: "month" },
         billing_scheme: "tiered",
