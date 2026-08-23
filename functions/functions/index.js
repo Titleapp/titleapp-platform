@@ -34372,8 +34372,14 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
 // BILLING: STRIPE SETUP + WEBHOOKS
 // ----------------------------
 const { setupStripeProducts } = require("./billing/setupStripeProducts");
+const { setupVerticalBoxProducts } = require("./billing/setupVerticalBoxProducts");
 const { setupPromoCodes } = require("./billing/setupPromoCodes");
 const { handleStripeWebhook } = require("./billing/stripeWebhook");
+
+exports.setupVerticalBoxProducts = onRequest({ region: "us-central1", secrets: ["STRIPE_SECRET_KEY"] }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
+  return setupVerticalBoxProducts(req, res);
+});
 
 exports.setupStripeProducts = onRequest({ region: "us-central1" }, async (req, res) => {
   const origin = req.headers.origin;
