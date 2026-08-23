@@ -574,17 +574,19 @@ export default function WorkerSandbox() {
       return;
     }
 
-    // Optimistically write spec fields locally for Define so the canvas/header
-    // renders the new name immediately. Backend persistence of top-level spec
-    // is intentionally limited in Phase A.
+    // Write the backend's response first, then re-apply the just-entered
+    // Define spec fields on top of it. Backend persistence of top-level spec
+    // is intentionally limited in Phase A, so r.state's spec can be stale/
+    // incomplete — applying it AFTER the optimistic merge (as this used to)
+    // silently wiped out the name/vertical/audience/job the user just typed,
+    // so the header and Live Code panel never showed them. Order matters here.
+    if (r.state) setState(r.state);
     if (stepId === "define" && payload?.spec) {
       setState(prev => ({
         ...(prev || {}),
         spec: { ...(prev?.spec || {}), ...payload.spec },
       }));
     }
-
-    if (r.state) setState(r.state);
     if (r.completionMessageContext) {
       setCompletionContext(r.completionMessageContext);
       setNextStepLabel(r.nextStepId ? STEP_BY_ID[r.nextStepId]?.label : null);
