@@ -255,7 +255,7 @@ export default function LandingPage() {
                 pitch: "Clinical hour tracking, competency mapping, and accreditation-ready reporting. Replaces months of manual assembly.",
                 workers: ["Student Evaluation", "Tutor", "Accreditation"],
                 price: "$449/mo (70-student cohort)",
-                demo: "/demo/nursing/admin",
+                demo: "/demo/nursing",
               },
               {
                 name: "Technical Education",
@@ -269,7 +269,7 @@ export default function LandingPage() {
                 pitch: "Currency tracking, fleet maintenance queue, and NOTAM-aware flight planning — purpose-built for Part 91 and 135 ops.",
                 workers: ["CoPilot", "Maintenance", "Dispatch"],
                 price: "$99/mo + $5/seat",
-                demo: "/demo/aviation",
+                demo: "/demo/av-copilot",
               },
               {
                 name: "Commercial Real Estate",
@@ -283,7 +283,14 @@ export default function LandingPage() {
                 pitch: "EU Battery Regulation compliance, tamper-evident product records, and chain-of-custody for retail and manufacturing.",
                 workers: ["Product Passport", "Compliance"],
                 price: "$99/mo + $5/seat · Free 14 days",
-                demo: null,
+                demo: "/demo/dpp",
+              },
+              {
+                name: "Mortgage Servicing",
+                pitch: "Reg X/Reg Z servicing compliance — early intervention, loss mitigation, NOE/RFI tracking — plus a borrower self-service portal.",
+                workers: ["MSR Servicing & Compliance", "Borrower Portal"],
+                price: "$99/mo + $5/seat · Free 14 days",
+                demo: "/demo/msr",
               },
             ].map(({ name, pitch, workers, price, demo }) => (
               <div key={name} style={S.verticalCard}>

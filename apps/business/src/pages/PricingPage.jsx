@@ -250,6 +250,15 @@ const TIERS = [
 ];
 
 export default function PricingPage() {
+  // Scroll a specific tier into view when linked from a demo page's
+  // "Get the X Stack" CTA (e.g. /pricing#msr-box).
+  React.useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
   return (
     <div style={S.page}>
       <header style={S.header}>
@@ -276,7 +285,7 @@ export default function PricingPage() {
 
         <div style={S.tierGrid}>
           {TIERS.map((tier) => (
-            <div key={tier.id} style={{ ...S.tierCard, ...(tier.featured ? S.tierCardFeatured : {}) }}>
+            <div key={tier.id} id={tier.id} style={{ ...S.tierCard, ...(tier.featured ? S.tierCardFeatured : {}) }}>
               {tier.featured && <div style={S.featuredBadge}>Most popular tier</div>}
               <div style={{ ...S.tierAccent, background: tier.accent }} />
               <div style={S.tierBody}>

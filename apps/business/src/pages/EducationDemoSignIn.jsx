@@ -100,6 +100,8 @@ export default function EducationDemoSignIn() {
           }} />
         )
       }
+      <a href="/pricing#education-box" style={{ color: "#a78bfa", fontSize: 13, textDecoration: "underline", marginTop: 8 }}>Get the K-12 Education Academia Stack for your school →</a>
+      <a href="/" style={{ color: "#6b7280", fontSize: 12 }}>Back to sociii.ai</a>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );

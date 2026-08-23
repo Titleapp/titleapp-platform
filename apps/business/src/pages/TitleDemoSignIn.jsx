@@ -84,6 +84,8 @@ export default function TitleDemoSignIn() {
       {err
         ? <div style={{ color: "#f87171", fontSize: 13 }}>{err} — <a href="/demo/title" style={{ color: "#a78bfa" }}>retry</a> · <a href="/" style={{ color: "#a78bfa" }}>go home</a></div>
         : <div style={{ width: 28, height: 28, border: "3px solid #2a2a3a", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
+      <a href="/pricing#title-box" style={{ color: "#a78bfa", fontSize: 13, textDecoration: "underline", marginTop: 8 }}>Get the Title &amp; Real Estate Stack for your business →</a>
+      <a href="/" style={{ color: "#6b7280", fontSize: 12 }}>Back to sociii.ai</a>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
