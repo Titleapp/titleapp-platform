@@ -93,6 +93,27 @@ const WORKER_SYSTEM_DOCS = {
       { name: "12 CFR 1026 (Reg Z / TILA)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1026/" },
     ],
   },
+  // Title Search & Escrow Manager (CODEX S52.63, ruleset built after CODEX
+  // S52.58's audit found zero WORKER_RULESET_MAP coverage for either worker
+  // despite both routing real customer-facing chat through a live client
+  // portal). Same disclaimer as MSR above: this folds hard_stops into the
+  // system prompt as instructions, it does not server-side block a response.
+  "re-title-search-001": {
+    rulesetFile: "title_escrow_v1.json",
+    legalRefs: [
+      { name: "12 CFR 1024.14/1024.15 (RESPA Section 8 / AfBA safe harbor)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1024/14/" },
+      { name: "12 CFR 1026.19(f) (TRID Closing Disclosure timing)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1026/19/" },
+      { name: "26 U.S.C. 6045(e) / 26 CFR 1.6045-4 (1099-S reporting)", url: "https://www.law.cornell.edu/uscode/text/26/6045" },
+    ],
+  },
+  "re-escrow-001": {
+    rulesetFile: "title_escrow_v1.json",
+    legalRefs: [
+      { name: "12 CFR 1024.14/1024.15 (RESPA Section 8 / AfBA safe harbor)", url: "https://www.consumerfinance.gov/rules-policy/regulations/1024/14/" },
+      { name: "26 U.S.C. 6045(e) / 26 CFR 1.6045-4 (1099-S reporting)", url: "https://www.law.cornell.edu/uscode/text/26/6045" },
+      { name: "Texas Insurance Code 2651.202 (good-funds-before-disbursement, TX only)", url: "https://statutes.capitol.texas.gov/Docs/IN/htm/IN.2651.htm" },
+    ],
+  },
 };
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");

@@ -10,6 +10,12 @@ Available client modules: workers, vault, marketplace.
 > assets, documents, employees. These correspond to the Spine
 > worker infrastructure being built in CODEX 49.1.
 
+## New creator? Start here — no coding experience needed
+
+Don't install anything yet. Open [claude.ai](https://claude.ai) or ChatGPT, paste in **[docs/CREATOR-SETUP.md](https://github.com/Titleapp/titleapp-platform/blob/main/docs/CREATOR-SETUP.md)**, and say "walk me through it one step at a time." That document is written to be read by the AI, not by you — it turns your assistant into a patient, non-technical setup guide that gets you from a blank computer into your own Digital Worker.
+
+Already comfortable with git/terminal and just want the SDK reference? Keep reading below.
+
 ## Install
 
 ```bash

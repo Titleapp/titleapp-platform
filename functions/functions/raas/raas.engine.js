@@ -552,6 +552,10 @@ const WORKER_RULESET_MAP = {
   "av-alex-personal": "aviation_hard_stops_v1",
   // MSR Servicing & Compliance Worker (CODEX S52.60) — federal-only Phase 1.
   "msr-servicing-001": "msr_servicing_v1",
+  // Title Search & Escrow Manager (CODEX S52.63/S52.58) — federal-only Phase 1
+  // plus one verified TX-only state citation; had zero coverage before this.
+  "re-title-search-001": "title_escrow_v1",
+  "re-escrow-001": "title_escrow_v1",
 };
 
 /** Cache compiled chat rules per ruleset */
