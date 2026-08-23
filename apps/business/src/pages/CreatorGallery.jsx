@@ -160,7 +160,7 @@ function CreatorTile({ slug, character, subject, videoSrc }) {
 function Footer() {
   return (
     <footer style={footer}>
-      <div>Built between flights · <a href="/build" style={{ color: COLORS.text }}>Become a creator</a></div>
+      <div>Built between flights · <a href="/onboard/creator" style={{ color: COLORS.text }}>Become a creator</a></div>
       <div style={{ marginTop: 6 }}>sociii.ai</div>
     </footer>
   );

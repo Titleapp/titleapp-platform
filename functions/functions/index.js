@@ -21941,14 +21941,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // Anchored on creators/{creatorId}.
     // ──────────────────────────────────────────────────────────
 
-    // POST /v1/creator:initiate
-    // Body: { email, name, vertical?, promoCode? }
+    // POST /v1/creator:initiate — self-serve creator signup (2026-08-22: the
+    // curated/invite-only strategy this was originally built for is retired
+    // per Sean's direction; any signed-in SOCIII user can start this flow
+    // directly, no manual review). Body: { email, name, vertical?, promoCode? }
     if (route === "/creator:initiate" && method === "POST") {
       try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
         const creatorFlow = require("./services/creators/creatorFlow");
         const result = await creatorFlow.initiateCreatorFlow({
           creatorId: body.creatorId || null,
-          email: body.email,
+          email: body.email || auth.user.email,
           name: body.name,
           vertical: body.vertical || null,
           promoCode: body.promoCode || null,
@@ -21977,6 +21980,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           return res.json(result);
         }
         if (action === "accept_terms") {
+          const auth = await requireFirebaseUser(req, res); if (!auth) return;
           const result = await creatorFlow.acceptTerms({
             creatorId,
             uid: auth.user.uid,
@@ -21986,6 +21990,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           return res.json(result);
         }
         if (action === "start_identity") {
+          const auth = await requireFirebaseUser(req, res); if (!auth) return;
           const result = await creatorFlow.startIdentityVerification({
             creatorId,
             uid: auth.user.uid,
@@ -21999,6 +22004,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           return res.json(result);
         }
         if (action === "start_subscription") {
+          const auth = await requireFirebaseUser(req, res); if (!auth) return;
           const result = await creatorFlow.startSubscription({
             creatorId,
             uid: auth.user.uid,

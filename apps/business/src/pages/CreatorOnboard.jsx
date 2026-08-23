@@ -88,6 +88,40 @@ export default function CreatorOnboard() {
     }
   }, [checkoutResult, refresh]);
 
+  // Self-serve initiate (2026-08-22, replaces the old curated/invite-only
+  // gate per Sean's direction): a signed-in user starts their own creator
+  // flow directly, no manual review. Requires an existing SOCIII sign-in
+  // (creator:initiate needs a bearer token) — an anonymous first-time
+  // visitor is sent to sign up first, then lands back here.
+  async function selfServeStart() {
+    // Anonymous Firebase sessions (used by this app's demo flows) have no
+    // email — treat them the same as "not signed in" rather than crashing.
+    if (!auth.currentUser || auth.currentUser.isAnonymous || !auth.currentUser.email) {
+      window.location.href = `/start?utm_content=creator&returnTo=${encodeURIComponent("/onboard/creator")}`;
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const data = await apiFetch("/v1/creator:initiate", {
+        method: "POST",
+        body: JSON.stringify({
+          name: auth.currentUser.displayName || auth.currentUser.email.split("@")[0],
+          email: auth.currentUser.email,
+        }),
+      });
+      if (!data.ok || !data.creatorId) {
+        setError(data.error || "Couldn't start onboarding — please try again.");
+        setBusy(false);
+        return;
+      }
+      window.location.href = `/onboard/creator?creatorId=${encodeURIComponent(data.creatorId)}`;
+    } catch (_e) {
+      setError("Couldn't start onboarding — please try again.");
+      setBusy(false);
+    }
+  }
+
   async function step(action, extra = {}) {
     setBusy(true);
     setError("");
@@ -164,9 +198,10 @@ export default function CreatorOnboard() {
   }
 
   if (status.missing) {
-    // No token = a public visitor (the marketplace/pricing "become a creator"
-    // links land here). Show a real apply/info page, not a dead end. Creator
-    // access stays curated/invite-based per strategy.
+    // No creatorId yet = a public visitor (the marketplace/pricing "become a
+    // creator" links land here). Self-serve, no manual review or invite
+    // required (2026-08-22, per Sean — the prior curated/invite-only
+    // strategy is retired).
     return (
       <div style={S.page}><Header /><main style={S.main}>
         <div style={S.eyebrow}>Become a SOCIII creator</div>
@@ -174,14 +209,16 @@ export default function CreatorOnboard() {
         <p style={S.sub}>
           SOCIII creators are domain experts — a title pro, a flight instructor, a nursing educator — who package their expertise as a governed Digital Worker. Publish it to the public marketplace, or keep it private to your own business. You own the worker; the SDK is its birth certificate.
         </p>
-        <p style={S.sub}>
-          Creator access is <strong>curated</strong> — we onboard a small number of excellent builders at a time, so the marketplace stays high-signal. Tell us what you'd build and we'll send you an invite with everything you need.
-        </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-          <a href="mailto:creators@sociii.ai?subject=I%20want%20to%20build%20a%20SOCIII%20worker&body=Who%20I%20am%3A%0AThe%20worker%20I%27d%20build%3A%0AThe%20expertise%20behind%20it%3A%0A" style={{ background: "#7c3aed", color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 700, textDecoration: "none" }}>Apply to create →</a>
+          <button onClick={selfServeStart} disabled={busy} style={{ ...S.btn, ...(busy ? S.btnDisabled : {}) }}>
+            {busy ? "Starting…" : "Sign up as a creator →"}
+          </button>
           <a href="/docs" style={{ background: "#f1f5f9", color: "#0f172a", padding: "12px 20px", borderRadius: 10, fontWeight: 600, textDecoration: "none" }}>See how creators build (SDK docs)</a>
         </div>
-        <p style={{ ...S.sub, fontSize: 13, marginTop: 18, color: "#94a3b8" }}>Already have an invite? Open the link in your invitation email — it carries your secure token.</p>
+        {error && <p style={S.err}>{error}</p>}
+        <p style={{ ...S.sub, fontSize: 13, marginTop: 18, color: "#94a3b8" }}>
+          Three quick steps after signup — terms, identity verification, a $49/yr license (first year free for early creators). Already have an invite? Open the link in your invitation email instead. Prefer email? Write to <a href="mailto:creators@sociii.ai" style={{ color: "#7c3aed" }}>creators@sociii.ai</a>.
+        </p>
       </main></div>
     );
   }

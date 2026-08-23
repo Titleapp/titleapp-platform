@@ -50,6 +50,18 @@ export default function CreatorStudioHeader({ isMobile, onClose, accent = "#7c3a
           <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>SOCIII</div>
         </div>
       )}
+      {/* 2026-08-22: the main nav's "Creator Studio" item now points straight
+          here instead of the workers management/earnings dashboard — this
+          keeps that dashboard reachable for creators checking on already-
+          published workers, rather than removing the path entirely. */}
+      {!isAnon && (
+        <a href="/creators/dashboard?tab=workers" style={{
+          fontSize: 11, color: "rgba(226,232,240,0.55)", textDecoration: "none",
+          flexShrink: 0, whiteSpace: "nowrap",
+        }}>
+          My Workers →
+        </a>
+      )}
       {isMobile && (
         <button onClick={onClose} style={{
           background: "none", border: "none", fontSize: 20,
