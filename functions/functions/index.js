@@ -13519,6 +13519,14 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
       const tenantId = (body.tenantId && body.tenantId !== "vault" && body.tenantId !== "personal" && !String(body.tenantId).startsWith("guest-")) ? body.tenantId : null;
       if (!tenantId) return jsonError(res, 400, "A workspace is required for a Box plan");
+      // 2026-08-23 — a stale demo persona session was found live-testing this
+      // route to create a real Stripe subscription under a demo tenant.
+      // Every demo tenant this codebase seeds is prefixed "demo-" — block
+      // them from real checkout outright rather than trusting the role gate
+      // below to catch it (demo personas ARE admins of their own tenant).
+      if (String(tenantId).startsWith("demo-")) {
+        return jsonError(res, 403, "This is a demo workspace — box plans can't be purchased from here.");
+      }
 
       try {
         // Admin-only on the workspace.
