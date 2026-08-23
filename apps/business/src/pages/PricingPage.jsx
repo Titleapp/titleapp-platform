@@ -44,10 +44,10 @@ const TIERS = [
       "HR (W2 + 1099 + advisors)",
       "Marketing (campaigns + brand voice)",
       "Contacts (relationships + outreach)",
-      "Your Vault — records on-chain-anchored & permanent (yours even if SOCIII disappears)",
+      "Your Vault — tamper-evident, permanent records (yours even if SOCIII disappears) — register a watch, a deed, anything worth proving you own",
       "Your Drive (cross-worker file management)",
     ],
-    note: "A $2 one-time identity check is required for many workers during onboarding. Data fees apply above a typical usage threshold (see below). No subscription. No credit card to start.",
+    note: "A $3 one-time identity check is required to use Vault features and many workers during onboarding. Data fees apply above a typical usage threshold (see below). No subscription. No credit card to start.",
     cta: "Start free",
     ctaHref: "/meet-alex",
     accent: "#16a34a",
@@ -159,6 +159,94 @@ const TIERS = [
     accent: "#0E7490",
     featured: false,
   },
+  // 2026-08-22 — per-vertical stacks, same $99/mo + $5/seat-or-student
+  // pricing as Business/Academia in a Box above, billed under their own
+  // Stripe Product for sales reporting (config/stripeBoxes.js). Same
+  // startBoxCheckout() call, just a different boxPlan key.
+  {
+    id: "msr-box",
+    name: "MSR Business Stack",
+    boxPlan: "msr-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per seat",
+    tagline: "Dana — Reg X/Reg Z mortgage servicing compliance — plus the core stack.",
+    workers: ["Everything in the free core", "Dana (MSR Servicing & Compliance)", "Borrower self-service portal", "First 5 seats included, then $5/seat"],
+    note: "Federal compliance rules only, Phase 1 — state servicing law is a tracked, not-yet-started sourcing project.",
+    cta: "Get the MSR stack",
+    ctaHref: "/meet-alex?intent=msr-in-a-box",
+    accent: "#0f766e",
+    featured: false,
+  },
+  {
+    id: "title-box",
+    name: "Title & Real Estate Business Stack",
+    boxPlan: "title-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per seat",
+    tagline: "Title search, escrow coordination, and real estate workers — plus the core stack.",
+    workers: ["Everything in the free core", "Title Search + Escrow Manager", "Client portal with e-signature onboarding", "First 5 seats included, then $5/seat"],
+    note: "Includes verified RESPA/TRID/1099-S compliance guardrails.",
+    cta: "Get the Title stack",
+    ctaHref: "/meet-alex?intent=title-in-a-box",
+    accent: "#9333ea",
+    featured: false,
+  },
+  {
+    id: "dpp-box",
+    name: "DPP Business Stack",
+    boxPlan: "dpp-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per seat",
+    tagline: "EU Digital Product Passport compliance for battery manufacturers — plus the core stack.",
+    workers: ["Everything in the free core", "EU Passport Registry (Passport Builder + Registry Manager + Lifecycle Monitor)", "Mandatory identity verification for the authorized signer", "First 5 seats included, then $5/seat"],
+    note: "Built by Elise van der Bel, Volta Advisory.",
+    cta: "Get the DPP stack",
+    ctaHref: "/meet-alex?intent=dpp-in-a-box",
+    accent: "#1d4ed8",
+    featured: false,
+  },
+  {
+    id: "aviation-box",
+    name: "Aviation Business Stack",
+    boxPlan: "aviation-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per seat",
+    tagline: "Flight ops, MX, dispatch, and training workers — plus the core stack.",
+    workers: ["Everything in the free core", "CoPilot, Digital Logbook, Dispatch, MX", "First 5 seats included, then $5/seat"],
+    note: "",
+    cta: "Get the Aviation stack",
+    ctaHref: "/meet-alex?intent=aviation-in-a-box",
+    accent: "#ea580c",
+    featured: false,
+  },
+  {
+    id: "nursing-box",
+    name: "Nursing Academia Stack",
+    boxPlan: "nursing-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per student",
+    tagline: "Clinical evaluation and competency tracking for nursing programs — plus the core stack.",
+    workers: ["Everything in the free core", "Hannah (Clearwater Nursing Education) — signed, verified clinical evaluations", "First 5 students included, then $5/student"],
+    note: "Built by Dr. Ruthie Clearwater, CRNA. Professors earn 75% revenue share.",
+    cta: "Get the Nursing stack",
+    ctaHref: "/meet-alex?intent=nursing-in-a-box",
+    accent: "#be123c",
+    featured: false,
+  },
+  {
+    id: "education-box",
+    name: "K-12 Education Academia Stack",
+    boxPlan: "education-in-a-box",
+    price: "$99",
+    cadence: "/mo + $5 per student",
+    tagline: "Classroom AI tutors your teachers build — plus the core stack.",
+    workers: ["Everything in the free core", "Teacher-built subject tutors with built-in safety escalation", "First 5 students included, then $5/student"],
+    note: "Teachers earn 75% revenue share on workers they publish.",
+    cta: "Get the Education stack",
+    ctaHref: "/meet-alex?intent=education-in-a-box",
+    accent: "#4d7c0f",
+    featured: false,
+  },
 ];
 
 export default function PricingPage() {
@@ -254,7 +342,7 @@ export default function PricingPage() {
             </a>
             <a href="/onboard/creator" style={S.investorCta}>
               <div style={S.investorCtaTitle}>Become a creator</div>
-              <div style={S.investorCtaSub}>Build your own digital worker on the SDK. Self-service onboarding for domain experts who want to package their expertise into a worker.</div>
+              <div style={S.investorCtaSub}>Build your own digital worker on the SDK. Self-service onboarding for domain experts who want to package their expertise into a worker. $49/yr license — free until December 1, 2026.</div>
             </a>
           </div>
         </div>
