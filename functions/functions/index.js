@@ -14547,6 +14547,90 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/worker:cancel — 2026-08-22, Sean: 100% money back, immediate
+    // cancellation, no exceptions. Cancels the marketplace worker
+    // subscription right now (not at period end) and fully refunds the
+    // most recent charge on it — reversing the creator's share too via the
+    // same logic the admin refund tool uses (services/admin/processRefund's
+    // reverseCreatorShareForPurchase), so this isn't a second, divergent
+    // implementation of that financial logic.
+    if (route === "/worker:cancel" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const { purchaseId } = body || {};
+        if (!purchaseId) return jsonError(res, 400, "purchaseId required");
+
+        const purchaseRef = db.collection("marketplacePurchases").doc(purchaseId);
+        const purchaseSnap = await purchaseRef.get();
+        if (!purchaseSnap.exists) return jsonError(res, 404, "Purchase not found");
+        const purchase = purchaseSnap.data();
+        if (purchase.buyerUserId !== auth.user.uid) {
+          return jsonError(res, 403, "This subscription does not belong to you");
+        }
+        if (purchase.status === "canceled" || purchase.status === "free") {
+          return res.json({ ok: true, alreadyCanceled: true });
+        }
+        if (!purchase.stripeSubscriptionId) {
+          return jsonError(res, 400, "This purchase has no active subscription to cancel");
+        }
+
+        const stripe = getStripe();
+
+        // Refund BEFORE canceling — canceling first can leave the latest
+        // invoice/payment_intent harder to reach cleanly on some plans.
+        const sub = await stripe.subscriptions.retrieve(purchase.stripeSubscriptionId, {
+          expand: ["latest_invoice.payment_intent"],
+        });
+        const latestPI = sub.latest_invoice && sub.latest_invoice.payment_intent;
+
+        let refund = null;
+        if (latestPI && latestPI.status === "succeeded") {
+          const refundParams = { payment_intent: latestPI.id };
+          if (!purchase.isPlatformWorker && purchase.creatorShare > 0) {
+            // Undo a Connect destination charge fully — claw back the
+            // creator's transferred share and the platform's fee too, not
+            // just the buyer-facing charge.
+            refundParams.reverse_transfer = true;
+            refundParams.refund_application_fee = true;
+          }
+          refund = await stripe.refunds.create(refundParams);
+        }
+
+        // Immediate cancellation — never cancel_at_period_end, per policy.
+        await stripe.subscriptions.cancel(purchase.stripeSubscriptionId);
+
+        let creatorReversalStatus = null;
+        if (refund) {
+          const { reverseCreatorShareForPurchase } = require("./admin/processRefund");
+          creatorReversalStatus = await reverseCreatorShareForPurchase(purchaseSnap, {
+            refundId: refund.id,
+            refundAmount: refund.amount / 100,
+            paymentIntentId: latestPI.id,
+          });
+        }
+
+        await purchaseRef.update({
+          status: "canceled",
+          canceledAt: nowServerTs(),
+          canceledBy: auth.user.uid,
+          refundId: refund ? refund.id : null,
+        });
+
+        const { logActivity: logWorkerCancelActivity } = require("./admin/logActivity");
+        await logWorkerCancelActivity(
+          "revenue",
+          `Worker subscription canceled + refunded: ${purchase.workerId} — ${refund ? `$${(refund.amount / 100).toFixed(2)} refunded` : "no charge to refund"}`,
+          "warning",
+          { purchaseId, buyerUserId: auth.user.uid, workerId: purchase.workerId, refundId: refund ? refund.id : null }
+        );
+
+        return res.json({ ok: true, canceled: true, refunded: !!refund, refundAmount: refund ? refund.amount / 100 : 0, creatorReversalStatus });
+      } catch (e) {
+        console.error("[worker:cancel] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to cancel subscription");
+      }
+    }
+
     // POST /v1/creator:checkout — Create Stripe Checkout Session for Creator License ($49/yr)
     if (route === "/creator:checkout" && method === "POST") {
       try {

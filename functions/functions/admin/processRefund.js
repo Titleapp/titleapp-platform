@@ -119,6 +119,75 @@ async function walkBackInteractionEvents(parentInteractionId, ctx = {}) {
   return summary;
 }
 
+/**
+ * Reverse a creator's share for a refunded marketplace purchase — shared by
+ * the admin processRefund flow and the self-serve worker:cancel flow (2026-
+ * 08-22, Sean's 100%-money-back policy) so this financial logic exists in
+ * exactly one place. Mutates the purchase doc, reverses/escalates the
+ * creator's payout, and emits the creatorEvents record. Returns the same
+ * status string processRefund already returned inline.
+ */
+async function reverseCreatorShareForPurchase(purchaseDoc, { refundId, refundAmount, paymentIntentId = null }) {
+  const db = getDb();
+  const purchase = purchaseDoc.data();
+  const creatorId = purchase.creatorId;
+  if (!creatorId || creatorId === "titleapp-platform" || !(purchase.creatorShare > 0)) {
+    return null;
+  }
+
+  await purchaseDoc.ref.update({
+    refundedAt: admin.firestore.FieldValue.serverTimestamp(),
+    refundId,
+    refundAmount,
+  });
+
+  const payoutSnap = await db.collection("creatorPayouts")
+    .where("creatorId", "==", creatorId).where("status", "==", "transferred")
+    .orderBy("timestamp", "desc").limit(5).get();
+
+  const deferredSnap = await db.collection("creatorPayouts")
+    .where("creatorId", "==", creatorId).where("status", "in", ["deferred", "pending"])
+    .limit(5).get();
+
+  let creatorReversalStatus = null;
+  if (!deferredSnap.empty) {
+    for (const doc of deferredSnap.docs) {
+      await doc.ref.update({
+        status: "reversed",
+        reversedAt: admin.firestore.FieldValue.serverTimestamp(),
+        reversalReason: `Refund ${refundId} for ${paymentIntentId || purchaseDoc.id}`,
+      });
+    }
+    creatorReversalStatus = "reversed_deferred";
+  } else if (!payoutSnap.empty) {
+    await db.collection("escalations").add({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      domain: "billing",
+      reason: "refund_requires_manual_reversal",
+      context: `Refund of $${refundAmount.toFixed(2)} for ${paymentIntentId || purchaseDoc.id}. Creator ${creatorId} was already paid $${purchase.creatorShare.toFixed(2)}. Manual transfer reversal required.`,
+      creatorId,
+      paymentIntentId,
+      refundId,
+      creatorShareAmount: purchase.creatorShare,
+      alexAction: "escalated_to_owner",
+      notifiedVia: ["dashboard"],
+      resolved: false,
+    });
+    creatorReversalStatus = "flagged_manual_review";
+  }
+
+  try {
+    const { emitCreatorEvent } = require("../services/sandbox/creatorEvents");
+    emitCreatorEvent(creatorId, "refund_processed", {
+      amount: refundAmount, paymentIntentId, refundId, creatorShare: purchase.creatorShare,
+    });
+  } catch (e) {
+    console.error("[reverseCreatorShareForPurchase] Creator event emit failed:", e.message);
+  }
+
+  return creatorReversalStatus;
+}
+
 async function processRefund(req, res) {
   const db = getDb();
   const stripe = getStripe();
@@ -154,82 +223,37 @@ async function processRefund(req, res) {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // Check if this was a marketplace purchase with creator split
+  // Check if this was a marketplace purchase with creator split. Legacy
+  // one-time purchases are keyed by stripePaymentIntentId; subscription
+  // purchases (2026-08-22 rewrite) don't have a fixed payment_intent (a new
+  // one is generated each billing cycle), so fall back to looking up the
+  // subscription behind this specific payment_intent's invoice.
   let creatorReversalStatus = null;
   try {
-    const purchaseSnap = await db.collection("marketplacePurchases")
+    let purchaseSnap = await db.collection("marketplacePurchases")
       .where("stripePaymentIntentId", "==", paymentIntentId)
       .limit(1)
       .get();
 
-    if (!purchaseSnap.empty) {
-      const purchase = purchaseSnap.docs[0].data();
-      const creatorId = purchase.creatorId;
-
-      if (creatorId && creatorId !== "titleapp-platform" && purchase.creatorShare > 0) {
-        // Mark the purchase as refunded
-        await purchaseSnap.docs[0].ref.update({
-          refundedAt: admin.firestore.FieldValue.serverTimestamp(),
-          refundId: refund.id,
-          refundAmount,
-        });
-
-        // Check if payout was already sent
-        const payoutSnap = await db.collection("creatorPayouts")
-          .where("creatorId", "==", creatorId)
-          .where("status", "==", "transferred")
-          .orderBy("timestamp", "desc")
-          .limit(5)
-          .get();
-
-        // Check for deferred/pending payouts we can reverse
-        const deferredSnap = await db.collection("creatorPayouts")
-          .where("creatorId", "==", creatorId)
-          .where("status", "in", ["deferred", "pending"])
-          .limit(5)
-          .get();
-
-        if (!deferredSnap.empty) {
-          // Deferred payout — mark as reversed
-          for (const doc of deferredSnap.docs) {
-            await doc.ref.update({
-              status: "reversed",
-              reversedAt: admin.firestore.FieldValue.serverTimestamp(),
-              reversalReason: `Refund ${refund.id} for payment ${paymentIntentId}`,
-            });
-          }
-          creatorReversalStatus = "reversed_deferred";
-        } else if (!payoutSnap.empty) {
-          // Payout already sent — flag for manual review
-          await db.collection("escalations").add({
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            domain: "billing",
-            reason: "refund_requires_manual_reversal",
-            context: `Refund of $${refundAmount.toFixed(2)} for payment ${paymentIntentId}. Creator ${creatorId} was already paid $${purchase.creatorShare.toFixed(2)}. Manual transfer reversal required.`,
-            creatorId,
-            paymentIntentId,
-            refundId: refund.id,
-            creatorShareAmount: purchase.creatorShare,
-            alexAction: "escalated_to_owner",
-            notifiedVia: ["dashboard"],
-            resolved: false,
-          });
-          creatorReversalStatus = "flagged_manual_review";
+    if (purchaseSnap.empty) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["invoice"] });
+        const subscriptionId = pi.invoice && pi.invoice.subscription;
+        if (subscriptionId) {
+          purchaseSnap = await db.collection("marketplacePurchases")
+            .where("stripeSubscriptionId", "==", subscriptionId)
+            .limit(1)
+            .get();
         }
-
-        // Emit refund event to creatorEvents
-        try {
-          const { emitCreatorEvent } = require("../services/sandbox/creatorEvents");
-          emitCreatorEvent(creatorId, "refund_processed", {
-            amount: refundAmount,
-            paymentIntentId,
-            refundId: refund.id,
-            creatorShare: purchase.creatorShare,
-          });
-        } catch (e) {
-          console.error("[processRefund] Creator event emit failed:", e.message);
-        }
+      } catch (lookupErr) {
+        console.error("[processRefund] subscription lookup fallback failed:", lookupErr.message);
       }
+    }
+
+    if (!purchaseSnap.empty) {
+      creatorReversalStatus = await reverseCreatorShareForPurchase(purchaseSnap.docs[0], {
+        refundId: refund.id, refundAmount, paymentIntentId,
+      });
     }
   } catch (e) {
     console.error("[processRefund] Creator reversal check failed:", e.message);
@@ -274,4 +298,4 @@ async function processRefund(req, res) {
   });
 }
 
-module.exports = { processRefund, walkBackInteractionEvents };
+module.exports = { processRefund, walkBackInteractionEvents, reverseCreatorShareForPurchase };
