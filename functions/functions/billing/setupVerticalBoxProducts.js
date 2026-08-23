@@ -45,7 +45,31 @@ async function setupVerticalBoxProducts(req, res) {
   if (body.inspectProductId) {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
     const prices = await stripe.prices.list({ product: body.inspectProductId, limit: 20 });
-    return res.json({ ok: true, prices: prices.data.map(p => ({ id: p.id, unit_amount: p.unit_amount, billing_scheme: p.billing_scheme, metadata: p.metadata })) });
+    return res.json({ ok: true, prices: prices.data.map(p => ({ id: p.id, unit_amount: p.unit_amount, billing_scheme: p.billing_scheme, metadata: p.metadata, livemode: p.livemode })) });
+  }
+
+  // Debug — report account mode (never inspect the key value itself).
+  if (body.checkMode) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const balance = await stripe.balance.retrieve();
+    return res.json({ ok: true, livemode: balance.livemode });
+  }
+
+  // Debug — look up a promotion code by its customer-facing code string.
+  if (body.checkPromoCode) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const promos = await stripe.promotionCodes.list({ code: body.checkPromoCode, limit: 5 });
+    const results = [];
+    for (const p of promos.data) {
+      const coupon = p.coupon;
+      results.push({
+        id: p.id, code: p.code, active: p.active,
+        expires_at: p.expires_at, max_redemptions: p.max_redemptions, times_redeemed: p.times_redeemed,
+        restrictions: p.restrictions || null,
+        coupon: { id: coupon.id, percent_off: coupon.percent_off, amount_off: coupon.amount_off, duration: coupon.duration, valid: coupon.valid, applies_to: coupon.applies_to || null, currency: coupon.currency || null },
+      });
+    }
+    return res.json({ ok: true, results });
   }
 
   // Repair mode — add the missing graduated seat/student price to a product

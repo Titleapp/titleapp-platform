@@ -325,7 +325,7 @@ export default function PricingPage() {
           <div style={S.faqGrid}>
             <div style={S.faqItem}>
               <div style={S.faqQ}>The spine is really free?</div>
-              <div style={S.faqA}>Yes. Alex, Accounting, HR, Marketing, Contacts, your Vault, and your Drive are free forever. Works for a household and works for a small business. You'll do a $2 one-time identity check during onboarding for many workers. No subscription. No credit card to start.</div>
+              <div style={S.faqA}>Yes. Alex, Accounting, HR, Marketing, Contacts, your Vault, and your Drive are free forever. Works for a household and works for a small business. You'll do a $3 one-time identity check during onboarding for many workers. No subscription. No credit card to start.</div>
             </div>
             <div style={S.faqItem}>
               <div style={S.faqQ}>What about data fees?</div>
