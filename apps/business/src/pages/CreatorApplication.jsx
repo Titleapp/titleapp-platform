@@ -102,7 +102,7 @@ export default function CreatorApplication() {
               onClick={handleActivateLicense}
               disabled={activating}
             >
-              {activating ? "Redirecting to Stripe..." : "Activate Creator License — $49/yr"}
+              {activating ? "Redirecting to Stripe..." : "Activate Creator License — free until Dec 1, 2026"}
             </button>
             <button style={{ ...S.btn, marginTop: 12, maxWidth: 240, background: "transparent", color: "#7c3aed", border: "1px solid #7c3aed" }} onClick={() => window.location.href = "/sandbox"}>Back to Sandbox</button>
             {error && <div style={{ color: "#ef4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
@@ -198,7 +198,7 @@ export default function CreatorApplication() {
           </div>
           <div style={S.checkbox}>
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3 }} />
-            <span style={S.checkLabel}>I agree to the $49/year creator license fee, billed after my application is accepted.</span>
+            <span style={S.checkLabel}>I agree to the $49/year creator license fee (waived until Dec 1, 2026), billed after that date.</span>
           </div>
           {error && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <button type="submit" style={canSubmit ? S.btn : S.btnDisabled} disabled={!canSubmit}>

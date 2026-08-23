@@ -14529,9 +14529,26 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     // POST /v1/creator:checkout — Create Stripe Checkout Session for Creator License ($49/yr)
     if (route === "/creator:checkout" && method === "POST") {
       try {
+        const auth = await requireFirebaseUser(req, res); if (!auth) return;
+        const returnUrl = body.returnUrl || "https://app.sociii.ai/sandbox";
+
+        // 2026-08-22, Sean: blanket fee waiver until this date — same rule
+        // creatorFlow.startSubscription applies, kept in sync here since
+        // this is a second, independent Stripe session for the same
+        // Creator License (see CREATOR_LICENSE_FEE_WAIVED_UNTIL).
+        const { CREATOR_LICENSE_FEE_WAIVED_UNTIL } = require("./services/creators/creatorFlow");
+        if (new Date() < CREATOR_LICENSE_FEE_WAIVED_UNTIL) {
+          await db.collection("creators").doc(auth.user.uid).set({
+            subscriptionStatus: "active",
+            subscriptionWaiverApplied: "LAUNCH_FREE_UNTIL_2026-12-01",
+            subscriptionRenewsAt: CREATOR_LICENSE_FEE_WAIVED_UNTIL.toISOString(),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+          return res.json({ ok: true, waived: true, url: `${returnUrl}?license=active` });
+        }
+
         const Stripe = require("stripe");
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-        const returnUrl = body.returnUrl || "https://app.sociii.ai/sandbox";
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           line_items: [{

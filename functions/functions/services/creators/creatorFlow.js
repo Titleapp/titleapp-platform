@@ -47,6 +47,9 @@ const CREATOR_GUIDE_URL = process.env.SOCIII_CREATOR_GUIDE_URL || "https://socii
 // click-through acceptance records the version so we can audit who agreed to what.
 const CREATOR_LICENSE_VERSION = "v1-2026-05-29";
 const CREATOR_LICENSE_PRICE_YEARLY_USD = 49;
+// 2026-08-22, Sean: waive the $49/yr Creator License fee for everyone until
+// this date, launch-growth incentive — real billing resumes on/after it.
+const CREATOR_LICENSE_FEE_WAIVED_UNTIL = new Date("2026-12-01T00:00:00Z");
 const FIRST_HUNDRED_PROMO_CODE = "FIRST100";
 
 const VALID_STEPS = [
@@ -435,6 +438,28 @@ async function startSubscription({ creatorId, uid, returnUrl = null }) {
     };
   }
 
+  // Blanket launch waiver, 2026-08-22 (Sean): everyone gets in free until
+  // CREATOR_LICENSE_FEE_WAIVED_UNTIL — renewsAt is set to that date itself
+  // (not +1 year) so real billing actually starts when the waiver ends,
+  // rather than granting a full extra free year on top of it.
+  if (new Date() < CREATOR_LICENSE_FEE_WAIVED_UNTIL) {
+    await getDb().collection("creators").doc(creatorId).update({
+      subscriptionStatus: "active",
+      subscriptionWaiverApplied: "LAUNCH_FREE_UNTIL_2026-12-01",
+      subscriptionStartedAt: ts(),
+      subscriptionRenewsAt: CREATOR_LICENSE_FEE_WAIVED_UNTIL.toISOString(),
+      flowStep: "subscription_active",
+      flowStep_subscription_active_at: ts(),
+      updated_at: ts(),
+    });
+    return {
+      ok: true,
+      waiver: "LAUNCH_FREE_UNTIL_2026-12-01",
+      subscriptionStatus: "active",
+      renewsAt: CREATOR_LICENSE_FEE_WAIVED_UNTIL.toISOString(),
+    };
+  }
+
   // Otherwise — kick off Stripe Checkout for $49/yr.
   const stripeSecret = process.env.STRIPE_SECRET_KEY;
   if (!stripeSecret) {
@@ -564,5 +589,6 @@ module.exports = {
   VALID_STEPS,
   CREATOR_LICENSE_VERSION,
   CREATOR_LICENSE_PRICE_YEARLY_USD,
+  CREATOR_LICENSE_FEE_WAIVED_UNTIL,
   FIRST_HUNDRED_PROMO_CODE,
 };

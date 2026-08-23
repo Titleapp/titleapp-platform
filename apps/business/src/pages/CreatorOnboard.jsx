@@ -217,7 +217,7 @@ export default function CreatorOnboard() {
         </div>
         {error && <p style={S.err}>{error}</p>}
         <p style={{ ...S.sub, fontSize: 13, marginTop: 18, color: "#94a3b8" }}>
-          Three quick steps after signup — terms, identity verification, a $49/yr license (first year free for early creators). Already have an invite? Open the link in your invitation email instead. Prefer email? Write to <a href="mailto:creators@sociii.ai" style={{ color: "#7c3aed" }}>creators@sociii.ai</a>.
+          Three quick steps after signup — terms, identity verification, a $49/yr license (free until December 1, 2026). Already have an invite? Open the link in your invitation email instead. Prefer email? Write to <a href="mailto:creators@sociii.ai" style={{ color: "#7c3aed" }}>creators@sociii.ai</a>.
         </p>
       </main></div>
     );
