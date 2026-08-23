@@ -10,5 +10,39 @@ module.exports = {
     "productId": "prod_UhQc58VEPobkia",
     "basePriceId": "price_1Ti1lCBYvxF0jBHy78Xk8hEC",
     "seatPriceId": "price_1Ti1lCBYvxF0jBHyZGGA9F78"
+  },
+  // Per-vertical Business/Academia Stacks — 2026-08-22, Sean: same $99/mo
+  // pricing as the generic boxes above, distinct Products for sales
+  // reporting/management clarity. Created by
+  // billing/setupVerticalBoxProducts.js.
+  "msr-in-a-box": {
+    "productId": "prod_V7jA56CFUXcJ11",
+    "basePriceId": "price_1U7Ti2BYvxF0jBHyEXGo00yy",
+    "seatPriceId": "price_1U7TrSBYvxF0jBHyobeUzpxO"
+  },
+  "title-in-a-box": {
+    "productId": "prod_V7jEEvKSthzl60",
+    "basePriceId": "price_1U7Tm2BYvxF0jBHy4QJDTVWh",
+    "seatPriceId": "price_1U7Tm2BYvxF0jBHyU0f05drS"
+  },
+  "dpp-in-a-box": {
+    "productId": "prod_V7jEA0YmqNhkJo",
+    "basePriceId": "price_1U7Tm2BYvxF0jBHyWnrsdEKf",
+    "seatPriceId": "price_1U7Tm2BYvxF0jBHyDmhEYvM1"
+  },
+  "aviation-in-a-box": {
+    "productId": "prod_V7jEUuo66PrslZ",
+    "basePriceId": "price_1U7Tm3BYvxF0jBHyYueeoynA",
+    "seatPriceId": "price_1U7Tm3BYvxF0jBHyInxfgPVw"
+  },
+  "nursing-in-a-box": {
+    "productId": "prod_V7jE1JqQeZVCgo",
+    "basePriceId": "price_1U7Tm3BYvxF0jBHys8s8iT6q",
+    "seatPriceId": "price_1U7Tm3BYvxF0jBHy4v5wn8tK"
+  },
+  "education-in-a-box": {
+    "productId": "prod_V7jEyENgJbSUEU",
+    "basePriceId": "price_1U7Tm4BYvxF0jBHyVfoxDnjV",
+    "seatPriceId": "price_1U7Tm4BYvxF0jBHyF1gHJZFW"
   }
 };

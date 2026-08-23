@@ -40,6 +40,34 @@ async function setupVerticalBoxProducts(req, res) {
     return res.status(500).json({ ok: false, error: "STRIPE_SECRET_KEY not configured" });
   }
 
+  // Debug/repair mode — inspect an orphaned product's existing prices from a
+  // partial prior run (pass { secret, inspectProductId }).
+  if (body.inspectProductId) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const prices = await stripe.prices.list({ product: body.inspectProductId, limit: 20 });
+    return res.json({ ok: true, prices: prices.data.map(p => ({ id: p.id, unit_amount: p.unit_amount, billing_scheme: p.billing_scheme, metadata: p.metadata })) });
+  }
+
+  // Repair mode — add the missing graduated seat/student price to a product
+  // that already has a base price from a partial prior run.
+  if (body.repairSeatPriceFor) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const { productId, vertical, includedUnits, perUnitMonthly } = body.repairSeatPriceFor;
+    const seatPrice = await stripe.prices.create({
+      product: productId,
+      currency: "usd",
+      recurring: { interval: "month" },
+      billing_scheme: "tiered",
+      tiers_mode: "graduated",
+      tiers: [
+        { up_to: includedUnits, unit_amount: 0 },
+        { up_to: "inf", unit_amount: perUnitMonthly * 100 },
+      ],
+      metadata: { vertical, tier: "seat" },
+    });
+    return res.json({ ok: true, seatPriceId: seatPrice.id });
+  }
+
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
   const results = {};
 

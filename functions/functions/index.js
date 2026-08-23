@@ -13499,7 +13499,18 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       let STRIPE_BOXES;
       try { STRIPE_BOXES = require("./config/stripeBoxes"); }
       catch (_) { return jsonError(res, 500, "Box plans are not configured yet"); }
-      const boxMap = { "business-in-a-box": STRIPE_BOXES.businessInABox, "academia-in-a-box": STRIPE_BOXES.academiaInABox };
+      const boxMap = {
+        "business-in-a-box": STRIPE_BOXES.businessInABox,
+        "academia-in-a-box": STRIPE_BOXES.academiaInABox,
+        // 2026-08-22 — per-vertical stacks, same $99/mo pricing, distinct
+        // Stripe Products for sales reporting (see config/stripeBoxes.js).
+        "msr-in-a-box": STRIPE_BOXES["msr-in-a-box"],
+        "title-in-a-box": STRIPE_BOXES["title-in-a-box"],
+        "dpp-in-a-box": STRIPE_BOXES["dpp-in-a-box"],
+        "aviation-in-a-box": STRIPE_BOXES["aviation-in-a-box"],
+        "nursing-in-a-box": STRIPE_BOXES["nursing-in-a-box"],
+        "education-in-a-box": STRIPE_BOXES["education-in-a-box"],
+      };
       const box = boxMap[planKey];
       if (!box) return jsonError(res, 400, "Unknown plan");
 
@@ -13542,7 +13553,17 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           );
         }
 
-        const planName = planKey === "academia-in-a-box" ? "Academia in a Box" : "Business in a Box";
+        const PLAN_NAMES = {
+          "business-in-a-box": "Business in a Box",
+          "academia-in-a-box": "Academia in a Box",
+          "msr-in-a-box": "SOCIII MSR Business Stack",
+          "title-in-a-box": "SOCIII Title & Real Estate Business Stack",
+          "dpp-in-a-box": "SOCIII DPP Business Stack",
+          "aviation-in-a-box": "SOCIII Aviation Business Stack",
+          "nursing-in-a-box": "SOCIII Nursing Academia Stack",
+          "education-in-a-box": "SOCIII K-12 Education Academia Stack",
+        };
+        const planName = PLAN_NAMES[planKey] || "Business in a Box";
         const subRef = await db.collection("subscriptions").add({
           ownerType: "tenant", ownerId: tenantId, userId,
           plan: planKey, planName, kind: "box",
