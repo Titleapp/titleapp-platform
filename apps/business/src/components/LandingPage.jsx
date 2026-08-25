@@ -254,7 +254,7 @@ export default function LandingPage() {
                 name: "Nursing Education",
                 pitch: "Clinical hour tracking, competency mapping, and accreditation-ready reporting. Replaces months of manual assembly.",
                 workers: ["Student Evaluation", "Tutor", "Accreditation"],
-                price: "$449/mo (70-student cohort)",
+                price: "$99/mo + $5/seat · Free 14 days",
                 demo: "/demo/nursing",
               },
               {

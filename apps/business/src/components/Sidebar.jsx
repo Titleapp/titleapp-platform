@@ -1895,7 +1895,7 @@ export default function Sidebar({
                 destination for a button literally labeled "Creator Studio". */}
             {creatorStatus !== "none" && workspaceRole !== "member" && (
               <button className={`navItem ${typeof window !== "undefined" && (window.location.pathname.startsWith("/creators") || window.location.pathname.startsWith("/sandbox/worker")) ? "navItemActive" : ""}`}
-                onClick={() => { window.location.href = "/sandbox/worker"; }}
+                onClick={() => { window.open("/sandbox/worker", "_blank", "noopener"); }}
                 style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af" }}>
                   <path d="M8 1.5L9.8 6.3H14.8L10.7 9.2L12.4 14L8 11.1L3.6 14L5.3 9.2L1.2 6.3H6.2L8 1.5Z"/>

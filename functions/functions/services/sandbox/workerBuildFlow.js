@@ -12,6 +12,7 @@
 
 const admin = require("firebase-admin");
 const { emitCreatorEvent } = require("./creatorEvents");
+const pricing = require("../../config/pricing");
 
 function getDb() { return admin.firestore(); }
 
@@ -207,11 +208,31 @@ function slugifyWorker(s) {
     .replace(/^-+|-+$/g, "").slice(0, 60) || "your-worker";
 }
 
+// data.spec is never actually populated in this Phase A backend (advanceWorkerStep
+// only writes into workerSteps.<id>.data — see WorkerSandbox.jsx's client-side
+// definedSpecRef workaround for the matching frontend-side symptom). Reading
+// data.spec directly here silently gave every published worker the fallback
+// name "Your Worker" / slug "your-worker", so every creator's publish collided
+// on the same Firestore doc. Read the real values from workerSteps.define.data,
+// falling back to data.spec only in case a future backend change starts
+// populating it.
+function getEffectiveSpec(data) {
+  const topSpec = data.spec || {};
+  const defineData = (data.workerSteps && data.workerSteps.define && data.workerSteps.define.data) || {};
+  return {
+    name: topSpec.name || defineData.name || "Your Worker",
+    category: topSpec.category || topSpec.vertical || defineData.category || "",
+    targetAudience: topSpec.targetAudience || defineData.targetAudience || "",
+    problemSolves: topSpec.problemSolves || defineData.problemSolves || "",
+    creatorName: topSpec.creatorName || defineData.creatorName || "",
+  };
+}
+
 function buildCanvasSpecFromSession(data) {
-  const spec = data.spec || {};
+  const spec = getEffectiveSpec(data);
   const design = (data.workerSteps && data.workerSteps.design && data.workerSteps.design.data) || {};
-  const name = spec.name || "Your Worker";
-  const vertical = spec.category || spec.vertical || "";
+  const name = spec.name;
+  const vertical = spec.category;
   const headline = design.headlineOutcome || "";
   const tabsIn = (design.tabs || []).filter((t) => t && t.name && String(t.name).trim());
   const tabs = (tabsIn.length ? tabsIn : [{ name: "Overview", job: "the default view" }]).map((t, i) => {
@@ -231,8 +252,8 @@ function buildCanvasSpecFromSession(data) {
 
 async function publishWorkerFromSession(userId, sessionId, data) {
   const db = getDb();
-  const spec = data.spec || {};
-  const name = spec.name || "Your Worker";
+  const spec = getEffectiveSpec(data);
+  const name = spec.name;
   const slug = slugifyWorker(name);
   const pre = (data.workerSteps && data.workerSteps.preflight && data.workerSteps.preflight.data) || {};
   const visibility = pre.visibility || "public";
@@ -284,11 +305,20 @@ async function publishWorkerFromSession(userId, sessionId, data) {
     display_name: name,
     name,
     ...(personaName ? { persona_name: personaName } : {}),
-    vertical: spec.category || spec.vertical || "",
+    vertical: spec.category || "",
     headline: design.headlineOutcome || "",
     short_description: spec.problemSolves || spec.targetAudience || "",
     status,
     worker_type: "worker",
+    // Without a real credit cost, the session-open credit gate at
+    // index.js's /chat:message handler (checkAndDeductCredits, keyed on
+    // creditTiming === "session_open") never fires for this worker — every
+    // sandbox-published worker was silently free to run. Give every publish
+    // a real cost so the existing (already-tested) enforcement actually
+    // applies. Flat platform default for now; a future spec field could let
+    // creators set their own price.
+    creditCost: pricing.executionCredits.standard,
+    creditTiming: "session_open",
     canvasSpec: buildCanvasSpecFromSession(data),
     raas_tier_0,
     raas_tier_1,
@@ -335,13 +365,30 @@ async function markStepComplete({ userId, sessionId, stepId, stepData = {} }) {
   const cur = steps[stepId] || { status: STEP_STATUS.NOT_STARTED };
 
   if (cur.status === STEP_STATUS.COMPLETE) {
-    // Idempotent — return current state without re-emitting events
+    // Idempotent — return current state without re-emitting history events.
+    // Exception: Distribute's publish is a side effect, not just a status flag.
+    // If a prior attempt marked the step complete but publish itself failed
+    // (network blip, transient Firestore error — see publishWorkerFromSession's
+    // try/catch below), re-clicking "Mark complete" used to no-op here forever,
+    // leaving the creator with a share link that 404s with no way to recover
+    // short of "Start over". Retry the publish (idempotent — it's a doc .set)
+    // whenever the session has no publishedWorker recorded yet.
+    let published = data.publishedWorker || null;
+    if (stepId === "distribute" && !published) {
+      try {
+        published = await publishWorkerFromSession(userId, sessionId, data);
+        await ref.update({ publishedWorker: published, publishedAt: admin.firestore.FieldValue.serverTimestamp() });
+      } catch (e) {
+        console.error("[workerBuildFlow] publishWorkerFromSession retry failed:", e.message);
+      }
+    }
     const nextStepId = computeNextStepId(stepId, steps);
     return {
       changed: false,
       step: cur,
       nextStepId,
       allComplete: nextStepId === null,
+      published,
       completionMessageContext: buildCompletionContext(stepId, cur, data),
     };
   }

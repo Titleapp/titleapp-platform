@@ -12,6 +12,7 @@
  * created IDs so they can be hand-written into config/stripeBoxes.js.
  */
 
+const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const pricing = require("../config/pricing");
 
@@ -35,6 +36,27 @@ async function setupVerticalBoxProducts(req, res) {
     return res.status(403).json({ ok: false, error: "Unauthorized" });
   }
 
+  // One-off backfill (2026-08-23) — publishWorkerFromSession didn't set
+  // creditCost/creditTiming until today's fix, so every worker published
+  // before that fix is permanently exempt from the session-open credit
+  // gate. Pure Firestore, no Stripe involved — placed before the Stripe
+  // key check below.
+  if (body.backfillWorkerCreditCost) {
+    const db = admin.firestore();
+    const snap = await db.collection("digitalWorkers").where("source", "==", "sandbox").get();
+    let updated = 0;
+    const skipped = [];
+    for (const doc of snap.docs) {
+      if (doc.data().creditCost) { skipped.push(doc.id); continue; }
+      await doc.ref.update({
+        creditCost: pricing.executionCredits.standard,
+        creditTiming: "session_open",
+      });
+      updated++;
+    }
+    return res.json({ ok: true, updated, skippedAlreadySet: skipped });
+  }
+
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
     return res.status(500).json({ ok: false, error: "STRIPE_SECRET_KEY not configured" });
@@ -55,6 +77,53 @@ async function setupVerticalBoxProducts(req, res) {
     return res.json({ ok: true, livemode: balance.livemode });
   }
 
+  // Debug — empirically test whether a coupon/promo can attach server-side
+  // to a Checkout Session containing a tiered/graduated price line item
+  // (2026-08-23: MAHALO fails when the customer types it into Checkout's
+  // own promo box on a box-plan session; testing whether the same discount
+  // fails when passed server-side via `discounts`, to isolate whether this
+  // is a Stripe tiered-pricing incompatibility or specific to the
+  // customer-facing redemption UI).
+  if (body.testDiscountOnTieredSession) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        line_items: [
+          { price: body.testDiscountOnTieredSession.basePriceId, quantity: 1 },
+          { price: body.testDiscountOnTieredSession.seatPriceId, quantity: 1 },
+        ],
+        discounts: [{ promotion_code: body.testDiscountOnTieredSession.promoId }],
+        success_url: "https://sociii.ai/pricing?test=success",
+        cancel_url: "https://sociii.ai/pricing?test=cancel",
+      });
+      return res.json({ ok: true, sessionId: session.id, url: session.url });
+    } catch (e) {
+      return res.json({ ok: false, error: e.message, type: e.type, code: e.code, param: e.param });
+    }
+  }
+
+  // One-time — create a fresh, genuinely unrestricted 100%-off coupon +
+  // promotion code (2026-08-23, Sean: MAHALO fails on the new vertical box
+  // products with a real Stripe "coupon_applies_to_nothing" error despite
+  // showing no applies_to restriction on inspection — root cause unclear,
+  // building a fresh replacement rather than debugging Stripe's internals
+  // further under time pressure).
+  if (body.createFreshCompCoupon) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const coupon = await stripe.coupons.create({
+      duration: "forever",
+      percent_off: 100,
+      name: "Comp — Friends & Allies (v2)",
+      metadata: { purpose: "comp_box_testing_v2", replaces: "Hwysvm0g/MAHALO" },
+    });
+    const promo = await stripe.promotionCodes.create({
+      coupon: coupon.id,
+      code: body.createFreshCompCoupon.code || "MAHALO2",
+    });
+    return res.json({ ok: true, couponId: coupon.id, promotionCodeId: promo.id, code: promo.code });
+  }
+
   // Debug — look up a promotion code by its customer-facing code string.
   if (body.checkPromoCode) {
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
@@ -66,7 +135,7 @@ async function setupVerticalBoxProducts(req, res) {
         id: p.id, code: p.code, active: p.active,
         expires_at: p.expires_at, max_redemptions: p.max_redemptions, times_redeemed: p.times_redeemed,
         restrictions: p.restrictions || null,
-        coupon: { id: coupon.id, percent_off: coupon.percent_off, amount_off: coupon.amount_off, duration: coupon.duration, valid: coupon.valid, applies_to: coupon.applies_to || null, currency: coupon.currency || null },
+        coupon_raw: coupon,
       });
     }
     return res.json({ ok: true, results });

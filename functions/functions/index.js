@@ -24168,6 +24168,13 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       const tSnap = await tenantRef.get();
 
       if (!tSnap.exists) {
+        // Free data credits — same starter allowance granted to every new
+        // personal account on signup (see freeCreditsOnSignup above). Without
+        // this, a freshly-claimed tenant reads as a 0 credit balance and gets
+        // blocked on its very first credit-costed chat message (see
+        // checkAndDeductCredits) — including anonymous sandbox visitors, whose
+        // whole point is frictionless first-message onboarding.
+        const { freeCreditsOnSignup } = require("./config/pricing");
         const tenantData = {
           name: tenantName || finalTenantId,
           tenantType,
@@ -24176,6 +24183,9 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           status: "active",
           createdAt: nowServerTs(),
           createdBy: auth.user.uid,
+          prepaidCredits: freeCreditsOnSignup || 100,
+          freeCreditsGranted: freeCreditsOnSignup || 100,
+          freeCreditsGrantedAt: nowServerTs(),
         };
 
         // Store vertical-specific parameters

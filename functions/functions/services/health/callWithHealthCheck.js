@@ -74,6 +74,11 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
   // 49.32 — when called from a tenant context, deduct from the tenant credit
   // pool instead of the user's personal pool. The chat handler passes
   // context.tenantId when the worker is being run inside a Business workspace.
+  // demo-* tenants (Sean's own QA/sales fixtures) are exempt from credit
+  // deduction and blocking entirely — return here before any balance check.
+  if (context.tenantId && String(context.tenantId).startsWith("demo-")) {
+    return { allowed: true, source: "demo_exempt" };
+  }
   const tenantId = context.tenantId && context.tenantId !== "vault" && context.tenantId !== "personal" && !String(context.tenantId).startsWith("guest-")
     ? context.tenantId : null;
 

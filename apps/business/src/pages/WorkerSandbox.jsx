@@ -429,6 +429,15 @@ export default function WorkerSandbox() {
   // CODEX 47.10 — File upload state
   const [pendingFiles, setPendingFiles] = useState([]);
   const fileInputRef = useRef(null);
+  // Backend persistence of top-level spec fields (name/vertical/audience/job/
+  // description/capabilitySummary) is intentionally limited in Phase A — every
+  // step-completion response's r.state.spec resets those to TODO placeholders,
+  // not just Define's own response. Cache the real values once Define commits
+  // them and re-apply on top of every subsequent step's r.state so later steps
+  // (Design, Knowledge, ...) don't wipe the header / Live Code panel back to
+  // "untitled". Fields backend legitimately owns per-step (canvasTabs,
+  // persona_name, etc.) are untouched — only the cached keys get reapplied.
+  const definedSpecRef = useRef(null);
   // Phase C-0 fix — gate boot() on Firebase auth resolution. We previously
   // fired the first API call from useEffect on mount, which raced the
   // onAuthStateChanged callback and produced a 401 because the API client
@@ -574,17 +583,18 @@ export default function WorkerSandbox() {
       return;
     }
 
-    // Write the backend's response first, then re-apply the just-entered
-    // Define spec fields on top of it. Backend persistence of top-level spec
-    // is intentionally limited in Phase A, so r.state's spec can be stale/
-    // incomplete — applying it AFTER the optimistic merge (as this used to)
-    // silently wiped out the name/vertical/audience/job the user just typed,
-    // so the header and Live Code panel never showed them. Order matters here.
-    if (r.state) setState(r.state);
+    // Write the backend's response first, then re-apply the cached Define
+    // spec fields on top of it — see definedSpecRef comment above. Order
+    // matters: applying the cache BEFORE r.state (as this used to for Define
+    // only) let r.state's placeholder spec silently wipe it back out.
     if (stepId === "define" && payload?.spec) {
+      definedSpecRef.current = { ...(definedSpecRef.current || {}), ...payload.spec };
+    }
+    if (r.state) setState(r.state);
+    if (definedSpecRef.current) {
       setState(prev => ({
         ...(prev || {}),
-        spec: { ...(prev?.spec || {}), ...payload.spec },
+        spec: { ...(prev?.spec || {}), ...definedSpecRef.current },
       }));
     }
     if (r.completionMessageContext) {

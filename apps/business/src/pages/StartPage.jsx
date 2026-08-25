@@ -63,6 +63,19 @@ const VERTICALS = {
       { name: "Flight Planning", desc: "Risk assessment, weather analysis, fuel planning.", price: "$29/mo" },
     ],
   },
+  // "Become a Creator" (CreatorOnboard.jsx) sends utm_content=creator when it
+  // bounces a logged-out visitor here — without this entry it silently fell
+  // back to VERTICALS.realestate, showing CRE deal-analyst worker cards to
+  // someone trying to become a creator.
+  creator: {
+    label: "Creator",
+    workers: [
+      { name: "Publish your expertise", desc: "Package what you know into a Digital Worker — no code required, built through the sandbox.", price: "Free to build" },
+      { name: "Set your own price", desc: "$29, $49, or $79/mo — you decide what your worker is worth.", price: "You choose" },
+      { name: "Keep 75%", desc: "SOCIII takes 25%. You keep the rest of every subscription, every month.", price: "75% to you" },
+      { name: "We handle the plumbing", desc: "Billing, hosting, subscriber management, and payouts — all handled.", price: "Included" },
+    ],
+  },
 };
 
 // ── Styles ────────────────────────────────────────────────────────
@@ -152,6 +165,12 @@ export default function StartPage() {
     q.set("utm_source", "start");
     q.set("utm_campaign", conceptKey);
     q.set("utm_content", verticalKey);
+    // Preserve returnTo (e.g. CreatorOnboard.jsx sends /onboard/creator) so a
+    // visitor who came here mid-flow doesn't lose their original destination.
+    // NOTE: /meet-alex doesn't consume this param yet — that's a separate,
+    // scoped fix beyond this page.
+    const returnTo = params.get("returnTo");
+    if (returnTo) q.set("returnTo", returnTo);
     window.location.href = "/meet-alex?" + q.toString();
   }
 
@@ -183,11 +202,10 @@ export default function StartPage() {
           <div style={S.pricingCard}>
             <div style={S.pricingName}>Free</div>
             <div style={S.pricingPrice}>$0</div>
-            <div style={S.pricingPer}>forever</div>
+            <div style={S.pricingPer}>forever · no credit card</div>
             <div style={S.pricingFeature}><CheckIcon /> Alex, your Chief of Staff</div>
-            <div style={S.pricingFeature}><CheckIcon /> 100 inference credits/mo</div>
-            <div style={S.pricingFeature}><CheckIcon /> Digital Logbook (aviation)</div>
             <div style={S.pricingFeature}><CheckIcon /> Vault storage</div>
+            <div style={S.pricingFeature}><CheckIcon /> $3 one-time ID check unlocks Vault features</div>
           </div>
 
           {/* Individual */}
@@ -196,7 +214,6 @@ export default function StartPage() {
             <div style={S.pricingPrice}>$29-79</div>
             <div style={S.pricingPer}>per worker / month</div>
             <div style={S.pricingFeature}><CheckIcon /> Pick exactly what you need</div>
-            <div style={S.pricingFeature}><CheckIcon /> 500-3,000 credits/mo</div>
             <div style={S.pricingFeature}><CheckIcon /> Full worker capabilities</div>
             <div style={S.pricingFeature}><CheckIcon /> Mix and match verticals</div>
           </div>
@@ -206,9 +223,9 @@ export default function StartPage() {
             <div style={S.recommendedBadge}>Recommended</div>
             <div style={S.pricingName}>Business in a Box</div>
             <div style={S.pricingPrice}>$99</div>
-            <div style={S.pricingPer}>per month — that's $3/day</div>
+            <div style={S.pricingPer}>per month + $5/active seat</div>
             <div style={S.pricingFeature}><CheckIcon /> Accounting, Marketing, HR, Contacts</div>
-            <div style={S.pricingFeature}><CheckIcon /> 15-20 workers included</div>
+            <div style={S.pricingFeature}><CheckIcon /> First 5 seats included</div>
             <div style={S.pricingFeature}><CheckIcon /> Everything a small business needs</div>
           </div>
         </div>
