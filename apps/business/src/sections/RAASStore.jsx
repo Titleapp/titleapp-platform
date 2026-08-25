@@ -132,7 +132,6 @@ function formatPrice(cents) {
 const VERTICAL_LABELS = {
   real_estate_development: "Real Estate",
   re_professional: "Title & Escrow",
-  auto_dealer: "Auto Dealer",
   aviation: "Aviation",
   marketing: "Marketing & Content",
   platform: "Platform",

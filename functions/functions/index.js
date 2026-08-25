@@ -14878,115 +14878,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     // Per docs/specs/SOCIII-Creator-Experience-Brief-v4.md
     // ─────────────────────────────────────────────────────────────────
 
-    // GET /v1/creator:public-profile?handle=<handle> — PUBLIC, no auth
-    // Returns the public-facing profile for sociii.ai/c/<handle>
-    if (route === "/creator:public-profile" && method === "GET") {
-      try {
-        const handle = String(req.query?.handle || "").toLowerCase().trim();
-        if (!handle) return res.json({ ok: false, error: "missing_handle" });
-
-        const handleSnap = await db.collection("creatorHandles").doc(handle).get();
-        if (!handleSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const { uid } = handleSnap.data();
-
-        const creatorSnap = await db.collection("creators").doc(uid).get();
-        if (!creatorSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const creator = creatorSnap.data();
-
-        const credSnap = await db.collection("creatorCredentials")
-          .where("uid", "==", uid)
-          .limit(20)
-          .get();
-        const credentials = credSnap.docs
-          .map(d => ({
-            id: d.id,
-            tier: d.data().tier,
-            status: d.data().status,
-            issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
-          }))
-          .filter(c => c.status === "active");
-
-        const workersSnap = await db.collection("digitalWorkers")
-          .where("creatorId", "==", uid)
-          .limit(20)
-          .get();
-        const workers = workersSnap.docs
-          .map(d => ({
-            id: d.id,
-            slug: d.data().slug || d.id,
-            name: d.data().name || d.data().display_name || d.data().displayName || d.id,
-            tagline: d.data().tagline || d.data().short_description || "",
-            vertical: d.data().vertical || null,
-            logoUrl: d.data().logoUrl || null,
-            status: d.data().status || "draft",
-          }))
-          .filter(w => w.status === "live");
-
-        return res.json({
-          ok: true,
-          profile: {
-            handle,
-            displayName: creator.displayName || creator.title || "",
-            photoURL: creator.photoURL || null,
-            bio: creator.bio || "",
-            title: creator.title || "",
-            yearsExperience: creator.yearsExperience || "",
-            credentials: creator.credentials || "",
-            verifiedExpert: !!creator.verifiedExpert,
-            joinedAt: creator.createdAt?.toDate?.()?.toISOString?.() || null,
-            linkedIn: creator.linkedIn || null,
-          },
-          workers,
-          socIICredentials: credentials,
-        });
-      } catch (e) {
-        console.error("[creator:public-profile] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
-    // GET /v1/credential:verify?credentialId=<id> — PUBLIC, no auth
-    // The win-condition page: verifiable credential for LinkedIn/UpWork/Fiverr
-    if (route === "/credential:verify" && method === "GET") {
-      try {
-        const credentialId = String(req.query?.credentialId || "").trim();
-        if (!credentialId) return res.json({ ok: false, error: "missing_id" });
-
-        const credSnap = await db.collection("creatorCredentials").doc(credentialId).get();
-        if (!credSnap.exists) return res.json({ ok: false, error: "not_found" });
-        const cred = credSnap.data();
-
-        const creatorSnap = await db.collection("creators").doc(cred.uid).get();
-        const creator = creatorSnap.exists ? creatorSnap.data() : {};
-
-        return res.json({
-          ok: true,
-          credential: {
-            id: credentialId,
-            tier: cred.tier || "certified",
-            status: cred.status || "active",
-            issuedAt: cred.issuedAt?.toDate?.()?.toISOString?.() || null,
-            renewedAt: cred.renewedAt?.toDate?.()?.toISOString?.() || null,
-            expiresAt: cred.expiresAt?.toDate?.()?.toISOString?.() || null,
-            revokedAt: cred.revokedAt?.toDate?.()?.toISOString?.() || null,
-            revokedReason: cred.revokedReason || null,
-            issuingOrg: "SOCIII, Inc.",
-          },
-          creator: {
-            handle: cred.handle || creator.handle || "",
-            displayName: creator.displayName || creator.title || "",
-            photoURL: creator.photoURL || null,
-            verifiedExpert: !!creator.verifiedExpert,
-            workerCount: cred.workerCount || 0,
-          },
-          workers: cred.workers || [],
-        });
-      } catch (e) {
-        console.error("[credential:verify] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
     // GET /v1/journey:state — authed
     // Returns the creator's current journey state (13 beats per v4)
     if (route === "/journey:state" && method === "GET") {
@@ -15082,33 +14973,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({ ok: true, currentBeat, completedCount: beats.filter(b => b.completed).length });
       } catch (e) {
         console.error("[journey:advance] error:", e.message);
-        return res.json({ ok: false, error: "server_error" });
-      }
-    }
-
-    // POST /v1/studio:intake — PUBLIC, no auth
-    // Sociii Build (Studio) inbound lead form per v4 Section 10
-    if (route === "/studio:intake" && method === "POST") {
-      try {
-        const { name, email, company, role, problem, budget, timeframe } = body || {};
-        if (!name || !email || !problem) return res.json({ ok: false, error: "missing_fields" });
-
-        const ref = await db.collection("studioIntake").add({
-          name: String(name).substring(0, 200),
-          email: String(email).substring(0, 200),
-          company: String(company || "").substring(0, 200),
-          role: String(role || "").substring(0, 200),
-          problem: String(problem).substring(0, 4000),
-          budget: String(budget || "").substring(0, 100),
-          timeframe: String(timeframe || "").substring(0, 100),
-          status: "new",
-          createdAt: nowServerTs(),
-          source: req.headers?.["referer"] || "direct",
-        });
-
-        return res.json({ ok: true, intakeId: ref.id });
-      } catch (e) {
-        console.error("[studio:intake] error:", e.message);
         return res.json({ ok: false, error: "server_error" });
       }
     }
@@ -17705,44 +17569,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true, before: { vertical: before.vertical, headline: before.headline, canvasTabsCount: before.canvasTabs?.length || 0, hadLaunchPage: !!before.workspaceLaunchPage } });
       } catch (e) {
         console.error("[admin:workers:patch-cos] error:", e.message);
-        return res.json({ ok: false, error: e.message });
-      }
-    }
-
-    // POST /v1/admin:locker:batch-ingest — Batch ingest documents into a worker's Studio Locker.
-    // Accepts both old format (name/text) and CODEX-68 format (title/content/tier/trustTag/metadata).
-    if (route === "/admin:locker:batch-ingest" && method === "POST") {
-      try {
-        const { tenantId: lockerTenantId, workerId: lockerWorkerId, documents: lockerDocs } = body || {};
-        if (!lockerTenantId || !lockerWorkerId || !Array.isArray(lockerDocs) || !lockerDocs.length) {
-          return res.json({ ok: false, error: "Requires tenantId, workerId, and documents[]" });
-        }
-        const MAX_CHARS_LOCKER = 12000;
-        const lockerCol = db
-          .collection("tenantLockers").doc(lockerTenantId)
-          .collection("workers").doc(lockerWorkerId)
-          .collection("documents");
-        const results = [];
-        let written = 0;
-        for (const doc of lockerDocs) {
-          const docName = doc.name || doc.title;
-          const docText = doc.text || doc.content;
-          if (!docName || !docText) { results.push({ ok: false, name: docName, error: "missing name/title or text/content" }); continue; }
-          const clamped = docText.length > MAX_CHARS_LOCKER ? docText.substring(0, MAX_CHARS_LOCKER) + "\n... [truncated]" : docText;
-          const docId = doc.docId || null;
-          const docRef = docId ? lockerCol.doc(docId) : lockerCol.doc();
-          await docRef.set({
-            name: docName, text: clamped, type: doc.sourceForm || "upload",
-            charCount: clamped.length, tier: doc.tier || null,
-            trustTag: doc.trustTag || null, metadata: doc.metadata || null,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(), deletedAt: null, createdBy: "admin-ingest",
-          });
-          results.push({ ok: true, name: docName, docId: docRef.id, charCount: clamped.length, truncated: clamped.length < docText.length });
-          written++;
-        }
-        return res.json({ ok: true, tenantId: lockerTenantId, workerId: lockerWorkerId, written, count: results.length, results });
-      } catch (e) {
-        console.error("[admin:locker:batch-ingest] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

@@ -3,9 +3,6 @@
   "targets": {
     "title-app-alpha": {
       "hosting": {
-        "admin": [
-          "admin-titleapp-ai"
-        ],
         "business": [
           "business-titleapp-ai"
         ],
