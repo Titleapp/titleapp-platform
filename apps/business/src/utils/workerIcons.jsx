@@ -686,365 +686,6 @@ const ICONS = {
     </>
   ),
 
-  // ── Automotive — Phase 0: Dealership Setup ──
-
-  // Shield with license badge — Dealer Licensing
-  "ad-dealer-licensing": (g) => (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
-      <rect x="8" y="8" width="8" height="6" rx="1.5" fill="white" fillOpacity="0.7" />
-      <rect x="10" y="10" width="4" height="1" rx="0.5" fill={`url(#${g})`} />
-      <rect x="10" y="12" width="3" height="1" rx="0.5" fill={`url(#${g})`} opacity="0.6" />
-      <circle cx="17" cy="7" r="3" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <path d="M16 7l1 1 2-2" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  ),
-
-  // Building with gear — Facility Operations
-  "ad-facility-operations": (g) => (
-    <>
-      <rect x="3" y="6" width="12" height="16" rx="2" fill={`url(#${g})`} />
-      <rect x="6" y="9" width="2.5" height="3" rx="0.5" fill="white" fillOpacity="0.5" />
-      <rect x="10" y="9" width="2.5" height="3" rx="0.5" fill="white" fillOpacity="0.5" />
-      <rect x="6" y="14" width="2.5" height="3" rx="0.5" fill="white" fillOpacity="0.5" />
-      <rect x="10" y="14" width="2.5" height="3" rx="0.5" fill="white" fillOpacity="0.5" />
-      <circle cx="18" cy="8" r="4.5" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <circle cx="18" cy="8" r="1.5" fill="white" fillOpacity="0.6" />
-      <path d="M18 3.5v1m0 6v1m-4.5-4.5h1m6 0h1m-3.2-3.2l.7.7m-4.9 4.9l.7.7m4.9.7l-.7-.7m-4.9-4.9l-.7-.7" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // ── Automotive — Phase 1: Inventory Acquisition ──
-
-  // Clipboard with truck — New Car Allocation
-  "ad-new-car-allocation": (g) => (
-    <>
-      <rect x="3" y="1" width="14" height="18" rx="2.5" fill={`url(#${g})`} />
-      <rect x="6" y="5" width="8" height="1.5" rx="0.5" fill="white" fillOpacity="0.6" />
-      <rect x="6" y="8" width="6" height="1.5" rx="0.5" fill="white" fillOpacity="0.4" />
-      <rect x="6" y="11" width="7" height="1.5" rx="0.5" fill="white" fillOpacity="0.4" />
-      <path d="M15 15h5l3 2.5v3h-8V15z" fill={`url(#${g})`} stroke="white" strokeWidth="1" />
-      <circle cx="17" cy="21" r="1.5" fill="white" fillOpacity="0.7" />
-      <circle cx="21.5" cy="21" r="1.5" fill="white" fillOpacity="0.7" />
-    </>
-  ),
-
-  // Magnifying glass with car — Used Car Acquisition
-  "ad-used-car-acquisition": (g) => (
-    <>
-      <circle cx="10" cy="10" r="8" fill={`url(#${g})`} />
-      <line x1="16" y1="16" x2="22" y2="22" stroke={`url(#${g})`} strokeWidth="3" strokeLinecap="round" />
-      <rect x="5" y="9" width="7" height="4" rx="1" fill="white" fillOpacity="0.6" />
-      <circle cx="7" cy="13.5" r="1.2" fill="white" fillOpacity="0.5" />
-      <circle cx="10.5" cy="13.5" r="1.2" fill="white" fillOpacity="0.5" />
-      <path d="M7 9V7.5a1 1 0 011-1h3a1 1 0 011 1V9" fill="white" fillOpacity="0.3" />
-    </>
-  ),
-
-  // Gavel with arrow down — Wholesale Disposition
-  "ad-wholesale-disposition": (g) => (
-    <>
-      <rect x="3" y="18" width="18" height="3" rx="1" fill={`url(#${g})`} />
-      <rect x="9" y="4" width="3" height="12" rx="1" fill={`url(#${g})`} opacity="0.8" />
-      <rect x="5" y="3" width="11" height="4" rx="1.5" fill={`url(#${g})`} />
-      <path d="M19 8l-3 3m3-3v3m0-3h-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <rect x="6" y="4.5" width="9" height="1.5" rx="0.5" fill="white" fillOpacity="0.4" />
-    </>
-  ),
-
-  // ── Automotive — Phase 2: Merchandising & Pricing ──
-
-  // Tag with chart — Used Car Pricing
-  "ad-used-car-pricing": (g) => (
-    <>
-      <rect x="2" y="4" width="16" height="16" rx="3" fill={`url(#${g})`} />
-      <path d="M5 16l3-4 3 2 4-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="19" cy="6" r="3.5" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <path d="M19 4.5v1.5h1.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
-      <rect x="4" y="5" width="5" height="1" rx="0.5" fill="white" fillOpacity="0.4" />
-    </>
-  ),
-
-  // Camera with car — Vehicle Merchandising
-  "ad-vehicle-merchandising": (g) => (
-    <>
-      <rect x="2" y="6" width="20" height="14" rx="3" fill={`url(#${g})`} />
-      <circle cx="12" cy="13" r="4" fill="white" fillOpacity="0.3" />
-      <circle cx="12" cy="13" r="2.5" fill="white" fillOpacity="0.5" />
-      <rect x="8" y="3" width="8" height="4" rx="1.5" fill={`url(#${g})`} />
-      <circle cx="18" cy="9" r="1" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // Wrench with clock — Reconditioning
-  "ad-reconditioning": (g) => (
-    <>
-      <path d="M5 3l-3 3a1 1 0 000 1.4l9.6 9.6a1 1 0 001.4 0l3-3a1 1 0 000-1.4L6.4 3A1 1 0 005 3z" fill={`url(#${g})`} />
-      <rect x="3" y="18" width="8" height="3" rx="1" fill={`url(#${g})`} opacity="0.6" />
-      <circle cx="18" cy="8" r="5" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <path d="M18 5.5v2.5l1.5 1.5" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // ── Automotive — Phase 3: Sales & Desking ──
-
-  // Funnel with people — Lead Management
-  "ad-lead-management": (g) => (
-    <>
-      <path d="M2 3h20l-6 8v6l-4 4V11L2 3z" fill={`url(#${g})`} />
-      <circle cx="7" cy="6" r="1" fill="white" fillOpacity="0.6" />
-      <circle cx="12" cy="5" r="1" fill="white" fillOpacity="0.6" />
-      <circle cx="17" cy="6" r="1" fill="white" fillOpacity="0.6" />
-      <path d="M8 14l4 0" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
-      <path d="M9 16l2 0" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // Calculator with handshake — Desking
-  "ad-desking": (g) => (
-    <>
-      <rect x="2" y="2" width="14" height="18" rx="2.5" fill={`url(#${g})`} />
-      <rect x="4" y="4" width="10" height="4" rx="1" fill="white" fillOpacity="0.5" />
-      <rect x="4" y="10" width="3" height="2" rx="0.5" fill="white" fillOpacity="0.3" />
-      <rect x="8.5" y="10" width="3" height="2" rx="0.5" fill="white" fillOpacity="0.3" />
-      <rect x="4" y="14" width="3" height="2" rx="0.5" fill="white" fillOpacity="0.3" />
-      <rect x="8.5" y="14" width="3" height="2" rx="0.5" fill="white" fillOpacity="0.3" />
-      <circle cx="19" cy="16" r="4.5" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <path d="M16.5 16h2l1.5-1.5m0 3l-1.5-1.5h-2" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // Speedometer with inventory — Inventory Turn
-  "ad-inventory-turn": (g) => (
-    <>
-      <path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z" fill={`url(#${g})`} />
-      <path d="M12 12l4-6" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" />
-      <circle cx="12" cy="12" r="2" fill="white" fillOpacity="0.6" />
-      <path d="M6 18h12" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.4" />
-      <circle cx="5" cy="12" r="0.8" fill="white" fillOpacity="0.5" />
-      <circle cx="12" cy="5" r="0.8" fill="white" fillOpacity="0.5" />
-      <circle cx="19" cy="12" r="0.8" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // ── Automotive — Phase 4: F&I ──
-
-  // Menu/clipboard with dollar — F&I Menu
-  "ad-fi-menu": (g) => (
-    <>
-      <rect x="4" y="2" width="16" height="20" rx="3" fill={`url(#${g})`} />
-      <rect x="7" y="6" width="10" height="2" rx="1" fill="white" fillOpacity="0.6" />
-      <rect x="7" y="10" width="10" height="2" rx="1" fill="white" fillOpacity="0.4" />
-      <rect x="7" y="14" width="10" height="2" rx="1" fill="white" fillOpacity="0.4" />
-      <circle cx="18" cy="18" r="4" fill={`url(#${g})`} stroke="white" strokeWidth="1.5" />
-      <path d="M18 16v0.8m0 2.4v0.8" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
-      <path d="M19 16.8c0-.55-.45-1-1-1s-1 .45-1 1 .45 1 1 1 1 .45 1 1-.45 1-1 1-1-.45-1-1" stroke="white" strokeWidth="0.7" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // Shield with gavel — F&I Compliance
-  "ad-fi-compliance": (g) => (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
-      <rect x="9" y="9" width="6" height="2" rx="1" fill="white" fillOpacity="0.7" />
-      <rect x="11" y="11" width="2" height="5" rx="0.5" fill="white" fillOpacity="0.7" />
-      <rect x="8" y="15" width="8" height="2" rx="1" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // Handshake with bank — Lender Relations
-  "ad-lender-relations": (g) => (
-    <>
-      <path d="M12 2L4 6v2h16V6l-8-4z" fill={`url(#${g})`} opacity="0.5" />
-      <rect x="4" y="8" width="16" height="2" fill={`url(#${g})`} opacity="0.3" />
-      <path d="M4 12c2-1 4 0 6 1s4 2 6 1c2-1 4-1 4 0v5c0 1-2 2-4 1s-4-2-6-1-4-1-6 0v-5c0-1 0-1 0-1z" fill={`url(#${g})`} />
-      <path d="M10 15l2-1 2 1" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // Box with return arrow — Aftermarket Admin
-  "ad-aftermarket-admin": (g) => (
-    <>
-      <rect x="3" y="6" width="18" height="14" rx="2" fill={`url(#${g})`} />
-      <path d="M8 2h8v4H8V2z" fill={`url(#${g})`} opacity="0.5" />
-      <path d="M9 13h6m0 0l-2-2m2 2l-2 2" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  ),
-
-  // ── Automotive — Phase 5: Service & Parts ──
-
-  // Calendar with wrench — Service Scheduling
-  "ad-service-scheduling": (g) => (
-    <>
-      <rect x="3" y="4" width="18" height="18" rx="3" fill={`url(#${g})`} />
-      <rect x="3" y="4" width="18" height="5" rx="3" fill={`url(#${g})`} opacity="0.7" />
-      <rect x="7" y="2" width="2" height="4" rx="1" fill={`url(#${g})`} />
-      <rect x="15" y="2" width="2" height="4" rx="1" fill={`url(#${g})`} />
-      <path d="M10 16l-2 2 2 2m4-4l2 2-2 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  ),
-
-  // Magnifying glass with checkmarks — Service Upsell & MPI
-  "ad-service-upsell": (g) => (
-    <>
-      <circle cx="11" cy="11" r="7" fill={`url(#${g})`} />
-      <line x1="16" y1="16" x2="22" y2="22" stroke={`url(#${g})`} strokeWidth="3" strokeLinecap="round" />
-      <path d="M8 10l2 2 3-3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <rect x="8" y="13" width="6" height="1" rx="0.5" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // Shelf/grid — Parts Inventory
-  "ad-parts-inventory": (g) => (
-    <>
-      <rect x="2" y="2" width="20" height="20" rx="2" fill={`url(#${g})`} opacity="0.3" />
-      <line x1="2" y1="9" x2="22" y2="9" stroke={`url(#${g})`} strokeWidth="1.5" />
-      <line x1="2" y1="16" x2="22" y2="16" stroke={`url(#${g})`} strokeWidth="1.5" />
-      <line x1="12" y1="2" x2="12" y2="22" stroke={`url(#${g})`} strokeWidth="1.5" />
-      <rect x="4" y="4" width="5" height="3" rx="1" fill={`url(#${g})`} />
-      <rect x="15" y="11" width="5" height="3" rx="1" fill={`url(#${g})`} />
-      <rect x="4" y="18" width="5" height="2" rx="1" fill={`url(#${g})`} opacity="0.7" />
-    </>
-  ),
-
-  // Shield with wrench — Warranty Admin
-  "ad-warranty-admin": (g) => (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
-      <path d="M10.5 9.5l-1.5 1.5 3 3 5-5-1.5-1.5-3.5 3.5-1.5-1.5z" fill="white" fillOpacity="0.8" />
-    </>
-  ),
-
-  // Car with paint — Body Shop
-  "ad-body-shop": (g) => (
-    <>
-      <path d="M5 11l2-4h10l2 4" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" fill="none" />
-      <rect x="3" y="11" width="18" height="7" rx="2" fill={`url(#${g})`} />
-      <circle cx="7" cy="20" r="2" fill={`url(#${g})`} />
-      <circle cx="7" cy="20" r="0.8" fill="white" />
-      <circle cx="17" cy="20" r="2" fill={`url(#${g})`} />
-      <circle cx="17" cy="20" r="0.8" fill="white" />
-      <path d="M19 8l2-3" stroke={`url(#${g})`} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="21.5" cy="4" r="1.5" fill={`url(#${g})`} opacity="0.5" />
-    </>
-  ),
-
-  // ── Automotive — Phase 6: Retention & Marketing ──
-
-  // Heart with refresh — Customer Retention
-  "ad-customer-retention": (g) => (
-    <>
-      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill={`url(#${g})`} />
-      <path d="M10 10a2.5 2.5 0 0 1 4 0" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" />
-      <path d="M14 10l0.5-1m-0.5 1l1 0.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
-    </>
-  ),
-
-  // Star with speech bubble — Reputation
-  "ad-reputation": (g) => (
-    <>
-      <path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4v-4a2 2 0 0 1-1-1.73V5z" fill={`url(#${g})`} />
-      <path d="M12 6l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L7 9.5l3.5-.5L12 6z" fill="white" fillOpacity="0.8" />
-    </>
-  ),
-
-  // Target with chart — Digital Marketing
-  "ad-digital-marketing": (g) => (
-    <>
-      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} opacity="0.3" />
-      <circle cx="12" cy="12" r="6" fill={`url(#${g})`} opacity="0.6" />
-      <circle cx="12" cy="12" r="2.5" fill={`url(#${g})`} />
-      <path d="M12 2v4m0 12v4M2 12h4m12 0h4" stroke={`url(#${g})`} strokeWidth="1" strokeLinecap="round" />
-    </>
-  ),
-
-  // ── Automotive — Phase 7: Compliance & Back Office ──
-
-  // Document with car — Title & Registration
-  "ad-title-registration": (g) => (
-    <>
-      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
-      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
-      <rect x="8" y="13" width="8" height="4" rx="1" fill="white" fillOpacity="0.4" />
-      <circle cx="10" cy="18" r="1" fill="white" fillOpacity="0.5" />
-      <circle cx="14" cy="18" r="1" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // Calculator with checkmark — Deal Accounting
-  "ad-deal-accounting": (g) => (
-    <>
-      <rect x="4" y="2" width="16" height="20" rx="3" fill={`url(#${g})`} />
-      <rect x="7" y="5" width="10" height="4" rx="1" fill="white" fillOpacity="0.3" />
-      <circle cx="8.5" cy="13" r="1.2" fill="white" fillOpacity="0.6" />
-      <circle cx="12" cy="13" r="1.2" fill="white" fillOpacity="0.6" />
-      <circle cx="15.5" cy="13" r="1.2" fill="white" fillOpacity="0.6" />
-      <path d="M10 17l1.5 1.5 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  ),
-
-  // Clipboard with shield — Regulatory Compliance
-  "ad-regulatory-compliance": (g) => (
-    <>
-      <path d="M6 4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6z" fill={`url(#${g})`} />
-      <rect x="8" y="2" width="8" height="4" rx="1.5" fill="white" fillOpacity="0.5" />
-      <path d="M12 19s5-2.5 5-6.25V9.5l-5-1.875-5 1.875v3.25C7 16.5 12 19 12 19z" fill="white" fillOpacity="0.4" />
-      <path d="M10 13l1.5 1.5 3-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  ),
-
-  // People with paycheck — HR & Payroll
-  "ad-hr-payroll": (g) => (
-    <>
-      <circle cx="9" cy="7" r="4" fill={`url(#${g})`} />
-      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2H3z" fill={`url(#${g})`} />
-      <rect x="16" y="8" width="6" height="8" rx="1" fill={`url(#${g})`} opacity="0.7" />
-      <rect x="17.5" y="10" width="3" height="1" rx="0.5" fill="white" fillOpacity="0.6" />
-      <rect x="17.5" y="12" width="3" height="1" rx="0.5" fill="white" fillOpacity="0.6" />
-    </>
-  ),
-
-  // Bank with coins — Floor Plan & Cash
-  "ad-floor-plan": (g) => (
-    <>
-      <rect x="2" y="18" width="20" height="3" rx="1" fill={`url(#${g})`} />
-      <path d="M12 3L3 8v2h18V8l-9-5z" fill={`url(#${g})`} />
-      <rect x="5" y="11" width="2.5" height="6" rx="0.5" fill={`url(#${g})`} opacity="0.6" />
-      <rect x="10.75" y="11" width="2.5" height="6" rx="0.5" fill={`url(#${g})`} opacity="0.6" />
-      <rect x="16.5" y="11" width="2.5" height="6" rx="0.5" fill={`url(#${g})`} opacity="0.6" />
-      <circle cx="12" cy="6.5" r="1.5" fill="white" fillOpacity="0.5" />
-    </>
-  ),
-
-  // Monitor with gears — DMS & Technology
-  "ad-dms-technology": (g) => (
-    <>
-      <rect x="2" y="3" width="20" height="14" rx="2" fill={`url(#${g})`} />
-      <rect x="8" y="17" width="8" height="2" fill={`url(#${g})`} opacity="0.5" />
-      <rect x="6" y="19" width="12" height="2" rx="1" fill={`url(#${g})`} opacity="0.7" />
-      <circle cx="9" cy="10" r="2.5" stroke="white" strokeWidth="1" fill="none" />
-      <circle cx="9" cy="10" r="0.8" fill="white" fillOpacity="0.7" />
-      <circle cx="15" cy="10" r="2.5" stroke="white" strokeWidth="1" fill="none" />
-      <circle cx="15" cy="10" r="0.8" fill="white" fillOpacity="0.7" />
-      <line x1="11.5" y1="10" x2="12.5" y2="10" stroke="white" strokeWidth="1" strokeLinecap="round" />
-    </>
-  ),
-
-  // ── Automotive (legacy) ──
-
-  // Truck
-  "car-sales": (g) => (
-    <>
-      <rect x="1" y="5" width="15" height="11" rx="2" fill={`url(#${g})`} />
-      <path d="M16 9h4l3 3v4h-7V9z" fill={`url(#${g})`} opacity="0.7" />
-      <circle cx="6" cy="18" r="2.5" fill={`url(#${g})`} />
-      <circle cx="6" cy="18" r="1" fill="white" />
-      <circle cx="18" cy="18" r="2.5" fill={`url(#${g})`} />
-      <circle cx="18" cy="18" r="1" fill="white" />
-      <rect x="3" y="8" width="10" height="3" rx="1" fill="white" fillOpacity="0.25" />
-    </>
-  ),
-
   // ── Aviation ──
 
   // Mission Builder — layered dispatch stack
@@ -1755,7 +1396,6 @@ export const SUITE_COLORS = {
   "Finance & Investment": "#0891b2",
   "General Business": "#4f46e5",
   "Legal": "#be185d",
-  "Automotive": "#15803d",
   "Aviation": "#0284c7",
   "Government": "#1a237e",
   "Title & Escrow": "#00695C",
@@ -1768,7 +1408,6 @@ export const SUITE_COLORS = {
 export const VERTICAL_COLORS = {
   consumer: "#6366f1",
   analyst: "#0891b2",
-  auto: "#15803d",
   "real-estate": "#7c3aed",
   aviation: "#0284c7",
   investor: "#0891b2",
@@ -1784,7 +1423,6 @@ export const VERTICAL_COLORS = {
 export const VERTICAL_ICON_SLUGS = {
   consumer: "insurance-coi",
   analyst: "cre-analyst",
-  auto: "car-sales",
   "real-estate": "property-management",
   aviation: "permit-tracker",
   investor: "investor-relations",
@@ -1799,7 +1437,6 @@ export const VERTICAL_ICON_SLUGS = {
 // eslint-disable-next-line react-refresh/only-export-components
 export const VERTICAL_THEME_MAP = {
   "Aviation": "machines",
-  "Auto Dealer": "machines",
   "Real Estate": "finance",
   "Web3": "finance",
   "Solar": "healthcare",
@@ -1834,7 +1471,6 @@ export function getThemeAccent(vertical, isGame) {
 export function getVerticalIconSlug(vertical) {
   const map = {
     "Aviation": "permit-tracker",
-    "Auto Dealer": "car-sales",
     "Real Estate": "property-management",
     "Web3": "engineering-review",
     "Solar": "engineering-review",

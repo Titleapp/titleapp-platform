@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, getDocs } from "firebase/firestore";
 
-const CAMPAIGN_SLUGS = ["auto-dealer", "aviation", "real-estate-developer", "real-estate-operations", "creators"];
+const CAMPAIGN_SLUGS = ["aviation", "real-estate-developer", "real-estate-operations", "creators"];
 
 export default function ABTests() {
   const [results, setResults] = useState([]);

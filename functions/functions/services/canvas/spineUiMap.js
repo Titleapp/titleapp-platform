@@ -65,7 +65,7 @@ Search bar + four tabs: All | By Worker | Segments | Recent.
 
 KPI strip: Total contacts | New this month | Workers (count of workers with at least one tagged contact) | Segments.
 
-"+ Apollo Pull" button opens a modal with three presets (auto-dealer-gm, re-broker, part-135) — that's the canonical way to pull leads. The user can also import via CSV. Direct them to those flows; never tell them to type contacts manually in chat.
+"+ Apollo Pull" button opens a modal with two presets (re-broker, part-135) — that's the canonical way to pull leads. The user can also import via CSV. Direct them to those flows; never tell them to type contacts manually in chat.
 
 There is NO orange demo banner.`,
 

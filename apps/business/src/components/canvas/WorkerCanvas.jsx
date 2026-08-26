@@ -14,7 +14,6 @@ import PetHealthCanvas, { isPetHealthWorker } from "./PetHealthCanvas";
 import TenantPortalCanvas, { isTenantPortalWorker } from "./TenantPortalCanvas";
 import BioCourseCanvas, { isBioCourseWorker } from "./BioCourseCanvas";
 import AviationWorkerCanvas from "./AviationWorkerCanvas";
-import AutoDealerDealModal, { NewDealButton } from "./AutoDealerDealModal";
 
 function isAviationWorker(w) {
   const slug = w.workerId || w.slug || "";
@@ -942,9 +941,6 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const consumerWorker = petHealthWorker || tenantPortalWorker || bioCourseWorker;
   const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
-  // 2026-08-21 gap-audit fix — "+ New Deal" on the Desking a Deal worker.
-  const isAutoDeskingWorker = workerSlug === "ad-desking-deal";
-  const [showNewDeal, setShowNewDeal] = useState(false);
 
   // ── 49.13: Canvas intelligence stage ──
   const [canvasStage, setCanvasStage] = useState(() => {
@@ -1366,16 +1362,6 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               {petHealthWorker && <PetHealthCanvas worker={w} />}
               {tenantPortalWorker && <TenantPortalCanvas worker={w} />}
               {bioCourseWorker && <BioCourseCanvas worker={w} />}
-
-              {/* 2026-08-21 gap-audit fix — prominent "+ New Deal" button on the
-                  Desking a Deal worker. Real write via POST /v1/auto:vehicle:add
-                  (capability auto.create_vehicle_deal_v1) to the new
-                  dealerVehicles collection. Matches Contacts.jsx's "+ Add
-                  Contacts" purple-gradient button pattern. */}
-              {isAutoDeskingWorker && <NewDealButton onClick={() => setShowNewDeal(true)} />}
-              {isAutoDeskingWorker && showNewDeal && (
-                <AutoDealerDealModal onClose={() => setShowNewDeal(false)} onDone={() => setShowNewDeal(false)} />
-              )}
 
               {/* Quick start chips — hidden in stage 3 for intelligence workers */}
               {!reWorker && !aviationWorker && !dppWorker && !nursingWorker && !consumerWorker && !(hasIntelligence && canvasStage === 3) && (

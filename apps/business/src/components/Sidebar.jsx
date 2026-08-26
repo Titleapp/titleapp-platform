@@ -348,185 +348,6 @@ const WORKER_NAV_MAP = {
     { id: "compliance-reports", label: "Compliance Reports" },
     { id: "refinance-analysis", label: "Refinance Analysis" },
   ],
-  // ── Auto Dealer — Phase 0: Dealership Setup ──
-  "ad-dealer-licensing": [
-    { id: "license-tracker", label: "License Tracker" },
-    { id: "safeguards-audit", label: "Safeguards Audit" },
-    { id: "ofac-screening", label: "OFAC Screening" },
-    { id: "regulatory-calendar", label: "Regulatory Calendar" },
-  ],
-  "ad-facility-operations": [
-    { id: "franchise-compliance", label: "Franchise Compliance" },
-    { id: "facility-checklist", label: "Facility Checklist" },
-    { id: "dms-config", label: "DMS Configuration" },
-    { id: "department-pl", label: "Department P&L" },
-  ],
-  // ── Auto Dealer — Phase 1: Inventory Acquisition ──
-  "ad-new-car-allocation": [
-    { id: "allocation-tracker", label: "Allocation Tracker" },
-    { id: "turn-earn", label: "Turn & Earn" },
-    { id: "pipeline-orders", label: "Pipeline Orders" },
-    { id: "incentive-calendar", label: "Incentive Calendar" },
-  ],
-  "ad-used-car-acquisition": [
-    { id: "auction-sourcing", label: "Auction Sourcing" },
-    { id: "trade-appraisal", label: "Trade Appraisal" },
-    { id: "vin-decode", label: "VIN Decode" },
-    { id: "acquisition-log", label: "Acquisition Log" },
-  ],
-  "ad-wholesale-disposition": [
-    { id: "wholesale-candidates", label: "Wholesale Candidates" },
-    { id: "auction-scheduling", label: "Auction Scheduling" },
-    { id: "loss-analysis", label: "Loss Analysis" },
-    { id: "floor-plan-exposure", label: "Floor Plan Exposure" },
-  ],
-  // ── Auto Dealer — Phase 2: Merchandising & Pricing ──
-  "ad-used-car-pricing": [
-    { id: "market-pricing", label: "Market Pricing" },
-    { id: "price-to-market", label: "Price-to-Market" },
-    { id: "aging-reductions", label: "Aging Reductions" },
-    { id: "margin-forecast", label: "Margin Forecast" },
-  ],
-  "ad-vehicle-merchandising": [
-    { id: "photo-audit", label: "Photo Audit" },
-    { id: "listing-quality", label: "Listing Quality" },
-    { id: "vdp-performance", label: "VDP Performance" },
-    { id: "syndication", label: "Syndication" },
-  ],
-  "ad-reconditioning": [
-    { id: "recon-pipeline", label: "Recon Pipeline" },
-    { id: "vendor-tracking", label: "Vendor Tracking" },
-    { id: "cost-approval", label: "Cost Approval" },
-    { id: "cycle-time", label: "Cycle Time" },
-  ],
-  // ── Auto Dealer — Phase 3: Sales & Desking ──
-  "ad-lead-management": [
-    { id: "lead-pipeline", label: "Lead Pipeline" },
-    { id: "response-time", label: "Response Time" },
-    { id: "appointment-set", label: "Appointment Set" },
-    { id: "source-roi", label: "Source ROI" },
-  ],
-  "ad-desking": [
-    { id: "deal-structure", label: "Deal Structure" },
-    { id: "payment-calc", label: "Payment Calculator" },
-    { id: "lender-match", label: "Lender Match" },
-    { id: "gross-tracker", label: "Gross Tracker" },
-  ],
-  "ad-inventory-turn": [
-    { id: "stocking-guide", label: "Stocking Guide" },
-    { id: "days-supply", label: "Days Supply" },
-    { id: "segment-mix", label: "Segment Mix" },
-    { id: "turn-velocity", label: "Turn Velocity" },
-  ],
-  // ── Auto Dealer — Phase 4: F&I ──
-  "ad-fi-menu": [
-    { id: "fi-menu-builder", label: "Menu Builder" },
-    { id: "pvr-tracking", label: "PVR Tracking" },
-    { id: "penetration", label: "Penetration" },
-    { id: "product-profitability", label: "Profitability" },
-  ],
-  "ad-fi-compliance": [
-    { id: "deal-jacket", label: "Deal Jacket" },
-    { id: "equal-treatment", label: "Equal Treatment" },
-    { id: "adverse-actions", label: "Adverse Actions" },
-    { id: "mla-screening", label: "MLA Screening" },
-  ],
-  "ad-lender-relations": [
-    { id: "lender-programs", label: "Lender Programs" },
-    { id: "stip-tracker", label: "Stip Tracker" },
-    { id: "funding-pipeline", label: "Funding Pipeline" },
-    { id: "lender-scorecard", label: "Scorecard" },
-  ],
-  "ad-aftermarket-admin": [
-    { id: "contracts", label: "Contracts" },
-    { id: "claims", label: "Claims" },
-    { id: "cancellations", label: "Cancellations" },
-  ],
-  // ── Auto Dealer — Phase 5: Service & Parts ──
-  "ad-service-scheduling": [
-    { id: "appointments", label: "Appointments" },
-    { id: "shop-loading", label: "Shop Loading" },
-    { id: "ro-tracker", label: "RO Tracker" },
-    { id: "tech-dispatch", label: "Tech Dispatch" },
-  ],
-  "ad-service-upsell": [
-    { id: "mpi-dashboard", label: "MPI Dashboard" },
-    { id: "advisor-scorecard", label: "Advisor Scorecard" },
-    { id: "declined-services", label: "Declined Services" },
-    { id: "service-to-sales", label: "Service to Sales" },
-  ],
-  "ad-parts-inventory": [
-    { id: "inventory", label: "Inventory" },
-    { id: "fill-rate", label: "Fill Rate" },
-    { id: "obsolescence", label: "Obsolescence" },
-    { id: "orders", label: "Orders" },
-  ],
-  "ad-warranty-admin": [
-    { id: "claims", label: "Claims" },
-    { id: "rejections", label: "Rejections" },
-    { id: "parts-returns", label: "Parts Returns" },
-    { id: "audit-prep", label: "Audit Prep" },
-  ],
-  "ad-body-shop": [
-    { id: "estimates", label: "Estimates" },
-    { id: "supplements", label: "Supplements" },
-    { id: "cycle-time", label: "Cycle Time" },
-    { id: "drp-compliance", label: "DRP Compliance" },
-  ],
-  // ── Auto Dealer — Phase 6: Retention & Marketing ──
-  "ad-customer-retention": [
-    { id: "retention-campaigns", label: "Campaigns" },
-    { id: "equity-mining", label: "Equity Mining" },
-    { id: "lease-maturity", label: "Lease Maturity" },
-    { id: "lifecycle", label: "Lifecycle" },
-  ],
-  "ad-reputation": [
-    { id: "reviews", label: "Reviews" },
-    { id: "sentiment", label: "Sentiment" },
-    { id: "ratings", label: "Ratings" },
-  ],
-  "ad-digital-marketing": [
-    { id: "spend-tracking", label: "Spend Tracking" },
-    { id: "source-attribution", label: "Source Attribution" },
-    { id: "channel-performance", label: "Channels" },
-    { id: "co-op", label: "Co-op" },
-  ],
-  // ── Auto Dealer — Phase 7: Compliance & Back Office ──
-  "ad-title-registration": [
-    { id: "title-tracker", label: "Title Tracker" },
-    { id: "temp-tags", label: "Temp Tags" },
-    { id: "payoff-tracker", label: "Payoff Tracker" },
-  ],
-  "ad-deal-accounting": [
-    { id: "deal-posting", label: "Deal Posting" },
-    { id: "commissions", label: "Commissions" },
-    { id: "receivables", label: "Receivables" },
-    { id: "daily-doc", label: "Daily DOC" },
-  ],
-  "ad-regulatory-compliance": [
-    { id: "self-assessment", label: "Self-Assessment" },
-    { id: "audit-prep", label: "Audit Prep" },
-    { id: "complaints", label: "Complaints" },
-    { id: "training", label: "Training" },
-  ],
-  "ad-hr-payroll": [
-    { id: "pay-plans", label: "Pay Plans" },
-    { id: "wage-compliance", label: "Wage Compliance" },
-    { id: "overtime", label: "Overtime" },
-    { id: "licenses", label: "Licenses" },
-  ],
-  "ad-floor-plan": [
-    { id: "floor-plan-interest", label: "Floor Plan" },
-    { id: "cash-flow", label: "Cash Flow" },
-    { id: "ap-management", label: "AP" },
-    { id: "financial-statement", label: "Financials" },
-  ],
-  "ad-dms-technology": [
-    { id: "systems", label: "Systems" },
-    { id: "integrations", label: "Integrations" },
-    { id: "access-review", label: "Access Review" },
-    { id: "vendor-contracts", label: "Vendor Contracts" },
-  ],
   // ── Government — Jurisdiction Onboarding ──
   "gov-jurisdiction-onboarding": [
     { id: "jurisdiction-setup", label: "Jurisdiction Setup" },
@@ -828,13 +649,6 @@ const WORKER_NAV_MAP = {
     { id: "portfolio", label: "Portfolio" },
     { id: "deal-pipeline", label: "Deal Pipeline" },
   ],
-  "auto": [
-    { id: "inventory", label: "Inventory" },
-    { id: "customers", label: "Customers" },
-    { id: "sales-pipeline", label: "Sales Pipeline" },
-    { id: "fi-products", label: "F&I Products" },
-    { id: "auto-service", label: "Service" },
-  ],
   "real-estate": [
     { id: "re-listings", label: "Listings" },
     { id: "re-buyers", label: "Buyers" },
@@ -955,18 +769,6 @@ const WORKER_DISPLAY_NAMES = {
   "disposition-marketing": "Disposition Marketing",
   "investor-reporting": "Investor Reporting",
   "debt-service": "Debt Service & Loan Compliance",
-  "ad-dealer-licensing": "Dealer Licensing & Compliance",
-  "ad-facility-operations": "Facility & Operations Setup",
-  "ad-new-car-allocation": "New Car Allocation & Ordering",
-  "ad-used-car-acquisition": "Used Car Acquisition",
-  "ad-wholesale-disposition": "Wholesale & Disposition",
-  "ad-used-car-pricing": "Used Car Pricing & Market Position",
-  "ad-vehicle-merchandising": "Vehicle Merchandising & Photography",
-  "ad-reconditioning": "Reconditioning Management",
-  "ad-lead-management": "Lead Management & BDC",
-  "ad-desking": "Desking & Deal Structure",
-  "ad-inventory-turn": "Inventory Turn & Stocking Guide",
-  "auto-dealer": "Auto Dealer",
   "aviation-ops": "Aviation Ops",
   "pilot-logbook": "Pilot Logbook",
   "part-135": "Part 135 Compliance",
@@ -1082,14 +884,12 @@ const WORKER_DISPLAY_NAMES = {
 };
 
 const VERTICAL_LABELS = {
-  auto: "Auto Dealer",
   analyst: "Investment Analyst",
   "real-estate": "Real Estate",
   aviation: "Aviation",
   investor: "Investor Relations",
   "property-mgmt": "Property Management",
   consumer: "Personal Space",
-  "auto-dealer": "Auto Dealer",
   real_estate_development: "Real Estate",
   solar: "Solar",
   government: "Government",
@@ -1119,7 +919,6 @@ function normalizeVertical(slug) {
   if (slug.startsWith("platform-")) return "Back of House";
   if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
   if (slug.startsWith("av-")) return "Aviation";
-  if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("eu-")) return "EU DPP";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
   if (slug.startsWith("gov-")) return "Government";
@@ -1160,7 +959,7 @@ export default function Sidebar({
   const [accountCollapsed, setAccountCollapsed] = useState(true);
   const workerCtx = useWorkerState();
   const { status: creatorStatus } = useCreatorStatus();
-  const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
+  const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "consumer");
   const isPersonal = vertical === "consumer" || (!guestMode && localStorage.getItem("TENANT_ID") === "vault");
 
   const rawWsName = guestMode ? "" : (localStorage.getItem("WORKSPACE_NAME") || "");

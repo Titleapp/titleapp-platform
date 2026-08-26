@@ -3,7 +3,7 @@ import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 import { useWorkerCatalog } from "../data/useWorkerCatalog";
 
 
-const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Solar Energy", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
+const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Aviation", "Solar Energy", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },

@@ -4,7 +4,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 const VERTICALS = [
   { key: "aviation", label: "Aviation" },
-  { key: "auto_dealer", label: "Auto Dealer" },
   { key: "real_estate_development", label: "Real Estate" },
   { key: "investment", label: "Investment" },
   { key: "solar_vpp", label: "Solar" },

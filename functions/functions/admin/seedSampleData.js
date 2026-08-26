@@ -107,14 +107,12 @@ async function seedSampleData(req, res) {
 
   // 4. Activity feed events
   const events = [
-    { type: "signup", message: "New user: john@dealer.com (Auto Dealer)", severity: "info" },
     { type: "signup", message: "New user: sarah@realestate.com (Real Estate)", severity: "info" },
     { type: "worker", message: "Worker published: FTC Compliance Checker by creator_42", severity: "success" },
     { type: "revenue", message: "Payment received: $9.00 — Pro subscription", severity: "success" },
     { type: "revenue", message: "Marketplace purchase: Compliance Bot — $4.99 (25% = $1.25)", severity: "success" },
     { type: "error", message: "Enforcement engine timeout on worker_87: response > 30s", severity: "error" },
-    { type: "communication", message: "Inbound email from mike@bigdealership.com: Re: AI for our dealership", severity: "info" },
-    { type: "pipeline", message: "Big Auto Group moved to DEMO_SCHEDULED", severity: "success" },
+    { type: "pipeline", message: "Century Title moved to DEMO_SCHEDULED", severity: "success" },
     { type: "system", message: "Daily analytics aggregated: 247 users, 42 published workers", severity: "info" },
     { type: "communication", message: "Follow-up sent to Century Title — day 3 cadence", severity: "info" },
     { type: "revenue", message: "Credit pack purchased: 500 credits for user_abc", severity: "success" },
@@ -130,13 +128,10 @@ async function seedSampleData(req, res) {
 
   // 5. B2B deals
   const b2bDeals = [
-    { contactName: "Mike Johnson", company: "Big Auto Group", vertical: "auto_dealer", stage: "DEMO_SCHEDULED", estimatedARR: 12000, probability: 0.4, source: "linkedin_campaign", ownedBy: "alex" },
     { contactName: "Lisa Chen", company: "Century Title", vertical: "real_estate", stage: "CONTACTED", estimatedARR: 8400, probability: 0.25, source: "email_outbound", ownedBy: "alex" },
     { contactName: "Robert Davis", company: "Southwest Compliance", vertical: "compliance", stage: "PROPOSAL_SENT", estimatedARR: 24000, probability: 0.6, source: "warm_intro", ownedBy: "alex" },
     { contactName: "Amanda Torres", company: "Pacific Title Insurance", vertical: "real_estate", stage: "LEAD", estimatedARR: 36000, probability: 0.1, source: "linkedin_campaign", ownedBy: "alex" },
-    { contactName: "James Wilson", company: "Premier Auto Sales", vertical: "auto_dealer", stage: "NEGOTIATING", estimatedARR: 18000, probability: 0.7, source: "referral", ownedBy: "alex" },
     { contactName: "Karen White", company: "Coastal Property Mgmt", vertical: "property_management", stage: "DEMO_COMPLETED", estimatedARR: 14400, probability: 0.5, source: "tiktok_campaign", ownedBy: "alex" },
-    { contactName: "David Brown", company: "MetroDealer Network", vertical: "auto_dealer", stage: "CLOSED_WON", estimatedARR: 9600, probability: 1.0, source: "linkedin_campaign", ownedBy: "alex" },
   ];
   for (const deal of b2bDeals) {
     await db.collection("pipeline").doc("b2b").collection("deals").add({
@@ -187,18 +182,6 @@ async function seedSampleData(req, res) {
   // 8. Campaigns
   const campaigns = [
     {
-      name: "Auto Dealers — LinkedIn",
-      platform: "linkedin",
-      vertical: "auto_dealer",
-      status: "active",
-      budget: { daily: 75, total: 2250, spent: 480 },
-      metrics: { impressions: 12400, clicks: 248, ctr: 2.0, cpc: 1.94, conversions: 12 },
-      autoPause: true,
-      pauseRules: ["cpc_over_15", "ctr_under_0.5", "budget_exceeded"],
-      alexRecommendations: ["CTR is strong at 2.0%. Consider increasing daily budget to $100 to accelerate lead generation."],
-      createdAt: ts,
-    },
-    {
       name: "Creator Acquisition — TikTok",
       platform: "tiktok",
       vertical: "creator",
@@ -229,7 +212,6 @@ async function seedSampleData(req, res) {
 
   // 9. Contacts
   const contacts = [
-    { fullName: "Mike Johnson", email: "mike@bigdealership.com", phone: "+15550123", company: "Big Auto Group", vertical: "auto_dealer", source: "linkedin_campaign", pipelineType: "b2b", pipelineStage: "DEMO_SCHEDULED", totalMessages: 5, sentiment: "positive", tags: ["hot_lead", "demo_scheduled"] },
     { fullName: "Lisa Chen", email: "lisa@centurytitle.com", phone: "+15550456", company: "Century Title", vertical: "real_estate", source: "email_outbound", pipelineType: "b2b", pipelineStage: "CONTACTED", totalMessages: 2, sentiment: "neutral", tags: [] },
   ];
   for (const contact of contacts) {
@@ -299,10 +281,10 @@ REVENUE: $347 yesterday ($8,240 MTD, up 12% vs last month)
 NEW USERS: 14 signups (8 from TikTok, 4 from LinkedIn, 2 organic)
 WORKERS: 3 new Workers published
 ACTIVE DEALS: 7 in pipeline ($42K potential ARR)
-  → Big Auto Group moved to DEMO_SCHEDULED
-  → Century Title hasn't responded in 5 days (sending follow-up today)
+  → Century Title moved to DEMO_SCHEDULED
+  → Pacific Title Insurance hasn't responded in 5 days (sending follow-up today)
 INVESTOR: Jane Smith viewed deck 3x yesterday
-CAMPAIGNS: LinkedIn auto dealers CTR 2.1% ($22/day spend)
+CAMPAIGNS: TikTok creator acquisition CTR 1.98% ($50/day spend)
 
 NEEDS YOUR ATTENTION:
   → Support ticket from user_abc: "enforcement engine blocking valid output" — couldn't resolve after 3 attempts

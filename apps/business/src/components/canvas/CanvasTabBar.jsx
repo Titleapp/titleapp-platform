@@ -13,7 +13,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { lookupSignal } from "../../config/canvasTypes";
 import SuggestImprovementButton from "../SuggestImprovementButton";
 import { LogFlightModal, ReleaseFlightModal } from "./AviationWorkerCanvas";
-import AutoDealerDealModal from "./AutoDealerDealModal";
 
 // 2026-08-21 gap-audit fix — this tab bar renders ABOVE whichever card/tab is
 // active (including the auto-landed default tab), so it's the one place
@@ -42,8 +41,6 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
   const [showReleaseFlight, setShowReleaseFlight] = useState(false);
   const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
   const isDispatchWorker = (workerSlug || "").startsWith("av-dispatch");
-  const isAutoDeskingWorker = workerSlug === "ad-desking-deal";
-  const [showNewDeal, setShowNewDeal] = useState(false);
 
   const updateOverflow = useCallback(() => {
     const el = scrollRef.current;
@@ -186,17 +183,6 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
           </button>
         </div>
       )}
-      {isAutoDeskingWorker && (
-        <div style={{ paddingRight: 8, paddingTop: 6, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={() => setShowNewDeal(true)}
-            style={{ padding: "6px 14px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", border: "none", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}
-          >
-            + New Deal
-          </button>
-        </div>
-      )}
       {workerSlug && (
         <div style={{ paddingRight: 12, paddingTop: 6, flexShrink: 0 }}>
           <SuggestImprovementButton workerSlug={workerSlug} />
@@ -204,7 +190,6 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
       )}
       {showLogFlight && <LogFlightModal onClose={() => setShowLogFlight(false)} onLogged={() => setShowLogFlight(false)} />}
       {showReleaseFlight && <ReleaseFlightModal onClose={() => setShowReleaseFlight(false)} onReleased={() => setShowReleaseFlight(false)} />}
-      {showNewDeal && <AutoDealerDealModal onClose={() => setShowNewDeal(false)} onDone={() => setShowNewDeal(false)} />}
     </div>
   );
 }

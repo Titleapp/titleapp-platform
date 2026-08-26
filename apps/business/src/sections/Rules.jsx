@@ -9,67 +9,6 @@ const AUTONOMY_LEVELS = [
 
 // ── Vertical-specific permission configs ──
 const RULES_CONFIGS = {
-  auto: {
-    defaults: {
-      globalLevel: 1,
-      sales: { respondToLeads: 1, sendOutboundOffers: 1, negotiatePricing: 1, maxDiscount: 500, scheduleTestDrives: 1, generateBuyersOrders: 1, maxAutonomousDealValue: 35000 },
-      service: { bookAppointments: 1, authorizeWarrantyWork: 1, maxWarrantyValue: 500, sendServiceReminders: 1, recommendUpsells: 1, scheduleRecallNotifications: 1 },
-      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 50, disclaimerText: "This message was sent by a Digital Worker on behalf of {dealership name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
-      marketing: { createCampaigns: 1, maxCampaignBudget: 250, submitCoopClaims: 1, manageBudgetReallocation: 1 },
-      fi: { recommendProducts: 1, modelFinancing: 1, generateDisclosures: 1, maxBundleValue: 5000 },
-    },
-    sections: [
-      {
-        key: "sales", title: "Sales Permissions", accent: "#16a34a", defaultOpen: true,
-        rows: [
-          { key: "respondToLeads", label: "Respond to inbound leads" },
-          { key: "sendOutboundOffers", label: "Send outbound offers" },
-          { key: "negotiatePricing", label: "Negotiate pricing", extra: { label: "Max discount: $", field: "maxDiscount", type: "number" } },
-          { key: "scheduleTestDrives", label: "Schedule test drives" },
-          { key: "generateBuyersOrders", label: "Generate buyer's orders" },
-        ],
-        footer: { label: "Max autonomous deal value", field: "maxAutonomousDealValue", prefix: "$" },
-      },
-      {
-        key: "service", title: "Service Permissions", accent: "#2563eb",
-        rows: [
-          { key: "bookAppointments", label: "Book service appointments" },
-          { key: "authorizeWarrantyWork", label: "Authorize warranty work", extra: { label: "Max value: $", field: "maxWarrantyValue", type: "number" } },
-          { key: "sendServiceReminders", label: "Send service reminders" },
-          { key: "recommendUpsells", label: "Recommend upsells during service" },
-          { key: "scheduleRecallNotifications", label: "Schedule recall notifications" },
-        ],
-      },
-      {
-        key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication",
-      },
-      {
-        key: "marketing", title: "Marketing Permissions", accent: "#ec4899",
-        rows: [
-          { key: "createCampaigns", label: "Create ad campaigns" },
-        ],
-        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
-        postRows: [
-          { key: "submitCoopClaims", label: "Submit co-op reimbursement claims" },
-          { key: "manageBudgetReallocation", label: "Manage channel budget reallocation" },
-        ],
-      },
-      {
-        key: "fi", title: "F&I Permissions", accent: "#7c3aed",
-        rows: [
-          { key: "recommendProducts", label: "Recommend F&I products to customers" },
-          { key: "modelFinancing", label: "Model financing options" },
-          { key: "generateDisclosures", label: "Generate F&I disclosure documents" },
-        ],
-        footer: { label: "Max F&I product bundle value to present", field: "maxBundleValue", prefix: "$" },
-      },
-    ],
-    playbookCategories: [
-      "Sales Process", "Word Tracks / Scripts", "Objection Handling", "F&I Playbook",
-      "Service Advisor Scripts", "Pricing Policies", "Trade-in Process", "Delivery Process",
-      "Customer Communication Guidelines", "Other / General",
-    ],
-  },
   analyst: {
     defaults: {
       globalLevel: 1,

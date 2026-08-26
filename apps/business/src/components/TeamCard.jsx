@@ -3,8 +3,6 @@ import React from "react";
 // Letter-badge colors per vertical
 const VERTICAL_COLORS = {
   aviation: "#0284c7",
-  auto: "#d97706",
-  auto_dealer: "#d97706",
   "real-estate": "#16a34a",
   real_estate_development: "#16a34a",
   investor: "#7c3aed",

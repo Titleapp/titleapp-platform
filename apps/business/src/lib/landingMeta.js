@@ -2,13 +2,6 @@
 // Called from LandingPage.jsx — keeps the SEO config in one file.
 
 const META = {
-  auto: {
-    title: "SOCIII for Auto Dealers — AI Workers for Service & Sales",
-    description: "AI Digital Workers built for auto dealers — turn every RO into a trade-in opportunity, recover $180K–$420K per rooftop. Integrates with DMS, no extra work for advisors. Audit-trail governed.",
-    path: "/auto",
-    serviceName: "SOCIII Digital Workers for Auto Dealers",
-    serviceCategory: "Auto dealership operations automation",
-  },
   pilot: {
     title: "SOCIII Aviation — Digital Copilot, Free Logbook, FAA Library",
     description: "Your digital copilot. Blockchain-verified logbook. ForeFlight integrated. Currency tracking, medical alerts, FAA handbook library — all current, always free for pilots. Built for Part 91 + Part 135.",

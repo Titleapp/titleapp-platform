@@ -72,15 +72,11 @@ const CONTEXTUAL_MESSAGES = {
   raas: "Tell me how you want your Chief of Staff to work. I'll follow these rules in every interaction.",
   criteria: "This is your target box. Every deal gets screened against these numbers automatically.",
   sampleDeals: "Drop your deal memos here. I'll pull out the key data so you don't have to enter it manually.",
-  dealerData: "Upload your dealership data. The more I know about your inventory and customers, the more I can help.",
   brokerage: "Tell me about your brokerage. I'll help you track listings, manage documents, and stay compliant.",
   propertyMgmt: "Let's set up your property portfolio. I'll help you track units, leases, and maintenance.",
   analyst: "Your deal analysis hub. Upload deals and I'll screen them against your criteria.",
-  inventory: "Your inventory hub. I can look up any vehicle, check aging, and recommend pricing actions.",
+  inventory: "Your inventory hub. I can track items, monitor stock levels, and recommend pricing actions.",
   customers: "Your customer database. I can pull up any customer's history, identify outreach opportunities, and draft communications.",
-  "fi-products": "Your F&I product catalog. I can match products to any customer profile and calculate payment impacts.",
-  "auto-service": "Your service schedule. I can identify upsell opportunities, draft service reminders, and flag warranty expirations.",
-  "sales-pipeline": "Your active deals. I can prioritize follow-ups, draft communications, and recommend next steps for each deal.",
   "worker-preview": "This is what I built from our conversation. Review the details and publish when you're ready.",
   "raas-store": "Browse AI Workers built by domain experts. Each one packages real expertise into a subscribable service.",
   "creator-dashboard": "Your creator hub. Edit your Workers, adjust pricing, track subscribers, and manage publishing.",
@@ -110,10 +106,6 @@ const VERTICAL_DISCLAIMERS = {
   analyst: {
     title: 'Investment & Financial Services Notice',
     text: 'This workspace provides AI-powered deal analysis, portfolio monitoring, and investment research tools. These are informational tools ONLY. Nothing provided constitutes investment advice or a recommendation to buy, sell, or hold any security. SOCIII is not a registered investment adviser or broker-dealer. All investment decisions should be made with the guidance of qualified financial professionals.',
-  },
-  auto: {
-    title: 'Automotive Industry Notice',
-    text: 'This workspace provides AI-powered inventory management, pricing, and compliance tools for auto dealers. You are responsible for compliance with FTC regulations (Safeguards Rule, Used Car Rule, CARS Rule), state DMV requirements, advertising laws, and all other applicable regulations.',
   },
   "real-estate": {
     title: 'Real Estate Industry Notice',
@@ -1007,9 +999,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (intent === "builder") {
       return `Great${nameGreet}, I've got the outline of your service. Let me show you what I built -- take a look at the preview and tell me what needs adjusting.`;
     }
-    if (vertical === "auto" || /\b(car|vehicle|vin|truck|suv)\b/i.test(chatSummary)) {
-      return `Alright${nameGreet}, let's get that vehicle recorded. What do you drive? Year, make, and model is all I need to start.`;
-    }
     if (vertical === "real-estate" || /\b(property|rental|tenant|apartment|building|house)\b/i.test(chatSummary)) {
       return `OK${nameGreet}, let's get your properties set up. How about we start with your biggest one? What's the address?`;
     }
@@ -1042,10 +1031,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     "title": { vertical: "real-estate", label: "Real Estate" },
     "escrow": { vertical: "real-estate", label: "Real Estate" },
     "property": { vertical: "real-estate", label: "Real Estate" },
-    "dealership": { vertical: "auto", label: "Auto Dealer" },
-    "dealer": { vertical: "auto", label: "Auto Dealer" },
-    "automotive": { vertical: "auto", label: "Auto Dealer" },
-    "car": { vertical: "auto", label: "Auto Dealer" },
     "government": { vertical: "government", label: "Government" },
     "county": { vertical: "government", label: "Government" },
     "dmv": { vertical: "government", label: "Government" },
@@ -1341,7 +1326,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               tenantName: payload.name || payload.tenantName || "My Workspace",
-              vertical: payload.workspaceType || payload.vertical || "auto",
+              vertical: payload.workspaceType || payload.vertical || "platform",
               tenantType: payload.tenantType || "business",
               jurisdiction: payload.jurisdiction || "GLOBAL",
             }),
@@ -1349,7 +1334,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           const data = await res.json();
           if (data.ok && data.tenantId) {
             localStorage.setItem("TENANT_ID", data.tenantId);
-            localStorage.setItem("VERTICAL", payload.workspaceType || payload.vertical || "auto");
+            localStorage.setItem("VERTICAL", payload.workspaceType || payload.vertical || "platform");
             localStorage.setItem("WORKSPACE_NAME", payload.name || payload.tenantName || "My Workspace");
             localStorage.setItem("COMPANY_NAME", payload.name || payload.tenantName || "My Workspace");
             window.dispatchEvent(new CustomEvent("ta:workspace-changed", {
@@ -2520,8 +2505,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
           <p style={{ margin: '0 0 10px 0' }}><strong>Real Estate.</strong> Property valuations, market analyses, and comparable data are computational estimates only and do not constitute formal appraisals. The Platform complies with and requires all users to comply with the Fair Housing Act and all applicable state fair housing laws.</p>
 
-          <p style={{ margin: '0 0 10px 0' }}><strong>Automotive.</strong> Vehicle valuations, pricing recommendations, and market data are estimates only. Users are responsible for compliance with all applicable FTC regulations, state DMV requirements, lemon laws, and advertising regulations.</p>
-
           <p style={{ margin: '0 0 10px 0' }}><strong>Aviation.</strong> The Platform is not a substitute for FAA-required documentation, approved checklists, or professional aeronautical judgment. All flight operations, maintenance, and safety decisions must be made in accordance with 14 CFR.</p>
 
           <p style={{ margin: '0 0 10px 0' }}><strong>No Fiduciary Duty.</strong> Use of the Platform does not create any fiduciary, advisory, agency, partnership, or professional-client relationship between you and SOCIII, Inc.</p>
@@ -2791,13 +2774,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "entity-formation": "Rudy", "property-insurance": "Rudy",
               "disposition-marketing": "Rudy", "investor-reporting": "Rudy",
               "debt-service": "Rudy",
-              // Auto Dealer — Vinny
-              "ad-dealer-licensing": "Vinny", "ad-facility-operations": "Vinny",
-              "ad-new-car-allocation": "Vinny", "ad-used-car-acquisition": "Vinny",
-              "ad-wholesale-disposition": "Vinny", "ad-used-car-pricing": "Vinny",
-              "ad-vehicle-merchandising": "Vinny", "ad-reconditioning": "Vinny",
-              "ad-lead-management": "Vinny", "ad-desking": "Vinny",
-              "ad-inventory-turn": "Vinny", "auto-dealer": "Vinny",
               // Government — Rowe
               "gov-jurisdiction-onboarding": "Rowe", "gov-title-registration-intake": "Rowe",
               "gov-lien-management": "Rowe", "gov-title-fraud-detection": "Rowe",
@@ -2954,7 +2930,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           const hour = new Date().getHours();
           const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
           const greetName = firstNameFrom(currentUser?.displayName, currentUser?.email);
-          const vLabel = { aviation: "Aviation", auto: "Auto Dealer", "real-estate": "Real Estate", investor: "Investor Relations", consumer: "Personal Vault", solar: "Solar", web3: "Web3", "property-mgmt": "Property Management", analyst: "Investment Analyst" }[localStorage.getItem("VERTICAL") || ""] || "";
+          const vLabel = { aviation: "Aviation", "real-estate": "Real Estate", investor: "Investor Relations", consumer: "Personal Vault", solar: "Solar", web3: "Web3", "property-mgmt": "Property Management", analyst: "Investment Analyst" }[localStorage.getItem("VERTICAL") || ""] || "";
           const wkrs = (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })();
           const wCount = wkrs.length;
           const contextLine = vLabel ? `Last active: ${vLabel}${wCount > 0 ? ` \u2014 ${wCount} worker${wCount !== 1 ? "s" : ""} running` : ""}` : "";

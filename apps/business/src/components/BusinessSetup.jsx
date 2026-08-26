@@ -9,7 +9,6 @@ import React, { useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const INDUSTRIES = [
-  { value: "auto-dealer", label: "Auto Dealer" },
   { value: "real-estate", label: "Real Estate" },
   { value: "aviation", label: "Aviation" },
   { value: "healthcare", label: "Healthcare & EMS" },

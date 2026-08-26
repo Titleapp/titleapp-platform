@@ -1,39 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
-// ── Auto data ──
-const AUTO_WEEKLY_REVENUE = [
-  { week: "Week 1", sales: 287400, units: 11 },
-  { week: "Week 2", sales: 318600, units: 12 },
-  { week: "Week 3", sales: 265200, units: 10 },
-  { week: "Week 4", sales: 376600, units: 14 },
-];
-
-const AUTO_RECENT_EVENTS = [
-  { id: 1, time: "2h ago", text: "AI identified lease expiration upsell -- Maria Gonzalez, 2024 Corolla LE. Potential: $2,800", color: "#7c3aed" },
-  { id: 2, time: "5h ago", text: "Jake Rivera closed deal -- Robert Chen, 2025 Camry XSE, $32,800", color: "#16a34a" },
-  { id: 3, time: "8h ago", text: "AI sent service reminder -- Charles Cox, 60K Major Service", color: "#7c3aed" },
-  { id: 4, time: "1d ago", text: "Trade-in appraisal completed -- 2021 BMW X3 xDrive30i, $28,500", color: "#d97706" },
-  { id: 5, time: "1d ago", text: "AI drafted conquest offer -- Amanda Liu, 2025 RAV4 XLE", color: "#7c3aed" },
-  { id: 6, time: "2d ago", text: "Lisa Chen moved Mark Brown to Negotiation -- 2025 RAV4 XLE, $37,500", color: "#2563eb" },
-  { id: 7, time: "2d ago", text: "AI scheduled test drive -- Sandra Lee, 2025 Highlander XLE", color: "#7c3aed" },
-  { id: 8, time: "3d ago", text: "Service-to-sales flag -- Angela Williams, 2021 Prius Prime, hybrid battery aging", color: "#dc2626" },
-  { id: 9, time: "4d ago", text: "AI sent post-purchase follow-up -- 12 customers, 7-day check-in", color: "#7c3aed" },
-  { id: 10, time: "5d ago", text: "Inventory alert -- 2021 BMW X3 hit 143 days on lot, recommend price reduction", color: "#dc2626" },
-];
-
-const AUTO_SALES_BY_SOURCE = [
-  { source: "Walk-In", sales: 12, revenue: 318600 },
-  { source: "Google Ads", sales: 10, revenue: 265500 },
-  { source: "Meta (FB/IG)", sales: 8, revenue: 212400 },
-  { source: "TrueCar", sales: 5, revenue: 132700 },
-  { source: "AutoTrader", sales: 4, revenue: 106200 },
-  { source: "Cars.com", sales: 3, revenue: 79600 },
-  { source: "CarGurus", sales: 2, revenue: 53100 },
-  { source: "Referral", sales: 2, revenue: 53100 },
-  { source: "Direct Mail", sales: 1, revenue: 26600 },
-];
-
 // ── Analyst data ──
 const ANALYST_WEEKLY_PERFORMANCE = [
   { week: "Week 1", value: 41200000, pctChange: 1.2 },
@@ -161,9 +128,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [reTab, setReTab] = useState("combined");
 
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
-  const isAuto = vertical === "auto";
   const isAnalyst = vertical === "analyst";
   const isVault = vertical === "consumer";
   const isRealEstate = vertical === "real-estate";
@@ -250,14 +216,6 @@ export default function Reports() {
         { label: "Occupancy Rate", value: "85.7%" },
       ];
     }
-    if (isAuto) {
-      return [
-        { label: "Total Revenue", value: "$1,247,800" },
-        { label: "Total Sales", value: "47" },
-        { label: "Active Customers", value: "152" },
-        { label: "Avg Deal Size", value: "$26,549" },
-      ];
-    }
     return [
       { label: "Total Revenue", value: "--" },
       { label: "Total Sales", value: "--" },
@@ -267,13 +225,13 @@ export default function Reports() {
   }
 
   // Pick the right data sets
-  const weeklyData = isRealEstate ? RE_WEEKLY_COMMISSION : isAuto ? AUTO_WEEKLY_REVENUE : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
+  const weeklyData = isRealEstate ? RE_WEEKLY_COMMISSION : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
   const recentEvents = isRealEstate
     ? (reTab === "pm" ? RE_PM_EVENTS : reTab === "sales" ? RE_RECENT_EVENTS : [...RE_RECENT_EVENTS, ...RE_PM_EVENTS].sort((a, b) => a.id - b.id).slice(0, 10))
-    : isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
+    : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
   const breakdownData = isRealEstate
     ? (reTab === "pm" ? RE_PM_BREAKDOWN : RE_PERFORMANCE_BREAKDOWN)
-    : isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
+    : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
 
   function exportCSV() {
     const kpis = getKpiConfig();
@@ -399,23 +357,7 @@ export default function Reports() {
               {isRealEstate ? (reTab === "pm" ? "Rent Collection Trend" : reTab === "sales" ? "Commission Trend" : "Performance Overview") : isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
             </div>
           </div>
-          {isAuto && weeklyData ? (
-            <div style={{ padding: "16px" }}>
-              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
-                {weeklyData.map((w, i) => {
-                  const maxVal = Math.max(...weeklyData.map(x => x.sales));
-                  return (
-                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
-                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
-                      <div style={{ fontSize: "10px", color: "#64748b" }}>{w.units} units</div>
-                      <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxVal) * 130}px`, minHeight: "20px" }} />
-                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : isAnalyst ? (
+          {isAnalyst ? (
             <div style={{ padding: "16px" }}>
               <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
                 {ANALYST_WEEKLY_PERFORMANCE.map((w, i) => {
@@ -560,7 +502,7 @@ export default function Reports() {
       </div>
 
       {/* Breakdown Section */}
-      {(isAuto || isAnalyst || isRealEstate) && (
+      {(isAnalyst || isRealEstate) && (
         <div className="card" style={{ marginTop: "16px" }}>
           <div className="cardHeader">
             <div className="cardTitle">{isRealEstate ? (reTab === "pm" ? "PM Revenue Breakdown" : "Revenue Breakdown") : isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
@@ -577,19 +519,7 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {isAuto ? AUTO_SALES_BY_SOURCE.map((s, i) => {
-                    const maxVal = Math.max(...AUTO_SALES_BY_SOURCE.map(x => x.sales));
-                    return (
-                      <tr key={i}>
-                        <td className="tdStrong">{s.source}</td>
-                        <td>{s.sales}</td>
-                        <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
-                        <td>
-                          <div style={{ width: `${(s.sales / maxVal) * 100}%`, height: "12px", background: "#7c3aed", borderRadius: "6px", minWidth: "8px" }} />
-                        </td>
-                      </tr>
-                    );
-                  }) : isRealEstate ? breakdownData.map((s, i) => {
+                  {isRealEstate ? breakdownData.map((s, i) => {
                     const maxVal = Math.max(...breakdownData.map(x => x.revenue));
                     return (
                       <tr key={i}>

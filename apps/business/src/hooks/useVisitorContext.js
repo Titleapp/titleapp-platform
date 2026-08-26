@@ -1,8 +1,5 @@
 const VERTICAL_MAP = {
   'aviation': { label: 'Aviation', firestoreValue: 'aviation' },
-  'auto-dealer': { label: 'Auto Dealer', firestoreValue: 'auto_dealer' },
-  'auto': { label: 'Auto Dealer', firestoreValue: 'auto_dealer' },
-  'dealer': { label: 'Auto Dealer', firestoreValue: 'auto_dealer' },
   'real-estate': { label: 'Real Estate', firestoreValue: 'real_estate_development' },
   're': { label: 'Real Estate', firestoreValue: 'real_estate_development' },
   'solar': { label: 'Solar', firestoreValue: 'solar_vpp' },

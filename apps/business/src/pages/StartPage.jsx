@@ -6,7 +6,6 @@ const CONCEPTS = {
     id: "onlyfans",
     headlines: {
       realestate: "She makes $47K/month from her couch.",
-      auto: "He quit the dealership. Now he makes $38K/month from his phone.",
       aviation: "He left the airline. Now he makes $52K/month from his hangar.",
     },
     subhead: "Brains pay better than botox. Your expertise is worth more than your salary. Package what you know into a Digital Worker and earn while you sleep.",
@@ -16,7 +15,6 @@ const CONCEPTS = {
     id: "power",
     headlines: {
       realestate: "Workers of the world, build.",
-      auto: "Workers of the world, build.",
       aviation: "Workers of the world, build.",
     },
     subhead: "The skilled workers are done waiting. Done asking permission. Done making someone else rich. Build your own Digital Worker. Set your own price. Keep 75%.",
@@ -26,7 +24,6 @@ const CONCEPTS = {
     id: "hateboss",
     headlines: {
       realestate: "Your broker hasn't closed a deal in years.",
-      auto: "Your GM hasn't sold a car since 2019.",
       aviation: "Your chief pilot hasn't flown a line trip in a decade.",
     },
     subhead: "You do the work. They take the cut. What if you could package everything you know, publish it, and keep 75% of every subscription? No boss. No split. No ceiling.",
@@ -43,15 +40,6 @@ const VERTICALS = {
       { name: "Construction Manager", desc: "Tracks draws, inspections, permits, and contractor compliance.", price: "$49/mo" },
       { name: "Property Management", desc: "Tenant comms, maintenance coordination, lease compliance.", price: "$49/mo" },
       { name: "Title & Escrow", desc: "Title search, escrow tracking, settlement coordination.", price: "$49/mo" },
-    ],
-  },
-  auto: {
-    label: "Auto Dealer",
-    workers: [
-      { name: "Dealer Licensing & Compliance", desc: "DMV filings, plate tracking, title work, audit-ready records.", price: "$49/mo" },
-      { name: "Service Scheduling", desc: "Appointment flow, bay allocation, parts ordering.", price: "$49/mo" },
-      { name: "F&I Compliance", desc: "Deal structuring, lender matching, adverse action tracking.", price: "$49/mo" },
-      { name: "Lead Management & BDC", desc: "Lead capture, follow-up cadence, appointment setting.", price: "$49/mo" },
     ],
   },
   aviation: {

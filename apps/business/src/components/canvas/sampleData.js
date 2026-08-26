@@ -63,7 +63,6 @@ export function normalizeVerticalKey(rawVertical) {
   const v = String(rawVertical || "").toLowerCase();
   if (!v) return null;
   if (v.includes("aviation") || v.includes("aero") || v.includes("flight") || v.includes("pilot") || v.startsWith("av-")) return "aviation";
-  if (v.includes("auto-dealer") || v.startsWith("auto") || v === "auto" || v.startsWith("dealer")) return "auto";
   if (v.includes("real") || v.includes("estate") || v.includes("property")
       || v.startsWith("cre-") || v === "cre" || v.includes("commercial") || v.includes("tenant")
       || v.includes("brokerage") || v.includes("title") || v.startsWith("esc-")
@@ -93,19 +92,6 @@ export const VERTICAL_INTELLIGENCE = {
       { label: "Currency check", prompt: "Run my currency check across categories. Tell me what is expiring next." },
       { label: "Logbook summary", prompt: "Summarize my logbook for the last 90 days." },
       { label: "Plan training", prompt: "Help me plan training for upcoming currency requirements." },
-    ],
-  },
-  "auto": {
-    kpis: [
-      { id: "units-sold", label: "Units Sold (MTD)", value: "--", unit: "", hint: "Connect DMS to populate" },
-      { id: "avg-gross", label: "Avg Gross / Unit", value: "--", unit: "$", hint: "Connect DMS to populate" },
-      { id: "fi-penetration", label: "F&I Penetration", value: "--", unit: "%", hint: "Log F&I products to populate" },
-      { id: "lot-turn", label: "Lot Turn (days)", value: "--", unit: "", hint: "Sync inventory to populate" },
-    ],
-    quickActions: [
-      { label: "Deal walkthrough", prompt: "Walk me through a customer deal. Include trade, financing, and F&I products." },
-      { label: "Inventory review", prompt: "Show me which inventory needs to move and recommend pricing actions." },
-      { label: "Sales scorecard", prompt: "Build a sales scorecard for my team this month." },
     ],
   },
   "real-estate": {
@@ -160,14 +146,6 @@ export const VERTICAL_SAMPLES = {
       "approaches": 18,
       "training-due": 2,
       "days-since-flight": 6,
-    },
-  },
-  "auto": {
-    kpis: {
-      "units-sold": 47,
-      "avg-gross": 2850,
-      "fi-penetration": 78,
-      "lot-turn": 32,
     },
   },
   "real-estate": {
@@ -1261,45 +1239,6 @@ const CRE_ANALYST_FIXTURES = {
   },
 };
 
-// Auto Dealer suite — shared fixture content.
-const AUTO_FIXTURES = {
-  "overview": {
-    title: "Dealer overview",
-    subtitle: "Sample MTD",
-    fields: [
-      { label: "Units sold (MTD)",   value: "47" },
-      { label: "Avg gross / unit",   value: "$2,850" },
-      { label: "F&I penetration",    value: "78%" },
-      { label: "Lot turn",           value: "32 days" },
-    ],
-  },
-  "inventory": {
-    vehicles: [
-      { vin: "1FTRX12W9XKA12345", year: 2024, make: "Ford",     model: "F-150 XLT",   daysOnLot: 8,  price: 48500 },
-      { vin: "5XYZH4AG1JG123456", year: 2023, make: "Hyundai",  model: "Sonata",       daysOnLot: 22, price: 24800 },
-      { vin: "WBA8E1G53GNT12345", year: 2024, make: "BMW",      model: "330i",         daysOnLot: 14, price: 41900 },
-      { vin: "JTDKARFU2K3098765", year: 2023, make: "Toyota",   model: "Prius",        daysOnLot: 36, price: 27500 },
-      { vin: "1G1ZD5ST3LF123456", year: 2024, make: "Chevrolet",model: "Malibu",       daysOnLot: 11, price: 26200 },
-    ],
-  },
-  "deals": {
-    title: "Recent deals",
-    sections: [
-      { heading: "Closed this week",  body: "F-150 XLT · $48,500 · gross $3,100\nSonata · $24,800 · gross $2,400\n330i · $41,900 · gross $4,800" },
-      { heading: "Pending",           body: "Prius · awaiting credit\nMalibu · F&I approval pending" },
-    ],
-  },
-  "fi": {
-    title: "F&I performance",
-    fields: [
-      { label: "Penetration",        value: "78%" },
-      { label: "Products / deal",    value: "2.4" },
-      { label: "Avg F&I gross",      value: "$1,450" },
-      { label: "Compliance score",   value: "98%" },
-    ],
-  },
-};
-
 // Long-tail vertical templates — used by the 129 workers that fall through
 // to the Overview / Activity / Resources tab structure. Each vertical has
 // 3-4 sub-types where helpful (ops, compliance, growth, etc.); single
@@ -1515,8 +1454,7 @@ function longTailTemplateKey(vertical) {
  *   1. Spine workers — explicit tab-keyed map
  *   2. Aviation CoPilots — shared map (if catalogId matches AV-PXX)
  *   3. Real-estate suite — shared map
- *   4. Auto-dealer suite — shared map
- *   5. Long-tail vertical template (overview/activity/resources only)
+ *   4. Long-tail vertical template (overview/activity/resources only)
  *
  * @param {object} worker — minimum {slug, vertical, catalogId}
  * @param {string} tabId — e.g. "pl", "overview", "currency"
@@ -1555,7 +1493,6 @@ export function getFixtureForTab(worker, tabId) {
     if (vKey === "real-estate" && RE_FIXTURES.map) {
       return { ...RE_FIXTURES.map, ...DEMO };
     }
-    if (vKey === "auto" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
   }
 
   // All other fixtures remain gated by demo mode.
@@ -1573,11 +1510,7 @@ export function getFixtureForTab(worker, tabId) {
   if (vKey === "real-estate" && RE_FIXTURES[tabId]) {
     return { ...RE_FIXTURES[tabId], ...DEMO };
   }
-  // 4. Auto dealer
-  if (vKey === "auto" && AUTO_FIXTURES[tabId]) {
-    return { ...AUTO_FIXTURES[tabId], ...DEMO };
-  }
-  // 5. Long-tail vertical templates — only the universal three tabs apply
+  // 4. Long-tail vertical templates — only the universal three tabs apply
   const tplKey = longTailTemplateKey(vertical);
   const tpl = LONG_TAIL_TEMPLATES[tplKey] || LONG_TAIL_TEMPLATES.generic;
   if (tpl[tabId]) return { ...tpl[tabId], ...DEMO };

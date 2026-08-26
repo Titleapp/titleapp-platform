@@ -26,15 +26,14 @@ const JURISDICTIONS = [
 ];
 
 const VERTICAL_PLACEHOLDERS = {
-  auto: { name: "Demo Motors", tagline: "Your trusted dealer since 1998" },
   "real-estate": { name: "Summit Realty Group", tagline: "Full-service brokerage and property management" },
   analyst: { name: "Meridian Capital Partners", tagline: "Data-driven investment decisions" },
   aviation: { name: "SkyOps Aviation", tagline: "Part 135 charter operations" },
   investor: { name: "TechCo Inc", tagline: "Raising our seed round" },
+  _default: { name: "Acme Inc.", tagline: "Tell us what you do" },
 };
 
 const VERTICAL_DISCLAIMERS = {
-  auto: "SOCIII provides tools for managing dealership operations. It does not replace licensed dealer management systems or compliance with state motor vehicle regulations.",
   "real-estate": "SOCIII provides tools for real estate operations. It does not replace licensed brokerage compliance, MLS membership requirements, or state real estate commission regulations.",
   analyst: "SOCIII provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
   investor: "SOCIII provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
@@ -49,18 +48,6 @@ const VERTICAL_DISCLAIMERS = {
 };
 
 const INTEGRATIONS_CATALOG = {
-  auto: [
-    { id: "cdk", name: "CDK Global", abbr: "CDK", category: "DMS", comingSoon: true },
-    { id: "reynolds", name: "Reynolds & Reynolds", abbr: "R&R", category: "DMS", comingSoon: true },
-    { id: "dealertrack", name: "Dealertrack", abbr: "DT", category: "DMS", comingSoon: true },
-    { id: "vauto", name: "vAuto", abbr: "vA", category: "Pricing", comingSoon: true },
-    { id: "autotrader", name: "AutoTrader", abbr: "AT", category: "Marketplace", comingSoon: true },
-    { id: "cargurus", name: "CarGurus", abbr: "CG", category: "Marketplace", comingSoon: true },
-    { id: "carfax", name: "CARFAX", abbr: "CF", category: "History", comingSoon: true },
-    { id: "kbb", name: "Kelley Blue Book", abbr: "KBB", category: "Valuation", comingSoon: true },
-    { id: "quickbooks", name: "QuickBooks", abbr: "QB", category: "Accounting", comingSoon: true },
-    { id: "salesforce", name: "Salesforce", abbr: "SF", category: "CRM", comingSoon: true },
-  ],
   "real-estate": [
     { id: "mls", name: "MLS / IDX Feed", abbr: "MLS", category: "Listings", comingSoon: true },
     { id: "zillow", name: "Zillow Premier", abbr: "Z", category: "Marketplace", comingSoon: true },
@@ -101,13 +88,6 @@ const INTEGRATIONS_CATALOG = {
 };
 
 const SAMPLE_DATA_STEPS = {
-  auto: [
-    "Loading 30 vehicles...",
-    "Loading 20 customers...",
-    "Loading service schedule...",
-    "Loading F&I products...",
-    "Loading sales pipeline...",
-  ],
   "real-estate": [
     "Loading 8 listings...",
     "Loading 10 buyer profiles...",
@@ -138,28 +118,6 @@ const SAMPLE_DATA_STEPS = {
 };
 
 const MAGIC_MOMENT_CONFIG = {
-  auto: {
-    headline: "You chose to explore with sample data. Here's what I found.",
-    subtitle: "I loaded a realistic dealership inventory into your account -- 24 vehicles, 15 customers, and an active sales pipeline. In 60 seconds, I scanned everything and flagged 3 things that need attention right now.",
-    insights: [
-      {
-        color: "#16a34a", badge: "Pricing Opportunity",
-        detail: "I compared every unit to current market prices and found one that's leaving money on the table.",
-        example: "2024 Toyota Camry XSE -- your price $28,500, market avg $30,200. Potential $1,700 upside.",
-      },
-      {
-        color: "#dc2626", badge: "Aging Inventory Alert",
-        detail: "I flagged a unit that's been sitting too long based on your 45-day target.",
-        example: "2023 Honda CR-V -- 67 days on lot (your target: 45 days). Consider price adjustment or promotion.",
-      },
-      {
-        color: "#d97706", badge: "Follow-Up Queued",
-        detail: "I found a customer who viewed a unit 3 times online but nobody has reached out yet.",
-        example: "Sarah Chen viewed the 2024 Highlander 3 times this week. Suggested follow-up drafted.",
-      },
-    ],
-    explainer: "When you upload your real inventory, I do this same analysis every day, automatically -- pricing, aging, lead follow-ups, all of it. You set the rules in Settings. I do the work.",
-  },
   "real-estate": {
     headline: "You chose to explore with sample data. Here's what I found.",
     subtitle: "I loaded a realistic brokerage into your account -- 8 listings, 10 buyers, 3 active transactions, and a property management portfolio. In 60 seconds, I scanned everything and flagged 3 things.",
@@ -255,8 +213,8 @@ const MAGIC_MOMENT_CONFIG = {
 export default function OnboardingWizard({ onComplete, onStepChange, vertical: propsVertical, skipToStep }) {
   const [currentStep, setCurrentStep] = useState(-1); // -1 = checking
   const [path, setPath] = useState(null); // "business" | "vault"
-  const [vertical, setVertical] = useState("auto");
-  const [jurisdiction, setJurisdiction] = useState("IL");
+  const [vertical, setVertical] = useState("real-estate");
+  const [jurisdiction, setJurisdiction] = useState("CA");
 
   // Step 0 state
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -289,7 +247,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
     if (skipToStep != null) {
       // Coming from AddWorkspaceWizard — workspace already created
       setPath("business");
-      setVertical(propsVertical || localStorage.getItem("VERTICAL") || "auto");
+      setVertical(propsVertical || localStorage.getItem("VERTICAL") || "real-estate");
       const existingName = localStorage.getItem("COMPANY_NAME") || "";
       setCompanyName(existingName);
       setJurisdiction(localStorage.getItem("JURISDICTION") || "IL");
@@ -443,7 +401,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   function handleSampleDataLoad() {
     setDataSource("sample");
     setSampleDataLoading(true);
-    const steps = SAMPLE_DATA_STEPS[vertical] || SAMPLE_DATA_STEPS.auto;
+    const steps = SAMPLE_DATA_STEPS[vertical] || SAMPLE_DATA_STEPS["real-estate"];
     setSampleDataLines([]);
 
     // Fire real sample data creation in the background for investor vertical
@@ -644,7 +602,6 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
               <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "12px", color: "#374151" }}>What industry?</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px" }}>
                 {[
-                  { id: "auto", label: "Automotive", icon: "A" },
                   { id: "real-estate", label: "Real Estate", icon: "R" },
                   { id: "analyst", label: "Investment", icon: "I" },
                   { id: "investor", label: "Investor Relations", icon: "IR" },
@@ -790,7 +747,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // ── Step 1: Business Basics (conversational form) ───────────────
 
   if (currentStep === 1) {
-    const placeholders = VERTICAL_PLACEHOLDERS[vertical] || VERTICAL_PLACEHOLDERS.auto;
+    const placeholders = VERTICAL_PLACEHOLDERS[vertical] || VERTICAL_PLACEHOLDERS._default;
 
     // Sub-question definitions per vertical
     const baseQuestions = [
@@ -807,15 +764,6 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
           { value: "sales", label: "Sales / Brokerage" },
           { value: "pm", label: "Property Management" },
           { value: "both", label: "Both" },
-        ],
-      });
-    } else if (vertical === "auto") {
-      extraQuestions.push({
-        key: "dealerType", label: "What type of dealership?", type: "choice",
-        options: [
-          { value: "franchise", label: "Franchise" },
-          { value: "independent", label: "Independent" },
-          { value: "bhph", label: "Buy Here Pay Here" },
         ],
       });
     } else if (vertical === "analyst") {
@@ -971,7 +919,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // ── Step 2: Integrations Discovery ──────────────────────────────
 
   if (currentStep === 2) {
-    const integrations = INTEGRATIONS_CATALOG[vertical] || INTEGRATIONS_CATALOG.auto;
+    const integrations = INTEGRATIONS_CATALOG[vertical] || INTEGRATIONS_CATALOG["real-estate"];
 
     return (
       <div style={{
@@ -1049,7 +997,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // ── Step 3: Data Import / Sample Data ───────────────────────────
 
   if (currentStep === 3) {
-    const steps = SAMPLE_DATA_STEPS[vertical] || SAMPLE_DATA_STEPS.auto;
+    const steps = SAMPLE_DATA_STEPS[vertical] || SAMPLE_DATA_STEPS["real-estate"];
 
     return (
       <div style={{
@@ -1239,7 +1187,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // ── Step 4: Magic Moment ────────────────────────────────────────
 
   if (currentStep === 4) {
-    const config = MAGIC_MOMENT_CONFIG[vertical] || MAGIC_MOMENT_CONFIG.auto;
+    const config = MAGIC_MOMENT_CONFIG[vertical] || MAGIC_MOMENT_CONFIG["real-estate"];
 
     return (
       <div style={{
@@ -1329,7 +1277,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // ── Step 5: Magic / Completion ──────────────────────────────────
 
   if (currentStep === 5) {
-    const verticalLabel = vertical === "auto" ? "automotive" : vertical === "analyst" ? "investment" : vertical === "real-estate" ? "real estate" : vertical === "consumer" ? "personal vault" : vertical;
+    const verticalLabel = vertical === "analyst" ? "investment" : vertical === "real-estate" ? "real estate" : vertical === "consumer" ? "personal vault" : vertical;
 
     return (
       <div style={{

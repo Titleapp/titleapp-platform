@@ -25,7 +25,6 @@ const CONNECTOR_CATEGORIES = [
   { name: "Real Estate", ids: ["realie", "rentcast"] },
   { name: "Public Data", ids: ["fema_flood", "us_census", "hud_fmr"] },
   { name: "Healthcare & EMS", ids: ["provider_lookup", "drug_reference"] },
-  { name: "Auto Dealer", ids: ["nhtsa_vin", "vincario"] },
   { name: "Web3 & Blockchain", ids: ["helius", "alchemy", "snapshot", "crossmint"] },
   { name: "Communications", ids: ["sendgrid", "twilio"] },
   { name: "Finance & Accounting", ids: ["quickbooks", "plaid", "stripe"] },
@@ -37,7 +36,6 @@ const CONNECTOR_CATEGORIES = [
 const VERTICAL_DISPLAY = {
   "aviation": "Aviation",
   "real-estate-development": "Real Estate Development",
-  "auto-dealer": "Auto Dealer",
   "government": "Government",
   "platform": "Platform (Business in a Box)",
   "real-estate-professional": "Real Estate Professional",

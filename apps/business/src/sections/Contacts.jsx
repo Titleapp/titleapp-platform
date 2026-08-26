@@ -18,12 +18,6 @@ const TABS = [
 const LEAD_PRESETS = {
   sales_lead: [
     {
-      id: "auto-dealer-gm",
-      label: "Auto Dealer GMs (1–5 rooftops)",
-      criteria: { person_titles: ["General Manager", "Dealer Principal", "Owner"], q_organization_industries: ["Automotive"], person_locations: ["United States"], per_page: 25 },
-      segment: "auto-dealer-gm",
-    },
-    {
       id: "re-broker",
       label: "RE Brokers / Small Title Shops",
       criteria: { person_titles: ["Broker", "Managing Broker", "Owner", "Principal"], q_organization_industries: ["Real Estate", "Real Estate Services"], person_locations: ["United States"], per_page: 25 },

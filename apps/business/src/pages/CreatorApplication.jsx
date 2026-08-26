@@ -135,7 +135,6 @@ export default function CreatorApplication() {
             <label style={S.label}>Area of expertise</label>
             <select style={S.select} value={form.expertise} onChange={(e) => updateField("expertise", e.target.value)} required>
               <option value="">Select...</option>
-              <option value="auto">Auto Dealers</option>
               <option value="aviation">Aviation</option>
               <option value="real-estate">Real Estate</option>
               <option value="mortgage">Mortgage</option>

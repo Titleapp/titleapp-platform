@@ -6,17 +6,6 @@
  */
 
 const CAMPAIGN_CONTEXTS = {
-  "auto-dealer": {
-    slug: "auto-dealer",
-    vertical: "auto_dealer",
-    persona: "dealer",
-    salesMode: true,
-    sandboxContext: {
-      openingMessage: "Hey — I'm Alex. SOCIII's Auto Dealer suite starts in your service drive and follows the customer all the way through F&I. 29 Digital Workers across compliance, desking, and deal structuring — and it's free for dealers. Want to see how it works?",
-      suggestedWorkers: ["AD-017", "AD-013", "AD-001", "AD-009"],
-      ctaLabel: "Start for Free",
-    },
-  },
   "aviation": {
     slug: "aviation",
     vertical: "aviation",

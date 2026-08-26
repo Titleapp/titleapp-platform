@@ -31,7 +31,6 @@ const WORKER_NAMES = {
 const VERTICAL_COLORS = {
   "Back of House": { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
   "Aviation":    { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
-  "Auto Dealer": { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
   "Real Estate": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
   "Title & Research": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
   "Sales & Leasing":  { accent: "#0d9488", gradient: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)" },
@@ -69,7 +68,6 @@ function normalizeVertical(slug) {
   if (slug.startsWith("platform-") || slug === "chief-of-staff") return "Back of House";
   if (slug === "investor-relations" || slug === "ir-worker") return "Back of House";
   if (slug.startsWith("av-")) return "Aviation";
-  if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
   if (slug.startsWith("gov-")) return "Government";
   if (slug.startsWith("solar")) return "Solar";

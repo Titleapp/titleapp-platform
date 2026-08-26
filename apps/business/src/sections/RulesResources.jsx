@@ -23,11 +23,10 @@ export default function RulesResources() {
   const [customRules, setCustomRules] = useState([]);
   const [sopDocs, setSopDocs] = useState([]);
 
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
 
   const VERTICAL_LABELS = {
-    auto: "Auto Dealer",
     analyst: "Investment Analyst",
     "real-estate": "Real Estate Brokerage",
     "property-mgmt": "Property Management",

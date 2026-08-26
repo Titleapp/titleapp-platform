@@ -62,7 +62,6 @@ Located in `raas/`. Three-level hierarchy:
 
 **Current verticals:**
 - `raas/analyst/GLOBAL/` — deal screening, evidence-first analysis
-- `raas/auto/IL/` — auto dealer revenue engine (Illinois); VIN-first, event-sourced vehicle lifecycle
 - `raas/real-estate/CA/` and `/NV/` — title & ownership; parcel-anchored records
 
 ### Capability Contract Registry (`contracts/`)

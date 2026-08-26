@@ -6,7 +6,6 @@ import WorkerIcon, { VERTICAL_COLORS, VERTICAL_ICON_SLUGS } from '../utils/worke
 const VERTICAL_ABBREVS = {
   consumer: 'PV',
   analyst: 'IA',
-  auto: 'AD',
   'real-estate': 'RE',
   aviation: 'AV',
   investor: 'IR',
@@ -15,7 +14,6 @@ const VERTICAL_ABBREVS = {
 const VERTICAL_LABELS = {
   consumer: 'Personal Vault',
   analyst: 'Investment Analyst',
-  auto: 'Auto Dealer',
   'real-estate': 'Real Estate',
   aviation: 'Aviation',
   investor: 'Investor Relations',

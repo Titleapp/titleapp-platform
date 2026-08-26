@@ -150,13 +150,6 @@ const BUSINESS_LAW_TABS = [
   { id: "audit-trail",label: "Audit Trail",   signal: "card:work-product", order: 5 },
 ];
 
-const AUTO_TABS = [
-  { id: "overview",  label: "Overview",  signal: "card:work-product",          default: true, order: 0 },
-  { id: "inventory", label: "Inventory", signal: "card:auto-inventory",        order: 1 },
-  { id: "deals",     label: "Deals",     signal: "card:auto-deal-analysis",    order: 2 },
-  { id: "fi",        label: "F&I",       signal: "card:auto-fi-compliance",    order: 3 },
-];
-
 // Aviation MX — single-aircraft maintenance record.
 // Airworthiness first (go/no-go status at a glance), then the full history
 // timeline, open squawks, and what's coming due.
@@ -331,12 +324,7 @@ function generateDefaultTabs(worker) {
     return RE_TABS.map(t => ({ ...t }));
   }
 
-  // 4. Auto Dealer
-  if (vertical === "auto_dealer") {
-    return AUTO_TABS.map(t => ({ ...t }));
-  }
-
-  // 5. Long-tail fallback (Government, Web3, Solar, Health, Marketing,
+  // 4. Long-tail fallback (Government, Web3, Solar, Health, Marketing,
   // non-CoPilot Aviation, anything else).
   return longTailTabs();
 }
@@ -364,6 +352,5 @@ module.exports = {
   RE_TABS,
   RES_SALESPERSON_TABS,
   GEN_SCHEDULING_TABS,
-  AUTO_TABS,
   longTailTabs,
 };

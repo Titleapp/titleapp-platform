@@ -1271,7 +1271,7 @@ function PersonalSettings() {
             <div>
               <div style={{ fontWeight: 600 }}>Current Config</div>
               <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-                Vertical: {localStorage.getItem("VERTICAL") || "auto"} | Jurisdiction: {localStorage.getItem("JURISDICTION") || "IL"} | Tenant: {localStorage.getItem("TENANT_ID") || "none"}
+                Vertical: {localStorage.getItem("VERTICAL") || "consumer"} | Jurisdiction: {localStorage.getItem("JURISDICTION") || "IL"} | Tenant: {localStorage.getItem("TENANT_ID") || "none"}
               </div>
             </div>
           </div>
@@ -1326,7 +1326,6 @@ function BusinessSettings() {
   const VERTICAL_LABELS = {
     consumer: "Personal Vault",
     platform: "Business in a Box",
-    auto: "Auto Dealer",
     analyst: "Investment Analyst",
     "real-estate": "Real Estate Brokerage",
     "property-mgmt": "Property Management",
@@ -1549,7 +1548,7 @@ function BusinessSettings() {
         { key: "riskAlerts", label: "Risk Alerts", desc: "Get notified of portfolio risk threshold breaches" },
       ];
     }
-    // auto / default
+    // default
     return [
       { key: "email", label: "Email Notifications", desc: "Receive updates via email" },
       { key: "sms", label: "SMS Notifications", desc: "Receive updates via text message" },
@@ -1618,7 +1617,7 @@ function BusinessSettings() {
         data.memberships.forEach((m) => {
           if (m.tenantId !== wsId) {
             const tenant = data.tenants?.[m.tenantId] || {};
-            const v = (tenant.vertical || "auto").toLowerCase();
+            const v = (tenant.vertical || "consumer").toLowerCase();
             // Resolve a human-readable name, skipping raw IDs
             const rawName = tenant.companyName || tenant.name || m.tenantId || "";
             const isRawId = /^(ws_\d+_[a-z0-9]+|[a-z0-9_-]{20,})$/i.test(rawName);
@@ -1752,13 +1751,11 @@ function BusinessSettings() {
                     padding: "2px 8px",
                     borderRadius: "9999px",
                     background: {
-                      auto: "#fef3c7",
                       analyst: "#dbeafe",
                       "real-estate": "#dcfce7",
                       consumer: "#f3e8ff",
                     }[company.vertical] || "#f1f5f9",
                     color: {
-                      auto: "#d97706",
                       analyst: "#2563eb",
                       "real-estate": "#16a34a",
                       consumer: "#7c3aed",
@@ -2222,7 +2219,7 @@ function BusinessSettings() {
               style={{ color: "#f59e0b", borderColor: "#fcd34d" }}
               onClick={() => {
                 if (window.confirm("This will reset your onboarding flow and re-run the setup wizard. Your existing data will be preserved. Continue?")) {
-                  const currentVertical = localStorage.getItem("VERTICAL") || "auto";
+                  const currentVertical = localStorage.getItem("VERTICAL") || "consumer";
                   localStorage.removeItem("ONBOARDING_STATE");
                   localStorage.removeItem("ONBOARDING_COMPLETE");
                   localStorage.setItem("PENDING_ONBOARDING", currentVertical);
@@ -2261,7 +2258,7 @@ function BusinessSettings() {
             <div>
               <div style={{ fontWeight: 600 }}>Current Config</div>
               <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-                Vertical: {localStorage.getItem("VERTICAL") || "auto"} | Jurisdiction: {localStorage.getItem("JURISDICTION") || "IL"} | Tenant: {localStorage.getItem("TENANT_ID") || "none"}
+                Vertical: {localStorage.getItem("VERTICAL") || "consumer"} | Jurisdiction: {localStorage.getItem("JURISDICTION") || "IL"} | Tenant: {localStorage.getItem("TENANT_ID") || "none"}
               </div>
             </div>
           </div>
@@ -2475,7 +2472,7 @@ function BusinessSettings() {
 
 // ── Settings Router ──────────────────────────────────────────────
 export default function Settings() {
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const isPersonal = vertical === "consumer";
 
   return isPersonal ? <PersonalSettings /> : <BusinessSettings />;

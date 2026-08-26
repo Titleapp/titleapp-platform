@@ -14,12 +14,6 @@ const NAV_BY_VERTICAL = {
     { id: "research", label: "Research" },
     { id: "deal-pipeline", label: "Deal Pipeline" },
   ],
-  auto: [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "inventory", label: "Inventory" },
-    { id: "customers", label: "Customers" },
-    { id: "sales-pipeline", label: "Sales Pipeline" },
-  ],
   "real-estate": [
     { id: "dashboard", label: "Dashboard" },
     { id: "re-listings", label: "Listings" },
@@ -48,8 +42,8 @@ export default function QuickSwitcher({ isOpen, onClose, workspaces, onNavigate,
 
   if (!isOpen) return null;
 
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
-  const sections = NAV_BY_VERTICAL[vertical] || NAV_BY_VERTICAL.auto;
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
+  const sections = NAV_BY_VERTICAL[vertical] || NAV_BY_VERTICAL.consumer;
 
   // Build searchable items
   const items = [];

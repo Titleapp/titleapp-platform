@@ -9,29 +9,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 // ── Campaign Configs (TASK 2-6) ───────────────────────────────────
 
 const CAMPAIGNS = {
-  "auto-dealer": {
-    persona: "dealer",
-    variants: {
-      A: {
-        headline: "Your best salesperson. On every floor. Every shift.",
-        subhead: "SOCIII clones your top performer across every department — service, sales, F&I, compliance. Free to start. You only pay when we lift your revenue.",
-      },
-      B: {
-        headline: "Free to start. You only pay when we grow your revenue.",
-        subhead: "SOCIII puts a Digital Worker in every department — service drive to F&I close. No monthly fee until it performs. Zero risk to find out if it works.",
-      },
-    },
-    primaryCta: "Start Free — No Credit Card",
-    secondaryCta: "See how dealers use it",
-    secondaryLink: "/workers/auto",
-    valueProps: [
-      { icon: "dollar", title: "Performance-based pricing", desc: "Free entry point, you only pay when SOCIII lifts your numbers." },
-      { icon: "arrows", title: "Service to sales", desc: "Follow every customer from first visit through trade-in and upgrade." },
-      { icon: "grid", title: "Every department covered", desc: "Licensing, compliance, F&I, floor training, all connected." },
-    ],
-    socialProof: "Dealers using SOCIII see measurable lift within the first 30 days.",
-    featuredSlugs: ["dealer-licensing-compliance", "service-scheduling-workflow", "fi-compliance", "lead-management-bdc"],
-  },
   "aviation": {
     persona: "pilot",
     variants: {

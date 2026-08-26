@@ -276,32 +276,6 @@ export const CANVAS_TYPES = {
     _title: "Comparable Sales Analysis",
   },
 
-  // Auto Dealer
-  "card:auto-deal-analysis": {
-    component: "WorkProductCard",
-    dataSource: "conversation",
-    dismissible: true,
-    mobileFallback: "inline-card",
-    emptyPrompt: "Ask Vinny to analyze a deal to see it here.",
-    _title: "Deal Analysis",
-  },
-  "card:auto-fi-compliance": {
-    component: "WorkProductCard",
-    dataSource: "conversation",
-    dismissible: true,
-    mobileFallback: "inline-card",
-    emptyPrompt: "Ask Vinny to review F&I compliance to see the report here.",
-    _title: "F&I Compliance Review",
-  },
-  "card:auto-inventory": {
-    component: "WorkProductCard",
-    dataSource: "conversation",
-    dismissible: true,
-    mobileFallback: "inline-card",
-    emptyPrompt: "Ask Vinny about inventory to see the report here.",
-    _title: "Inventory Snapshot",
-  },
-
   // Marketing — visual campaign-performance board (winning creative + KPIs)
   "card:marketing-board": {
     component: "MarketingCampaignBoardCard",
@@ -581,15 +555,7 @@ export const CANVAS_TYPES = {
     _title: "Work Product",
   },
 
-  // Trade summary + Analyst report (migrated from inline chat cards)
-  "card:trade-summary": {
-    component: "WorkProductCard",
-    dataSource: "conversation",
-    dismissible: true,
-    mobileFallback: "inline-card",
-    emptyPrompt: null,
-    _title: "Trade Summary",
-  },
+  // Analyst report (migrated from inline chat cards)
   "card:analyst-report": {
     component: "WorkProductCard",
     dataSource: "conversation",

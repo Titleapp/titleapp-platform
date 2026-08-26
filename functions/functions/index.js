@@ -4220,10 +4220,6 @@ TONE: Precise, compliance-grade, no hedging beyond what's actually uncertain. Sh
                 "appraisal-valuation": "Rudy", "market-research": "Rudy",
                 "eu-battery-dpp-001": "Elara", "eu-passport-registry-001": "Elara",
                 "eu-supply-chain-tracer-001": "Elara",
-                "ad-dealer-licensing": "Vinny", "ad-facility-operations": "Vinny", "ad-new-car-allocation": "Vinny",
-                "ad-used-car-acquisition": "Vinny", "ad-wholesale-disposition": "Vinny", "ad-used-car-pricing": "Vinny",
-                "ad-vehicle-merchandising": "Vinny", "ad-reconditioning": "Vinny", "ad-lead-management": "Vinny",
-                "ad-desking": "Vinny", "ad-inventory-turn": "Vinny", "auto-dealer": "Vinny",
               };
               if (_SUITE_PERSONAS[workerSlug]) workerName = _SUITE_PERSONAS[workerSlug];
 
@@ -4869,7 +4865,7 @@ CANVAS RENDER MARKER FORMAT:
 {"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
 |||END_CANVAS|||
 
-Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency. Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
+Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:analyst-report, card:real-estate-closing, card:aviation-currency. Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
 
 TYPE-SPECIFIC PAYLOAD SHAPES — use these exactly when emitting the corresponding type. Do NOT default to the generic work-product shape for these types or the card will render empty.
 
@@ -5150,7 +5146,7 @@ Do NOT give legal advice, closing advice, or any interpretation of legal rights,
                   const demoBlock = demoMode
                     ? `\n\nDEMO MODE IS ACTIVE on this worker's canvas. The KPI values tagged [SAMPLE] are illustrative demo data shown to the user right now on their right-side canvas, not the user's real numbers. They show what the dashboard will look like once real data populates. The user can see a "Demo Mode" banner above the KPIs with a "Clear" button.\n\nWhen the user asks about their KPIs ("what's my X?", "what are my numbers?", "show me KPIs"), ALWAYS state the displayed value AND that it is demo data. Example: "Your campaign ROI on the canvas is 142% — that's sample data; your real number will show once you import contact lists and connect social media." Do NOT say "I have no data" or "you have no campaign data on file" — the canvas shows demo values right now and you must reference them.
 
-CANVAS STATE OVERRIDES HISTORY: The KPI lines listed at the top of this prompt are the CURRENT TRUTH. If a prior turn in this conversation said a KPI was "not populated yet" but the same KPI now shows a [SAMPLE] value above, the user has just restored demo data — quote the sample value, do NOT repeat "not populated". Always answer from the current canvas state, never from your last reply.\n\nWhen the user asks how to remove, clear, hide, or reset the demo data, tell them clearly: tap the "Clear" button in the orange "Demo Mode" banner above the KPIs on the right-side canvas. Real data uploads also replace samples automatically. Do not pivot to other topics until you have answered the clear question.\n\nANTI-HALLUCINATION HARD RULES:\n- Never invent example data of your own. The canvas already has demo numbers; reference those.\n- Never describe loading or scanning fake data. Do NOT say "Loading sample data" or "Loading 24 vehicles" or "Loading customer records" or "I'm scanning everything now". The samples are already on the canvas; nothing is loading.\n- Never reference auto-dealer concepts (vehicles, F&I products, sales pipeline, service schedule, customer records, Toyota Camry, Honda CR-V) unless this worker is actually an auto-dealer worker. If the worker is Marketing, your domain is campaigns/leads/social/email — nothing else.\n- If prior turns in this conversation referenced concepts that don't match this worker's domain, those were hallucinations. Disregard them. Only the KPIs listed above and this user's current message define what's true.`
+CANVAS STATE OVERRIDES HISTORY: The KPI lines listed at the top of this prompt are the CURRENT TRUTH. If a prior turn in this conversation said a KPI was "not populated yet" but the same KPI now shows a [SAMPLE] value above, the user has just restored demo data — quote the sample value, do NOT repeat "not populated". Always answer from the current canvas state, never from your last reply.\n\nWhen the user asks how to remove, clear, hide, or reset the demo data, tell them clearly: tap the "Clear" button in the orange "Demo Mode" banner above the KPIs on the right-side canvas. Real data uploads also replace samples automatically. Do not pivot to other topics until you have answered the clear question.\n\nANTI-HALLUCINATION HARD RULES:\n- Never invent example data of your own. The canvas already has demo numbers; reference those.\n- Never describe loading or scanning fake data. Do NOT say "Loading sample data" or "Loading 24 vehicles" or "Loading customer records" or "I'm scanning everything now". The samples are already on the canvas; nothing is loading.\n- Never reference auto-dealer concepts (vehicles, F&I products, sales pipeline, service schedule, customer records, Toyota Camry, Honda CR-V) — this platform has no auto-dealer workers. If the worker is Marketing, your domain is campaigns/leads/social/email — nothing else.\n- If prior turns in this conversation referenced concepts that don't match this worker's domain, those were hallucinations. Disregard them. Only the KPIs listed above and this user's current message define what's true.`
                     : `\n\nDEMO MODE IS OFF on this worker's canvas. The user has either cleared the samples or never had any. KPIs listed as "not populated yet" are GENUINELY EMPTY right now — the canvas displays "--" for those values and the user can see that.\n\nCRITICAL: If a previous turn in this conversation quoted a specific dollar amount, percent, or count for a KPI that is now "not populated yet", that earlier answer referenced demo/sample data the user has SINCE CLEARED. Do NOT repeat those numbers. The canvas truth right now is "not populated yet" — say so plainly. Example: user asks "what's my pipeline value?" and the KPI shows "not populated yet" — answer: "Your pipeline value isn't populated yet. Add your first deal so I can calculate it." Do NOT answer "Your pipeline value is $4,200,000 (sample)" — that value is gone.\n\nThere is a small "Restore demo data" link in the canvas empty state if the user wants samples back. There is NO "Restore Demo button" anywhere else in the UI. Do not invent buttons or paths that do not exist.`;
 
                   const canvasStateBlock = `\n\nCANVAS STATE (${slug}) — you can see the user's right-side canvas in real time.
@@ -7454,7 +7450,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
             if (cc) sessionState.vertical = cc.vertical;
             // Direct vertical mapping fallback if no campaign context
             if (!sessionState.vertical) {
-              const DIRECT_MAP = { auto_dealer: "auto_dealer", solar_vpp: "solar_vpp", real_estate_development: "real_estate_development", re_operations: "re_operations", aviation: "aviation", creators: "creators", web3: "web3" };
+              const DIRECT_MAP = { solar_vpp: "solar_vpp", real_estate_development: "real_estate_development", re_operations: "re_operations", aviation: "aviation", creators: "creators", web3: "web3" };
               if (DIRECT_MAP[slug]) sessionState.vertical = DIRECT_MAP[slug];
             }
           }
@@ -7843,7 +7839,6 @@ IDENTITY RULES:
             function detectVertical(userMsg, responseText) {
               const text = (userMsg + ' ' + responseText).toLowerCase();
               if (/pilot|aviation|pc.?12|medevac|part.?135|part.?91|copilot|aircraft|flight crew|logbook|notam|frat/.test(text)) return 'aviation';
-              if (/dealer|dealership|f&i|inventory|auto|service drive|finance.*insurance|automotive/.test(text)) return 'auto-dealer';
               if (/real estate|title|escrow|cre|development|permit|commercial.*real/.test(text)) return 'real-estate';
               if (/solar|vpp|energy|microgrid/.test(text)) return 'solar';
               if (/web3|crypto|token|nft|blockchain/.test(text)) return 'web3';
@@ -11481,9 +11476,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
               ? ["Add a property", "Onboard a tenant", "Maintenance request", "View properties"]
               : ctx.businessVertical === "analyst"
                 ? ["Vet a new deal", "Write a POV", "View pipeline"]
-                : ctx.businessVertical === "auto"
-                  ? ["Add a vehicle", "View inventory", "Sales pipeline"]
-                  : ["Add a record", "Set up compliance", "View vault"])
+                : ["Add a record", "Set up compliance", "View vault"])
             : ["Add a vehicle", "Add a credential", "Education record"];
 
           await sessionRef.set({
@@ -11789,85 +11782,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("[title:defect] failed:", e);
         return jsonError(res, e.message.includes("TX-T-001") ? 422 : 500, e.message);
-      }
-    }
-
-    // ── AUTO DEALER — VEHICLE / DEAL (2026-08-21 gap-audit fix) ──────────────
-    // POST /v1/auto:vehicle:add — dealer adds a new vehicle + deal record.
-    // Backs capability auto.create_vehicle_deal_v1. Writes to a NEW
-    // dealerVehicles collection — MyVehicles.jsx / the "vehicles" personal-
-    // vault feature is an unrelated consumer feature and was never dealer
-    // inventory, so this is a genuinely new data model, not a rewire of an
-    // existing unused one. VIN-anchored per the auto vertical's event-sourced
-    // vehicle-lifecycle design (raas/auto/IL). Wired to the "+ New Deal"
-    // button on the Desking a Deal worker canvas.
-    if (route === "/auto:vehicle:add" && method === "POST") {
-      const auth = await requireFirebaseUser(req, res);
-      if (auth.handled) return auth.res;
-      const ctx = getCtx(req, body, auth.user);
-      try {
-        const b = body || {};
-        if (!b.vin || !String(b.vin).trim()) return jsonError(res, 400, "vin is required");
-        if (!ctx.tenantId) return jsonError(res, 400, "Open a dealer workspace to add a vehicle");
-        const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
-        if (memberGate && memberGate.handled) return memberGate.res;
-
-        const vin = String(b.vin).trim().toUpperCase();
-        // VIN-first: refuse a duplicate open deal on the same VIN for this tenant
-        // rather than silently minting a second record for the same vehicle.
-        const existingSnap = await db.collection("dealerVehicles")
-          .where("tenantId", "==", ctx.tenantId)
-          .where("vin", "==", vin)
-          .limit(1)
-          .get();
-        if (!existingSnap.empty) {
-          const ex = existingSnap.docs[0];
-          return res.json({ ok: true, vehicleId: ex.id, existingRecord: true, ...ex.data() });
-        }
-
-        const ref = db.collection("dealerVehicles").doc();
-        const record = {
-          vehicleId: ref.id,
-          tenantId: ctx.tenantId,
-          vin,
-          year: b.year || null,
-          make: b.make || null,
-          model: b.model || null,
-          trim: b.trim || null,
-          stockNumber: b.stockNumber || null,
-          buyerName: b.buyerName || null,
-          salePrice: b.salePrice != null ? Number(b.salePrice) : null,
-          dealType: ["cash", "finance", "lease"].includes(b.dealType) ? b.dealType : "cash",
-          status: "open",
-          createdBy: auth.user.uid,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        await ref.set(record);
-        return res.json({ ok: true, vehicleId: ref.id, existingRecord: false, ...record });
-      } catch (e) {
-        console.error("[auto:vehicle:add] failed:", e);
-        return jsonError(res, 500, "Failed to add vehicle/deal", { details: e.message });
-      }
-    }
-
-    // GET /v1/auto:vehicle:list — recent dealer inventory/deals for the current tenant.
-    if (route === "/auto:vehicle:list" && method === "GET") {
-      const auth = await requireFirebaseUser(req, res);
-      if (auth.handled) return auth.res;
-      const ctx = getCtx(req, body, auth.user);
-      try {
-        if (!ctx.tenantId) return jsonError(res, 400, "Open a dealer workspace to list vehicles");
-        const snap = await db.collection("dealerVehicles")
-          .where("tenantId", "==", ctx.tenantId)
-          .orderBy("createdAt", "desc")
-          .limit(50)
-          .get();
-        const vehicles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        return res.json({ ok: true, vehicles });
-      } catch (e) {
-        console.error("[auto:vehicle:list] failed:", e);
-        return jsonError(res, 500, "Failed to list vehicles");
       }
     }
 
@@ -12303,9 +12217,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       const map = {
         'aviation':    { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
         'pilot':       { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
-        'auto-dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
-        'auto_dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
-        'auto':        { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
         'web3':        { suites: ['Community', 'Compliance', 'Tokenomics', 'Launch', 'Communications', 'Platform'], prefix: 'w3-', firestoreVertical: 'web3' },
         'solar':       { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
         'solar_vpp':   { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
@@ -16459,7 +16370,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           re_development: { requiresOperatorDocs: false, types: ["SOP"] },
           re_sales:    { requiresOperatorDocs: false, types: ["SOP"] },
           government:  { requiresOperatorDocs: false, types: ["SOP", "Other"] },
-          auto_dealer: { requiresOperatorDocs: false, types: ["SOP"] },
           web3:        { requiresOperatorDocs: true,  types: ["ProjectAttestation", "TeamRoster", "SOP"] },
         };
         const verticalKey = (intake.vertical || "").toLowerCase().replace(/\s+/g, "_");

@@ -241,10 +241,6 @@ HEALTHCARE:
 "Should this worker verify provider credentials automatically? Free -- pulls from the CMS NPI registry."
 "Want live FDA drug reference built in? Free -- FDA public data."
 
-AUTO DEALER:
-"Want instant VIN decode built in? Free -- NHTSA public data."
-"Should I add market value lookup? About $0.20 per VIN."
-
 After creator confirms a connector:
 "Connected. I have added [connector label] to your worker. Subscribers will not need to enter anything -- it pulls automatically."
 
@@ -386,9 +382,6 @@ function _getSalesOverlay(ctx) {
   // Select vertical-specific opening — hook / proof / invite structure
   let opening;
   switch (vertical) {
-    case "auto_dealer":
-      opening = "Hey — I'm Alex. SOCIII gives auto dealers Digital Workers that know F&I rules, deal compliance, and the service-to-sales pipeline the way your best desk manager does — except they never call in sick. What does your store look like?";
-      break;
     case "solar_vpp":
       opening = "Hey — I'm Alex. SOCIII handles the compliance layer for solar — permitting, interconnection, SREC issuance, exchange compliance. Every rule, every jurisdiction, every step. What part of the stack are you trying to solve?";
       break;
@@ -408,7 +401,7 @@ function _getSalesOverlay(ctx) {
       opening = "Hey — I'm Alex, Chief of Staff at SOCIII. We help Web3 projects build with credibility — verified teams, compliant communications, transparent treasuries, and the technical tools to generate and audit your contracts. No anonymous teams. All receipts. What are you building?";
       break;
     default:
-      opening = "Hey — I'm Alex, Chief of Staff at SOCIII. Over 1,000 Digital Workers across 14 industries — real estate, aviation, auto, web3, and more — all in regulated industries. What do you do?";
+      opening = "Hey — I'm Alex, Chief of Staff at SOCIII. Over 1,000 Digital Workers across 14 industries — real estate, aviation, web3, and more — all in regulated industries. What do you do?";
       break;
   }
 
@@ -424,12 +417,6 @@ NAME CAPTURE:
 After your opening and the prospect's first response, naturally work in "What's your name, by the way?" in your second reply. Keep it casual — not a form field, just a human question. Once you know their name, use it once per 2-3 messages. Not every message.
 
 VERTICAL-SPECIFIC PRICING:
-${vertical === "auto_dealer" ? `AUTO DEALER — TRANSACTION-FIRST PRICING:
-NEVER lead with monthly subscription for transaction workers. Auto dealer is fee-based.
-Transaction workers (F&I, Deal Structuring, Sales Contract, Trade-In Valuation): per-deal fee — dealer only pays when a deal closes. If the deal does not close, dealer does not pay.
-Operational workers (Inventory, Service-to-Sales, Marketing, Follow-Up): monthly $29-$79/mo.
-Default pitch: "For the deal-side workers — you only pay when it makes you money. If the deal doesn't close, you don't pay. Most dealers find it pays for itself in the first week."
-Only introduce subscription workers as the operational layer AFTER the transaction model lands.` : ""}
 
 CONVERSATION FLOW:
 

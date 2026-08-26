@@ -82,8 +82,6 @@ async function rankWorkers(db, vertical, persona, activeWorkerSlugs) {
         if (workerVertical === "AV") score += 10;
       } else if (vertical === "re_development") {
         if (workerVertical === "W-" || slug.startsWith("market") || slug.startsWith("cre")) score += 10;
-      } else if (vertical === "auto_dealer") {
-        if (workerVertical === "AD") score += 10;
       } else if (vertical === "health_education") {
         if (workerVertical === "HE") score += 10;
       }

@@ -314,10 +314,9 @@ function ConsumerDashboard() {
 
 // ── Main Dashboard (routes consumer vs business) ────────────────
 export default function Dashboard() {
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const isConsumer = vertical === "consumer";
   const isAnalyst = vertical.toLowerCase() === "analyst";
-  const isAuto = vertical === "auto";
   const isRealEstate = vertical === "real-estate";
   const isBuilder = vertical === "custom";
   const _isAviation = vertical === "aviation";
@@ -455,9 +454,7 @@ export default function Dashboard() {
     window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section } }));
   }
 
-  function getContextualPrompt(summary, auto, re, analyst) {
-    if (auto || /\b(car|vehicle|vin|truck|suv|inventory)\b/i.test(summary))
-      return "Your AI is ready to help you manage inventory, track leads, and close deals. Let's start by getting your first vehicle on the lot.";
+  function getContextualPrompt(summary, re, analyst) {
     if (re || /\b(property|rental|tenant|listing|house|apartment)\b/i.test(summary))
       return "Your workspace is set up for real estate. Let's get your first listing or property entered so your AI can start working.";
     if (analyst || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(summary))
@@ -465,9 +462,7 @@ export default function Dashboard() {
     return "Alex is ready. Tell it what you need help with and it'll take it from there.";
   }
 
-  function getContextualChatPrompt(summary, auto, re, analyst) {
-    if (auto || /\b(car|vehicle|vin|truck|suv|inventory)\b/i.test(summary))
-      return "Help me add my first vehicle to inventory";
+  function getContextualChatPrompt(summary, re, analyst) {
     if (re || /\b(property|rental|tenant|listing|house|apartment)\b/i.test(summary))
       return "Help me add my first property listing";
     if (analyst || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(summary))
@@ -579,14 +574,6 @@ export default function Dashboard() {
           customers: { value: "3", trend: "$1.2M pipeline" },
         });
         setValueTracker({ actions: 42, hoursSaved: 38, valueSaved: 5700 });
-      } else if (vertical === "auto") {
-        setKpis({
-          revenue: { value: "$8.4M", trend: "" },
-          activeDeals: { value: "235", trend: "85 new + 150 used" },
-          aiConversations: { value: "47", trend: "" },
-          customers: { value: "$187,200", trend: "" },
-        });
-        setValueTracker({ actions: 31, hoursSaved: 34.5, valueSaved: 8625 });
       } else if (vertical === "aviation") {
         setKpis({
           revenue: { value: "—", trend: "Log flights to track" },
@@ -691,9 +678,6 @@ export default function Dashboard() {
     if (vertical === "real-estate") {
       return ["Occupancy Rate", "Monthly Revenue", "Active Listings", "Pending Transactions"];
     }
-    if (vertical === "auto") {
-      return ["Total Inventory Value", "Units in Stock", "Sold This Month", "Gross Profit MTD"];
-    }
     if (vertical === "property-mgmt") {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
     }
@@ -785,14 +769,14 @@ export default function Dashboard() {
           </div>
           <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px", lineHeight: 1.5 }}>
             {isNewFromChat
-              ? getContextualPrompt(landingSummary, isAuto, isRealEstate, isAnalyst)
+              ? getContextualPrompt(landingSummary, isRealEstate, isAnalyst)
               : "You skipped data import during setup. Import your data or chat with your AI to get started."}
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             <button
               onClick={() => {
                 const chatMsg = isNewFromChat
-                  ? getContextualChatPrompt(landingSummary, isAuto, isRealEstate, isAnalyst)
+                  ? getContextualChatPrompt(landingSummary, isRealEstate, isAnalyst)
                   : "Help me get started with my workspace";
                 window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: chatMsg } }));
               }}
@@ -846,16 +830,16 @@ export default function Dashboard() {
           </div>
           <div className="valueTrackerGrid">
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Sourced + Analyzed" : isAuto ? "Leads Generated" : "Actions"}</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{isAuto ? 23 : valueTracker.actions}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Sourced + Analyzed" : "Actions"}</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAuto ? "Appointments Set" : "Hours Saved"}</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{isAuto ? 8 : valueTracker.hoursSaved}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved}</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Value at $250/hr" : isAuto ? "Hours Saved" : "Value at $35/hr"}</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px", color: "#16a34a" }}>{isAuto ? "34.5" : `$${valueTracker.valueSaved.toLocaleString()}`}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Value at $250/hr" : "Value at $35/hr"}</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px", color: "#16a34a" }}>${valueTracker.valueSaved.toLocaleString()}</div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
@@ -863,7 +847,7 @@ export default function Dashboard() {
               <div style={{ fontSize: "11px", color: "#64748b" }}>/user/mo</div>
             </div>
           </div>
-          {(isAnalyst || isAuto) && valueTracker.valueSaved > 0 && (
+          {isAnalyst && valueTracker.valueSaved > 0 && (
             <div style={{ marginTop: "12px", padding: "8px 12px", background: "#f0fdf4", borderRadius: "6px", fontSize: "13px", color: "#16a34a", textAlign: "center", fontWeight: 500 }}>
               Your AI has delivered ${valueTracker.valueSaved.toLocaleString()} in value this month — a {Math.round(valueTracker.valueSaved / 9)}x return on your $9 investment
             </div>
@@ -1084,182 +1068,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Auto Dealer — Operational Tracks */}
-      {isAuto && (
-        <div style={{ marginTop: "14px" }}>
-
-          {/* Sales Track */}
-          <div className="card" style={{ marginBottom: "14px", padding: "20px" }}>
-            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
-            <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active pipeline and lead activity</div>
-            <div className="trackGrid4" style={{ marginBottom: "16px" }}>
-              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800 }}>8</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Deals</div>
-              </div>
-              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800 }}>$291,600</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Pipeline Value</div>
-              </div>
-              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800 }}>3</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments Today</div>
-              </div>
-              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>2</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Hot Leads</div>
-              </div>
-            </div>
-            {/* Mini funnel */}
-            <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "60px" }}>
-              {[
-                { label: "Lead", count: 2, value: "$77.1K", color: "#64748b" },
-                { label: "Contacted", count: 2, value: "$66.8K", color: "#2563eb" },
-                { label: "Test Drive", count: 1, value: "$32.8K", color: "#7c3aed" },
-                { label: "Negotiation", count: 2, value: "$66.0K", color: "#d97706" },
-                { label: "F&I Desk", count: 1, value: "$48.9K", color: "#16a34a" },
-                { label: "Sold", count: 2, value: "$61.9K", color: "#059669" },
-              ].map((s, i) => (
-                <div key={i} onClick={() => nav("sales-pipeline")} style={{ flex: 1, textAlign: "center", cursor: "pointer" }}>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: s.color, marginBottom: "2px" }}>{s.value}</div>
-                  <div style={{ height: `${Math.max(12, s.count * 14)}px`, background: s.color, borderRadius: "4px 4px 0 0", marginBottom: "4px" }} />
-                  <div style={{ fontSize: "10px", color: "#64748b" }}>{s.label}</div>
-                  <div style={{ fontSize: "12px", fontWeight: 700, color: s.color }}>{s.count}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Service Track + Inventory Track side by side */}
-          <div className="trackGrid2" style={{ marginBottom: "14px" }}>
-            {/* Service Track */}
-            <div className="card" style={{ padding: "20px" }}>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Service Track</div>
-              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Today's service operations</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div onClick={() => nav("auto-service")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>8</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments</div>
-                </div>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>$1,676</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Revenue Today</div>
-                </div>
-                <div onClick={() => nav("auto-service")} style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>5</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Upsell Opps ($8,250)</div>
-                </div>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>6/8</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Confirmed</div>
-                </div>
-              </div>
-              <div style={{ marginTop: "12px", padding: "10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "13px", color: "#16a34a" }}>
-                3 service customers matched to sales opportunities
-              </div>
-            </div>
-
-            {/* Inventory Track */}
-            <div className="card" style={{ padding: "20px" }}>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Inventory Track</div>
-              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Lot status and acquisition</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>85</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>New (avg 28 days)</div>
-                </div>
-                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>150</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Used (avg 45 days)</div>
-                </div>
-                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>12</div>
-                  <div style={{ fontSize: "12px", color: "#dc2626" }}>Over 90 days</div>
-                </div>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>6</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Acquired This Week</div>
-                </div>
-              </div>
-              {/* Inventory Acquisition */}
-              <div style={{ marginTop: "14px", padding: "12px", background: "#fffbeb", borderRadius: "8px", border: "1px solid #fef3c7" }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#92400e", marginBottom: "8px" }}>Inventory Acquisition</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px", color: "#78350f" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Trade-ins this week: 3</span><span style={{ fontWeight: 600 }}>$47,500</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Auction purchases: 2</span><span style={{ fontWeight: 600 }}>$31,200</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Wholesale buys: 1</span><span style={{ fontWeight: 600 }}>$18,900</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", paddingTop: "4px", borderTop: "1px solid #fde68a", fontWeight: 700 }}>
-                    <span>Total acquisition</span><span>$97,600</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* While You Were Out */}
-          <div style={{ marginBottom: "12px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>While You Were Out...</h2>
-            <p style={{ fontSize: "14px", color: "var(--muted)", margin: "4px 0 0" }}>
-              Your AI found {cosActivity.length} revenue opportunities overnight
-            </p>
-          </div>
-          {cosActivity.length > 0 ? (
-            <div className="trackGrid2">
-              {cosActivity.map((item) => (
-                <div key={item.id} className="card" style={{ padding: "20px" }}>
-                  <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{
-                      display: "inline-block", fontSize: "11px", fontWeight: 600, padding: "2px 10px",
-                      borderRadius: "9999px", background: `${item.badgeColor}18`, color: item.badgeColor, letterSpacing: "0.02em",
-                    }}>{item.badge}</span>
-                    {item.urgency === "high" && (
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "#dc2626" }}>URGENT</span>
-                    )}
-                    <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: item.assignedTo?.type === "ai" ? "#f3e8ff" : "#f1f5f9", color: item.assignedTo?.type === "ai" ? "#7c3aed" : "#475569" }}>
-                      {item.assignedTo?.name || "Unassigned"}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{item.title}</div>
-                  <div style={{ fontSize: "14px", color: "var(--fg, #334155)", marginBottom: "10px", lineHeight: 1.5 }}>
-                    {item.detail}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>
-                    Suggested: {item.action}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-                    <span style={{ fontSize: "16px", fontWeight: 700, color: "#16a34a" }}>Potential: {item.potentialRevenue}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                      style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
-                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Draft and send the outreach for " + item.title.split(" -- ")[1] + ". " + item.detail } }))}
-                    >Let AI Handle It</button>
-                    <button
-                      style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid var(--border, #e2e8f0)", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "var(--fg, #334155)" }}
-                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Show me the details for this opportunity: " + item.title + ". " + item.detail } }))}
-                    >Review First</button>
-                    <button
-                      style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#94a3b8" }}
-                      onClick={() => setCosActivity(prev => prev.filter(c => c.id !== item.id))}
-                    >Dismiss</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "14px" }}>
-              No new opportunities. Your AI is monitoring the lot and customer database.
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Real Estate Operational Tracks */}
       {isRealEstate && (
         <div style={{ marginTop: "14px" }}>
@@ -1415,7 +1223,7 @@ export default function Dashboard() {
       )}
 
       {/* Recent Activity -- other verticals (not auto, not analyst, not consumer) */}
-      {!isConsumer && !isAuto && !isAnalyst && !isRealEstate && (
+      {!isConsumer && !isAnalyst && !isRealEstate && (
         <div className="card">
           <div className="cardHeader">
             <div>

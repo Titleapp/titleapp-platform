@@ -231,7 +231,6 @@ const styles = {
 const INDUSTRIES = [
   ["Aviation", "Flight planning, logbook, and risk-assessment workers under FAR/AIM."],
   ["Real Estate", "Commercial analysis, cap-rate, and lease-review workers."],
-  ["Auto Dealer", "Finance-and-insurance, VIN decode, and deal-desk workers."],
   ["Title & Escrow", "Title-search and document-control workers built on the digital-title audit layer."],
   ["Web3", "Governance, treasury, and token-analytics workers."],
   ["Government", "Recording, permitting, licensing, and inspection workflows."],

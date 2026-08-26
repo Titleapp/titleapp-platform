@@ -22,7 +22,7 @@ function getDb() { return admin.firestore(); }
  * Build the full Alex system prompt section for live worker knowledge.
  *
  * @param {object} opts
- * @param {string} [opts.vertical] — current page vertical (e.g. 'auto_dealer')
+ * @param {string} [opts.vertical] — current page vertical (e.g. 'aviation')
  * @param {string} [opts.uid] — current user ID
  * @returns {string} — prompt section text
  */
@@ -72,7 +72,7 @@ PRICING:
 - Worker tiers: Free | $29/mo | $49/mo | $79/mo
 - Volume discounts: 3+ workers = 10% off, 5-10 = 20% off, 10+ = 30% off
 - Annual pricing: 2 months free (pay 10 get 12)
-- Tech fee verticals: Auto ($250 or 2%), RE Sales ($500 or 1%), PM ($250 or 1%)
+- Tech fee verticals: RE Sales ($500 or 1%), PM ($250 or 1%)
 - Mortgage/lending: subscription only
 - Alex (Chief of Staff): free with 3+ workers
 ${pricing.active_promos ? `Active promo codes: ${pricing.active_promos}` : ""}`);
@@ -80,7 +80,6 @@ ${pricing.active_promos ? `Active promo codes: ${pricing.active_promos}` : ""}`)
   // Promotions
   sections.push(`
 CURRENT PROMOTIONS:
-- AUTOLAUNCH: 2 months free, auto dealer workers (expires Mar 23)
 - TITLELAUNCH: 2 months free, title/escrow workers (expires Mar 23)
 - PMLAUNCH: 2 months free, property management (expires Mar 23)
 - PILOT3FREE: 3 months free, Pilot Pro (expires Apr 9)

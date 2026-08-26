@@ -150,7 +150,7 @@ async function updateAlexKnowledge(db, workerId) {
     status: w.status,
     worker_url: w.worker_url || null,
     monthly_price_usd: parsePriceTier(w.price_tier),
-    is_tech_fee_vertical: ["auto_dealer", "re_sales", "property_management"].includes(w.vertical),
+    is_tech_fee_vertical: ["re_sales", "property_management"].includes(w.vertical),
     added_at: admin.firestore.FieldValue.serverTimestamp(),
   });
 }

@@ -5,7 +5,6 @@ function getDb() { return admin.firestore(); }
 
 // Industry value → vertical name mapping
 const INDUSTRY_TO_VERTICAL = {
-  "auto-dealer": "Auto Dealer",
   "real-estate": "Real Estate",
   "aviation": "Aviation",
   "healthcare": "Health and EMS",

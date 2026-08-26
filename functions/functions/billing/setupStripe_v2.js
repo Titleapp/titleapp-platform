@@ -129,7 +129,6 @@ const PRODUCTS = [
 
 const COUPONS = [
   // Vertical launch
-  { id: 'AUTOLAUNCH',  name: 'Auto Dealer Launch — 2 months free',           percent_off: 100, duration: 'repeating', duration_in_months: 2, redeem_by: unixDate('2026-03-23'), metadata: { titleapp_promo: 'launch', vertical: 'auto' } },
   { id: 'TITLELAUNCH', name: 'Title/Escrow Launch — 2 months free',           percent_off: 100, duration: 'repeating', duration_in_months: 2, redeem_by: unixDate('2026-03-23'), metadata: { titleapp_promo: 'launch', vertical: 'title_escrow' } },
   { id: 'PMLAUNCH',    name: 'Property Management Launch — 2 months free',    percent_off: 100, duration: 'repeating', duration_in_months: 2, redeem_by: unixDate('2026-03-23'), metadata: { titleapp_promo: 'launch', vertical: 'property_management' } },
   { id: 'PILOT3FREE',  name: 'Pilot Pro — 3 months free',                     percent_off: 100, duration: 'repeating', duration_in_months: 3, redeem_by: unixDate('2026-04-09'), metadata: { titleapp_promo: 'launch', vertical: 'pilot' } },

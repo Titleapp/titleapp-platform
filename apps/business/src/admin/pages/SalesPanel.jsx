@@ -6,12 +6,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 const TEMPLATES = [
   {
-    id: "auto-dealer",
-    label: "Auto Dealer",
-    message: "Hey {{name}} \u2014 just set up something I think your dealership would actually use. Takes 2 min to see it: {{link}}",
-    defaultPrompt: "I run a dealership and I'm curious what SOCIII can do for me",
-  },
-  {
     id: "solar-vpp",
     label: "Solar / VPP",
     message: "{{name}} \u2014 found a platform that handles the compliance side of solar installs. Worth 2 minutes: {{link}}",
@@ -99,7 +93,7 @@ export default function SalesPanel() {
 function SendIntroText() {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("auto-dealer");
+  const [selectedTemplate, setSelectedTemplate] = useState("solar-vpp");
   const [customPrompt, setCustomPrompt] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);

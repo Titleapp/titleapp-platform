@@ -26,15 +26,6 @@ const VERTICALS = {
     navItems: ['Deal Pipeline', 'Properties', 'Title & Escrow'],
     defaultSort: 'top10',
   },
-  'auto-dealer': {
-    id: 'auto-dealer',
-    label: 'Auto Dealer',
-    emoji: '\uD83D\uDE97',
-    catalogFile: 'auto-dealer.json',
-    firestorePrefix: 'ad-',
-    navItems: ['Inventory', 'F&I', 'Service'],
-    defaultSort: 'top10',
-  },
   'solar': {
     id: 'solar',
     label: 'Solar',
@@ -168,12 +159,6 @@ const VERTICALS = {
  * Keys are lowercased for case-insensitive matching.
  */
 const LEGACY_ALIASES = {
-  // Auto dealer variants
-  'auto_dealer': 'auto-dealer',
-  'auto dealer': 'auto-dealer',
-  'autodealer': 'auto-dealer',
-  'automotive': 'auto-dealer',
-
   // Real estate development variants
   'analyst': 'real-estate',
   'real_estate': 'real-estate',

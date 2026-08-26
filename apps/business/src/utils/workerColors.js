@@ -14,7 +14,6 @@ const CATEGORY_COLORS = {
   marketing: { primary: "#EA580C", light: "#FED7AA", accent: "#f97316" },
   realestate:{ primary: "#0891B2", light: "#CFFAFE", accent: "#06b6d4" },
   platform:  { primary: "#6B46C1", light: "#E9D5FF", accent: "#7c3aed" },
-  auto:      { primary: "#0284c7", light: "#e0f2fe", accent: "#0ea5e9" },
   government:{ primary: "#059669", light: "#D1FAE5", accent: "#10b981" },
   web3:      { primary: "#7c3aed", light: "#ede9fe", accent: "#8b5cf6" },
 };
@@ -31,7 +30,6 @@ const SLUG_CATEGORY = {
 // Vertical name → category mapping (fallback)
 const VERTICAL_CATEGORY = {
   "Aviation": "aviation",
-  "Auto Dealer": "auto",
   "Real Estate": "realestate",
   "Real Estate Professional": "realestate",
   "Title & Escrow": "realestate",
@@ -59,7 +57,6 @@ export function getWorkerColor(workerSlug, vertical) {
     if (workerSlug.startsWith("esc-")) return CATEGORY_COLORS.realestate;
     if (workerSlug.startsWith("gov-")) return CATEGORY_COLORS.government;
     if (workerSlug.startsWith("w3-")) return CATEGORY_COLORS.web3;
-    if (workerSlug.startsWith("auto-") || workerSlug.startsWith("car-")) return CATEGORY_COLORS.auto;
     if (workerSlug.startsWith("re-") || workerSlug.startsWith("cre-") || workerSlug.startsWith("ir-")) return CATEGORY_COLORS.realestate;
   }
 

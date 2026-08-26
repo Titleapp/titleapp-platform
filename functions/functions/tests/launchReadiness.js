@@ -51,9 +51,9 @@ async function testWorkerRecommendations() {
     else fail("'other' industry", "should return empty");
 
     // Test valid industry
-    const r2 = await svc.getIndustryWorkers("auto-dealer", { limit: 3 });
-    if (r2.ok) ok(`auto-dealer returns ${r2.workers.length} workers (vertical: ${r2.vertical})`);
-    else fail("auto-dealer query", r2.error || "unexpected failure");
+    const r2 = await svc.getIndustryWorkers("aviation", { limit: 3 });
+    if (r2.ok) ok(`aviation returns ${r2.workers.length} workers (vertical: ${r2.vertical})`);
+    else fail("aviation query", r2.error || "unexpected failure");
   } catch (e) {
     fail("workerRecommendations load", e.message);
   }

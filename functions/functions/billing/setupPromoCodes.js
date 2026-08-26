@@ -6,7 +6,6 @@ const Stripe = require("stripe");
 function getDb() { return admin.firestore(); }
 
 const PROMO_CODES = [
-  { code: "AUTOLAUNCH", discount: 100, type: "percent", duration: "repeating", duration_in_months: 2, description: "First 2 months free — auto dealer workers", vertical: "auto" },
   { code: "TITLELAUNCH", discount: 100, type: "percent", duration: "repeating", duration_in_months: 2, description: "First 2 months free — title/escrow workers", vertical: "title-escrow" },
   { code: "PMLAUNCH", discount: 100, type: "percent", duration: "repeating", duration_in_months: 2, description: "First 2 months free — property management workers", vertical: "property-management" },
   { code: "PILOT3FREE", discount: 100, type: "percent", duration: "repeating", duration_in_months: 3, description: "First 3 months free — Pilot Pro", vertical: "pilot" },

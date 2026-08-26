@@ -1,62 +1,5 @@
 import React, { useState } from "react";
 
-// ── Auto Dealer AI Activity Data ──
-const AUTO_AI_KPIS_ROW1 = [
-  { label: "Active Conversations", value: "52" },
-  { label: "Sales Conversations", value: "24" },
-  { label: "Service Conversations", value: "4" },
-  { label: "Follow-ups Pending", value: "18" },
-];
-
-const AUTO_AI_KPIS_ROW2 = [
-  { label: "Messages Sent Today", value: "87" },
-  { label: "Emails Sent Today", value: "23" },
-  { label: "Texts Sent Today", value: "41" },
-  { label: "Phone Calls", value: "0", badge: "Coming Soon" },
-];
-
-const AUTO_CONVERSATION_SUMMARIES = [
-  {
-    title: "Sales Activity",
-    accent: "#16a34a",
-    summary: "24 customers in active sales conversations:",
-    details: ["8 in active negotiation", "6 scheduling test drives", "10 in initial inquiry"],
-    highlight: "Top opportunity: Maria Gonzalez -- lease expiring, $2,800 potential",
-  },
-  {
-    title: "Service Activity",
-    accent: "#2563eb",
-    summary: "4 service customers in communication:",
-    details: ["2 appointment confirmations", "1 recall notification", "1 warranty follow-up"],
-    highlight: "Next appointment: Charles Cox, 60K Major Service, Monday 8:00 AM",
-  },
-  {
-    title: "Outbound Queue",
-    accent: "#d97706",
-    summary: "18 follow-ups queued:",
-    details: ["7 post-test-drive follow-ups (24-48hr window)", "5 lease expiration outreach (60-day window)", "6 service reminders (upcoming appointments)"],
-    highlight: "Estimated value of queued outreach: $34,200",
-  },
-];
-
-const AUTO_AI_ACTION_LOG = [
-  { time: "6:02 AM", action: "Sent lease offer", context: "Maria Gonzalez -- 2024 Corolla LE", channel: "Text", status: "Delivered", detail: "Personalized upgrade offer highlighting 2025 Corolla LE inventory availability. Included monthly payment comparison." },
-  { time: "5:45 AM", action: "Confirmed appointment", context: "Charles Cox -- 60K Service", channel: "Text", status: "Delivered", detail: "Confirmation for Monday 8:00 AM. Included estimated cost ($449) and mention of warranty expiration -- Extra Care Gold pitch prepared." },
-  { time: "5:30 AM", action: "Generated trade-in estimate", context: "Mark Brown -- 2025 Corolla Cross", channel: "Email", status: "Delivered", detail: "KBB-sourced trade estimate of $22,400. Paired with RAV4 XLE Premium offer showing positive equity of $4,200." },
-  { time: "5:15 AM", action: "Drafted conquest offer", context: "Amanda Liu -- 2025 RAV4 XLE", channel: "Email", status: "Queued", detail: "TrueCar lead response with Lunar Rock RAV4 availability, competitive pricing vs Honda CR-V, and Saturday test drive invitation." },
-  { time: "Yesterday 4:30 PM", action: "Sent F&I options", context: "Robert Chen -- 2025 Camry XSE", channel: "Email", status: "Opened", detail: "Menu presentation: Extended warranty options, GAP coverage, paint protection. Financing at 5.49% through Chase Auto." },
-  { time: "Yesterday 3:15 PM", action: "Post-test-drive follow-up", context: "Sandra Lee -- Highlander XLE", channel: "Text", status: "Delivered", detail: "Thank-you message with lease special details. Highlighted family-friendly features discussed during test drive." },
-  { time: "Yesterday 2:00 PM", action: "Service upsell pitch", context: "Patricia Adams -- Oil Change", channel: "In-person (prep)", status: "Complete", detail: "Prepared talking points for advisor: cabin air filter replacement ($45), next service interval reminder, satisfaction survey." },
-  { time: "Yesterday 11:30 AM", action: "Price reduction alert", context: "Internal -- 2021 BMW X3 (143 days)", channel: "Dashboard", status: "Flagged", detail: "Recommended markdown from $34,169 to $31,999. Floor plan interest loss: $500/month. Market comp analysis attached." },
-  { time: "Yesterday 10:00 AM", action: "Appointment reminder", context: "Angela Williams -- Battery Check", channel: "Text", status: "Delivered", detail: "Hybrid battery check + multi-point inspection reminder. Included trade-up suggestion for 2025 Prius Prime." },
-  { time: "2 days ago 9:00 AM", action: "Inventory acquisition alert", context: "Internal -- 3 trade-ins received", channel: "Dashboard", status: "Complete", detail: "3 trade-ins processed: 2021 BMW X3 ($28,500), 2022 Civic ($19,400), 2020 Camry ($16,800). Recon estimates prepared." },
-  { time: "2 days ago 8:15 AM", action: "Lease expiration batch", context: "4 customers -- 60-day window", channel: "Text", status: "Delivered", detail: "Batch outreach to Maria Gonzalez, Sandra Lee, and 2 others with leases expiring within 60 days. Personalized vehicle matches included." },
-  { time: "3 days ago 4:00 PM", action: "Facebook listing generated", context: "2025 Camry LE -- Stock N25000", channel: "Facebook", status: "Complete", detail: "Marketplace listing with 12 photos, feature highlights, and competitive pricing. 70 days on lot trigger." },
-  { time: "3 days ago 2:30 PM", action: "Service-to-sales flag", context: "Angela Williams -- 2021 Prius Prime", channel: "Dashboard", status: "Flagged", detail: "Vehicle 4+ years old, hybrid battery showing wear. Trade-up candidate for 2025 Prius Prime ($34,800). High equity position." },
-  { time: "4 days ago 9:00 AM", action: "Post-purchase batch", context: "12 customers -- 7-day check-in", channel: "Email", status: "Delivered", detail: "Satisfaction survey + F&I product education emails sent to 12 recent buyers. 7 opened within 24 hours." },
-  { time: "5 days ago 3:00 PM", action: "Inventory aging report", context: "Internal -- 12 units over 90 days", channel: "Dashboard", status: "Complete", detail: "Weekly aging report: 12 units over 90 days, estimated carrying cost $6,000/month. Price reduction recommendations for top 5." },
-];
-
 // ── Analyst AI Activity Data ──
 const ANALYST_AI_KPIS_ROW1 = [
   { label: "Active Research Tasks", value: "15" },
@@ -213,19 +156,18 @@ const STATUS_COLORS = {
 };
 
 export default function AIChats() {
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const isPersonal = vertical === "consumer";
-  const isAuto = vertical === "auto";
   const isAnalyst = vertical === "analyst";
   const [expandedRow, setExpandedRow] = useState(null);
 
   const isRealEstate = vertical === "real-estate";
 
   // Pick data based on vertical
-  const kpisRow1 = isRealEstate ? RE_AI_KPIS_ROW1 : isAuto ? AUTO_AI_KPIS_ROW1 : isAnalyst ? ANALYST_AI_KPIS_ROW1 : VAULT_AI_KPIS;
-  const kpisRow2 = isRealEstate ? RE_AI_KPIS_ROW2 : isAuto ? AUTO_AI_KPIS_ROW2 : isAnalyst ? ANALYST_AI_KPIS_ROW2 : null;
-  const summaries = isRealEstate ? RE_CONVERSATION_SUMMARIES : isAuto ? AUTO_CONVERSATION_SUMMARIES : isAnalyst ? ANALYST_CONVERSATION_SUMMARIES : VAULT_SUMMARIES;
-  const actionLog = isRealEstate ? RE_AI_ACTION_LOG : isAuto ? AUTO_AI_ACTION_LOG : isAnalyst ? ANALYST_AI_ACTION_LOG : VAULT_AI_ACTION_LOG;
+  const kpisRow1 = isRealEstate ? RE_AI_KPIS_ROW1 : isAnalyst ? ANALYST_AI_KPIS_ROW1 : VAULT_AI_KPIS;
+  const kpisRow2 = isRealEstate ? RE_AI_KPIS_ROW2 : isAnalyst ? ANALYST_AI_KPIS_ROW2 : null;
+  const summaries = isRealEstate ? RE_CONVERSATION_SUMMARIES : isAnalyst ? ANALYST_CONVERSATION_SUMMARIES : VAULT_SUMMARIES;
+  const actionLog = isRealEstate ? RE_AI_ACTION_LOG : isAnalyst ? ANALYST_AI_ACTION_LOG : VAULT_AI_ACTION_LOG;
 
   function openChat(prompt) {
     window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));
@@ -287,7 +229,7 @@ export default function AIChats() {
           </div>
         </div>
       ) : (
-        /* ── Business AI Activity (auto + analyst) ── */
+        /* ── Business AI Activity (real estate + analyst) ── */
         <div>
           {/* KPI Row 1 */}
           <div className="kpiRow" style={{ marginBottom: "12px" }}>
@@ -304,7 +246,7 @@ export default function AIChats() {
             ))}
           </div>
 
-          {/* KPI Row 2 (auto + analyst only) */}
+          {/* KPI Row 2 (real estate + analyst only) */}
           {kpisRow2 && (
             <div className="kpiRow" style={{ marginBottom: "20px" }}>
               {kpisRow2.map((kpi, i) => (

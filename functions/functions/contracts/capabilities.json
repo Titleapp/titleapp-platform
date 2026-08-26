@@ -103,7 +103,7 @@
     {
       "id": "vertical.install_vertical_package_v1",
       "class": "vertical",
-      "summary": "Install a vertical overlay package (real_estate, auto_dealer, etc.).",
+      "summary": "Install a vertical overlay package (real_estate, aviation, etc.).",
       "contexts": [
         "tenant"
       ],

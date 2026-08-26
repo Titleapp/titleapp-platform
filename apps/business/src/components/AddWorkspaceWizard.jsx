@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 const VERTICAL_ABBREVS = {
   general: 'GB',
-  auto: 'AD',
   analyst: 'IA',
   'real-estate': 'RE',
   aviation: 'AV',
@@ -20,17 +19,6 @@ const VERTICALS = [
       'Recommendations based on how you describe your business',
       'Add named-vertical workers later when needed',
       'Best fit for software, consulting, services, holding companies',
-    ],
-  },
-  {
-    id: 'auto',
-    label: 'Auto Dealer',
-    description: 'Manage inventory, sales, service, and compliance',
-    cosManages: [
-      'Vehicle inventory and aging alerts',
-      'Customer outreach and lead gen',
-      'F&I product recommendations',
-      'Service scheduling and upsells',
     ],
   },
   {
@@ -86,12 +74,6 @@ const VERTICAL_PLACEHOLDERS = {
     stateLabel: 'State of incorporation or primary operations',
     stateHelp: 'Used for tax filings and obligations. You can change this later.',
   },
-  auto: {
-    name: 'Demo Motors',
-    tagline: 'Toyota Dealership — Houston, TX',
-    stateLabel: 'What state do you operate in?',
-    stateHelp: 'This determines your compliance rules and tax structure',
-  },
   'real-estate': {
     name: 'Sunrise Realty',
     tagline: 'Full-service brokerage — Miami, FL',
@@ -140,12 +122,6 @@ const JURISDICTIONS = [
 
 const SAMPLE_WORKERS = {
   general: [],
-  auto: [
-    { id: 'auto-inventory', name: 'Inventory Manager', price: 29, description: 'Track vehicles, aging alerts, pricing' },
-    { id: 'auto-sales', name: 'Sales Assistant', price: 29, description: 'Lead gen, customer outreach, follow-ups' },
-    { id: 'auto-fi', name: 'F&I Advisor', price: 49, description: 'Product recommendations, compliance' },
-    { id: 'auto-service', name: 'Service Scheduler', price: 29, description: 'Appointments, upsells, customer retention' },
-  ],
   analyst: [
     { id: 'cre-analyst', name: 'CRE Deal Analyst', price: 49, description: 'Deal screening and underwriting' },
     { id: 'title-escrow', name: 'Title & Escrow', price: 29, description: 'Title search and closing coordination' },
@@ -423,7 +399,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
         {/* Step 2: Business details */}
         {step === 2 && (() => {
-          const ph = VERTICAL_PLACEHOLDERS[selectedVertical] || VERTICAL_PLACEHOLDERS.auto;
+          const ph = VERTICAL_PLACEHOLDERS[selectedVertical] || VERTICAL_PLACEHOLDERS.general;
           return (
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b', marginBottom: 20 }}>

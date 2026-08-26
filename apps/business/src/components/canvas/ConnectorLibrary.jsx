@@ -18,11 +18,6 @@ const CONNECTOR_CATALOG = {
     { id: "mls-comps", label: "MLS Comparables", description: "Recent sales and active listings within your market area.", costPerSession: 0.45, minTier: 2 },
     { id: "title-search", label: "Title Search", description: "Preliminary title report for any parcel.", costPerSession: 0.72, minTier: 2 },
   ],
-  "Auto Dealer": [
-    { id: "vin-decode", label: "VIN Decoder", description: "Full vehicle history, specs, and recall status.", costPerSession: 0.08, minTier: 0 },
-    { id: "market-value", label: "Market Value", description: "Real-time wholesale and retail pricing data.", costPerSession: 0.25, minTier: 1 },
-    { id: "credit-prequalify", label: "Credit Pre-Qualify", description: "Soft-pull credit check for finance pre-approval.", costPerSession: 0.60, minTier: 2 },
-  ],
   Healthcare: [
     { id: "drug-interactions", label: "Drug Interactions", description: "Real-time medication interaction checking.", costPerSession: 0, minTier: 0 },
     { id: "protocol-lookup", label: "Protocol Lookup", description: "Current clinical protocols and treatment guidelines.", costPerSession: 0, minTier: 0 },
@@ -48,7 +43,6 @@ function resolveVertical(vertical) {
   const lower = v.toLowerCase();
   if (lower.includes("aviation") || lower.includes("pilot")) return "Aviation";
   if (lower.includes("real estate") || lower.includes("title")) return "Real Estate";
-  if (lower.includes("auto") || lower.includes("dealer")) return "Auto Dealer";
   if (lower.includes("health") || lower.includes("nursing") || lower.includes("ems")) return "Healthcare";
   if (lower.includes("solar") || lower.includes("energy")) return "Solar";
   if (lower.includes("web3") || lower.includes("crypto") || lower.includes("token")) return "Web3";

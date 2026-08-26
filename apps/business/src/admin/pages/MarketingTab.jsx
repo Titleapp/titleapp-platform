@@ -121,7 +121,6 @@ export default function MarketingTab() {
   const maxVerticalCount = Math.max(...Object.values(verticalCounts), 1);
 
   const VERTICALS = [
-    "auto",
     "title-escrow",
     "property-management",
     "developers",

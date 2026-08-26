@@ -11,7 +11,6 @@ const ESSENTIAL_WORKERS = [
 
 // Industry → recommended worker slugs
 const INDUSTRY_WORKERS = {
-  "auto-dealer": ["car-sales", "auto-title-clerk", "auto-fi-manager"],
   "real-estate": ["cre-analyst", "property-management", "investor-relations"],
   "aviation": ["av-digital-logbook", "av-currency-tracker", "av-flight-planning"],
   "healthcare": [],

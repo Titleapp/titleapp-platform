@@ -250,7 +250,7 @@ const S = {
 
 const VERTICAL_LABELS = {
   aviation: "Aviation", pilot: "Aviation", "real-estate": "Real Estate",
-  "auto-dealer": "Auto Dealer", auto: "Auto Dealer", web3: "Web3",
+  web3: "Web3",
   solar: "Solar", nursing: "Nursing", health: "Healthcare",
   games: "Games", government: "Government",
 };
