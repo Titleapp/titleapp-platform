@@ -3043,7 +3043,21 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
       // configuring the session. See services/safety/distressProtocol.js.
       let _distressYellowInjection = null;
       try {
-        const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection, writeDistressAlert, notifySafetyContact } = require("./services/safety/distressProtocol");
+        const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection, writeDistressAlert, notifySafetyContact, checkSafetyContactGate } = require("./services/safety/distressProtocol");
+
+        // Deploy-time activation gate (CODEX 66 §3.6 / CODEX 79 §6.1a).
+        // Opt-in per tenant via requireSafetyContactGate — see distressProtocol.js
+        // for why this isn't a blanket block on every existing tenant.
+        const gateTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
+        const gate = await checkSafetyContactGate(db, gateTenantId);
+        if (gate.blocked) {
+          return res.json({
+            ok: true,
+            response: "This workspace isn't fully set up for chat yet — an administrator needs to finish safety configuration before this worker can go live. Please contact your SOCIII account owner.",
+            conversationState: "safety_contact_gate_blocked",
+          });
+        }
+
         if (userInput && matchesTrigger(userInput)) {
           const priorTurns = Array.isArray(body.conversationHistory) ? body.conversationHistory : [];
           const classification = await classifyDistress(userInput, priorTurns);

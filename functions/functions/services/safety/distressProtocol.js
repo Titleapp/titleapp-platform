@@ -186,10 +186,55 @@ async function writeDistressAlert(db, { uid, workerId, sessionId, tenantId, seve
 }
 
 /**
+ * CODEX 66 §3.6 / ruleset `required_before_production_activation` — the
+ * deploy-time activation gate. Blocks normal worker processing for a tenant
+ * that has opted into gated enforcement (`tenant.requireSafetyContactGate:
+ * true`) but hasn't configured a safety contact yet.
+ *
+ * Deliberately OPT-IN per tenant, not a blanket platform-wide block. This
+ * ruleset shipped 2026-08-17; most existing production tenants never
+ * configured `safetyContact` because nothing ever required it. Flipping this
+ * to a hard block for every tenant unconditionally would take down live
+ * chat for existing paying customers with no warning — the actual harm this
+ * gate exists to prevent is a real crisis going unrouted, not a false sense
+ * of safety from an outage. Enforcement rolls out tenant-by-tenant as each
+ * one sets `requireSafetyContactGate: true` (done for UH Maui as part of its
+ * launch checklist — CODEX 79 §4.2) rather than flipping on for everyone at
+ * once.
+ *
+ * Demo tenants (`tenantId` starting with "demo-") are always exempt, per the
+ * ruleset's own "development/staging tenants are exempt" clause.
+ *
+ * @returns {Promise<{blocked: boolean, reason?: string}>}
+ */
+async function checkSafetyContactGate(db, tenantId) {
+  if (!tenantId || tenantId.startsWith("demo-")) return { blocked: false };
+  try {
+    const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+    if (!tenantSnap.exists) return { blocked: false };
+    const tenant = tenantSnap.data() || {};
+    if (tenant.requireSafetyContactGate !== true) return { blocked: false };
+    const safetyContact = tenant.safetyContact || null;
+    if (safetyContact && safetyContact.name && safetyContact.phone) return { blocked: false };
+    return { blocked: true, reason: "safety_contact_missing" };
+  } catch (err) {
+    // Fail OPEN here, deliberately — this gate protects against a
+    // misconfigured tenant, not against Firestore being unreachable. Failing
+    // closed on infra error would take down chat for every gated tenant
+    // during a Firestore blip, which is a worse outcome than this one gate
+    // being briefly permissive. (Contrast with classifyDistress above, which
+    // correctly fails closed — that's a per-message safety classification,
+    // this is a tenant-config availability check.)
+    console.error("[distressProtocol] safetyContact gate check failed (failing open, non-blocking):", err.message);
+    return { blocked: false };
+  }
+}
+
+/**
  * CODEX 66 §3.4 — red severity requires an immediate SMS to
  * tenant.safetyContact.phone. If none is configured, log the gap instead
- * of silently doing nothing (§3.6 fallback — this is a safety net, not the
- * production-activation gate itself, which is a separate deploy-time check).
+ * of silently doing nothing (§3.6 fallback — this is the reactive per-signal
+ * safety net; checkSafetyContactGate above is the proactive activation gate).
  */
 async function notifySafetyContact(db, { tenantId, uid, workerId, isSelf }) {
   try {
@@ -234,4 +279,5 @@ module.exports = {
   buildRedResponse,
   writeDistressAlert,
   notifySafetyContact,
+  checkSafetyContactGate,
 };
