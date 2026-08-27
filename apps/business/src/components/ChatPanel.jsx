@@ -1533,8 +1533,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
 
     // ── Support escalation: show consent gate card, do NOT fire backend yet ──
-    const _escalationRe = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(real\s+)?(human|person|agent)\b|\bcontact\s+(support|the\s+team)\b|\bsupport\s+ticket\b|\b(something|the\s+app|this)\s+(is\s+)?(broken|not\s+working|crashed)\b|\b(can't|cannot)\s+(log[\s-]*in|sign[\s-]*in|get\s+in|access)\b|\bneed\s+(human|live|real)\s+(help|support|agent)\b/i;
-    if (_escalationRe.test(userMessage)) {
+    // CODEX 80 — split into two tiers. An explicit request for a human always
+    // intercepts immediately, for every worker, since overriding it undermines
+    // consent. "Implicit trouble" phrasing ("can't access X", "something's
+    // broken") is exactly Grace's (program-support-001) job to attempt first —
+    // hard-intercepting it before she ever sees the message would defeat the
+    // entire reason she exists. Every other worker keeps the old behavior.
+    const _explicitHumanRe = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(real\s+)?(human|person|agent)\b|\bcontact\s+(support|the\s+team)\b|\bsupport\s+ticket\b|\bneed\s+(human|live|real)\s+(help|support|agent)\b/i;
+    const _implicitTroubleRe = /\b(something|the\s+app|this)\s+(is\s+)?(broken|not\s+working|crashed)\b|\b(can't|cannot)\s+(log[\s-]*in|sign[\s-]*in|get\s+in|access)\b/i;
+    const _isProgramSupportWorker = _activeSlug === 'program-support-001';
+    if (_explicitHumanRe.test(userMessage) || (!_isProgramSupportWorker && _implicitTroubleRe.test(userMessage))) {
       setIsSending(false);
       const _escParams = new URLSearchParams(window.location.search);
       setMessages(prev => [...prev, {
