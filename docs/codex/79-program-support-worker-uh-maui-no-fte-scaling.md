@@ -1,6 +1,6 @@
 # CODEX 79 — Program Support Worker: UH Maui Pilot as the No-FTE Scaling Test
 
-**Status:** ⚪ spec — not yet built · **real forcing function landed 2026-08-27** (§1A) · **red-teamed 2026-08-27** (§0)
+**Status:** ⚪ spec — not yet built · **real forcing function landed 2026-08-27** (§1A) · **red-teamed 2026-08-27, two rounds** (§0, §0B)
 **Owner:** Sean / Claude Code
 **Date:** 2026-08-26 (updated 2026-08-27)
 **Trigger:** Sean, on UH Maui / NURS-366 going live as SOCIII's first real institutional customer: *"I don't think me as a support person would be optimal. Maybe we can build a 24-7 worker? Do I hire some support staff?"* — and, on why this specific worker matters beyond this one pilot: *"if this worker works, then we can scale without FTE."*
@@ -23,14 +23,56 @@ External review (Claude) plus independent verification against the live repo and
 
 **Tracked, not blocking (Tier 3):** Hannah-readiness as a go-live dependency, the deflection-metric denominator definition, and the still-unresolved Hawaii-timezone SLA question from CODEX 45 are now stated explicitly rather than implied — see §4 and §5.3. The review's file/line citations for CODEX 44/45/66/73 were independently re-verified this session by direct file reads (not just cited from memory) — they hold.
 
+## 0B. Red team round 2 — 2026-08-27
+
+Second external pass on §0 itself. All six findings held up; fixed below rather than left as commentary.
+
+**Tier 1 #1 — fair, and fixed with a second surface of proof, not a bigger assertion.** The reviewer correctly pointed out that "Claude verified Claude's own claim" is a weaker standard than this CODEX otherwise holds itself to. Rather than just re-asserting it more confidently, here is the actual terminal output the §0 claim was based on, so anyone (Sean, Anne's reviewer, a future hire) can check it independently instead of trusting a status-table cell:
+
+```
+$ find . -iname "platform_distress*"
+./functions/functions/raas/rulesets/platform_distress_v1.json
+
+$ git log -1 --format="%ai" 2a8eac99 -- functions/functions/raas/rulesets/platform_distress_v1.json
+2026-08-17 23:14:10 -1000
+
+$ wc -l functions/functions/raas/rulesets/platform_distress_v1.json
+      58 functions/functions/raas/rulesets/platform_distress_v1.json
+
+$ wc -l functions/functions/services/safety/distressProtocol.js
+     237 functions/functions/services/safety/distressProtocol.js
+
+$ grep -n "distressProtocol\|platform_distress_v1" functions/functions/index.js
+3043:      // configuring the session. See services/safety/distressProtocol.js.
+3046:      const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection,
+           writeDistressAlert, notifySafetyContact } = require("./services/safety/distressProtocol");
+3077:      console.error("[distressProtocol] pipeline error (non-blocking, no response
+           substitution):", distressErr.message);
+```
+
+This is still self-reported in the sense that it came from this repo's own git history and source files — it is not a third-party attestation. For the Zoom call specifically, the reviewer's stronger ask stands: before relying on this in front of Anne's reviewer, get one more independent surface — e.g. trigger a real test conversation against the regex gate and capture the resulting `alertFeed` write, rather than resting solely on code-reads. Not done as part of this pass; flagged as a pre-call to-do (§4.9).
+
+**Tier 1 #2 — agreed, this is a real residual safety gap, not a closed item.** Recommendation adopted: **(a) is preferred over (b)** — build the deploy-time `tenant.safetyContact`-required activation gate before UH Maui specifically goes live, since the ruleset's own scope describes it as a small, bounded check (block activation if the field is missing), not a new subsystem. If it doesn't land before the Zoom call, fallback (b) applies: the answer sheet must say the gate is enforced by manual checklist today, not automatically — checked against what was actually sent to Ruthie on 2026-08-27, and it does **not** overclaim this specific mechanism (it describes access controls and FERPA posture in general terms, never asserts an automatic activation gate exists). No correction needed to the sent email; the gap is inside this CODEX's build plan, not in what Anne will see. Added as an explicit build step (§6.1a).
+
+**Tier 2 #3 — added.** This CODEX's build order proceeds now regardless of signature status, because the underlying work (distress-protocol gate, Support Worker guardrails, deflection metric) benefits any institutional tenant, not just UH Maui — but the *launch checklist* (§4) and *live-tenant* steps (setting the real subsidized-billing flag, sending Anne the escalation summary) are contingent on the deal actually closing. If data governance comes back with blockers, or January passes without signature, those tenant-specific steps simply have no tenant to apply to yet — the worker/protocol work isn't wasted, it's prerequisite for whichever institutional customer signs first. Stated explicitly in §6.
+
+**Tier 2 #4 — agreed, pulled into §1A with its own deadline.** See new §1A item 3.
+
+**Tier 2 #5 — agreed.** The `sourceWorker` field addition is now its own build-order step with an explicit rollback note (§6.5).
+
+**Tier 2 #6 — decided, not left open.** For v1: **prompt-level redirect only**, not a programmatic handoff. No worker-to-worker conversation-state transfer mechanism exists today (confirmed absent from §1's reuse table), and building one is a materially larger scope than this CODEX covers. The Support Worker tells the person to open a conversation with Hannah for clinical content; it does not attempt to transfer context automatically. If this friction proves to be a real problem in practice (tracked via the deflection metric or direct feedback), a real handoff mechanism becomes its own future CODEX — not silently assumed into this one's scope.
+
+**Tier 3 — both fixed.** The sample-size caveat (§3.3) now accounts for Anne/Ruthie's admin traffic, not just student seat count. The Gmail-thread citation (§0, cross-references) is flagged to be swapped for the executed Order Form document once UH Maui actually signs.
+
 ## 1A. Timeline forcing function (2026-08-27, from Ruthie/Anne)
 
 Two concrete, dated items, not general context:
 
 1. **Data Governance / vendor request form — Zoom call next week (week of 2026-09-01).** Anne is filling out UH's vendor request/data-governance paperwork now (this is pre-signature — see §0's correction, the contract itself isn't executed yet) and has questions; she wants Sean and Ruthie on a call about it. This is the single most time-sensitive item in this whole CODEX — it's procurement-gating, not a nice-to-have. Practical implication: whatever this CODEX says about FERPA handling, data access scope, and escalation guardrails (§3.2, §4) needs to be **true and defensible in that call**, not just aspirational in a spec doc. The plain-language answer sheet already sent to Ruthie (2026-08-27) covers this, grounded in `docs/TRUST_AND_DATA_INTEGRITY.md` §14 (FERPA school-official designation) and the now-confirmed-live distress protocol (§0) — it also states honestly that the FERPA addendum's attachment to the DPA and the VPAT/WCAG accessibility status are still open, rather than overclaiming either.
 2. **Anne wants the CET live on SOCIII by January.** This resets the priority of this CODEX from "worth doing for the current NURS-366 pilot" to "must be functioning before CET rolls out beyond the single test course." CET going live means Anne, Ruthie, and likely more faculty/students start generating real operational tickets at a materially higher volume than today's single-course pilot — the Support Worker and its guardrails should be live *before* January, not built reactively after ticket volume shows up.
+3. **Subsidized human-support billing terms — decide before the Data Governance Zoom (red team round 2, Tier 2 #4).** This was originally an unscheduled §5 bullet; given it sits on the same January cliff as everything else (the demo default lapses 2026-12-31, the same month CET ramps up) and Anne could plausibly ask about post-trial support costs on the call itself, it now has the same deadline as item 1: **resolved before the Zoom, not after.** See §5.2 for the actual decision to make.
 
-Net effect on sequencing (see §6): the Data Governance call is the near-term deadline that forces §3.2's guardrails and FERPA answers to be nailed down now; the January CET date is the deadline that forces the rest of the worker (persona, escalation wiring, deflection metric) to actually be live, not just spec'd.
+Net effect on sequencing (see §6): the Data Governance call is the near-term deadline that forces §3.2's guardrails, the FERPA answers, and the subsidized-billing decision to be nailed down now; the January CET date is the deadline that forces the rest of the worker (persona, escalation wiring, deflection metric) to actually be live, not just spec'd.
 
 ## 1. What already exists — reuse, do not rebuild
 
@@ -82,7 +124,7 @@ CODEX 44 states the model's target outright: *"Tier 0 is always free and should 
 - **Scope the metric to the Support Worker specifically, not the whole tenant** (red team Tier 2 #3, confirmed): a tenant-wide aggregate would conflate Hannah's existing mid-conversation Tier-0 triggers with this new persona's performance, which is a different question than the one this metric exists to answer. Track `supportSessions` escalated *from the Support Worker persona* against *Support Worker conversation count*, and report Hannah's own deflection rate separately if useful — never blended into one number.
 - Add a simple report: `(Tier-0-only Support Worker conversations) / (Tier-0-only Support Worker conversations + Support-Worker-originated supportSessions escalated)` per tenant, per week.
 - Cheapest version: a query over existing `supportSessions/{id}` docs (already has tenant + timestamp; needs a `sourceWorker` or equivalent field to distinguish origin) joined against Support Worker conversation count for the same tenant/period — no new write path needed beyond that field, just a read-side aggregate. Could be a small script first, a dashboard tile later.
-- **Sample-size caveat (red team Tier 2 #4, confirmed):** UH Maui's real Order Form starts at the first 5 active students free (per the actual signed terms once executed — see §0), scaling toward Anne's stated ~90 BSN students by F28. At single-digit-to-low-double-digit weekly users, one escalated ticket swings the weekly percentage by double digits. Track it from week one regardless, but do not treat any single week's number as thesis-confirming or thesis-denying until volume is meaningfully higher than the opening NURS-366 pilot — read it as a trend across several weeks, not a weekly verdict.
+- **Sample-size caveat (red team Tier 2 #4, sharpened in round 2 Tier 3):** the real near-term denominator isn't just student count — §2 already establishes that Anne and Ruthie's account/ops traffic is expected to dominate this worker's usage, and neither is a "student" for pricing purposes. UH Maui's real Order Form starts at the first 5 active students free, scaling toward Anne's stated ~90 BSN students by F28, but the actual early-weeks denominator is closer to **student-count-plus-two** (Anne + Ruthie) than student count alone. At that volume, one escalated ticket swings the weekly percentage by double digits regardless of which population you count. Track it from week one regardless, but do not treat any single week's number as thesis-confirming or thesis-denying until volume is meaningfully higher than the opening NURS-366 pilot — read it as a trend across several weeks, not a weekly verdict.
 - This is the actual deliverable that proves or disproves Sean's thesis — track it from week one of the UH Maui pilot, not retroactively.
 
 ### 3.4 — Ambiguous-request routing between Hannah and the Support Worker (red team Tier 2 #5)
@@ -99,11 +141,12 @@ The Hannah/Support-Worker boundary in §2 is clean on paper but real messages wo
 6. Watch `supportSessions` and the new deflection metric (§3.3) closely for the first 2–3 weeks of the semester — first real institutional customer, worth the extra attention regardless of the automation thesis, and read as a trend, not a single week's verdict (§3.3 sample-size caveat).
 7. Data Governance Zoom prep (week of 2026-09-01) is **done** — the answer sheet was sent to Ruthie 2026-08-27, grounded in `docs/TRUST_AND_DATA_INTEGRITY.md` and the now-confirmed-live distress protocol, and states the FERPA-addendum-attachment and VPAT/WCAG gaps honestly rather than glossing over them.
 8. **Confirm Hannah's student-tutor mode (CODEX 73) is actually live before this worker redirects clinical questions to her** (red team Tier 3) — "redirect to Hannah" is a dead end if her build slips past this worker's launch. Check status at go-live, don't assume.
+9. **Before the Zoom specifically (red team round 2, Tier 1 #1):** get one more independent surface of proof for the distress protocol beyond this CODEX's own code-read — e.g. trigger a real test conversation against the regex gate and capture the resulting `alertFeed` write. §0B's terminal-output block is a stronger citation than a status table, but it's still self-verified against this repo; a live triggered example is the stronger evidence to have in hand if Anne's reviewer asks a follow-up question.
 
 ## 5. Open decisions (Sean's call)
 
 1. **Name/persona for this worker.** "Front Desk" is a placeholder in §3.1 — needs a real name/voice, ideally something that generalizes across future institutional tenants rather than being UH-Maui-specific, since the whole point is that this pattern should be reusable, not bespoke per customer.
-2. **Set real subsidized-billing terms — this is a pricing decision, not a reconciliation (corrected 2026-08-27, §0).** The real Order Form ($99/mo + $5/active student, first 5 free) has no human-support-tier language at all, and UH Maui hasn't signed yet. Decide explicitly: does SOCIII want to offer subsidized Tier 1 human support through some date as part of closing this deal (as the demo default implies), and if so, what date — noting the current demo default (`2026-12-31`) lapses in the same month Anne wants CET to go live platform-wide, which is exactly when escalation volume is likely to increase. Whatever is decided should go into the actual signed Order Form/DPA, not just a Firestore flag copied from a demo seed script.
+2. **Set real subsidized-billing terms — this is a pricing decision, not a reconciliation (corrected 2026-08-27, §0), now with a deadline (round 2, §1A item 3): before the Data Governance Zoom.** The real Order Form ($99/mo + $5/active student, first 5 free) has no human-support-tier language at all, and UH Maui hasn't signed yet. Decide explicitly: does SOCIII want to offer subsidized Tier 1 human support through some date as part of closing this deal (as the demo default implies), and if so, what date — noting the current demo default (`2026-12-31`) lapses in the same month Anne wants CET to go live platform-wide, which is exactly when escalation volume is likely to increase. Whatever is decided should go into the actual signed Order Form/DPA, not just a Firestore flag copied from a demo seed script.
 3. **SLA hours for Hawaii-timezone escalations.** CODEX 45 already flagged this as unresolved: 4 business hours Mon–Fri Pacific was proposed, but nursing students often study nights/weekends — confirm whether that SLA actually holds for this account or needs a Hawaii-aware exception. Compounding factor (red team Tier 3): a Tier-0 miss at 11pm Saturday currently has no stated behavior beyond "unresolved" — worth a concrete answer (e.g., what the student actually sees when they're outside subsidized/Tier-1 availability), not just a flagged open question.
 4. **Scope of "Front Desk" vs. future accounts.** Should this be built as a generic, tenant-agnostic Support Worker template from day one (more upfront work, directly reusable for the next institutional customer), or scoped tightly to UH Maui first and generalized after it's proven? Recommendation: build the persona generically from the start — the guardrails in §3.2 are not UH-Maui-specific — but let the Locker content (Order Form terms, onboarding FAQ) stay per-tenant as it naturally would anyway.
 
@@ -113,15 +156,19 @@ The Hannah/Support-Worker boundary in §2 is clean on paper but real messages wo
 
 0. ~~Write the FERPA/data-governance answer sheet~~ — **done**, sent to Ruthie 2026-08-27 (§4.7).
 1. **Confirm UH Maui's `tenant.safetyContact` is configured** (§4.2) — corrected 2026-08-27: this is a data-entry check against an already-built, already-live protocol, not a build race against the Zoom call.
-2. Write the Support Worker's system prompt + guardrails (§3.1–3.2, including the ambiguous-routing rule in §3.4), Locker-grounded on UH Maui's real Order Form/onboarding content.
+1a. **Build the deploy-time `tenant.safetyContact`-required activation gate itself (round 2, Tier 1 #2)** — not just check the field manually. The ruleset's own text scopes this as a bounded, fast-follow-sized change (block production activation if the field is missing), so it should actually ship before UH Maui goes live rather than staying a memory-dependent manual check indefinitely. If it can't land before the Zoom call, that's fine — the call doesn't depend on it (§0B) — but it should land before real UH Maui users reach this worker.
+2. Write the Support Worker's system prompt + guardrails (§3.1–3.2, including the ambiguous-routing rule in §3.4 — **prompt-level redirect only, no programmatic handoff, per round 2 Tier 2 #6**), Locker-grounded on UH Maui's real Order Form/onboarding content.
 3. Wire it as an addressable worker/persona in the tenant's chat surface (not just the silent regex layer) — reuses `POST /v1/support:escalate` and the consent-gate UI unchanged.
-4. **Decide and set the real subsidized-billing terms for the live UH Maui tenant** (§5.2) — a pricing decision to make now, not a config value to copy from the demo seed.
-5. Ship the Tier-0 deflection-rate report, **scoped to the Support Worker specifically** (§3.3) — even a one-off script counts as shipped for week one; a dashboard tile can follow.
-6. Send Anne the escalation-path summary (§4.4) before go-live.
-7. **Confirm Hannah's student-tutor mode (CODEX 73) is live** before treating "redirect to Hannah" as a real fallback (§4.8).
-8. Monitor weeks 1–3 closely; read the deflection number as a multi-week trend, not a single-week verdict (§3.3 sample-size caveat), and decide whether it validates the no-FTE thesis for *informational* support load specifically (§3.2's scope caveat) or reveals gaps this worker can't cover.
+4. **Decide and set the real subsidized-billing terms for the live UH Maui tenant** (§5.2) — a pricing decision to make **before the Data Governance Zoom** (§1A item 3), not a config value to copy from the demo seed.
+5. **Add a `sourceWorker` field to `supportSessions` writes (round 2, Tier 2 #5) — a discrete schema/write-path change, not a detail folded into the report below.** This touches a live write path used by every existing worker's escalation flow, so it needs its own test pass (confirm existing escalation flows still write correctly with the new field defaulted/backfilled) and a rollback plan (the field is additive — old code paths that don't set it should degrade to "unknown source" rather than break) before the deflection report in step 6 depends on it.
+6. Ship the Tier-0 deflection-rate report, **scoped to the Support Worker specifically** (§3.3), built on top of step 5's field — even a one-off script counts as shipped for week one; a dashboard tile can follow.
+7. Send Anne the escalation-path summary (§4.4) before go-live.
+8. **Confirm Hannah's student-tutor mode (CODEX 73) is live** before treating "redirect to Hannah" as a real fallback (§4.8).
+9. Monitor weeks 1–3 closely; read the deflection number as a multi-week trend, not a single-week verdict (§3.3 sample-size caveat), and decide whether it validates the no-FTE thesis for *informational* support load specifically (§3.2's scope caveat) or reveals gaps this worker can't cover.
 
-**All of 1–6 above should be genuinely done well before January**, not just started — CET going live is when real ticket volume beyond the single NURS-366 pilot actually shows up, and this worker exists specifically so that volume doesn't require a hire.
+**All of 1–7 above should be genuinely done well before January**, not just started — CET going live is when real ticket volume beyond the single NURS-366 pilot actually shows up, and this worker exists specifically so that volume doesn't require a hire.
+
+**Contingency (round 2, Tier 2 #3):** steps 1, 1a, 2, and 5–6 above proceed now regardless of UH Maui's signature status — they're prerequisite infrastructure that benefits whichever institutional tenant signs first, not UH-Maui-specific work. Steps 3 (wiring the persona into UH Maui's actual tenant), 4 (setting UH Maui's live billing flag), 7 (sending Anne the summary), and 8–9 (UH Maui-specific monitoring) are contingent on the deal actually closing — if data governance comes back with blockers, or January passes without signature, those steps simply have no live tenant to apply to yet. This CODEX's priority does not pause; the tenant-specific tail of it does, by necessity.
 
 ---
 
@@ -132,4 +179,4 @@ The Hannah/Support-Worker boundary in §2 is clean on paper but real messages wo
 - `docs/codex/66-worker-persona-and-distress-protocol.md` — distress protocol, shared hard prerequisite with CODEX 73
 - `docs/codex/73-nurs366-hannah-student-tutor-and-study-pipeline.md` — Hannah's tutoring build; this CODEX explicitly does not duplicate it (§2)
 - `docs/TRUST_AND_DATA_INTEGRITY.md` — the real trust/security doc the Data Governance answer sheet was built from (§0, §1A, §4.7)
-- Gmail thread "SOCIII / UH Maui College — Order Form for review" (2026-08-25/26) — source of the real, unsigned Order Form terms verified in §0
+- Gmail thread "SOCIII / UH Maui College — Order Form for review" (2026-08-25/26) — source of the real, unsigned Order Form terms verified in §0. **Round 2 note:** a private email thread is a weak citation for anything that needs to hold up externally (a UH auditor, a future SOCIII hire without inbox access) — swap this citation for the executed Order Form document itself once UH Maui actually signs.
