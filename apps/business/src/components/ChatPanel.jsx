@@ -1533,16 +1533,20 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
 
     // ── Support escalation: show consent gate card, do NOT fire backend yet ──
-    // CODEX 80 — split into two tiers. An explicit request for a human always
+    // CODEX 80/81 — three-way split. An explicit request for a human always
     // intercepts immediately, for every worker, since overriding it undermines
     // consent. "Implicit trouble" phrasing ("can't access X", "something's
-    // broken") is exactly Grace's (program-support-001) job to attempt first —
-    // hard-intercepting it before she ever sees the message would defeat the
-    // entire reason she exists. Every other worker keeps the old behavior.
+    // broken") is exactly Grace's (program-support-001) job — but only Grace
+    // gets a direct attempt; every OTHER worker does an obvious, visible
+    // handoff to her instead of either (a) trying to answer outside its own
+    // domain, or (b) hard-escalating to a human before Grace ever gets a
+    // chance (red team finding: most of this traffic arrives while someone
+    // is already mid-conversation with a different persona, e.g. Hannah).
     const _explicitHumanRe = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+)?(real\s+)?(human|person|agent)\b|\bcontact\s+(support|the\s+team)\b|\bsupport\s+ticket\b|\bneed\s+(human|live|real)\s+(help|support|agent)\b/i;
     const _implicitTroubleRe = /\b(something|the\s+app|this)\s+(is\s+)?(broken|not\s+working|crashed)\b|\b(can't|cannot)\s+(log[\s-]*in|sign[\s-]*in|get\s+in|access)\b/i;
     const _isProgramSupportWorker = _activeSlug === 'program-support-001';
-    if (_explicitHumanRe.test(userMessage) || (!_isProgramSupportWorker && _implicitTroubleRe.test(userMessage))) {
+
+    if (_explicitHumanRe.test(userMessage)) {
       setIsSending(false);
       const _escParams = new URLSearchParams(window.location.search);
       setMessages(prev => [...prev, {
@@ -1556,6 +1560,45 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         },
         isSystem: true,
       }]);
+      return;
+    }
+
+    if (!_isProgramSupportWorker && _implicitTroubleRe.test(userMessage)) {
+      setIsSending(false);
+      // Deterministic, visible handoff — reuses the same catalog lookup and
+      // ta:select-worker dispatch the [[SWITCH_WORKER:...]] mechanism uses
+      // (50.28) elsewhere in this file, just triggered client-side before
+      // any network call instead of parsed out of an LLM response.
+      const _graceTarget = allWorkers.find(w => w.slug === 'program-support-001' || w.workerId === 'program-support-001');
+      if (_graceTarget) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "That sounds like an account or access question — let me bring in Grace, our program support assistant, who can help with that directly.",
+        }]);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('ta:select-worker', {
+            detail: { slug: _graceTarget.slug || _graceTarget.workerId, name: _graceTarget.name || _graceTarget.title || _graceTarget.slug }
+          }));
+        }, 400);
+      } else {
+        // Grace isn't in the worker catalog yet — the one-time
+        // /admin:bootstrap-program-support-001 hasn't been run for this
+        // tenant. Fail safe to the existing human-escalation path rather
+        // than silently dropping the message or leaving the user stuck.
+        console.warn('[chat] Grace (program-support-001) not found in worker catalog — falling back to human escalation. Run /admin:bootstrap-program-support-001.');
+        const _escParams = new URLSearchParams(window.location.search);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "I can connect you with the SOCIII support team.",
+          structuredData: {
+            type: 'support_escalation_consent',
+            triggerMessage: userMessage,
+            workerSlug: _activeSlug || null,
+            persona: _escParams.get('persona') || null,
+          },
+          isSystem: true,
+        }]);
+      }
       return;
     }
 
@@ -2036,6 +2079,28 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           cleanResponse = cleanResponse.replace(m[0], '').replace(/\n{3,}/g, '\n\n').trim();
         }
       } catch { /* ignore */ }
+
+      // CODEX 81 — [[CONTENT_GAP: ...]] marker emit. Grace (program-support-001)
+      // is instructed to append this, invisibly to the user, whenever her
+      // Locker genuinely doesn't cover a question — closes the loop so the
+      // same gap doesn't recur unnoticed forever. Fire-and-forget; never
+      // blocks or affects what the user sees.
+      try {
+        const g = cleanResponse.match(/\[\[CONTENT_GAP:\s*([^\]]{1,500})\]\]/);
+        if (g) {
+          cleanResponse = cleanResponse.replace(g[0], '').replace(/\n{3,}/g, '\n\n').trim();
+          const gapSlug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
+          const gapApiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+          const gapTenantId = localStorage.getItem('TENANT_ID') || '';
+          liveUser?.getIdToken?.().then(gapToken => {
+            fetch(`${gapApiBase}/api?path=/v1/support:content-gap`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(gapToken ? { Authorization: `Bearer ${gapToken}` } : {}), 'X-Tenant-Id': gapTenantId },
+              body: JSON.stringify({ workerSlug: gapSlug, gap: g[1].trim() }),
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      } catch { /* non-blocking by design */ }
 
       // Signal extractor — update canvas when user mentions a vertical.
       // S52.45 — THE overlay root cause: this fires showRecommendations (the

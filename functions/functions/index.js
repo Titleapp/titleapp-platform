@@ -4214,7 +4214,13 @@ step by step, before considering escalation — that's the entire reason this
 role exists, so someone doesn't have to wait on a person for something you
 can walk them through directly. Only if you've actually tried and the
 locker genuinely doesn't cover it should you fall back to the platform's
-standard support path.
+standard support path. When this happens, end your reply with a line in
+this exact format: [[CONTENT_GAP: one-sentence description of what you
+didn't have]] — for example [[CONTENT_GAP: no locker content on how to
+reset a lapsed faculty password]]. This is invisible to the person you're
+talking to; it goes to whoever maintains your content so the same gap
+doesn't keep coming up unnoticed. Only emit it when you actually tried and
+came up short — not for every message, and not instead of trying.
 
 TONE: warm, plain-spoken, patient. Faculty and students may be stressed,
 busy, or unfamiliar with the platform — never make anyone feel behind for
@@ -12130,6 +12136,56 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         });
       } catch (err) {
         console.error("[bootstrap-nursing-education-001] error:", err);
+        return jsonError(res, 500, err.message || "bootstrap failed");
+      }
+    }
+
+    // POST /v1/admin:bootstrap-program-support-001 (CODEX 80/81)
+    // One-shot publish of Grace's digitalWorkers catalog doc. Idempotent, no
+    // auth, writes exactly one doc. Required for the SWITCH_WORKER handoff
+    // (CODEX 81) to work at all — useWorkerCatalog() reads from this
+    // collection, and the frontend's switch-execution code silently no-ops
+    // with a console.warn if the target slug isn't found there (see
+    // ChatPanel.jsx's "SWITCH_WORKER marker but unknown slug" branch). This
+    // is a genuinely necessary run-once step, not optional cleanup — flagged
+    // explicitly in CODEX 81 rather than assumed to have happened.
+    if (route === "/admin:bootstrap-program-support-001" && (method === "POST" || method === "GET")) {
+      try {
+        await db.doc("digitalWorkers/program-support-001").set({
+          slug: "program-support-001",
+          display_name: "Grace",
+          name: "Grace",
+          short_description: "Program support — account, access, and onboarding questions, answered 24/7 without waiting on a person.",
+          description: "Grace is the operational front door for an institutional account: login/access issues, onboarding steps, \"how do I\" questions for faculty and students. She never touches coursework or clinical content — that stays with the program's own course tutor — and never executes an account/role change herself, only tells you what needs to happen and who can do it.",
+          tagline: "Program support that's actually there at 2am.",
+          vertical: "education",
+          suite: "Education",
+          status: "live",
+          worker_type: "worker",
+          canvasTabs: [],
+          catalogId: "program-support-001",
+          pricing_tier: 0,
+          pricing: { monthly: 0 },
+          internal_only: false,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        const tenantId = req.query?.tenantId || req.headers["x-tenant-id"] || body?.tenantId;
+        if (tenantId) {
+          await db.doc(`tenants/${tenantId}`).set({
+            activeWorkers: admin.firestore.FieldValue.arrayUnion("program-support-001"),
+          }, { merge: true });
+        }
+
+        return res.json({
+          ok: true,
+          message: "program-support-001 (Grace) published",
+          workerSlug: "program-support-001",
+          tenantUpdated: tenantId || null,
+        });
+      } catch (err) {
+        console.error("[bootstrap-program-support-001] error:", err);
         return jsonError(res, 500, err.message || "bootstrap failed");
       }
     }
@@ -27382,6 +27438,37 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ support:status failed:", e);
         return jsonError(res, 500, "Status check failed");
+      }
+    }
+
+    // POST /v1/support:content-gap (CODEX 81)
+    // Fired (fire-and-forget, non-blocking) by ChatPanel.jsx whenever Grace's
+    // response contains a [[CONTENT_GAP: ...]] marker — i.e. she genuinely
+    // didn't have an answer in her Locker. Without this, "say so plainly
+    // when you don't know" is a dead end: the same gap recurs for the next
+    // person who asks, forever, and Grace's ceiling never rises above
+    // whatever her Locker happened to contain on day one. This is a log,
+    // not an action — closing the loop (someone actually reviewing these
+    // and updating the Locker) is a process step, not a code one; this
+    // route just makes sure the signal isn't lost.
+    if (route === "/support:content-gap" && method === "POST") {
+      try {
+        const { workerSlug, gap } = body;
+        if (!gap) return jsonError(res, 400, "gap required");
+        const gapTenantId = ctx.tenantId || req.headers["x-tenant-id"] || "unknown";
+        await db.collection("supportContentGaps").add({
+          tenantId: gapTenantId,
+          workerSlug: workerSlug || null,
+          gap: String(gap).slice(0, 500),
+          status: "open",
+          createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true });
+      } catch (err) {
+        // Non-blocking by design — a failure here should never surface to
+        // the user or interrupt their conversation with Grace.
+        console.error("[support:content-gap] failed (non-blocking):", err.message);
+        return res.json({ ok: true });
       }
     }
 

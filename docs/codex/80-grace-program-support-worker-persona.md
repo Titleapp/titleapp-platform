@@ -1,9 +1,11 @@
 # CODEX 80 — Grace: Program Support Worker Persona, System Prompt & Guardrails
 
-**Status:** 🟢 built and wired 2026-08-27 (self-red-teamed, one round, before build)
+**Status:** 🟢 persona/prompt built and wired 2026-08-27 (self-red-teamed, one round, before build) · **rescoped 2026-08-27 — see CODEX 81**
 **Owner:** Sean / Claude Code
 **Date:** 2026-08-27
 **Trigger:** CODEX 79 specs the Program Support Worker but leaves its name/voice as an open decision (§5.1, placeholder "Front Desk"). Sean: *"pick one that is comforting for people. And build up the codex first please. You know the drill. Codex, Red team, refinement, then build the deploy."*
+
+**Scope correction (2026-08-27):** a second red team, held against CODEX 79's actual bar ("carry 99% of support load," not "is this a reasonable worker"), found that persona quality alone can't get there — the real determinants are cross-persona routing, a content-freshness loop, and adoption, none of which are prompt-engineering problems. **This CODEX now covers only Grace's persona and system prompt** (which held up fine in review). The routing fix, content-gap loop, and adoption plan live in **CODEX 81**, not here.
 
 **Naming decision, resolved:** **Grace.** Matches the platform's existing convention of plain, warm human first names for personas (Alex — Chief of Staff, Hannah — tutor) rather than a functional label ("Front Desk"). The word itself carries the tone this worker needs — ease, patience, no judgment — and it's tenant-agnostic, which matters since CODEX 79 wants this persona reusable beyond UH Maui.
 
@@ -62,7 +64,13 @@ step by step, before considering escalation — that's the entire reason this
 role exists, so someone doesn't have to wait on a person for something you
 can walk them through directly. Only if you've actually tried and the
 locker genuinely doesn't cover it should you fall back to the platform's
-standard support path.
+standard support path. When this happens, end your reply with a line in
+this exact format: [[CONTENT_GAP: one-sentence description of what you
+didn't have]] — for example [[CONTENT_GAP: no locker content on how to
+reset a lapsed faculty password]]. This is invisible to the person you're
+talking to; it goes to whoever maintains your content so the same gap
+doesn't keep coming up unnoticed. Only emit it when you actually tried and
+came up short — not for every message, and not instead of trying.
 
 TONE: warm, plain-spoken, patient. Faculty and students may be stressed,
 busy, or unfamiliar with the platform — never make anyone feel behind for
@@ -89,21 +97,19 @@ Sean asked for the full drill run in one pass. Two real, codebase-specific findi
 ## 4. What got built
 
 1. **Grace registered as a real, addressable worker** — `program-support-001` in `DEMO_WORKER_FALLBACKS` (the same registry Hannah/Morgan/Clara/Skye live in, in `index.js`), with the system prompt from §2 and `{{PROGRAM_NAME}}` filled per-tenant.
-2. **`ChatPanel.jsx`'s Layer 1 regex split** (Tier 1 finding 1) — explicit human-request phrases still intercept immediately for every worker; implicit-trouble phrases skip the pre-LLM intercept specifically when Grace is active, letting her attempt an answer first.
+2. **`ChatPanel.jsx`'s Layer 1 regex split** (Tier 1 finding 1) — explicit human-request phrases still intercept immediately for every worker; implicit-trouble phrases skip the pre-LLM intercept specifically when Grace is active, letting her attempt an answer first. **Extended in CODEX 81** to also handle the case where a different worker (e.g. Hannah) is active — an obvious, visible handoff to Grace instead of either attempting it herself or hard-escalating.
 3. **CODEX 79 corrected** (Tier 2 finding 3) — the `sourceWorker` schema-change step removed; the deflection-rate report now specified against the existing `workerSlug` field.
 
-## 5. Still open (not built this pass, scope bounded deliberately)
+## 5. Still open
 
-- **The deflection-rate report itself** — CODEX 79 §3.3's query, now simpler (filter existing `supportSessions.workerSlug == "program-support-001"`), but not yet written as a script or dashboard tile.
-- **Locker-grounding Grace on UH Maui's actual content** — contingent on signature, per CODEX 79 §6 step 2a.
-- **A `digitalWorkers/program-support-001` catalog doc + admin bootstrap route**, mirroring Hannah's `/admin:bootstrap-nursing-education-001`, if Grace needs to appear in a worker-picker UI rather than only being reachable by slug.
-- **CODEX 73 touch-up** for Hannah's side of the ambiguous-routing fix (CODEX 79 round 3 finding, still owed, not this CODEX's job to close).
+Superseded by CODEX 81, which owns the actual no-FTE thesis (routing, content-freshness loop, adoption) — that CODEX's §1–3 cover what's built and what's genuinely still open, including the `digitalWorkers/program-support-001` catalog doc + bootstrap route (now built) and the deflection-rate report (still not built). This CODEX's own remaining item: **Locker-grounding Grace on UH Maui's actual content** — contingent on signature, per CODEX 79 §6 step 2a. The CODEX 73 touch-up for Hannah's side of the ambiguous-routing fix is still owed and still not this CODEX's job to close.
 
 ---
 
 ## Cross-references
 
 - `docs/codex/79-program-support-worker-uh-maui-no-fte-scaling.md` — the architecture and thesis this persona serves; corrected in §6/§3.3 per Tier 2 finding 3 above
+- `docs/codex/81-grace-reach-routing-content-loop-adoption.md` — owns the actual no-FTE thesis (routing, content loop, adoption) that this CODEX's scope was narrowed away from
 - `docs/codex/44-human-support-billing.md`, `45-support-escalation-and-human-billing.md` — the escalation/billing infra Grace sits on top of unchanged
 - `apps/business/src/components/ChatPanel.jsx` — Layer 1 regex, modified per Tier 1 finding 1
 - `functions/functions/index.js` — Grace's registration (`DEMO_WORKER_FALLBACKS`) and the universal SUPPORT ESCALATION append her prompt works around (Tier 1 finding 2)
