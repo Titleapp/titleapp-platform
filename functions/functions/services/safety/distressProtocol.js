@@ -185,22 +185,33 @@ async function writeDistressAlert(db, { uid, workerId, sessionId, tenantId, seve
   }
 }
 
+// Tenants created on or after this date default to gate-ENFORCED even
+// without an explicit requireSafetyContactGate flag — see checkSafetyContactGate.
+const GATE_DEFAULT_ENFORCE_SINCE = new Date("2026-08-27T00:00:00Z");
+
 /**
  * CODEX 66 §3.6 / ruleset `required_before_production_activation` — the
- * deploy-time activation gate. Blocks normal worker processing for a tenant
- * that has opted into gated enforcement (`tenant.requireSafetyContactGate:
- * true`) but hasn't configured a safety contact yet.
+ * deploy-time activation gate. When enforced for a tenant, this substitutes
+ * a static "not fully set up yet" reply in place of the worker's normal
+ * response for THAT tenant's messages — it does not reject the HTTP request,
+ * does not throw, and does not affect any other tenant's chat. "Blocked"
+ * here means "this tenant's worker responses are held back," not "the
+ * /chat:message endpoint is down." See the call site in index.js.
  *
- * Deliberately OPT-IN per tenant, not a blanket platform-wide block. This
- * ruleset shipped 2026-08-17; most existing production tenants never
- * configured `safetyContact` because nothing ever required it. Flipping this
- * to a hard block for every tenant unconditionally would take down live
- * chat for existing paying customers with no warning — the actual harm this
- * gate exists to prevent is a real crisis going unrouted, not a false sense
- * of safety from an outage. Enforcement rolls out tenant-by-tenant as each
- * one sets `requireSafetyContactGate: true` (done for UH Maui as part of its
- * launch checklist — CODEX 79 §4.2) rather than flipping on for everyone at
- * once.
+ * Enforcement policy (three-way, not a plain boolean default):
+ *   - `tenant.requireSafetyContactGate === true`  → enforced.
+ *   - `tenant.requireSafetyContactGate === false` → explicitly exempted
+ *     (a deliberate grandfather/exception, set by an admin).
+ *   - unset → defaults on `tenant.createdAt` vs. GATE_DEFAULT_ENFORCE_SINCE.
+ *     Tenants created on/after this gate's ship date (2026-08-27) default to
+ *     ENFORCED, so newly created tenants don't silently land in the same
+ *     unprotected state this gate exists to close. Tenants that predate the
+ *     gate default to NOT enforced (opt-in migration), because most existing
+ *     production tenants never configured `safetyContact` — nothing ever
+ *     required it before now — and flipping every one of them to a hard
+ *     block with no warning would take down live chat for current paying
+ *     customers. Migrate an existing tenant by setting the flag explicitly
+ *     (done for UH Maui as part of its launch checklist — CODEX 79 §4.2).
  *
  * Demo tenants (`tenantId` starting with "demo-") are always exempt, per the
  * ruleset's own "development/staging tenants are exempt" clause.
@@ -213,7 +224,20 @@ async function checkSafetyContactGate(db, tenantId) {
     const tenantSnap = await db.collection("tenants").doc(tenantId).get();
     if (!tenantSnap.exists) return { blocked: false };
     const tenant = tenantSnap.data() || {};
-    if (tenant.requireSafetyContactGate !== true) return { blocked: false };
+
+    let enforce;
+    if (tenant.requireSafetyContactGate === true) {
+      enforce = true;
+    } else if (tenant.requireSafetyContactGate === false) {
+      enforce = false;
+    } else {
+      const createdAt = tenant.createdAt && typeof tenant.createdAt.toDate === "function"
+        ? tenant.createdAt.toDate()
+        : (tenant.createdAt ? new Date(tenant.createdAt) : null);
+      enforce = !!(createdAt && createdAt >= GATE_DEFAULT_ENFORCE_SINCE);
+    }
+    if (!enforce) return { blocked: false };
+
     const safetyContact = tenant.safetyContact || null;
     if (safetyContact && safetyContact.name && safetyContact.phone) return { blocked: false };
     return { blocked: true, reason: "safety_contact_missing" };
@@ -225,7 +249,26 @@ async function checkSafetyContactGate(db, tenantId) {
     // being briefly permissive. (Contrast with classifyDistress above, which
     // correctly fails closed — that's a per-message safety classification,
     // this is a tenant-config availability check.)
+    //
+    // Failing open silently would mean the one moment this protection isn't
+    // working is also the moment nobody would know — so this writes a
+    // best-effort structured alert (in addition to the console.error) that
+    // ops can query/monitor on, distinct from normal per-signal alerts.
     console.error("[distressProtocol] safetyContact gate check failed (failing open, non-blocking):", err.message);
+    try {
+      await db.collection("alertFeed").doc("platform-ops").collection("items").add({
+        type: "safety_gate_check_error",
+        title: "safetyContact activation gate check failed — failed open",
+        detail: `checkSafetyContactGate threw for tenant=${tenantId}: ${err.message}`,
+        tenantId,
+        severity: "yellow",
+        status: "active",
+        source: "distress_protocol",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (alertErr) {
+      console.error("[distressProtocol] failed to write gate-error alert (non-blocking):", alertErr.message);
+    }
     return { blocked: false };
   }
 }

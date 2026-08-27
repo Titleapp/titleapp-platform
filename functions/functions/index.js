@@ -3046,8 +3046,16 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection, writeDistressAlert, notifySafetyContact, checkSafetyContactGate } = require("./services/safety/distressProtocol");
 
         // Deploy-time activation gate (CODEX 66 §3.6 / CODEX 79 §6.1a).
-        // Opt-in per tenant via requireSafetyContactGate — see distressProtocol.js
-        // for why this isn't a blanket block on every existing tenant.
+        // Enforcement policy (opt-in for existing tenants, on-by-default for
+        // tenants created after 2026-08-27) lives in checkSafetyContactGate.
+        //
+        // What "blocked" means here, concretely: this response HTTP 200s
+        // normally (ok: true) with a static substituted `response` string in
+        // place of the worker's normal reply — it does NOT return an error
+        // status, does NOT throw, and does NOT affect any other tenant's
+        // /chat:message traffic. It only holds back this ONE gated tenant's
+        // worker responses until an admin configures safetyContact. This is
+        // "block this tenant's worker output," not "take the endpoint down."
         const gateTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
         const gate = await checkSafetyContactGate(db, gateTenantId);
         if (gate.blocked) {
