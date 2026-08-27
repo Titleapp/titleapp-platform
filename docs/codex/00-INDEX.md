@@ -103,5 +103,9 @@ RT. [`25-26-red-team.md`](25-26-red-team.md) — 🔴 **red-team findings 2026-0
 
 48. [`48-title-production-suite.md`](48-title-production-suite.md) — ⚪ **spec 2026-07-25** — Title Production Suite ("Title Company OS"): 5 B2B workers (Title Search / Commitment Engine / Defect Tracker / Escrow Manager / Underwriting Review) + RE Advocate ref (CODEX 41) + Home Mortgage Advocate. Texas-specific: TDI promulgated rates, T-7 commitment form, wet close rule, homestead/community property RAAS rules. Data: ATTOM demo → DataTree production → county clerk direct. JV opco structure for Mike Lee opportunity — SOCIII licenses IP, holds equity, retains platform on exit. Stewart Title (NYSE: STC, Houston) as natural strategic acquirer. Append-only chain of title = Patent 64/073,700 in production.
 
+78. [`78-mercury-stripe-accounting-worker-turn-on.md`](78-mercury-stripe-accounting-worker-turn-on.md) — ⚪ **spec 2026-08-23** — Mercury/Stripe → Accounting Worker integration already exists end-to-end (Stripe Financial Connections, chosen over Plaid 2026-05-18): `/v1/accounting:fc:createSession/:saveAccount/:sync/:disconnect`, `Accounting.jsx` frontend already advertises it. Gap is not a build — nobody has connected SOCIII's own Mercury/Stripe accounts to it yet.
+
+79. [`79-program-support-worker-uh-maui-no-fte-scaling.md`](79-program-support-worker-uh-maui-no-fte-scaling.md) — ⚪ **spec 2026-08-26** — Program Support Worker for UH Maui/NURS-366: named, addressable Tier-0 persona (not just the silent CODEX 45 regex layer) for account/operations questions from Anne/Ruthie/students, distinct from Hannah's tutoring role. Reuses CODEX 44/45 escalation+billing unchanged. Adds one new capability: Tier-0 deflection-rate reporting — the actual proof point for Sean's "if this worker works, we scale without FTE" thesis. Shares CODEX 66/73's distress-protocol prerequisite.
+
 ## Status legend
 🟢 turned on & verified · 🟡 partially wired · 🔴 gap confirmed · ⚪ not started
