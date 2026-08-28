@@ -3,10 +3,10 @@ import { EDUCATION_TERMS_HTML, EDUCATION_DPA_HTML } from "../legal/educationLega
 const LEGAL_DOCS = {
   "privacy-policy": { title: "Privacy Policy", updated: "August 2026" },
   "security-policy": { title: "Security Policy", updated: "August 2026" },
-  "subscriber-data-rights": { title: "Subscriber Data Rights", updated: "March 2026" },
-  "creator-agreement": { title: "Creator Agreement", updated: "March 2026" },
-  "business-associate-agreement": { title: "Business Associate Agreement", updated: "March 2026" },
-  "terms-of-service": { title: "Terms of Service", updated: "March 2026" },
+  "subscriber-data-rights": { title: "Subscriber Data Rights", updated: "August 2026" },
+  "creator-agreement": { title: "Creator Agreement", updated: "August 2026" },
+  "business-associate-agreement": { title: "Business Associate Agreement", updated: "August 2026" },
+  "terms-of-service": { title: "Terms of Service", updated: "August 2026" },
   // SOCIII for Education — rendered inline as HTML (body) instead of a PDF.
   "education-terms": { title: "SOCIII for Education — Terms of Service", updated: "June 2026", body: EDUCATION_TERMS_HTML },
   "education-dpa": { title: "SOCIII for Education — Data Processing & FERPA Addendum", updated: "June 2026", body: EDUCATION_DPA_HTML },
