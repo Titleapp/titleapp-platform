@@ -2115,6 +2115,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         }
       } catch { /* non-blocking by design */ }
 
+      // CODEX 81 §5 item 4 — deflection-rate denominator. Fired once per
+      // normal Grace turn (independent of whether CONTENT_GAP also fired
+      // above), so the eventual deflection report has a real, purpose-built
+      // count instead of trying to derive "total Grace conversations" from
+      // the general chatSessions collection, whose schema isn't consistent
+      // enough across this file's dozens of write sites to trust for this.
+      try {
+        const turnSlug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
+        if (turnSlug === 'program-support-001') {
+          const turnApiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+          const turnTenantId = localStorage.getItem('TENANT_ID') || '';
+          liveUser?.getIdToken?.().then(turnToken => {
+            fetch(`${turnApiBase}/api?path=/v1/support:worker-turn`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(turnToken ? { Authorization: `Bearer ${turnToken}` } : {}), 'X-Tenant-Id': turnTenantId },
+              body: JSON.stringify({ workerSlug: turnSlug }),
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      } catch { /* non-blocking by design */ }
+
       // Signal extractor — update canvas when user mentions a vertical.
       // S52.45 — THE overlay root cause: this fires showRecommendations (the
       // "<vertical> Workers" panel) and was gated only on local `activeWorkerSlug`,

@@ -27529,6 +27529,43 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/support:worker-turn (CODEX 81 §5 item 4 — deflection-rate denominator)
+    // Fired (fire-and-forget) once per normal Grace response, regardless of
+    // whether that turn also logged a CONTENT_GAP. This exists specifically
+    // to avoid computing "total Grace conversations" from the general
+    // chatSessions collection, whose schema varies across dozens of
+    // different write sites in this file and was never designed to answer
+    // this question reliably — a purpose-built counter is a smaller, safer
+    // surface than trusting that schema to mean the same thing everywhere.
+    // Deflection rate = 1 - (supportSessions escalated from program-support-001
+    // in a period) / (this counter's total for the same period).
+    if (route === "/support:worker-turn" && method === "POST") {
+      try {
+        const { workerSlug } = body;
+        if (!workerSlug) return res.json({ ok: true });
+        const turnTenantId = ctx.tenantId || req.headers["x-tenant-id"] || "unknown";
+        const now = new Date();
+        // ISO week key (YYYY-Www) — coarse enough to be a small number of
+        // docs, fine enough to catch a bad week early rather than waiting
+        // for a monthly rollup.
+        const jan1 = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+        const week = Math.ceil((((now - jan1) / 86400000) + jan1.getUTCDay() + 1) / 7);
+        const weekKey = `${now.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+        const docId = `${turnTenantId}_${workerSlug}_${weekKey}`;
+        await db.collection("supportWorkerActivity").doc(docId).set({
+          tenantId: turnTenantId,
+          workerSlug,
+          weekKey,
+          totalTurns: admin.firestore.FieldValue.increment(1),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+        return res.json({ ok: true });
+      } catch (err) {
+        console.error("[support:worker-turn] failed (non-blocking):", err.message);
+        return res.json({ ok: true });
+      }
+    }
+
     // POST /v1/support:escalate
     // Fired by SupportEscalationCard after user gives explicit consent.
     // Logs session, sends email + SMS, deducts credits if non-subsidized.
