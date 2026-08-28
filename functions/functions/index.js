@@ -3045,6 +3045,19 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
       try {
         const { matchesTrigger, classifyDistress, buildRedResponse, buildYellowInjection, writeDistressAlert, notifySafetyContact, checkSafetyContactGate } = require("./services/safety/distressProtocol");
 
+        // Box-plan usage visibility (CODEX 76, corrected scope 2026-08-28).
+        // Best-effort, non-blocking, fires for every tenant regardless of
+        // box-plan status (cheap to write, avoids an extra read on the hot
+        // chat path just to check status — filtering happens at report time
+        // instead). This is the piece that didn't exist anywhere before:
+        // AI-interaction VOLUME per tenant, independent of seat count, which
+        // is already billed correctly via seatSync.js.
+        try {
+          const { recordInteraction } = require("./services/billing/boxPlanUsage");
+          const usageTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
+          recordInteraction(db, usageTenantId).catch(() => {});
+        } catch (_usageErr) { /* non-blocking by design */ }
+
         // Deploy-time activation gate (CODEX 66 §3.6 / CODEX 79 §6.1a).
         // Enforcement policy (opt-in for existing tenants, on-by-default for
         // tenants created after 2026-08-27) lives in checkSafetyContactGate.
