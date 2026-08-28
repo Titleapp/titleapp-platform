@@ -1,7 +1,8 @@
 import { EDUCATION_TERMS_HTML, EDUCATION_DPA_HTML } from "../legal/educationLegal";
 
 const LEGAL_DOCS = {
-  "privacy-policy": { title: "Privacy Policy", updated: "March 2026" },
+  "privacy-policy": { title: "Privacy Policy", updated: "August 2026" },
+  "security-policy": { title: "Security Policy", updated: "August 2026" },
   "subscriber-data-rights": { title: "Subscriber Data Rights", updated: "March 2026" },
   "creator-agreement": { title: "Creator Agreement", updated: "March 2026" },
   "business-associate-agreement": { title: "Business Associate Agreement", updated: "March 2026" },
