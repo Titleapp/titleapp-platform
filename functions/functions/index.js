@@ -4162,8 +4162,13 @@ RAAS BOUNDARIES (do not violate):
 TONE: Precise, compliance-grade, no hedging beyond what's actually uncertain. Short answers grounded in the data above.`,
           },
           // CODEX 80 — Grace, the Program Support Worker (CODEX 79's "front door"
-          // for institutional-account operational questions). {{PROGRAM_NAME}} is
-          // the one tenant-specific token in an otherwise reusable prompt.
+          // for institutional-account operational questions). Three tenant-
+          // specific tokens in an otherwise reusable prompt: {{PROGRAM_NAME}},
+          // and {{TUTOR_WORKER_NAME}}/{{TUTOR_WORKER_SLUG}} (CODEX 81 round-2
+          // red team finding 3 — Grace hands a mis-routed clinical question
+          // back to the tutor via the platform's normal SWITCH_WORKER marker,
+          // since the regex that can route TO her has no semantic understanding
+          // and will sometimes bring her a clinical question by mistake).
           "program-support-001": {
             display_name: "Grace",
             name: "Grace",
@@ -4190,8 +4195,18 @@ WHAT YOU DO:
 
 WHAT YOU DO NOT DO:
 - Discuss clinical content, coursework, or grading — that's the course
-  tutor's job. If a question is really about the material, say so and point
-  them there rather than attempting it.
+  tutor's job ({{TUTOR_WORKER_NAME}}). If a question is really about the
+  material — not account/access, actual clinical or coursework content —
+  say one short sentence acknowledging that, then hand off for real rather
+  than just telling them to go find that worker: end your reply with
+  [[SWITCH_WORKER:{{TUTOR_WORKER_SLUG}}]] on its own line, exactly like the
+  platform's normal cross-worker handoff. You may have been switched to
+  automatically because a message contained a phrase like "can't access" —
+  that trigger is a blunt keyword match, not a real understanding of what
+  was actually asked, so it will sometimes bring you a clinical question by
+  mistake (e.g. "I can't access the reasoning behind this diagnosis"). When
+  that happens, hand it back the same way rather than attempting an answer
+  or leaving the person stuck with you.
 - Make an actual account or role change yourself (adding a faculty account,
   changing permissions, resetting something in a system of record). You can
   tell someone exactly what needs to happen and who can do it — you don't
@@ -4205,9 +4220,8 @@ versa — e.g. "why isn't my student's evaluation showing up" could be an
 access problem (yours) or a scoring/content question (not yours). When it's
 genuinely unclear which, ask ONE clarifying question to find out before
 answering — do not guess, and do not attempt a clinical-judgment answer to
-sound helpful. If it's still unclear after that one question, say plainly
-that you want to make sure they get the right help and suggest they also
-reach out to their course tutor or instructor.
+sound helpful. If it's still unclear after that one question, hand off to
+{{TUTOR_WORKER_NAME}} the same way described above rather than guessing.
 
 WHEN YOU GENUINELY CAN'T HELP: try to answer from your locker content first,
 step by step, before considering escalation — that's the entire reason this
@@ -27456,10 +27470,23 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const { workerSlug, gap } = body;
         if (!gap) return jsonError(res, 400, "gap required");
         const gapTenantId = ctx.tenantId || req.headers["x-tenant-id"] || "unknown";
+        const gapText = String(gap).slice(0, 500);
+        // CODEX 81 round-2 red team finding 4 — a raw per-entry log can't be
+        // prioritized (the same missing FAQ hit 10x reads as 10 unrelated
+        // rows). Cheap normalization now so frequency can be computed later
+        // without re-instrumenting the write path: lowercase, collapse
+        // whitespace/punctuation, hash. Not semantic dedup (two differently-
+        // worded gaps about the same thing still hash differently) — that's
+        // a real limitation, worth a smarter pass once there's enough volume
+        // to justify it, not blocking this from being useful today.
+        const crypto = require("crypto");
+        const normalized = gapText.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+        const gapHash = crypto.createHash("sha1").update(`${gapTenantId}:${workerSlug || ""}:${normalized}`).digest("hex").slice(0, 16);
         await db.collection("supportContentGaps").add({
           tenantId: gapTenantId,
           workerSlug: workerSlug || null,
-          gap: String(gap).slice(0, 500),
+          gap: gapText,
+          gapHash,
           status: "open",
           createdAt: nowServerTs(),
         });
@@ -27468,6 +27495,36 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // Non-blocking by design — a failure here should never surface to
         // the user or interrupt their conversation with Grace.
         console.error("[support:content-gap] failed (non-blocking):", err.message);
+        return res.json({ ok: true });
+      }
+    }
+
+    // POST /v1/support:routing-fallback (CODEX 81 round-2 red team finding 1)
+    // Fired when ChatPanel.jsx tries to hand a message to Grace but she isn't
+    // in the live worker catalog yet — i.e. /admin:bootstrap-program-support-001
+    // hasn't been run for this deployment. Previously this only produced a
+    // console.warn, invisible to anyone not watching devtools. If this step
+    // gets forgotten, the system silently reverts to 100% human escalation on
+    // implicit-trouble phrasing indefinitely, with nothing surfacing that
+    // regression anywhere a person would see it — so this writes the same
+    // kind of queryable ops alert the safetyContact gate uses on fail-open
+    // (CODEX 79 §0D), rather than leaving a devtools log as the only signal.
+    if (route === "/support:routing-fallback" && method === "POST") {
+      try {
+        const fallbackTenantId = ctx.tenantId || req.headers["x-tenant-id"] || "unknown";
+        await db.collection("alertFeed").doc("platform-ops").collection("items").add({
+          type: "grace_routing_fallback",
+          title: "Grace routing fallback — worker not in catalog",
+          detail: `A message was headed for program-support-001 (Grace) but she wasn't found in the live worker catalog for tenant=${fallbackTenantId}. /admin:bootstrap-program-support-001 likely hasn't been run. Falling back to human escalation.`,
+          tenantId: fallbackTenantId,
+          severity: "yellow",
+          status: "active",
+          source: "chat_panel_routing",
+          createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true });
+      } catch (err) {
+        console.error("[support:routing-fallback] failed (non-blocking):", err.message);
         return res.json({ ok: true });
       }
     }

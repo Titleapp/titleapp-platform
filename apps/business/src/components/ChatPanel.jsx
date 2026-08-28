@@ -1585,7 +1585,20 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         // /admin:bootstrap-program-support-001 hasn't been run for this
         // tenant. Fail safe to the existing human-escalation path rather
         // than silently dropping the message or leaving the user stuck.
+        // CODEX 81 round-2 red team finding 1 — a console.warn alone is
+        // invisible to anyone not watching devtools, so this regression
+        // (100% human escalation, indefinitely) needs a real, queryable
+        // signal, not just a dev-console log.
         console.warn('[chat] Grace (program-support-001) not found in worker catalog — falling back to human escalation. Run /admin:bootstrap-program-support-001.');
+        try {
+          const fbApiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+          const fbTenantId = localStorage.getItem('TENANT_ID') || '';
+          fetch(`${fbApiBase}/api?path=/v1/support:routing-fallback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': fbTenantId },
+            body: JSON.stringify({}),
+          }).catch(() => {});
+        } catch { /* non-blocking by design */ }
         const _escParams = new URLSearchParams(window.location.search);
         setMessages(prev => [...prev, {
           role: 'assistant',
