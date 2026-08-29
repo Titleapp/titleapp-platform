@@ -4254,6 +4254,29 @@ busy, or unfamiliar with the platform — never make anyone feel behind for
 asking something basic. Short, clear answers over long ones. No jargon
 unless they used it first.`,
           },
+          // CODEX 82 §6 — Clinical Evaluations. The signing/Vault backend
+          // (services/education/clinicalEvaluation.js) has been real since
+          // 2026-06-26; this worker didn't exist as a selectable entry
+          // anywhere, so nothing ever put a real instructor in front of it.
+          // Its whole job is to host the sign/records canvas
+          // (card:clinical-eval, wired via signalExtractor.js) — it is
+          // deliberately NOT a clinical-judgment or tutoring persona, and
+          // hands off any actual clinical question the same way Grace does.
+          "clinical-evaluation-001": {
+            display_name: "Student Evaluation",
+            name: "Student Evaluation",
+            vertical: "education",
+            systemPrompt: `You introduce and host the clinical evaluation signing tool for {{PROGRAM_NAME}} on SOCIII — you are not a tutor and you do not make clinical judgments yourself.
+
+WHAT YOU DO: greet the instructor briefly and point them at the form below to sign a clinical evaluation, or to view previously signed, verified records. Explain in one or two sentences, if asked, what happens when they sign: the evaluation is digitally signed with a recomputable hash chain and written as an append-only record into the student's Vault — it's provable and portable, not just stored.
+
+WHAT YOU DO NOT DO:
+- Do not evaluate a student's clinical performance yourself, suggest a score, or draft narrative language for someone else's evaluation — that judgment belongs to the instructor filling out the form, not to you.
+- Do not discuss coursework or tutoring content — if asked something that actually belongs to the course tutor ({{TUTOR_WORKER_NAME}}), say one short sentence acknowledging that, then hand off for real: end your reply with [[SWITCH_WORKER:{{TUTOR_WORKER_SLUG}}]] on its own line, exactly like the platform's normal cross-worker handoff.
+- Do not claim a signed evaluation used a specific named clinical-judgment rubric unless that has been explicitly confirmed as licensed for use — describe the four-phase structure only in generic terms if asked.
+
+TONE: brief and functional. This worker exists to get someone to the form quickly, not to hold a long conversation.`,
+          },
         };
 
         if (body.selectedWorker && body.selectedWorker !== "chief-of-staff" && !action && userInput) {
@@ -12213,6 +12236,53 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         });
       } catch (err) {
         console.error("[bootstrap-program-support-001] error:", err);
+        return jsonError(res, 500, err.message || "bootstrap failed");
+      }
+    }
+
+    // POST /v1/admin:bootstrap-clinical-evaluation-001 (CODEX 82 §6)
+    // Same one-shot pattern as bootstrap-program-support-001 above. Without
+    // this, "clinical-evaluation-001" exists only as a WORKER_SLUG constant
+    // in clinicalEvaluation.js and a marketplace listing string — it was
+    // never actually selectable, so the real signing backend behind it was
+    // unreachable. Idempotent, no auth, writes exactly one doc.
+    if (route === "/admin:bootstrap-clinical-evaluation-001" && (method === "POST" || method === "GET")) {
+      try {
+        await db.doc("digitalWorkers/clinical-evaluation-001").set({
+          slug: "clinical-evaluation-001",
+          display_name: "Student Evaluation",
+          name: "Student Evaluation",
+          short_description: "Sign a clinical evaluation — digitally signed, written to the student's Vault, verifiable on read.",
+          description: "Instructor-facing tool for approving and digitally signing a clinical evaluation. Once signed, it's minted as an append-only, hash-chained record into the student's own Vault and anchored — a provable, portable competency record, not just a stored form submission.",
+          tagline: "Sign it once. It's provable forever.",
+          vertical: "education",
+          suite: "Education",
+          status: "live",
+          worker_type: "worker",
+          canvasTabs: [],
+          catalogId: "clinical-evaluation-001",
+          pricing_tier: 0,
+          pricing: { monthly: 0 },
+          internal_only: false,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        const tenantId = req.query?.tenantId || req.headers["x-tenant-id"] || body?.tenantId;
+        if (tenantId) {
+          await db.doc(`tenants/${tenantId}`).set({
+            activeWorkers: admin.firestore.FieldValue.arrayUnion("clinical-evaluation-001"),
+          }, { merge: true });
+        }
+
+        return res.json({
+          ok: true,
+          message: "clinical-evaluation-001 (Student Evaluation) published",
+          workerSlug: "clinical-evaluation-001",
+          tenantUpdated: tenantId || null,
+        });
+      } catch (err) {
+        console.error("[bootstrap-clinical-evaluation-001] error:", err);
         return jsonError(res, 500, err.message || "bootstrap failed");
       }
     }
@@ -21158,6 +21228,42 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[education:student:add] failed:", e);
         return jsonError(res, 500, "Failed to add student", { details: e.message });
+      }
+    }
+
+    // GET /v1/education:students:list — CODEX 82 §2. The real, tenant-scoped
+    // roster-browse route an instructor needs to pick a real student when
+    // signing a clinical evaluation for someone other than themselves. Reads
+    // the same tenants/{tenantId}/nursingStudents subcollection
+    // /education:student:add writes to and /student:customer:profile reads
+    // from — but this is the first route that lists the WHOLE roster to an
+    // instructor rather than one student's own record, so it's gated the
+    // same way evaluation-signing-for-another-student is (admin/owner role),
+    // not just active membership.
+    if (route === "/education:students:list" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
+        // NOTE (CODEX 82): requireMembershipIfNeeded returns the raw,
+        // already-sent Express response on failure (not {handled:true}) —
+        // `.ok` is the only reliable success check. See the round-2 finding
+        // on this same bug at the other two call sites below.
+        if (!memberGate.ok) return memberGate;
+        const role = memberGate.membership && memberGate.membership.role;
+        if (role !== "admin" && role !== "owner") {
+          return jsonError(res, 403, "Forbidden", { reason: "Viewing the full roster requires an instructor/admin role on this tenant" });
+        }
+        const snap = await db.collection("tenants").doc(ctx.tenantId).collection("nursingStudents").get();
+        const students = snap.docs
+          .map(d => ({ id: d.id, uid: d.data().uid || null, name: d.data().name || null, email: d.data().email || null, status: d.data().status || null }))
+          .filter(s => s.uid); // only roster entries linked to a real account can be signed for
+        return res.json({ ok: true, students, count: students.length });
+      } catch (e) {
+        console.error("[education:students:list] failed:", e);
+        return jsonError(res, 500, "Failed to list students");
       }
     }
 
@@ -33866,18 +33972,60 @@ Analyze now:`;
     // append-only, signed, anchored record into the STUDENT'S Vault. Body:
     // { studentId, evaluation:{competency,course,clinical_site,outcome,score,
     //   narrative,student_name}, signer:{name,credential,email} }.
+    //
+    // CODEX 82 §3/§4/§5 (2026-08-29): a caller may ALWAYS sign their own
+    // Vault (self-sign, the original behavior).
+    // Signing for a DIFFERENT studentId now requires (a) an x-tenant-id, (b)
+    // an active membership on that tenant with role admin/owner (this
+    // codebase has no separate "instructor" role yet — admin/owner is the
+    // existing elevated-role concept, reused rather than inventing new
+    // taxonomy), and (c) that studentId is a real enrolled uid on that
+    // tenant's own nursingStudents roster — never a trusted arbitrary uid.
+    // Previously ANY authenticated user could sign into or read ANY other
+    // user's Vault by simply passing their uid as studentId — confirmed live
+    // in production via direct probe (CODEX 82 §3 round-2). This closes it.
     if (route === "/edu:evaluation:sign" && method === "POST") {
       try {
         const sAuth = await requireFirebaseUser(req, res);
         if (sAuth.handled) return sAuth.res;
         const { signAndMintEvaluation } = require("./services/education/clinicalEvaluation");
         const b = body || {};
-        // Default the student to the signed-in user (demo: sign your own Vault),
-        // and default the signer name to the authed user if not supplied.
-        const studentId = b.studentId || sAuth.user.uid;
+        const ctx = getCtx(req, b, sAuth.user);
+        const callerUid = sAuth.user.uid;
+
+        let studentId = callerUid; // safe default: sign your own Vault
+        let institutionTenantId = null;
+
+        if (b.studentId && b.studentId !== callerUid) {
+          if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required to sign for another student");
+          const memberGate = await requireMembershipIfNeeded({ uid: callerUid, tenantId: ctx.tenantId }, res);
+          // requireMembershipIfNeeded returns the raw, already-sent Express
+          // response on failure, not {handled:true} — `.ok` is the only
+          // reliable success check (CODEX 82 round-2: the pre-existing
+          // `.handled` pattern elsewhere in this file never actually
+          // triggers, since a plain Express response has no `.handled`
+          // property — flagged separately, not fixed here).
+          if (!memberGate.ok) return memberGate;
+          const role = memberGate.membership && memberGate.membership.role;
+          if (role !== "admin" && role !== "owner") {
+            return jsonError(res, 403, "Forbidden", { reason: "Signing for another student requires an instructor/admin role on this tenant" });
+          }
+          const rosterSnap = await db.collection("tenants").doc(ctx.tenantId).collection("nursingStudents")
+            .where("uid", "==", b.studentId).limit(1).get();
+          if (rosterSnap.empty) {
+            return jsonError(res, 400, "studentId is not an enrolled student on this tenant's roster");
+          }
+          studentId = b.studentId;
+          institutionTenantId = ctx.tenantId;
+        }
+
         const signer = b.signer || { name: sAuth.user.name || sAuth.user.email || "Instructor", email: sAuth.user.email };
-        const out = await signAndMintEvaluation({ studentId, evaluation: b.evaluation || {}, signer });
+        const out = await signAndMintEvaluation({ studentId, evaluation: b.evaluation || {}, signer, institutionTenantId });
         if (!out.ok) return jsonError(res, 400, out.error || "Failed to sign evaluation");
+        if (institutionTenantId) {
+          const { recordInteraction } = require("./services/billing/boxPlanUsage");
+          recordInteraction(db, institutionTenantId).catch(() => {});
+        }
         return res.json(out);
       } catch (e) {
         console.error("edu:evaluation:sign failed:", e);
@@ -33888,13 +34036,44 @@ Analyze now:`;
     // GET /v1/edu:evaluations?studentId= — list a student's signed clinical
     // evaluations from their Vault, each with a RECOMPUTED signature-verification
     // verdict (proof the record is untampered). Defaults to the signed-in user.
+    // CODEX 82 §3 (2026-08-29): viewing a DIFFERENT student's evaluations now
+    // requires the same tenant+admin/owner+roster check as signing (above),
+    // and the result is scoped to that institution's own evaluations of the
+    // student, not every institution that has ever evaluated them — a
+    // student viewing their OWN record still sees everything, unfiltered,
+    // since it's their portable record for life.
     if (route === "/edu:evaluations" && method === "GET") {
       try {
         const eAuth = await requireFirebaseUser(req, res);
         if (eAuth.handled) return eAuth.res;
         const { listStudentEvaluations } = require("./services/education/clinicalEvaluation");
-        const studentId = (req.query && req.query.studentId) || (body && body.studentId) || eAuth.user.uid;
-        const out = await listStudentEvaluations({ db, studentId });
+        const b = body || {};
+        const ctx = getCtx(req, b, eAuth.user);
+        const callerUid = eAuth.user.uid;
+        const requestedStudentId = (req.query && req.query.studentId) || b.studentId || callerUid;
+
+        let scopeToTenantId = null;
+        if (requestedStudentId !== callerUid) {
+          if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required to view another student's evaluations");
+          const memberGate = await requireMembershipIfNeeded({ uid: callerUid, tenantId: ctx.tenantId }, res);
+          if (!memberGate.ok) return memberGate; // see CODEX 82 round-2 note above — `.ok`, not `.handled`
+          const role = memberGate.membership && memberGate.membership.role;
+          if (role !== "admin" && role !== "owner") {
+            return jsonError(res, 403, "Forbidden", { reason: "Viewing another student's evaluations requires an instructor/admin role on this tenant" });
+          }
+          const rosterSnap = await db.collection("tenants").doc(ctx.tenantId).collection("nursingStudents")
+            .where("uid", "==", requestedStudentId).limit(1).get();
+          if (rosterSnap.empty) {
+            return jsonError(res, 400, "studentId is not an enrolled student on this tenant's roster");
+          }
+          scopeToTenantId = ctx.tenantId;
+        }
+
+        const out = await listStudentEvaluations({ db, studentId: requestedStudentId });
+        if (scopeToTenantId && out.ok) {
+          out.evaluations = out.evaluations.filter(e => e.institutionTenantId === scopeToTenantId);
+          out.count = out.evaluations.length;
+        }
         return res.json(out);
       } catch (e) {
         console.error("edu:evaluations failed:", e);

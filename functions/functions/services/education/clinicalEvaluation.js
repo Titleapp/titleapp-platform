@@ -39,9 +39,14 @@ const EVAL_WORKER = { slug: WORKER_SLUG, vault_writes: ["clinical_evaluation"] }
  * @param {object} a.evaluation           { competency, course, clinical_site, outcome, score, narrative, ... }
  * @param {object} a.signer               { name, credential, email } — the instructor attesting
  * @param {string} [a.signedAtIso]        attestation timestamp (caller stamps; default now)
+ * @param {string} [a.institutionTenantId] the real institution tenant this evaluation was signed
+ *   under (e.g. UH Maui's tenantId) — separate from the "vault" scoping tenantId passed to
+ *   mintDtc below, which must stay "vault" for correct student-ownership semantics. This field
+ *   exists purely for institution-level attribution/querying (CODEX 82 §4) — null for self-signed
+ *   or pre-this-fix records.
  * @returns {Promise<{ok, dtcId?, contentHash?, signature?, error?}>}
  */
-async function signAndMintEvaluation({ studentId, evaluation, signer, signedAtIso }) {
+async function signAndMintEvaluation({ studentId, evaluation, signer, signedAtIso, institutionTenantId }) {
   if (!studentId) return { ok: false, error: "studentId required" };
   if (!evaluation || !evaluation.competency) return { ok: false, error: "evaluation.competency required" };
   if (!signer || !signer.name) return { ok: false, error: "signer.name required (the attesting instructor)" };
@@ -84,6 +89,7 @@ async function signAndMintEvaluation({ studentId, evaluation, signer, signedAtIs
     evaluated_student: evaluation.student_name || null,
     attested_by: signer.name,
     attested_credential: signer.credential || null,
+    institutionTenantId: institutionTenantId || null,
     signature,
   };
 
@@ -144,6 +150,7 @@ async function listStudentEvaluations({ db, studentId }) {
       score: data.metadata?.score ?? null,
       attested_by: data.metadata?.attested_by || null,
       attested_credential: data.metadata?.attested_credential || null,
+      institutionTenantId: data.metadata?.institutionTenantId || null,
       signedAt: data.metadata?.signature?.signedAt || null,
       contentHash: data.contentHash || null,
       anchorStatus: data.chain_anchor_status || "hash_only",

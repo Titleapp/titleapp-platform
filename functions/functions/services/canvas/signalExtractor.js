@@ -51,6 +51,17 @@ const WORKER_SIGNALS = {
   "listing-readiness-001": [
     { keywords: ["listing readiness", "listing scorecard", "list my home", "list the property", "ready to list", "listing prep", "pre-listing", "seller readiness", "price opinion", "list it"], signal: "card:listing-readiness" },
   ],
+
+  // CODEX 82 §6 fix — this worker's entire purpose IS the sign/records
+  // canvas (ClinicalEvalCard); unlike every other rule above, don't gate on
+  // specific keywords. An empty string is a substring of every message, so
+  // this always matches. Before this rule existed, nothing in the codebase
+  // ever emitted "card:clinical-eval" for any worker, so the card — despite
+  // being a fully real, working signing backend — was unreachable through
+  // any normal chat flow.
+  "clinical-evaluation-001": [
+    { keywords: [""], signal: "card:clinical-eval" },
+  ],
 };
 
 // ═══════════════════════════════════════════════════════════════

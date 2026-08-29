@@ -9,7 +9,7 @@
  * payload.view = sign | records
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CanvasCardShell from "./CanvasCardShell";
 import { liveApiFetch } from "./liveData";
 
@@ -59,14 +59,37 @@ function Row({ k, v, mono }) {
 
 function SignForm() {
   const [f, setF] = useState({
-    student_name: "Alex Torres", competency: "Medication Administration — Five Rights",
-    course: "Clinical Practicum", clinical_site: "", outcome: "Met", score: "",
-    narrative: "", signerName: "Dr. Maya Chen", signerCredential: "DVM",
+    student_name: "", studentId: "", competency: "",
+    course: "", clinical_site: "", outcome: "Met", score: "",
+    narrative: "", signerName: "", signerCredential: "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [result, setResult] = useState(null);
+  const [roster, setRoster] = useState(null); // null = not loaded yet/unavailable, [] = loaded but empty
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+
+  // CODEX 82 §2 — real roster picker. This only succeeds for an instructor
+  // with an admin/owner membership on a real institution tenant (see
+  // /v1/education:students:list's gating); for a personal/demo account with
+  // no tenant context it 400s or 403s, which is expected — the form falls
+  // back to self-sign (studentId omitted) exactly as it always has.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await liveApiFetch("/v1/education:students:list");
+        if (!cancelled && r && r.ok) setRoster(r.students || []);
+      } catch { /* no roster access — self-sign only, not an error state */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  function selectStudent(e) {
+    const uid = e.target.value;
+    const chosen = (roster || []).find((s) => s.uid === uid);
+    setF((p) => ({ ...p, studentId: uid, student_name: chosen ? chosen.name : "" }));
+  }
 
   async function submit() {
     setBusy(true); setErr(null);
@@ -74,6 +97,7 @@ function SignForm() {
       const out = await liveApiFetch("/v1/edu:evaluation:sign", {
         method: "POST",
         body: JSON.stringify({
+          ...(f.studentId ? { studentId: f.studentId } : {}),
           evaluation: {
             competency: f.competency, course: f.course, clinical_site: f.clinical_site,
             outcome: f.outcome, score: f.score === "" ? null : Number(f.score),
@@ -97,10 +121,19 @@ function SignForm() {
         Complete the evaluation, then <b>Approve &amp; Sign</b>. It is digitally signed and written to the student's Vault — append-only and anchored.
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-        <Field label="Student"><input style={inputStyle} value={f.student_name} onChange={set("student_name")} /></Field>
-        <Field label="Course"><input style={inputStyle} value={f.course} onChange={set("course")} /></Field>
+        <Field label="Student">
+          {roster && roster.length > 0 ? (
+            <select style={inputStyle} value={f.studentId} onChange={selectStudent}>
+              <option value="">Select a student…</option>
+              {roster.map((s) => <option key={s.uid} value={s.uid}>{s.name}{s.status ? ` — ${s.status}` : ""}</option>)}
+            </select>
+          ) : (
+            <input style={inputStyle} value={f.student_name} onChange={set("student_name")} placeholder="Student name" />
+          )}
+        </Field>
+        <Field label="Course"><input style={inputStyle} value={f.course} onChange={set("course")} placeholder="e.g. Clinical Practicum" /></Field>
       </div>
-      <Field label="Competency"><input style={inputStyle} value={f.competency} onChange={set("competency")} /></Field>
+      <Field label="Competency"><input style={inputStyle} value={f.competency} onChange={set("competency")} placeholder="e.g. Medication Administration — Five Rights" /></Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 16px" }}>
         <Field label="Clinical site"><input style={inputStyle} value={f.clinical_site} onChange={set("clinical_site")} placeholder="e.g. Queen's Medical Center" /></Field>
         <Field label="Outcome">
@@ -112,11 +145,11 @@ function SignForm() {
       </div>
       <Field label="Narrative"><textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={f.narrative} onChange={set("narrative")} placeholder="What the student demonstrated…" /></Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-        <Field label="Instructor (signer)"><input style={inputStyle} value={f.signerName} onChange={set("signerName")} /></Field>
+        <Field label="Instructor (signer)"><input style={inputStyle} value={f.signerName} onChange={set("signerName")} placeholder="Your name" /></Field>
         <Field label="Credential"><input style={inputStyle} value={f.signerCredential} onChange={set("signerCredential")} placeholder="e.g. PhD, RN, CNE" /></Field>
       </div>
       {err && <div style={{ fontSize: 13, color: "#dc2626", marginBottom: 10 }}>⚠ {err}</div>}
-      <button onClick={submit} disabled={busy || !f.competency || !f.signerName} style={{
+      <button onClick={submit} disabled={busy || !f.competency || !f.signerName || !f.student_name} style={{
         background: busy ? "#94a3b8" : "#7c3aed", color: "#fff", border: "none", borderRadius: 10,
         padding: "12px 24px", fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer", marginTop: 4,
       }}>
