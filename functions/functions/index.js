@@ -12287,6 +12287,52 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/admin:bootstrap-demo-sociii-qa (CODEX 83 §2)
+    // Creates the internal QA/synthetic-testing tenant used to test Hannah
+    // (nursing-education-001), Grace (program-support-001), and the eval
+    // tool (clinical-evaluation-001) before UH Maui goes live. Idempotent.
+    //
+    // Why "demo-sociii-qa" specifically: any tenantId prefixed "demo-" is
+    // ALREADY exempt from checkSafetyContactGate (distressProtocol.js:222)
+    // and isSupportSubsidized's credit deduction (index.js), and hard-blocked
+    // from real Stripe checkout (index.js ~13673) — reusing this existing
+    // convention (round-3/4 red team, CODEX 83) rather than inventing a new
+    // tenant flag. Deliberately NOT setting boxPlanStatus:"active" — that's
+    // the exact field sendBoxPlanUsageReports() filters on, so this tenant
+    // is automatically excluded from the real customer-facing usage email
+    // without needing separate exclusion logic.
+    //
+    // No safetyContact field is set (nor should one ever be added) — that
+    // absence is what keeps the safetyContact gate logging-only for this
+    // tenant. "Reset conversation history per pass" (CODEX 83 §2 round-4) is
+    // achieved by the test harness minting a fresh sessionId per pass rather
+    // than by deleting chatSessions docs here — stale context never carries
+    // over since old session IDs are simply never resumed.
+    if (route === "/admin:bootstrap-demo-sociii-qa" && (method === "POST" || method === "GET")) {
+      try {
+        const tenantId = "demo-sociii-qa";
+        await db.doc(`tenants/${tenantId}`).set({
+          name: "SOCIII Internal QA (synthetic testing)",
+          vertical: "education",
+          boxPlanType: "education",
+          activeWorkers: ["nursing-education-001", "program-support-001", "clinical-evaluation-001"],
+          internalQA: true,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        return res.json({
+          ok: true,
+          message: "demo-sociii-qa tenant published",
+          tenantId,
+          note: "Excluded from sendBoxPlanUsageReports() (no boxPlanStatus:active set); exempt from safetyContact real-send and Stripe checkout via the demo- prefix convention.",
+        });
+      } catch (err) {
+        console.error("[bootstrap-demo-sociii-qa] error:", err);
+        return jsonError(res, 500, err.message || "bootstrap failed");
+      }
+    }
+
     // POST /v1/creator:apply — public creator application submission
     if (route === "/creator:apply" && method === "POST") {
         const { name, email, linkedin, expertise, description, audience } = body;
@@ -27586,9 +27632,13 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // route just makes sure the signal isn't lost.
     if (route === "/support:content-gap" && method === "POST") {
       try {
-        const { workerSlug, gap } = body;
+        const { workerSlug, gap, source } = body;
         if (!gap) return jsonError(res, 400, "gap required");
         const gapTenantId = ctx.tenantId || req.headers["x-tenant-id"] || "unknown";
+        // CODEX 83 §6 — synthetic-test traffic tags itself distinctly so it
+        // never gets mixed into Ruthie's real weekly review queue by
+        // default; reviewed per-pass instead (§6/§7 round-3/4).
+        const gapSource = source === "synthetic-test" ? "synthetic-test" : "real";
         const gapText = String(gap).slice(0, 500);
         // CODEX 81 round-2 red team finding 4 — a raw per-entry log can't be
         // prioritized (the same missing FAQ hit 10x reads as 10 unrelated
@@ -27606,6 +27656,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           workerSlug: workerSlug || null,
           gap: gapText,
           gapHash,
+          source: gapSource,
           status: "open",
           createdAt: nowServerTs(),
         });
@@ -27771,6 +27822,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           resolutionSummary: null,
           slaMet: null,
         });
+
+        // CODEX 83 §1 — demo-prefixed tenants (internal QA/testing, e.g.
+        // synthetic testing ahead of UH Maui go-live) never send a real
+        // alert here, same convention checkSafetyContactGate already uses
+        // (distressProtocol.js:222) — log to alertFeed/platform-ops instead
+        // so a real person can still see it happened, without spamming a
+        // real inbox/phone. Confirmed by direct code read (2026-08-29):
+        // before this patch, this route sent a real SendGrid email + real
+        // Twilio SMS unconditionally, with no exemption of any kind.
+        const _isDemoEscalation = escTenantId.startsWith("demo-");
+        if (_isDemoEscalation) {
+          try {
+            await db.collection("alertFeed").doc("platform-ops").collection("events").add({
+              type: "demo_tenant_escalation_suppressed",
+              tenantId: escTenantId,
+              userId,
+              workerSlug: workerSlug || null,
+              sessionId: sessionRef.id,
+              messagePreview: message.slice(0, 200),
+              createdAt: nowServerTs(),
+            });
+          } catch (alertErr) {
+            console.warn("support:escalate demo-suppression alert log failed (non-blocking):", alertErr.message);
+          }
+          return res.json({ ok: true, sessionId: sessionRef.id, subsidized, withinHours: isSupportHours(), suppressed: "demo-tenant" });
+        }
 
         // Notify Sean via email + SMS
         const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
