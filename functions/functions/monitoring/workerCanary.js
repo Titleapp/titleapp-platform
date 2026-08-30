@@ -19,7 +19,7 @@ const admin = require("firebase-admin");
 
 const HEALTH_DOC = "config/workerHealth";
 const REALERT_AFTER_MS = 12 * 60 * 60 * 1000; // workers change slowly; re-ping at 12h
-const DEFAULT_RECIPIENTS = [{ name: "Sean", phone: "+13104300780", email: "seanlcombs@gmail.com" }];
+const DEFAULT_RECIPIENTS = [{ name: "Sean", phone: "+13104300780", email: "sean@sociii.ai" }];
 
 const VALID_STATUSES = new Set([
   "live", "beta", "waitlist", "planned", "unlisted", "org", "draft", "deprecated", "coming_soon",
