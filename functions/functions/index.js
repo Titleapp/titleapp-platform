@@ -5458,6 +5458,23 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                   },
                 });
                 workerPrompt += `\n\nLEDGER ACCESS: You have a query_ledger tool that reads this tenant's actual recorded transactions from the books. Use it to verify figures instead of trusting a user's stated number at face value — that is the source-hierarchy discipline your accounting rules require. If a user gives you a number, check it against query_ledger before agreeing it is correct.`;
+
+                // Sean, 2026-08-29: expose the EXISTING obligations engine
+                // (services/accounting/obligations.js — statutory tax dates
+                // computed live + one-off customObligations) to the chat
+                // worker directly. It already powered the dashboard brief and
+                // a dedicated route but had no chat-tool access.
+                businessTools.push({
+                  name: "query_compliance_filings",
+                  description: "List this tenant's actual tracked tax/compliance obligations (statutory federal/state tax dates computed live, plus any one-off items like loan interest or a foreign-subsidiary filing) with real due dates and severity (red/amber/green). Call this whenever asked about tax deadlines, filing obligations, or compliance status — never guess or assume nothing is due, and never assume something IS due without checking either.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                workerPrompt += `\n\nCOMPLIANCE FILING TRACKING: You have a query_compliance_filings tool reading this tenant's actual tracked obligations. Use it proactively (tax questions, year-end/quarter-end context) even if not directly asked.
+
+IMPORTANT — a due date passing does not automatically mean money is owed. Reason through these before telling anyone something is owed or overdue in a way that implies real unpaid money:
+- Quarterly estimated federal tax (EFTPS) is only required if the tenant expects to owe $500+ in federal tax for the year (IRC §6655). A net-loss or no-income period means no payment is actually due, even though the calendar checkpoint still fires. Don't assume the threshold is or isn't met — say so needs confirming with the tenant's CPA, and don't treat the tracker's "overdue" flag as proof real money is late.
+- Delaware franchise tax is calculated from authorized shares or assumed par value, NOT net income — it is very likely still owed even in a net-loss year. Don't let "no income" get generalized to this obligation too.
+- The annual Form 1120 return must be filed every year regardless of profit or loss — a "zero return" is still required at $0 income. This is separate from and not excused by having no estimated-tax liability.`;
               }
 
               // CODEX S52.48 step 8 — same pattern rolled out to Contacts: a real
@@ -6707,6 +6724,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 query_contacts: ["platform-contacts"],
                 query_campaigns: ["platform-marketing", "marketing-content"],
                 query_investors: ["investor-relations", "ir-worker"],
+                query_compliance_filings: ["platform-accounting"],
               };
               const _isOwnDataTool = toolBlock && !!_OWN_DATA_TOOL_WORKERS[toolBlock.name] && _OWN_DATA_TOOL_WORKERS[toolBlock.name].includes(workerSlug);
               const _isDriveTool = toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected;
@@ -6810,11 +6828,23 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   return `${rows.length} investor(s) (name | email | type | status | target | last activity):\n${lines.join("\n")}`;
                 };
 
+                const _queryComplianceFilings = async () => {
+                  const { listObligations } = require("./services/accounting/obligations");
+                  const result = await listObligations({ tenantId: reqTenantId, userId: authUser ? authUser.uid : null });
+                  const rows = result.obligations || [];
+                  if (rows.length === 0) return "No open tax/compliance obligations tracked for this tenant right now.";
+                  const lines = rows.map(o =>
+                    `${o.label} | severity=${o.severity}${o.daysUntilDue != null ? ` | ${o.daysUntilDue < 0 ? `${-o.daysUntilDue}d OVERDUE` : `due in ${o.daysUntilDue}d`}` : ""}${o.dueDate ? ` | due ${o.dueDate}` : ""}${o.detail ? ` | ${o.detail}` : ""}`
+                  );
+                  return `${rows.length} tracked obligation(s) (label | severity | days | due date | detail):\n${lines.join("\n")}`;
+                };
+
                 const _execOwnDataTool = async (name, input) => {
                   if (name === 'query_ledger') return _queryLedger(input);
                   if (name === 'query_contacts') return _queryContacts(input);
                   if (name === 'query_campaigns') return _queryCampaigns(input);
                   if (name === 'query_investors') return _queryInvestors(input);
+                  if (name === 'query_compliance_filings') return _queryComplianceFilings();
                   return `Unknown tool: ${name}`;
                 };
 
@@ -6973,6 +7003,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       query_contacts: { name: "query_contacts", description: "Search this tenant's CRM contact records by keyword (name, email, company, or title).", input_schema: { type: "object", properties: { query: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       query_campaigns: { name: "query_campaigns", description: "Search this tenant's marketing campaigns by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       query_investors: { name: "query_investors", description: "Search this tenant's investor records by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      query_compliance_filings: { name: "query_compliance_filings", description: "List this tenant's tracked tax/compliance obligations with live-recomputed status.", input_schema: { type: "object", properties: {}, required: [] } },
                     };
                     const _followUpTools = [
                       ...Object.keys(_OWN_DATA_TOOL_WORKERS).filter(n => _OWN_DATA_TOOL_WORKERS[n].includes(workerSlug)).map(n => _OWN_DATA_TOOL_DEFS[n]),
