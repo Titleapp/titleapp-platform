@@ -53,7 +53,18 @@
 - **Password:** not stored here — use a password manager
 - **Password hint:** jet
 - **Purpose:** Apple Developer Program enrollment, for eventual iOS/App Store distribution
-- **Status:** enrollment in progress (2026-09-03) — account type (Individual vs. Organization) and D-U-N-S linkage not yet finalized
+- **Enrollment type:** Organization (SOCIII, Inc.) — chosen so the App Store listing shows the company name, not Sean's personal name
+- **D-U-N-S:** 14-503-1310 (same number as the rest of the org — see Account Owner table)
+- **Status:** submitted 2026-09-03, Enrollment ID `N6HQQZZR2U` — pending Apple's verification of signing authority (email to follow with next steps)
+
+### Google Play Console
+- **Account:** sean@sociii.ai (Google Workspace account created 2026-09-03 specifically for this — previously only had `seanlcombs@gmail.com` personal Gmail signed in)
+- **Password:** not stored here — use a password manager
+- **Purpose:** Google Play Console developer account, for Android/Google Play distribution
+- **Account type:** Organization / company (SOCIII, Inc.) — same reasoning as Apple, avoids listing under a personal name
+- **D-U-N-S:** 14-503-1310
+- **Registration fee:** one-time $25 USD, paid — receipt sent to sean@sociii.ai
+- **Status:** **Developer account created** 2026-09-03 — fully active, ready to use
 
 ---
 
