@@ -319,6 +319,36 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       return new URLSearchParams(window.location.search).get("promoted") === "true";
     } catch { return false; }
   });
+  // Aviation workers are used as an iPad-mini EFB, not a phone app — glancing
+  // at the canvas (map/aircraft status/NOTAMs) matters more than chat-first
+  // there, the opposite of the phone-first default above (Sean, 2026-08-30).
+  // Only kicks in at mobile-tier widths — desktop/tablet-landscape already
+  // show both panes side by side, so there's nothing to default there.
+  // TODO(tablet breakpoint, part 2): this still rides the single binary
+  // breakpoint everything else uses, so an iPad mini in PORTRAIT (744px,
+  // the common kneeboard orientation) still gets the single-pane "mobile"
+  // shell — just defaulted to canvas instead of chat. A real 3-tier
+  // breakpoint (phone / tablet / desktop) across AppShell.jsx + App.css's
+  // ~15 media queries is the follow-up once this has been flown with for
+  // a bit and we know what layout actually earns its keep in the cockpit.
+  // Tracks the active worker's slug so the mobile "back to chat" button can
+  // name the actual assistant (Skye for aviation, Alex everywhere else) —
+  // 2026-08-30 fix: it was hardcoded "Alex" even on aviation workers, whose
+  // own canvas copy consistently says "tell Skye," so the one button meant
+  // to get you back to chat didn't match the name you'd been reading.
+  const [activeWorkerSlug, setActiveWorkerSlug] = useState("");
+  const chatAssistantName = activeWorkerSlug.startsWith("av-") ? "Skye" : "Alex";
+  useEffect(() => {
+    function onSelectForChatDefault(e) {
+      const slug = e?.detail?.slug || "";
+      setActiveWorkerSlug(slug);
+      if (isDesktopViewport) return;
+      setChatOpen(!slug.startsWith("av-"));
+    }
+    window.addEventListener("ta:select-worker", onSelectForChatDefault);
+    return () => window.removeEventListener("ta:select-worker", onSelectForChatDefault);
+  }, [isDesktopViewport]);
+
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(() => {
     try { return JSON.parse(localStorage.getItem("ta_cart") || "[]").length; } catch { return 0; }
@@ -653,12 +683,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         <button
           className="mobileBackToChat"
           onClick={() => setChatOpen(true)}
-          aria-label="Back to Alex"
+          aria-label={`Back to ${chatAssistantName}`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          Alex
+          {chatAssistantName}
         </button>
       )}
 

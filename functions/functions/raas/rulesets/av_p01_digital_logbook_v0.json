@@ -45,5 +45,25 @@
     "avp01-cumulative-totals",
     "avp01-pria-export",
     "avp01-blockchain-certificate"
+  ],
+  "chat_rules": [
+    {
+      "id": "avp01-no-fabricate-totals",
+      "pattern": "(?:total time|cumulative|logbook total|hours? logged|currency)",
+      "flags": "i",
+      "message": "Never state cumulative flight time or currency totals as fact unless computed from logbook entries present in this session. If entries are absent or incomplete, say so rather than estimating."
+    },
+    {
+      "id": "avp01-duplicate-discrepancy-check",
+      "pattern": "(?:log(?:ged|ging)? (?:this|a|the) flight|add(?:ed|ing)? (?:this|a) (?:flight|entry))",
+      "flags": "i",
+      "message": "Before confirming a flight entry as logged, check for a duplicate-entry match (same date/route/aircraft) and for a dispatch-record discrepancy over 15 minutes. Surface either as a flag on the entry, not silently."
+    },
+    {
+      "id": "avp01-anchor-status-honest",
+      "pattern": "(?:chain[- ]?verified|blockchain[- ]?certified|anchored|immutable)",
+      "flags": "i",
+      "message": "Never describe an entry as chain-verified/anchored/immutable until it has actually completed the real anchoring pipeline (batch assigned and confirmed). Before that, describe it as recorded and pending anchor, not already verified."
+    }
   ]
 }

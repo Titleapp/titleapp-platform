@@ -59,5 +59,25 @@
     "av032-published-roster",
     "av032-conflict-report",
     "av032-legality-summary"
+  ],
+  "chat_rules": [
+    {
+      "id": "av032-no-fabricate-legality",
+      "pattern": "(?:legal|qualified|current|cleared) (?:to fly|for (?:this|the) assignment|pilot)",
+      "flags": "i",
+      "message": "Never state a pilot or assignment as legal/qualified/current unless computed from actual duty, qualification, and medical data present in this session. If any input is missing, say the legality check is incomplete, not assumed passing."
+    },
+    {
+      "id": "av032-duty-cite-part-135",
+      "pattern": "(?:duty (?:time|limit|period)|rest requirement|flight time limit)",
+      "flags": "i",
+      "message": "When citing duty/rest limits, reference the specific 14 CFR Part 135 section (e.g., §135.267 for unscheduled ops, §135.273 for domestic ops) rather than a generic 'duty limit' — different operation types have different limits."
+    },
+    {
+      "id": "av032-no-assume-qual-medical",
+      "pattern": "(?:medical certificate|type rating|qualification) (?:is )?(?:current|valid|good)",
+      "flags": "i",
+      "message": "Never assume a medical certificate or qualification is current without a verified expiration date on file. If no date is on record, ask for it rather than assuming compliance."
+    }
   ]
 }

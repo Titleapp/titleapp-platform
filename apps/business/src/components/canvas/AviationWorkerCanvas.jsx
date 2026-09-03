@@ -210,6 +210,48 @@ function airworthinessToBlocks(fleet) {
   return blocks;
 }
 
+// AD/SB tab — per-tail airworthiness-directive detail. Same /v1/mx:listAircraft
+// payload as airworthinessToBlocks (computeAirworthiness already returns
+// adCompliance.items per tail), just rendered as the AD-specific breakdown
+// instead of the one-line fleet summary. Per AV-M-HS-02, absence of records
+// is not a basis to assume compliance — UNVERIFIED items render as such, not
+// as a blank/green row.
+function adComplianceToBlocks(fleet) {
+  const list = fleet || [];
+  if (!list.length) {
+    return [{
+      type: "cards",
+      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Alex the tail number and type to get started — AD compliance can't be tracked without an aircraft record.", action: "Open chat" }],
+    }];
+  }
+  const bandFor = { GREEN: "GREEN", YELLOW: "YELLOW", RED: "RED", UNVERIFIED: "BLUE" };
+  const heroes = list.map(a => ({
+    band: bandFor[a.adCompliance?.status] || "BLUE",
+    title: `${a.tailNumber || "Unknown tail"} — AD status: ${a.adCompliance?.status || "UNVERIFIED"}`,
+    detail: a.adCompliance?.detail || (a.adCompliance?.items?.length ? `${a.adCompliance.items.length} AD(s) on file` : "No AD compliance records on file — cannot assert compliance"),
+  }));
+  const rows = [];
+  list.forEach(a => {
+    (a.adCompliance?.items || []).forEach(item => {
+      rows.push([
+        a.tailNumber || "—",
+        item.ad || item.adNumber || "—",
+        item.subject || item.description || "—",
+        item.compliantAsOf || "—",
+        item.nextDue || "—",
+        item.status || "UNVERIFIED",
+      ]);
+    });
+  });
+  const blocks = [{ type: "heroes", items: heroes }];
+  if (rows.length) {
+    blocks.push({ type: "table", title: "AD compliance — live from Firestore", cols: ["Tail", "AD #", "Subject", "Compliant as of", "Next due", "Status"], rows });
+  } else {
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "No AD records on file", text: "Add AD compliance entries via Alex or the aircraft upsert form — until then this tab can't show real data, so it shows nothing rather than a fabricated example." }] });
+  }
+  return blocks;
+}
+
 function trafficToBlocks(ac) {
   const list = ac || [];
   if (!list.length) return [{
@@ -458,6 +500,16 @@ const LIVE_TABS = {
   // Personal workers — owner-operator (Las Vegas home base: KLAS/KVGT)
   "av-copilot-001": {
     "dashboard":  { kind: "currency" },
+    // 2026-08-30 gap-audit fix — "Dashboard" was already wired to real
+    // currency data, but the tab literally labeled "Currency" (fuller
+    // compliance-record table) was not — still 100% static demo content
+    // (fake FlightSafety-style items: PC12 Flight, CBT Q1-Q4, HUET, etc).
+    // Reuses the same real /v1/pilot:currency payload as Dashboard —
+    // there's no backend concept of itemized FlightSafety course codes,
+    // just the generic FAA personal-currency computation (medical, BFR,
+    // IPC, 90-day landings, 6-month approaches/holds, 135 line check) from
+    // whatever the pilot has actually logged. See below.
+    "currency":   { kind: "currency" },
     "preflight":  { kind: "weather", ids: "KLAS,KPHX,KLAX",
                     mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
     "logbook":    { kind: "logbook" },
@@ -465,6 +517,11 @@ const LIVE_TABS = {
   "av-mx-001": {
     "aircraft": { kind: "airworthiness" },
     "squawks": { kind: "squawks" },
+    // 2026-08-30 gap-audit fix — the "ADs / SBs" tab was 100% static demo
+    // content (aviationCanvasData.js AV_CANVAS fixture), even though
+    // computeAirworthiness() already returns real per-tail adCompliance.items
+    // from Firestore. Wiring it here instead of inventing a new backend route.
+    "ads-sbs": { kind: "adCompliance" },
   },
   "av-dispatch-001": {
     // Was "trip-package" — that tab id doesn't exist in this worker's spec
@@ -473,6 +530,12 @@ const LIVE_TABS = {
     // same real MX data MX Tracker now reads, so Dispatch can't show a
     // different airworthiness answer than the record it's supposed to defer to.
     "aircraft-status": { kind: "airworthiness" },
+    // 2026-08-30 gap-audit fix — "notams" was also 100% static demo cards.
+    // ICAOs below are Sean's actual Hawaii operating bases (matches the rest
+    // of this worker's real content: Aeromed Air, PHOG/PHNL/PHKO/PHTO/PHNY).
+    // Next step beyond this pass: derive these from the actual filed trip
+    // instead of a fixed list, once Dispatch's Schedule tab is live-wired too.
+    "notams": { kind: "notams", locations: "PHOG,PHNL,PHKO,PHTO,PHNY" },
   },
   "av-ground-school-001": {
     "quiz-zone": { kind: "currency" },
@@ -741,6 +804,9 @@ export default function AviationWorkerCanvas({ workerSlug }) {
         } else if (cfg.kind === "airworthiness") {
           const data = await apiGet(`/v1/mx:listAircraft`);
           if (data.fleet) blocks = airworthinessToBlocks(data.fleet);
+        } else if (cfg.kind === "adCompliance") {
+          const data = await apiGet(`/v1/mx:listAircraft`);
+          if (data.fleet) blocks = adComplianceToBlocks(data.fleet);
         }
         if (blocks) setLiveBlocks(prev => ({ ...prev, [key]: blocks }));
       } catch (e) {
