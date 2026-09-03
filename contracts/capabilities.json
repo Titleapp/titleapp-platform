@@ -1357,6 +1357,28 @@
       "requiredRoles": [],
       "emitsEvent": true,
       "writesAudit": true
+    },
+    {
+      "id": "dpp.get_passport_status_v1",
+      "class": "dpp",
+      "summary": "CODEX 84 — read-only, tenant-scoped lookup of a SKU's real dppProducts record (passportStatus, registryId, capacityKwh, dppInScope, batteryCategory), zero side effects. Closes the gap CODEX 74 §9.2 first proposed as ecommerce.shopify_passport_status_read_v1 and never built. Reads only dppProducts, not productPassports — every field returned already lives there, no schema-merge needed for this scope. Dispatched by GET /v1/dpp:worker:passportStatus (functions/functions/index.js).",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "dpp.bulk_intake_v1",
+      "class": "dpp",
+      "summary": "CODEX 84 — bulk product intake for the DPP vertical, generalizing dpp:shopify:selfServeIntake's per-SKU scope determination into real multi-row ingestion with per-row accept/reject (a malformed or duplicate row doesn't fail the whole batch). Writes one dppImports doc per batch (results per row, created/skipped/failed counts) rather than using the platform-wide imports/ collection, which is an audit-log stub with no real parsing (CODEX 84 §2.3) — that broader fix is tracked separately and doesn't block this. Dispatched by POST /v1/dpp:worker:bulkIntake (functions/functions/index.js).",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
     }
   ]
 }

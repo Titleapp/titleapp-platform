@@ -1,4 +1,4 @@
-# TitleApp — Vendor & Service Registry
+# SOCIII — Vendor & Service Registry
 
 > **⚠️ NO SECRETS IN THIS FILE.** No API keys, passwords, or tokens. Only account metadata.
 > Secrets go in Firebase Functions config, Cloud Run env vars, or `.env.local` (gitignored).
@@ -9,14 +9,19 @@
 
 | Field | Value |
 |-------|-------|
-| Primary Email | seanlcombs@gmail.com |
-| Company Legal Name | The Title App LLC |
-| Operating Entity (Atlas C-corp) | SOCIII, Inc. (Delaware C Corporation) |
+| Primary Email | sean@sociii.ai |
+| Company Legal Name | SOCIII, Inc. |
+| Operating Entity (Atlas C-corp) | SOCIII, Inc. (Delaware C Corporation), incorporated May 19, 2026 |
 | DBA | TitleApp / SOCIII |
-| EIN | 33-1330902 |
+| EIN | 42-2675951 |
 | **D-U-N-S® Number** | **14-503-1310** |
+| Hawaii GET Account ID | GE-180-827-2896-01 |
 | State | Delaware |
-| Address | 1209 N Orange St, Wilmington, DE 19801 |
+| Address | 1810 E Sahara Ave, STE 75942, Las Vegas, NV 89104 |
+| Phone | (310) 430-0780 |
+| Website | sociii.ai |
+
+> Corrected 2026-09-02 — prior version of this table had stale info (old legal name, old email, wrong EIN) carried over from before the Stripe Atlas incorporation. Verified against Stripe Atlas directly.
 
 ---
 
@@ -29,15 +34,26 @@
 - **Hosting URLs:**
   - Main app: https://title-app-alpha.web.app
   - Frontdoor Workers: https://titleapp-frontdoor.titleapp-core.workers.dev
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Env vars:** `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY` (client-side, in app config)
 
 ### Cloudflare Workers
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Workers:**
   - `titleapp-frontdoor` — /developers and /invest chat Workers
 - **Domain:** titleapp-core.workers.dev
 - **Env vars:** Set via `wrangler secret put`
+
+---
+
+## App Stores & Developer Platforms
+
+### Apple Developer
+- **Account:** sean@sociii.ai
+- **Password:** not stored here — use a password manager
+- **Password hint:** jet
+- **Purpose:** Apple Developer Program enrollment, for eventual iOS/App Store distribution
+- **Status:** enrollment in progress (2026-09-03) — account type (Individual vs. Organization) and D-U-N-S linkage not yet finalized
 
 ---
 
@@ -54,10 +70,25 @@
 
 ---
 
+## Tax & Regulatory Accounts
+
+### Hawaii Department of Taxation — Hawaii Tax Online (GET)
+- **Dashboard:** https://hitax.hawaii.gov
+- **Username:** sociii
+- **Password:** not stored here — use a password manager
+- **Purpose:** General Excise Tax (GET) license — required for SOCIII to invoice/receive payment from UH Maui College (a Hawaii state entity)
+- **Hawaii GET Account ID:** GE-180-827-2896-01 (General Excise); reconciliation account GE-180-827-2896-01R
+- **Registered:** 2026-09-02, $20 one-time registration fee paid
+- **Filing frequency:** Semi-Annually (est. annual GET liability under $2,000, based on current UH Maui contract value)
+- **Related:** once active, also register at vendors.ehawaii.gov/hce for the Hawaii Compliance Express certificate (separate step, needed before UH's business office can process payment) — not yet done
+- **Tracked as a live obligation:** `customObligations/hawaii_get_registration_uhmc` in Firestore, surfaced via the accounting worker's `query_compliance_filings` tool — marked complete 2026-09-02
+
+---
+
 ## Payments & Billing
 
 ### Stripe
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Dashboard:** https://dashboard.stripe.com
 - **Purpose:** Subscriptions ($9/mo workspaces), AI credit packs, marketplace payouts (Connect), investor ID verification ($2 charge)
 - **Products to create:**
@@ -75,7 +106,7 @@
 ## E-Signatures
 
 ### Dropbox Sign (formerly HelloSign)
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Dashboard:** https://app.hellosign.com
 - **API Docs:** https://developers.hellosign.com
 - **Purpose:** Platform-wide e-signatures
@@ -93,7 +124,7 @@
 ## Communications
 
 ### Twilio (includes SendGrid — same company, single account)
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Twilio Console:** https://console.twilio.com
 - **SendGrid Dashboard:** https://app.sendgrid.com (accessible from Twilio account)
 - **Purpose:**
@@ -118,7 +149,7 @@
 ## AI / LLM Providers
 
 ### Anthropic (Claude)
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Dashboard:** https://console.anthropic.com
 - **Purpose:** Primary AI engine — Alex chat, Worker intelligence, enforcement analysis, document analysis
 - **Models used:** Claude Sonnet (chat), Claude Opus (complex analysis)
@@ -126,14 +157,14 @@
   - `ANTHROPIC_API_KEY`
 
 ### OpenAI (GPT)
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Dashboard:** https://platform.openai.com
 - **Purpose:** Secondary/fallback AI, embeddings, specific use cases as needed
 - **Env vars:**
   - `OPENAI_API_KEY`
 
 ### Google Cloud / Gemini
-- **Account:** seanlcombs@gmail.com
+- **Account:** sean@sociii.ai
 - **Console:** https://console.cloud.google.com
 - **Purpose:** Vertex AI / Gemini models, shared with Firebase project for GCP services
 - **Note:** Firebase project already handles most GCP auth
@@ -160,28 +191,60 @@
 
 ## Data APIs — Other (configured keys)
 
-| Service | Purpose | Env key |
-|---------|---------|---------|
-| Realie / RentCast | Real-estate property data | `REALIE_API_KEY`, `RENTCAST_PROPERTY_DATA`, `REALIE_REAL_ESTATE_DATA` |
-| ATTOM | Property detail / sales / AVM | Secret Manager: `ATTOM_API_KEY` |
-| Vincario | VIN decode (paid tier) | `VINCARIO_API_KEY`, `VINCARIO_SECRET_KEY` |
-| NHTSA vPIC | Free VIN decode | — (keyless) |
-| Fal | Generative media (image/video) | `FAL_API_KEY` |
-| Google Maps | Base maps / Street View / Embed | `GOOGLE_MAPS_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` |
-| QuickBooks | Accounting connector | `QB_CLIENT_ID`, `QB_CLIENT_SECRET` |
-| Unified.to | Cross-platform connectors | `UNIFIED_API_KEY`, `UNIFIED_WORKSPACE_ID`, `UNIFIED_WORKSPACE_SECRET` |
+> Corrected 2026-09-02 — this table was missing several real, already-configured accounts (Shopify, TikTok, GitHub, Google OAuth, Brave Search) found in `functions/functions/.env`. Added below with verified real usage. ATTOM and First American are **referenced in the pricing model (`services/billing/dataFee.js`) but not actually connected yet** — Sean confirmed this earlier ("not connected to ATTOM/FirstAm until funding" — they're expensive per-query data sources).
+
+| Service | Purpose | Env key | Status |
+|---------|---------|---------|--------|
+| Realie / RentCast | Real-estate property data | `REALIE_API_KEY`, `RENTCAST_PROPERTY_DATA`, `REALIE_REAL_ESTATE_DATA` | configured |
+| ATTOM | Property detail / sales / AVM | Secret Manager: `ATTOM_API_KEY` | **not yet connected** — priced in `dataFee.js`, deferred until funding |
+| First American (title data) | Title/escrow detail | referenced in `dataFee.js` (`firstam:title`) | **not yet connected** — same as ATTOM, deferred until funding |
+| Vincario | VIN decode (paid tier) | `VINCARIO_API_KEY`, `VINCARIO_SECRET_KEY` | configured |
+| NHTSA vPIC | Free VIN decode | — (keyless) | live |
+| Fal | Generative media (image/video) | `FAL_API_KEY` | configured |
+| Google Maps | Base maps / Street View / Embed | `GOOGLE_MAPS_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` | configured |
+| Google OAuth | Gmail/Drive/Calendar connectors (Alex integrations) | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `GOOGLE_GMAIL_REDIRECT_URI` | **live** — real, verified in `.env` |
+| QuickBooks | Accounting connector | `QB_CLIENT_ID`, `QB_CLIENT_SECRET` | configured |
+| Unified.to | Cross-platform connectors | `UNIFIED_API_KEY`, `UNIFIED_WORKSPACE_ID`, `UNIFIED_WORKSPACE_SECRET` | configured |
+| **Shopify** | Read-only merchant "connect your store" OAuth (orders/customers/products into Accounting/Contacts) — see `services/shopify/shopify.js`; separate from the new public DPP app being built via Partner org | `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_REDIRECT_URI` | **live** — real, verified in `.env`, was missing from this doc entirely |
+| **TikTok** | Client credentials — likely RegCF marketing/social posting | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` | configured — real key exists, usage not traced in this pass |
+| **GitHub** | Repo access (CI, automation, or Alex tooling) | `GITHUB_TOKEN`, `GITHUB_REPO` | configured |
+| **Brave Search** | Web search API | `BRAVE_SEARCH_API_KEY` | configured |
+| **Alchemy (Polygon)** | Blockchain RPC node provider | `ALCHEMY_POLYGON_API_KEY` | configured — real key exists, usage not traced in this pass |
+| **Helius** | Solana RPC/API provider | `HELIUS_API_KEY` | configured — real key exists; no Solana usage found anywhere in current code, worth confirming if still needed |
+
+### Nokia API Hub (formerly RapidAPI)
+- **Dashboard:** https://rapidapi.com/console (Nokia-owned since the Rapid acquisition)
+- **Account:** sean@sociii.ai, personal account tier
+- **Verified live subscription:** "Realtor" API — Pro plan, $20.00/mo, active since 15 Jul 2026, quota usage 0.02% (essentially unused so far)
+- **Note:** Sean expected an e-signature API here too — not found under this account's subscriptions as of 2026-09-02. Worth checking whether that's a different Nokia/Rapid account, or was actually meant to reference Dropbox Sign (the real e-sign vendor already tracked above).
+
+**Two items flagged by Sean I could not verify — need his input, not guessed:**
+- **Coinbase** — only code reference found is a user-facing "Coinbase Wallet address" field (crypto custody preference, just a regex-validated address, not an API/account integration). If there's an actual **Coinbase Business account** (a real marketing email from Coinbase Business was seen in Sean's inbox 2026-08-31), that's a separate real account not reflected anywhere in code — needs Sean to provide details directly.
+- **Nokia (APIs)** — zero references found anywhere in the codebase. Needs clarification from Sean on what this refers to before it can be added.
+
+**Social & communications accounts** — not trackable from code at all (no API keys implies no integration, or credentials live elsewhere entirely). Needs a direct list from Sean: which platforms (X/Twitter, LinkedIn, TikTok account itself vs. the API client above, Instagram, Slack, etc.), account handles, and who has access.
 
 ---
 
 ## Blockchain / Web3
 
-### Venly
-- **Account:** dev@homdao.io (legacy) → migrating to dev@titleapp.ai
-- **Purpose:** Token creation (Polygon), DTC minting, wallet infrastructure
+> Corrected 2026-09-02 — this section previously only listed Venly, which is not actually wired into any current code path (verified via repo search). The real, live anchoring stack is below.
+
+### OpenTimestamps (universal default — every record, every user)
+- **No account/API key** — free, public, decentralized timestamping protocol
+- **Purpose:** Daily Merkle-batch hash anchor to Bitcoin for every DTC record (`services/anchor/dailyBatchAnchor.js`) — this is what backs the "tamper-evident, independently verifiable" claim across the whole platform
+- **Verify endpoint:** `GET /v1/dpp:passport:public` / `GET /v1/dtc/:dtcId/verify` — public, no auth required
+
+### Crossmint (opt-in, per-user — NFT minting on Polygon)
+- **Purpose:** Optional NFT representation of a DTC record on Polygon mainnet, gated behind `blockchainMintingEnabled` on the user doc — NOT the default, most users/records never trigger this
 - **Env vars:**
-  - `VENLY_CLIENT_ID`
-  - `VENLY_CLIENT_SECRET`
-  - `VENLY_APPLICATION_ID`
+  - `CROSSMINT_SERVER_API_KEY` — confirmed live in `functions/functions/.env`
+  - `CROSSMINT_COLLECTION_ID`
+  - `CROSSMINT_RECIPIENT` — currently hardcoded to `email:treasury@sociii.ai`, not per-user (known gap, see memory)
+
+### Venly — legacy, not currently integrated
+- **Account:** dev@homdao.io (legacy) → migration to dev@titleapp.ai never completed
+- **Status:** no `VENLY_*` env vars or Venly API calls found anywhere in the current codebase — this was Title App-era wallet infrastructure, superseded by Crossmint. Keeping this entry only as a historical note; do not build against it.
 
 ---
 
@@ -197,10 +260,13 @@
 
 ## Domain & DNS
 
+> Corrected 2026-09-02 — sociii.ai was missing entirely; it's the actual primary domain in live use (all real email, legal docs at sociii.ai/legal/..., hosting).
+
 ### Domains
-- **titleapp.ai** — primary domain
-- **titleapp.com** — if owned
-- **DNS provider:** TBD (likely Cloudflare)
+- **sociii.ai** — primary domain, actual live use (email, public legal pages, product)
+- **titleapp.ai** — legacy domain, still referenced by some backend email addresses (alex@titleapp.ai, support@titleapp.ai) — not yet fully migrated
+- **titleapp.com** — status unverified
+- **DNS provider:** unverified — likely Cloudflare given Cloudflare Workers usage elsewhere, not confirmed for sociii.ai specifically
 
 ---
 
@@ -247,12 +313,15 @@ cp .env.example .env.local
 | Anthropic (Claude) | ✅ | ✅ | ✅ | ✅ |
 | OpenAI (GPT) | ✅ | ⬜ | ⬜ | ⬜ |
 | Google Cloud / Gemini | ✅ | ✅ | ✅ | ⬜ |
-| Stripe | ✅ | ⬜ | ⬜ | ⬜ |
+| Stripe | ✅ | ✅ | ✅ | ✅ |
 | Dropbox Sign | ✅ | ⬜ | ⬜ | ⬜ |
-| Twilio + SendGrid | ⬜ | ⬜ | ⬜ | ⬜ |
-| Venly | ✅ | ⬜ | ⬜ | ⬜ |
+| Twilio + SendGrid | ✅ | ✅ | ✅ | ✅ |
+| OpenTimestamps (Bitcoin anchor) | N/A | N/A | ✅ | ✅ |
+| Crossmint (Polygon, opt-in) | ✅ | ✅ | ✅ | ⬜ |
+| Venly | — | — | ⬜ (superseded, not integrated) | — |
 | Wefunder | ⬜ | ⬜ | N/A | N/A |
+| Hawaii Dept. of Taxation (GET) | ✅ | N/A | N/A | N/A |
 
 ---
 
-*Last updated: February 25, 2026*
+*Last updated: September 3, 2026*

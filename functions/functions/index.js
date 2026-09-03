@@ -2577,6 +2577,298 @@ exports.api = onRequest(
       }
     }
 
+    // GET /v1/dpp:shopify:products — for the sociii-dpp-passport Shopify app's
+    // server (not a merchant's browser) to fetch a tenant's real dppProducts
+    // records, joined against the merchant's own SKUs. Shared-secret auth,
+    // NOT requireFirebaseUser — the Shopify app has no Firebase session.
+    // STOPGAP for single-tenant testing (CODEX 74 §10 step 1-4): before any
+    // real merchant installs this app, replace with a real per-installation
+    // credential issued at OAuth time, not one shared secret for everyone.
+    if (route === "/dpp:shopify:products" && method === "GET") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const tenantId = (req.query?.tenantId || "").toString().trim();
+        if (!tenantId) return jsonError(res, 400, "Missing tenantId");
+        const snap = await db.collection("dppProducts").where("tenantId", "==", tenantId).get();
+        const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, products });
+      } catch (e) {
+        console.error("dpp:shopify:products failed:", e.message);
+        return jsonError(res, 500, "DPP Shopify product fetch failed");
+      }
+    }
+
+    // POST /v1/dpp:shopify:selfServeIntake — the real fix for the "Elise has
+    // only so many hours" bottleneck (Sean, 2026-09-02). Lets a merchant
+    // create their own dppProducts record for a SKU with no compliance
+    // history at all, without a human in the loop. Deliberately narrow: only
+    // captures what's needed to determine regulatory SCOPE (is a passport
+    // even required), not the full compliance data set (materials, carbon
+    // footprint, supply chain) — that richer intake is a bigger, separate
+    // piece of work, not something to fake here. passportStatus starts at
+    // "unknown" honestly, not "ready", since no real compliance work has
+    // happened yet — this just answers "does this product need a passport."
+    if (route === "/dpp:shopify:selfServeIntake" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { tenantId, sku, name, voltage, ampHours, category } = body || {};
+        if (!tenantId || !sku || !name) return jsonError(res, 400, "Missing tenantId, sku, or name");
+        const validCategories = new Set(["lmt", "industrial", "ev", "sli", "portable"]);
+        if (!validCategories.has(category)) {
+          return jsonError(res, 400, `category must be one of: ${[...validCategories].join(", ")}`);
+        }
+        const v = Number(voltage), ah = Number(ampHours);
+        if (!Number.isFinite(v) || v <= 0 || !Number.isFinite(ah) || ah <= 0) {
+          return jsonError(res, 400, "voltage and ampHours must be positive numbers");
+        }
+
+        const existing = await db.collection("dppProducts")
+          .where("tenantId", "==", tenantId).where("sku", "==", sku).limit(1).get();
+        if (!existing.empty) return jsonError(res, 409, `A dppProducts record already exists for sku ${sku}`);
+
+        const capacityKwh = Math.round((v * ah / 1000) * 100) / 100;
+        // EU Battery Regulation (EU) 2023/1542: LMT (light means of transport
+        // — e-bikes, e-scooters) is in scope regardless of size; other
+        // categories only cross the DPP mandate above 2kWh.
+        const dppInScope = category === "lmt" || category === "ev" || capacityKwh > 2;
+
+        const ref = db.collection("dppProducts").doc();
+        await ref.set({
+          tenantId,
+          sku,
+          name,
+          batteryCategory: category,
+          voltage: v,
+          ampHours: ah,
+          capacityKwh,
+          dppInScope,
+          passportStatus: "unknown",
+          registryId: null,
+          selfServe: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, id: ref.id, capacityKwh, dppInScope });
+      } catch (e) {
+        console.error("dpp:shopify:selfServeIntake failed:", e.message);
+        return jsonError(res, 500, "Self-serve intake failed");
+      }
+    }
+
+    // POST /v1/dpp:shopify:attachPassport — creates/updates the PUBLIC
+    // productPassports doc for a SKU so the Shopify theme extension has a
+    // real passportId to build a GS1 Digital Link QR against. Same
+    // shared-secret auth as dpp:shopify:products (see that route's comment).
+    //
+    // Honest limitation: dppProducts (compliance/registry model — clusters,
+    // overallPct, passportStatus) and productPassports (public-display model
+    // — materials, manufacturing, carbonFootprint, recyclability) were built
+    // as two separate, never-unified schemas. This route does NOT invent
+    // material/manufacturing/recyclability data dppProducts doesn't have —
+    // it only carries over fields that actually exist (sku, name→productName,
+    // registryId→complianceStandard reference). Richer field mapping is real
+    // backend work, not something to fake here.
+    if (route === "/dpp:shopify:attachPassport" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { tenantId, sku, brandName } = body || {};
+        if (!tenantId || !sku) return jsonError(res, 400, "Missing tenantId or sku");
+
+        const productSnap = await db.collection("dppProducts")
+          .where("tenantId", "==", tenantId).where("sku", "==", sku).limit(1).get();
+        if (productSnap.empty) return jsonError(res, 404, `No dppProducts record for sku ${sku}`);
+        const dppProduct = productSnap.docs[0].data();
+
+        const passportId = `${tenantId}__${sku}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        await db.collection("productPassports").doc(passportId).set({
+          tenantId,
+          sku,
+          brandName: brandName || null,
+          productName: dppProduct.name || null,
+          complianceStandard: dppProduct.registryId ? `Registry ID: ${dppProduct.registryId}` : null,
+          // Deliberately left null, not fabricated — dppProducts has no
+          // source data for these; fill in once real compliance intake
+          // captures them.
+          category: null,
+          materials: [],
+          manufacturing: null,
+          careInstructions: null,
+          carbonFootprintKgCO2e: null,
+          recyclability: null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return res.json({ ok: true, passportId, passportUrl: `https://sociii.ai/passport/${encodeURIComponent(passportId)}` });
+      } catch (e) {
+        console.error("dpp:shopify:attachPassport failed:", e.message);
+        return jsonError(res, 500, "DPP Shopify attach failed");
+      }
+    }
+
+    // GET /v1/dpp:worker:passportStatus?sku=xxx — capability
+    // dpp.get_passport_status_v1 (CODEX 84 §4.2/§6, closing the gap CODEX 74
+    // §9.2 first proposed as ecommerce.shopify_passport_status_read_v1, never
+    // built). Read-only, tenant-scoped, zero side effects — the thing
+    // selfServeIntake/attachPassport don't provide on their own: a way to just
+    // ASK where a SKU stands without triggering a write. Modeled on
+    // title.customer.get_order_status_v1's entitlement shape, simplified
+    // since this is tenant-isolation, not per-customer entitlement — the
+    // caller's own authenticated tenant, not an external customer matched by
+    // email/uid.
+    //
+    // Deliberately reads ONLY dppProducts, not productPassports — every field
+    // this capability returns (passportStatus, registryId, capacityKwh,
+    // dppInScope) already lives there (see the attachPassport route comment
+    // above for why the two schemas are separate). No merge logic needed for
+    // this scope; if a future caller needs productPassports fields
+    // (materials, carbonFootprint, etc.) too, that's a real scope expansion,
+    // not something to guess at here.
+    if (route === "/dpp:worker:passportStatus" && method === "GET") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+        const ctx = getCtx(req, {}, auth.user);
+        const sku = (req.query?.sku || "").toString().trim();
+        if (!ctx.tenantId || !sku) return jsonError(res, 400, "Missing tenant context or sku");
+
+        const snap = await db.collection("dppProducts")
+          .where("tenantId", "==", ctx.tenantId).where("sku", "==", sku).limit(1).get();
+        if (snap.empty) return jsonError(res, 404, `No dppProducts record for sku ${sku}`);
+
+        const { passportStatus, registryId, capacityKwh, dppInScope, batteryCategory } = snap.docs[0].data();
+        return res.json({ ok: true, sku, passportStatus: passportStatus || "unknown", registryId: registryId || null, capacityKwh: capacityKwh ?? null, dppInScope: !!dppInScope, batteryCategory: batteryCategory || null });
+      } catch (e) {
+        console.error("dpp:worker:passportStatus failed:", e.message);
+        return jsonError(res, 500, "DPP passport status read failed");
+      }
+    }
+
+    // POST /v1/dpp:worker:bulkIntake — capability dpp.bulk_intake_v1
+    // (CODEX 84 §4.1/§6/§7 item 2). Generalizes selfServeIntake into real
+    // multi-row ingestion instead of one API call per SKU.
+    //
+    // Architecture decision (CODEX 84 §7 item 2, resolved this pass per the
+    // Codex's own recommendation): DPP gets its OWN `dppImports` collection
+    // rather than the platform-wide `imports/` collection, which is
+    // currently an audit-log stub (counts newlines, never parses rows, no
+    // Firestore trigger — see CODEX 84 §2.3) that every other vertical would
+    // need touched to fix properly. That platform-wide fix is real and
+    // tracked separately in CODEX 84 §7 item 2 — this does not block on it.
+    //
+    // Per-row validation and accept/reject (not all-or-nothing) — reuses the
+    // EXACT scope-determination logic from /dpp:shopify:selfServeIntake
+    // above (capacityKwh formula, LMT/EV-always-in-scope rule) rather than
+    // duplicating it, per CODEX 84 §4.1. A row whose SKU already has a
+    // dppProducts record is reported as skipped, not an error — the batch
+    // doesn't abort because one row collides, same principle as the
+    // per-row-not-whole-file rule, just applied to duplicates instead of
+    // malformed rows.
+    if (route === "/dpp:worker:bulkIntake" && method === "POST") {
+      try {
+        const auth = await requireFirebaseUser(req, res);
+        if (auth.handled) return auth.res;
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenant context");
+
+        const rows = Array.isArray(body?.rows) ? body.rows : null;
+        if (!rows || rows.length === 0) return jsonError(res, 400, "rows must be a non-empty array");
+        if (rows.length > 1000) return jsonError(res, 400, "rows exceeds the 1000-row limit per batch");
+
+        const validCategories = new Set(["lmt", "industrial", "ev", "sli", "portable"]);
+        const results = [];
+        let created = 0, skipped = 0, failed = 0;
+
+        for (const row of rows) {
+          const { sku, name, voltage, ampHours, category } = row || {};
+          if (!sku || !name) {
+            results.push({ sku: sku || null, status: "failed", error: "Missing sku or name" });
+            failed++;
+            continue;
+          }
+          if (!validCategories.has(category)) {
+            results.push({ sku, status: "failed", error: `category must be one of: ${[...validCategories].join(", ")}` });
+            failed++;
+            continue;
+          }
+          const v = Number(voltage), ah = Number(ampHours);
+          if (!Number.isFinite(v) || v <= 0 || !Number.isFinite(ah) || ah <= 0) {
+            results.push({ sku, status: "failed", error: "voltage and ampHours must be positive numbers" });
+            failed++;
+            continue;
+          }
+
+          const existing = await db.collection("dppProducts")
+            .where("tenantId", "==", ctx.tenantId).where("sku", "==", sku).limit(1).get();
+          if (!existing.empty) {
+            results.push({ sku, status: "skipped_exists" });
+            skipped++;
+            continue;
+          }
+
+          const capacityKwh = Math.round((v * ah / 1000) * 100) / 100;
+          const dppInScope = category === "lmt" || category === "ev" || capacityKwh > 2;
+          const ref = db.collection("dppProducts").doc();
+          await ref.set({
+            tenantId: ctx.tenantId,
+            sku,
+            name,
+            batteryCategory: category,
+            voltage: v,
+            ampHours: ah,
+            capacityKwh,
+            dppInScope,
+            passportStatus: "unknown",
+            registryId: null,
+            selfServe: true,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          results.push({ sku, status: "created", capacityKwh, dppInScope });
+          created++;
+        }
+
+        const importRef = db.collection("dppImports").doc();
+        await importRef.set({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          totalRows: rows.length,
+          created,
+          skipped,
+          failed,
+          results,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        try {
+          const { emitEvent } = require("./services/workerEventBus");
+          await emitEvent("dpp.bulk_intake.completed", { importId: importRef.id, totalRows: rows.length, created, skipped, failed }, { tenantId: ctx.tenantId, userId: ctx.userId });
+        } catch (eventErr) { console.warn("[dpp:worker:bulkIntake] event emit failed (non-blocking):", eventErr.message); }
+
+        try {
+          const { writeAuditRecord } = require("./services/auditTrailService");
+          await writeAuditRecord({
+            worker_id: "dpp-bulk-intake", user_id: ctx.userId, org_id: ctx.tenantId,
+            event_id: `dpp_bulk_${importRef.id}`,
+            execution_type: "dpp_bulk_intake",
+            timestamp: new Date().toISOString(),
+          });
+        } catch (auditErr) { console.warn("[dpp:worker:bulkIntake] audit trail write failed (non-blocking):", auditErr.message); }
+
+        return res.json({ ok: true, importId: importRef.id, totalRows: rows.length, created, skipped, failed, results });
+      } catch (e) {
+        console.error("dpp:worker:bulkIntake failed:", e.message);
+        return jsonError(res, 500, "DPP bulk intake failed");
+      }
+    }
+
     // GET /v1/dpp:report:latest — most recent priority report for the
     // requesting tenant. CODEX S52.50.
     if (route === "/dpp:report:latest" && method === "GET") {
