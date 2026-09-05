@@ -53,6 +53,11 @@ const STUDENT_WORKER_SLUG = "nursing-education-001";
 // Real, live worker for MSR borrower chat — CODEX S52.60, scoped server-side
 // via context.persona="borrower". Persona name is "Dana" internally.
 const MSR_WORKER_SLUG = "msr-servicing-001";
+// Real, live worker for tenant chat — scoped server-side via
+// context.persona="tenant"; own-data grounding is scoped to this resident's
+// own lease only (propertyManagementTenantBlock), not the operator's
+// portfolio (see git history 2026-09-05 for why that scoping matters).
+const TENANT_WORKER_SLUG = "property-management";
 
 const SKINS = {
   "meadow-vet": {
@@ -1862,6 +1867,37 @@ export default function ClientPortal() {
     return null;
   }
 
+  // Same real-chat pattern as sendRealStudentChat/sendRealBorrowerChat, for
+  // the tenant persona — property-management's own tenant scope note
+  // (index.js's client_portal scope-limit block) applies server-side, and
+  // the worker's own-data grounding is scoped to THIS resident's lease only
+  // (propertyManagementTenantBlock in workerOwnData.js) — never the
+  // operator's whole portfolio.
+  async function sendRealTenantChat(t) {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/chat:message")}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+      body: JSON.stringify({
+        message: t,
+        userInput: t,
+        sessionId: chatSessionIdRef.current,
+        selectedWorker: TENANT_WORKER_SLUG,
+        context: { source: "client_portal", persona: "tenant" },
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.ok === false) throw new Error(j?.message || j?.error || "Request failed");
+    return j.response || j.message || "I'm not able to answer that right now — please try again in a moment.";
+  }
+
+  function canvasForTenantMessage(t) {
+    if (/rent|balance|paid|due|lease (start|end|date)/.test(t)) return { type: "lease" };
+    if (/maintenance|repair|broken|fix|leak|heat|ac\b|air condition/.test(t)) return { type: "maintenance" };
+    if (/document|lease copy|paperwork/.test(t)) return { type: "tenant-docs" };
+    return null;
+  }
+
   async function sendMessage(text) {
     if (!text.trim() || thinking) return;
     const t = text.trim();
@@ -1900,6 +1936,18 @@ export default function ClientPortal() {
         if (c) setCanvas(c);
       } catch {
         setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your account just now — please try again in a moment, or call us directly." }]);
+      }
+      setThinking(false);
+      return;
+    }
+    if (hasRealTenantBacking && user && leaseStatus === "ok") {
+      try {
+        const reply = await sendRealTenantChat(t);
+        setMessages(m => [...m, { from: "them", text: reply }]);
+        const c = canvasForTenantMessage(t.toLowerCase());
+        if (c) setCanvas(c);
+      } catch {
+        setMessages(m => [...m, { from: "them", text: "Sorry, I couldn't reach your lease just now — please try again in a moment, or call your property manager directly." }]);
       }
       setThinking(false);
       return;

@@ -5420,6 +5420,7 @@ END DELIVERY RULES.
                   // callerCtx.isRealStudentCustomer branch in nursingCohortBlock.
                   const callerCtx = {
                     isRealStudentCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "student",
+                    isRealTenantCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "tenant",
                     callerUid: authUser?.uid || null,
                     callerEmail: authUser?.email || null,
                   };
@@ -5499,6 +5500,14 @@ You are speaking directly with a BORROWER about their own mortgage servicing acc
   - general, non-account-specific education on Reg X/Reg Z concepts — what a Notice of Error/RFI is, what a "complete" loss-mitigation application means, what escrow/force-placed insurance/forbearance mean, general regulatory timelines — as long as you're explaining the CONCEPT, not asserting an outcome for this borrower's own situation
   - directing them to the licensee's servicing staff, a HUD-approved housing counselor, or an attorney for anything requiring judgment
 Do NOT give debt-counseling or legal advice, and do NOT state or imply a loss-mitigation decision (modification/forbearance approval or denial) or an error-dispute outcome — those are always authorized human decisions at the licensee, never this worker's call, per CODEX S52.60. If asked for advice on their situation, say this needs a housing counselor or attorney and offer to connect them to the licensee's staff.\n\n`
+                  : (_portalPersona === "tenant")
+                  ? `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
+You are speaking directly with a RESIDENT/TENANT about their own lease and unit, not the property manager or an employee of this business. Everything below this notice may describe a DIFFERENT, staff/portfolio-facing tool — none of that is what this resident is using, and no other resident's name, unit, or lease terms is theirs to see. Stay strictly within:
+  - their own lease status, rent, payment history, and lease dates already shown to them
+  - helping them submit or check on a maintenance request for their own unit
+  - explaining what's in their own lease document
+  - directing them to the property manager for anything requiring a decision (lease terms, disputes, notices)
+Do NOT give legal advice on landlord-tenant law, do NOT advise them on how to respond to a notice from the property manager, and do NOT discuss Fair Housing screening, eviction process, or any other resident's situation — those are the property manager's domain, not this chat's. If they report anything affecting habitability (no heat, flooding, gas smell, electrical hazard, structural damage) or any emergency, tell them clearly to contact the property manager directly and immediately, not just to file a routine request.\n\n`
                   : `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
 You are speaking directly with the CUSTOMER (buyer/seller/borrower on their own transaction), not an employee of this business. Stay strictly within:
   - process and status information (where their file/order stands, what's needed from them, timelines)
@@ -8111,6 +8120,7 @@ IDENTITY RULES:
                 const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
                 const _callerCtx = {
                   isRealStudentCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "student",
+                  isRealTenantCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "tenant",
                   callerUid: authUser?.uid || null,
                   callerEmail: authUser?.email || null,
                 };

@@ -446,6 +446,52 @@ async function dppSupplyChainBlock(db, tenantId) {
   return lines.join("\n") + "\n\n";
 }
 
+// ── Property Management — tenant's own lease grounding ──────────────────────
+// Built scoped-from-day-one, unlike nursingCohortBlock's original bug (see
+// git history, 2026-09-05): a real tenant customer must NEVER see the
+// operator's whole portfolio (other residents' names, rent, contact info).
+// This has no "full portfolio" fallback path at all for the customer case —
+// if her lease can't be resolved, it says so plainly rather than showing
+// anyone else's data. Staff/internal use of this worker (not yet built —
+// property-management's canvas is still fixture per its own SPEC.md) will
+// need its own separate, explicitly-portfolio-scoped block when it's real;
+// do not extend this one to also serve that case.
+async function propertyManagementTenantBlock(db, tenantId, uid, callerCtx) {
+  if (!callerCtx || !callerCtx.isRealTenantCustomer) return "";
+  const callerUid = (callerCtx.callerUid || "").trim();
+  const callerEmail = (callerCtx.callerEmail || "").trim().toLowerCase();
+  if (!callerUid && !callerEmail) return "";
+
+  const leasesSnap = await safe(db.collection("leases").where("tenantId", "==", tenantId).get(), null);
+  const leases = docs(leasesSnap);
+  const mine = leases.find(l =>
+    (callerUid && l.uid === callerUid) ||
+    (callerEmail && (l.residentEmail || "").toString().trim().toLowerCase() === callerEmail)
+  );
+  if (!mine) {
+    return "YOUR OWN RECORDS: could not resolve this resident's own lease right now. Say you're having trouble loading their lease and to try again shortly or contact the property manager directly — do NOT reference any other resident's unit, name, or lease terms.\n\n";
+  }
+
+  const reqSnap = await safe(db.collection("leases").doc(mine.id || "").collection("maintenanceRequests").orderBy("createdAt", "desc").limit(10).get(), null);
+  const reqs = docs(reqSnap);
+  const rent = mine.rentAmountCents != null ? `$${(mine.rentAmountCents / 100).toLocaleString()}/mo` : "unknown";
+  const deposit = mine.securityDepositCents != null ? `$${(mine.securityDepositCents / 100).toLocaleString()}` : "unknown";
+
+  const lines = ["YOUR OWN RECORDS — this resident's own lease only (never reference any other resident or unit):\n"];
+  lines.push(`${mine.propertyName || "Property"}${mine.unitLabel ? `, ${mine.unitLabel}` : ""} — ${mine.residentName || "resident"}`);
+  lines.push(`Status: ${mine.status || "unknown"} | Rent: ${rent} due day ${mine.rentDueDay ?? "?"} | Paid through: ${mine.paidThroughDate || "unknown"}`);
+  lines.push(`Lease term: ${mine.leaseStart || "?"} to ${mine.leaseEnd || "?"} | Security deposit: ${deposit}`);
+  if (reqs.length) {
+    lines.push("");
+    lines.push(`MAINTENANCE REQUESTS (${reqs.length}, most recent first):`);
+    reqs.forEach(r => lines.push(`  ${r.status || "unknown"}: ${r.category || "general"} — ${r.description || "(no description)"} (filed ${r.createdAt?._seconds ? new Date(r.createdAt._seconds * 1000).toISOString().slice(0, 10) : "recently"})`));
+  } else {
+    lines.push("");
+    lines.push("MAINTENANCE REQUESTS: none filed yet.");
+  }
+  return lines.join("\n") + "\n\n";
+}
+
 // ── Makai School of Nursing — cohort grounding (all 5 nursing workers) ────────
 async function nursingCohortBlock(db, tenantId, uid, callerCtx) {
   const tenantRef = db.collection("tenants").doc(tenantId);
@@ -672,6 +718,12 @@ const BUILDERS = {
   "nursing-tutor-001": nursingCohortBlock,
   "nursing-comms-001": nursingCohortBlock,
   "nursing-accreditation-001": nursingCohortBlock,
+  // Property Management — real tenant-scoped lease/maintenance grounding
+  // (customer-facing only; the staff/portfolio side is still fixture data
+  // per creators/sean-combs/property-management/SPEC.md and gets its own
+  // separate block when that becomes real).
+  "property-management": propertyManagementTenantBlock,
+  "property-management-001": propertyManagementTenantBlock,
 };
 
 /**
