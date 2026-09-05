@@ -538,7 +538,8 @@ async function nursingCohortBlock(db, tenantId, uid, callerCtx) {
     return lines.join("\n") + "\n\n";
   }
 
-  const [students, courses, competencies, instructors] = await Promise.all([
+  const [tenantSnap, students, courses, competencies, instructors] = await Promise.all([
+    safe(tenantRef.get(), null),
     safe(tenantRef.collection("nursingStudents").get(), null),
     safe(tenantRef.collection("nursingCourses").get(), null),
     safe(tenantRef.collection("nursingCompetencies").get(), null),
@@ -552,7 +553,8 @@ async function nursingCohortBlock(db, tenantId, uid, callerCtx) {
 
   if (!sd.length && !cd.length) return "";
 
-  const lines = ["YOUR OWN RECORDS — Makai School of Nursing\n"];
+  const schoolName = (tenantSnap?.exists && tenantSnap.data()?.name) || "your program";
+  const lines = [`YOUR OWN RECORDS — ${schoolName}\n`];
 
   if (sd.length) {
     lines.push(`ENROLLED STUDENTS (${sd.length}):`);
