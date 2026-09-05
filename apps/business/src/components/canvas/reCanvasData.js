@@ -718,7 +718,7 @@ export const RE_CANVAS = {
       ] },
       { id: "wire-instructions", label: "Wire Instructions", description: "Verified escrow wire instructions for this file. Always call to verify before sending funds. We will never change wire instructions by email.", blocks: [
         { type: "heroes", items: [
-          { band: "GREEN", title: "Escrow account active", detail: "ABC Title Company IOLTA" },
+          { band: "GREEN", title: "Escrow account active", detail: "Attorneys Title Company IOLTA" },
           { band: "YELLOW", title: "Last verified 07/28/2026", detail: "Phone verification required before any change" },
           { band: "RED", title: "Never share by email — always call to verify", detail: "(903) 675-2100" },
         ] },
@@ -732,7 +732,7 @@ export const RE_CANVAS = {
           rows: [
             { band: "WHITE", cells: ["Beneficiary Bank", "First Bank of Texas — Athens"] },
             { band: "WHITE", cells: ["ABA Routing", "111900659"] },
-            { band: "WHITE", cells: ["Account Name", "ABC Title Company IOLTA"] },
+            { band: "WHITE", cells: ["Account Name", "Attorneys Title Company IOLTA"] },
             { band: "WHITE", cells: ["Account Number", "XXXXXXX4821 (provided verbally only)"] },
             { band: "WHITE", cells: ["Reference", "File #ATH-2026-0743 — 313 Mayfair Dr"] },
           ] },
@@ -789,36 +789,36 @@ export const RE_CANVAS = {
             { band: "YELLOW", cells: ["Title insurance premium — remit to underwriter", "$1,650", "ACH", "Pending"] },
           ] },
         { type: "prose", items: [
-          { band: "YELLOW", title: "Disbursement hold", body: "All disbursements are held pending county recording confirmation. Every disbursement will be logged as a title.funds_disbursed chain event on the SOCIII ledger." },
+          { band: "YELLOW", title: "Disbursement hold", body: "All disbursements are held pending county recording confirmation. Every disbursement will be logged as a title.funds_disbursed event in the SOCIII audit trail." },
         ] },
       ] },
-      { id: "closing-status", label: "Close Status", description: "Milestone-by-milestone closing status for File ATH-2026-0743. Recording is in progress; every event is appended to the SOCIII chain — an immutable private ledger that exists in parallel to the county recorder. Title companies with SOCIII know about a close within seconds. The county recorder takes hours or days.", blocks: [
+      { id: "closing-status", label: "Close Status", description: "Milestone-by-milestone closing status for File ATH-2026-0743. Recording is in progress; every event is appended to SOCIII's audit trail — a real-time private record that exists in parallel to the county recorder. Title companies with SOCIII know about a close within seconds. The county recorder takes hours or days.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "Funds confirmed", detail: "Wire trace WR-20260728-4891" },
           { band: "YELLOW", title: "Recording in progress", detail: "Henderson County Clerk — submitted 07/28/2026 2:30 PM" },
           { band: "WHITE", title: "Policy issue — pending", detail: "Awaiting recording number" },
         ] },
-        { type: "chain", title: "Chain of title — ATH-2026-0743 (append-only · SOCIII ledger)", items: [
-          { band: "GREEN", parties: "Search opened — 313 Mayfair Dr, Athens TX 75751 · Examiner: ABC Title Company", meta: "title.search_opened · Block 0 · 07/14/2026", tag: "Anchored" },
-          { band: "GREEN", parties: "Title commitment issued — Stewart Title Guaranty · Schedule A + B exceptions attached", meta: "title.commitment_issued · Block 1 · 07/18/2026", tag: "Anchored" },
-          { band: "GREEN", parties: "Adjacency scan — 9 parcels · 1 utility easement flagged · no undisclosed access claims", meta: "title.adjacency_scan · Block 2 · 07/18/2026", tag: "Anchored" },
-          { band: "GREEN", parties: "Wire instructions verified — dual-channel phone verification · Sarah Garris · VC-20260728-001", meta: "title.wire_verified · Block 3 · 07/28/2026 9:05 AM", tag: "Anchored" },
-          { band: "GREEN", parties: "Closing disclosure sent to buyer · 3-day RESPA waiting period started", meta: "title.disclosure_sent · Block 4 · 07/25/2026", tag: "Anchored" },
-          { band: "GREEN", parties: "3-day waiting period complete · buyer cleared to sign", meta: "title.waiting_period_cleared · Block 5 · 07/28/2026 8:00 AM", tag: "Anchored" },
-          { band: "GREEN", parties: "Wire received $289,450 · Chase Private Client · Ref WR-20260728-4891", meta: "title.funds_received · Block 6 · 07/28/2026 9:14 AM", tag: "Anchored" },
-          { band: "GREEN", parties: "Wet close gate OPEN — all funds confirmed, recording authorized per TX-T-005", meta: "title.wet_close_authorized · Block 7 · 07/28/2026 10:02 AM", tag: "Anchored" },
-          { band: "YELLOW", parties: "Deed submitted for recording — Henderson County Clerk · File ATH-2026-0743", meta: "title.deed_submitted · Block 8 · 07/28/2026 2:30 PM — PENDING county confirmation", tag: "Pending" },
-          { band: "WHITE", parties: "County recording number confirmed — SOCIII chain event auto-triggered", meta: "title.deed_recorded · Block 9 · pending", tag: "Pending" },
-          { band: "WHITE", parties: "Title policy issued — Stewart Title Guaranty · owner's policy $285,000", meta: "title.policy_issued · Block 10 · pending", tag: "Pending" },
-          { band: "WHITE", parties: "Vault delivery — deed + policy auto-added to buyer's SOCIII Vault DTC records", meta: "title.vault_delivered · Block 11 · pending", tag: "Pending" },
+        { type: "chain", title: "Chain of title — ATH-2026-0743 (append-only SOCIII record)", items: [
+          { band: "GREEN", parties: "Search opened — 313 Mayfair Dr, Athens TX 75751 · Examiner: Attorneys Title Company", meta: "title.search_opened · Entry 0 · 07/14/2026", tag: "Verified" },
+          { band: "GREEN", parties: "Title commitment issued — Stewart Title Guaranty · Schedule A + B exceptions attached", meta: "title.commitment_issued · Entry 1 · 07/18/2026", tag: "Verified" },
+          { band: "GREEN", parties: "Adjacency scan — 9 parcels · 1 utility easement flagged · no undisclosed access claims", meta: "title.adjacency_scan · Entry 2 · 07/18/2026", tag: "Verified" },
+          { band: "GREEN", parties: "Wire instructions verified — dual-channel phone verification · Sarah Garris · VC-20260728-001", meta: "title.wire_verified · Entry 3 · 07/28/2026 9:05 AM", tag: "Verified" },
+          { band: "GREEN", parties: "Closing disclosure sent to buyer · 3-day RESPA waiting period started", meta: "title.disclosure_sent · Entry 4 · 07/25/2026", tag: "Verified" },
+          { band: "GREEN", parties: "3-day waiting period complete · buyer cleared to sign", meta: "title.waiting_period_cleared · Entry 5 · 07/28/2026 8:00 AM", tag: "Verified" },
+          { band: "GREEN", parties: "Wire received $289,450 · Chase Private Client · Ref WR-20260728-4891", meta: "title.funds_received · Entry 6 · 07/28/2026 9:14 AM", tag: "Verified" },
+          { band: "GREEN", parties: "Wet close gate OPEN — all funds confirmed, recording authorized per TX-T-005", meta: "title.wet_close_authorized · Entry 7 · 07/28/2026 10:02 AM", tag: "Verified" },
+          { band: "YELLOW", parties: "Deed submitted for recording — Henderson County Clerk · File ATH-2026-0743", meta: "title.deed_submitted · Entry 8 · 07/28/2026 2:30 PM — PENDING county confirmation", tag: "Pending" },
+          { band: "WHITE", parties: "County recording number confirmed — SOCIII record auto-updated", meta: "title.deed_recorded · Entry 9 · pending", tag: "Pending" },
+          { band: "WHITE", parties: "Title policy issued — Stewart Title Guaranty · owner's policy $285,000", meta: "title.policy_issued · Entry 10 · pending", tag: "Pending" },
+          { band: "WHITE", parties: "Vault delivery — deed + policy auto-added to buyer's SOCIII Vault DTC records", meta: "title.vault_delivered · Entry 11 · pending", tag: "Pending" },
         ] },
         { type: "flags", items: [
-          { band: "YELLOW", title: "County recording pending — Henderson County typical turnaround 2–4 hours", detail: "Once the county confirms the recording number, Block 9 closes and disbursements release automatically." },
-          { band: "BLUE", title: "SOCIII vs. county recorder: why this matters", detail: "The county recorder is authoritative but slow — 2-4 hours to days depending on jurisdiction. SOCIII's append-only chain records every event within seconds of it happening. A title company running SOCIII can see 100% of its own closings in real time. If every title company in Henderson County ran SOCIII, real estate activity would be visible within seconds — not after the county records it." },
+          { band: "YELLOW", title: "County recording pending — Henderson County typical turnaround 2–4 hours", detail: "Once the county confirms the recording number, Entry 9 closes and disbursements release automatically." },
+          { band: "BLUE", title: "SOCIII vs. county recorder: why this matters", detail: "The county recorder is authoritative but slow — 2-4 hours to days depending on jurisdiction. SOCIII's append-only record captures every event within seconds of it happening. A title company running SOCIII can see 100% of its own closings in real time. If every title company in Henderson County ran SOCIII, real estate activity would be visible within seconds — not after the county records it." },
           { band: "BLUE", title: "After recording: deed + policy auto-deliver to buyer's SOCIII Vault", detail: "Michael & Sarah Chen will receive their deed and owner's policy as permanent DTC records in their personal Vault — accessible forever, from any device." },
         ] },
         { type: "prose", items: [
-          { band: "BLUE", title: "The chain-of-title moat — why this is defensive IP", body: "Every event in this file — from search open to vault delivery — is appended to an immutable SOCIII ledger and anchored externally (Patent 64/073,700). That ledger is the chain of title. A title company running SOCIII owns the most current, most granular private record of real estate activity in their county. When the county recorder finally catches up, SOCIII already knows. This is not a workflow tool. This is title plant infrastructure." },
+          { band: "BLUE", title: "Real-time chain of title — why this is defensive IP", body: "Every event in this file — from search open to vault delivery — is appended to SOCIII's tamper-evident audit trail as it happens. A title company running SOCIII owns the most current, most granular private record of real estate activity in their county. When the county recorder finally catches up, SOCIII already knows. This is not a workflow tool. This is title plant infrastructure." },
           { band: "WHITE", title: "Data source note — ATTOM vs FirstAm", body: "Current data source: ATTOM Property Data (ownership, AVM, tax, lien flags, recording dates). Phase 2 upgrade to First American DataTree would additionally provide: recorded document PDFs, plat maps, exception document images. Currently unavailable via ATTOM — obtain physical copies from Henderson County Clerk for commitment exceptions." },
         ] },
       ] },
@@ -860,7 +860,7 @@ export const RE_CANVAS = {
       { id: "cleared", label: "Cleared Defects", description: "Immutable record of every defect that was found and cleared. Cleared events cannot be reopened — new defect must be opened if an issue resurfaces.", blocks: [
         { type: "heroes", items: [
           { band: "GREEN", title: "2 defects cleared", detail: "Both P1s resolved before commitment" },
-          { band: "GREEN", title: "Anchored to ledger", detail: "Clearance events hash-chained with chain of title" },
+          { band: "GREEN", title: "Recorded in audit trail", detail: "Clearance events tamper-evidently linked to chain of title" },
           { band: "BLUE", title: "1 advisory noted", detail: "P2 fence — buyer acknowledged" },
         ] },
         { type: "flags", items: [
@@ -883,7 +883,7 @@ export const RE_CANVAS = {
           { band: "BLUE", cells: ["Projected close date", "July 28, 2026", "On schedule"] },
         ] },
         { type: "flags", items: [
-          { band: "GREEN", title: "RAAS gate: title_defects_cleared — PASS", detail: "All P0 and P1 defects have corresponding cleared events in the title order ledger. Commitment Engine unlocked. Underwriting Review accessible." },
+          { band: "GREEN", title: "RAAS gate: title_defects_cleared — PASS", detail: "All P0 and P1 defects have corresponding cleared events in the title order's audit trail. Commitment Engine unlocked. Underwriting Review accessible." },
         ] },
       ] },
     ],
@@ -972,7 +972,7 @@ export const RE_CANVAS = {
       ] },
       { id: "issue", label: "Issue Commitment", description: "One-button commitment issuance after RAAS validates all preconditions — search complete, defects cleared, Schedule A verified, policy amount confirmed.", blocks: [
         { type: "heroes", items: [
-          { band: "GREEN", title: "Commitment issued — 07/18/2026", detail: "T-7 form · Stewart Title · Hash anchored" },
+          { band: "GREEN", title: "Commitment issued — 07/18/2026", detail: "T-7 form · Stewart Title · Recorded in audit trail" },
           { band: "GREEN", title: "RAAS gate: title_commitment_ready — PASS", detail: "All 5 conditions satisfied" },
           { band: "BLUE", title: "Expires 10/17/2026", detail: "90-day TDI commitment validity" },
         ] },
@@ -982,7 +982,7 @@ export const RE_CANVAS = {
           { band: "GREEN", title: "Condition 3: Vesting matches chain owner", detail: "Schedule A vesting (Troy Garris Trust) confirmed as record owner per chain-of-title event 2014-06031." },
           { band: "GREEN", title: "Condition 4: Policy amount ≥ sale price", detail: "$285,000 owner's policy coverage equals the $285,000 cash purchase price. TDI-compliant." },
           { band: "GREEN", title: "Condition 5: Commitment within 90-day validity", detail: "Committed 07/18/2026 · Projected close 07/28/2026 = 10 days. Well within 90-day TDI window." },
-          { band: "BLUE", title: "Commitment hash anchored to ledger", detail: "T-7 commitment document hash (SHA-256) appended to title order ATH-2026-0743 event ledger and anchored externally per Patent 64/073,700. Tamper-evident and auditable by underwriter." },
+          { band: "BLUE", title: "Commitment recorded in audit trail", detail: "T-7 commitment document fingerprint appended to title order ATH-2026-0743's event history. Tamper-evident and auditable by underwriter." },
         ] },
       ] },
     ],

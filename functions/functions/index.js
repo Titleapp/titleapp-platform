@@ -2158,11 +2158,11 @@ exports.api = onRequest(
             role:          "member",
             activeWorkers: [],
           },
-          // ── Title (ABC Title Company) ─────────────────────────────────────
+          // ── Title (Attorneys Title Company, Henderson County TX) ──────────
           title: {
             uid:           "demo-title-admin-001",
             tenantId:      "demo-attorneys-title-001",
-            workspaceName: "ABC Title Company",
+            workspaceName: "Attorneys Title Company",
             vertical:      "real-estate",
             name:          "Sarah Garris",
             role:          "admin",
@@ -2178,7 +2178,7 @@ exports.api = onRequest(
           "title-client": {
             uid:           "demo-title-buyer-001",
             tenantId:      "demo-attorneys-title-001",
-            workspaceName: "ABC Title Company",
+            workspaceName: "Attorneys Title Company",
             vertical:      "real-estate",
             name:          "James Hawkins",
             role:          "member",

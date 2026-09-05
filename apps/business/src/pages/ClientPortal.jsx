@@ -82,8 +82,8 @@ const SKINS = {
     tagline: "Your title order status",
   },
   "attorneys-title": {
-    name: "ABC Title Company",
-    short: "ABC Title",
+    name: "Attorneys Title Company",
+    short: "Attorneys Title",
     accent: "#1e3a5f", accentSoft: "#f0f4f8", border: "#b0c4de",
     glyph: "⚖",
     tagline: "Henderson County, Texas — Athens, TX",
