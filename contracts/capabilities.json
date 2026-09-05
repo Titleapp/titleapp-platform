@@ -1383,7 +1383,7 @@
     {
       "id": "aviation.log_squawk_v1",
       "class": "aviation",
-      "summary": "2026-09-05 gap-audit fix — files a real discrepancy against aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks (services/mx/aircraftRecords.js handleAddSquawk), a pre-existing backend route that had never been registered here. Was chat-only ('tell Alex: file a squawk on N701AA...') and had no direct UI; wired to the new \"+ File Squawk\" button on the MX Tracker worker canvas (AviationWorkerCanvas.jsx). Dispatched by POST /v1/mx:addSquawk. NOTE: a separate, older read path (GET /v1/aviation:squawks, tenants/{tenantId}/squawks) exists and is NOT the same collection this writes to — reconciling the two is an open item, not resolved by this capability.",
+      "summary": "2026-09-05 gap-audit fix, consolidated same day — files a real discrepancy against aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks via the shared addSquawkCore write path (services/mx/aircraftRecords.js), used identically by the manual '+ File Squawk' button (AviationWorkerCanvas.jsx), the chat file_squawk tool, and the photo path (aviation.read_squawk_photo_v1 / aviation.commit_squawk_photo_v1) — one write path regardless of entry method. Dispatched by POST /v1/mx:addSquawk. The older disconnected read path (GET /v1/aviation:squawks, tenants/{tenantId}/squawks) has been removed — it held zero real documents and was never the same collection computeAirworthiness() reads; aviation.list_squawks_v1 is the real replacement.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
@@ -1395,6 +1395,39 @@
       "id": "aviation.update_squawk_status_v1",
       "class": "aviation",
       "summary": "2026-09-05 gap-audit fix — the Corrective Action half: closes or defers (with a required MEL category A/B/C/D) an open squawk on aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks/{squawkId} (services/mx/aircraftRecords.js handleUpdateSquawkStatus), a pre-existing backend route that had never been registered here. Wired to the new per-squawk \"Take action\" button on the MX Tracker worker canvas's Corrective Action panel, which reads real open squawks from GET /v1/mx:listAircraft (computeAirworthiness output) so the list shown matches what this action operates on. Dispatched by POST /v1/mx:updateSquawkStatus.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.list_squawks_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 — real fleet squawk log (open + closed) across every tail on file for the scope, sourced from aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks (services/mx/aircraftRecords.js handleListSquawks). Replaces the read-only 'Squawks' tab's prior source (GET /v1/aviation:squawks, a disconnected flat collection that held zero real documents and was removed same day). Dispatched by GET /v1/mx:listSquawks.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.read_squawk_photo_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 — photo-based squawk entry, the 'propose' half (Sean: 'voice or chat is best, but a photo is better, worst case a form'). Vision call over a photo of visible damage/a warning light/a worn part/etc. returns a DRAFT description + confidence, same honesty pattern as aviation.read_meter_photo_v1 — an unclear photo returns isUnclear rather than inventing a plausible discrepancy. Writes nothing; requiresManualConfirmation is always true (a squawk is a legal record). Dispatched by POST /v1/mx:readSquawkPhoto.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.commit_squawk_photo_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 — the confirm half of photo-based squawk entry: after the pilot reviews/edits the draft from aviation.read_squawk_photo_v1, files it through the same real addSquawkCore write path as the manual form and chat (source:\"photo\" tagged for traceability), deliberately separate from the read step so a vision misread never reaches the aircraft's legal record without a human confirming it first. Dispatched by POST /v1/mx:commitSquawkPhoto.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",

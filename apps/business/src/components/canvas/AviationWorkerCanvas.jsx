@@ -752,17 +752,14 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
 // N701AA...'"), matching Log/Release Flight's own pattern of turning a
 // buried chat tool into a first-class button.
 //
-// IMPORTANT — a real, pre-existing data split, not something this modal
-// creates: the read-only "Squawks" tab (squawksToBlocks, via GET
-// /v1/aviation:squawks) reads tenants/{tenantId}/squawks — a DIFFERENT,
-// older Firestore collection than aircraftRecords/{scopeId}/aircraft/
-// {tail}/squawks, which is what THIS modal (and computeAirworthiness /
-// the "aircraft" tab's real airworthiness status) actually reads and
-// writes. The two tabs can show different squawk lists for the same
-// tail today. This modal deliberately targets the aircraftRecords-based
-// system because that's the one wired to real MEL-category airworthiness
-// computation — but reconciling/retiring the older collection is a real
-// architecture call for Sean, not something to guess at here.
+// 2026-09-05 — the two-collection split flagged here previously (this
+// modal vs. the read-only "Squawks" tab reading a different, older
+// tenants/{tenantId}/squawks collection) is resolved: that older
+// collection held zero real documents and has been removed. The Squawks
+// tab now reads GET /v1/mx:listSquawks, the same aircraftRecords-based
+// source this modal writes to and computeAirworthiness() computes from —
+// one source of truth, all three entry methods (chat, this form, and the
+// photo path) converge on the same addSquawkCore write.
 // ─────────────────────────────────────────────────────────────────────────
 // eslint-disable-next-line react-refresh/only-export-components
 export function AddSquawkModal({ onClose, onFiled }) {
@@ -813,6 +810,140 @@ export function AddSquawkModal({ onClose, onFiled }) {
               {status?.state === "running" ? "Filing…" : "File squawk"}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AddSquawkPhotoModal — the photo entry method (Sean, 2026-09-05: "voice or
+// chat is best, but a photo is better, worst case a form"). Same two-step
+// RAAS shape as MeterReadingCard.jsx: photo -> POST /v1/mx:readSquawkPhoto
+// returns a DRAFT description only (nothing written yet) -> the pilot
+// reviews/edits it -> POST /v1/mx:commitSquawkPhoto is the actual write,
+// through the same addSquawkCore path as the manual form and chat. An
+// unclear photo never gets a fabricated description — isUnclear forces the
+// pilot to type their own.
+// ─────────────────────────────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export function AddSquawkPhotoModal({ onClose, onFiled }) {
+  const [tailNumber, setTailNumber] = useState("");
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [draft, setDraft] = useState(null); // result of readSquawkPhoto
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [filed, setFiled] = useState(null);
+  const fileRef = useRef(null);
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErr(null);
+    setDraft(null);
+    setFiled(null);
+    setPhotoPreview(URL.createObjectURL(file));
+    setBusy(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const result = await apiPost("/v1/mx:readSquawkPhoto", {
+        tailNumber: tailNumber.trim() || undefined,
+        imageBase64: base64,
+        mediaType: file.type || "image/jpeg",
+      });
+      setDraft(result);
+      setDescription(result.suggestedDescription || "");
+    } catch (e2) {
+      setErr(e2.message);
+    }
+    setBusy(false);
+  }
+
+  async function onFileSquawk() {
+    if (!tailNumber.trim() || !description.trim()) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const j = await apiPost("/v1/mx:commitSquawkPhoto", {
+        tailNumber: tailNumber.trim().toUpperCase(),
+        description: description.trim(),
+      });
+      setFiled(j);
+    } catch (e2) {
+      setErr(e2.message);
+    }
+    setBusy(false);
+  }
+
+  const confidenceColor = draft?.confidence === "high" ? "#16a34a" : draft?.confidence === "medium" ? "#d97706" : "#dc2626";
+  const canFile = tailNumber.trim() && description.trim();
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>File a squawk — photo</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Photograph the discrepancy. Skye drafts a description — you review and confirm before it's logged.
+        </p>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>Tail number *</label>
+          <input style={fieldStyle} value={tailNumber} onChange={(e) => setTailNumber(e.target.value)} placeholder="N701AA" />
+        </div>
+
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{ display: "none" }} />
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} style={{
+          width: "100%", padding: "12px", borderRadius: 10, border: "1.5px dashed #cbd5e1", background: "#f8fafc",
+          color: "#334155", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", marginBottom: 12,
+        }}>{busy ? "Reading photo…" : "📷 Take or choose a photo"}</button>
+
+        {photoPreview && (
+          <img src={photoPreview} alt="discrepancy" style={{ width: "100%", borderRadius: 8, marginBottom: 12, maxHeight: 180, objectFit: "cover" }} />
+        )}
+
+        {err && <div style={{ fontSize: 13, color: "#b91c1c", background: "#fef2f2", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
+
+        {draft && !filed && (
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{draft.isUnclear ? "Couldn't tell what's wrong" : "Draft description"}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: confidenceColor, textTransform: "uppercase" }}>{draft.confidence} confidence</span>
+            </div>
+            {draft.visible && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, lineHeight: 1.4 }}>{draft.visible}</div>}
+            {draft.isUnclear && (
+              <div style={{ fontSize: 12, color: "#92400e", background: "#fffbeb", padding: 8, borderRadius: 6, marginBottom: 10 }}>
+                ⚠ The photo didn't clearly show a discrepancy — describe it yourself below.
+              </div>
+            )}
+            {draft.notes && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.4 }}>{draft.notes}</div>}
+            <label style={labelStyle}>Description {draft.isUnclear ? "*" : "(edit if needed)"}</label>
+            <textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical", marginBottom: 10 }}
+              value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's wrong, what you observed" />
+          </div>
+        )}
+
+        {filed && <div style={{ marginTop: 4, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Squawk filed on {filed.tailNumber} — work order {filed.workOrderNumber}. It's open on the aircraft's record now.</div>}
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {filed ? (
+            <button onClick={onFiled} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : draft ? (
+            <button onClick={onFileSquawk} disabled={!canFile || busy} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!canFile || busy) ? 0.5 : 1 }}>
+              {busy ? "Filing…" : "File squawk"}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -902,10 +1033,9 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // OpenSquawksPanel — real, actionable list backing the "+ File Squawk" flow.
-// Deliberately reads /v1/mx:listAircraft (the SAME source the "aircraft" tab's
-// real airworthiness status already uses) rather than /v1/aviation:squawks
-// (the older, disconnected tenants/{tenantId}/squawks collection the
-// read-only "Squawks" tab table reads) — see AddSquawkModal's comment.
+// Reads /v1/mx:listAircraft, the same real aircraftRecords-based source the
+// "aircraft" tab's airworthiness status and the read-only "Squawks" tab
+// (via /v1/mx:listSquawks) all now share — see AddSquawkModal's comment.
 // ─────────────────────────────────────────────────────────────────────────
 function OpenSquawksPanel({ refreshKey, onAction }) {
   const [fleet, setFleet] = useState(null);
@@ -955,6 +1085,7 @@ export default function AviationWorkerCanvas({ workerSlug }) {
   // Filing and closing a squawk were chat-only before this; same pattern as
   // Log/Release Flight above.
   const [showAddSquawk, setShowAddSquawk] = useState(false);
+  const [showAddSquawkPhoto, setShowAddSquawkPhoto] = useState(false);
   const [actionSquawk, setActionSquawk] = useState(null);
   const [squawksRefreshKey, setSquawksRefreshKey] = useState(0);
   const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
@@ -1007,14 +1138,12 @@ export default function AviationWorkerCanvas({ workerSlug }) {
           const data = await apiGet(`/v1/pilot:currency`);
           if (data.currency) blocks = currencyToBlocks(data.currency);
         } else if (cfg.kind === "squawks") {
-          const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
-          if (!tenantId || tenantId === "vault") {
-            blocks = [{ type: "text", content: "Open an operator workspace to view squawks." }];
-          } else {
-            const qs = `?tenantId=${encodeURIComponent(tenantId)}`;
-            const data = await apiGet(`/v1/aviation:squawks${qs}`);
-            if (data.squawks) blocks = squawksToBlocks(data.squawks);
-          }
+          // 2026-09-05 — now reads the same real aircraftRecords-based source
+          // as the "aircraft" tab (GET /v1/mx:listSquawks), scoped server-side
+          // the same way /v1/mx:listAircraft already is below — no more
+          // separate tenantId query param or "open a workspace" special case.
+          const data = await apiGet(`/v1/mx:listSquawks`);
+          if (data.squawks) blocks = squawksToBlocks(data.squawks);
         } else if (cfg.kind === "airworthiness") {
           const data = await apiGet(`/v1/mx:listAircraft`);
           if (data.fleet) blocks = airworthinessToBlocks(data.fleet);
@@ -1085,13 +1214,22 @@ export default function AviationWorkerCanvas({ workerSlug }) {
             </button>
           )}
           {isMxWorker && (
-            <button
-              type="button"
-              onClick={() => setShowAddSquawk(true)}
-              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
-            >
-              + File Squawk
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAddSquawk(true)}
+                style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
+              >
+                + File Squawk
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddSquawkPhoto(true)}
+                style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+              >
+                📷 Photo Squawk
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1102,6 +1240,12 @@ export default function AviationWorkerCanvas({ workerSlug }) {
         <AddSquawkModal
           onClose={() => setShowAddSquawk(false)}
           onFiled={() => { setShowAddSquawk(false); setSquawksRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showAddSquawkPhoto && (
+        <AddSquawkPhotoModal
+          onClose={() => setShowAddSquawkPhoto(false)}
+          onFiled={() => { setShowAddSquawkPhoto(false); setSquawksRefreshKey(k => k + 1); }}
         />
       )}
       {actionSquawk && (

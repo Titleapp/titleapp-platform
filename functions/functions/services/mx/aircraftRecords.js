@@ -76,29 +76,86 @@ async function handleUpsertAircraft(req, res, ctx) {
 
 // ============================================================
 // 2. addSquawk — log a discrepancy (append-only per AV-M-HS rules)
+//
+// addSquawkCore is the single real write path for a squawk, regardless of
+// entry method (manual form, chat, or photo) — extracted so the chat tool
+// in index.js can call the SAME validated path instead of writing its own
+// raw doc to a different, disconnected collection (2026-09-05 consolidation
+// — see index.js's file_squawk tool for the history of why this mattered:
+// a squawk filed by voice/chat was invisible to computeAirworthiness()).
 // ============================================================
-async function handleAddSquawk(req, res, ctx) {
-  const db = getDb();
-  const body = req.body || {};
-  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
-  if (!body.description) return res.status(400).json({ ok: false, error: "description required" });
+async function addSquawkCore({ tailNumber, description, category, workOrderNumber, reportedBy, source, ctx }) {
+  if (!tailNumber) { const e = new Error("tailNumber required"); e.status = 400; throw e; }
+  if (!description) { const e = new Error("description required"); e.status = 400; throw e; }
 
+  const db = getDb();
   const scopeId = resolveScopeId(ctx);
+  const woNum = String(workOrderNumber || "").trim() || `WO-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
   const doc = {
-    description: String(body.description).slice(0, 1000),
-    category: body.category ? String(body.category).toUpperCase().slice(0, 1) : null,
+    description: String(description).slice(0, 1000),
+    category: category ? String(category).toUpperCase().slice(0, 1) : null,
     status: "open",
-    openedAt: body.openedAt || new Date().toISOString(),
-    workOrderNumber: String(body.workOrderNumber || "").slice(0, 50),
-    reportedBy: String(body.reportedBy || "").slice(0, 200),
+    openedAt: new Date().toISOString(),
+    workOrderNumber: woNum.slice(0, 50),
+    reportedBy: String(reportedBy || "").slice(0, 200),
     userId: ctx.userId,
+    source: source || "manual",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  const ref = aircraftRef(db, scopeId, body.tailNumber).collection("squawks").doc();
+  const ref = aircraftRef(db, scopeId, tailNumber).collection("squawks").doc();
   await ref.set(doc);
 
-  return res.json({ ok: true, squawkId: ref.id });
+  return { squawkId: ref.id, tailNumber: String(tailNumber).toUpperCase(), workOrderNumber: doc.workOrderNumber, description: doc.description };
+}
+
+async function handleAddSquawk(req, res, ctx) {
+  const body = req.body || {};
+  try {
+    const result = await addSquawkCore({
+      tailNumber: body.tailNumber, description: body.description, category: body.category,
+      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: body.source, ctx,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+}
+
+// ============================================================
+// 2b. listSquawks — full fleet squawk log (open + closed), across every
+// tail on file for this scope. Single source of truth for the read-only
+// "Squawks" tab — replaces the old, now-removed /v1/aviation:squawks
+// route, which read a completely different, disconnected flat collection
+// (tenants/{tenantId}/squawks) that computeAirworthiness() never saw.
+// ============================================================
+async function handleListSquawks(req, res, ctx) {
+  const db = getDb();
+  const scopeId = resolveScopeId(ctx);
+  const statusFilter = req.query?.status ? String(req.query.status) : null;
+  const fleetSnap = await db.collection("aircraftRecords").doc(scopeId).collection("aircraft").get();
+
+  const all = [];
+  await Promise.all(fleetSnap.docs.map(async (d) => {
+    const squawksSnap = await d.ref.collection("squawks").get();
+    squawksSnap.docs.forEach(s => {
+      const data = s.data();
+      if (statusFilter && data.status !== statusFilter) return;
+      all.push({
+        id: s.id,
+        tailNumber: d.id,
+        description: data.description || "",
+        pilotName: data.reportedBy || "",
+        workOrderNumber: data.workOrderNumber || "",
+        status: data.status || "open",
+        category: data.category || null,
+        reportedAt: data.openedAt || null,
+      });
+    });
+  }));
+  all.sort((a, b) => new Date(b.reportedAt || 0) - new Date(a.reportedAt || 0));
+
+  return res.json({ ok: true, squawks: all.slice(0, 50) });
 }
 
 // ============================================================
@@ -359,10 +416,99 @@ async function handleCommitMeterReading(req, res, ctx) {
   return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), meterType, reading });
 }
 
+// ============================================================
+// 10. readSquawkPhoto — photo of a discrepancy (damage, warning light,
+// placard, worn part, fluid leak) -> a DRAFT description for the pilot to
+// review before filing. Same "propose, don't commit" split as
+// readMeterPhoto (Sean, 2026-09-05: "voice or chat is best, but a photo is
+// better, worst case a form" — this is the photo path, third entry method
+// alongside chat and the manual form, all converging on addSquawkCore). If
+// the photo doesn't clearly show what's wrong, this says so honestly
+// rather than inventing a plausible-sounding discrepancy.
+// ============================================================
+async function handleReadSquawkPhoto(req, res, ctx) {
+  const Anthropic = require("@anthropic-ai/sdk");
+  const body = req.body || {};
+  if (!body.imageBase64) return res.status(400).json({ ok: false, error: "imageBase64 required" });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ ok: false, error: "ANTHROPIC_API_KEY not configured" });
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const mediaType = String(body.mediaType || "image/jpeg");
+  const tailLine = body.tailNumber ? `This photo is of aircraft ${String(body.tailNumber).toUpperCase()}.` : "";
+
+  let completion;
+  try {
+    completion = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 500,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: body.imageBase64 } },
+          { type: "text", text: `This is a photo a pilot or mechanic took of something they think is wrong with an aircraft — for entry into the aircraft's discrepancy (squawk) log, a legal maintenance record. ${tailLine}
+
+Describe exactly what you can see that looks like a discrepancy (damage, a warning/caution light or annunciator, a cracked or worn part, a fluid leak, a placard, corrosion, etc.). Be specific about what's visible — location, appearance — but do NOT diagnose the underlying cause or guess a part number/root cause you can't actually see. If the photo doesn't clearly show a discrepancy, or you genuinely can't tell what's wrong, say so plainly rather than inventing something plausible-sounding.
+
+Respond in exactly this format, nothing else:
+VISIBLE: <what you can see, one or two sentences, or "UNCLEAR" with a one-line reason>
+SUGGESTED_DESCRIPTION: <a draft squawk description in the pilot's own likely words, or NONE if VISIBLE is UNCLEAR>
+CONFIDENCE: <high|medium|low>
+NOTES: <one to two sentences — anything the pilot should double check or add themselves>` }
+        ]
+      }]
+    });
+  } catch (e) {
+    console.error("[readSquawkPhoto] Anthropic call failed:", e.message);
+    return res.status(502).json({ ok: false, error: "Vision read failed: " + e.message });
+  }
+
+  const raw = completion.content?.[0]?.text || "";
+  const pick = (label) => {
+    const m = raw.match(new RegExp(`${label}:\\s*(.+)`, "i"));
+    return m ? m[1].trim() : null;
+  };
+  const visible = pick("VISIBLE");
+  const suggestedDescription = pick("SUGGESTED_DESCRIPTION");
+  const confidence = (pick("CONFIDENCE") || "low").toLowerCase();
+  const notes = pick("NOTES");
+  const isUnclear = !visible || /^unclear/i.test(visible) || !suggestedDescription || /^none$/i.test(suggestedDescription);
+
+  return res.json({
+    ok: true,
+    raw,
+    visible,
+    suggestedDescription: isUnclear ? null : suggestedDescription,
+    confidence,
+    notes,
+    requiresManualConfirmation: true, // ALWAYS — a squawk is a legal record; photo is a draft aid, never an auto-file
+    isUnclear,
+  });
+}
+
+// ============================================================
+// 11. commitSquawkPhoto — after the pilot reviews/edits the draft
+// description from readSquawkPhoto, files it through the SAME real write
+// path (addSquawkCore) as the manual form and chat, tagged source:"photo".
+// ============================================================
+async function handleCommitSquawkPhoto(req, res, ctx) {
+  const body = req.body || {};
+  try {
+    const result = await addSquawkCore({
+      tailNumber: body.tailNumber, description: body.description, category: body.category,
+      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: "photo", ctx,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+}
+
 module.exports = {
   resolveScopeId,
+  addSquawkCore,
   handleUpsertAircraft,
   handleAddSquawk,
+  handleListSquawks,
   handleUpdateSquawkStatus,
   handleGetAirworthiness,
   handleListAircraft,
@@ -370,4 +516,6 @@ module.exports = {
   handleUploadAircraftRosterCsv,
   handleReadMeterPhoto,
   handleCommitMeterReading,
+  handleReadSquawkPhoto,
+  handleCommitSquawkPhoto,
 };

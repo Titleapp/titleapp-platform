@@ -9981,19 +9981,22 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       if (!_cosTenantId) {
                         _squawkResult = "Cannot file squawk: no operator workspace is active. Switch to your operator workspace and try again.";
                       } else {
-                        const woNum = `WO-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
-                        const squawkRef = db.collection("tenants").doc(_cosTenantId).collection("squawks").doc();
-                        await squawkRef.set({
+                        // 2026-09-05 — was writing directly to tenants/{tenantId}/squawks,
+                        // a flat collection computeAirworthiness() never reads, while
+                        // telling the pilot it was "in the aircraft maintenance record."
+                        // It wasn't. Now goes through the SAME real write path as the
+                        // manual form and photo entry (aircraftRecords/.../squawks) —
+                        // one source of truth, and the airworthiness computation actually
+                        // sees it.
+                        const mxHandlers = require("./services/mx/aircraftRecords");
+                        const result = await mxHandlers.addSquawkCore({
                           tailNumber: inp.tailNumber,
                           description: inp.description,
-                          pilotName: inp.pilotName || authUser.displayName || authUser.email,
-                          workOrderNumber: woNum,
-                          status: "open",
-                          reportedAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
-                          reportedBy: authUser.uid,
+                          reportedBy: inp.pilotName || authUser.displayName || authUser.email,
                           source: "cos_chat",
+                          ctx: { userId: authUser.uid, tenantId: _cosTenantId },
                         });
-                        _squawkResult = `Squawk filed on ${inp.tailNumber}. Work order ${woNum} opened. Entry ID: ${squawkRef.id}. Description: "${inp.description}". The squawk is now in the aircraft maintenance record and will appear in the AIRCRAFT worker's Squawks tab — append-only, cannot be deleted.`;
+                        _squawkResult = `Squawk filed on ${result.tailNumber}. Work order ${result.workOrderNumber} opened. Entry ID: ${result.squawkId}. Description: "${result.description}". It's in the aircraft's real maintenance record now and factors into its computed airworthiness status — append-only, cannot be deleted.`;
                       }
                     } catch (_squawkErr) {
                       _squawkResult = `Squawk filing failed: ${_squawkErr.message}`;
@@ -13189,43 +13192,14 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
-    // GET /v1/aviation:squawks?tenantId=xxx[&status=open] — fleet squawk list.
-    // Reads tenants/{tenantId}/squawks ordered by reportedAt desc. Auth required.
-    if (route === "/aviation:squawks" && method === "GET") {
-      try {
-        const sqAuth = await requireFirebaseUser(req, res);
-        if (sqAuth.handled) return sqAuth.res;
-        const sqCtx = getCtx(req, body, sqAuth.user);
-        const sqTenantId = req.query?.tenantId?.toString() || sqCtx.tenantId;
-        if (!sqTenantId) return jsonError(res, 400, "tenantId required");
-        const memberGate = await requireMembershipIfNeeded({ uid: sqAuth.user.uid, tenantId: sqTenantId }, res);
-        if (memberGate && memberGate.handled) return memberGate.res;
-        const statusFilter = req.query?.status?.toString() || null;
-        const q = db.collection("tenants").doc(sqTenantId).collection("squawks")
-          .orderBy("reportedAt", "desc").limit(50);
-        const snap = await q.get();
-        let squawks = snap.docs.map(d => {
-          const data = d.data();
-          return {
-            id: d.id,
-            tailNumber: data.tailNumber || "",
-            description: data.description || "",
-            pilotName: data.pilotName || "",
-            workOrderNumber: data.workOrderNumber || "",
-            status: data.status || "open",
-            reportedAt: data.reportedAt?._seconds
-              ? new Date(data.reportedAt._seconds * 1000).toISOString() : null,
-            resolvedAt: data.resolvedAt?._seconds
-              ? new Date(data.resolvedAt._seconds * 1000).toISOString() : null,
-          };
-        });
-        if (statusFilter) squawks = squawks.filter(s => s.status === statusFilter);
-        return res.json({ ok: true, squawks });
-      } catch (e) {
-        console.error("aviation:squawks failed:", e);
-        return jsonError(res, 500, "Squawks fetch failed");
-      }
-    }
+    // NOTE (2026-09-05): GET /v1/aviation:squawks used to live here, reading
+    // tenants/{tenantId}/squawks — a flat collection that held zero real
+    // documents (checked directly) and was never what computeAirworthiness()
+    // reads. Removed as part of consolidating squawks onto one real source
+    // of truth (aircraftRecords/.../squawks). See GET /v1/mx:listSquawks
+    // (services/mx/aircraftRecords.js handleListSquawks) for the real
+    // replacement, and the file_squawk chat tool above for the write-side
+    // half of this same fix.
 
     // POST /v1/aviation:dispatch:releaseFlight — 2026-08-21 gap-audit fix (2b).
     // Backs capability aviation.dispatch_release_flight_v1. Dispatch/releasing
@@ -33563,6 +33537,15 @@ Analyze now:`;
         case "addSquawk":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleAddSquawk(req, res, mctx);
+        case "listSquawks":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await mxHandlers.handleListSquawks(req, res, mctx);
+        case "readSquawkPhoto":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleReadSquawkPhoto(req, res, mctx);
+        case "commitSquawkPhoto":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleCommitSquawkPhoto(req, res, mctx);
         case "updateSquawkStatus":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleUpdateSquawkStatus(req, res, mctx);
