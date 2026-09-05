@@ -352,6 +352,21 @@ export default function AviationMap({
   // confirming taxi routes, ramp layout, construction) — not a throwaway.
   const [satelliteOn, setSatelliteOn] = useState(false);
 
+  // Real FAA sectional + IFR chart tiles — the FAA's own official ArcGIS-
+  // hosted cached tile services (owner: AeronauticalInformationServices_FAA,
+  // found and verified this session via arcgis.com's public search API,
+  // then confirmed by fetching real tiles and visually checking them —
+  // sectional tile showed real chart symbology (VOR rose, magenta airways,
+  // "OCEAN" label); IFR tile showed real waypoints/MEAs/"HAWAII ADIZ INNER
+  // BOUNDARY" text over Hawaii). Service snippet says "Updated with the
+  // latest charts on 09-03-2026" — genuinely current, not a stale mirror.
+  // IFR_AreaLow (not a generic "IFR Low Enroute") is the real product name
+  // for what's actually published here — labeled honestly as such below
+  // rather than overclaiming full enroute-low coverage.
+  const [sectionalOn, setSectionalOn] = useState(false);
+  const [ifrAreaLowOn, setIfrAreaLowOn] = useState(false);
+  const FAA_CHART_ATTRIBUTION = "Federal Aviation Administration — Aeronautical Information Services";
+
   // Weather radar time-scrubber — Iowa Environmental Mesonet's WMS-T NEXRAD
   // mosaic (free, keyless, genuinely time-aware — verified this session: a
   // TIME= query 3h back over CONUS returned real, different reflectivity
@@ -488,6 +503,8 @@ export default function AviationMap({
         <IconToggle icon="▭" title="Runways (georeferencing GCPs)" enabled={layers.runways.enabled} loading={layers.runways.loading} onClick={() => toggleLayer("runways")} color="#fbbf24" />
         <IconToggle icon="🗺" title="Calibrate Airport Diagram overlay" enabled={calibrationOpen} loading={false} onClick={() => setCalibrationOpen(v => !v)} color="#c084fc" />
         <IconToggle icon="🛰" title="Satellite imagery" enabled={satelliteOn} loading={false} onClick={() => setSatelliteOn(v => !v)} color="#4ade80" />
+        <IconToggle icon="▦" title="VFR Sectional chart (real FAA tiles)" enabled={sectionalOn} loading={false} onClick={() => setSectionalOn(v => !v)} color="#38bdf8" />
+        <IconToggle icon="▧" title="IFR Area Low chart (real FAA tiles)" enabled={ifrAreaLowOn} loading={false} onClick={() => setIfrAreaLowOn(v => !v)} color="#818cf8" />
         <IconToggle icon="🌧" title="Weather radar (time scrubber)" enabled={radarOn} loading={false} onClick={() => setRadarOn(v => !v)} color="#38bdf8" />
         <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
         {Object.entries(HAZARD_FILTERS).map(([key, cfg]) => (
@@ -528,6 +545,27 @@ export default function AviationMap({
             attribution="&copy; OpenStreetMap contributors &copy; CARTO"
             subdomains="abcd"
             maxZoom={19}
+          />
+        )}
+
+        {/* Real FAA VFR Sectional / IFR Area Low chart tiles — official
+            ArcGIS-hosted cached tile services, drawn over whichever base is
+            active. Both minScale/maxScale-gated by the FAA's own service (a
+            documented limitation, not a bug) — tiles return 404 outside
+            roughly z8-z16, so they simply don't draw at very low/high zoom
+            rather than showing broken tiles. */}
+        {sectionalOn && (
+          <TileLayer
+            url="https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}"
+            attribution={FAA_CHART_ATTRIBUTION}
+            maxZoom={16}
+          />
+        )}
+        {ifrAreaLowOn && (
+          <TileLayer
+            url="https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/IFR_AreaLow/MapServer/tile/{z}/{y}/{x}"
+            attribution={FAA_CHART_ATTRIBUTION}
+            maxZoom={16}
           />
         )}
 
