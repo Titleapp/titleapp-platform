@@ -177,7 +177,7 @@ const SCRIPTS = {
     },
     {
       chip: "My Vault copies",
-      reply: "After recording, your deed and title policy are permanently anchored in your personal SOCIII Vault — owned by you, yours to keep. I'll send you the link.",
+      reply: "After recording, your deed and title policy are permanently recorded in your personal SOCIII Vault — owned by you, yours to keep. I'll send you the link.",
       canvas: { type: "title-vault" },
     },
   ],
@@ -542,8 +542,8 @@ function TitleVaultCanvas({ skin, order }) {
   // real when `order` is loaded: the order code and purchase price, replacing
   // the fabricated recording number / coverage figure that were here before.
   const vaultDocs = [
-    ["Recorded Deed", order ? `${order.orderCode || "Recording pending"}` : "Recording #: TX-2025-107442 · Jul 25", "HASH ANCHORED"],
-    ["Owner's Title Policy", order?.purchasePrice ? `ALTA 2021 · $${Number(order.purchasePrice).toLocaleString()} coverage` : "ALTA 2021 · $650,000 coverage", "HASH ANCHORED"],
+    ["Recorded Deed", order ? `${order.orderCode || "Recording pending"}` : "Recording #: TX-2025-107442 · Jul 25", "VERIFIED"],
+    ["Owner's Title Policy", order?.purchasePrice ? `ALTA 2021 · $${Number(order.purchasePrice).toLocaleString()} coverage` : "ALTA 2021 · $650,000 coverage", "VERIFIED"],
     ["Closing Disclosure", "Final settlement statement", "IN YOUR VAULT"],
     ["Title Commitment", "With all exceptions noted", "IN YOUR VAULT"],
   ];
@@ -551,7 +551,7 @@ function TitleVaultCanvas({ skin, order }) {
     <div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
         These are your permanent copies — tamper-evident, owned by you, not the title company. Share with your lender, attorney, or next buyer in seconds.
-        {order && <span style={{ display: "block", marginTop: 6, fontSize: 11, color: "#94a3b8" }}>Document types shown reflect your real order — the actual anchored records are minted at recording (not yet built for title in this release).</span>}
+        {order && <span style={{ display: "block", marginTop: 6, fontSize: 11, color: "#94a3b8" }}>Document types shown reflect your real order — the actual verified records are recorded at closing (not yet built for title in this release).</span>}
       </div>
       {vaultDocs.map(([title, sub, badge]) => (
         <div key={title} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
@@ -878,6 +878,68 @@ function CompetenciesCanvas({ skin, competencies }) {
           {c.attestedAt && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Attested {c.attestedAt}</div>}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Student's own record, framed for ownership/portability — same real
+// studentProfile + competencies data as ProgressCanvas/CompetenciesCanvas,
+// just presented as "this is yours to take with you," per Sean 2026-09-05:
+// students expect Vault access to their own records as a core part of the
+// pitch, not something they have to ask an instructor about.
+function StudentVaultCanvas({ skin, student, competencies }) {
+  if (!student) return <div style={{ fontSize: 13, color: "#64748b" }}>Loading your Vault…</div>;
+  const hours = student.clinicalHours ?? 0;
+  const required = student.clinicalHoursRequired ?? 500;
+  const verified = (competencies || []).filter(c => c.status === "verified");
+  const done = Math.max(0, Math.min(NURSING_COURSE_SEQUENCE.length, student.coursesComplete ?? 0));
+  const completedCourses = NURSING_COURSE_SEQUENCE.slice(0, done);
+
+  const rows = [
+    ["Clinical hours", `${hours} / ${required}`],
+    ["ATI score", student.atiScore != null ? student.atiScore : "—"],
+    ["Courses completed", `${done} / ${NURSING_COURSE_SEQUENCE.length}`],
+    ["Verified competencies", `${verified.length}`],
+  ];
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
+        Your permanent record — owned by you, not the school. It doesn't disappear when you graduate, and any employer or licensing board can verify it without going through the registrar.
+      </div>
+      {rows.map(([t, s]) => (
+        <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
+          <div style={{ fontSize: 14, color: "#64748b", fontWeight: 600 }}>{s}</div>
+        </div>
+      ))}
+
+      {completedCourses.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8 }}>Completed courses</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {completedCourses.map(c => (
+              <div key={c.code} style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 20, padding: "6px 12px" }}>{c.code}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {verified.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8 }}>Verified competencies</div>
+          {verified.map((c, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{c.competency}</div>
+              {c.attestedAt && <div style={{ fontSize: 11, color: "#94a3b8" }}>Verified {c.attestedAt}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ fontSize: 11.5, color: "#94a3b8", lineHeight: 1.5, marginTop: 18, paddingTop: 14, borderTop: "1px solid #f1f5f9" }}>
+        Ask me anytime to pull this up, or to explain what any of it means — this is your own space to check your record.
+      </div>
     </div>
   );
 }
@@ -1570,7 +1632,7 @@ export default function ClientPortal() {
     if (isTitlePersona) {
       if (/where.*order|status|progress|stand|step/.test(t)) { setTimeout(() => setCanvas({ type: "title-order" }), 200); return "Opened your order status. Steps 1–3 are complete — you're at the review step now."; }
       if (/sign|document|deed|commit/.test(t)) { setTimeout(() => setCanvas({ type: "title-docs" }), 200); return persona === "buyer" ? "You have documents ready — your Title Commitment and Affiliated Business Disclosure both need attention. Tap **What do I need to sign?** or I'll open them now." : "Your Seller's Warranty Deed is ready for your signature. I've opened it on the right — tap **Review & Sign** to complete it."; }
-      if (/vault|record|deed|policy|copies|permanent/.test(t)) { setTimeout(() => setCanvas({ type: "title-vault" }), 200); return "Here are your permanent copies — tamper-evident, yours to keep forever. The Recorded Deed and Owner's Title Policy are hash-anchored on the SOCIII chain."; }
+      if (/vault|record|deed|policy|copies|permanent/.test(t)) { setTimeout(() => setCanvas({ type: "title-vault" }), 200); return "Here are your permanent copies — tamper-evident, yours to keep forever. The Recorded Deed and Owner's Title Policy are recorded and tamper-evident in your Vault."; }
       if (/mineral|right|sever|oil|gas|subsurface/.test(t)) return "The mineral rights for 313 Mayfair Dr were severed in 1978 — Garris Family LP retains subsurface oil, gas, and mineral rights. **You are buying surface rights only.** This is disclosed in Schedule B-2 Exception 7 of your Title Commitment.";
       if (/record|county|filed|when.*done|how long/.test(t)) return "Recording was submitted to Henderson County Clerk today. Typical turnaround is 2–4 hours. Once the county confirms the recording number, proceeds release automatically.";
       if (/proceeds|money|wire|pay|disburs|net/.test(t)) return persona === "seller" ? "Your net proceeds are **$278,540**, wired same-day after recording. Troy, you should receive it by end of business today." : "The wire of $289,450 was confirmed received and cleared. You're all set on funds — we're in the recording step now.";
@@ -2062,6 +2124,7 @@ export default function ClientPortal() {
     ? [
         { label: "Your journey", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "progress" }) },
         { label: "Competencies", icon: I(<path d="M9 11l3 3L22 4"/>), action: () => setCanvas({ type: "competencies" }) },
+        { label: "My Vault", icon: I(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>), action: () => setCanvas({ type: "student-vault" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
     : isConsumerPersona
@@ -2321,6 +2384,7 @@ export default function ClientPortal() {
                   : canvas.type === "tenant-docs" ? "Lease documents"
                   : canvas.type === "progress" ? "Your journey"
                   : canvas.type === "competencies" ? "Verified competencies"
+                  : canvas.type === "student-vault" ? "My Vault"
                   : canvas.type === "passport" ? "Product passport"
                   : canvas.type === "loan-status" ? "Loan status"
                   : canvas.type === "hardship" ? "Hardship assistance"
@@ -2345,6 +2409,7 @@ export default function ClientPortal() {
             {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} lease={lease} />}
             {canvas.type === "progress" && <ProgressCanvas skin={skin} student={studentProfile} competencies={competencies} />}
             {canvas.type === "competencies" && <CompetenciesCanvas skin={skin} competencies={competencies} />}
+            {canvas.type === "student-vault" && <StudentVaultCanvas skin={skin} student={studentProfile} competencies={competencies} />}
             {canvas.type === "passport" && <PassportCanvas passport={passport} />}
             {canvas.type === "loan-status" && <LoanStatusCanvas skin={skin} loan={loan} />}
             {canvas.type === "hardship" && <HardshipCanvas skin={skin} onSubmit={submitHardshipRequest} existingRequest={hardshipRequests[0]} onSubmitDocument={submitHardshipDocument} />}
