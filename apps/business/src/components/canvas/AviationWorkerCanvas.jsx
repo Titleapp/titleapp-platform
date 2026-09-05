@@ -745,6 +745,202 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// AddSquawkModal — files a real discrepancy against the aircraft's actual
+// record (POST /v1/mx:addSquawk, services/mx/aircraftRecords.js). Before
+// this, filing a squawk was chat-only ("tell Alex: 'File a squawk on
+// N701AA...'"), matching Log/Release Flight's own pattern of turning a
+// buried chat tool into a first-class button.
+//
+// IMPORTANT — a real, pre-existing data split, not something this modal
+// creates: the read-only "Squawks" tab (squawksToBlocks, via GET
+// /v1/aviation:squawks) reads tenants/{tenantId}/squawks — a DIFFERENT,
+// older Firestore collection than aircraftRecords/{scopeId}/aircraft/
+// {tail}/squawks, which is what THIS modal (and computeAirworthiness /
+// the "aircraft" tab's real airworthiness status) actually reads and
+// writes. The two tabs can show different squawk lists for the same
+// tail today. This modal deliberately targets the aircraftRecords-based
+// system because that's the one wired to real MEL-category airworthiness
+// computation — but reconciling/retiring the older collection is a real
+// architecture call for Sean, not something to guess at here.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function AddSquawkModal({ onClose, onFiled }) {
+  const [form, setForm] = useState({ tailNumber: "", description: "", workOrderNumber: "", reportedBy: "" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.description.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      const j = await apiPost("/v1/mx:addSquawk", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        description: form.description.trim(),
+        workOrderNumber: form.workOrderNumber.trim() || undefined,
+        reportedBy: form.reportedBy.trim() || undefined,
+      });
+      setStatus({ state: "done", squawkId: j.squawkId });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>File a squawk</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Appends an immutable discrepancy to this aircraft's record — MX sees it immediately.
+        </p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Description *</label><textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="What's wrong, what you observed" /></div>
+          <div><label style={labelStyle}>Work order # (optional)</label><input style={fieldStyle} value={form.workOrderNumber} onChange={(e) => set("workOrderNumber", e.target.value)} /></div>
+          <div><label style={labelStyle}>Reported by (optional)</label><input style={fieldStyle} value={form.reportedBy} onChange={(e) => set("reportedBy", e.target.value)} placeholder="defaults to you" /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Squawk filed. It's open on the aircraft's record now.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onFiled} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Filing…" : "File squawk"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CloseSquawkModal — the Corrective Action half. Takes an open/deferred
+// squawk (from computeAirworthiness's real openSquawks, which preserves the
+// real Firestore doc id) and lets MX either close it out or defer it under
+// a real MEL category. Calls POST /v1/mx:updateSquawkStatus — the backend
+// already enforces category being required to defer; this UI just surfaces
+// that real constraint instead of re-inventing it client-side.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function CloseSquawkModal({ squawk, onClose, onResolved }) {
+  const [action, setAction] = useState("closed"); // closed | deferred
+  const [category, setCategory] = useState("");
+  const [by, setBy] = useState("");
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState(null);
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = action === "deferred" ? !!category : by.trim().length > 0 || action === "closed";
+
+  async function run() {
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:updateSquawkStatus", {
+        tailNumber: squawk.tailNumber,
+        squawkId: squawk.id,
+        status: action,
+        category: action === "deferred" ? category : undefined,
+        deferredBy: action === "deferred" ? by.trim() : undefined,
+        closedBy: action === "closed" ? by.trim() : undefined,
+        closedNote: action === "closed" ? note.trim() : undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{squawk.tailNumber} — corrective action</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{squawk.description}</p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setAction("closed")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "closed" ? "2px solid #16a34a" : "1px solid #e2e8f0", background: action === "closed" ? "#f0fdf4" : "white", color: action === "closed" ? "#16a34a" : "#64748b" }}>Close it out</button>
+          <button onClick={() => setAction("deferred")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "deferred" ? "2px solid #d97706" : "1px solid #e2e8f0", background: action === "deferred" ? "#fffbeb" : "white", color: action === "deferred" ? "#d97706" : "#64748b" }}>Defer (MEL)</button>
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {action === "deferred" && (
+            <div>
+              <label style={labelStyle}>MEL category *</label>
+              <select style={fieldStyle} value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">Select…</option>
+                <option value="A">A — repair before next flight</option>
+                <option value="B">B — within 3 days</option>
+                <option value="C">C — within 10 days</option>
+                <option value="D">D — within 120 days</option>
+              </select>
+            </div>
+          )}
+          <div><label style={labelStyle}>{action === "deferred" ? "Deferred by" : "Closed by"} *</label><input style={fieldStyle} value={by} onChange={(e) => setBy(e.target.value)} placeholder="A&P name / cert #" /></div>
+          {action === "closed" && (
+            <div><label style={labelStyle}>Corrective action taken</label><textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done to resolve it" /></div>
+          )}
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>{action === "closed" ? "Squawk closed." : "Squawk deferred."} Record updated.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
+          {status?.state === "done" ? (
+            <button onClick={onResolved} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!by.trim() || (action === "deferred" && !category) || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!by.trim() || (action === "deferred" && !category) || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Saving…" : action === "closed" ? "Close squawk" : "Defer squawk"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OpenSquawksPanel — real, actionable list backing the "+ File Squawk" flow.
+// Deliberately reads /v1/mx:listAircraft (the SAME source the "aircraft" tab's
+// real airworthiness status already uses) rather than /v1/aviation:squawks
+// (the older, disconnected tenants/{tenantId}/squawks collection the
+// read-only "Squawks" tab table reads) — see AddSquawkModal's comment.
+// ─────────────────────────────────────────────────────────────────────────
+function OpenSquawksPanel({ refreshKey, onAction }) {
+  const [fleet, setFleet] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiGet("/v1/mx:listAircraft").then(j => { if (!cancelled) setFleet(j.fleet || []); }).catch(e => { if (!cancelled) setErr(e.message); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  if (err) return <div style={{ fontSize: 12, color: "#dc2626", marginTop: 12 }}>Couldn't load open squawks: {err}</div>;
+  if (!fleet) return <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 12 }}>Loading open squawks…</div>;
+  const rows = fleet.flatMap(a => (a.openSquawks || []).map(s => ({ ...s, tailNumber: a.tailNumber })));
+  if (rows.length === 0) return <div style={{ fontSize: 13, color: "#16a34a", marginTop: 12, fontWeight: 600 }}>No open squawks — fleet is clean.</div>;
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>Open squawks — take action</div>
+      {rows.map((s) => (
+        <div key={`${s.tailNumber}-${s.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{s.tailNumber} <span style={{
+              fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, marginLeft: 6,
+              color: s.computedStatus === "RED" ? "#b91c1c" : s.computedStatus === "YELLOW" ? "#92400e" : "#64748b",
+              background: s.computedStatus === "RED" ? "#fee2e2" : s.computedStatus === "YELLOW" ? "#fef3c7" : "#f1f5f9",
+            }}>{s.computedStatus}{s.category ? ` · MEL ${s.category}` : ""}</span></div>
+            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.description}</div>
+          </div>
+          <button onClick={() => onAction(s)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Take action</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AviationWorkerCanvas({ workerSlug }) {
   const spec = getAvCanvas(workerSlug);
@@ -755,8 +951,15 @@ export default function AviationWorkerCanvas({ workerSlug }) {
   // 2026-08-21 gap-audit fix — "+ Log Flight" (CoPilot) / "+ Release Flight" (Dispatch)
   const [showLogFlight, setShowLogFlight] = useState(false);
   const [showReleaseFlight, setShowReleaseFlight] = useState(false);
+  // 2026-09-05 gap-audit fix — "+ File Squawk" (MX) / Corrective Action.
+  // Filing and closing a squawk were chat-only before this; same pattern as
+  // Log/Release Flight above.
+  const [showAddSquawk, setShowAddSquawk] = useState(false);
+  const [actionSquawk, setActionSquawk] = useState(null);
+  const [squawksRefreshKey, setSquawksRefreshKey] = useState(0);
   const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
   const isDispatchWorker = (workerSlug || "").startsWith("av-dispatch");
+  const isMxWorker = (workerSlug || "").startsWith("av-mx");
 
   const currentTabId = activeTab || spec?.tabs[0]?.id;
 
@@ -881,11 +1084,33 @@ export default function AviationWorkerCanvas({ workerSlug }) {
               + Release Flight
             </button>
           )}
+          {isMxWorker && (
+            <button
+              type="button"
+              onClick={() => setShowAddSquawk(true)}
+              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              + File Squawk
+            </button>
+          )}
         </div>
       </div>
 
       {showLogFlight && <LogFlightModal onClose={() => setShowLogFlight(false)} onLogged={() => setShowLogFlight(false)} />}
       {showReleaseFlight && <ReleaseFlightModal onClose={() => setShowReleaseFlight(false)} onReleased={() => setShowReleaseFlight(false)} />}
+      {showAddSquawk && (
+        <AddSquawkModal
+          onClose={() => setShowAddSquawk(false)}
+          onFiled={() => { setShowAddSquawk(false); setSquawksRefreshKey(k => k + 1); }}
+        />
+      )}
+      {actionSquawk && (
+        <CloseSquawkModal
+          squawk={actionSquawk}
+          onClose={() => setActionSquawk(null)}
+          onResolved={() => { setActionSquawk(null); setSquawksRefreshKey(k => k + 1); }}
+        />
+      )}
 
       {/* CAS instrument panel */}
       <CasPanel counts={spec.cas} />
@@ -932,6 +1157,14 @@ export default function AviationWorkerCanvas({ workerSlug }) {
       {tabBlocks.map((block, i) => (
         <Block key={i} block={block} onTabSwitch={setActiveTab} onChatFill={null} />
       ))}
+
+      {/* Real, actionable Corrective Action panel — placed on "aircraft"
+          (not "squawks") deliberately, since that tab reads the same
+          aircraftRecords-backed source this panel and its modals write to.
+          See AddSquawkModal's comment on the two-collection split. */}
+      {isMxWorker && currentTabId === "aircraft" && (
+        <OpenSquawksPanel refreshKey={squawksRefreshKey} onAction={setActionSquawk} />
+      )}
     </div>
   );
 }

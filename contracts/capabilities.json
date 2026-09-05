@@ -1381,6 +1381,28 @@
       "writesAudit": true
     },
     {
+      "id": "aviation.log_squawk_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 gap-audit fix — files a real discrepancy against aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks (services/mx/aircraftRecords.js handleAddSquawk), a pre-existing backend route that had never been registered here. Was chat-only ('tell Alex: file a squawk on N701AA...') and had no direct UI; wired to the new \"+ File Squawk\" button on the MX Tracker worker canvas (AviationWorkerCanvas.jsx). Dispatched by POST /v1/mx:addSquawk. NOTE: a separate, older read path (GET /v1/aviation:squawks, tenants/{tenantId}/squawks) exists and is NOT the same collection this writes to — reconciling the two is an open item, not resolved by this capability.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.update_squawk_status_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 gap-audit fix — the Corrective Action half: closes or defers (with a required MEL category A/B/C/D) an open squawk on aircraftRecords/{scopeId}/aircraft/{tailNumber}/squawks/{squawkId} (services/mx/aircraftRecords.js handleUpdateSquawkStatus), a pre-existing backend route that had never been registered here. Wired to the new per-squawk \"Take action\" button on the MX Tracker worker canvas's Corrective Action panel, which reads real open squawks from GET /v1/mx:listAircraft (computeAirworthiness output) so the list shown matches what this action operates on. Dispatched by POST /v1/mx:updateSquawkStatus.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
       "id": "auto.create_vehicle_deal_v1",
       "class": "auto",
       "summary": "2026-08-21 gap-audit fix — dealer creates a new vehicle/deal record in dealer inventory (dealerVehicles collection; distinct from the unrelated personal-vault MyVehicles.jsx feature). Dispatched by POST /v1/auto:vehicle:add (functions/functions/index.js). Wired to the \"+ Add Vehicle\" button on the Desking / Deal worker canvas.",
