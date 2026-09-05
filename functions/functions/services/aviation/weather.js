@@ -118,7 +118,12 @@ async function getWeather({ ids, taf = false, sigmet = false }) {
     }
   }
 
-  // SIGMET (optional, not station-scoped — current convective/AIRMET set)
+  // SIGMET + AIRMET (optional, not station-scoped — current nationwide set).
+  // Two distinct AWC endpoints/products: SIGMET hazards are CONVECTIVE/TURB/ICE/ASH
+  // (severe, any altitude); AIRMET hazards are IFR/TURB/ICE/MT-OBSC (moderate,
+  // each carrying base/top altitude in hundreds of feet). Previously only SIGMET
+  // was fetched here even though `out.airmets` was already read by the map UI —
+  // that field was silently always empty. Both are now real.
   if (sigmet) {
     const sigUrl = `${EXTERNAL_APIS.AVIATION_WEATHER_SIGMET}?format=json`;
     try {
@@ -127,6 +132,15 @@ async function getWeather({ ids, taf = false, sigmet = false }) {
     } catch (e) {
       out.sigmets = [];
       out.sigmetError = e.message;
+    }
+
+    const airUrl = `${EXTERNAL_APIS.AVIATION_WEATHER_AIRMET}?format=json`;
+    try {
+      const airRaw = await awcFetch(airUrl);
+      out.airmets = Array.isArray(airRaw) ? airRaw : [];
+    } catch (e) {
+      out.airmets = [];
+      out.airmetError = e.message;
     }
   }
 

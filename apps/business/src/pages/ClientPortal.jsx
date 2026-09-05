@@ -1085,11 +1085,23 @@ function Confirmed({ title, sub }) {
 // non-technical customer who doesn't want to set a password. Left as a
 // concrete, working placeholder rather than blocking the whole build on that
 // decision.
-function SignInGate({ skin, onSignedIn }) {
+// Per-persona copy for SignInGate — hasRealBacking only ever routes buyer/seller
+// (title), tenant, student, and borrower here (see hasRealBacking above), so
+// those are the only personas covered; anything else falls back to the
+// original title-industry wording.
+const SIGN_IN_GATE_COPY = {
+  title: { heading: "Sign in to view your file", body: "{name} sent you access to your closing. Enter the email and password from that invite.", errorWho: "your title company", errorWhat: "your file" },
+  tenant: { heading: "Sign in to view your lease", body: "{name} sent you access to your resident portal. Enter the email and password from that invite.", errorWho: "your property manager", errorWhat: "your account" },
+  student: { heading: "Sign in to view your coursework", body: "{name} sent you access to your nursing program. Enter the email and password from that invite.", errorWho: "your program coordinator", errorWhat: "your account" },
+  borrower: { heading: "Sign in to view your loan", body: "{name} sent you access to your mortgage account. Enter the email and password from that invite.", errorWho: "your loan servicer", errorWhat: "your account" },
+};
+
+function SignInGate({ skin, persona, onSignedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const copy = SIGN_IN_GATE_COPY[persona] || SIGN_IN_GATE_COPY.title;
 
   async function doSignIn(e) {
     e.preventDefault();
@@ -1099,7 +1111,7 @@ function SignInGate({ skin, onSignedIn }) {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       onSignedIn?.();
     } catch {
-      setErr("We couldn't sign you in with that email and password. Check with your title company if you're not sure how to access your file.");
+      setErr(`We couldn't sign you in with that email and password. Check with ${copy.errorWho} if you're not sure how to access ${copy.errorWhat}.`);
     }
     setBusy(false);
   }
@@ -1108,8 +1120,8 @@ function SignInGate({ skin, onSignedIn }) {
     <div style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <form onSubmit={doSignIn} style={{ width: "100%", maxWidth: 360 }}>
         <div style={{ width: 44, height: 44, borderRadius: 11, background: skin.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{skin.glyph}</div>
-        <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sign in to view your file</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>{skin.name} sent you access to your closing. Enter the email and password from that invite.</div>
+        <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>{copy.heading}</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>{copy.body.replace("{name}", skin.name)}</div>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" autoComplete="email"
           style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", marginBottom: 10, outline: "none" }} />
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password"
@@ -1778,7 +1790,7 @@ export default function ClientPortal() {
   // petowner/advisor or for companies without a verified tenant mapping
   // (those stay on the existing scripted demo, unaffected).
   if (hasRealBacking && !user) {
-    return <SignInGate skin={skin} onSignedIn={() => {}} />;
+    return <SignInGate skin={skin} persona={persona} onSignedIn={() => {}} />;
   }
 
   return (
@@ -1815,8 +1827,14 @@ export default function ClientPortal() {
             </a>
           </nav>
         )}
-        {/* Chat center */}
-        <main style={{ flex: canvas ? "1 1 50%" : "1 1 100%", display: "flex", flexDirection: "column", padding: "18px 18px 0", minWidth: 0 }}>
+        {/* Chat center — on mobile, a canvas fully replaces chat (chat<->canvas
+            toggle) rather than squeezing both into an unreadable 50/50 split
+            that only makes sense at desktop width. */}
+        <main style={{
+          display: (canvas && !isDesktop) ? "none" : "flex",
+          flex: (canvas && isDesktop) ? "1 1 50%" : "1 1 100%",
+          flexDirection: "column", padding: "18px 18px 0", minWidth: 0,
+        }}>
           {/* "Why care" welcome card — shown once, dismissed to localStorage */}
           {!welcomed && (
             <div style={{
@@ -1909,9 +1927,12 @@ export default function ClientPortal() {
           </div>
         </main>
 
-        {/* Canvas — appears only when it matters (Claude-artifact style) */}
+        {/* Canvas — appears only when it matters (Claude-artifact style).
+            Desktop: side-by-side with chat. Mobile: full-screen, chat hidden
+            above — the × button below is the only way back, doubling as the
+            chat<->canvas toggle on narrow screens. */}
         {canvas && (
-          <aside style={{ flex: "1 1 50%", borderLeft: "1px solid #f1f5f9", padding: "18px", overflowY: "auto", background: "#fff" }}>
+          <aside style={{ flex: "1 1 100%", borderLeft: isDesktop ? "1px solid #f1f5f9" : "none", padding: "18px", overflowY: "auto", background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
                 {canvas.type === "booking" ? "Book a visit"

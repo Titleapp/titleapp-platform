@@ -225,6 +225,140 @@ async function handleUploadAircraftRosterCsv(req, res, ctx) {
   return res.json({ ok: true, imported: aircraft.length });
 }
 
+// ============================================================
+// 8. readMeterPhoto — photo of a panel hour meter → reading + delta
+//
+// "No penmanship, no pilot math" (Sean, CODEX centerpiece directive).
+// Real Anthropic vision call, not a stub. Verified directly against a real
+// Life Flight Network PC-12 panel photo this session: the model correctly
+// identified the instrument as a "Honeywell Quartz Hours" elapsed-time
+// meter and flagged (a) that the meter is photographed upside-down and
+// (b) LOW confidence on the exact digits after correcting for that — it
+// did NOT confidently resolve a clean reading on this real, hard case
+// (upside-down mechanical drum meter, glare, screws obstructing digits).
+// This is why confidence is a first-class field here, not an afterthought:
+// a pilot/mechanic must be able to see "low confidence, please confirm or
+// retake" rather than a silently-wrong number going into a legal record.
+//
+// This function does NOT write anything — it's the "propose" half of the
+// RAAS pattern. A separate, explicit confirm step (handled client-side by
+// showing the reading for the user to accept/correct before calling
+// handleUpsertAircraft or a real flight-log-entry endpoint) is required
+// before anything is committed. Never auto-commits an OCR'd number.
+// ============================================================
+async function handleReadMeterPhoto(req, res, ctx) {
+  const Anthropic = require("@anthropic-ai/sdk");
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.imageBase64) return res.status(400).json({ ok: false, error: "imageBase64 required" });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ ok: false, error: "ANTHROPIC_API_KEY not configured" });
+
+  const db = getDb();
+  const scopeId = resolveScopeId(ctx);
+  const ref = aircraftRef(db, scopeId, body.tailNumber);
+  const snap = await ref.get();
+  const aircraft = snap.exists ? snap.data() : null;
+  const meters = aircraft?.meters || {};
+  const knownMeterTypes = Object.keys(meters);
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const mediaType = String(body.mediaType || "image/jpeg");
+  const contextLine = knownMeterTypes.length
+    ? `This aircraft (${body.tailNumber}) has these meters already on file: ${knownMeterTypes.join(", ")}. If the photographed meter matches one of these, use that exact label; if it's a new/different meter, say so.`
+    : `No meters are on file yet for ${body.tailNumber} — this may be the first reading logged for this aircraft.`;
+
+  let completion;
+  try {
+    completion = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 500,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: body.imageBase64 } },
+          { type: "text", text: `This is a photo of an aircraft panel hour meter, for entry into the aircraft's Flight/Maintenance Log — a legal record, so accuracy matters more than a confident-sounding guess. ${contextLine}
+
+Identify: (1) what type of meter this is (read any label/brand/unit text — e.g. "airframe Hobbs", "engine hours", a specific engine position if labeled), (2) the exact numeric reading, digit by digit including any decimal — check carefully whether the meter is rotated/upside-down in the photo and correct for that. If any part of this is ambiguous or you are not highly confident, say so explicitly rather than guessing a plausible-looking number.
+
+Respond in exactly this format, nothing else:
+METER_TYPE: <type, or AMBIGUOUS with a one-line reason>
+READING: <number, or UNREADABLE with a one-line reason>
+CONFIDENCE: <high|medium|low>
+NOTES: <one to two sentences>` }
+        ]
+      }]
+    });
+  } catch (e) {
+    console.error("[readMeterPhoto] Anthropic call failed:", e.message);
+    return res.status(502).json({ ok: false, error: "Vision read failed: " + e.message });
+  }
+
+  const raw = completion.content?.[0]?.text || "";
+  const pick = (label) => {
+    const m = raw.match(new RegExp(`${label}:\\s*(.+)`, "i"));
+    return m ? m[1].trim() : null;
+  };
+  const meterType = pick("METER_TYPE");
+  const readingRaw = pick("READING");
+  const confidence = (pick("CONFIDENCE") || "low").toLowerCase();
+  const notes = pick("NOTES");
+  const readingNum = readingRaw && /^-?\d+(\.\d+)?$/.test(readingRaw) ? Number(readingRaw) : null;
+
+  const priorEntry = meterType && meters[meterType] ? meters[meterType] : null;
+  const delta = (readingNum != null && priorEntry?.lastReading != null)
+    ? Math.round((readingNum - priorEntry.lastReading) * 10) / 10
+    : null;
+
+  return res.json({
+    ok: true,
+    raw,
+    meterType,
+    reading: readingNum,
+    readingUnparsed: readingNum == null ? readingRaw : null,
+    confidence,
+    notes,
+    priorReading: priorEntry?.lastReading ?? null,
+    priorReadingDate: priorEntry?.lastReadingDate ?? null,
+    delta,
+    requiresManualConfirmation: confidence !== "high" || readingNum == null || !meterType || meterType === "AMBIGUOUS",
+  });
+}
+
+// ============================================================
+// 9. commitMeterReading — after human confirms (or corrects) the reading
+// from readMeterPhoto, this is the actual write — a real, append-aware
+// update to the aircraft's per-meter running total. Separate endpoint,
+// deliberately, so a vision misread never reaches Firestore without a
+// human in the loop confirming the number that's about to become part of
+// a legal record.
+// ============================================================
+async function handleCommitMeterReading(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.meterType) return res.status(400).json({ ok: false, error: "meterType required" });
+  if (body.reading == null || isNaN(Number(body.reading))) return res.status(400).json({ ok: false, error: "reading (number) required" });
+
+  const scopeId = resolveScopeId(ctx);
+  const ref = aircraftRef(db, scopeId, body.tailNumber);
+  const meterType = String(body.meterType).slice(0, 100);
+  const reading = Number(body.reading);
+
+  await ref.set({
+    meters: {
+      [meterType]: {
+        lastReading: reading,
+        lastReadingDate: body.readingDate || new Date().toISOString(),
+        confirmedBy: String(ctx.userId || "").slice(0, 200),
+        source: body.source === "photo" ? "photo" : "manual",
+      },
+    },
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), meterType, reading });
+}
+
 module.exports = {
   resolveScopeId,
   handleUpsertAircraft,
@@ -234,4 +368,6 @@ module.exports = {
   handleListAircraft,
   handleUploadSquawksCsv,
   handleUploadAircraftRosterCsv,
+  handleReadMeterPhoto,
+  handleCommitMeterReading,
 };

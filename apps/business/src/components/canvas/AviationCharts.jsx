@@ -6,7 +6,37 @@
  * Ramp photos: placeholder until curated photo library is connected.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+// Loose match between this file's static plate names ("ILS or LOC Rwy 02")
+// and the FAA metafile's own chart names ("ILS Y OR LOC Y RWY 02", "AIRPORT
+// DIAGRAM") — casing and wording differ, so this normalizes both sides
+// (uppercase, strip non-alphanumerics) and checks for containment rather
+// than requiring an exact match. Real mismatches fall back to no URL rather
+// than a wrong one.
+function normalizeChartName(s) {
+  return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+function findRealChartUrl(realCharts, plateName) {
+  if (!Array.isArray(realCharts) || !realCharts.length) return null;
+  const target = normalizeChartName(plateName);
+  if (!target) return null;
+  const exact = realCharts.find(c => normalizeChartName(c.name) === target);
+  if (exact) return exact.url;
+  const contains = realCharts.find(c => {
+    const n = normalizeChartName(c.name);
+    return n.includes(target) || target.includes(n);
+  });
+  return contains ? contains.url : null;
+}
 
 // Hawaii bases: hardcoded airport data + approach plate lists.
 // Source: FAA Chart Supplement Pacific, AIRAC 2614.
@@ -152,9 +182,23 @@ export default function AviationCharts() {
 
   const airport = AIRPORTS[selectedIcao];
 
-  // Build the FAA AeroNav link — publicly accessible chart viewer
-  const aeronavSearchUrl = `https://aeronav.faa.gov/IAP/${selectedIcao.replace(/^PH/, "")}_IAP.htm`;
-  const aeronavBaseUrl = `https://aeronav.faa.gov/`;
+  // Real per-chart FAA PDF URLs for the selected airport — the previous
+  // hardcoded `.../afd/2614/${icao}.PDF` link 404s (FAA no longer serves
+  // charts by a guessable {ICAO}.PDF filename, and the AIRAC cycle "2614"
+  // was stale). Fetched from the real d-TPP metafile via a backend route
+  // that discovers the current cycle and resolves each chart's actual
+  // FAA-assigned pdf_name — see functions/functions/services/aviation/dtpp.js.
+  const [realCharts, setRealCharts] = useState({ charts: null, loading: true, error: null });
+  useEffect(() => {
+    setRealCharts({ charts: null, loading: true, error: null });
+    apiGet(`/v1/aviation:dtppCharts?icao=${selectedIcao}`)
+      .then(d => setRealCharts({ charts: d.charts || [], loading: false, error: null }))
+      .catch(e => setRealCharts({ charts: null, loading: false, error: e.message }));
+  }, [selectedIcao]);
+  // Fallback when a specific chart can't be matched or the lookup failed —
+  // FAA's real search form, prefilled with this airport's identifier, rather
+  // than a dead direct-PDF guess.
+  const dtppSearchFallbackUrl = `https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/search/results/?ident=${selectedIcao}`;
 
   // Preferred routing for Hawaii inter-island IFR (common routes)
   const ROUTING = [
@@ -227,10 +271,12 @@ export default function AviationCharts() {
       {activeTab === "charts" && (
         <div style={{ padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ color: "#64748b", fontSize: 11 }}>FAA AeroNav · AIRAC 2614 · Select a plate to view</span>
-            <a href={`https://aeronav.faa.gov/afd/2614/${selectedIcao}.PDF`} target="_blank" rel="noreferrer"
+            <span style={{ color: "#64748b", fontSize: 11 }}>
+              FAA AeroNav {realCharts.charts ? `· AIRAC current` : realCharts.loading ? "· loading current cycle…" : "· current cycle unavailable"} · Select a plate to view
+            </span>
+            <a href={dtppSearchFallbackUrl} target="_blank" rel="noreferrer"
               style={{ color: "#3b82f6", fontSize: 11, textDecoration: "none" }}>
-              Open on FAA AeroNav ↗
+              Search all charts on FAA AeroNav ↗
             </a>
           </div>
 
@@ -240,39 +286,49 @@ export default function AviationCharts() {
           ))}
 
           {/* Chart viewer */}
-          {selectedPlate !== null && (
+          {selectedPlate !== null && (() => {
+            const plateName = airport.plates[selectedPlate].name;
+            const realUrl = findRealChartUrl(realCharts.charts, plateName);
+            const linkUrl = realUrl || dtppSearchFallbackUrl;
+            const linkLabel = realUrl ? `Open ${plateName} on FAA AeroNav ↗` : `Not matched — search FAA AeroNav for ${plateName} ↗`;
+            return (
             <div style={{ marginTop: 14, borderRadius: 8, overflow: "hidden", border: "1px solid #1e293b" }}>
               <div style={{ background: "#161b22", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ color: "#94a3b8", fontSize: 12 }}>{airport.plates[selectedPlate].name} — {selectedIcao}</span>
+                <span style={{ color: "#94a3b8", fontSize: 12 }}>{plateName} — {selectedIcao}</span>
                 <a
-                  href={`https://aeronav.faa.gov/IAP/`}
+                  href={linkUrl}
                   target="_blank" rel="noreferrer"
-                  style={{ color: "#3b82f6", fontSize: 11, textDecoration: "none" }}
+                  style={{ color: realUrl ? "#3b82f6" : "#f59e0b", fontSize: 11, textDecoration: "none" }}
                 >
-                  View PDF on FAA AeroNav ↗
+                  {realUrl ? "View real PDF on FAA AeroNav ↗" : "Not auto-matched — search AeroNav ↗"}
                 </a>
               </div>
               <div style={{ background: "#0d1117", padding: 24, textAlign: "center" }}>
                 <div style={{ color: "#475569", fontSize: 13, marginBottom: 8 }}>
-                  FAA chart PDFs open in a new tab (AeroNav login not required).
+                  {realCharts.loading
+                    ? "Looking up the real, current chart list from FAA…"
+                    : realUrl
+                    ? "FAA chart PDFs open in a new tab (AeroNav login not required)."
+                    : "This plate's name didn't auto-match a real chart from FAA's current catalog — search AeroNav directly instead of risking a wrong PDF."}
                 </div>
                 <a
-                  href={`https://aeronav.faa.gov/IAP/`}
+                  href={linkUrl}
                   target="_blank" rel="noreferrer"
                   style={{
-                    display: "inline-block", background: "#1e3a5f", color: "#60a5fa",
-                    border: "1.5px solid #2563eb", borderRadius: 7, padding: "8px 20px",
+                    display: "inline-block", background: realUrl ? "#1e3a5f" : "#3f2d0f", color: realUrl ? "#60a5fa" : "#fbbf24",
+                    border: `1.5px solid ${realUrl ? "#2563eb" : "#f59e0b"}`, borderRadius: 7, padding: "8px 20px",
                     fontSize: 13, fontWeight: 600, textDecoration: "none",
                   }}
                 >
-                  Open {airport.plates[selectedPlate].name} on FAA AeroNav ↗
+                  {linkLabel}
                 </a>
                 <div style={{ color: "#334155", fontSize: 10, marginTop: 8 }}>
                   Always verify currency of chart against current AIRAC cycle before flight
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 

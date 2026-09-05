@@ -1249,6 +1249,39 @@
       "writesAudit": false
     },
     {
+      "id": "aviation.get_runways_v1",
+      "class": "aviation",
+      "summary": "Fetch FAA NASR runway pavement polygons and derived threshold ground-control-points for an airport — free, keyless; used for our own Airport Diagram georeferencing.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.get_dtpp_charts_v1",
+      "class": "aviation",
+      "summary": "Fetch real FAA d-TPP chart list (approach plates, airport diagram) for one ICAO airport, each with a currently-valid PDF URL — free, keyless.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.get_pireps_v1",
+      "class": "aviation",
+      "summary": "Fetch live pilot reports (PIREPs) from aviationweather.gov within a radius of a lat/lon point — free, keyless.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
       "id": "aviation.get_notams_v1",
       "class": "aviation",
       "summary": "Fetch active NOTAMs from Notamify (paid/metered). Requires NOTAMIFY_API_KEY.",
@@ -1319,6 +1352,28 @@
       "class": "aviation",
       "summary": "2026-08-21 — dispatch/releasing-authority issues a flight release BEFORE a pilot may fly it (Part 135 operational control / Part 91 dispatch record — see 14 CFR 135.77 and neighboring sections for the Part 135 operational-control area). Writes a new flightReleases/{releaseId} record: tail number, route, proposed departure time, PIC/SIC, operation type, weather-briefing and W&B acknowledgement, fuel load, releasing authority, status. Dispatched by POST /v1/aviation:dispatch:releaseFlight (functions/functions/index.js). Wired to the \"+ Release Flight\" button on the Dispatch worker canvas (av-dispatch / av-dispatch-001). Independent of aviation.log_flight_v1 — whether a pilot's flight log should be required to reference an active release is an open design question, intentionally not enforced here.",
       "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.read_meter_photo_v1",
+      "class": "aviation",
+      "summary": "2026-09-04 — 'no penmanship, no pilot math' (Sean, CAN-as-centerpiece directive). Real Anthropic vision call reads a photographed panel hour meter (Hobbs, engine hours, etc.), identifies which meter it is, and computes the delta against the aircraft's last logged reading for that meter. Propose-only: never writes to the aircraft record itself — returns a confidence-scored reading (verified this session against a real panel photo: correctly flagged an upside-down mechanical meter as low-confidence rather than guessing) for a human to confirm or correct before aviation.commit_meter_reading_v1 is called. Dispatched by POST /v1/mx:readMeterPhoto (functions/functions/index.js, services/mx/aircraftRecords.js).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.commit_meter_reading_v1",
+      "class": "aviation",
+      "summary": "2026-09-04 — the confirm half of the meter-reading flow: writes a human-confirmed (or human-corrected) meter reading to aircraftRecords/{scopeId}/aircraft/{tailNumber}.meters.{meterType}, deliberately separate from aviation.read_meter_photo_v1 so a vision misread can never reach the aircraft's legal record without a human confirming the number first. Dispatched by POST /v1/mx:commitMeterReading.",
+      "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
       "requiredRoles": [],

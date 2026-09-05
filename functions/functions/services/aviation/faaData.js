@@ -26,6 +26,7 @@ const FAA_FEATURESERVERS = {
   airports:      `${FAA_ARCGIS_ORG}/US_Airport/FeatureServer/0`,
   waypoints:     `${FAA_ARCGIS_ORG}/DesignatedPoint/FeatureServer/0`,
   navaids:       `${FAA_ARCGIS_ORG}/NavaidComponent/FeatureServer/0`,
+  runways:       `${FAA_ARCGIS_ORG}/Runways/FeatureServer/0`,
 };
 
 // ── tiny TTL cache ─────────────────────────────────────────────
@@ -218,6 +219,80 @@ async function getNavaids({ lat, lon, distNm = 60 }) {
   });
 }
 
+// ── Runways (ground-control points for airport-diagram georeferencing) ──
+// FAA doesn't georeference Airport Diagram PDFs (only Instrument Approach
+// Procedure charts get that treatment) — so this is the raw material for
+// our own georeferencing instead of relying on a third-party dataset whose
+// license (jlmcgraw/GeoReferencePlates) prohibits commercial use without
+// permission. Real runway pavement polygons, keyed off the Airports layer's
+// own GLOBAL_ID (Runways.AIRPORT_ID is that GUID, not the ICAO code) — from
+// each polygon we derive both threshold-pair centerpoints as candidate GCPs:
+// reliable, because thresholds are always labeled on the diagram itself.
+const RUNWAY_TTL_MS = 60 * 60 * 1000; // NASR data is ~static (28-day AIRAC cycle)
+
+function dist2(a, b) { return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2; }
+
+function polygonThresholds(ring) {
+  // A runway polygon is a 4-corner rectangle (5 points incl. the closing
+  // point). Ring winding order isn't guaranteed to pair short edges as
+  // (0,1)/(2,3) — verified against real PHNL data that it's actually
+  // (0,3)/(1,2) for at least one winding direction. Rather than assume,
+  // pick whichever adjacent-corner pairing gives the two SHORTER edges
+  // (the runway's width, not its length) — that's the two thresholds.
+  if (!Array.isArray(ring) || ring.length < 4) return null;
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const pairAB = [dist2(ring[0], ring[1]), dist2(ring[2], ring[3])];
+  const pairBC = [dist2(ring[1], ring[2]), dist2(ring[3], ring[0])];
+  const [endA, endB] = (pairAB[0] + pairAB[1] < pairBC[0] + pairBC[1])
+    ? [mid(ring[0], ring[1]), mid(ring[2], ring[3])]
+    : [mid(ring[1], ring[2]), mid(ring[3], ring[0])];
+  return { endA: { lon: endA[0], lat: endA[1] }, endB: { lon: endB[0], lat: endB[1] } };
+}
+
+async function getRunways({ icao }) {
+  const code = String(icao || "").trim().toUpperCase();
+  if (!code) return { error: "icao is required (e.g. PHNL)" };
+
+  const key = `runways:${code}`;
+  const cached = cacheGet(key, RUNWAY_TTL_MS);
+  if (cached) return { ...cached, cached: true };
+
+  const airportParams = new URLSearchParams({ where: `ICAO_ID='${code}'`, outFields: "GLOBAL_ID,NAME", f: "json" });
+  const airportResp = await fetchJson(`${FAA_FEATURESERVERS.airports}/query?${airportParams}`);
+  const airportFeature = (airportResp.features || [])[0];
+  if (!airportFeature) return { error: `No airport found for ICAO ${code}` };
+  const globalId = airportFeature.attributes.GLOBAL_ID;
+
+  const rwyParams = new URLSearchParams({
+    where: `AIRPORT_ID='${globalId}'`,
+    outFields: "DESIGNATOR,LENGTH,WIDTH,DIM_UOM,COMP_CODE",
+    returnGeometry: "true",
+    outSR: "4326",
+    f: "json",
+  });
+  const rwyResp = await fetchJson(`${FAA_FEATURESERVERS.runways}/query?${rwyParams}`);
+  const runways = (rwyResp.features || [])
+    .filter(f => f.attributes.COMP_CODE !== "WATER") // seaplane/water "runways" have no real pavement thresholds
+    .map(f => {
+      const ring = f.geometry?.rings?.[0] || null;
+      const thresholds = polygonThresholds(ring);
+      return {
+        designator: f.attributes.DESIGNATOR || null,
+        lengthFt: f.attributes.LENGTH ?? null,
+        widthFt: f.attributes.WIDTH ?? null,
+        surface: f.attributes.COMP_CODE || null,
+        // Ground-control-point candidates: each end's real-world lat/lon.
+        // A diagram-calibration UI matches these against clicked pixel
+        // positions on the rasterized Airport Diagram image.
+        thresholds,
+      };
+    });
+
+  const out = { icao: code, airportName: airportFeature.attributes.NAME || null, count: runways.length, runways };
+  cacheSet(key, out);
+  return { ...out, cached: false };
+}
+
 // ── route handlers ─────────────────────────────────────────────
 async function handleTfr(req, res) {
   const state = req.query?.state || req.body?.state || null;
@@ -256,8 +331,18 @@ const handleAirports = makePointHandler(getAirports, "FAA NASR US_Airport");
 const handleWaypoints = makePointHandler(getWaypoints, "FAA NASR DesignatedPoint");
 const handleNavaids = makePointHandler(getNavaids, "FAA NASR NavaidComponent");
 
+async function handleRunways(req, res) {
+  const icao = req.query?.icao || req.body?.icao;
+  const result = await getRunways({ icao });
+  if (result.error) {
+    res.status(400).json({ ok: false, error: result.error, code: "bad_request" });
+    return;
+  }
+  res.status(200).json({ ok: true, source: "FAA NASR Runways", ...result });
+}
+
 module.exports = {
-  getTfrs, getAirspace, getAirports, getWaypoints, getNavaids,
-  handleTfr, handleAirspace, handleAirports, handleWaypoints, handleNavaids,
+  getTfrs, getAirspace, getAirports, getWaypoints, getNavaids, getRunways,
+  handleTfr, handleAirspace, handleAirports, handleWaypoints, handleNavaids, handleRunways,
   FAA_FEATURESERVERS,
 };

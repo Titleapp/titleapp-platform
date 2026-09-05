@@ -3,8 +3,8 @@
  * Dark Matter tiles · FAA sectional icons · airplane traffic icons · SIGMET/AIRMET
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, CircleMarker, Polygon, Marker, Popup, useMap } from "react-leaflet";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { MapContainer, TileLayer, WMSTileLayer, CircleMarker, Polygon, Polyline, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getAuth } from "firebase/auth";
@@ -121,6 +121,17 @@ function makeFixIcon() {
   return L.divIcon({ html: svg, className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 }
 
+// PIREP: green speech-bubble dot, red for urgent (UUA) reports.
+function makePirepIcon(urgent) {
+  const size = 16;
+  const color = urgent ? "#ef4444" : "#34d399";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-8 -8 16 16">
+    <circle cx="0" cy="0" r="6" fill="${color}" fill-opacity="0.85" stroke="#0f172a" stroke-width="1"/>
+    <text x="0" y="3" text-anchor="middle" font-size="8" font-weight="700" fill="#0f172a">${urgent ? "!" : "P"}</text>
+  </svg>`;
+  return L.divIcon({ html: svg, className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+}
+
 // Aircraft traffic: top-down airplane SVG rotated by heading.
 // fleet=true renders in gold with a halo ring so owned aircraft stand out from general ADS-B traffic.
 function makeAircraftIcon(heading, emergency, fleet) {
@@ -147,6 +158,48 @@ function RecenterMap({ center, zoom }) {
     if (center) map.setView(center, zoom || map.getZoom());
   }, [center, zoom, map]);
   return null;
+}
+
+// ── Freehand chart annotation ─────────────────────────────────────────────────
+// Geo-referenced ink, ForeFlight-style — strokes are lat/lon points (not
+// screen pixels), so they stay pinned to the chart through pan/zoom, same as
+// the SIGMET/AIRMET polygons below. In-memory only for now: whether markup
+// should persist (save with a route, share with dispatch) is an open
+// question, not assumed here.
+function DrawLayer({ active, onStrokeComplete }) {
+  const map = useMap();
+  const drawingRef = useRef(false);
+  const pointsRef = useRef([]);
+  const [livePoints, setLivePoints] = useState(null);
+
+  useEffect(() => {
+    map.dragging[active ? "disable" : "enable"]();
+    if (!active) { drawingRef.current = false; pointsRef.current = []; setLivePoints(null); }
+  }, [active, map]);
+
+  useMapEvents({
+    mousedown(e) {
+      if (!active) return;
+      drawingRef.current = true;
+      pointsRef.current = [[e.latlng.lat, e.latlng.lng]];
+      setLivePoints([...pointsRef.current]);
+    },
+    mousemove(e) {
+      if (!active || !drawingRef.current) return;
+      pointsRef.current.push([e.latlng.lat, e.latlng.lng]);
+      setLivePoints([...pointsRef.current]);
+    },
+    mouseup() {
+      if (!active || !drawingRef.current) return;
+      drawingRef.current = false;
+      if (pointsRef.current.length > 1) onStrokeComplete(pointsRef.current);
+      pointsRef.current = [];
+      setLivePoints(null);
+    },
+  });
+
+  if (!livePoints || livePoints.length < 2) return null;
+  return <Polyline positions={livePoints} pathOptions={{ color: "#facc15", weight: 3, opacity: 0.9 }} />;
 }
 
 // ── Layer toggle button ───────────────────────────────────────────────────────
@@ -177,6 +230,51 @@ function LayerToggle({ label, enabled, loading, onClick, color }) {
   );
 }
 
+// ── Compact icon-only toggle (ForeFlight-style vertical rail) ────────────────
+// Same on/off semantics as LayerToggle, but a fixed-size icon button with a
+// native title-attribute tooltip instead of a text label — the layout a
+// touch-sized phone/iPad map screen needs instead of wrapping label pills.
+function IconToggle({ icon, title, enabled, loading, onClick, color }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        width: 34, height: 34, padding: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: `1.5px solid ${enabled ? (color || "#0284c7") : "#334155"}`,
+        borderRadius: 8,
+        background: enabled ? (color ? `${color}28` : "#0c2235") : "rgba(15,23,42,0.85)",
+        color: enabled ? (color || "#60a5fa") : "#94a3b8",
+        cursor: "pointer",
+        fontSize: 15,
+        lineHeight: 1,
+        position: "relative",
+        opacity: loading ? 0.7 : 1,
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+      {loading && <span style={{ position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: "50%", background: color || "#60a5fa", animation: "pulse 1s infinite" }} />}
+    </button>
+  );
+}
+
+// Hazard-type filters shared by the SIGMET (has real polygon coords) and
+// AIRMET (text/region only — the AWC airmet endpoint carries no geometry, so
+// these render as a list, not shapes on the map) feeds. Turb Hi/Lo is an
+// altitude-threshold split at FL180 (Class A floor) applied to AIRMET Tango's
+// base/top fields — a reasonable approximation, not a verified match to
+// ForeFlight's own internal Turb Hi/Lo product boundary.
+const HAZARD_FILTERS = {
+  ts:     { label: "TS / Convective", icon: "⛈", color: "#f87171", test: h => h.source === "sigmet" && h.hazard === "CONVECTIVE" },
+  ice:    { label: "Icing",           icon: "❄", color: "#7dd3fc", test: h => h.hazard === "ICE" },
+  turbHi: { label: "Turb — High",     icon: "〰︎ᴴ", color: "#fbbf24", test: h => h.hazard === "TURB" && (h.base == null || h.base >= 180) },
+  turbLo: { label: "Turb — Low",      icon: "〰︎ᴸ", color: "#fbbf24", test: h => h.hazard === "TURB" && h.base != null && h.base < 180 },
+  ifr:    { label: "IFR",             icon: "☁", color: "#c084fc", test: h => h.hazard === "IFR" },
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AviationMap({
   center = [20.5, -157.0],
@@ -193,9 +291,48 @@ export default function AviationMap({
     airspace: { enabled: false, data: null, loading: false },
     navaids:  { enabled: false, data: null, loading: false },
     traffic:  { enabled: false, data: null, loading: false },
-    wxhazards:{ enabled: false, data: null, loading: false },
+    pireps:   { enabled: false, data: null, loading: false },
+    runways:  { enabled: false, data: null, loading: false },
   });
+  // Hazard toggles read straight from `weather.data` (already fetched on
+  // mount) — no separate loading state needed, they're pure client filters.
+  const [hazardsOn, setHazardsOn] = useState({ ts: false, ice: false, turbHi: false, turbLo: false, ifr: false });
+  const toggleHazard = useCallback((key) => {
+    setHazardsOn(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+  const anyHazardOn = Object.values(hazardsOn).some(Boolean);
+  const [drawMode, setDrawMode] = useState(false);
+  const [strokes, setStrokes] = useState([]);
   const trafficTimer = useRef(null);
+
+  // Weather radar time-scrubber — Iowa Environmental Mesonet's WMS-T NEXRAD
+  // mosaic (free, keyless, genuinely time-aware — verified this session: a
+  // TIME= query 3h back over CONUS returned real, different reflectivity
+  // data than "now"). RADAR_STEPS mirrors ForeFlight's own -5min cadence
+  // over the last hour.
+  const RADAR_STEP_MIN = 5;
+  const RADAR_STEPS = 12; // last 60 minutes in 5-minute steps
+  const [radarOn, setRadarOn] = useState(false);
+  const [radarStepIdx, setRadarStepIdx] = useState(RADAR_STEPS); // 0=oldest, RADAR_STEPS=now
+  const [radarPlaying, setRadarPlaying] = useState(false);
+  const radarPlayTimer = useRef(null);
+  const radarTimeIso = radarStepIdx >= RADAR_STEPS
+    ? "0"
+    : new Date(Date.now() - (RADAR_STEPS - radarStepIdx) * RADAR_STEP_MIN * 60000).toISOString().slice(0, 16) + ":00Z";
+  // Memoized so WMSTileLayer's `params` reference only changes when the
+  // timestamp actually does — otherwise every unrelated re-render (a hazard
+  // toggle, a new stroke) would trigger a redundant tile refetch.
+  const radarParams = useMemo(() => ({ time: radarTimeIso }), [radarTimeIso]);
+  useEffect(() => {
+    if (radarPlaying) {
+      radarPlayTimer.current = setInterval(() => {
+        setRadarStepIdx(i => (i >= RADAR_STEPS ? 0 : i + 1));
+      }, 800);
+    } else {
+      clearInterval(radarPlayTimer.current);
+    }
+    return () => clearInterval(radarPlayTimer.current);
+  }, [radarPlaying]);
 
   // Auto-load METAR weather on mount
   useEffect(() => {
@@ -218,15 +355,23 @@ export default function AviationMap({
         data = await apiGet(`/v1/aviation:navaids?lat=${lat}&lon=${lon}&dist=200`);
       } else if (key === "traffic") {
         data = await apiGet(`/v1/aviation:traffic?lat=${lat}&lon=${lon}&dist=150`);
-      } else if (key === "wxhazards") {
-        // Wx hazards: SIGMETs + AIRMETs from weather data already fetched
-        data = weather.data || {};
+      } else if (key === "pireps") {
+        data = await apiGet(`/v1/aviation:pireps?lat=${lat}&lon=${lon}&dist=200`);
+      } else if (key === "runways") {
+        // Per-airport (not spatial radius) — one call per ICAO already on the map.
+        const results = await Promise.all(
+          icaos.map(icao => apiGet(`/v1/aviation:runways?icao=${icao}`).catch(() => null))
+        );
+        const runways = results.filter(Boolean).flatMap(r =>
+          (r.runways || []).map(rwy => ({ ...rwy, icao: r.icao, airportName: r.airportName }))
+        );
+        data = { runways };
       }
       setLayers(prev => ({ ...prev, [key]: { enabled: prev[key].enabled, data, loading: false } }));
     } catch (e) {
       setLayers(prev => ({ ...prev, [key]: { ...prev[key], loading: false } }));
     }
-  }, [center[0], center[1], weather.data]);
+  }, [center[0], center[1], icaos.join(",")]);
 
   const toggleLayer = useCallback((key) => {
     setLayers(prev => {
@@ -251,39 +396,62 @@ export default function AviationMap({
   const airspaceList = (layers.airspace.data?.airspace || []).filter(a => a.geometry);
   const navaidList = (layers.navaids.data?.navaids || []).filter(n => n.lat && n.lon);
   const trafficList = (layers.traffic.data?.aircraft || []).filter(a => a.lat != null && a.lon != null);
+  const pirepList = (layers.pireps.data?.pireps || []).filter(p => p.lat != null && p.lon != null);
+  const runwayList = (layers.runways.data?.runways || []).filter(r => r.thresholds?.endA && r.thresholds?.endB);
 
-  // SIGMETs and AIRMETs from weather data
-  const sigmets = ((layers.wxhazards.enabled ? layers.wxhazards.data?.sigmets : null) ||
-                   weather.data?.sigmets || []).filter(s => s.area || s.coords);
-  const airmets = ((layers.wxhazards.enabled ? layers.wxhazards.data?.airmets : null) ||
-                   weather.data?.airmets || []).filter(s => s.area || s.coords);
-
-  // Inline SIGMET text list when no polygon data
-  const sigmetTexts = (weather.data?.sigmets || []).filter(s => !s.area && !s.coords && s.raw);
+  // SIGMETs carry real polygon coords; AIRMETs (AWC's /api/data/airmet) carry
+  // only region/altitude/valid-time, no geometry — so only SIGMETs ever draw
+  // as map polygons. Both feed the hazard-toggle filters below either way.
+  const allSigmets = weather.data?.sigmets || [];
+  const allAirmets = weather.data?.airmets || [];
+  const hazardItems = [
+    ...allSigmets.map(s => ({ ...s, source: "sigmet" })),
+    ...allAirmets.map(a => ({ ...a, source: "airmet" })),
+  ];
+  const activeHazardKeys = Object.keys(hazardsOn).filter(k => hazardsOn[k]);
+  const visibleHazards = anyHazardOn
+    ? hazardItems.filter(h => activeHazardKeys.some(k => HAZARD_FILTERS[k].test(h)))
+    : [];
+  const sigmets = anyHazardOn ? visibleHazards.filter(h => (h.area || h.coords) && h.source === "sigmet") : [];
+  const airmets = anyHazardOn ? visibleHazards.filter(h => (h.area || h.coords) && h.source === "airmet") : [];
+  // AIRMETs never have coords today (see note above) — this list is what
+  // actually renders for them, as text rows rather than shapes.
+  const hazardTextRows = anyHazardOn ? visibleHazards.filter(h => !(h.area || h.coords)) : [];
 
   const mapHeight = compact ? 240 : height;
 
   return (
     <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1px solid #1e293b" }}>
-      {/* Layer toggles */}
+      {/* ForeFlight-style vertical icon rail — data layers, then hazard filters,
+          each an independent on/off button (no separate "layers menu" screen).
+          Positioned below Leaflet's own top-left zoom control (kept as-is —
+          a custom one via a MapContainer ref broke under React StrictMode's
+          dev-mode double-mount) so the two don't overlap. */}
       <div style={{
-        position: "absolute", top: 8, left: 8, zIndex: 1000,
-        display: "flex", gap: 4, flexWrap: "wrap",
-        pointerEvents: "auto",
+        position: "absolute", top: compact ? 8 : 90, left: 8, zIndex: 1000,
+        display: "flex", flexDirection: "column", gap: 4,
+        background: "rgba(15,23,42,0.85)", borderRadius: 8, padding: 5,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
       }}>
-        <div style={{
-          display: "flex", gap: 4, flexWrap: "wrap",
-          background: "rgba(15,23,42,0.85)",
-          borderRadius: 6, padding: "4px 6px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-          backdropFilter: "blur(4px)",
-        }}>
-          <LayerToggle label="Airports" enabled={layers.airports.enabled} loading={layers.airports.loading} onClick={() => toggleLayer("airports")} color="#60a5fa" />
-          <LayerToggle label="Airspace" enabled={layers.airspace.enabled} loading={layers.airspace.loading} onClick={() => toggleLayer("airspace")} color="#a78bfa" />
-          <LayerToggle label="Navaids"  enabled={layers.navaids.enabled}  loading={layers.navaids.loading}  onClick={() => toggleLayer("navaids")}  color="#22d3ee" />
-          <LayerToggle label="Traffic"  enabled={layers.traffic.enabled}  loading={layers.traffic.loading}  onClick={() => toggleLayer("traffic")}  color="#f87171" />
-          <LayerToggle label="Wx Hazards" enabled={layers.wxhazards.enabled} loading={layers.wxhazards.loading} onClick={() => toggleLayer("wxhazards")} color="#fb923c" />
-        </div>
+        <IconToggle icon="🛩" title="Airports" enabled={layers.airports.enabled} loading={layers.airports.loading} onClick={() => toggleLayer("airports")} color="#60a5fa" />
+        <IconToggle icon="⬠" title="Airspace" enabled={layers.airspace.enabled} loading={layers.airspace.loading} onClick={() => toggleLayer("airspace")} color="#a78bfa" />
+        <IconToggle icon="◈" title="Navaids"  enabled={layers.navaids.enabled}  loading={layers.navaids.loading}  onClick={() => toggleLayer("navaids")}  color="#22d3ee" />
+        <IconToggle icon="✈" title="Traffic"  enabled={layers.traffic.enabled}  loading={layers.traffic.loading}  onClick={() => toggleLayer("traffic")}  color="#f87171" />
+        <IconToggle icon="💬" title="PIREPs"   enabled={layers.pireps.enabled}   loading={layers.pireps.loading}   onClick={() => toggleLayer("pireps")}   color="#34d399" />
+        <IconToggle icon="▭" title="Runways (georeferencing GCPs)" enabled={layers.runways.enabled} loading={layers.runways.loading} onClick={() => toggleLayer("runways")} color="#fbbf24" />
+        <IconToggle icon="🌧" title="Weather radar (time scrubber)" enabled={radarOn} loading={false} onClick={() => setRadarOn(v => !v)} color="#38bdf8" />
+        <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
+        {Object.entries(HAZARD_FILTERS).map(([key, cfg]) => (
+          <IconToggle key={key} icon={cfg.icon} title={cfg.label} enabled={hazardsOn[key]} loading={false} onClick={() => toggleHazard(key)} color={cfg.color} />
+        ))}
+        <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
+        <IconToggle icon="✏️" title={drawMode ? "Stop drawing" : "Draw on chart"} enabled={drawMode} loading={false} onClick={() => setDrawMode(v => !v)} color="#facc15" />
+        {strokes.length > 0 && (
+          <>
+            <IconToggle icon="↩︎" title="Undo last stroke" enabled={false} loading={false} onClick={() => setStrokes(prev => prev.slice(0, -1))} color="#94a3b8" />
+            <IconToggle icon="🗑" title="Clear all strokes" enabled={false} loading={false} onClick={() => setStrokes([])} color="#94a3b8" />
+          </>
+        )}
       </div>
 
       {/* Map */}
@@ -305,6 +473,23 @@ export default function AviationMap({
           subdomains="abcd"
           maxZoom={19}
         />
+
+        {/* Weather radar — IEM's time-aware WMS NEXRAD mosaic. `params.time`
+            changing on every scrub/play tick forces react-leaflet's
+            WMSTileLayer to re-request tiles for that timestamp — verified
+            this session that the TIME param genuinely returns different
+            reflectivity data, not a cached "latest" image regardless of it. */}
+        {radarOn && (
+          <WMSTileLayer
+            url="https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi"
+            layers="nexrad-n0r-wmst"
+            format="image/png"
+            transparent={true}
+            version="1.1.1"
+            opacity={0.65}
+            params={radarParams}
+          />
+        )}
 
         <RecenterMap center={center} zoom={zoom} />
 
@@ -413,8 +598,61 @@ export default function AviationMap({
           </Marker>
         ))}
 
-        {/* SIGMET polygons — red overlays */}
-        {layers.wxhazards.enabled && sigmets.map((s, i) => {
+        {layers.pireps.enabled && pirepList.map((p, i) => (
+          <Marker
+            key={`pirep-${i}`}
+            position={[p.lat, p.lon]}
+            icon={makePirepIcon(p.pirepType === "UUA")}
+          >
+            <Popup>
+              <div style={{ fontFamily: "monospace", fontSize: 12, lineHeight: 1.6, background: "#1e293b", color: "#e2e8f0", padding: "4px 6px", borderRadius: 4 }}>
+                <strong style={{ color: p.pirepType === "UUA" ? "#ef4444" : "#34d399" }}>{p.pirepType === "UUA" ? "URGENT PIREP" : "PIREP"}</strong>{p.icaoId && <> · {p.icaoId}</>}<br />
+                {p.aircraftType && <>Type: {p.aircraftType}<br /></>}
+                {p.flightLevel != null && <>Level: FL{String(p.flightLevel).padStart(3, "0")}<br /></>}
+                {p.icing && <>Icing: {p.icing.intensity || "reported"} {p.icing.type || ""}<br /></>}
+                {p.turbulence && <>Turb: {p.turbulence.intensity || "reported"}<br /></>}
+                {p.weather && <>Wx: {p.weather}<br /></>}
+                {p.raw && <code style={{ fontSize: 10, whiteSpace: "pre-wrap" }}>{p.raw}</code>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Runway centerlines + threshold ground-control-points — real FAA
+            NASR data, cross-validated against declared runway length. This
+            is the reference data an Airport Diagram calibration UI will
+            match against clicked pixel positions (not yet built — this
+            layer proves the GCP source, not the image-overlay itself). */}
+        {layers.runways.enabled && runwayList.map((r, i) => {
+          const { endA, endB } = r.thresholds;
+          const legs = r.designator ? r.designator.split("/") : [null, null];
+          return (
+            <React.Fragment key={`rwy-${i}`}>
+              <Polyline positions={[[endA.lat, endA.lon], [endB.lat, endB.lon]]}
+                pathOptions={{ color: "#fbbf24", weight: 2, dashArray: "4 4", opacity: 0.85 }} />
+              {[[endA, legs[0]], [endB, legs[1]]].map(([end, leg], j) => (
+                <CircleMarker key={j} center={[end.lat, end.lon]} radius={5}
+                  pathOptions={{ color: "#0f172a", weight: 1, fillColor: "#fbbf24", fillOpacity: 0.95 }}>
+                  <Popup>
+                    <div style={{ fontFamily: "monospace", fontSize: 11, lineHeight: 1.6, background: "#1e293b", color: "#fde68a", padding: "4px 6px", borderRadius: 4 }}>
+                      <strong>{r.icao} Rwy {leg || "?"}</strong> — threshold GCP<br />
+                      {end.lat.toFixed(6)}, {end.lon.toFixed(6)}<br />
+                      {r.designator} · {r.lengthFt}ft × {r.widthFt}ft {r.surface}
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </React.Fragment>
+          );
+        })}
+
+        <DrawLayer active={drawMode} onStrokeComplete={(pts) => setStrokes(prev => [...prev, pts])} />
+        {strokes.map((pts, i) => (
+          <Polyline key={`stroke-${i}`} positions={pts} pathOptions={{ color: "#facc15", weight: 3, opacity: 0.9 }} />
+        ))}
+
+        {/* SIGMET polygons — the only hazard feed with real geometry today */}
+        {sigmets.map((s, i) => {
           const coords = s.area || s.coords || [];
           if (!coords.length) return null;
           const positions = coords.map(([lon, lat]) => [lat, lon]);
@@ -425,17 +663,19 @@ export default function AviationMap({
                 <div style={{ fontSize: 11, background: "#1e293b", color: "#fca5a5", padding: "4px 6px", borderRadius: 4 }}>
                   <strong>SIGMET</strong><br />
                   {s.hazard || s.type || "Convective"}<br />
-                  {s.validFrom && <>From: {s.validFrom}<br /></>}
-                  {s.validTo && <>To: {s.validTo}<br /></>}
-                  {s.raw && <code style={{ fontSize: 10, whiteSpace: "pre-wrap" }}>{s.raw.slice(0, 120)}</code>}
+                  {s.validTimeFrom && <>From: {new Date(s.validTimeFrom * 1000).toISOString()}<br /></>}
+                  {s.validTimeTo && <>To: {new Date(s.validTimeTo * 1000).toISOString()}<br /></>}
+                  {s.rawAirSigmet && <code style={{ fontSize: 10, whiteSpace: "pre-wrap" }}>{s.rawAirSigmet.slice(0, 120)}</code>}
                 </div>
               </Popup>
             </Polygon>
           );
         })}
 
-        {/* AIRMET polygons — orange overlays */}
-        {layers.wxhazards.enabled && airmets.map((a, i) => {
+        {/* AIRMET polygons — kept for the day the AWC feed (or a swapped
+            source) carries real geometry; airmets is always [] today since
+            the airmet endpoint returns region/altitude only, no coords. */}
+        {airmets.map((a, i) => {
           const coords = a.area || a.coords || [];
           if (!coords.length) return null;
           const positions = coords.map(([lon, lat]) => [lat, lon]);
@@ -446,7 +686,6 @@ export default function AviationMap({
                 <div style={{ fontSize: 11, background: "#1e293b", color: "#fdba74", padding: "4px 6px", borderRadius: 4 }}>
                   <strong>AIRMET {a.airmetType || ""}</strong><br />
                   {a.hazard || a.type || "Weather"}<br />
-                  {a.raw && <code style={{ fontSize: 10, whiteSpace: "pre-wrap" }}>{a.raw.slice(0, 120)}</code>}
                 </div>
               </Popup>
             </Polygon>
@@ -454,10 +693,49 @@ export default function AviationMap({
         })}
       </MapContainer>
 
+      {/* Weather radar time-scrubber — ForeFlight-style bottom playback bar.
+          Tick labels are relative to "now" (far right), matching the
+          reference screenshots' "-48m ... -13m" style. */}
+      {radarOn && (
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 1000,
+          background: "rgba(15,23,42,0.92)", padding: "6px 10px",
+          display: "flex", alignItems: "center", gap: 10,
+          boxShadow: "0 -1px 4px rgba(0,0,0,0.4)",
+        }}>
+          <button
+            onClick={() => setRadarPlaying(p => !p)}
+            title={radarPlaying ? "Pause" : "Play"}
+            style={{ width: 26, height: 26, flexShrink: 0, border: "1px solid #334155", borderRadius: 6, background: "#0c2235", color: "#e2e8f0", cursor: "pointer", fontSize: 12 }}
+          >
+            {radarPlaying ? "❚❚" : "▶"}
+          </button>
+          <div style={{ flex: 1, position: "relative" }}>
+            <input
+              type="range"
+              min={0}
+              max={RADAR_STEPS}
+              step={1}
+              value={radarStepIdx}
+              onChange={e => { setRadarPlaying(false); setRadarStepIdx(Number(e.target.value)); }}
+              style={{ width: "100%", accentColor: "#38bdf8" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#94a3b8", marginTop: -2 }}>
+              <span>-{RADAR_STEPS * RADAR_STEP_MIN}m</span>
+              <span>-{(RADAR_STEPS * RADAR_STEP_MIN) / 2}m</span>
+              <span>now</span>
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: "#cbd5e1", flexShrink: 0, minWidth: 34, textAlign: "right" }}>
+            {radarStepIdx >= RADAR_STEPS ? "now" : `-${(RADAR_STEPS - radarStepIdx) * RADAR_STEP_MIN}m`}
+          </div>
+        </div>
+      )}
+
       {/* Legend */}
       {!compact && (
         <div style={{
-          position: "absolute", bottom: 8, left: 8, zIndex: 1000,
+          position: "absolute", bottom: radarOn ? 44 : 8, left: 8, zIndex: 1000,
           background: "rgba(15,23,42,0.88)", borderRadius: 6,
           padding: "4px 8px", display: "flex", gap: 10,
           boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
@@ -473,25 +751,29 @@ export default function AviationMap({
               ✈ Traffic
             </span>
           )}
-          {layers.wxhazards.enabled && sigmetTexts.length > 0 && (
+          {hazardTextRows.length > 0 && (
             <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#fca5a5" }}>
-              ⚠ {sigmetTexts.length} SIGMET{sigmetTexts.length > 1 ? "s" : ""} active
+              ⚠ {hazardTextRows.length} advisor{hazardTextRows.length > 1 ? "ies" : "y"} active
             </span>
           )}
         </div>
       )}
 
-      {/* Active SIGMET text list when no polygon data */}
-      {layers.wxhazards.enabled && sigmetTexts.length > 0 && (
+      {/* Active hazard text list — every AIRMET, plus any SIGMET without a
+          usable polygon (rare, but the feed occasionally omits coords) */}
+      {hazardTextRows.length > 0 && (
         <div style={{
-          position: "absolute", bottom: 36, left: 8, right: 8, zIndex: 1000,
+          position: "absolute", bottom: radarOn ? 72 : 36, left: 8, right: 8, zIndex: 1000,
           background: "rgba(127,29,29,0.92)", borderRadius: 6,
-          padding: "6px 10px", maxHeight: 80, overflowY: "auto",
+          padding: "6px 10px", maxHeight: 100, overflowY: "auto",
           boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
         }}>
-          {sigmetTexts.map((s, i) => (
+          {hazardTextRows.map((h, i) => (
             <div key={i} style={{ fontSize: 10, fontFamily: "monospace", color: "#fca5a5", lineHeight: 1.4, marginBottom: 2 }}>
-              <strong>SIGMET:</strong> {s.raw ? s.raw.slice(0, 100) + "…" : JSON.stringify(s).slice(0, 80)}
+              <strong>{h.source === "sigmet" ? "SIGMET" : `AIRMET (${h.region || "?"})`}:</strong>{" "}
+              {h.hazard}
+              {h.base != null || h.top != null ? ` — ${h.base != null ? `FL${String(h.base).padStart(3, "0")}` : "SFC"}–${h.top != null ? `FL${String(h.top).padStart(3, "0")}` : "?"}` : ""}
+              {h.rawAirSigmet ? ` — ${h.rawAirSigmet.slice(0, 80)}…` : ""}
             </div>
           ))}
         </div>

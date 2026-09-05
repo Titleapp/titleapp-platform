@@ -13,6 +13,8 @@ import AviationCharts from "./AviationCharts";
 import SyntheticPFD from "./SyntheticPFD";
 import AviationNearest from "./AviationNearest";
 import AviationQRH from "./AviationQRH";
+import WeightBalanceCalculator from "./WeightBalanceCalculator";
+import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -650,10 +652,18 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
     pic: "", sic: "", operationType: "part135", weatherBriefingAcknowledged: false,
     weightBalanceAcknowledged: false, fuelLoad: "", releasingAuthority: "",
   });
+  const [wbResult, setWbResult] = useState(null);
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
   const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  // W&B checkbox is only enabled once the calculator has produced a real
+  // result — it attests to a computed number, not a blind assertion. If no
+  // real limits are configured (anyLimitsConfigured false), still allow the
+  // attestation — that mirrors today's behavior (pure trust) rather than
+  // blocking release for aircraft without a profile yet.
+  const wbReady = !!wbResult && (wbResult.withinLimits || !wbResult.anyLimitsConfigured);
+  const aircraftProfile = getAircraftTypeProfile(form.aircraft);
   const required = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim() && form.proposedDepartureTime
     && form.pic.trim() && form.operationType && form.releasingAuthority.trim() && form.fuelLoad
     && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged;
@@ -712,11 +722,12 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
             <input type="checkbox" checked={form.weatherBriefingAcknowledged} onChange={(e) => set("weatherBriefingAcknowledged", e.target.checked)} />
             Weather briefing obtained and acknowledged *
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
-            <input type="checkbox" checked={form.weightBalanceAcknowledged} onChange={(e) => set("weightBalanceAcknowledged", e.target.checked)} />
-            Weight & balance computed and within limits *
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: wbReady ? "#334155" : "#94a3b8" }}>
+            <input type="checkbox" checked={form.weightBalanceAcknowledged} disabled={!wbReady} onChange={(e) => set("weightBalanceAcknowledged", e.target.checked)} />
+            Weight & balance computed and within limits *{!wbReady && " (compute below first)"}
           </label>
         </div>
+        <WeightBalanceCalculator aircraftProfile={aircraftProfile} onResultChange={setWbResult} />
         {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
         {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Flight released. Release ID: {status.releaseId}</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>

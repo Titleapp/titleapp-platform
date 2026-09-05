@@ -1,7 +1,8 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken } from "firebase/app-check";
+import { Capacitor } from "@capacitor/core";
 
 // NOTE: Web config for Firebase project: title-app-alpha
 // Values come from Firebase Console → Project settings → Your apps → SDK setup & configuration
@@ -17,7 +18,22 @@ const firebaseConfig = {
 
 // Initialize Firebase exactly once
 export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// getAuth(app)'s default persistence auto-detection has a known real failure
+// mode inside a Capacitor native shell: it runs under the `capacitor://localhost`
+// origin, not a normal `https://` one, and its IndexedDB-availability probe can
+// hang indefinitely there — silently, no thrown error, no network call ever
+// made, since Auth queues every real request behind that probe resolving.
+// (Reproduced 2026-09-04: sign-in stuck on "Signing in..." forever, empty
+// console, zero requests to identitytoolkit.googleapis.com in the network
+// inspector — consistent with the probe itself never resolving.)
+// Fix: skip auto-detection entirely inside the native shell and go straight
+// to indexedDBLocalPersistence, matching Firebase's own guidance for
+// Capacitor/Cordova apps. Regular web (non-native) keeps auto-detection.
+export const auth = Capacitor.isNativePlatform()
+  ? initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] })
+  : getAuth(app);
+
 export const db = getFirestore(app);
 
 // App Check — ties requests to the deployed app binary.

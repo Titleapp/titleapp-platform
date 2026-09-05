@@ -5,13 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
+    "dev:nursing": "vite --mode nursing --port 5175",
     "build": "vite build",
+    "build:nursing": "vite build --mode nursing",
     "lint": "eslint .",
     "knip": "knip",
     "preview": "vite preview --port 4174",
     "cap:sync": "npm run build && npx cap sync",
     "cap:ios": "npm run build && npx cap sync ios && npx cap open ios",
-    "cap:android": "npm run build && npx cap sync android && npx cap open android"
+    "cap:android": "npm run build && npx cap sync android && npx cap open android",
+    "cap:nursing:sync": "npm run build:nursing && npx cap sync",
+    "cap:nursing:ios": "npm run build:nursing && npx cap sync ios && npx cap open ios",
+    "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",

@@ -12,7 +12,20 @@ module.exports = {
   AVIATION_WEATHER_METAR: "https://aviationweather.gov/api/data/metar",
   AVIATION_WEATHER_TAF:   "https://aviationweather.gov/api/data/taf",
   AVIATION_WEATHER_PIREP: "https://aviationweather.gov/api/data/pirep",
+  // FAA d-TPP (digital Terminal Procedures Publication) chart catalog + PDFs.
+  // NOTE: {cycle} must be a real numeric AIRAC cycle (e.g. "2609") — "current"
+  // is NOT a valid path segment and 404s. The 28-day cycle number is only
+  // discoverable by reading the metafile's own root <digital_tpp cycle="..."> attribute
+  // or the FAA search page — there is no "latest" alias. See dtpp.js for the
+  // fetch-then-read-the-cycle-back-out approach this requires.
+  DTPP_METAFILE_URL: "https://aeronav.faa.gov/d-tpp/{cycle}/xml_data/d-tpp_Metafile.xml",
+  DTPP_PDF_BASE: "https://aeronav.faa.gov/d-tpp/{cycle}",
+  // The metafile itself doesn't say what the *current* cycle number is except
+  // inside itself — this search-results page embeds the current cycle's XML
+  // link and is the only discovered stable way to learn it without guessing.
+  DTPP_SEARCH_PAGE_URL: "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/search/",
   AVIATION_WEATHER_SIGMET: "https://aviationweather.gov/api/data/sigmet",
+  AVIATION_WEATHER_AIRMET: "https://aviationweather.gov/api/data/airmet",
   AVIATION_WEATHER_WINDS: "https://aviationweather.gov/api/data/windtemp",
   AVIATION_WEATHER_ATIS:  "https://aviationweather.gov/api/data/atis",
   FAA_TFR_FEED:           "https://tfr.faa.gov/tfr2/list.html",

@@ -13088,6 +13088,19 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:runways?icao=PHNL — FAA NASR runway pavement polygons +
+    // derived threshold ground-control-points (free, public, no auth needed —
+    // used for our own Airport Diagram georeferencing, see faaData.js).
+    if (route === "/aviation:runways" && method === "GET") {
+      try {
+        const { handleRunways } = require("./services/aviation/faaData");
+        return await handleRunways(req, res);
+      } catch (e) {
+        console.error("aviation:runways failed:", e);
+        return jsonError(res, 500, "Runway lookup failed");
+      }
+    }
+
     // GET /v1/aviation:notams?locations=KJFK,KLAX  — Notamify (paid + metered).
     // Auth required (paid key + per-pull data fee); 30-min per-ICAO cache.
     if (route === "/aviation:notams" && method === "GET") {
@@ -13115,6 +13128,33 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("aviation:traffic failed:", e);
         return jsonError(res, 500, "Traffic lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:dtppCharts?icao=PHNL — real FAA d-TPP chart list for
+    // one airport (approach plates, airport diagram), each with a real,
+    // currently-valid PDF URL. Free, keyless, no auth required. Fixes the
+    // previously-broken hardcoded chart link in AviationCharts.jsx.
+    if (route === "/aviation:dtppCharts" && method === "GET") {
+      try {
+        const { handleDtppCharts } = require("./services/aviation/dtpp");
+        return await handleDtppCharts(req, res);
+      } catch (e) {
+        console.error("aviation:dtppCharts failed:", e);
+        return jsonError(res, 500, "d-TPP chart lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:pireps?lat=36.08&lon=-115.15&dist=150 — live pilot
+    // reports from aviationweather.gov (free, keyless, no auth required —
+    // same posture as aviation:weather/airspace/airports/navaids).
+    if (route === "/aviation:pireps" && method === "GET") {
+      try {
+        const { handlePireps } = require("./services/aviation/pireps");
+        return await handlePireps(req, res);
+      } catch (e) {
+        console.error("aviation:pireps failed:", e);
+        return jsonError(res, 500, "PIREP lookup failed");
       }
     }
 
@@ -33507,6 +33547,12 @@ Analyze now:`;
         case "uploadAircraftRosterCsv":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleUploadAircraftRosterCsv(req, res, mctx);
+        case "readMeterPhoto":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleReadMeterPhoto(req, res, mctx);
+        case "commitMeterReading":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleCommitMeterReading(req, res, mctx);
         default:
           return jsonError(res, 404, "Unknown mx action: " + mxAction);
         }

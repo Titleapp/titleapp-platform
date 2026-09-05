@@ -4430,6 +4430,10 @@ export default function App() {
   // visually confirm the embed pipe end-to-end without wiring it through
   // a worker catalog. Quick "see it work" test surface.
   const isVideoTest = /^\/sandbox\/video\/?$/.test(window.location.pathname);
+  const isAviationMapTest = /^\/sandbox\/aviation-map\/?$/.test(window.location.pathname);
+  const isWbCalcTest = /^\/sandbox\/wb-calculator\/?$/.test(window.location.pathname);
+  const isAvChartsTest = /^\/sandbox\/aviation-charts\/?$/.test(window.location.pathname);
+  const isMeterReadTest = /^\/sandbox\/meter-reading\/?$/.test(window.location.pathname);
 
   // ── /marketplace/:slug route intercept ─────────────────────
   // Public marketplace listing page — no auth required
@@ -5433,6 +5437,88 @@ export default function App() {
           <div style={{ marginTop: 24, padding: "12px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
             <strong>What you should see:</strong> the YouTube Short renders in a vertical 9:16 frame with a "Open on YouTube ↗" link below. If you see "Loading video card…" forever, the lazy import failed. If you see the unrecognized-URL message, URL parsing is broken.
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // AviationMap dogfood — no auth needed, real live FAA data (METAR/SIGMET/
+  // AIRMET + airports/airspace/navaids/traffic on toggle). CODEX 85 native-app
+  // work: verifying the compact icon toolbar + Ice/Turb/IFR/TS hazard filters.
+  if (isAviationMapTest) {
+    const AviationMap = React.lazy(() => import("./components/canvas/AviationMap"));
+    return (
+      <div style={{ minHeight: "100vh", background: "#0f172a", padding: "32px 16px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>AviationMap dogfood — icon toolbar + hazard filters</h1>
+          <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24, lineHeight: 1.5 }}>
+            Hawaii ICAOs. Left rail: Airports/Airspace/Navaids/Traffic (existing), then a divider,
+            then TS/Ice/Turb-Hi/Turb-Lo/IFR hazard toggles (new). Hover each icon for its tooltip.
+          </p>
+          <React.Suspense fallback={<div style={{ padding: 24, color: "#94a3b8" }}>Loading map…</div>}>
+            <AviationMap center={[20.5, -157.0]} zoom={7} height={560} icaos={["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH"]} />
+          </React.Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (isWbCalcTest) {
+    const ReleaseFlightModal = React.lazy(() =>
+      import("./components/canvas/AviationWorkerCanvas").then(m => ({ default: m.ReleaseFlightModal }))
+    );
+    return (
+      <div style={{ minHeight: "100vh", background: "#F8F9FC", padding: "32px 16px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>Release Flight — W&B calculator dogfood</h1>
+          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
+            Type "PC-12/47E" into Aircraft type to load the real matched profile (limits become read-only,
+            sourced). Any other value falls back to manual limit entry. Enter fuel gallons and station
+            weights to see the computed total/CG. This does not actually call the release API unless you
+            click Release with all required fields filled.
+          </p>
+          <React.Suspense fallback={<div style={{ padding: 24, color: "#94a3b8" }}>Loading…</div>}>
+            <ReleaseFlightModal onClose={() => {}} onReleased={() => {}} />
+          </React.Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAvChartsTest) {
+    const AviationCharts = React.lazy(() => import("./components/canvas/AviationCharts"));
+    return (
+      <div style={{ minHeight: "100vh", background: "#0d1117", padding: "32px 16px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>Aviation charts dogfood — real FAA d-TPP link fix</h1>
+          <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>
+            Previously-broken chart links (stale AIRAC cycle, guessed filenames) now resolve real,
+            currently-valid FAA PDF URLs via a live metafile lookup. Select "Airport Diagram" for PHNL to
+            verify.
+          </p>
+          <React.Suspense fallback={<div style={{ padding: 24, color: "#94a3b8" }}>Loading…</div>}>
+            <AviationCharts />
+          </React.Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (isMeterReadTest) {
+    const MeterReadingCard = React.lazy(() => import("./components/canvas/MeterReadingCard"));
+    return (
+      <div style={{ minHeight: "100vh", background: "#F8F9FC", padding: "32px 16px" }}>
+        <div style={{ maxWidth: 460, margin: "0 auto" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>Meter reading dogfood — "no penmanship, no pilot math"</h1>
+          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
+            Upload a photo of a panel hour meter. Calls the real vision endpoint (/v1/mx:readMeterPhoto),
+            shows the confidence-scored reading, requires confirmation before logging
+            (/v1/mx:commitMeterReading). A low-confidence read (e.g. an upside-down mechanical meter)
+            should visibly flag itself rather than silently guess.
+          </p>
+          <React.Suspense fallback={<div style={{ padding: 24, color: "#94a3b8" }}>Loading…</div>}>
+            <MeterReadingCard tailNumber="N661LF" />
+          </React.Suspense>
         </div>
       </div>
     );
