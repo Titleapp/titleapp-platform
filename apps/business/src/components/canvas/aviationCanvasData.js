@@ -410,6 +410,42 @@ export const AV_CANVAS = {
         ],
       },
       {
+        // 2026-09-05 MX deep-dive — MEL: what's inoperative but flyable, and
+        // under what conditions. The A/B/C/D deferral workflow (File/Close/
+        // Defer) was already real (CloseSquawkModal + updateSquawkStatus,
+        // computed rectification deadlines in airworthinessTracker); this
+        // tab is the fleet-wide, MEL-specific read of that same real data —
+        // every currently-deferred item, its category, computed days
+        // remaining, MEL reference, and operating restrictions — instead of
+        // it only being visible as a generic row in the squawk log.
+        id: "mel",
+        label: "MEL",
+        description: "Every currently-deferred item — MEL category, computed rectification deadline, MEL reference, and the operating restrictions in place while deferred. Defer or close from the Aircraft tab's Corrective Action panel.",
+        blocks: [],
+      },
+      {
+        // 2026-09-05 MX deep-dive — warranty and inspection tracking (the
+        // inspection half is scheduled-mx/inspections above; this is the
+        // warranty half, genuinely new — no warranty tracking existed
+        // anywhere in the platform before this pass).
+        id: "warranty",
+        label: "Warranty",
+        description: "Component, engine, and avionics warranty/coverage-plan tracking — provider, coverage type, and computed expiration status. Informational only; never blocks airworthiness.",
+        blocks: [],
+      },
+      {
+        // 2026-09-05 MX deep-dive — NEF (Negative Equipment List) per CODEX
+        // 40 §4 (Worker 4 — Compliance Documents table): equipment NOT
+        // installed that would otherwise be required — a documented
+        // absence, "typically buried in the MEL package" today. Distinct
+        // from MEL (installed-but-inoperative equipment, tracked above).
+        // Genuinely new; nothing existed for this before this pass.
+        id: "nef",
+        label: "NEF",
+        description: "Negative Equipment List — equipment not installed that would otherwise be required, with the reason and authorization on file for the absence. Distinct from MEL: this is what was never installed, not what broke.",
+        blocks: [],
+      },
+      {
         id: "documents",
         label: "Documents",
         description: "Aircraft documents — AFM, registration, airworthiness certificate, weight & balance, and 337s.",
@@ -442,6 +478,20 @@ export const AV_CANVAS = {
             icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"],
             fleetTails: ["N701AA", "N702AA", "N703AA"] },
         ],
+      },
+      {
+        // 2026-09-05 Dispatch deep-dive — Sean's spec: "a way to ingest a
+        // mission request and match it to the right aircraft in the fleet
+        // by type/capability — e.g. 'need a C172 for an instrument-rating
+        // training flight,' 'need a King Air 350 for a medevac flight,'
+        // 'need a 777 for a freight run.'" This is real request intake +
+        // matching against the fleet actually on file (POST /v1/dispatch:
+        // matchAircraft, services/dispatch/aircraftMatching.js) — not a
+        // static form. See MissionRequestPanel in AviationWorkerCanvas.jsx.
+        id: "requests",
+        label: "Requests",
+        description: "Ingest a mission request — aircraft type/category, mission type, seats, IFR, cargo — and match it against the real fleet on file by type and capability, ranked with reasons. Not a static form: this queries the actual tails on record and their computed airworthiness.",
+        blocks: [],
       },
       {
         id: "schedule",

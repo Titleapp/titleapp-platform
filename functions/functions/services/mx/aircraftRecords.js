@@ -21,6 +21,7 @@
  */
 
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const { computeAirworthiness } = require("./airworthinessTracker");
 
 function getDb() {
@@ -69,6 +70,24 @@ async function handleUpsertAircraft(req, res, ctx) {
     tenantId: ctx.tenantId || null,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+
+  // Capability profile — feeds Dispatch's mission-to-aircraft matching
+  // (services/dispatch/aircraftMatching.js). Optional; only added to `doc`
+  // when the caller supplies it, so an upsert that omits capabilities
+  // relies on Firestore's merge:true (below) to leave any previously-set
+  // profile untouched rather than wiping it.
+  if (body.capabilities && typeof body.capabilities === "object") {
+    const cap = body.capabilities;
+    doc.capabilities = {
+      category: String(cap.category || "").slice(0, 60) || null,
+      seats: cap.seats != null ? Number(cap.seats) : null,
+      ifrCertified: cap.ifrCertified === true,
+      cargoCapacityLbs: cap.cargoCapacityLbs != null ? Number(cap.cargoCapacityLbs) : null,
+      missionCapabilities: Array.isArray(cap.missionCapabilities)
+        ? cap.missionCapabilities.slice(0, 20).map(m => String(m).toLowerCase().slice(0, 40))
+        : [],
+    };
+  }
 
   await ref.set(doc, { merge: true });
   return res.json({ ok: true, tailNumber: doc.tailNumber });
@@ -134,6 +153,8 @@ async function handleListSquawks(req, res, ctx) {
   const scopeId = resolveScopeId(ctx);
   const statusFilter = req.query?.status ? String(req.query.status) : null;
   const fleetSnap = await db.collection("aircraftRecords").doc(scopeId).collection("aircraft").get();
+  const { evaluateSquawk } = require("./airworthinessTracker");
+  const now = new Date();
 
   const all = [];
   await Promise.all(fleetSnap.docs.map(async (d) => {
@@ -141,6 +162,12 @@ async function handleListSquawks(req, res, ctx) {
     squawksSnap.docs.forEach(s => {
       const data = s.data();
       if (statusFilter && data.status !== statusFilter) return;
+      // Deferred items get the same real MEL rectification-deadline
+      // computation the "aircraft" tab's airworthiness view already uses
+      // (airworthinessTracker.evaluateSquawk) — so the MEL tab (built from
+      // this endpoint) shows the same computed days-remaining/expiry as
+      // the source of truth, not a second, disconnected calculation.
+      const evaluated = data.status === "deferred" ? evaluateSquawk(data, now) : null;
       all.push({
         id: s.id,
         tailNumber: d.id,
@@ -149,7 +176,12 @@ async function handleListSquawks(req, res, ctx) {
         workOrderNumber: data.workOrderNumber || "",
         status: data.status || "open",
         category: data.category || null,
+        melReference: data.melReference || null,
+        restrictions: data.restrictions || null,
         reportedAt: data.openedAt || null,
+        computedStatus: evaluated?.computedStatus || null,
+        daysRemaining: evaluated?.daysRemaining ?? null,
+        deadline: evaluated?.deadline || null,
       });
     });
   }));
@@ -183,6 +215,16 @@ async function handleUpdateSquawkStatus(req, res, ctx) {
   if (body.status === "deferred") {
     update.category = String(body.category).toUpperCase().slice(0, 1);
     update.deferredBy = String(body.deferredBy || "").slice(0, 200);
+    // MEL — Minimum Equipment List: what's inoperative but flyable, and
+    // under what conditions. The A/B/C/D category + computed rectification
+    // deadline (airworthinessTracker.evaluateSquawk) was already real; this
+    // adds the other MEL half — the specific MMEL/operator-MEL item number
+    // and the operating conditions/restrictions placed on the aircraft
+    // while deferred (e.g. "placarded inop, day VFR only") — so a deferred
+    // squawk records not just THAT it's deferred but WHAT flying under the
+    // deferral actually requires.
+    update.melReference = String(body.melReference || "").slice(0, 100);
+    update.restrictions = String(body.restrictions || "").slice(0, 1000);
   }
   if (body.status === "closed") {
     update.closedBy = String(body.closedBy || "").slice(0, 200);
@@ -280,6 +322,115 @@ async function handleUploadAircraftRosterCsv(req, res, ctx) {
   await batch.commit();
 
   return res.json({ ok: true, imported: aircraft.length });
+}
+
+// ============================================================
+// 7b. addMaintenanceItem — "MX To-Do": one scheduled-maintenance entry
+// (inspection interval, recurring item) added to the tail's real record.
+// Generalizes the single `nextInspection` field above into a real list —
+// evaluated by airworthinessTracker.evaluateMaintenanceItems on every
+// listAircraft/getAirworthiness read. Uses arrayUnion so concurrent adds
+// from different sessions don't clobber each other (unlike a raw array
+// overwrite via upsertAircraft).
+// ============================================================
+async function handleAddMaintenanceItem(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.description) return res.status(400).json({ ok: false, error: "description required" });
+  const basis = String(body.basis || "").toLowerCase();
+  if (!["hours", "calendar"].includes(basis)) return res.status(400).json({ ok: false, error: "basis must be 'hours' or 'calendar'" });
+  if (basis === "calendar" && !body.dueDate) return res.status(400).json({ ok: false, error: "dueDate required when basis is 'calendar'" });
+  if (basis === "hours" && body.dueAtHours == null) return res.status(400).json({ ok: false, error: "dueAtHours required when basis is 'hours'" });
+
+  const scopeId = resolveScopeId(ctx);
+  const item = {
+    id: crypto.randomUUID(),
+    description: String(body.description).slice(0, 300),
+    basis,
+    dueDate: basis === "calendar" ? String(body.dueDate).slice(0, 30) : null,
+    dueAtHours: basis === "hours" ? Number(body.dueAtHours) : null,
+    intervalMonths: body.intervalMonths != null ? Number(body.intervalMonths) : null,
+    intervalHours: body.intervalHours != null ? Number(body.intervalHours) : null,
+    farReference: String(body.farReference || "").slice(0, 30),
+    mandatory: body.mandatory !== false,
+    lastDoneAt: body.lastDoneAt || null,
+    lastDoneHours: body.lastDoneHours != null ? Number(body.lastDoneHours) : null,
+    addedBy: String(ctx.userId || "").slice(0, 200),
+    addedAt: new Date().toISOString(),
+  };
+
+  await aircraftRef(db, scopeId, body.tailNumber).set({
+    maintenanceItems: admin.firestore.FieldValue.arrayUnion(item),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item });
+}
+
+// ============================================================
+// 7c. addWarranty — component/engine/avionics warranty or coverage-plan
+// record (e.g. PT6A Eagle Service Plan, avionics factory warranty).
+// Informational tracking only — see evaluateWarranties: never blocks
+// airworthiness, unlike maintenance items and AD compliance above.
+// ============================================================
+async function handleAddWarranty(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.component) return res.status(400).json({ ok: false, error: "component required" });
+
+  const scopeId = resolveScopeId(ctx);
+  const item = {
+    id: crypto.randomUUID(),
+    component: String(body.component).slice(0, 200),
+    provider: String(body.provider || "").slice(0, 200),
+    coverageType: String(body.coverageType || "").slice(0, 200),
+    startDate: body.startDate || null,
+    expirationDate: body.expirationDate || null,
+    expirationHours: body.expirationHours != null ? Number(body.expirationHours) : null,
+    notes: String(body.notes || "").slice(0, 500),
+    addedBy: String(ctx.userId || "").slice(0, 200),
+    addedAt: new Date().toISOString(),
+  };
+
+  await aircraftRef(db, scopeId, body.tailNumber).set({
+    warranties: admin.firestore.FieldValue.arrayUnion(item),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item });
+}
+
+// ============================================================
+// 7d. addNefItem — NEF (Negative Equipment List, per CODEX 40 §4 Compliance Documents table): equipment
+// NOT installed that would otherwise be required — a documented absence,
+// distinct from MEL (temporarily inoperative equipment on an aircraft that
+// HAS it installed). Purely a documentation record; no status computation,
+// never contributes to airworthiness (see airworthinessTracker.passthroughNef).
+// ============================================================
+async function handleAddNefItem(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.equipment) return res.status(400).json({ ok: false, error: "equipment required" });
+
+  const scopeId = resolveScopeId(ctx);
+  const item = {
+    id: crypto.randomUUID(),
+    equipment: String(body.equipment).slice(0, 200),
+    reason: String(body.reason || "").slice(0, 500),
+    authorizationRef: String(body.authorizationRef || "").slice(0, 200),
+    documentedBy: String(body.documentedBy || ctx.userId || "").slice(0, 200),
+    documentedAt: new Date().toISOString(),
+  };
+
+  await aircraftRef(db, scopeId, body.tailNumber).set({
+    nefItems: admin.firestore.FieldValue.arrayUnion(item),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item });
 }
 
 // ============================================================
@@ -514,6 +665,9 @@ module.exports = {
   handleListAircraft,
   handleUploadSquawksCsv,
   handleUploadAircraftRosterCsv,
+  handleAddMaintenanceItem,
+  handleAddWarranty,
+  handleAddNefItem,
   handleReadMeterPhoto,
   handleCommitMeterReading,
   handleReadSquawkPhoto,

@@ -122,6 +122,107 @@ function evaluateAdCompliance(adList, now) {
 }
 
 /**
+ * Evaluate the generalized scheduled-maintenance list ("MX To-Do") — a
+ * superset of the single nextInspection field above. Each item carries its
+ * own basis (hours or calendar) and a mandatory flag: mandatory items
+ * (Annual, 100-hr, recurring ADs folded in here for display, required
+ * periodic inspections) contribute to blocking airworthiness when overdue;
+ * non-mandatory items (open non-mandatory SBs, operator-added reminders)
+ * are advisory only and never block. Same fixed 30-day / 10-hour threshold
+ * as evaluateInspection above, for consistency — a percentage-of-interval
+ * rule would need intervalHours/intervalMonths populated on every item,
+ * which is optional/reference-only here.
+ */
+function evaluateMaintenanceItem(item, currentHours, now) {
+  const basis = String(item.basis || "").toLowerCase();
+  const reasons = [];
+  let status = "GREEN";
+
+  if (basis === "calendar" && item.dueDate) {
+    const due = new Date(item.dueDate);
+    if (!isNaN(due.getTime())) {
+      const daysRemaining = daysBetween(now, due);
+      if (daysRemaining < 0) { status = "RED"; reasons.push(`overdue by ${Math.abs(daysRemaining)} day(s)`); }
+      else if (daysRemaining <= 30) { status = "YELLOW"; reasons.push(`due in ${daysRemaining} day(s)`); }
+      else reasons.push(`due ${item.dueDate}`);
+      return { ...item, computedStatus: item.mandatory === false ? (status === "RED" ? "YELLOW" : status) : status, daysRemaining, detail: reasons.join("; ") };
+    }
+  }
+  if (basis === "hours" && item.dueAtHours != null && currentHours != null) {
+    const hoursRemaining = Number(item.dueAtHours) - Number(currentHours);
+    if (hoursRemaining < 0) { status = "RED"; reasons.push(`overdue by ${Math.abs(hoursRemaining).toFixed(1)} hrs`); }
+    else if (hoursRemaining <= 10) { status = "YELLOW"; reasons.push(`due in ${hoursRemaining.toFixed(1)} hrs`); }
+    else reasons.push(`due at ${item.dueAtHours} hrs (${hoursRemaining.toFixed(1)} hrs remaining)`);
+    return { ...item, computedStatus: item.mandatory === false ? (status === "RED" ? "YELLOW" : status) : status, hoursRemaining, detail: reasons.join("; ") };
+  }
+  return { ...item, computedStatus: "UNVERIFIED", detail: "No due date/hours on record for this item — cannot compute status" };
+}
+
+function evaluateMaintenanceItems(items, currentHours, now) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return { status: "NONE", items: [], detail: "No scheduled maintenance items on file" };
+  const evaluated = list.map(i => evaluateMaintenanceItem(i, currentHours, now));
+  let worst = "GREEN";
+  evaluated.forEach(i => {
+    if (i.mandatory === false) return; // advisory items never move the aggregate status
+    if (i.computedStatus === "RED") worst = "RED";
+    else if (i.computedStatus === "UNVERIFIED" && worst !== "RED") worst = "UNVERIFIED";
+    else if (i.computedStatus === "YELLOW" && worst === "GREEN") worst = "YELLOW";
+  });
+  return { status: worst, items: evaluated };
+}
+
+/**
+ * Evaluate warranty/coverage records — informational only. Warranty
+ * expiration is a business/cost concern, not an airworthiness one, so this
+ * NEVER contributes to the aircraft's overall RED/YELLOW/GREEN status or
+ * blockingItems, unlike inspections/ADs/mandatory maintenance items above.
+ */
+function evaluateWarranty(w, currentHours, now) {
+  const reasons = [];
+  let status = "GREEN";
+  let hasBasis = false;
+
+  if (w.expirationDate) {
+    hasBasis = true;
+    const due = new Date(w.expirationDate);
+    if (!isNaN(due.getTime())) {
+      const daysRemaining = daysBetween(now, due);
+      if (daysRemaining < 0) { status = "RED"; reasons.push(`expired ${Math.abs(daysRemaining)} day(s) ago`); }
+      else if (daysRemaining <= 60) { status = "YELLOW"; reasons.push(`expires in ${daysRemaining} day(s)`); }
+      else reasons.push(`covered through ${w.expirationDate}`);
+    }
+  }
+  if (w.expirationHours != null && currentHours != null) {
+    hasBasis = true;
+    const hoursRemaining = Number(w.expirationHours) - Number(currentHours);
+    if (hoursRemaining < 0) { status = status === "RED" ? status : "RED"; reasons.push(`expired ${Math.abs(hoursRemaining).toFixed(1)} hrs ago`); }
+    else if (hoursRemaining <= 25 && status !== "RED") { status = "YELLOW"; reasons.push(`expires in ${hoursRemaining.toFixed(1)} hrs`); }
+    else reasons.push(`covered through ${w.expirationHours} hrs`);
+  }
+  if (!hasBasis) return { ...w, computedStatus: "UNVERIFIED", detail: "No expiration date/hours on record for this warranty" };
+  return { ...w, computedStatus: status, detail: reasons.join("; ") };
+}
+
+function evaluateWarranties(warranties, currentHours, now) {
+  const list = Array.isArray(warranties) ? warranties : [];
+  if (!list.length) return { items: [], detail: "No warranty/coverage records on file" };
+  return { items: list.map(w => evaluateWarranty(w, currentHours, now)) };
+}
+
+/**
+ * NEF — Negative Equipment List (per CODEX 40 §4 (Worker 4 — Compliance Documents table): equipment not installed
+ * that otherwise would be required, documented absence — distinct from
+ * MEL, which is temporarily-inoperative equipment). Purely a documentation
+ * list: no due date, no status computation, never blocks airworthiness.
+ * Kept as a passthrough here so listAircraft/getAirworthiness expose it
+ * from the same computed-record shape as everything else.
+ */
+function passthroughNef(nefItems) {
+  return Array.isArray(nefItems) ? nefItems : [];
+}
+
+/**
  * Compute full airworthiness picture for one tail.
  *
  * @param {Object} aircraft — aircraftRecords/{userId}/aircraft/{tail} doc data
@@ -139,6 +240,9 @@ function computeAirworthiness(aircraft, squawks, now) {
       openSquawks: [],
       inspection: { status: "UNVERIFIED" },
       adCompliance: { status: "UNVERIFIED", items: [] },
+      maintenanceSchedule: { status: "NONE", items: [] },
+      warranties: { items: [] },
+      nefItems: [],
     };
   }
 
@@ -148,11 +252,15 @@ function computeAirworthiness(aircraft, squawks, now) {
 
   const inspection = evaluateInspection(aircraft.nextInspection, aircraft.totalTimeHours, now);
   const adCompliance = evaluateAdCompliance(aircraft.adCompliance, now);
+  const maintenanceSchedule = evaluateMaintenanceItems(aircraft.maintenanceItems, aircraft.totalTimeHours, now);
+  const warranties = evaluateWarranties(aircraft.warranties, aircraft.totalTimeHours, now);
+  const nefItems = passthroughNef(aircraft.nefItems);
 
   const statuses = [
     ...openSquawks.map(s => s.computedStatus),
     inspection.status,
     adCompliance.status,
+    maintenanceSchedule.status,
   ];
   let status = "GREEN";
   if (statuses.includes("RED")) status = "RED";
@@ -164,11 +272,17 @@ function computeAirworthiness(aircraft, squawks, now) {
     .map(s => s.detail);
   if (inspection.status === "RED") blockingItems.push(inspection.detail);
   if (adCompliance.status === "RED") blockingItems.push(...adCompliance.items.filter(i => i.status === "RED").map(i => `AD ${i.ad || "?"}: ${i.detail}`));
+  if (maintenanceSchedule.status === "RED") {
+    blockingItems.push(...maintenanceSchedule.items
+      .filter(i => i.mandatory !== false && i.computedStatus === "RED")
+      .map(i => `${i.description || "Scheduled item"}: ${i.detail}`));
+  }
 
   return {
     tailNumber: aircraft.tailNumber || null,
     type: aircraft.type || null,
     totalTimeHours: aircraft.totalTimeHours ?? null,
+    capabilities: aircraft.capabilities || null,
     status,
     summary: status === "RED"
       ? `NOT AIRWORTHY per tracked records — return-to-service determination belongs to a certificated A&P/IA (14 CFR §43.9), but the tracked record shows a blocking item.`
@@ -180,8 +294,18 @@ function computeAirworthiness(aircraft, squawks, now) {
     openSquawks,
     inspection,
     adCompliance,
+    maintenanceSchedule,
+    warranties,
+    nefItems,
     blockingItems,
   };
 }
 
-module.exports = { computeAirworthiness, evaluateSquawk, evaluateInspection, evaluateAdCompliance };
+module.exports = {
+  computeAirworthiness,
+  evaluateSquawk,
+  evaluateInspection,
+  evaluateAdCompliance,
+  evaluateMaintenanceItems,
+  evaluateWarranties,
+};

@@ -1436,6 +1436,61 @@
       "writesAudit": true
     },
     {
+      "id": "aviation.add_maintenance_item_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 MX deep-dive — MX To-Do: adds one real scheduled-maintenance item (inspection interval, recurring due item; hours- or calendar-based) to a tail's record (aircraftRecords/{scopeId}/aircraft/{tailNumber}.maintenanceItems, via arrayUnion). Evaluated on every read by airworthinessTracker.evaluateMaintenanceItems — mandatory items overdue contribute to the tail's computed RED airworthiness status and blockingItems, same as the pre-existing single nextInspection field this generalizes. Dispatched by POST /v1/mx:addMaintenanceItem (services/mx/aircraftRecords.js).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.add_warranty_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 MX deep-dive — adds a component/engine/avionics warranty or coverage-plan record (e.g. PT6A Eagle Service Plan) to a tail's record (aircraftRecords/{scopeId}/aircraft/{tailNumber}.warranties, via arrayUnion). Evaluated by airworthinessTracker.evaluateWarranties — informational only; never contributes to the tail's airworthiness status (warranty expiration is a cost/coverage concern, not a safety one). Dispatched by POST /v1/mx:addWarranty (services/mx/aircraftRecords.js).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.add_nef_item_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 MX deep-dive — NEF (Negative Equipment List, per CODEX 40 §8): documents one piece of equipment NOT installed that would otherwise be required (distinct from MEL, which covers installed-but-inoperative equipment). Appends to aircraftRecords/{scopeId}/aircraft/{tailNumber}.nefItems via arrayUnion. Pure documentation record — no status computed, never blocks airworthiness. Dispatched by POST /v1/mx:addNefItem (services/mx/aircraftRecords.js).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.match_aircraft_v1",
+      "class": "aviation",
+      "summary": "2026-09-05 Dispatch deep-dive — ingests a mission request (aircraft type/category, mission type e.g. medevac/training/cargo, min seats, IFR requirement, cargo capacity) and scores/ranks it against the REAL fleet on file (aircraftRecords/{scopeId}/aircraft), merging each tail's computed airworthiness (computeAirworthiness) and optional capabilities profile. Never fabricates a fleet match — an empty or non-matching fleet returns an honest 'no match' with the real fleet size, not a plausible-looking fake tail. Dispatched by POST /v1/dispatch:matchAircraft (services/dispatch/aircraftMatching.js). Feeds aviation.create_trip_request_v1's tailNumber field once a candidate is picked.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.create_trip_request_v1",
+      "class": "aviation",
+      "summary": "Real trip-generation object for Dispatch (dispatchTripRequests/{scopeId}/requests/{id}) — client, destination/alternate, pax manifest, ground transport, assigned crew, tail assignment. As of 2026-09-05 also accepts an optional missionRequest snapshot (what was actually asked for) and matchReasons (why the assigned tail was picked, from aviation.match_aircraft_v1) so the tail assignment is auditable against the original ask rather than a bare tail number with no recorded justification. Dispatched by POST /v1/dispatch:createTripRequest (services/dispatch/tripRequests.js). Pre-existing capability, registered here for the first time as part of the 2026-09-05 MX/Dispatch deep-dive.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
       "id": "auto.create_vehicle_deal_v1",
       "class": "auto",
       "summary": "2026-08-21 gap-audit fix — dealer creates a new vehicle/deal record in dealer inventory (dealerVehicles collection; distinct from the unrelated personal-vault MyVehicles.jsx feature). Dispatched by POST /v1/auto:vehicle:add (functions/functions/index.js). Wired to the \"+ Add Vehicle\" button on the Desking / Deal worker canvas.",

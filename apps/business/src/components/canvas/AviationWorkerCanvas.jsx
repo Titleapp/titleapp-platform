@@ -254,6 +254,122 @@ function adComplianceToBlocks(fleet) {
   return blocks;
 }
 
+// MX To-Do / Inspections — real scheduled-maintenance items from
+// services/mx/airworthinessTracker.js's evaluateMaintenanceItems, flattened
+// across the fleet from GET /v1/mx:listAircraft. Backs both the "Scheduled
+// MX" and "Inspections" tabs (same real data — Sean's spec asks for both
+// "MX to-do" and "inspection tracking"; this generalized list covers both).
+function maintenanceScheduleToBlocks(fleet) {
+  const list = fleet || [];
+  const rows = [];
+  list.forEach(a => {
+    (a.maintenanceSchedule?.items || []).forEach(item => {
+      rows.push([
+        a.tailNumber || "—",
+        item.description || "—",
+        item.basis === "hours" ? "Hours" : "Calendar",
+        item.basis === "hours" ? (item.dueAtHours != null ? `${item.dueAtHours} hrs` : "—") : (item.dueDate || "—"),
+        item.detail || "—",
+        item.mandatory === false ? "Advisory" : "Mandatory",
+      ]);
+    });
+  });
+  if (!rows.length) {
+    return [{
+      type: "cards",
+      items: [{ band: "BLUE", label: "NO SCHEDULED ITEMS", title: "Add a scheduled-maintenance item", detail: "Use \"+ Add Maintenance Item\" above to add inspection intervals, phase checks, or recurring due items for a tail. Nothing is fabricated here — this list is empty until real items are added.", action: "Open form" }],
+    }];
+  }
+  const flags = [];
+  list.forEach(a => (a.maintenanceSchedule?.items || [])
+    .filter(i => i.mandatory !== false && i.computedStatus === "RED")
+    .forEach(i => flags.push({ band: "RED", title: `${a.tailNumber} · ${i.description}`, detail: i.detail })));
+  const blocks = [];
+  if (flags.length) blocks.push({ type: "flags", items: flags });
+  blocks.push({ type: "table", title: "Scheduled maintenance — live from Firestore", cols: ["Tail", "Item", "Basis", "Due", "Status", "Priority"], rows });
+  return blocks;
+}
+
+// MEL tab — every currently-deferred squawk, fleet-wide, with its real
+// computed rectification deadline (same evaluateSquawk() computation the
+// aircraft tab's airworthiness view uses — see handleListSquawks), MEL
+// reference, and operating restrictions. Distinct view of the same real
+// squawks collection the Aircraft tab's Corrective Action panel writes to.
+function melItemsToBlocks(squawks) {
+  const list = (squawks || []).filter(s => s.status === "deferred");
+  if (!list.length) return [{
+    type: "prose",
+    items: [{ band: "GREEN", title: "No active MEL deferrals", text: "Nothing is currently deferred under an MEL category. Deferrals are created from the Aircraft tab's Corrective Action panel (\"Defer (MEL)\")." }],
+  }];
+  const flags = list
+    .filter(s => s.computedStatus === "RED" || s.computedStatus === "YELLOW")
+    .map(s => ({ band: s.computedStatus, title: `${s.tailNumber} · MEL ${s.category || "?"}${s.melReference ? ` (${s.melReference})` : ""}`, detail: `${s.description} — ${s.daysRemaining != null ? `${s.daysRemaining} day(s) remaining` : "deadline unverified"}` }));
+  const rows = list.map(s => [
+    s.tailNumber || "—",
+    s.category || "—",
+    s.melReference || "—",
+    s.description ? s.description.slice(0, 40) + (s.description.length > 40 ? "…" : "") : "—",
+    s.restrictions || "—",
+    s.daysRemaining != null ? `${s.daysRemaining}d` : "—",
+  ]);
+  const blocks = [];
+  if (flags.length) blocks.push({ type: "flags", items: flags });
+  blocks.push({ type: "table", title: "Active MEL deferrals — live from Firestore", cols: ["Tail", "Cat", "MEL Ref", "Discrepancy", "Restrictions", "Remaining"], rows });
+  return blocks;
+}
+
+// Warranty tab — component/engine/avionics coverage records. Informational
+// only (see evaluateWarranties) — never contributes to airworthiness.
+function warrantiesToBlocks(fleet) {
+  const list = fleet || [];
+  const rows = [];
+  list.forEach(a => (a.warranties?.items || []).forEach(w => rows.push([
+    a.tailNumber || "—",
+    w.component || "—",
+    w.provider || "—",
+    w.coverageType || "—",
+    w.expirationDate || (w.expirationHours != null ? `${w.expirationHours} hrs` : "—"),
+    w.detail || "—",
+  ])));
+  if (!rows.length) {
+    return [{
+      type: "cards",
+      items: [{ band: "BLUE", label: "NO WARRANTY RECORDS", title: "Add a warranty or coverage-plan record", detail: "Use \"+ Add Warranty\" above — e.g. engine Eagle Service Plan, avionics factory warranty. Nothing is fabricated here.", action: "Open form" }],
+    }];
+  }
+  const flags = [];
+  list.forEach(a => (a.warranties?.items || [])
+    .filter(w => w.computedStatus === "RED" || w.computedStatus === "YELLOW")
+    .forEach(w => flags.push({ band: w.computedStatus, title: `${a.tailNumber} · ${w.component}`, detail: w.detail })));
+  const blocks = [];
+  if (flags.length) blocks.push({ type: "flags", items: flags });
+  blocks.push({ type: "table", title: "Warranty / coverage — live from Firestore", cols: ["Tail", "Component", "Provider", "Coverage", "Expires", "Status"], rows });
+  blocks.push({ type: "prose", items: [{ band: "BLUE", title: "Informational only", text: "Warranty expiration is a cost/coverage concern, not a safety one — it never contributes to this aircraft's airworthiness status." }] });
+  return blocks;
+}
+
+// NEF tab — equipment NOT installed that would otherwise be required
+// (documented absence, per CODEX 40 §4). Pure documentation; no status.
+function nefItemsToBlocks(fleet) {
+  const list = fleet || [];
+  const rows = [];
+  list.forEach(a => (a.nefItems || []).forEach(n => rows.push([
+    a.tailNumber || "—",
+    n.equipment || "—",
+    n.reason || "—",
+    n.authorizationRef || "—",
+    n.documentedBy || "—",
+    n.documentedAt ? new Date(n.documentedAt).toLocaleDateString() : "—",
+  ])));
+  if (!rows.length) {
+    return [{
+      type: "cards",
+      items: [{ band: "BLUE", label: "NO NEF ITEMS", title: "Document a negative-equipment item", detail: "Use \"+ Add NEF Item\" above for equipment intentionally not installed that would otherwise be required. Distinct from MEL — this is what was never installed, not what broke.", action: "Open form" }],
+    }];
+  }
+  return [{ type: "table", title: "Negative Equipment List — live from Firestore", cols: ["Tail", "Equipment", "Reason", "Authorization", "Documented by", "Date"], rows }];
+}
+
 // Real flight-release history — GET /v1/aviation:dispatch:releases, backing
 // POST /v1/aviation:dispatch:releaseFlight (ReleaseFlightModal above). This
 // endpoint existed with no frontend reader before the 2026-09-05
@@ -591,6 +707,18 @@ const LIVE_TABS = {
     // computeAirworthiness() already returns real per-tail adCompliance.items
     // from Firestore. Wiring it here instead of inventing a new backend route.
     "ads-sbs": { kind: "adCompliance" },
+    // 2026-09-05 MX deep-dive — "MX to-do" (scheduled maintenance / inspection
+    // intervals). Both tabs read the same real evaluateMaintenanceItems()
+    // list; "inspections" is the FAR-inspection framing of the same data.
+    "scheduled-mx": { kind: "maintenanceSchedule" },
+    "unscheduled-mx": { kind: "squawks" },
+    "inspections": { kind: "maintenanceSchedule" },
+    // MEL — fleet-wide view of real active deferrals (see melItemsToBlocks).
+    "mel": { kind: "melItems" },
+    // Warranty and NEF — both genuinely new; see aircraftRecords.js
+    // handleAddWarranty / handleAddNefItem.
+    "warranty": { kind: "warranties" },
+    "nef": { kind: "nefItems" },
   },
   "av-dispatch-001": {
     // Was "trip-package" — that tab id doesn't exist in this worker's spec
@@ -890,6 +1018,202 @@ export function AddSquawkModal({ onClose, onFiled }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// AddMaintenanceItemModal — "MX To-Do": adds one real scheduled-maintenance
+// item (POST /v1/mx:addMaintenanceItem). Backs the "Scheduled MX" /
+// "Inspections" tabs (maintenanceScheduleToBlocks).
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function AddMaintenanceItemModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ tailNumber: "", description: "", basis: "calendar", dueDate: "", dueAtHours: "", farReference: "", mandatory: true });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.description.trim() && (form.basis === "calendar" ? form.dueDate : form.dueAtHours);
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:addMaintenanceItem", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        description: form.description.trim(),
+        basis: form.basis,
+        dueDate: form.basis === "calendar" ? form.dueDate : undefined,
+        dueAtHours: form.basis === "hours" ? Number(form.dueAtHours) : undefined,
+        farReference: form.farReference.trim() || undefined,
+        mandatory: form.mandatory,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add scheduled maintenance item</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>An inspection interval or recurring due item — evaluated against this aircraft's hours/date on every read.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Description *</label><input style={fieldStyle} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="e.g. Annual inspection (91.409)" /></div>
+          <div>
+            <label style={labelStyle}>Basis *</label>
+            <select style={fieldStyle} value={form.basis} onChange={(e) => set("basis", e.target.value)}>
+              <option value="calendar">Calendar date</option>
+              <option value="hours">Airframe hours</option>
+            </select>
+          </div>
+          {form.basis === "calendar" ? (
+            <div><label style={labelStyle}>Due date *</label><input type="date" style={fieldStyle} value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} /></div>
+          ) : (
+            <div><label style={labelStyle}>Due at hours *</label><input type="number" style={fieldStyle} value={form.dueAtHours} onChange={(e) => set("dueAtHours", e.target.value)} placeholder="1900" /></div>
+          )}
+          <div><label style={labelStyle}>FAR reference (optional)</label><input style={fieldStyle} value={form.farReference} onChange={(e) => set("farReference", e.target.value)} placeholder="91.409" /></div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
+            <input type="checkbox" checked={form.mandatory} onChange={(e) => set("mandatory", e.target.checked)} />
+            Mandatory — overdue blocks airworthiness (uncheck for advisory-only items, e.g. non-mandatory SBs)
+          </label>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Item added to the aircraft's real record.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Adding…" : "Add item"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AddWarrantyModal — component/engine/avionics warranty or coverage-plan
+// record (POST /v1/mx:addWarranty). Informational only.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function AddWarrantyModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ tailNumber: "", component: "", provider: "", coverageType: "", expirationDate: "", expirationHours: "", notes: "" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.component.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:addWarranty", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        component: form.component.trim(),
+        provider: form.provider.trim() || undefined,
+        coverageType: form.coverageType.trim() || undefined,
+        expirationDate: form.expirationDate || undefined,
+        expirationHours: form.expirationHours ? Number(form.expirationHours) : undefined,
+        notes: form.notes.trim() || undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add warranty / coverage record</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Informational — never blocks airworthiness.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Component *</label><input style={fieldStyle} value={form.component} onChange={(e) => set("component", e.target.value)} placeholder="Engine — PT6A-67P" /></div>
+          <div><label style={labelStyle}>Provider</label><input style={fieldStyle} value={form.provider} onChange={(e) => set("provider", e.target.value)} placeholder="Pratt & Whitney Canada" /></div>
+          <div><label style={labelStyle}>Coverage type</label><input style={fieldStyle} value={form.coverageType} onChange={(e) => set("coverageType", e.target.value)} placeholder="Eagle Service Plan" /></div>
+          <div><label style={labelStyle}>Expiration date</label><input type="date" style={fieldStyle} value={form.expirationDate} onChange={(e) => set("expirationDate", e.target.value)} /></div>
+          <div><label style={labelStyle}>Or expiration hours</label><input type="number" style={fieldStyle} value={form.expirationHours} onChange={(e) => set("expirationHours", e.target.value)} placeholder="3600" /></div>
+          <div><label style={labelStyle}>Notes</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Warranty record added.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Adding…" : "Add warranty"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AddNefItemModal — Negative Equipment List entry (POST /v1/mx:addNefItem).
+// Pure documentation record; no status is computed.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function AddNefItemModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ tailNumber: "", equipment: "", reason: "", authorizationRef: "" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.equipment.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:addNefItem", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        equipment: form.equipment.trim(),
+        reason: form.reason.trim() || undefined,
+        authorizationRef: form.authorizationRef.trim() || undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add NEF item</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Equipment not installed that would otherwise be required — a documented absence, distinct from MEL.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Equipment *</label><input style={fieldStyle} value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Second VOR receiver" /></div>
+          <div><label style={labelStyle}>Reason</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.reason} onChange={(e) => set("reason", e.target.value)} placeholder="Why it's not installed" /></div>
+          <div><label style={labelStyle}>Authorization reference</label><input style={fieldStyle} value={form.authorizationRef} onChange={(e) => set("authorizationRef", e.target.value)} placeholder="Ops Spec D-1 / STC #..." /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>NEF item documented.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Adding…" : "Add NEF item"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // AddSquawkPhotoModal — the photo entry method (Sean, 2026-09-05: "voice or
 // chat is best, but a photo is better, worst case a form"). Same two-step
 // RAAS shape as MeterReadingCard.jsx: photo -> POST /v1/mx:readSquawkPhoto
@@ -1035,6 +1359,8 @@ export function AddSquawkPhotoModal({ onClose, onFiled }) {
 export function CloseSquawkModal({ squawk, onClose, onResolved }) {
   const [action, setAction] = useState("closed"); // closed | deferred
   const [category, setCategory] = useState("");
+  const [melReference, setMelReference] = useState("");
+  const [restrictions, setRestrictions] = useState("");
   const [by, setBy] = useState("");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState(null);
@@ -1051,6 +1377,8 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
         status: action,
         category: action === "deferred" ? category : undefined,
         deferredBy: action === "deferred" ? by.trim() : undefined,
+        melReference: action === "deferred" ? melReference.trim() || undefined : undefined,
+        restrictions: action === "deferred" ? restrictions.trim() || undefined : undefined,
         closedBy: action === "closed" ? by.trim() : undefined,
         closedNote: action === "closed" ? note.trim() : undefined,
       });
@@ -1071,16 +1399,26 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {action === "deferred" && (
-            <div>
-              <label style={labelStyle}>MEL category *</label>
-              <select style={fieldStyle} value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">Select…</option>
-                <option value="A">A — repair before next flight</option>
-                <option value="B">B — within 3 days</option>
-                <option value="C">C — within 10 days</option>
-                <option value="D">D — within 120 days</option>
-              </select>
-            </div>
+            <>
+              <div>
+                <label style={labelStyle}>MEL category *</label>
+                <select style={fieldStyle} value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="">Select…</option>
+                  <option value="A">A — repair before next flight</option>
+                  <option value="B">B — within 3 days</option>
+                  <option value="C">C — within 10 days</option>
+                  <option value="D">D — within 120 days</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>MEL reference (optional)</label>
+                <input style={fieldStyle} value={melReference} onChange={(e) => setMelReference(e.target.value)} placeholder="e.g. 32-60-01" />
+              </div>
+              <div>
+                <label style={labelStyle}>Operating restrictions (optional)</label>
+                <textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={restrictions} onChange={(e) => setRestrictions(e.target.value)} placeholder="What conditions apply while this is deferred — e.g. 'placarded inop, day VFR only'" />
+              </div>
+            </>
           )}
           <div><label style={labelStyle}>{action === "deferred" ? "Deferred by" : "Closed by"} *</label><input style={fieldStyle} value={by} onChange={(e) => setBy(e.target.value)} placeholder="A&P name / cert #" /></div>
           {action === "closed" && (
@@ -1144,6 +1482,153 @@ function OpenSquawksPanel({ refreshKey, onAction }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// MissionRequestPanel — Dispatch "Requests" tab. Real mission intake:
+// captures what's actually being asked for (aircraft type/category, mission
+// type, seats, IFR, cargo) and matches it against the real fleet on file via
+// POST /v1/dispatch:matchAircraft (services/dispatch/aircraftMatching.js) —
+// scoring/ranking computed server-side against each tail's actual type,
+// capabilities profile, and real computed airworthiness. An unmatched
+// request (e.g. asking for a 777 when the fleet on file is all PC-12s)
+// returns an honest "no match" with the real fleet size — never a
+// fabricated candidate. A matched candidate can be turned directly into a
+// real trip request (POST /v1/dispatch:createTripRequest) with the mission
+// criteria and match reasons attached for audit.
+// ─────────────────────────────────────────────────────────────────────────
+function MissionRequestPanel() {
+  const [form, setForm] = useState({
+    requiredType: "", category: "", missionType: "", minSeats: "", requiresIfr: false, cargoCapacityLbs: "", destination: "",
+  });
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [createdFor, setCreatedFor] = useState({}); // tailNumber -> requestId, per-candidate "create trip" status
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+
+  async function runMatch() {
+    setBusy(true);
+    setErr(null);
+    setResult(null);
+    try {
+      const criteria = {
+        requiredType: form.requiredType.trim() || undefined,
+        category: form.category.trim() || undefined,
+        missionType: form.missionType || undefined,
+        minSeats: form.minSeats ? Number(form.minSeats) : undefined,
+        requiresIfr: form.requiresIfr || undefined,
+        cargoCapacityLbs: form.cargoCapacityLbs ? Number(form.cargoCapacityLbs) : undefined,
+      };
+      const j = await apiPost("/v1/dispatch:matchAircraft", criteria);
+      setResult(j);
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+
+  async function createTripFor(candidate) {
+    if (!form.destination.trim()) {
+      setCreatedFor((prev) => ({ ...prev, [candidate.tailNumber]: "error: enter a destination ICAO above before creating a trip request" }));
+      return;
+    }
+    setCreatedFor((prev) => ({ ...prev, [candidate.tailNumber]: "running" }));
+    try {
+      const j = await apiPost("/v1/dispatch:createTripRequest", {
+        destination: form.destination.trim().toUpperCase(),
+        tailNumber: candidate.tailNumber,
+        missionRequest: result?.criteria || {},
+        matchReasons: candidate.reasonsFor || [],
+      });
+      setCreatedFor((prev) => ({ ...prev, [candidate.tailNumber]: j.requestId }));
+    } catch (e) {
+      setCreatedFor((prev) => ({ ...prev, [candidate.tailNumber]: `error: ${e.message}` }));
+    }
+  }
+
+  const scoreColor = (s) => (s.airworthinessStatus === "RED" ? "#b91c1c" : s.airworthinessStatus === "YELLOW" ? "#92400e" : s.airworthinessStatus === "UNVERIFIED" ? "#64748b" : "#15803d");
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, marginBottom: 16, background: "#f8fafc" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 10 }}>Mission request</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={labelStyle}>Aircraft type needed</label><input style={fieldStyle} value={form.requiredType} onChange={(e) => set("requiredType", e.target.value)} placeholder="C172 / King Air 350 / 777" /></div>
+          <div>
+            <label style={labelStyle}>Mission type</label>
+            <select style={fieldStyle} value={form.missionType} onChange={(e) => set("missionType", e.target.value)}>
+              <option value="">Any</option>
+              <option value="training">Training</option>
+              <option value="medevac">Medevac</option>
+              <option value="charter">Charter</option>
+              <option value="cargo">Cargo / freight</option>
+              <option value="tour">Tour</option>
+            </select>
+          </div>
+          <div><label style={labelStyle}>Category (optional)</label><input style={fieldStyle} value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="e.g. turboprop-multi" /></div>
+          <div><label style={labelStyle}>Min seats</label><input type="number" style={fieldStyle} value={form.minSeats} onChange={(e) => set("minSeats", e.target.value)} /></div>
+          <div><label style={labelStyle}>Cargo capacity needed (lbs)</label><input type="number" style={fieldStyle} value={form.cargoCapacityLbs} onChange={(e) => set("cargoCapacityLbs", e.target.value)} /></div>
+          <div><label style={labelStyle}>Destination ICAO (for trip request)</label><input style={fieldStyle} value={form.destination} onChange={(e) => set("destination", e.target.value)} placeholder="PHNL" /></div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155", marginTop: 20 }}>
+            <input type="checkbox" checked={form.requiresIfr} onChange={(e) => set("requiresIfr", e.target.checked)} />
+            Requires IFR certification
+          </label>
+        </div>
+        <button onClick={runMatch} disabled={busy} style={{ marginTop: 12, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+          {busy ? "Matching against fleet…" : "Match against fleet"}
+        </button>
+      </div>
+
+      {err && <div style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
+
+      {result && (
+        <div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+            {result.fleetSize} tail(s) on file for this workspace{result.candidates.length ? ` · ${result.candidates.length} match(es)` : ""}
+          </div>
+          {result.message && (
+            <div style={{ padding: 12, fontSize: 13, color: "#334155", background: "#f1f5f9", borderRadius: 8, marginBottom: 12 }}>{result.message}</div>
+          )}
+          {result.candidates.map((c) => (
+            <div key={c.tailNumber} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+                    {c.tailNumber} {c.type ? `· ${c.type}` : ""}
+                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, color: scoreColor(c), background: "#f8fafc", border: `1px solid ${scoreColor(c)}` }}>{c.airworthinessStatus}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Match score: {c.score}</div>
+                </div>
+                <button
+                  onClick={() => createTripFor(c)}
+                  disabled={createdFor[c.tailNumber] === "running" || (typeof createdFor[c.tailNumber] === "string" && !createdFor[c.tailNumber].startsWith("error"))}
+                  style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}
+                >
+                  {createdFor[c.tailNumber] && !String(createdFor[c.tailNumber]).startsWith("error") && createdFor[c.tailNumber] !== "running" ? "Trip request created ✓" : "Create trip request"}
+                </button>
+              </div>
+              {c.reasonsFor.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {c.reasonsFor.map((r, i) => <div key={i} style={{ fontSize: 12, color: "#15803d" }}>✓ {r}</div>)}
+                </div>
+              )}
+              {c.reasonsAgainst.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  {c.reasonsAgainst.map((r, i) => <div key={i} style={{ fontSize: 12, color: "#b45309" }}>⚠ {r}</div>)}
+                </div>
+              )}
+              {typeof createdFor[c.tailNumber] === "string" && createdFor[c.tailNumber].startsWith("error") && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#dc2626" }}>{createdFor[c.tailNumber]}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug }) {
   // Role switcher — local override of which of the three role slugs is
@@ -1177,6 +1662,11 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   const [showAddSquawkPhoto, setShowAddSquawkPhoto] = useState(false);
   const [actionSquawk, setActionSquawk] = useState(null);
   const [squawksRefreshKey, setSquawksRefreshKey] = useState(0);
+  // 2026-09-05 MX deep-dive — MX To-Do / Warranty / NEF "+ Add" modals.
+  const [showAddMaintenanceItem, setShowAddMaintenanceItem] = useState(false);
+  const [showAddWarranty, setShowAddWarranty] = useState(false);
+  const [showAddNefItem, setShowAddNefItem] = useState(false);
+  const [mxRefreshKey, setMxRefreshKey] = useState(0);
   const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
   const isDispatchWorker = (workerSlug || "").startsWith("av-dispatch");
   const isMxWorker = (workerSlug || "").startsWith("av-mx");
@@ -1239,6 +1729,18 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         } else if (cfg.kind === "adCompliance") {
           const data = await apiGet(`/v1/mx:listAircraft`);
           if (data.fleet) blocks = adComplianceToBlocks(data.fleet);
+        } else if (cfg.kind === "maintenanceSchedule") {
+          const data = await apiGet(`/v1/mx:listAircraft`);
+          if (data.fleet) blocks = maintenanceScheduleToBlocks(data.fleet);
+        } else if (cfg.kind === "melItems") {
+          const data = await apiGet(`/v1/mx:listSquawks`);
+          if (data.squawks) blocks = melItemsToBlocks(data.squawks);
+        } else if (cfg.kind === "warranties") {
+          const data = await apiGet(`/v1/mx:listAircraft`);
+          if (data.fleet) blocks = warrantiesToBlocks(data.fleet);
+        } else if (cfg.kind === "nefItems") {
+          const data = await apiGet(`/v1/mx:listAircraft`);
+          if (data.fleet) blocks = nefItemsToBlocks(data.fleet);
         } else if (cfg.kind === "releases") {
           const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
           const data = await apiGet(`/v1/aviation:dispatch:releases${tenantId && tenantId !== "vault" ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
@@ -1257,7 +1759,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       pollingRef.current = setInterval(fetchLive, 60_000);
     }
     return () => { if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; } };
-  }, [workerSlug, currentTabId]);
+  }, [workerSlug, currentTabId, mxRefreshKey]);
 
   if (!spec) {
     return (
@@ -1324,6 +1826,33 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
               >
                 📷 Photo Squawk
               </button>
+              {(currentTabId === "scheduled-mx" || currentTabId === "inspections") && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddMaintenanceItem(true)}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                >
+                  + Add Maintenance Item
+                </button>
+              )}
+              {currentTabId === "warranty" && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddWarranty(true)}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                >
+                  + Add Warranty
+                </button>
+              )}
+              {currentTabId === "nef" && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddNefItem(true)}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                >
+                  + Add NEF Item
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1334,20 +1863,38 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       {showAddSquawk && (
         <AddSquawkModal
           onClose={() => setShowAddSquawk(false)}
-          onFiled={() => { setShowAddSquawk(false); setSquawksRefreshKey(k => k + 1); }}
+          onFiled={() => { setShowAddSquawk(false); setSquawksRefreshKey(k => k + 1); setMxRefreshKey(k => k + 1); }}
         />
       )}
       {showAddSquawkPhoto && (
         <AddSquawkPhotoModal
           onClose={() => setShowAddSquawkPhoto(false)}
-          onFiled={() => { setShowAddSquawkPhoto(false); setSquawksRefreshKey(k => k + 1); }}
+          onFiled={() => { setShowAddSquawkPhoto(false); setSquawksRefreshKey(k => k + 1); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showAddMaintenanceItem && (
+        <AddMaintenanceItemModal
+          onClose={() => setShowAddMaintenanceItem(false)}
+          onAdded={() => { setShowAddMaintenanceItem(false); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showAddWarranty && (
+        <AddWarrantyModal
+          onClose={() => setShowAddWarranty(false)}
+          onAdded={() => { setShowAddWarranty(false); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showAddNefItem && (
+        <AddNefItemModal
+          onClose={() => setShowAddNefItem(false)}
+          onAdded={() => { setShowAddNefItem(false); setMxRefreshKey(k => k + 1); }}
         />
       )}
       {actionSquawk && (
         <CloseSquawkModal
           squawk={actionSquawk}
           onClose={() => setActionSquawk(null)}
-          onResolved={() => { setActionSquawk(null); setSquawksRefreshKey(k => k + 1); }}
+          onResolved={() => { setActionSquawk(null); setSquawksRefreshKey(k => k + 1); setMxRefreshKey(k => k + 1); }}
         />
       )}
 
@@ -1404,6 +1951,10 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       {isMxWorker && currentTabId === "aircraft" && (
         <OpenSquawksPanel refreshKey={squawksRefreshKey} onAction={setActionSquawk} />
       )}
+
+      {/* Mission request intake + real aircraft-type/capability matching —
+          Dispatch "Requests" tab. See MissionRequestPanel above. */}
+      {isDispatchWorker && currentTabId === "requests" && <MissionRequestPanel />}
     </div>
   );
 }

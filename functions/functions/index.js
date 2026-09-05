@@ -33533,6 +33533,11 @@ Analyze now:`;
         case "uploadTripHistoryCsv":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await tripHandlers.handleUploadTripHistoryCsv(req, res, dctx);
+        case "matchAircraft": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const matchHandlers = require("./services/dispatch/aircraftMatching");
+          return await matchHandlers.handleMatchAircraft(req, res, dctx);
+        }
         default:
           return jsonError(res, 404, "Unknown dispatch action: " + dispatchAction);
         }
@@ -33584,6 +33589,15 @@ Analyze now:`;
         case "uploadAircraftRosterCsv":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleUploadAircraftRosterCsv(req, res, mctx);
+        case "addMaintenanceItem":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleAddMaintenanceItem(req, res, mctx);
+        case "addWarranty":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleAddWarranty(req, res, mctx);
+        case "addNefItem":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleAddNefItem(req, res, mctx);
         case "readMeterPhoto":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleReadMeterPhoto(req, res, mctx);

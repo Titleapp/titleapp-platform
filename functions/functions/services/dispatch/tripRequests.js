@@ -77,6 +77,22 @@ async function handleCreateTripRequest(req, res, ctx) {
     },
     assignedCrew: sanitizeCrew(body.assignedCrew),
     tailNumber: String(body.tailNumber || "").toUpperCase().slice(0, 10),
+    // Mission-request snapshot — what the requester actually asked for
+    // (aircraft type/category/mission needs) and, if the tail above was
+    // picked via POST /v1/dispatch:matchAircraft (services/dispatch/
+    // aircraftMatching.js), why that tail was the match. Optional and
+    // additive: a trip request created the old way (caller already knew
+    // the tailNumber) simply omits this. Kept so a dispatcher's tail
+    // assignment is auditable against the original ask, not just a bare
+    // tail number with no record of the requirement it was meant to satisfy.
+    missionRequest: body.missionRequest && typeof body.missionRequest === "object" ? {
+      requiredType: String(body.missionRequest.requiredType || "").slice(0, 100) || null,
+      missionType: String(body.missionRequest.missionType || "").slice(0, 60) || null,
+      minSeats: body.missionRequest.minSeats != null ? Number(body.missionRequest.minSeats) : null,
+      requiresIfr: body.missionRequest.requiresIfr === true,
+      cargoCapacityLbs: body.missionRequest.cargoCapacityLbs != null ? Number(body.missionRequest.cargoCapacityLbs) : null,
+    } : null,
+    matchReasons: Array.isArray(body.matchReasons) ? body.matchReasons.slice(0, 20).map(r => String(r).slice(0, 300)) : [],
     status: "draft",
     createdByUid: ctx.userId,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
