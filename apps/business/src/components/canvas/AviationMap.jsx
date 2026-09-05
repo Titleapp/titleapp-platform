@@ -344,6 +344,14 @@ export default function AviationMap({
   const [calibrationOpen, setCalibrationOpen] = useState(false);
   const [chartOverlay, setChartOverlay] = useState(null); // { icao, imageUrl, topLeft, topRight, bottomLeft, residualsFt }
 
+  // Real satellite imagery basemap — Esri World Imagery, free/keyless public
+  // tile service. Added while verifying the chart-georeferencing handedness
+  // fix (this session): the default Voyager basemap has no real runway
+  // pavement to check an overlay against, only vector/label tiles. Kept as
+  // a permanent toggle since it's genuinely useful on its own (visually
+  // confirming taxi routes, ramp layout, construction) — not a throwaway.
+  const [satelliteOn, setSatelliteOn] = useState(false);
+
   // Weather radar time-scrubber — Iowa Environmental Mesonet's WMS-T NEXRAD
   // mosaic (free, keyless, genuinely time-aware — verified this session: a
   // TIME= query 3h back over CONUS returned real, different reflectivity
@@ -479,6 +487,7 @@ export default function AviationMap({
         <IconToggle icon="💬" title="PIREPs"   enabled={layers.pireps.enabled}   loading={layers.pireps.loading}   onClick={() => toggleLayer("pireps")}   color="#34d399" />
         <IconToggle icon="▭" title="Runways (georeferencing GCPs)" enabled={layers.runways.enabled} loading={layers.runways.loading} onClick={() => toggleLayer("runways")} color="#fbbf24" />
         <IconToggle icon="🗺" title="Calibrate Airport Diagram overlay" enabled={calibrationOpen} loading={false} onClick={() => setCalibrationOpen(v => !v)} color="#c084fc" />
+        <IconToggle icon="🛰" title="Satellite imagery" enabled={satelliteOn} loading={false} onClick={() => setSatelliteOn(v => !v)} color="#4ade80" />
         <IconToggle icon="🌧" title="Weather radar (time scrubber)" enabled={radarOn} loading={false} onClick={() => setRadarOn(v => !v)} color="#38bdf8" />
         <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
         {Object.entries(HAZARD_FILTERS).map(([key, cfg]) => (
@@ -507,12 +516,20 @@ export default function AviationMap({
             basemap. Overlay colors (airspace, METAR, traffic) already match
             real FAA sectional conventions (blue=B, magenta=C, indigo=D) and
             read fine on a light base — no overlay color changes needed. */}
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-          subdomains="abcd"
-          maxZoom={19}
-        />
+        {satelliteOn ? (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution="Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics"
+            maxZoom={19}
+          />
+        ) : (
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+            subdomains="abcd"
+            maxZoom={19}
+          />
+        )}
 
         {/* Weather radar — IEM's time-aware WMS NEXRAD mosaic. `params.time`
             changing on every scrub/play tick forces react-leaflet's
