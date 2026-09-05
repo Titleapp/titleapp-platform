@@ -254,6 +254,30 @@ function adComplianceToBlocks(fleet) {
   return blocks;
 }
 
+// Real flight-release history — GET /v1/aviation:dispatch:releases, backing
+// POST /v1/aviation:dispatch:releaseFlight (ReleaseFlightModal above). This
+// endpoint existed with no frontend reader before the 2026-09-05
+// role-switcher pass; this is the real go/no-go record, not a new fixture.
+function releasesToBlocks(releases) {
+  const list = releases || [];
+  if (!list.length) return [{
+    type: "prose",
+    items: [{ band: "BLUE", title: "No releases issued yet", text: "Releases appear here as soon as dispatch issues one via \"+ Release Flight\" above." }],
+  }];
+  const rows = list.slice(0, 20).map(r => [
+    r.tailNumber || "—",
+    `${r.depIcao || "—"} → ${r.arrIcao || "—"}`,
+    r.proposedDepartureTime ? new Date(r.proposedDepartureTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—",
+    r.pic || "—",
+    r.operationType === "part135" ? "Part 135" : "Part 91",
+    r.releasingAuthority || "—",
+  ]);
+  return [
+    { type: "kpis", items: [{ label: "Releases on file", value: `${list.length}`, band: "GREEN" }] },
+    { type: "table", title: "Flight releases — live from Firestore", cols: ["Tail", "Route", "Proposed dep.", "PIC", "Ops", "Released by"], rows },
+  ];
+}
+
 function trafficToBlocks(ac) {
   const list = ac || [];
   if (!list.length) return [{
@@ -274,6 +298,49 @@ function trafficToBlocks(ac) {
 }
 
 const c = (band) => AV_CAS[band] || AV_CAS.WHITE;
+
+// ── Role switcher ─────────────────────────────────────────────────────────
+// 2026-09-05 — Pilots / MX / Dispatch are one real fleet record (same tails,
+// same squawks, same flight logs), viewed through three role-scoped lenses —
+// not three separate apps a user has to leave-and-reopen the worker
+// marketplace to reach. This does not change what data each role can see
+// (that's still enforced by each worker slug's own tabs/LIVE_TABS config,
+// same as before); it just lets a user already on one aviation lens jump to
+// another without leaving the canvas. The three real "-001" role slugs are
+// the switch targets — not the older fleet-wide "av-aircraft"/"av-dispatch"
+// slugs, which predate this pattern and stay reachable only their own way.
+const AVIATION_ROLES = [
+  { slug: "av-copilot-001",  label: "Pilots" },
+  { slug: "av-mx-001",       label: "MX" },
+  { slug: "av-dispatch-001", label: "Dispatch" },
+];
+
+function RoleSwitcher({ currentSlug, onSwitch }) {
+  if (!AVIATION_ROLES.some(r => r.slug === currentSlug)) return null;
+  return (
+    <div style={{ display: "flex", gap: 2, padding: 3, borderRadius: 10, background: "#f1f5f9", marginBottom: 14, width: "fit-content" }}>
+      {AVIATION_ROLES.map(r => {
+        const active = r.slug === currentSlug;
+        return (
+          <button
+            key={r.slug}
+            type="button"
+            onClick={() => onSwitch(r.slug)}
+            style={{
+              padding: "6px 16px", fontSize: 12.5, fontWeight: 700, borderRadius: 8, border: "none", cursor: "pointer",
+              color: active ? "#0f172a" : "#64748b",
+              background: active ? "#fff" : "transparent",
+              boxShadow: active ? "0 1px 3px rgba(15,23,42,0.15)" : "none",
+              transition: "all 0.12s",
+            }}
+          >
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── CAS instrument panel ──────────────────────────────────────────────────────
 function CasPanel({ counts }) {
@@ -538,6 +605,12 @@ const LIVE_TABS = {
     // Next step beyond this pass: derive these from the actual filed trip
     // instead of a fixed list, once Dispatch's Schedule tab is live-wired too.
     "notams": { kind: "notams", locations: "PHOG,PHNL,PHKO,PHTO,PHNY" },
+    // 2026-09-05 role-switcher pass — same real METAR source as CoPilot's
+    // preflight tab, same ICAO set as this worker's own NOTAMs tab above.
+    "weather": { kind: "weather", ids: "PHOG,PHNL,PHKO,PHTO,PHNY" },
+    // Real release history — see releasesToBlocks() and the "releases" kind
+    // branch below. Reads the same endpoint ReleaseFlightModal writes to.
+    "releases": { kind: "releases" },
   },
   "av-ground-school-001": {
     "quiz-zone": { kind: "currency" },
@@ -1072,9 +1145,25 @@ function OpenSquawksPanel({ refreshKey, onAction }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function AviationWorkerCanvas({ workerSlug }) {
-  const spec = getAvCanvas(workerSlug);
+export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug }) {
+  // Role switcher — local override of which of the three role slugs is
+  // rendered, so switching Pilots/MX/Dispatch doesn't require leaving this
+  // canvas. Defaults to whatever worker the user actually opened; only ever
+  // overridden by an explicit click on RoleSwitcher.
+  const [roleOverride, setRoleOverride] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
+  // If the user opens a genuinely different worker from outside this canvas
+  // (marketplace/sidebar), drop any leftover role-switcher override instead
+  // of silently keeping them on the previous worker's lens. Adjusting state
+  // during render (not in an effect) per https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  const [prevIncomingSlug, setPrevIncomingSlug] = useState(incomingWorkerSlug);
+  if (incomingWorkerSlug !== prevIncomingSlug) {
+    setPrevIncomingSlug(incomingWorkerSlug);
+    setRoleOverride(null);
+    setActiveTab(null);
+  }
+  const workerSlug = roleOverride || incomingWorkerSlug;
+  const spec = getAvCanvas(workerSlug);
   const [liveBlocks, setLiveBlocks] = useState({});
   const [loading, setLoading] = useState({});
   const pollingRef = useRef(null);
@@ -1150,6 +1239,10 @@ export default function AviationWorkerCanvas({ workerSlug }) {
         } else if (cfg.kind === "adCompliance") {
           const data = await apiGet(`/v1/mx:listAircraft`);
           if (data.fleet) blocks = adComplianceToBlocks(data.fleet);
+        } else if (cfg.kind === "releases") {
+          const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+          const data = await apiGet(`/v1/aviation:dispatch:releases${tenantId && tenantId !== "vault" ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
+          blocks = releasesToBlocks(data.releases);
         }
         if (blocks) setLiveBlocks(prev => ({ ...prev, [key]: blocks }));
       } catch (e) {
@@ -1181,6 +1274,8 @@ export default function AviationWorkerCanvas({ workerSlug }) {
 
   return (
     <div style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto" }}>
+      <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => { setRoleOverride(slug); setActiveTab(null); }} />
+
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>

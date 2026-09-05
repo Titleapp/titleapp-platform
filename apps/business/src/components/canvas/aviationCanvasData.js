@@ -533,6 +533,29 @@ export const AV_CANVAS = {
           ] },
         ],
       },
+      {
+        // 2026-09-05 role-switcher pass — real, live METAR weather for the
+        // same Hawaii bases as NOTAMs above. Dispatch needs this in-lens
+        // (not just a click-through to CoPilot's preflight tab), since a
+        // weather briefing is one of the two attestations ReleaseFlightModal
+        // requires before a release can be issued.
+        id: "weather",
+        label: "Weather",
+        description: "Live METARs for today's operating bases — the weather-briefing half of a release decision.",
+        blocks: [],
+      },
+      {
+        // 2026-09-05 role-switcher pass — real release history from
+        // POST /v1/aviation:dispatch:releaseFlight (ReleaseFlightModal),
+        // read back via the existing GET /v1/aviation:dispatch:releases
+        // endpoint. That endpoint existed with no UI reading it before this;
+        // this tab is the real go/no-go record dispatch actually needs to
+        // see, not a new fixture.
+        id: "releases",
+        label: "Releases",
+        description: "Every flight release issued from this workspace — PIC, aircraft, W&B and weather-briefing attestation, and releasing authority.",
+        blocks: [],
+      },
     ],
   },
 
