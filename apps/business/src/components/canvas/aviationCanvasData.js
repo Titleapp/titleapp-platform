@@ -246,6 +246,19 @@ export const AV_CANVAS = {
         ],
       },
       {
+        // 2026-09-05 — read-only view of the real aircraft "CAN" (Aircraft
+        // Logbook) for pilots. Distinct from the "Logbook" tab above (that's
+        // the pilot's own personal Vault flight log); this is the tail's
+        // permanent maintenance/inspection/AD record — the same real
+        // aircraftRecords/{scope}/aircraft/{tail}/logbook data MX reads and
+        // writes on the MX worker, read via GET /v1/mx:logbook:list. Pilots
+        // cannot write to it here — no "+ Log Entry" button on this worker.
+        id: "aircraft-logbook",
+        label: "Aircraft Logbook",
+        description: "The aircraft's own legal logbook (CAN) — every maintenance action, inspection, and AD compliance, A&P/IA-signed and append-only. Read-only here; MX maintains it.",
+        blocks: [],
+      },
+      {
         id: "charts",
         label: "Charts",
         description: "Approach and departure charts, airport diagrams, and preferred IFR routing for your bases — PHOG, PHNL, PHKO, PHTO, PHNY. Sourced from FAA AeroNav. Always verify chart currency against the current AIRAC cycle before flight.",
@@ -317,22 +330,19 @@ export const AV_CANVAS = {
         ],
       },
       {
+        // 2026-09-05 — the real "CAN": a genuine Firestore-backed, append-only
+        // aircraft logbook (aircraftRecords/{scope}/aircraft/{tail}/logbook),
+        // not the hardcoded rows this tab used to render. Squawk defer/close,
+        // scheduled-maintenance completion, AD compliance, and warranty adds
+        // all auto-append a real entry here (see services/mx/aircraftRecords.js);
+        // "+ Log Entry" above and the "tell Alex to log a maintenance entry"
+        // chat prompt both write through the same real endpoint
+        // (POST /v1/mx:logbook:add). Live-wired in AviationWorkerCanvas.jsx —
+        // blocks intentionally empty here.
         id: "aircraft-logbook",
         label: "Aircraft Logbook",
-        description: "Append-only aircraft maintenance logbook — every entry timestamped and A&P-signed. The legal record of this aircraft's life.",
-        blocks: [
-          { type: "table", title: "Maintenance logbook (most recent first)", cols: ["Date", "TTSN", "Description", "Category", "Signed by"], rows: [
-            ["Jul 15 2026", "1,847", "Gear door light R/M insp — socket defective, MEL deferred Cat C",   "Unscheduled", "Williams, R A&P"],
-            ["Jun 28 2026", "1,800", "100-hour inspection — all items cleared · oil change MIL-PRF-23699", "Scheduled",   "Williams, R A&P/IA"],
-            ["Jun 15 2026", "1,782", "PT6A chip detector inspection — no material · clear",                "Inspection",  "Williams, R A&P"],
-            ["May 10 2026", "1,744", "AD 2026-08-12 compliance — fuel cap seal replacement",               "AD",          "Williams, R A&P"],
-            ["Dec 15 2025", "1,601", "Annual inspection — all ADs current · airworthy",                    "Annual",      "Williams, R IA"],
-            ["Dec 12 2025", "1,601", "ELT battery replacement — Kannad 406 AF-Compact · exp Dec 2027",    "Inspection",  "Williams, R A&P"],
-          ] },
-          { type: "cards", items: [
-            { band: "BLUE", label: "LOG MAINTENANCE", title: "Tell Alex to log a maintenance entry", detail: "Say: 'Log maintenance on the PC-12 — [description], [A&P name], [TTSN], [date].' The entry appends to this logbook and cannot be altered after signing.", action: "Open chat" },
-          ] },
-        ],
+        description: "Append-only aircraft maintenance logbook — every entry timestamped and A&P/IA-signed. The legal record of this aircraft's life. Say 'Log maintenance on N701AA — [description], [A&P name], [TTSN]' to Alex, or use \"+ Log Entry\" above.",
+        blocks: [],
       },
       {
         id: "scheduled-mx",

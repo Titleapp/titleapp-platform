@@ -36,6 +36,10 @@ function aircraftRef(db, scopeId, tailNumber) {
   return db.collection("aircraftRecords").doc(scopeId).collection("aircraft").doc(String(tailNumber).toUpperCase());
 }
 
+function logbookRef(db, scopeId, tailNumber) {
+  return aircraftRef(db, scopeId, tailNumber).collection("logbook");
+}
+
 // ============================================================
 // 1. upsertAircraft — create or update the base aircraft record
 // ============================================================
@@ -191,6 +195,119 @@ async function handleListSquawks(req, res, ctx) {
 }
 
 // ============================================================
+// 2c. appendLogbookEntryCore / handleAddLogbookEntry / handleListLogbook —
+// the real Aircraft Logbook ("CAN" — Sean's term for the aircraft's own
+// canonical, legal logbook: airframe/engine/prop times, every maintenance
+// action, every inspection, every AD compliance, signed by the A&P/IA who
+// did the work). Genuinely new — the "aircraft-logbook" tab was 100%
+// hardcoded fixture rows before this (aviationCanvasData.js AV_CANVAS
+// "av-mx-001".tabs["aircraft-logbook"]) with a chat prompt ("tell Alex to
+// log a maintenance entry") that wrote nowhere real.
+//
+// Design decision (verified against the real write paths above before
+// picking this, per Sean's "don't guess" instruction): squawks are mutated
+// in place (handleUpdateSquawkStatus does ref.update(), not append) and
+// adCompliance/maintenanceItems are current-state fields, not event logs —
+// so composing the logbook purely at read-time from those collections
+// would either require re-deriving history from mutable docs (fragile) or
+// would silently lose the actual point-in-time record a legal logbook
+// needs. Instead: aircraftRecords/{scopeId}/aircraft/{tail}/logbook/{id} is
+// a genuinely new, separate, append-only subcollection (same
+// scopeId/tailNumber scoping discipline as squawks above) that the real
+// event handlers below (updateSquawkStatus, addWarranty,
+// completeMaintenanceItem, recordAdCompliance) append to AT THE MOMENT the
+// real event happens — one extra write per real action, never a second
+// mutable copy that could drift, and every entry is immutable from the
+// moment it's written (no update/delete path exists for this
+// subcollection, by design).
+// ============================================================
+async function appendLogbookEntryCore({ tailNumber, ctx, recordType, description, category, signedBy, signedByCert, ttsn, source, refId }) {
+  if (!tailNumber) { const e = new Error("tailNumber required"); e.status = 400; throw e; }
+  if (!description) { const e = new Error("description required"); e.status = 400; throw e; }
+
+  const db = getDb();
+  const scopeId = resolveScopeId(ctx);
+
+  // Best-effort TTSN snapshot from the aircraft's current record when the
+  // caller didn't supply one explicitly — a legal logbook entry should carry
+  // the airframe time at the moment of the entry whenever it's known.
+  let resolvedTtsn = ttsn != null && ttsn !== "" ? Number(ttsn) : null;
+  if (resolvedTtsn == null) {
+    const aircraftSnap = await aircraftRef(db, scopeId, tailNumber).get();
+    resolvedTtsn = aircraftSnap.exists ? (aircraftSnap.data().totalTimeHours ?? null) : null;
+  }
+
+  const doc = {
+    tailNumber: String(tailNumber).toUpperCase(),
+    recordType: String(recordType || "manual").slice(0, 50),
+    description: String(description).slice(0, 1000),
+    category: category ? String(category).slice(0, 50) : null,
+    ttsn: resolvedTtsn,
+    signedBy: String(signedBy || "").slice(0, 200),
+    signedByCert: signedByCert ? String(signedByCert).slice(0, 50) : null,
+    source: source || "manual",
+    refId: refId != null ? String(refId).slice(0, 100) : null,
+    userId: ctx.userId || null,
+    scopeId,
+    tenantId: ctx.tenantId || null,
+    enteredAt: new Date().toISOString(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  const ref = logbookRef(db, scopeId, tailNumber).doc();
+  await ref.set(doc); // append-only — this subcollection has no update/delete path
+  return { entryId: ref.id, ...doc };
+}
+
+async function handleAddLogbookEntry(req, res, ctx) {
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.description) return res.status(400).json({ ok: false, error: "description required" });
+  if (!body.signedBy) return res.status(400).json({ ok: false, error: "signedBy (A&P/IA name) required — this is a legal record" });
+
+  try {
+    const result = await appendLogbookEntryCore({
+      tailNumber: body.tailNumber, ctx, recordType: "manual",
+      description: body.description, category: body.category || "Other",
+      signedBy: body.signedBy, signedByCert: body.signedByCert, ttsn: body.ttsn,
+      source: body.source || "manual",
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+}
+
+// Real, live read for the "Aircraft Logbook" tab — reachable from both MX
+// (write access, via handleAddLogbookEntry + the auto-append event handlers)
+// and Pilots (read-only — this is "the legal record of this aircraft's
+// life," and pilots need to be able to see it even though they can't write
+// to it). Fleet-wide across every tail on file for this scope unless a
+// specific tailNumber is requested, same shape as handleListSquawks above.
+async function handleListLogbook(req, res, ctx) {
+  const db = getDb();
+  const scopeId = resolveScopeId(ctx);
+  const tailFilter = req.query?.tailNumber ? String(req.query.tailNumber).toUpperCase() : null;
+
+  let tails;
+  if (tailFilter) {
+    tails = [tailFilter];
+  } else {
+    const fleetSnap = await db.collection("aircraftRecords").doc(scopeId).collection("aircraft").get();
+    tails = fleetSnap.docs.map(d => d.id);
+  }
+
+  const all = [];
+  await Promise.all(tails.map(async (tail) => {
+    const snap = await logbookRef(db, scopeId, tail).get();
+    snap.docs.forEach(d => all.push({ id: d.id, ...d.data() }));
+  }));
+  all.sort((a, b) => new Date(b.enteredAt || 0) - new Date(a.enteredAt || 0));
+
+  return res.json({ ok: true, entries: all.slice(0, 100) });
+}
+
+// ============================================================
 // 3. updateSquawkStatus — defer (with MEL category) or close
 // ============================================================
 async function handleUpdateSquawkStatus(req, res, ctx) {
@@ -232,6 +349,32 @@ async function handleUpdateSquawkStatus(req, res, ctx) {
   }
 
   await ref.update(update);
+
+  // Auto-append to the real Aircraft Logbook — a defer or close is a genuine
+  // maintenance action requiring A&P/IA sign-off, so it belongs in the
+  // permanent legal record (CAN), not just the mutable squawk doc above.
+  // Best-effort: a logging failure here does not fail the squawk-status
+  // update itself (the primary write already succeeded), but it is logged
+  // server-side for follow-up.
+  try {
+    const squawkData = snap.data();
+    if (body.status === "deferred") {
+      await appendLogbookEntryCore({
+        tailNumber: body.tailNumber, ctx, recordType: "squawk_deferred",
+        description: `${squawkData.description || "Discrepancy"} — MEL deferred Cat ${update.category}${update.melReference ? ` (MEL ${update.melReference})` : ""}${update.restrictions ? `. Restrictions: ${update.restrictions}` : ""}`,
+        category: "Unscheduled", signedBy: update.deferredBy, source: "mx_defer", refId: body.squawkId,
+      });
+    } else if (body.status === "closed") {
+      await appendLogbookEntryCore({
+        tailNumber: body.tailNumber, ctx, recordType: "squawk_closed",
+        description: `${squawkData.description || "Discrepancy"} — closed${update.closedNote ? `: ${update.closedNote}` : ""}`,
+        category: "Unscheduled", signedBy: update.closedBy, source: "mx_close", refId: body.squawkId,
+      });
+    }
+  } catch (logErr) {
+    console.error("[updateSquawkStatus] logbook auto-append failed:", logErr.message);
+  }
+
   return res.json({ ok: true });
 }
 
@@ -369,6 +512,67 @@ async function handleAddMaintenanceItem(req, res, ctx) {
 }
 
 // ============================================================
+// 7b2. completeMaintenanceItem — mark one scheduled-maintenance item ("MX
+// To-Do") complete. Genuinely new: addMaintenanceItem above only ever
+// created items, there was no real path to record that one was actually
+// done — which meant "scheduled maintenance completes" had nothing to
+// trigger a real Aircraft Logbook entry from. Rolls the interval forward
+// for recurring items (mirrors real 100-hr/Annual practice: the next due
+// point is computed from the completion, not left showing overdue the
+// instant it's done) and auto-appends the real logbook entry.
+// ============================================================
+async function handleCompleteMaintenanceItem(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.itemId) return res.status(400).json({ ok: false, error: "itemId required" });
+  if (!body.signedBy) return res.status(400).json({ ok: false, error: "signedBy (A&P/IA name) required to complete scheduled maintenance" });
+
+  const scopeId = resolveScopeId(ctx);
+  const ref = aircraftRef(db, scopeId, body.tailNumber);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ ok: false, error: "aircraft not found" });
+
+  const data = snap.data();
+  const items = Array.isArray(data.maintenanceItems) ? data.maintenanceItems : [];
+  const idx = items.findIndex(i => i.id === body.itemId);
+  if (idx === -1) return res.status(404).json({ ok: false, error: "maintenance item not found" });
+
+  const completedAtHours = body.completedAtHours != null ? Number(body.completedAtHours) : (data.totalTimeHours ?? null);
+  const completedItem = {
+    ...items[idx],
+    lastDoneAt: new Date().toISOString(),
+    lastDoneHours: completedAtHours,
+    completedBy: String(body.signedBy).slice(0, 200),
+    completedNote: String(body.completedNote || "").slice(0, 500),
+  };
+  if (completedItem.basis === "hours" && completedItem.intervalHours && completedAtHours != null) {
+    completedItem.dueAtHours = completedAtHours + Number(completedItem.intervalHours);
+  }
+  if (completedItem.basis === "calendar" && completedItem.intervalMonths) {
+    const nextDue = new Date();
+    nextDue.setMonth(nextDue.getMonth() + Number(completedItem.intervalMonths));
+    completedItem.dueDate = nextDue.toISOString().slice(0, 10);
+  }
+
+  const newItems = [...items];
+  newItems[idx] = completedItem;
+  await ref.update({ maintenanceItems: newItems, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+  try {
+    await appendLogbookEntryCore({
+      tailNumber: body.tailNumber, ctx, recordType: "scheduled_maintenance_completed",
+      description: `${completedItem.description || "Scheduled maintenance"} completed${completedItem.completedNote ? ` — ${completedItem.completedNote}` : ""}`,
+      category: "Scheduled", signedBy: completedItem.completedBy, ttsn: completedAtHours, source: "mx_complete", refId: body.itemId,
+    });
+  } catch (logErr) {
+    console.error("[completeMaintenanceItem] logbook auto-append failed:", logErr.message);
+  }
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item: completedItem });
+}
+
+// ============================================================
 // 7c. addWarranty — component/engine/avionics warranty or coverage-plan
 // record (e.g. PT6A Eagle Service Plan, avionics factory warranty).
 // Informational tracking only — see evaluateWarranties: never blocks
@@ -398,6 +602,19 @@ async function handleAddWarranty(req, res, ctx) {
     warranties: admin.firestore.FieldValue.arrayUnion(item),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
+
+  // Auto-append to the real Aircraft Logbook — informational (warranty
+  // never contributes to airworthiness), but still a real record of what
+  // was put on file and by whom.
+  try {
+    await appendLogbookEntryCore({
+      tailNumber: body.tailNumber, ctx, recordType: "warranty_added",
+      description: `Warranty/coverage on file — ${item.component}${item.provider ? ` (${item.provider})` : ""}${item.coverageType ? `, ${item.coverageType}` : ""}`,
+      category: "Warranty", signedBy: item.addedBy, source: "mx_warranty", refId: item.id,
+    });
+  } catch (logErr) {
+    console.error("[addWarranty] logbook auto-append failed:", logErr.message);
+  }
 
   return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item });
 }
@@ -431,6 +648,52 @@ async function handleAddNefItem(req, res, ctx) {
   }, { merge: true });
 
   return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), item });
+}
+
+// ============================================================
+// 7e. recordAdCompliance — record that a specific AD was complied with.
+// Genuinely new: upsertAircraft's adCompliance field only ever supported a
+// wholesale array replace (the whole list, no per-AD action) — there was no
+// real path to say "we just complied with AD 2026-08-12," which meant "an
+// AD gets complied with" had nothing to trigger a real Aircraft Logbook
+// entry from. Finds-or-appends the one AD by number and auto-appends the
+// real logbook entry.
+// ============================================================
+async function handleRecordAdCompliance(req, res, ctx) {
+  const db = getDb();
+  const body = req.body || {};
+  if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
+  if (!body.ad) return res.status(400).json({ ok: false, error: "ad (AD number) required" });
+  if (!body.compliantAsOf) return res.status(400).json({ ok: false, error: "compliantAsOf required" });
+  if (!body.signedBy) return res.status(400).json({ ok: false, error: "signedBy (A&P/IA name) required to record AD compliance" });
+
+  const scopeId = resolveScopeId(ctx);
+  const ref = aircraftRef(db, scopeId, body.tailNumber);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ ok: false, error: "aircraft not found" });
+
+  const list = Array.isArray(snap.data().adCompliance) ? [...snap.data().adCompliance] : [];
+  const idx = list.findIndex(a => String(a?.ad || "").toUpperCase() === String(body.ad).toUpperCase());
+  const entry = {
+    ad: String(body.ad).slice(0, 50),
+    subject: String(body.subject || (idx >= 0 ? list[idx].subject : "") || "").slice(0, 200),
+    compliantAsOf: String(body.compliantAsOf).slice(0, 30),
+    nextDue: body.nextDue ? String(body.nextDue).slice(0, 30) : null,
+  };
+  if (idx >= 0) list[idx] = entry; else list.push(entry);
+  await ref.update({ adCompliance: list, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+  try {
+    await appendLogbookEntryCore({
+      tailNumber: body.tailNumber, ctx, recordType: "ad_compliance",
+      description: `AD ${entry.ad}${entry.subject ? ` — ${entry.subject}` : ""} complied with${entry.nextDue ? ` · next due ${entry.nextDue}` : ""}`,
+      category: "AD", signedBy: body.signedBy, signedByCert: body.signedByCert, ttsn: body.ttsn, source: "mx_ad", refId: entry.ad,
+    });
+  } catch (logErr) {
+    console.error("[recordAdCompliance] logbook auto-append failed:", logErr.message);
+  }
+
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), ad: entry });
 }
 
 // ============================================================
@@ -657,6 +920,7 @@ async function handleCommitSquawkPhoto(req, res, ctx) {
 module.exports = {
   resolveScopeId,
   addSquawkCore,
+  appendLogbookEntryCore,
   handleUpsertAircraft,
   handleAddSquawk,
   handleListSquawks,
@@ -666,8 +930,12 @@ module.exports = {
   handleUploadSquawksCsv,
   handleUploadAircraftRosterCsv,
   handleAddMaintenanceItem,
+  handleCompleteMaintenanceItem,
   handleAddWarranty,
   handleAddNefItem,
+  handleRecordAdCompliance,
+  handleAddLogbookEntry,
+  handleListLogbook,
   handleReadMeterPhoto,
   handleCommitMeterReading,
   handleReadSquawkPhoto,

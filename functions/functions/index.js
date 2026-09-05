@@ -8985,6 +8985,7 @@ YOUR TOOLS — the complete list of what you can actually call. Never claim a to
 - get_notams: get active NOTAMs for any ICAO airports. Filters to operationally relevant items.
 - log_flight: append a flight entry to the pilot's personal Vault logbook. Append-only — confirm details before calling.
 - file_squawk: file a maintenance squawk on an aircraft. Writes to the operator's aircraft maintenance record. Confirm with user before calling.
+- log_maintenance_entry: append an entry to an aircraft's real Aircraft Logbook (CAN) — inspections, component work, AD/SB compliance, anything not an open discrepancy. Append-only — confirm description, signing A&P/IA, and TTSN before calling.
 - push_alert / resolve_alert / snooze_alert: manage the Operating Feed (see rules above).
 
 TOOL ENFORCEMENT — read before every response:
@@ -8999,6 +9000,7 @@ If a user asks about aviation weather, a weather brief, or METARs/TAFs — call 
 If a user asks about NOTAMs for any airport — call get_notams.
 If a user says "log a flight" or wants to record a flight in their logbook — collect the required fields, confirm, then call log_flight.
 If a user says "file a squawk" or "write up a discrepancy" on an aircraft — confirm the details, then call file_squawk.
+If a user says "log a maintenance entry", "log this in the logbook", or describes a completed inspection/repair/AD compliance for an aircraft — confirm the description, signing A&P/IA, and TTSN, then call log_maintenance_entry.
 If you identify an urgent action item that meets the OPERATING FEED rules above — call push_alert to surface it in the feed.
 If a user says "mark that resolved", "close that alert", or "that's done" about an Operating Feed item — call resolve_alert with the itemId.
 If a user says "remind me later", "snooze that", or "not now" about a feed item — call snooze_alert with an appropriate snoozeHours.
@@ -9308,6 +9310,22 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     required: ["tailNumber", "description"],
                   },
                 };
+                const _cosLogMaintenanceEntryTool = {
+                  name: "log_maintenance_entry",
+                  description: "Append an entry to an aircraft's real Aircraft Logbook (CAN) — the permanent, legal, append-only record of that tail's life: inspections performed, components replaced, ADs/SBs complied with, and anything else not already covered by file_squawk (which is for open discrepancies, not completed maintenance actions). Always confirm the description, the signing A&P/IA name, and TTSN with the user before calling — this cannot be edited or deleted once logged.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      tailNumber: { type: "string", description: "Aircraft registration, e.g. N701AA" },
+                      description: { type: "string", description: "What was done — specific enough to stand as the permanent logbook record" },
+                      category: { type: "string", enum: ["Scheduled", "Unscheduled", "Inspection", "AD", "Annual", "Other"], description: "Entry category" },
+                      signedBy: { type: "string", description: "A&P/IA name certifying this entry" },
+                      signedByCert: { type: "string", description: "A&P/IA certificate number, if known" },
+                      ttsn: { type: "number", description: "Total time since new (airframe hours) at the time of this entry, if known" },
+                    },
+                    required: ["tailNumber", "description", "signedBy"],
+                  },
+                };
                 const _cosPushAlertTool = {
                   name: "push_alert",
                   description: "Write a new alert to the user's Operating Feed. Use for time-sensitive items requiring attention: expiring compliance items, scheduling gaps, account issues, high-priority follow-ups. Do NOT use for routine observations or things the user just told you — only push alerts that are genuinely urgent and action-requiring.",
@@ -9347,7 +9365,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     required: ["itemId", "snoozeHours"],
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool, _cosPushAlertTool, _cosResolveAlertTool, _cosSnoozeAlertTool];
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool, _cosLogMaintenanceEntryTool, _cosPushAlertTool, _cosResolveAlertTool, _cosSnoozeAlertTool];
                 // Build follow-up messages for a tool call — includes stub tool_results for any
                 // extra tool_use blocks in _resp.content so Anthropic never sees an unmatched pair.
                 const _cosFollowUpMsgs = (resp, primaryToolId, primaryResult) => {
@@ -10030,6 +10048,31 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
                     _txt = _composeTxt(_squawkFollowUp, _squawkResult);
+                  } else if (_cosTool && _cosTool.name === "log_maintenance_entry") {
+                    let _mxLogResult;
+                    try {
+                      const inp = _cosTool.input;
+                      const mxHandlers = require("./services/mx/aircraftRecords");
+                      const result = await mxHandlers.appendLogbookEntryCore({
+                        tailNumber: inp.tailNumber,
+                        description: inp.description,
+                        category: inp.category || "Other",
+                        signedBy: inp.signedBy,
+                        signedByCert: inp.signedByCert,
+                        ttsn: inp.ttsn,
+                        source: "cos_chat",
+                        ctx: { userId: authUser.uid, tenantId: _cosTenantId || null },
+                      });
+                      _mxLogResult = `Logbook entry appended to ${result.tailNumber}'s Aircraft Logbook. Entry ID: ${result.entryId}. TTSN: ${result.ttsn != null ? result.ttsn : "not on file"}. Signed by ${result.signedBy}. This is a permanent record — append-only, cannot be edited or deleted.`;
+                    } catch (_mxLogErr) {
+                      _mxLogResult = `Logbook entry failed: ${_mxLogErr.message}`;
+                    }
+                    const _mxLogFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 512, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _mxLogResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 20000 });
+                    _txt = _composeTxt(_mxLogFollowUp, _mxLogResult);
                   } else if (_cosTool && _cosTool.name === "push_alert") {
                     let _alertResult;
                     try {
@@ -33598,6 +33641,23 @@ Analyze now:`;
         case "addNefItem":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleAddNefItem(req, res, mctx);
+        case "completeMaintenanceItem":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleCompleteMaintenanceItem(req, res, mctx);
+        case "recordAdCompliance":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleRecordAdCompliance(req, res, mctx);
+        // Aircraft Logbook ("CAN") — the append-only, legal record of the
+        // aircraft's life. logbook:add is the manual entry path (real
+        // backend behind the "tell Alex to log a maintenance entry" chat
+        // prompt in aviationCanvasData.js); logbook:list is read by both MX
+        // (write access via the handlers above) and Pilots (read-only).
+        case "logbook:add":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await mxHandlers.handleAddLogbookEntry(req, res, mctx);
+        case "logbook:list":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await mxHandlers.handleListLogbook(req, res, mctx);
         case "readMeterPhoto":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleReadMeterPhoto(req, res, mctx);

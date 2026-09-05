@@ -370,6 +370,41 @@ function nefItemsToBlocks(fleet) {
   return [{ type: "table", title: "Negative Equipment List — live from Firestore", cols: ["Tail", "Equipment", "Reason", "Authorization", "Documented by", "Date"], rows }];
 }
 
+// Aircraft Logbook ("CAN") — real, append-only entries from
+// aircraftRecords/{scope}/aircraft/{tail}/logbook, read via
+// GET /v1/mx:logbook:list. Reachable read-only from CoPilot (pilots) and
+// with a "+ Log Entry" write action from MX — see LIVE_TABS below. Every
+// entry here is either auto-appended by a real event (squawk deferred/
+// closed, scheduled maintenance completed, AD compliance recorded, warranty
+// added) or a manual entry via AddLogbookEntryModal / the log_maintenance_entry
+// chat tool — never a second, hand-maintained copy of those events.
+function aircraftLogbookToBlocks(entries) {
+  const list = entries || [];
+  if (!list.length) return [{
+    type: "cards",
+    items: [{ band: "BLUE", label: "NO LOGBOOK ENTRIES YET", title: "Nothing logged for this fleet yet", detail: "Entries appear automatically when a squawk is deferred or closed, scheduled maintenance is completed, an AD is complied with, or a warranty is added — or log one manually with \"+ Log Entry\" / by telling Alex.", action: "Open chat" }],
+  }];
+  const categoryBand = { AD: "YELLOW", Unscheduled: "RED", Scheduled: "BLUE", Annual: "GREEN", Inspection: "BLUE", Warranty: "WHITE", Other: "WHITE" };
+  const rows = list.slice(0, 30).map(e => [
+    e.enteredAt ? new Date(e.enteredAt).toLocaleDateString() : "—",
+    e.tailNumber || "—",
+    e.ttsn != null ? String(e.ttsn) : "—",
+    e.description ? (e.description.length > 70 ? e.description.slice(0, 70) + "…" : e.description) : "—",
+    e.category || "—",
+    e.signedBy || "—",
+  ]);
+  const flags = list.slice(0, 5).filter(e => e.category).map(e => ({
+    band: categoryBand[e.category] || "WHITE",
+    title: `${e.tailNumber || "—"} · ${e.category || "Entry"}`,
+    detail: e.description || "",
+  }));
+  const blocks = [];
+  blocks.push({ type: "table", title: "Aircraft Logbook — live from Firestore, append-only", cols: ["Date", "Tail", "TTSN", "Description", "Category", "Signed by"], rows });
+  if (flags.length) blocks.push({ type: "flags", items: flags.slice(0, 3) });
+  blocks.push({ type: "prose", items: [{ band: "GREEN", title: "The legal record of this aircraft's life", text: "Every entry here is timestamped and A&P/IA-signed at the moment it's written — this subcollection has no update or delete path, so once an entry lands it cannot be altered." }] });
+  return blocks;
+}
+
 // Real flight-release history — GET /v1/aviation:dispatch:releases, backing
 // POST /v1/aviation:dispatch:releaseFlight (ReleaseFlightModal above). This
 // endpoint existed with no frontend reader before the 2026-09-05
@@ -698,10 +733,16 @@ const LIVE_TABS = {
     "preflight":  { kind: "weather", ids: "KLAS,KPHX,KLAX",
                     mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
     "logbook":    { kind: "logbook" },
+    // 2026-09-05 — real Aircraft Logbook (CAN), read-only here. Same real
+    // /v1/mx:logbook:list source as MX's own "Aircraft Logbook" tab below.
+    "aircraft-logbook": { kind: "aircraftLogbook" },
   },
   "av-mx-001": {
     "aircraft": { kind: "airworthiness" },
     "squawks": { kind: "squawks" },
+    // 2026-09-05 — the real Aircraft Logbook (CAN). See appendLogbookEntryCore
+    // in services/mx/aircraftRecords.js for what auto-appends to it.
+    "aircraft-logbook": { kind: "aircraftLogbook" },
     // 2026-08-30 gap-audit fix — the "ADs / SBs" tab was 100% static demo
     // content (aviationCanvasData.js AV_CANVAS fixture), even though
     // computeAirworthiness() already returns real per-tail adCompliance.items
@@ -1214,6 +1255,202 @@ export function AddNefItemModal({ onClose, onAdded }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// AddLogbookEntryModal — the manual entry path for the real Aircraft
+// Logbook (POST /v1/mx:logbook:add). Backs the "Aircraft Logbook" tab's
+// "+ Log Entry" action and is the real backend behind the "tell Alex to
+// log a maintenance entry" chat prompt in aviationCanvasData.js. signedBy
+// (A&P/IA name) is required — this is a legal record, not a note.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function AddLogbookEntryModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ tailNumber: "", description: "", category: "Unscheduled", signedBy: "", signedByCert: "", ttsn: "" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.description.trim() && form.signedBy.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:logbook:add", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        description: form.description.trim(),
+        category: form.category,
+        signedBy: form.signedBy.trim(),
+        signedByCert: form.signedByCert.trim() || undefined,
+        ttsn: form.ttsn ? Number(form.ttsn) : undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Log a maintenance entry</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Appends an immutable entry to this aircraft's real logbook (the CAN). Cannot be edited or deleted after signing.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>Description *</label><textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="What was done — specific enough to stand as the permanent record" /></div>
+          <div>
+            <label style={labelStyle}>Category</label>
+            <select style={fieldStyle} value={form.category} onChange={(e) => set("category", e.target.value)}>
+              <option value="Unscheduled">Unscheduled</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Inspection">Inspection</option>
+              <option value="AD">AD</option>
+              <option value="Annual">Annual</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div><label style={labelStyle}>Signed by (A&P/IA name) *</label><input style={fieldStyle} value={form.signedBy} onChange={(e) => set("signedBy", e.target.value)} placeholder="Williams, R A&P/IA" /></div>
+          <div><label style={labelStyle}>Certificate # (optional)</label><input style={fieldStyle} value={form.signedByCert} onChange={(e) => set("signedByCert", e.target.value)} /></div>
+          <div><label style={labelStyle}>TTSN at entry (optional)</label><input type="number" style={fieldStyle} value={form.ttsn} onChange={(e) => set("ttsn", e.target.value)} placeholder="defaults to aircraft's current hours on file" /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Entry logged. Permanent — cannot be altered.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Logging…" : "Log entry"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CompleteMaintenanceItemModal — the real trigger for "scheduled maintenance
+// completes" (POST /v1/mx:completeMaintenanceItem). Requires the signing
+// A&P/IA name since this both rolls the item's interval forward and
+// auto-appends a real Aircraft Logbook entry.
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function CompleteMaintenanceItemModal({ item, onClose, onCompleted }) {
+  const [signedBy, setSignedBy] = useState("");
+  const [completedAtHours, setCompletedAtHours] = useState("");
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState(null);
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+
+  async function run() {
+    if (!signedBy.trim()) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:completeMaintenanceItem", {
+        tailNumber: item.tailNumber,
+        itemId: item.id,
+        signedBy: signedBy.trim(),
+        completedAtHours: completedAtHours ? Number(completedAtHours) : undefined,
+        completedNote: note.trim() || undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{item.tailNumber} — mark complete</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{item.description}</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Signed by (A&P/IA name) *</label><input style={fieldStyle} value={signedBy} onChange={(e) => setSignedBy(e.target.value)} placeholder="Williams, R A&P/IA" /></div>
+          <div><label style={labelStyle}>Completed at hours (optional)</label><input type="number" style={fieldStyle} value={completedAtHours} onChange={(e) => setCompletedAtHours(e.target.value)} placeholder="defaults to aircraft's current hours on file" /></div>
+          <div><label style={labelStyle}>Notes (optional)</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Marked complete. Logged to the Aircraft Logbook.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
+          {status?.state === "done" ? (
+            <button onClick={onCompleted} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!signedBy.trim() || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!signedBy.trim() || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Saving…" : "Mark complete"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// RecordAdComplianceModal — the real trigger for "an AD gets complied with"
+// (POST /v1/mx:recordAdCompliance).
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function RecordAdComplianceModal({ onClose, onRecorded }) {
+  const [form, setForm] = useState({ tailNumber: "", ad: "", subject: "", compliantAsOf: new Date().toISOString().slice(0, 10), nextDue: "", signedBy: "", signedByCert: "" });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const required = form.tailNumber.trim() && form.ad.trim() && form.compliantAsOf && form.signedBy.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/mx:recordAdCompliance", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        ad: form.ad.trim(),
+        subject: form.subject.trim() || undefined,
+        compliantAsOf: form.compliantAsOf,
+        nextDue: form.nextDue || undefined,
+        signedBy: form.signedBy.trim(),
+        signedByCert: form.signedByCert.trim() || undefined,
+      });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Record AD compliance</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Logs compliance to this aircraft's real record and to the Aircraft Logbook.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+          <div><label style={labelStyle}>AD number *</label><input style={fieldStyle} value={form.ad} onChange={(e) => set("ad", e.target.value)} placeholder="2026-08-12" /></div>
+          <div><label style={labelStyle}>Subject</label><input style={fieldStyle} value={form.subject} onChange={(e) => set("subject", e.target.value)} placeholder="Fuel cap seal replacement" /></div>
+          <div><label style={labelStyle}>Compliant as of *</label><input type="date" style={fieldStyle} value={form.compliantAsOf} onChange={(e) => set("compliantAsOf", e.target.value)} /></div>
+          <div><label style={labelStyle}>Next due (optional)</label><input type="date" style={fieldStyle} value={form.nextDue} onChange={(e) => set("nextDue", e.target.value)} /></div>
+          <div><label style={labelStyle}>Signed by (A&P/IA name) *</label><input style={fieldStyle} value={form.signedBy} onChange={(e) => set("signedBy", e.target.value)} placeholder="Williams, R A&P/IA" /></div>
+          <div><label style={labelStyle}>Certificate # (optional)</label><input style={fieldStyle} value={form.signedByCert} onChange={(e) => set("signedByCert", e.target.value)} /></div>
+        </div>
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>AD compliance recorded. Logged to the Aircraft Logbook.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onRecorded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Recording…" : "Record compliance"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // AddSquawkPhotoModal — the photo entry method (Sean, 2026-09-05: "voice or
 // chat is best, but a photo is better, worst case a form"). Same two-step
 // RAAS shape as MeterReadingCard.jsx: photo -> POST /v1/mx:readSquawkPhoto
@@ -1483,6 +1720,47 @@ function OpenSquawksPanel({ refreshKey, onAction }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// ScheduledMaintenanceActionsPanel — real, actionable list backing
+// "Mark complete" on the "Scheduled MX" tab. Reads the same real
+// /v1/mx:listAircraft maintenanceSchedule.items maintenanceScheduleToBlocks
+// already renders; the button here is the missing real trigger for
+// "scheduled maintenance completes" that appends to the Aircraft Logbook.
+// ─────────────────────────────────────────────────────────────────────────
+function ScheduledMaintenanceActionsPanel({ refreshKey, onAction }) {
+  const [fleet, setFleet] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiGet("/v1/mx:listAircraft").then(j => { if (!cancelled) setFleet(j.fleet || []); }).catch(e => { if (!cancelled) setErr(e.message); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  if (err) return <div style={{ fontSize: 12, color: "#dc2626", marginTop: 12 }}>Couldn't load scheduled items: {err}</div>;
+  if (!fleet) return <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 12 }}>Loading scheduled maintenance…</div>;
+  const rows = fleet.flatMap(a => (a.maintenanceSchedule?.items || []).map(i => ({ ...i, tailNumber: a.tailNumber })));
+  if (rows.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>Scheduled items — mark complete</div>
+      {rows.map((i) => (
+        <div key={`${i.tailNumber}-${i.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{i.tailNumber} <span style={{
+              fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, marginLeft: 6,
+              color: i.computedStatus === "RED" ? "#b91c1c" : i.computedStatus === "YELLOW" ? "#92400e" : "#64748b",
+              background: i.computedStatus === "RED" ? "#fee2e2" : i.computedStatus === "YELLOW" ? "#fef3c7" : "#f1f5f9",
+            }}>{i.computedStatus}</span></div>
+            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.description}</div>
+          </div>
+          <button onClick={() => onAction(i)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Mark complete</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // MissionRequestPanel — Dispatch "Requests" tab. Real mission intake:
 // captures what's actually being asked for (aircraft type/category, mission
 // type, seats, IFR, cargo) and matches it against the real fleet on file via
@@ -1667,6 +1945,12 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   const [showAddWarranty, setShowAddWarranty] = useState(false);
   const [showAddNefItem, setShowAddNefItem] = useState(false);
   const [mxRefreshKey, setMxRefreshKey] = useState(0);
+  // 2026-09-05 — the real Aircraft Logbook (CAN): manual entry, plus the
+  // real triggers for "scheduled maintenance completes" and "AD complied
+  // with" that auto-append to it.
+  const [showAddLogbookEntry, setShowAddLogbookEntry] = useState(false);
+  const [completeItem, setCompleteItem] = useState(null);
+  const [showRecordAdCompliance, setShowRecordAdCompliance] = useState(false);
   const isCopilotWorker = (workerSlug || "").startsWith("av-copilot");
   const isDispatchWorker = (workerSlug || "").startsWith("av-dispatch");
   const isMxWorker = (workerSlug || "").startsWith("av-mx");
@@ -1741,6 +2025,9 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         } else if (cfg.kind === "nefItems") {
           const data = await apiGet(`/v1/mx:listAircraft`);
           if (data.fleet) blocks = nefItemsToBlocks(data.fleet);
+        } else if (cfg.kind === "aircraftLogbook") {
+          const data = await apiGet(`/v1/mx:logbook:list`);
+          blocks = aircraftLogbookToBlocks(data.entries);
         } else if (cfg.kind === "releases") {
           const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
           const data = await apiGet(`/v1/aviation:dispatch:releases${tenantId && tenantId !== "vault" ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
@@ -1853,6 +2140,24 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                   + Add NEF Item
                 </button>
               )}
+              {currentTabId === "aircraft-logbook" && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddLogbookEntry(true)}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                >
+                  + Log Entry
+                </button>
+              )}
+              {currentTabId === "ads-sbs" && (
+                <button
+                  type="button"
+                  onClick={() => setShowRecordAdCompliance(true)}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                >
+                  + Record AD Compliance
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1895,6 +2200,25 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           squawk={actionSquawk}
           onClose={() => setActionSquawk(null)}
           onResolved={() => { setActionSquawk(null); setSquawksRefreshKey(k => k + 1); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showAddLogbookEntry && (
+        <AddLogbookEntryModal
+          onClose={() => setShowAddLogbookEntry(false)}
+          onAdded={() => { setShowAddLogbookEntry(false); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {completeItem && (
+        <CompleteMaintenanceItemModal
+          item={completeItem}
+          onClose={() => setCompleteItem(null)}
+          onCompleted={() => { setCompleteItem(null); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showRecordAdCompliance && (
+        <RecordAdComplianceModal
+          onClose={() => setShowRecordAdCompliance(false)}
+          onRecorded={() => { setShowRecordAdCompliance(false); setMxRefreshKey(k => k + 1); }}
         />
       )}
 
@@ -1950,6 +2274,13 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           See AddSquawkModal's comment on the two-collection split. */}
       {isMxWorker && currentTabId === "aircraft" && (
         <OpenSquawksPanel refreshKey={squawksRefreshKey} onAction={setActionSquawk} />
+      )}
+
+      {/* Real "mark complete" trigger for scheduled maintenance — the real
+          event this session wired to auto-append a real Aircraft Logbook
+          entry (see CompleteMaintenanceItemModal). */}
+      {isMxWorker && currentTabId === "scheduled-mx" && (
+        <ScheduledMaintenanceActionsPanel refreshKey={mxRefreshKey} onAction={setCompleteItem} />
       )}
 
       {/* Mission request intake + real aircraft-type/capability matching —
