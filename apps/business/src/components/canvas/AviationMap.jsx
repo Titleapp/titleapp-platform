@@ -7,7 +7,14 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { MapContainer, TileLayer, WMSTileLayer, CircleMarker, Polygon, Polyline, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+// Side-effect only — attaches L.ImageOverlay.Rotated / L.imageOverlay.rotated
+// onto the global `L` that leaflet's own UMD build assigns to `window.L` as
+// it initializes (verified in leaflet-src.js: `window.L = exports` runs
+// unconditionally, regardless of which UMD branch — CJS/AMD/global — Vite's
+// bundler takes). Must load after the "leaflet" import above.
+import "leaflet-imageoverlay-rotated";
 import { getAuth } from "firebase/auth";
+import ChartCalibrationPanel from "./ChartCalibrationPanel";
 
 // Fix Leaflet default icon broken by Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -160,6 +167,31 @@ function RecenterMap({ center, zoom }) {
   return null;
 }
 
+// ── Georeferenced chart overlay (imperative Leaflet layer) ───────────────────
+// L.ImageOverlay.Rotated isn't a react-leaflet component, so it's added/removed
+// directly on the underlying map instance via useMap() — same imperative
+// pattern DrawLayer below uses for useMapEvents.
+function RotatedImageOverlayLayer({ imageUrl, topLeft, topRight, bottomLeft, opacity = 0.75 }) {
+  const map = useMap();
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    if (!imageUrl || !topLeft || !topRight || !bottomLeft) return undefined;
+    const layer = L.imageOverlay.rotated(
+      imageUrl,
+      L.latLng(topLeft[0], topLeft[1]),
+      L.latLng(topRight[0], topRight[1]),
+      L.latLng(bottomLeft[0], bottomLeft[1]),
+      { opacity, interactive: false }
+    );
+    layer.addTo(map);
+    layerRef.current = layer;
+    return () => { map.removeLayer(layer); layerRef.current = null; };
+  }, [map, imageUrl, topLeft && topLeft[0], topLeft && topLeft[1], topRight && topRight[0], topRight && topRight[1], bottomLeft && bottomLeft[0], bottomLeft && bottomLeft[1], opacity]);
+
+  return null;
+}
+
 // ── Freehand chart annotation ─────────────────────────────────────────────────
 // Geo-referenced ink, ForeFlight-style — strokes are lat/lon points (not
 // screen pixels), so they stay pinned to the chart through pan/zoom, same as
@@ -305,6 +337,13 @@ export default function AviationMap({
   const [strokes, setStrokes] = useState([]);
   const trafficTimer = useRef(null);
 
+  // Airport Diagram georeferencing (GCP calibration) — panel renders outside
+  // the MapContainer (it's a floating tool UI, not a map layer); the resulting
+  // overlay renders inside via RotatedImageOverlayLayer once the user applies
+  // a fit. Keyed by icao so switching airports drops the previous overlay.
+  const [calibrationOpen, setCalibrationOpen] = useState(false);
+  const [chartOverlay, setChartOverlay] = useState(null); // { icao, imageUrl, topLeft, topRight, bottomLeft, residualsFt }
+
   // Weather radar time-scrubber — Iowa Environmental Mesonet's WMS-T NEXRAD
   // mosaic (free, keyless, genuinely time-aware — verified this session: a
   // TIME= query 3h back over CONUS returned real, different reflectivity
@@ -439,6 +478,7 @@ export default function AviationMap({
         <IconToggle icon="✈" title="Traffic"  enabled={layers.traffic.enabled}  loading={layers.traffic.loading}  onClick={() => toggleLayer("traffic")}  color="#f87171" />
         <IconToggle icon="💬" title="PIREPs"   enabled={layers.pireps.enabled}   loading={layers.pireps.loading}   onClick={() => toggleLayer("pireps")}   color="#34d399" />
         <IconToggle icon="▭" title="Runways (georeferencing GCPs)" enabled={layers.runways.enabled} loading={layers.runways.loading} onClick={() => toggleLayer("runways")} color="#fbbf24" />
+        <IconToggle icon="🗺" title="Calibrate Airport Diagram overlay" enabled={calibrationOpen} loading={false} onClick={() => setCalibrationOpen(v => !v)} color="#c084fc" />
         <IconToggle icon="🌧" title="Weather radar (time scrubber)" enabled={radarOn} loading={false} onClick={() => setRadarOn(v => !v)} color="#38bdf8" />
         <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
         {Object.entries(HAZARD_FILTERS).map(([key, cfg]) => (
@@ -646,6 +686,15 @@ export default function AviationMap({
           );
         })}
 
+        {chartOverlay && (
+          <RotatedImageOverlayLayer
+            imageUrl={chartOverlay.imageUrl}
+            topLeft={chartOverlay.topLeft}
+            topRight={chartOverlay.topRight}
+            bottomLeft={chartOverlay.bottomLeft}
+          />
+        )}
+
         <DrawLayer active={drawMode} onStrokeComplete={(pts) => setStrokes(prev => [...prev, pts])} />
         {strokes.map((pts, i) => (
           <Polyline key={`stroke-${i}`} positions={pts} pathOptions={{ color: "#facc15", weight: 3, opacity: 0.9 }} />
@@ -777,6 +826,17 @@ export default function AviationMap({
             </div>
           ))}
         </div>
+      )}
+
+      {calibrationOpen && (
+        <ChartCalibrationPanel
+          defaultIcao={icaos[0]}
+          apiGet={apiGet}
+          existingOverlay={chartOverlay}
+          onApply={(overlay) => setChartOverlay(overlay)}
+          onClear={() => setChartOverlay(null)}
+          onClose={() => setCalibrationOpen(false)}
+        />
       )}
 
       {/* Loading indicator */}

@@ -95,14 +95,14 @@ const SKINS = {
     short: "Makai Nursing",
     accent: "#7c3aed", accentSoft: "#faf5ff", border: "#ddd6fe",
     glyph: "🎓",
-    tagline: "Your clinical progress, in one place",
+    tagline: "Your journey to becoming an RN",
   },
   "uh-nursing": {
     name: "UH Mānoa School of Nursing",
     short: "UH Mānoa Nursing",
     accent: "#065f46", accentSoft: "#ecfdf5", border: "#a7f3d0",
     glyph: "🎓",
-    tagline: "Your clinical progress, in one place",
+    tagline: "Your journey to becoming an RN",
   },
   "nordholm": {
     name: "Nordholm",
@@ -273,13 +273,34 @@ function Bubble({ from, children, accent }) {
   );
 }
 
-function md(text) {
-  // tiny **bold** renderer
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+// Tiny markdown-lite renderer for real chat replies. Was **bold**-only, which
+// left the model's own "- bullet" list lines as literal dash characters and
+// let paragraph breaks collapse — real fix, not cosmetic (Sean, 2026-09-04:
+// "formatting is off").
+function mdInline(line) {
+  return line.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith("**") && part.endsWith("**")
       ? <strong key={i}>{part.slice(2, -2)}</strong>
       : <React.Fragment key={i}>{part}</React.Fragment>
   );
+}
+function md(text) {
+  const lines = String(text).split("\n");
+  const out = [];
+  let list = null;
+  const flushList = (key) => { if (list) { out.push(<ul key={key} style={{ margin: "2px 0 8px", paddingLeft: 20 }}>{list}</ul>); list = null; } };
+  lines.forEach((line, i) => {
+    const bullet = /^\s*[-*]\s+(.*)/.exec(line);
+    if (bullet) {
+      (list || (list = [])).push(<li key={`li${i}`} style={{ marginBottom: 3 }}>{mdInline(bullet[1])}</li>);
+    } else {
+      flushList(`ul${i}`);
+      if (line.trim() === "") out.push(<div key={`gap${i}`} style={{ height: 6 }} />);
+      else out.push(<div key={`p${i}`}>{mdInline(line)}</div>);
+    }
+  });
+  flushList("ul-last");
+  return out;
 }
 
 function BookingCanvas({ skin, onConfirm }) {
@@ -647,32 +668,187 @@ function TenantDocsCanvas({ skin, lease }) {
   ]} note="Your lease documents — always available here." />;
 }
 
-function ProgressCanvas({ skin, student }) {
+// Ruthie's real 5-course sequence (source: services/alex/knowledge/
+// nursing-education-context.md) — the only real "chapters" this data has.
+// coursesComplete (0-5, from the profile) places the student on this line;
+// there's no per-course timestamp in the profile endpoint yet, so this is a
+// computed position, not a literal event log — a real next step (see
+// RecordsCanvas below) is surfacing her actual course-by-course event
+// history once that route exists.
+const NURSING_COURSE_SEQUENCE = [
+  { code: "NURS 210", title: "Health Promotion Across the Lifespan" },
+  { code: "NURS 220", title: "Health & Illness I" },
+  { code: "NURS 230", title: "Clinical Immersion I" },
+  { code: "NURS 320", title: "Family Nursing" },
+  { code: "NURS 360", title: "Complex Care" },
+];
+
+// Sean, 2026-09-04: "My education has a beginning middle and end — it's a
+// story. There is no story or why I should give a shit in this." The old
+// ProgressCanvas was four stat rows with no narrative — this reframes the
+// same real data (nothing fabricated) as a journey toward becoming an RN:
+// where she started, where she stands, what's ahead, and why the record
+// itself is worth something (hers for life, verifiable by an employer or
+// board — not just a grade in a gradebook she loses access to at graduation).
+function ProgressCanvas({ skin, student, competencies }) {
   const hours = student?.clinicalHours ?? 0;
   const required = student?.clinicalHoursRequired ?? 500;
   const pct = Math.min(100, Math.round((hours / required) * 100));
-  const rows = [
-    ["Clinical hours", `${hours} / ${required}`, "#0f172a"],
-    ["ATI score", student?.atiScore != null ? student.atiScore : "—", "#0f172a"],
-    ["Courses completed", student?.coursesComplete != null ? student.coursesComplete : "—", "#0f172a"],
-    ["Status", student?.status === "ready" ? "NCLEX ready" : student?.status === "in-progress" ? "In progress" : (student?.status || "—"), "#7c3aed"],
-  ];
+  const done = Math.max(0, Math.min(NURSING_COURSE_SEQUENCE.length, student?.coursesComplete ?? 0));
+  const isReady = student?.status === "ready" || done >= NURSING_COURSE_SEQUENCE.length;
+  const currentCourse = !isReady ? NURSING_COURSE_SEQUENCE[done] : null;
+  const hoursLeft = Math.max(0, required - hours);
+  const verified = (competencies || []).filter(c => c.status === "verified");
+  const pendingCount = (competencies || []).length - verified.length;
+  const halfway = !isReady && done > 0 && done * 2 >= NURSING_COURSE_SEQUENCE.length;
+
+  // Fill the hours bar from 0 → pct AFTER mount so it animates in, instead of
+  // just appearing already-filled (a bare width:pct% never transitions).
+  const [barPct, setBarPct] = useState(0);
+  useEffect(() => { const t = setTimeout(() => setBarPct(pct), 60); return () => clearTimeout(t); }, [pct]);
+
+  // Sean, 2026-09-04: "avoid one app for each course — one app per
+  // university/program with all the courses, tests, and milestones
+  // underneath." This is that: courses aren't just a static row of dots,
+  // they expand IN PLACE (no new screen, no separate app) to show what's
+  // real about that course. Kept honest — course-level test/reflection
+  // detail isn't tagged in the data yet (only program-wide hours/ATI/
+  // competencies are), so an expanded course shows its real status plus
+  // the program-wide stats that actually apply, not invented per-course
+  // numbers.
+  const [expandedCourse, setExpandedCourse] = useState(null);
+
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6, marginBottom: 16 }}>
+        {isReady
+          ? "You've completed every course in the program — this is the home stretch toward licensure."
+          : <>You're in <strong style={{ color: "#0f172a" }}>{currentCourse.code}</strong> — <strong style={{ color: "#0f172a" }}>{done}</strong> of <strong style={{ color: "#0f172a" }}>{NURSING_COURSE_SEQUENCE.length}</strong> courses behind you on the way to becoming an RN.</>}
+        {" "}It's yours the whole way — a record you'll carry past graduation, provable to any employer or licensing board without going through the registrar.
+      </div>
+
+      {halfway && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a",
+          borderRadius: 20, padding: "7px 14px", marginBottom: 16, fontSize: 12.5, fontWeight: 700, color: "#92400e",
+          animation: "badgePop 0.4s ease backwards", animationDelay: "50ms", width: "fit-content",
+        }}><span style={{ marginRight: 4 }}>🎉</span>Over halfway there!</div>
+      )}
+
+      {/* The chapters — real course sequence, position computed from real data.
+          Every course lives HERE, inside this one program app — tap one to
+          see it, nothing opens a separate screen or a separate app. */}
+      <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 8 }}>
+        {NURSING_COURSE_SEQUENCE.map((c, i) => {
+          const state = i < done ? "done" : i === done && !isReady ? "current" : "upcoming";
+          const isExpanded = expandedCourse === c.code;
+          return (
+            <button key={c.code} onClick={() => setExpandedCourse(isExpanded ? null : c.code)} style={{
+              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative",
+              animation: "journeyPop 0.35s ease backwards", animationDelay: `${i * 90}ms`,
+              background: "none", border: "none", cursor: "pointer", padding: "0 0 6px", font: "inherit",
+            }}>
+              {i > 0 && <div style={{ position: "absolute", top: 11, right: "50%", width: "100%", height: 2, background: i <= done ? skin.accent : "#e2e8f0", zIndex: 0, transition: "background 0.4s ease" }} />}
+              <div style={{
+                width: 24, height: 24, borderRadius: "50%", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 800, color: state === "upcoming" ? "#94a3b8" : "#fff",
+                background: state === "done" ? skin.accent : state === "current" ? "#0f172a" : "#e2e8f0",
+                animation: state === "current" ? "journeyRing 1.6s ease-out infinite" : "none",
+                outline: isExpanded ? `2px solid ${skin.accent}` : "none", outlineOffset: 2,
+              }}>
+                {state === "done" ? "✓" : i + 1}
+              </div>
+              <div style={{ fontSize: 10.5, fontWeight: state === "current" ? 800 : 600, color: state === "upcoming" ? "#94a3b8" : "#0f172a", marginTop: 6, textAlign: "center" }}>{c.code}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {expandedCourse && (() => {
+        const idx = NURSING_COURSE_SEQUENCE.findIndex(c => c.code === expandedCourse);
+        const c = NURSING_COURSE_SEQUENCE[idx];
+        const state = idx < done ? "done" : idx === done && !isReady ? "current" : "upcoming";
+        return (
+          <div style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 12, padding: "12px 14px", marginBottom: 22, animation: "badgePop 0.25s ease" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{c.code}</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{c.title}</div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", padding: "3px 9px", borderRadius: 20,
+                color: state === "done" ? "#15803d" : state === "current" ? "#0f172a" : "#94a3b8",
+                background: state === "done" ? "#dcfce7" : state === "current" ? "#e2e8f0" : "#f1f5f9",
+              }}>{state === "done" ? "COMPLETED" : state === "current" ? "IN PROGRESS" : "NOT STARTED"}</span>
+            </div>
+            {state === "current" ? (
+              <div style={{ fontSize: 12.5, color: "#334155", lineHeight: 1.5 }}>
+                This is where your current clinical hours ({hours} logged), ATI score ({student?.atiScore ?? "—"}), and any new competency sign-offs are coming from.
+              </div>
+            ) : state === "done" ? (
+              <div style={{ fontSize: 12.5, color: "#334155", lineHeight: 1.5 }}>Completed — folded into your overall record above.</div>
+            ) : (
+              <div style={{ fontSize: 12.5, color: "#94a3b8", lineHeight: 1.5 }}>Not started yet.</div>
+            )}
+          </div>
+        );
+      })()}
+
+      <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginBottom: 6 }}>
-          <span>Clinical hours progress</span><span>{pct}%</span>
+          <span>Clinical hours</span><span>{hours} / {required}</span>
         </div>
         <div style={{ height: 8, borderRadius: 8, background: "#f1f5f9", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: skin.accent, borderRadius: 8 }} />
+          <div style={{ height: "100%", width: `${barPct}%`, background: skin.accent, borderRadius: 8, transition: "width 0.9s cubic-bezier(0.22, 1, 0.36, 1)" }} />
         </div>
+        {hoursLeft > 0 && <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 5 }}>{hoursLeft} hours to go</div>}
       </div>
-      {rows.map(([t, s]) => (
-        <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{t}</div>
-          <div style={{ fontSize: 14, color: s === "#0f172a" ? "#64748b" : s, fontWeight: 600 }}>{s}</div>
+
+      {student?.notes && (
+        <div style={{ border: `1px solid ${skin.border}`, background: skin.accentSoft, borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: skin.accent, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>From your clinical instructor</div>
+          <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.5 }}>{student.notes}</div>
         </div>
-      ))}
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>ATI score</div>
+        <div style={{ fontSize: 14, color: "#64748b", fontWeight: 600 }}>{student?.atiScore != null ? student.atiScore : "—"}</div>
+      </div>
+
+      {/* Achievements — verified competencies as earned badges, not a plain
+          list row. Each one really happened (a real instructor signed off on
+          a real date); framing it as something you unlocked, not just a
+          status label, is the whole point of "children who grew up on
+          screens" wanting something that feels like it was earned. */}
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8 }}>
+          Achievements {verified.length > 0 && `(${verified.length}${pendingCount ? `, ${pendingCount} in progress` : ""})`}
+        </div>
+        {verified.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: "#94a3b8" }}>Your first verified competency will show up here.</div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {verified.map((c, i) => (
+              <div key={i} title={c.attestedAt ? `Verified ${c.attestedAt}` : "Verified"} style={{
+                display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg, #ecfdf5, #fff)",
+                border: "1px solid #a7f3d0", borderRadius: 20, padding: "6px 12px 6px 8px",
+                animation: "badgePop 0.35s ease backwards", animationDelay: `${150 + i * 80}ms`,
+              }}>
+                <span style={{
+                  width: 18, height: 18, borderRadius: "50%", background: skin.accent, color: "#fff",
+                  fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>✓</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{c.competency}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 11.5, color: "#94a3b8", lineHeight: 1.5, marginTop: 18, paddingTop: 14, borderTop: "1px solid #f1f5f9" }}>
+        Owned by you, not the school — it doesn't disappear when you graduate.
+      </div>
     </div>
   );
 }
@@ -1238,8 +1414,8 @@ export default function ClientPortal() {
         const j = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (j && j.ok && j.student) { setStudentProfile(j.student); setCompetencies(j.competencies || []); setStudentStatus("ok"); }
-        else setStudentStatus("denied");
-      } catch { if (!cancelled) setStudentStatus("denied"); }
+        else { console.error("[student:customer:profile] not ok", { status: res.status, body: j }); setStudentStatus("denied"); }
+      } catch (e) { console.error("[student:customer:profile] request failed", e); if (!cancelled) setStudentStatus("denied"); }
     })();
     return () => { cancelled = true; };
   }, [hasRealStudentBacking, user, tenantId]);
@@ -1322,7 +1498,7 @@ export default function ClientPortal() {
     : isTenantPersona
     ? `Hi ${person.name} 👋 I'm here for ${person.property}, 24/7. Ask about rent, submit a maintenance request, or pull up your lease.`
     : isStudentPersona
-    ? `Hi ${person.name} 👋 I'm here to help with your clinical progress — hours, ATI scores, and verified competencies. Ask me anything, or check your progress on the right.`
+    ? `Hi ${person.name} 👋 I'm here to help you track your journey toward becoming an RN — where you stand, what's ahead, and the record you'll carry with you after graduation. Ask me anything, or check your journey on the right.`
     : isConsumerPersona
     ? `Hi 👋 This is the Digital Product Passport for ${passport?.productName || "this product"}. Ask what it's made of, where it was made, or how to recycle it.`
     : isBorrowerPersona
@@ -1335,7 +1511,7 @@ export default function ClientPortal() {
   const [inputVal, setInputVal] = useState("");
   const [thinking, setThinking] = useState(false);
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, canvas, thinking]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [messages, canvas, thinking]);
 
   // Patch the greeting in-place once the real name loads (avoids a visible
   // fixture-name-then-real-name flicker if the order fetch resolves after the
@@ -1393,9 +1569,10 @@ export default function ClientPortal() {
       const hours = studentProfile?.clinicalHours ?? 486;
       const required = studentProfile?.clinicalHoursRequired ?? 500;
       const ati = studentProfile?.atiScore ?? "—";
-      if (/hour|clinical|progress|how am i doing/.test(t)) { setTimeout(() => setCanvas({ type: "progress" }), 200); return `You're at ${hours} of ${required} clinical hours, ATI score ${ati}. Opened your full progress on the right.`; }
+      if (/hour|clinical|progress|how am i doing|journey/.test(t)) { setTimeout(() => setCanvas({ type: "progress" }), 200); return `You're at ${hours} of ${required} clinical hours, ATI score ${ati}. Opened your journey on the right.`; }
       if (/competenc|verif|sign.?off|attest/.test(t)) { setTimeout(() => setCanvas({ type: "competencies" }), 200); return "Here are your verified competencies — opened on the right."; }
-      return "I can help with your clinical progress, hours, and competencies. What would you like to know?";
+      if (/menu|navigat|how do i use|what does this app|what can (you|this)/.test(t)) return "Right now I can help with two things: your journey (clinical hours, ATI score, and where you stand in the program) and your verified competencies — tap the menu button top-left (or ask me) to open either.";
+      return "I can help with your journey toward becoming an RN and your verified competencies — tap the menu button top-left, or ask how you're doing.";
     }
     // consumer/DPP persona — always scripted (public, anonymous, no worker
     // chat wired for unauthenticated visitors); reads real passport data.
@@ -1709,17 +1886,53 @@ export default function ClientPortal() {
     setThinking(false);
   }
 
-  // Claude-style left nav: shown on desktop only (the portal is mobile-first).
+  // Claude-style left nav: rendered inline on desktop; on mobile (which is
+  // the ONLY width the native app ever runs at) it lives behind a hamburger
+  // button instead — see navOpen below. Losing this menu below 760px meant
+  // the native app had no way at all to reach "Clinical progress" etc.
+  // outside of chat (Sean, 2026-09-04: "also no nav menu").
   const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 760 : true);
+  const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 760);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Pin the page itself so it can never scroll as a whole — only the
+  // message list and canvas panel (each has its own overflowY: auto) should
+  // ever scroll. Without this, the auto-scroll-to-latest-message effect
+  // above (or the native Keyboard "resize: body" plugin nudging the page
+  // when the on-screen keyboard opens) could drag the WHOLE page — sticky
+  // header included — out of view, since a sticky element's anchor is
+  // whatever ancestor actually scrolls. (Sean, 2026-09-04, 2nd report:
+  // "menu bar is too high — can't even see it" / "can't see the hamburger
+  // menu, can't see where to chat" — the header was scrolling off-screen.)
+  useEffect(() => {
+    const { documentElement: html, body } = document;
+    const prevHtml = html.style.cssText, prevBody = body.style.cssText;
+    html.style.cssText += "height:100%;overflow:hidden;";
+    body.style.cssText += "height:100%;overflow:hidden;";
+    return () => { html.style.cssText = prevHtml; body.style.cssText = prevBody; };
+  }, []);
   function say(text) { setMessages(m => [...m, { from: "them", text }]); }
+
+  // A chip's underlying question is real (the backend can actually answer
+  // it) whenever this persona has a live, authenticated backend connected.
+  // Before this fix, a chip ALWAYS ran the local scripted reply — even once
+  // real chat was working — so clicking "How am I doing on clinical hours?"
+  // gave a throwaway "Opened it for you" while just typing the same words
+  // got a real, useful answer. (Sean, 2026-09-04: "I had to go back to chat
+  // to see the chat response, which was better.") Route the chip through
+  // the same real path typing would use, whenever one exists.
+  const hasLiveChat = (hasRealTitleBacking && orderStatus === "ok")
+    || (hasRealTenantBacking && leaseStatus === "ok")
+    || (hasRealStudentBacking && studentStatus === "ok")
+    || (hasRealBorrowerBacking && loanStatus === "ok");
 
   function runChip(s) {
     setUsed(u => [...u, s.chip]);
+    if (hasLiveChat) { sendMessage(s.chip); return; }
     setMessages(m => [...m, { from: "me", text: s.chip }]);
     setTimeout(() => {
       if (s.reply) {
@@ -1731,11 +1944,18 @@ export default function ClientPortal() {
     }, 350);
   }
 
-  const remaining = scripts.filter(s => !used.includes(s.chip));
+  // Once real conversation has started, the starter suggestion chips are
+  // stale clutter that never went away on their own (Sean, 2026-09-04: "why
+  // are these two chat bubbles not going away?") — clicking one marks it
+  // used, but typing the same question freeform never did, so they sat
+  // under every message forever. Simplest honest fix: they're a cold-start
+  // aid, so retire the whole row once the user has said anything themselves.
+  const hasChatted = messages.some(m => m.from === "me");
+  const remaining = hasChatted ? [] : scripts.filter(s => !used.includes(s.chip));
 
   // Persona-relevant left-nav items (monoline icons — Switzerland, not Disneyland).
   const I = (d) => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
-  function scrollToEnd() { endRef.current?.scrollIntoView({ behavior: "smooth" }); }
+  function scrollToEnd() { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   const navItems = persona === "advisor"
     ? [
         { label: "My agreements", icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>), action: () => setCanvas({ type: "affirm" }) },
@@ -1758,7 +1978,7 @@ export default function ClientPortal() {
       ]
     : isStudentPersona
     ? [
-        { label: "Clinical progress", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "progress" }) },
+        { label: "Your journey", icon: I(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>), action: () => setCanvas({ type: "progress" }) },
         { label: "Competencies", icon: I(<path d="M9 11l3 3L22 4"/>), action: () => setCanvas({ type: "competencies" }) },
         { label: "Ask a question", icon: I(<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>), action: scrollToEnd },
       ]
@@ -1794,10 +2014,26 @@ export default function ClientPortal() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", maxWidth: isDesktop ? 1140 : 920, margin: "0 auto" }}>
+    <div style={{ height: "100dvh", background: "#fff", display: "flex", flexDirection: "column", maxWidth: isDesktop ? 1140 : 920, margin: "0 auto", overflow: "hidden" }}>
+      {/* Shared keyframes. "pulse" fixes a pre-existing dead reference (the
+          "Thinking…" dot below referenced animation:"pulse" with no matching
+          @keyframes anywhere in this bundle, so it never actually animated).
+          The journey* ones back ProgressCanvas's motion (Sean, 2026-09-04:
+          "motion awards these are children that grew up on screens"). */}
+      <style>{`
+        @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+        @keyframes journeyPop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes journeyRing { 0% { box-shadow: 0 0 0 0 rgba(15,23,42,0.4); } 70% { box-shadow: 0 0 0 10px rgba(15,23,42,0); } 100% { box-shadow: 0 0 0 10px rgba(15,23,42,0); } }
+        @keyframes badgePop { from { opacity: 0; transform: translateY(6px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      `}</style>
       {/* Branded header — the skin of the door you came through */}
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: "1px solid #f1f5f9", position: "sticky", top: 0, background: "#fff", zIndex: 5 }}>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top, 0px))", borderBottom: "1px solid #f1f5f9", position: "sticky", top: 0, background: "#fff", zIndex: 5 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {!isDesktop && (
+            <button onClick={() => setNavOpen(true)} aria-label="Menu" style={{ width: 34, height: 34, flexShrink: 0, border: "1px solid #e2e8f0", background: "#fff", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+              {I(<><path d="M3 6h18M3 12h18M3 18h18"/></>)}
+            </button>
+          )}
           <div style={{ width: 34, height: 34, borderRadius: 9, background: skin.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{skin.glyph}</div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{skin.name}</div>
@@ -1808,7 +2044,27 @@ export default function ClientPortal() {
         <a href="/" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "none" }}>Switch to your SOCIII ↗</a>
       </header>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      {/* Mobile nav — a bottom sheet holding the same items the desktop rail
+          shows inline. Without this the native app (always < 760px) had no
+          way to reach "Clinical progress" etc. outside of chat. */}
+      {!isDesktop && navOpen && (
+        <div onClick={() => setNavOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 20, display: "flex", alignItems: "flex-end" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", borderRadius: "16px 16px 0 0", padding: "10px 10px 22px", maxHeight: "70vh", overflowY: "auto" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#e2e8f0", margin: "4px auto 12px" }} />
+            {navItems.map((it, i) => (
+              <button key={i} onClick={() => { setNavOpen(false); it.action(); }}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", border: "none", background: "transparent", borderRadius: 10, cursor: "pointer", fontSize: 15, color: "#334155", fontWeight: 600, textAlign: "left", width: "100%" }}>
+                <span style={{ color: skin.accent, display: "flex" }}>{it.icon}</span>{it.label}
+              </button>
+            ))}
+            <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 14px", borderRadius: 10, fontSize: 13, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
+              {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
+            </a>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {/* Claude-style left nav (desktop) — what this customer can do here */}
         {isDesktop && (
           <nav style={{ width: 212, flexShrink: 0, borderRight: "1px solid #f1f5f9", padding: "16px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1858,7 +2114,7 @@ export default function ClientPortal() {
                     : isTenantPersona
                     ? `Your residence, in one place`
                     : isStudentPersona
-                    ? `Your clinical progress, in one place`
+                    ? `Your journey to becoming an RN`
                     : isConsumerPersona
                     ? `Digital Product Passport`
                     : isBorrowerPersona
@@ -1873,7 +2129,7 @@ export default function ClientPortal() {
                     : isTenantPersona
                     ? `Rent, maintenance requests, and lease documents for ${person.property} — everything in one place.`
                     : isStudentPersona
-                    ? `Clinical hours, ATI scores, and verified competencies — everything in one place.`
+                    ? `Where you started, where you stand, and what's ahead — a record that's yours to keep after graduation.`
                     : isConsumerPersona
                     ? `Materials, origin, care, and recyclability for ${passport?.productName || "this product"} — required under EU sustainable product rules.`
                     : isBorrowerPersona
@@ -1910,7 +2166,7 @@ export default function ClientPortal() {
               <span style={{ fontSize: 12, color: "#94a3b8" }}>Thinking…</span>
             </div>
           )}
-          <div style={{ display: "flex", gap: 8, padding: "0 0 14px" }}>
+          <div style={{ display: "flex", gap: 8, padding: "0 0 14px", paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))" }}>
             <input
               value={inputVal}
               onChange={e => setInputVal(e.target.value)}
@@ -1932,7 +2188,22 @@ export default function ClientPortal() {
             above — the × button below is the only way back, doubling as the
             chat<->canvas toggle on narrow screens. */}
         {canvas && (
-          <aside style={{ flex: "1 1 100%", borderLeft: isDesktop ? "1px solid #f1f5f9" : "none", padding: "18px", overflowY: "auto", background: "#fff" }}>
+          <aside style={{ flex: "1 1 100%", borderLeft: isDesktop ? "1px solid #f1f5f9" : "none", overflowY: "auto", background: "#fff", display: "flex", flexDirection: "column" }}>
+            {/* On mobile this bar is the ONLY way back to chat (canvas fully
+                replaces it), so it's a sticky, high-contrast, text-labeled
+                button rather than a bare "×" easy to miss (Sean, 2026-09-04:
+                "not clear when we are being provided with a canvas type
+                screen — the close button is not obvious"). */}
+            {!isDesktop && (
+              <button onClick={() => setCanvas(null)} style={{
+                position: "sticky", top: 0, zIndex: 6, display: "flex", alignItems: "center", gap: 6,
+                width: "100%", padding: "12px 18px", border: "none", borderBottom: `1px solid ${skin.border}`,
+                background: skin.accentSoft, color: skin.accent, fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left",
+              }}>
+                {I(<><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></>)} Back to chat
+              </button>
+            )}
+            <div style={{ padding: 18, flex: 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
                 {canvas.type === "booking" ? "Book a visit"
@@ -1944,7 +2215,7 @@ export default function ClientPortal() {
                   : canvas.type === "lease" ? "Rent & lease"
                   : canvas.type === "maintenance" ? "Maintenance request"
                   : canvas.type === "tenant-docs" ? "Lease documents"
-                  : canvas.type === "progress" ? "Clinical progress"
+                  : canvas.type === "progress" ? "Your journey"
                   : canvas.type === "competencies" ? "Verified competencies"
                   : canvas.type === "passport" ? "Product passport"
                   : canvas.type === "loan-status" ? "Loan status"
@@ -1956,7 +2227,7 @@ export default function ClientPortal() {
                   : canvas.type === "cease-communication" ? "Stop contacting me"
                   : "Your documents"}
               </div>
-              <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>
+              {isDesktop && <button onClick={() => setCanvas(null)} style={{ background: "none", border: "none", fontSize: 22, color: "#94a3b8", cursor: "pointer" }}>×</button>}
             </div>
             {canvas.type === "booking" && <BookingCanvas skin={skin} />}
             {canvas.type === "records" && <RecordsCanvas skin={skin} />}
@@ -1968,7 +2239,7 @@ export default function ClientPortal() {
             {canvas.type === "lease" && <LeaseCanvas skin={skin} lease={lease} />}
             {canvas.type === "maintenance" && <MaintenanceCanvas skin={skin} history={maintenanceHistory} onSubmit={submitMaintenanceRequest} />}
             {canvas.type === "tenant-docs" && <TenantDocsCanvas skin={skin} lease={lease} />}
-            {canvas.type === "progress" && <ProgressCanvas skin={skin} student={studentProfile} />}
+            {canvas.type === "progress" && <ProgressCanvas skin={skin} student={studentProfile} competencies={competencies} />}
             {canvas.type === "competencies" && <CompetenciesCanvas skin={skin} competencies={competencies} />}
             {canvas.type === "passport" && <PassportCanvas passport={passport} />}
             {canvas.type === "loan-status" && <LoanStatusCanvas skin={skin} loan={loan} />}
@@ -1978,6 +2249,7 @@ export default function ClientPortal() {
             {canvas.type === "insurance-proof" && <InsuranceProofCanvas skin={skin} loan={loan} insuranceSubmissions={insuranceSubmissions} onSubmit={submitInsuranceProof} />}
             {canvas.type === "payoff-request" && <PayoffRequestCanvas skin={skin} onSubmit={submitPayoffRequest} />}
             {canvas.type === "cease-communication" && <CeaseCommunicationCanvas skin={skin} loan={loan} onSubmit={submitCeaseCommunicationRequest} />}
+            </div>
           </aside>
         )}
       </div>

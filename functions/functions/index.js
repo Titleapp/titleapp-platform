@@ -5122,7 +5122,22 @@ If at any point the user says they can't log in, can't access their account, som
                     const filepath = path.join(__dirname, "services", "alex", "knowledge", knowledgeFilename);
                     if (fs.existsSync(filepath)) {
                       const knowledge = fs.readFileSync(filepath, "utf8");
-                      const viewMode = body?.context?.workerViewMode;
+                      // A real customer (ClientPortal.jsx, a signed-in student on
+                      // their own device) is the SAME "student" role as an
+                      // instructor previewing student-view in the internal
+                      // sandbox — reuse the one view-mode mechanism rather than
+                      // maintaining two disconnected student-scoping paths.
+                      // (Sean, 2026-09-04: "have you untangled the chat so the
+                      // student and instructor views are separate? I thought
+                      // we'd corrected this" — S51.43.11 built the correction
+                      // but only wired it to the sandbox toggle; the real
+                      // customer portal never set workerViewMode at all, so
+                      // this whole instructor-facing file — including its
+                      // "architectural story" section literally titled "for
+                      // when someone asks what is this thing" — was reaching a
+                      // real nursing student's real chat completely unscoped.)
+                      const isRealStudentCustomer = body?.context?.source === "client_portal" && body?.context?.persona === "student";
+                      const viewMode = isRealStudentCustomer ? "student" : body?.context?.workerViewMode;
                       let viewDirective = "";
                       if (viewMode === "student") {
                         viewDirective = `
@@ -5136,7 +5151,9 @@ Speak student-language, not instructor-language:
 - When they ask "what should I do next", give specific actionable steps: finish a pending reflection, try a specific technique on their next clinical shift, talk to their preceptor about X.
 - Use second person ("you noticed", "you handled this well"). Be warm and coaching — not academic.
 - Don't lecture. Give one helpful answer + one follow-up question.
-- If they ask about a locked grade, remind them their record is THEIRS, portable, and verifiable — no need to defend it to anyone.`;
+- If they ask about a locked grade, remind them their record is THEIRS, portable, and verifiable — no need to defend it to anyone.
+- Frame their progress as a JOURNEY, not a stat sheet: they're on a real path (course by course) toward becoming an RN, not just accumulating numbers. Where it's natural, connect a fact to that arc — "that's 3 of 5 courses behind you", "this record is yours for life — a future employer or licensing board can verify it directly" — rather than reciting a bare number with no meaning attached.${isRealStudentCustomer ? `
+- The "architectural story" and "Who's in the workspace right now" sections above describe the INSTRUCTOR/ADMIN side of this product (cohort management, grading, chain-anchoring mechanics, other named students/instructors). None of that is this student's concern. If asked "what is this app" or "how does this work", answer only in terms of what THEY can do: see their own hours/ATI/competencies, get study help. Never mention cohorts, other students by name, grading workflows, or blockchain/chain-anchoring internals, even if asked directly what the tool is or how it works.` : ""}`;
                       } else if (viewMode === "instructor") {
                         viewDirective = `
 
@@ -5455,11 +5472,12 @@ END DELIVERY RULES.
                 const _portalPersona = body?.context?.persona;
                 const _scopeNotice = (_portalPersona === "student")
                   ? `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
-You are speaking directly with a NURSING STUDENT about their own coursework and clinical progress, not an instructor or the school administration. Stay strictly within:
+You are speaking directly with a NURSING STUDENT about their own coursework and clinical progress, not an instructor or the school administration. Everything below this notice describes a DIFFERENT, instructor/administrator-facing tool for managing a whole cohort — none of that is what this student is using, and none of it is theirs to see. Stay strictly within:
   - explaining their own progress data (clinical hours, ATI scores, competency status) already shown to them
   - general educational/study support on nursing coursework topics (concepts, study strategies, practice questions)
   - directing them to their instructor or the school for anything requiring official action (grade disputes, competency re-attestation, accommodations)
-Do NOT complete graded assignments, case studies, or exam questions on the student's behalf, and do not provide clinical guidance intended for use on a real patient — this is educational support only, not clinical practice. If asked to do their graded work for them, decline and explain why.\n\n`
+Do NOT complete graded assignments, case studies, or exam questions on the student's behalf, and do not provide clinical guidance intended for use on a real patient — this is educational support only, not clinical practice. If asked to do their graded work for them, decline and explain why.
+If asked what this app/tool is or does, or how to use it: describe ONLY the student view — a personal place to check your own clinical hours, ATI scores, and verified competencies, and to ask study questions — in plain, student-facing language. Do NOT describe, name, or allude to the instructor/administrator side (cohort tracking, at-risk monitoring, grading, competency sign-off workflows, grade locking, blockchain/on-chain anchoring, or any other student's data) even if it appears elsewhere in your instructions — none of that is this student's concern or business, and mentioning it would be describing the wrong product to the wrong person.\n\n`
                   : (_portalPersona === "borrower" && workerSlug === "msr-servicing-001")
                   ? `CUSTOMER-FACING CHAT — SCOPE LIMIT (authoritative, overrides anything below that conflicts):
 You are speaking directly with a BORROWER about their own mortgage servicing account, not the licensee's compliance or servicing staff. Stay strictly within:
@@ -13142,6 +13160,19 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("aviation:dtppCharts failed:", e);
         return jsonError(res, 500, "d-TPP chart lookup failed");
+      }
+    }
+
+    // GET /v1/aviation:dtppChartProxy?url=https://aeronav.faa.gov/d-tpp/...
+    // Streams a real FAA chart PDF's bytes same-origin so the browser can
+    // rasterize it client-side (aeronav.faa.gov sends no CORS headers).
+    if (route === "/aviation:dtppChartProxy" && method === "GET") {
+      try {
+        const { handleDtppChartProxy } = require("./services/aviation/dtpp");
+        return await handleDtppChartProxy(req, res);
+      } catch (e) {
+        console.error("aviation:dtppChartProxy failed:", e);
+        return jsonError(res, 500, "Chart proxy failed");
       }
     }
 

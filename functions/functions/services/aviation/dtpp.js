@@ -135,4 +135,39 @@ async function handleDtppCharts(req, res) {
   }
 }
 
-module.exports = { getCurrentCycle, getChartsForIcao, handleDtppCharts };
+
+// Proxies a real FAA d-TPP chart PDF so the browser can fetch its bytes
+// same-origin (aeronav.faa.gov sends no CORS headers, so a direct browser
+// fetch is blocked — this exists only to unblock client-side PDF rendering,
+// e.g. pdfjs-dist rasterizing an Airport Diagram for the GCP-calibration UI).
+// Locked to aeronav.faa.gov URLs only — never an open proxy.
+//
+// Returns base64-wrapped JSON rather than a raw `application/pdf` body.
+// Verified this session: the shared Cloudflare Frontdoor's generic
+// `/api?path=` proxy (the only path browser clients go through — see
+// docs/STATE.md) silently corrupts raw binary response bodies — a direct
+// aeronav.faa.gov fetch of PHNL's Airport Diagram is a real, byte-exact
+// 263,724-byte PDF, but the same bytes read back through the Frontdoor came
+// back as 473,661 bytes, diverging from byte 11 on. pdf.js tolerated the
+// corruption enough to still report a page/size (the PDF's outer xref/page
+// structure is ASCII) but rendered a fully blank canvas (the corrupted
+// content stream). Every other route in this system already returns JSON
+// through that same proxy without issue, so matching that shape (base64
+// inside a normal JSON envelope) sidesteps the corruption entirely rather
+// than depending on a fix to infrastructure outside this repo.
+async function handleDtppChartProxy(req, res) {
+  const url = req.query?.url || req.body?.url;
+  if (!url || typeof url !== "string" || !/^https:\/\/aeronav\.faa\.gov\/d-tpp\//.test(url)) {
+    return res.status(400).json({ ok: false, error: "url must be a real aeronav.faa.gov /d-tpp/ chart URL", code: "bad_request" });
+  }
+  try {
+    const upstream = await fetch(url, { headers: { Accept: "application/pdf", "User-Agent": "SOCIII-Aviation/1.0" } });
+    if (!upstream.ok) return res.status(502).json({ ok: false, error: `upstream ${upstream.status}`, code: "upstream_error" });
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    return res.status(200).json({ ok: true, contentType: "application/pdf", byteLength: buf.length, base64: buf.toString("base64") });
+  } catch (e) {
+    return res.status(502).json({ ok: false, error: e.message, code: "upstream_error" });
+  }
+}
+
+module.exports = { getCurrentCycle, getChartsForIcao, handleDtppCharts, handleDtppChartProxy };

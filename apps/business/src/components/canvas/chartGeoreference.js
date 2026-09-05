@@ -48,9 +48,18 @@ export function solveSimilarityTransform(points) {
   const refLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
   const refLon = points.reduce((s, p) => s + p.lon, 0) / points.length;
 
+  // Image pixel space has +y pointing DOWN the page; the local-meters frame
+  // (built from lat/lon) has +y pointing north, i.e. UP. Those are
+  // opposite-handed 2D coordinate systems, and a pure similarity transform
+  // (rotation + uniform scale, no reflection) can't map between
+  // opposite-handed frames without producing a mirror image — verified this
+  // session: fitting raw px/py against north-up meters rendered the overlay
+  // with every label backwards. Negating py once here (and again in fn's
+  // inverse) re-expresses pixel space as a north-up-equivalent frame first,
+  // which resolves the handedness mismatch before the fit ever runs.
   const local = points.map(p => {
     const [mx, my] = toLocalMeters(p.lat, p.lon, refLat, refLon);
-    return { px: p.px, py: p.py, mx, my };
+    return { px: p.px, py: -p.py, mx, my };
   });
 
   // Similarity transform: [mx,my] = a*[px,-py] + b*[py,px] + [tx,ty]
@@ -91,8 +100,9 @@ export function solveSimilarityTransform(points) {
   });
 
   function fn(px, py) {
-    const mx = a * px - b * py + tx;
-    const my = b * px + a * py + ty;
+    const pyUp = -py; // see handedness note above
+    const mx = a * px - b * pyUp + tx;
+    const my = b * px + a * pyUp + ty;
     return fromLocalMeters(mx, my, refLat, refLon);
   }
 
