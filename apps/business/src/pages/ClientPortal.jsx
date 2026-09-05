@@ -1526,6 +1526,32 @@ export default function ClientPortal() {
   const [welcomed, setWelcomed] = useState(() => localStorage.getItem(lsKey) === "1");
   function dismissWelcome() { localStorage.setItem(lsKey, "1"); setWelcomed(true); }
 
+  // Branded open-animation, Ruthie's own worker only (Sean, 2026-09-05:
+  // "we need... some kind of branded wipe page... the splash page is
+  // critical"). Scoped to student persona, not tied to University of
+  // Hawaii branding — this introduces Hannah, Ruthie's tutor persona (real,
+  // documented in CODEX 73), with her Nurse Honu mascot. PLACEHOLDER ART:
+  // the real Honu illustration hasn't been provided yet (asked twice,
+  // searched Downloads/Desktop/repo — nothing found); swap _HONU_PLACEHOLDER
+  // for a real <img> the moment Sean sends the actual file. Shows once per
+  // device (localStorage), not every launch — easy to change if that's not
+  // what's wanted after seeing it.
+  const splashLsKey = `portal-splash-seen-${companyKey}-${persona}`;
+  const [showSplash, setShowSplash] = useState(() => isStudentPersona && localStorage.getItem(splashLsKey) !== "1");
+  const [splashWiping, setSplashWiping] = useState(false);
+  function dismissSplash() {
+    if (splashWiping) return;
+    localStorage.setItem(splashLsKey, "1");
+    setSplashWiping(true);
+    setTimeout(() => setShowSplash(false), 500);
+  }
+  useEffect(() => {
+    if (!showSplash) return;
+    const t = setTimeout(dismissSplash, 2200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSplash]);
+
   function portalReply(text) {
     const t = text.toLowerCase();
     if (persona === "advisor") {
@@ -2033,7 +2059,25 @@ export default function ClientPortal() {
         @keyframes journeyPop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
         @keyframes journeyRing { 0% { box-shadow: 0 0 0 0 rgba(15,23,42,0.4); } 70% { box-shadow: 0 0 0 10px rgba(15,23,42,0); } 100% { box-shadow: 0 0 0 10px rgba(15,23,42,0); } }
         @keyframes badgePop { from { opacity: 0; transform: translateY(6px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes splashIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+        @keyframes splashFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
       `}</style>
+      {showSplash && (
+        <div onClick={dismissSplash} style={{
+          position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 14, cursor: "pointer",
+          background: `linear-gradient(160deg, ${skin.accent}, #033127)`,
+          opacity: splashWiping ? 0 : 1, transform: splashWiping ? "scale(1.06)" : "scale(1)",
+          transition: "opacity 0.5s ease, transform 0.5s ease",
+        }}>
+          <div style={{ fontSize: 76, lineHeight: 1, animation: "splashIn 0.5s ease backwards, splashFloat 2.8s ease-in-out infinite 0.5s" }}>🐢</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", animation: "splashIn 0.5s ease backwards", animationDelay: "120ms" }}>Meet Hannah</div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", textAlign: "center", maxWidth: 260, lineHeight: 1.5, animation: "splashIn 0.5s ease backwards", animationDelay: "220ms" }}>
+            Your study companion — with Ruthie's own Nurse Honu watching over your journey to becoming an RN.
+          </div>
+          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", marginTop: 10, animation: "splashIn 0.5s ease backwards", animationDelay: "320ms" }}>Tap to continue</div>
+        </div>
+      )}
       {/* Branded header — the skin of the door you came through */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", paddingTop: "calc(14px + env(safe-area-inset-top, 0px))", borderBottom: "1px solid #f1f5f9", position: "sticky", top: 0, background: "#fff", zIndex: 5 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
