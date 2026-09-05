@@ -28,13 +28,13 @@
 //   - Aviation / Pacific Air    -> demo-pacific-air-001
 //   - Brokerage / Summit Realty -> demo-summit-realty
 //   - Education / Westview     -> demo-westview-education
-//   - Nursing / UH Mānoa        -> demo-uh-nursing (transactions + teamMembers
+//   - Nursing / UH Maui College        -> demo-uh-nursing (transactions + teamMembers
 //     only — platform-marketing/platform-contacts are not in this tenant's
 //     activeWorkers, per PERSONAS["uh-admin"], so campaigns/contacts would be
 //     force-fit data for a worker that isn't actually subscribed there)
 //
 // demo-makai-nursing is deliberately NOT touched here: its activeWorkers is
-// identical to UH Mānoa's (["nursing-education-001","nursing-micro-001",
+// identical to UH Maui College's (["nursing-education-001","nursing-micro-001",
 // "nursing-ob-001"] — no platform-* spine workers at all), and it already has
 // 90 real transactions, so no new records are force-fit into it.
 //
@@ -378,7 +378,7 @@ const EDU_TEAM = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
-// 5. Nursing / UH Mānoa — demo-uh-nursing (transactions + teamMembers ONLY;
+// 5. Nursing / UH Maui College — demo-uh-nursing (transactions + teamMembers ONLY;
 //    platform-marketing / platform-contacts are not in this tenant's
 //    activeWorkers per PERSONAS["uh-admin"] in index.js, so campaigns and
 //    contacts are intentionally skipped, not force-fit.)
@@ -519,14 +519,14 @@ async function seedCollection(colRef, docs, label) {
   await seedCollection(db.collection("contacts"), eduContacts, "contacts");
   await seedCollection(db.collection("tenants").doc(EDU_TENANT).collection("teamMembers"), buildTeam(EDU_TENANT, EDU_UID, EDU_TEAM), "teamMembers");
 
-  console.log(`\n═══ Nursing / UH Mānoa (${UH_TENANT}) — transactions + teamMembers only ═══`);
+  console.log(`\n═══ Nursing / UH Maui College (${UH_TENANT}) — transactions + teamMembers only ═══`);
   await seedCollection(db.collection("transactions"), buildTx(UH_TENANT, UH_TRANSACTIONS), "transactions");
   await seedCollection(db.collection("tenants").doc(UH_TENANT).collection("teamMembers"), buildTeam(UH_TENANT, UH_UID, UH_TEAM), "teamMembers");
   console.log("  • campaigns: SKIPPED (platform-marketing not in activeWorkers for demo-uh-nursing)");
   console.log("  • contacts: SKIPPED (platform-contacts not in activeWorkers for demo-uh-nursing)");
 
   console.log("\n═══ demo-makai-nursing: NOT TOUCHED ═══");
-  console.log("  activeWorkers identical to UH Mānoa (nursing-education-001/nursing-micro-001/nursing-ob-001 only,");
+  console.log("  activeWorkers identical to UH Maui College (nursing-education-001/nursing-micro-001/nursing-ob-001 only,");
   console.log("  no platform-* spine workers). Already has 90 real transactions. No new records written.");
 
   console.log("\n═══ Seed complete ═══");

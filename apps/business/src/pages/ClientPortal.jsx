@@ -16,7 +16,7 @@
  *         /portal?company=attorneys-title&persona=seller&orderId=xxx
  *         /portal?company=merritt-capital&persona=tenant             (Merritt Capital Group demo — CODEX title/RE merge, 2026-08-20)
  *         /portal?company=makai-nursing&persona=student               (Makai School of Nursing demo, 2026-08-20)
- *         /portal?company=uh-nursing&persona=student                  (UH Mānoa demo, 2026-08-20)
+ *         /portal?company=uh-nursing&persona=student                  (UH Maui College demo, 2026-08-20)
  *         /passport/:passportId                                       (DPP end-consumer scan — public, no login, rewrites to ?company=nordholm&persona=consumer&passportId=..., 2026-08-20)
  *         /portal?company=meridian-servicing&persona=borrower           (Meridian Loan Servicing demo — MSR Servicing & Compliance, CODEX S52.60, 2026-08-21)
  */
@@ -103,8 +103,8 @@ const SKINS = {
     tagline: "Your journey to becoming an RN",
   },
   "uh-nursing": {
-    name: "UH Mānoa School of Nursing",
-    short: "UH Mānoa Nursing",
+    name: "UH Maui College Nursing Program",
+    short: "UH Maui College Nursing",
     accent: "#065f46", accentSoft: "#ecfdf5", border: "#a7f3d0",
     glyph: "🎓",
     tagline: "Your journey to becoming an RN",

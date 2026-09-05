@@ -1,4 +1,4 @@
-// /demo/uh — auto-signs in as Dr. Noa Kahananui (UH Mānoa nursing admin)
+// /demo/uh — auto-signs in as Dr. Noa Kahananui (UH Maui College nursing admin)
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -49,7 +49,7 @@ export default function UHAdminDemoSignIn() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, background: "#0b0b12", color: "#fff", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ fontSize: 22, fontWeight: 700 }}>Loading SOCIII demo…</div>
-      <div style={{ fontSize: 14, color: "#a78bfa" }}>UH Mānoa · School of Nursing & Dental Hygiene · Dr. Noa Kahananui</div>
+      <div style={{ fontSize: 14, color: "#a78bfa" }}>UH Maui College · Allied Health Department · Dr. Noa Kahananui</div>
       {err
         ? <div style={{ color: "#f87171", fontSize: 13 }}>{err} — <a href="/demo/uh" style={{ color: "#a78bfa" }}>retry</a> · <a href="/" style={{ color: "#a78bfa" }}>go home</a></div>
         : <div style={{ width: 28, height: 28, border: "3px solid #2a2a3a", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}

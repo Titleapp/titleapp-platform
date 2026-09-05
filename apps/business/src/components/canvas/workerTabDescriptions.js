@@ -130,7 +130,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
     "accreditation-export":   "Generate the ACEN audit package — Standards 4, 5, and 6 — as a signed, time-stamped export.",
   },
 
-  // ── UH Mānoa Nursing (same tab descriptions, UH slugs) ───────────────────────
+  // ── UH Maui College Nursing (same tab descriptions, UH slugs) ───────────────────────
   "uh-nursing-records-001": {
     "cohort-overview":  "Big picture of your entire cohort — who's ready, on track, or at risk. Click any student card to drill into their full record.",
     "student-record":   "Full learning record for the selected student — clinical hours, ATI score, competency attestations, and instructor notes.",

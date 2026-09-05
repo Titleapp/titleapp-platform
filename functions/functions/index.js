@@ -2083,11 +2083,11 @@ exports.api = onRequest(
             role:          "member",
             activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "nursing-courses-001"],
           },
-          // ── UH Mānoa ─────────────────────────────────────────────────────
+          // ── UH Maui College ──────────────────────────────────────────────
           "uh-admin": {
             uid:           "demo-uh-admin-001",
             tenantId:      "demo-uh-nursing",
-            workspaceName: "UH Mānoa School of Nursing",
+            workspaceName: "UH Maui College Nursing Program",
             vertical:      "healthcare",
             name:          "Dr. Noa Kahananui",
             role:          "admin",
@@ -2096,7 +2096,7 @@ exports.api = onRequest(
           "uh-student": {
             uid:           "sara-kahele-demo",
             tenantId:      "demo-uh-nursing",
-            workspaceName: "UH Mānoa School of Nursing",
+            workspaceName: "UH Maui College Nursing Program",
             vertical:      "healthcare",
             name:          "Sara Kahele",
             role:          "member",

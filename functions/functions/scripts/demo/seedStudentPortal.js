@@ -10,7 +10,7 @@
 // entitlement-safe portal endpoint can match her demo custom-token sign-in
 // to her own record, the same fix pattern as seedTitleDemo.js's contact uid.
 //
-// UH Mānoa's "uh-student" persona already claims uid "sara-kahele-demo" in
+// UH Maui College's "uh-student" persona already claims uid "sara-kahele-demo" in
 // PERSONAS (functions/functions/index.js), but no matching student doc
 // existed in demo-uh-nursing at all — a real gap found while building this.
 // Seeded here with different figures (earlier in the program) so the two

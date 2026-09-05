@@ -260,10 +260,10 @@ const MAKAI_NCLEX_DOMAINS = [
   { domain: "Physiological Adaptation", pct: 63, benchmark: 70 },
 ];
 
-// ── University of Hawaiʻi at Mānoa data ───────────────────────────────────────
+// ── University of Hawaiʻi Maui College data ───────────────────────────────────
 
 const UH_SCHOOL = {
-  name: "UH Mānoa · School of Nursing & Dental Hygiene",
+  name: "UH Maui College · Allied Health Department",
   program: "BSN Program",
   cohort: "Class of 2027",
   accreditor: "CCNE",

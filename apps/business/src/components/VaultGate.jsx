@@ -48,7 +48,7 @@ export default function VaultGate({ children }) {
     "ws_1783659066844_o7m1pm",  // Merritt Capital Group (RE demo)
     "ws_1783763627546_mv3rpx",  // TRAITLY demo
     "demo-makai-nursing",        // Makai School of Nursing
-    "demo-uh-nursing",           // UH Mānoa nursing
+    "demo-uh-nursing",           // UH Maui College nursing
   ]);
   const storedTenant = typeof window !== "undefined" ? (localStorage.getItem("TENANT_ID") || "") : "";
   const isDemoUrl = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
