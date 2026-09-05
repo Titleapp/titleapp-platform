@@ -447,8 +447,51 @@ async function dppSupplyChainBlock(db, tenantId) {
 }
 
 // ── Makai School of Nursing — cohort grounding (all 5 nursing workers) ────────
-async function nursingCohortBlock(db, tenantId) {
+async function nursingCohortBlock(db, tenantId, uid, callerCtx) {
   const tenantRef = db.collection("tenants").doc(tenantId);
+
+  // A real, individual student customer (ClientPortal.jsx, student persona)
+  // must NEVER receive the full-cohort roster below — that's every other
+  // student's name, clinical hours, ATI score, and instructor notes, none
+  // of which is hers to see. This block used to be injected unconditionally
+  // for every caller, instructor and student alike; that's what let the real
+  // chat see "several students" and ask a real student "which one are you?"
+  // instead of the server just knowing from her own auth token (Sean,
+  // 2026-09-05: "Red flag chat can't tell which student she is. Cross data
+  // bleed."). Fix: when the caller is a real student customer, resolve HER
+  // single record the same way GET /v1/student:customer:profile already
+  // does (match by uid, fallback email) and return ONLY that — never the
+  // roster, never another student's data.
+  if (callerCtx && callerCtx.isRealStudentCustomer) {
+    const [students, competencies] = await Promise.all([
+      safe(tenantRef.collection("nursingStudents").get(), null),
+      safe(tenantRef.collection("nursingCompetencies").get(), null),
+    ]);
+    const sd = docs(students);
+    const callerUid = (callerCtx.callerUid || "").trim();
+    const callerEmail = (callerCtx.callerEmail || "").trim().toLowerCase();
+    const me = sd.find(s =>
+      (callerUid && s.uid === callerUid) ||
+      (callerEmail && (s.email || "").toString().trim().toLowerCase() === callerEmail)
+    );
+    if (!me) {
+      // Do NOT fall through to showing other students so the model can
+      // "figure out" who's asking — that's the exact bug being fixed here.
+      return "YOUR OWN RECORDS: could not resolve this student's own record right now. Tell them you're having trouble loading their record and to try again in a moment or contact their instructor — do NOT ask them which student they are, and do NOT reference any other student by name.\n\n";
+    }
+    const comp = docs(competencies).filter(c => c.studentId === me.id);
+    const pct = Math.round((me.clinicalHours / (me.clinicalHoursRequired || 500)) * 100);
+    const lines = ["YOUR OWN RECORDS — this student's own record only (never reference any other student):\n"];
+    lines.push(`${me.name} [${(me.status || "").toUpperCase()}]: clinical ${me.clinicalHours}/${me.clinicalHoursRequired || 500}h (${pct}%), ATI ${me.atiScore}%, ${me.coursesComplete} courses complete`);
+    if (me.notes) lines.push(`  Note: ${me.notes}`);
+    if (comp.length) {
+      lines.push("");
+      lines.push("COMPETENCIES:");
+      comp.forEach(c => lines.push(`  ${c.status === "verified" ? "VERIFIED" : "PENDING"}: ${c.competency}${c.status === "verified" && c.attestedBy ? ` (signed by ${c.attestedBy})` : ""}`));
+    }
+    return lines.join("\n") + "\n\n";
+  }
+
   const [students, courses, competencies, instructors] = await Promise.all([
     safe(tenantRef.collection("nursingStudents").get(), null),
     safe(tenantRef.collection("nursingCourses").get(), null),
@@ -685,14 +728,14 @@ async function workspaceContextBlock(db, tenantId) {
   }
 }
 
-async function buildWorkerOwnData({ db, tenantId, workerSlug, uid }) {
+async function buildWorkerOwnData({ db, tenantId, workerSlug, uid, callerCtx }) {
   if (!db || !tenantId || tenantId === "vault" || !workerSlug) return "";
   try {
     // Workspace context runs for every worker — sibling awareness.
     const wsBlock = await workspaceContextBlock(db, tenantId);
 
     const builder = BUILDERS[workerSlug];
-    const workerBlock = builder ? await builder(db, tenantId, uid).catch(e => {
+    const workerBlock = builder ? await builder(db, tenantId, uid, callerCtx).catch(e => {
       console.warn("[workerOwnData] build failed for", workerSlug, e.message);
       return "";
     }) : "";

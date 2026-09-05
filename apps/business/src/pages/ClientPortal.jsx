@@ -1891,6 +1891,14 @@ export default function ClientPortal() {
   // button instead — see navOpen below. Losing this menu below 760px meant
   // the native app had no way at all to reach "Clinical progress" etc.
   // outside of chat (Sean, 2026-09-04: "also no nav menu").
+  // The native nursing build hard-redirects bare "/" straight back into this
+  // same portal (main.jsx's flavor redirect) — so every "Switch to your
+  // SOCIII" / "Take me to my SOCIII" escape hatch just bounces a student
+  // back to where she already is, which reads as "the button doesn't work"
+  // (Sean, 2026-09-05). There's no real destination to escape to for this
+  // dedicated single-purpose app, so hide these affordances entirely here
+  // rather than leave a link that does nothing.
+  const isNativeNursingFlavor = typeof import.meta !== "undefined" && import.meta.env?.VITE_NATIVE_FLAVOR === "nursing";
   const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 760 : true);
   const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
@@ -2041,7 +2049,7 @@ export default function ClientPortal() {
           </div>
         </div>
         {/* super-user escape hatch — quiet, only matters to the few who have their own SOCIII */}
-        <a href="/" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "none" }}>Switch to your SOCIII ↗</a>
+        {!isNativeNursingFlavor && <a href="/" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "none" }}>Switch to your SOCIII ↗</a>}
       </header>
 
       {/* Mobile nav — a bottom sheet holding the same items the desktop rail
@@ -2057,9 +2065,11 @@ export default function ClientPortal() {
                 <span style={{ color: skin.accent, display: "flex" }}>{it.icon}</span>{it.label}
               </button>
             ))}
-            <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 14px", borderRadius: 10, fontSize: 13, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
-              {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
-            </a>
+            {!isNativeNursingFlavor && (
+              <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 14px", borderRadius: 10, fontSize: 13, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
+                {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -2078,9 +2088,11 @@ export default function ClientPortal() {
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, fontSize: 12.5, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
-              {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
-            </a>
+            {!isNativeNursingFlavor && (
+              <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, fontSize: 12.5, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
+                {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
+              </a>
+            )}
           </nav>
         )}
         {/* Chat center — on mobile, a canvas fully replaces chat (chat<->canvas
@@ -2203,7 +2215,7 @@ export default function ClientPortal() {
                 {I(<><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></>)} Back to chat
               </button>
             )}
-            <div style={{ padding: 18, flex: 1 }}>
+            <div style={{ padding: "18px 22px", paddingBottom: "calc(22px + env(safe-area-inset-bottom, 0px))", flex: 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
                 {canvas.type === "booking" ? "Book a visit"
@@ -2254,10 +2266,15 @@ export default function ClientPortal() {
         )}
       </div>
 
-      {/* Soft cross-sell — land-and-expand, never loud */}
+      {/* Soft cross-sell — land-and-expand, never loud. Dropped entirely in
+          the native nursing app: there's no "your own SOCIII" to switch to
+          in this dedicated single-purpose shell (see isNativeNursingFlavor). */}
       <footer style={{ padding: "12px 18px", borderTop: "1px solid #f1f5f9", textAlign: "center", fontSize: 12, color: "#94a3b8" }}>
-        Powered by <strong style={{ color: "#64748b" }}>SOCIII</strong> · your records are yours to keep —{" "}
-        <a href="/" style={{ color: skin.accent, textDecoration: "none", fontWeight: 600 }}>use it for your own stuff too →</a>
+        {isNativeNursingFlavor
+          ? <>Powered by <strong style={{ color: "#64748b" }}>SOCIII</strong> · your records are yours to keep.</>
+          : <>Powered by <strong style={{ color: "#64748b" }}>SOCIII</strong> · your records are yours to keep —{" "}
+              <a href="/" style={{ color: skin.accent, textDecoration: "none", fontWeight: 600 }}>use it for your own stuff too →</a>
+            </>}
       </footer>
     </div>
   );

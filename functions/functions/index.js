@@ -5415,7 +5415,15 @@ END DELIVERY RULES.
               if (workerPrompt) {
                 try {
                   const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
-                  const ownData = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug });
+                  // A real signed-in student customer (ClientPortal.jsx) must only
+                  // ever see her OWN record, never the full cohort roster — see the
+                  // callerCtx.isRealStudentCustomer branch in nursingCohortBlock.
+                  const callerCtx = {
+                    isRealStudentCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "student",
+                    callerUid: authUser?.uid || null,
+                    callerEmail: authUser?.email || null,
+                  };
+                  const ownData = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug, uid: authUser?.uid || null, callerCtx });
                   if (ownData) workerPrompt = ownData + workerPrompt;
                 } catch (ownErr) {
                   console.warn("worker chat: own-data inject failed:", ownErr.message);
@@ -8101,7 +8109,12 @@ IDENTITY RULES:
                 const wslug = body.selectedWorker;
                 const { buildWorkerOwnData } = require("./services/canvas/workerOwnData");
                 const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
-                const _own = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug: wslug });
+                const _callerCtx = {
+                  isRealStudentCustomer: body?.context?.source === "client_portal" && body?.context?.persona === "student",
+                  callerUid: authUser?.uid || null,
+                  callerEmail: authUser?.email || null,
+                };
+                const _own = await buildWorkerOwnData({ db, tenantId: reqTenantId || null, workerSlug: wslug, uid: authUser?.uid || null, callerCtx: _callerCtx });
                 const _sibW = authUser ? (await buildSiblingStatePrompt({ db, uid: authUser.uid, currentSlug: wslug, demoMode: false, tenantId: reqTenantId || null }) || "") : "";
                 if (_own) selectedSystemPrompt = _own + selectedSystemPrompt;
                 if (_sibW) selectedSystemPrompt = selectedSystemPrompt + "\n\n" + _sibW;
