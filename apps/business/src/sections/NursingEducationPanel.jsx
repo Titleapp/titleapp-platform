@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import NURSING_DATA from "../data/nursingEducationData.json";
+import useNursingCohort from "../hooks/useNursingCohort";
 
 // P1 fix (QA-001): real clinical site names per student instead of abstract types
 const STUDENT_SITE_LOOKUP = {
@@ -27,8 +28,18 @@ const STUDENT_SITE_LOOKUP = {
  *      strengths)
  *   5. Reflective practice (Tanner framework reflections)
  *
- * Tonight: reads from local data.json bundle. Sunday: swap to Firestore
- * /v1/nurse-edu:* endpoints once auth pipeline is sorted.
+ * Data status (S52.61, 2026-09-05): the "Students" tab (roster + per-student
+ * drill-down + competency sign-off) now reads REAL, tenant-scoped Firestore
+ * data via GET /v1/nursing:cohort and /v1/nursing:student — see
+ * RealStudentList / RealStudentJourney below. The rest of this file
+ * (Reflections inbox's AI-grading simulation, SLO Library, Cohorts, Audit
+ * Trail, and the student self-preview) still reads the bundled
+ * nursingEducationData.json fixture — there is no backing Firestore
+ * collection yet for SLOs, cohorts, or the reflection/professionalism/
+ * attendance/incident event-log model those views assume. Don't conflate
+ * the two: real students are a much thinner record (name, status, clinical
+ * hours, ATI score, competency sign-offs) than the fixture's simulated
+ * longitudinal event timeline.
  */
 
 const S = {
@@ -89,77 +100,100 @@ const EVENT_TYPE_STYLE = {
   "grade.locked":             { dot: "#D97706", pillBg: "rgba(217, 119, 6, 0.1)",  pillColor: "#D97706", label: "Grade Locked · Chain-Anchored" },
 };
 
-function avgScore(entries) {
-  const scored = entries.filter(e => typeof e.score === "number");
-  if (scored.length === 0) return null;
-  const sum = scored.reduce((a, e) => a + e.score, 0);
-  return (sum / scored.length).toFixed(1);
+// Real, tenant-scoped roster — replaces the fixture-driven StudentList
+// (S52.61). Reads whatever GET /v1/nursing:cohort actually returned for the
+// caller's own tenant: real name/status/clinicalHours/atiScore/notes fields,
+// not the fixture's displayName/progressStatus/currentSite/logbookEntries
+// shape (those two data models are NOT the same schema — see the file header
+// note).
+function statusPillStyle(status) {
+  if (status === "ready") return S.pillGood;
+  if (status === "at-risk") return S.pillFlag;
+  return S.pillWarn; // on-track / unknown
 }
 
-function StudentList({ data, onPickStudent }) {
-  const students = data.students || [];
-  const allEntries = data.logbookEntries || [];
-  const pendingReflections = allEntries.filter(e => e.type === "reflection.submitted").length;
-  const lockedGrades = allEntries.filter(e => e.type === "grade.locked").length;
-  const studentEntries = useMemo(() => {
-    const map = {};
-    for (const s of students) map[s.studentId] = allEntries.filter(e => e.studentId === s.studentId);
-    return map;
-  }, [students, allEntries]);
+function RealStudentList({ cohort, loading, error, onRetry, onPickStudent }) {
+  if (loading && !cohort) {
+    return <div style={{ padding: "40px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Loading your cohort…</div>;
+  }
+  if (error) {
+    return (
+      <div style={{ padding: "24px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, color: "#991B1B", fontSize: 13 }}>
+        Couldn't load your real cohort ({error}). <button onClick={onRetry} style={{ marginLeft: 8, background: "#fff", border: "1px solid #FCA5A5", borderRadius: 5, padding: "4px 10px", cursor: "pointer", color: "#991B1B", fontWeight: 600 }}>Retry</button>
+      </div>
+    );
+  }
+  const students = (cohort && cohort.students) || [];
+  const courses = (cohort && cohort.courses) || [];
 
   return (
     <div>
       <div style={S.demoBanner}>
-        <b>Demo data:</b> 8 sample students bootstrap the cohort. To enroll real students, use <em>+ Invite Student</em> (Sunday wire — mirrors advisor/investor flow shipped today: invite → Stripe Identity KYC → educational-record DTC minted in student's personal Vault → entitled membership to Clearwater Nursing).
+        <b>Real data:</b> this roster reads live from Firestore (tenants/{cohort?.tenantId}/nursingStudents, nursingCourses, nursingCompetencies), scoped to your own tenant only. It is a thinner record than the Reflections/SLO/Cohorts/Audit tabs below, which still run on sample data — see the demo banners on those tabs.
       </div>
 
       <div style={S.statsRow}>
         <div style={S.statCard}>
           <div style={S.statK}>On track</div>
-          <div style={{ ...S.statV, ...S.statVgood }}>{students.filter(s => s.progressStatus === "On track").length}<span style={S.statSm}> / {students.length}</span></div>
+          <div style={{ ...S.statV, ...S.statVgood }}>{cohort?.onTrack ?? 0}<span style={S.statSm}> / {cohort?.cohortSize ?? students.length}</span></div>
         </div>
         <div style={S.statCard}>
-          <div style={S.statK}>Need check-in</div>
-          <div style={{ ...S.statV, ...S.statVwarn }}>{students.filter(s => s.flag).length}</div>
+          <div style={S.statK}>At risk</div>
+          <div style={{ ...S.statV, ...S.statVwarn }}>{cohort?.atRisk ?? 0}</div>
         </div>
         <div style={S.statCard}>
-          <div style={S.statK}>Reflections submitted</div>
-          <div style={S.statV}>{pendingReflections}</div>
+          <div style={S.statK}>Ready</div>
+          <div style={{ ...S.statV, ...S.statVgood }}>{cohort?.ready ?? 0}</div>
         </div>
         <div style={S.statCard}>
-          <div style={S.statK}>Grades locked</div>
-          <div style={S.statV}>{lockedGrades} <span style={S.statSm}>chain-anchored</span></div>
+          <div style={S.statK}>Competencies</div>
+          <div style={S.statV}>{cohort?.verifiedCompetencies ?? 0} <span style={S.statSm}>verified · {cohort?.pendingCompetencies ?? 0} pending</span></div>
         </div>
       </div>
 
       <div style={S.card}>
         <div style={S.cardHeader}>
-          <h3 style={S.cardTitle}>Students · ASN20</h3>
-          <button style={{ background: "#7C3AED", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 5, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>+ Invite Student</button>
+          <h3 style={S.cardTitle}>Students{cohort?.schoolName ? ` · ${cohort.schoolName}` : ""}</h3>
         </div>
+        {students.length === 0 && (
+          <div style={{ padding: "20px 18px", fontSize: 13, color: "#64748b" }}>No students enrolled on this tenant yet.</div>
+        )}
         {students.map(s => {
-          const isFlag = !!s.flag;
+          const isFlag = s.status === "at-risk";
           const rowStyle = isFlag ? { ...S.studentRow, ...S.studentRowFlag } : S.studentRow;
-          const entries = studentEntries[s.studentId] || [];
-          const score = avgScore(entries);
-          const hasJourney = entries.length > 0;
+          const pct = s.clinicalHoursRequired ? Math.round(((s.clinicalHours || 0) / s.clinicalHoursRequired) * 100) : null;
+          const initials = (s.name || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
           return (
-            <div key={s.studentId} style={rowStyle} onClick={() => onPickStudent(s.studentId)}>
-              <div style={{ ...S.avatar, background: s.colorAccent }}>{s.initials}</div>
+            <div key={s.id} style={rowStyle} onClick={() => onPickStudent(s.id)}>
+              <div style={{ ...S.avatar, background: "#7C3AED" }}>{initials}</div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{s.displayName}</div>
-                <div style={{ fontSize: 11, color: "#64748b" }}>{s.currentCourse} · {s.currentSite} · enrolled {s.enrolledISO?.slice(0, 7)}</div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{s.name}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>
+                  {s.clinicalHours ?? 0}/{s.clinicalHoursRequired ?? 500}h clinical{pct != null ? ` (${pct}%)` : ""} · {s.coursesComplete ?? 0} courses complete
+                </div>
               </div>
               <div>
-                <span style={{ ...S.pill, ...(s.progressStatus === "On track" ? S.pillGood : S.pillWarn) }}>{s.progressStatus}</span>
+                <span style={{ ...S.pill, ...statusPillStyle(s.status) }}>{(s.status || "unknown").replace("-", " ")}</span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{score || "—"}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{s.note || s.flag || (hasJourney ? `${entries.length} events` : "Newly enrolled — no events yet")}</div>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{s.atiScore != null ? `${s.atiScore}%` : "—"}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{s.notes || "—"}</div>
               <div style={{ color: "#cbd5e1", fontWeight: 700 }}>›</div>
             </div>
           );
         })}
       </div>
+
+      {courses.length > 0 && (
+        <div style={S.card}>
+          <div style={S.cardHeader}><h3 style={S.cardTitle}>Active courses</h3></div>
+          {courses.map(c => (
+            <div key={c.id} style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", fontSize: 13, display: "flex", justifyContent: "space-between" }}>
+              <span><b>{c.code}</b> — {c.name}</span>
+              <span style={{ color: "#64748b" }}>Week {c.currentWeek}/{c.totalWeeks} · {c.enrolled} enrolled</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -279,6 +313,108 @@ function StudentJourney({ data, studentId, onBack }) {
 
       <div style={{ marginTop: 24, padding: 16, background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: 8, fontSize: 12, color: "#64748b" }}>
         <b style={{ color: "#334155" }}>Why this view matters:</b> Every event is an append-only record. Locked grades anchored to a public chain — even Dr. Clearwater cannot modify them after lock. {student.displayName} can export this full record at any time as a FERPA-portable verified transcript. Multi-dimensional: not just SLO competency, but professionalism, attendance, and clinical incidents (including self-reported near-misses, counted as strengths). The instructor's recommendation is data-backed, not gut-based.
+      </div>
+    </div>
+  );
+}
+
+// Real per-student drill-down (S52.61) — fetched live from
+// GET /v1/nursing:student for the caller's own tenant. This is the
+// instructor's real counterpart to StudentJourney above: real competency
+// sign-offs (with a working "Verify" action wired to
+// POST /v1/nursing:competency:attest) and whatever real atiScores/logbook
+// subcollection entries exist for this student, NOT the fixture's simulated
+// reflection/SLO/professionalism/attendance/incident timeline.
+function RealStudentJourney({ studentId, onBack, fetchStudent, attestCompetency }) {
+  const [state, setState] = useState({ loading: true, error: null, payload: null });
+  const [verifying, setVerifying] = useState(null);
+
+  const load = useCallback(async () => {
+    setState(s => ({ ...s, loading: true, error: null }));
+    const result = await fetchStudent(studentId);
+    if (result && result.ok) {
+      setState({ loading: false, error: null, payload: result });
+    } else {
+      setState({ loading: false, error: (result && result.error) || "Failed to load student", payload: null });
+    }
+  }, [studentId, fetchStudent]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load(); }, [load]);
+
+  async function handleVerify(competencyId) {
+    setVerifying(competencyId);
+    await attestCompetency(studentId, competencyId, "");
+    await load();
+    setVerifying(null);
+  }
+
+  if (state.loading && !state.payload) {
+    return <div style={{ padding: "40px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Loading student record…</div>;
+  }
+  if (state.error) {
+    return (
+      <div>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#7C3AED", fontWeight: 600, cursor: "pointer", padding: "0 0 12px", fontSize: 13 }}>← Back to Students</button>
+        <div style={{ padding: 24, background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, color: "#991B1B", fontSize: 13 }}>Couldn't load this student's record ({state.error}).</div>
+      </div>
+    );
+  }
+
+  const { student, competencies = [], atiScores = [], logbook = [] } = state.payload;
+  const pct = student.clinicalHoursRequired ? Math.round(((student.clinicalHours || 0) / student.clinicalHoursRequired) * 100) : null;
+  const events = [...atiScores, ...logbook].sort((a, b) => {
+    const ta = a.timestamp?._seconds || 0, tb = b.timestamp?._seconds || 0;
+    return tb - ta;
+  });
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "#7C3AED", fontWeight: 600, cursor: "pointer", padding: "0 0 12px", fontSize: 13 }}>← Back to Students</button>
+
+      <h1 style={S.h1}>{student.name}</h1>
+      <div style={S.subtitle}>{student.status || "unknown"} · {student.clinicalHours ?? 0}/{student.clinicalHoursRequired ?? 500}h clinical{pct != null ? ` (${pct}%)` : ""} · ATI {student.atiScore != null ? `${student.atiScore}%` : "—"} · {student.coursesComplete ?? 0} courses complete</div>
+      {student.notes && <div style={{ ...S.demoBanner, background: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" }}>{student.notes}</div>}
+
+      <div style={S.card}>
+        <div style={S.cardHeader}><h3 style={S.cardTitle}>Competencies</h3></div>
+        {competencies.length === 0 && <div style={{ padding: "16px 18px", fontSize: 13, color: "#64748b" }}>No competencies recorded yet.</div>}
+        {competencies.map(c => (
+          <div key={c.id} style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.competency}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>
+                {c.status === "verified" ? `Signed by ${c.attestedBy || "instructor"}` : (c.notes || "Awaiting sign-off")}
+              </div>
+            </div>
+            {c.status === "verified" ? (
+              <span style={{ ...S.pill, ...S.pillGood }}>Verified</span>
+            ) : (
+              <button
+                onClick={() => handleVerify(c.id)}
+                disabled={verifying === c.id}
+                style={{ background: "#16A34A", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 5, fontWeight: 600, fontSize: 11, cursor: "pointer" }}
+              >
+                {verifying === c.id ? "Signing…" : "Verify & sign"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={S.card}>
+        <div style={S.cardHeader}><h3 style={S.cardTitle}>Event history</h3></div>
+        {events.length === 0 && (
+          <div style={{ padding: "20px 18px", fontSize: 13, color: "#64748b" }}>
+            No ATI scores or logbook events recorded yet for {student.name}.
+          </div>
+        )}
+        {events.map((e, i) => (
+          <div key={e.id || i} style={{ padding: "10px 18px", borderBottom: "1px solid #f1f5f9", fontSize: 12 }}>
+            <div style={{ fontWeight: 600 }}>{e.type === "ati_score" ? `ATI: ${e.assessmentName || "assessment"} — ${e.score}% (${e.band})` : e.type === "competency_attainment" ? `Competency signed: ${e.competencyId}` : e.type}</div>
+            <div style={{ color: "#64748b" }}>{e.attestedByEmail || e.source || ""}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -894,6 +1030,22 @@ export default function NursingEducationPanel() {
   const [viewMode, setViewMode] = useState(isStudentPersona ? "student" : "instructor"); // "instructor" | "student"
   const data = NURSING_DATA;
 
+  // Real cohort data (S52.61) — this internal instructor/student toggle is a
+  // demo-preview convenience, NOT the real security boundary: a real student
+  // never lands on this component at all (they sign into the separate
+  // customer-facing ClientPortal.jsx). Fetch the real roster whenever we're
+  // rendering the instructor view.
+  const { loading: cohortLoading, error: cohortError, fetchCohort, fetchStudent, attestCompetency } = useNursingCohort();
+  const [cohort, setCohort] = useState(null);
+  const loadCohort = useCallback(async () => {
+    const result = await fetchCohort();
+    if (result && result.ok) setCohort(result);
+  }, [fetchCohort]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (viewMode === "instructor") loadCohort();
+  }, [viewMode, loadCohort]);
+
   // Sync viewMode to a localStorage hook the chat picks up, so Alex knows
   // who it's talking to (student looking at their own record vs. instructor
   // looking at a cohort). Cleared when user leaves the worker.
@@ -962,10 +1114,21 @@ export default function NursingEducationPanel() {
           </div>
 
           {activeTab === "students" && !focusedStudentId && (
-            <StudentList data={data} onPickStudent={(id) => setFocusedStudentId(id)} />
+            <RealStudentList
+              cohort={cohort}
+              loading={cohortLoading}
+              error={cohortError}
+              onRetry={loadCohort}
+              onPickStudent={(id) => setFocusedStudentId(id)}
+            />
           )}
           {activeTab === "students" && focusedStudentId && (
-            <StudentJourney data={data} studentId={focusedStudentId} onBack={() => setFocusedStudentId(null)} />
+            <RealStudentJourney
+              studentId={focusedStudentId}
+              onBack={() => setFocusedStudentId(null)}
+              fetchStudent={fetchStudent}
+              attestCompetency={attestCompetency}
+            />
           )}
           {activeTab === "reflections" && <ReflectionsInbox data={data} />}
           {activeTab === "cohorts" && <CohortsView data={data} />}

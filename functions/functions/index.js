@@ -2072,7 +2072,12 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Kealani Moku",
             role:          "admin",
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            // clinical-evaluation-001 added 2026-09-05 (S52.61) — it's a
+            // real, live, instructor-facing worker (signing/Vault backend
+            // real since 2026-06-26) that had no instructor persona actually
+            // carrying it in activeWorkers, so it was built but unreachable.
+            // Instructor-only — never given to the student persona below.
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           "nursing-student": {
             uid:           "sara-kahele-demo",
@@ -2091,7 +2096,12 @@ exports.api = onRequest(
             vertical:      "healthcare",
             name:          "Dr. Noa Kahananui",
             role:          "admin",
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            // clinical-evaluation-001 added 2026-09-05 (S52.61) — this is the
+            // literal "CET / Clinical Evaluation Tool" named in the real
+            // signed UH Maui College order form. The worker + canvas
+            // (card:clinical-eval, ClinicalEvalCard.jsx) were real and fully
+            // wired, but no instructor persona had it active — unreachable.
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
           "uh-student": {
             uid:           "sara-kahele-demo",
@@ -34398,59 +34408,157 @@ Analyze now:`;
       }
     }
 
-    // ── Makai Nursing Demo routes ─────────────────────────────────────────────
-    // GET /v1/nursing:cohort — full cohort overview for the demo tenant
+    // ── Nursing instructor dashboard routes ───────────────────────────────────
+    // Fixed 2026-09-05 (same bug class as "cross-student data bleed" /
+    // c23cb0c5 property-management tenant-scoping): these four routes were
+    // ALL hardcoded to tenantId = "demo-makai-nursing" regardless of who
+    // called them or which tenant's x-tenant-id header was sent — any
+    // authenticated user hitting /v1/nursing:cohort got Makai's demo roster,
+    // and a REAL instructor tenant (e.g. UH Maui, demo-uh-nursing) would have
+    // silently seen someone else's students instead of their own. Now scoped
+    // exactly like nursingCohortBlock() in workerOwnData.js (the chat-side
+    // grounding for this same data) — caller's own ctx.tenantId, tenant
+    // membership required, and the full-roster/attestation actions gated to
+    // admin/owner (this codebase's stand-in for "instructor" — no separate
+    // role exists yet, same convention /education:students:list already
+    // uses).
+    //
+    // GET /v1/nursing:cohort — full cohort overview for the CALLER'S OWN
+    // tenant (instructor dashboard). Mirrors nursingCohortBlock's shape/
+    // fields — the fixture (nursingEducationData.json) and this endpoint are
+    // not the same data model; the fixture's SLO/reflection/event-log
+    // richness is NOT backed by Firestore yet (see notes on the frontend
+    // side, S52.61).
     if (route === "/nursing:cohort" && method === "GET") {
       try {
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
-        const tenantId = "demo-makai-nursing";
-        const [studentsSnap, coursesSnap] = await Promise.all([
-          db.collection("tenants").doc(tenantId).collection("nursingStudents").get(),
-          db.collection("tenants").doc(tenantId).collection("nursingCourses").get(),
+        const ctx = getCtx(req, body, nAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const memberGate = await requireMembershipIfNeeded({ uid: nAuth.user.uid, tenantId: ctx.tenantId }, res);
+        if (!memberGate.ok) return memberGate; // .ok, not .handled — see CODEX 82 round-2 note above
+        const role = memberGate.membership && memberGate.membership.role;
+        if (role !== "admin" && role !== "owner") {
+          return jsonError(res, 403, "Forbidden", { reason: "Viewing the cohort dashboard requires an instructor/admin role on this tenant" });
+        }
+
+        const tenantId = ctx.tenantId;
+        const tenantRef = db.collection("tenants").doc(tenantId);
+        const safeDoc = (p) => p.catch(() => ({ exists: false }));
+        const safeQuery = (p) => p.catch(() => ({ docs: [] }));
+        const [tenantSnap, studentsSnap, coursesSnap, competenciesSnap, instructorsSnap] = await Promise.all([
+          safeDoc(tenantRef.get()),
+          safeQuery(tenantRef.collection("nursingStudents").get()),
+          safeQuery(tenantRef.collection("nursingCourses").get()),
+          safeQuery(tenantRef.collection("nursingCompetencies").get()),
+          safeQuery(tenantRef.collection("nursingInstructors").get()),
         ]);
         const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const courses = coursesSnap.docs.map(d => {
+          const c = { id: d.id, ...d.data() };
+          // Two shapes exist in real seed data: `enrolled` (a count) and
+          // `enrolledStudents` (an id array) — support both rather than
+          // assuming one.
+          const enrolled = typeof c.enrolled === "number"
+            ? c.enrolled
+            : (Array.isArray(c.enrolledStudents) ? c.enrolledStudents.length : 0);
+          return { ...c, enrolled };
+        });
+        const competencies = competenciesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const instructors = instructorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
         const atRisk = students.filter(s => s.status === "at-risk").length;
         const ready = students.filter(s => s.status === "ready").length;
-        return res.json({ ok: true, tenantId, cohortSize: students.length, atRisk, ready, onTrack: students.length - atRisk - ready, students, courses });
+        const onTrack = students.length - atRisk - ready;
+        const verifiedCompetencies = competencies.filter(c => c.status === "verified").length;
+        const pendingCompetencies = competencies.filter(c => c.status === "pending").length;
+        const schoolName = (tenantSnap && tenantSnap.exists && tenantSnap.data().name) || null;
+
+        return res.json({
+          ok: true,
+          tenantId,
+          schoolName,
+          cohortSize: students.length,
+          atRisk,
+          ready,
+          onTrack,
+          students,
+          courses,
+          instructors,
+          competencies,
+          verifiedCompetencies,
+          pendingCompetencies,
+        });
       } catch (e) {
         console.error("nursing:cohort failed:", e);
         return jsonError(res, 500, "Failed to load nursing cohort");
       }
     }
 
-    // GET /v1/nursing:student?id=<studentId> — individual student record
+    // GET /v1/nursing:student?id=<studentId> — individual student record,
+    // instructor drill-down (real event history, not the fixture's simulated
+    // reflection/SLO/professionalism/attendance/incident timeline). studentId
+    // must be a real doc on the CALLER'S OWN tenant roster — never a trusted
+    // arbitrary id, same check as /edu:evaluation:sign's roster gate.
     if (route === "/nursing:student" && method === "GET") {
       try {
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
         const studentId = req.query && req.query.id;
         if (!studentId) return jsonError(res, 400, "Missing id");
-        const tenantId = "demo-makai-nursing";
-        const [studentDoc, competenciesSnap] = await Promise.all([
-          db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId).get(),
+        const ctx = getCtx(req, body, nAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const memberGate = await requireMembershipIfNeeded({ uid: nAuth.user.uid, tenantId: ctx.tenantId }, res);
+        if (!memberGate.ok) return memberGate;
+        const role = memberGate.membership && memberGate.membership.role;
+        if (role !== "admin" && role !== "owner") {
+          return jsonError(res, 403, "Forbidden", { reason: "Viewing a student's record requires an instructor/admin role on this tenant" });
+        }
+
+        const tenantId = ctx.tenantId;
+        const studentRef = db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId);
+        const safeQuery = (p) => p.catch(() => ({ docs: [] }));
+        const [studentDoc, competenciesSnap, atiScoresSnap, logbookSnap] = await Promise.all([
+          studentRef.get(),
           db.collection("tenants").doc(tenantId).collection("nursingCompetencies").where("studentId", "==", studentId).get(),
+          safeQuery(studentRef.collection("atiScores").orderBy("timestamp", "desc").limit(50).get()),
+          safeQuery(studentRef.collection("logbook").orderBy("timestamp", "desc").limit(50).get()),
         ]);
-        if (!studentDoc.exists) return jsonError(res, 404, "Student not found");
+        if (!studentDoc.exists) return jsonError(res, 404, "Student not found on this tenant's roster");
         const student = { id: studentDoc.id, ...studentDoc.data() };
         const competencies = competenciesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        return res.json({ ok: true, student, competencies });
+        const atiScores = atiScoresSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const logbook = logbookSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, student, competencies, atiScores, logbook });
       } catch (e) {
         console.error("nursing:student failed:", e);
         return jsonError(res, 500, "Failed to load student record");
       }
     }
 
-    // POST /v1/demo/ati-score-event — simulated AGS 2.0 grade passback (LTI demo)
-    // Processes exactly as a real ATI score would; trigger is synthetic.
+    // POST /v1/demo/ati-score-event — simulated AGS 2.0 grade passback (LTI
+    // demo). Processes exactly as a real ATI score would; trigger is
+    // synthetic. Instructor-only, tenant-scoped, roster-checked (was
+    // hardcoded to demo-makai-nursing — same fix as above).
     if (route === "/demo/ati-score-event" && method === "POST") {
       try {
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
         const { studentId, courseId, assessmentName, score } = body || {};
         if (!studentId || !courseId || score == null) return jsonError(res, 400, "Missing studentId, courseId, or score");
-        const tenantId = "demo-makai-nursing";
+        const ctx = getCtx(req, body, nAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const memberGate = await requireMembershipIfNeeded({ uid: nAuth.user.uid, tenantId: ctx.tenantId }, res);
+        if (!memberGate.ok) return memberGate;
+        const role = memberGate.membership && memberGate.membership.role;
+        if (role !== "admin" && role !== "owner") {
+          return jsonError(res, 403, "Forbidden", { reason: "Recording an ATI score requires an instructor/admin role on this tenant" });
+        }
+        const tenantId = ctx.tenantId;
+        const studentRef = db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId);
+        const studentSnap = await studentRef.get();
+        if (!studentSnap.exists) return jsonError(res, 400, "studentId is not on this tenant's roster");
+
         const eventId = `ati_${Date.now()}_${studentId}`;
         const logEntry = {
           type: "ati_score",
@@ -34463,11 +34571,9 @@ Analyze now:`;
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           simulated: true,
         };
-        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
-          .collection("atiScores").doc(eventId).set(logEntry);
+        await studentRef.collection("atiScores").doc(eventId).set(logEntry);
         // Also mint a logbook entry into the student's Vault record
-        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
-          .collection("logbook").add({ ...logEntry, entryType: "ati_score_delivered" });
+        await studentRef.collection("logbook").add({ ...logEntry, entryType: "ati_score_delivered" });
         return res.json({ ok: true, eventId, score: Number(score), band: logEntry.band, message: `ATI score ${score}% delivered for ${assessmentName || "ATI Assessment"}` });
       } catch (e) {
         console.error("demo/ati-score-event failed:", e);
@@ -34475,19 +34581,33 @@ Analyze now:`;
       }
     }
 
-    // POST /v1/nursing:competency:attest — instructor attests a competency sign-off
+    // POST /v1/nursing:competency:attest — instructor attests a competency
+    // sign-off. Tenant-scoped, roster-checked (was hardcoded to
+    // demo-makai-nursing — same fix as above).
     if (route === "/nursing:competency:attest" && method === "POST") {
       try {
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
         const { studentId, competencyId, notes } = body || {};
         if (!studentId || !competencyId) return jsonError(res, 400, "Missing studentId or competencyId");
-        const tenantId = "demo-makai-nursing";
+        const ctx = getCtx(req, body, nAuth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "x-tenant-id required");
+        const memberGate = await requireMembershipIfNeeded({ uid: nAuth.user.uid, tenantId: ctx.tenantId }, res);
+        if (!memberGate.ok) return memberGate;
+        const role = memberGate.membership && memberGate.membership.role;
+        if (role !== "admin" && role !== "owner") {
+          return jsonError(res, 403, "Forbidden", { reason: "Attesting a competency requires an instructor/admin role on this tenant" });
+        }
+        const tenantId = ctx.tenantId;
+        const studentRef = db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId);
+        const studentSnap = await studentRef.get();
+        if (!studentSnap.exists) return jsonError(res, 400, "studentId is not on this tenant's roster");
+
         const attestation = {
           studentId,
           competencyId,
-          attestedBy: nAuth.uid,
-          attestedByEmail: nAuth.email || "instructor",
+          attestedBy: nAuth.user.uid,
+          attestedByEmail: nAuth.user.email || "instructor",
           notes: notes || "",
           status: "verified",
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
@@ -34496,9 +34616,8 @@ Analyze now:`;
           { status: "verified", lastAttestation: attestation },
           { merge: true }
         );
-        await db.collection("tenants").doc(tenantId).collection("nursingStudents").doc(studentId)
-          .collection("logbook").add({ type: "competency_attainment", source: "instructor", ...attestation });
-        return res.json({ ok: true, competencyId, status: "verified", attestedBy: nAuth.email || "instructor" });
+        await studentRef.collection("logbook").add({ type: "competency_attainment", source: "instructor", ...attestation });
+        return res.json({ ok: true, competencyId, status: "verified", attestedBy: nAuth.user.email || "instructor" });
       } catch (e) {
         console.error("nursing:competency:attest failed:", e);
         return jsonError(res, 500, "Failed to record competency attestation");
