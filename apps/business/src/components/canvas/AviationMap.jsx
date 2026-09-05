@@ -495,7 +495,7 @@ export default function AviationMap({
         background: "rgba(15,23,42,0.85)", borderRadius: 8, padding: 5,
         boxShadow: "0 1px 4px rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
       }}>
-        <IconToggle icon="🛩" title="Airports" enabled={layers.airports.enabled} loading={layers.airports.loading} onClick={() => toggleLayer("airports")} color="#60a5fa" />
+        <IconToggle icon="🗼" title="Airports" enabled={layers.airports.enabled} loading={layers.airports.loading} onClick={() => toggleLayer("airports")} color="#60a5fa" />
         <IconToggle icon="⬠" title="Airspace" enabled={layers.airspace.enabled} loading={layers.airspace.loading} onClick={() => toggleLayer("airspace")} color="#a78bfa" />
         <IconToggle icon="◈" title="Navaids"  enabled={layers.navaids.enabled}  loading={layers.navaids.loading}  onClick={() => toggleLayer("navaids")}  color="#22d3ee" />
         <IconToggle icon="✈" title="Traffic"  enabled={layers.traffic.enabled}  loading={layers.traffic.loading}  onClick={() => toggleLayer("traffic")}  color="#f87171" />
