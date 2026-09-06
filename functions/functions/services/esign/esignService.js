@@ -304,6 +304,25 @@ async function handleESignSign(req, res) {
       }
     }
 
+    // DPP self-serve onboarding's authorized-agent agreement (added
+    // 2026-09-05) — additive, same guard pattern as the clientOnboarding
+    // hook above: metadata.dppAgentAuthorization is unset for every other
+    // esign caller, so this never runs for non-DPP-agent signing requests.
+    if (allSigned && clientOnboardingMeta?.dppAgentAuthorization && clientOnboardingMeta.tenantId) {
+      try {
+        const { onAgentAuthorizationSigned } = require("../dpp/agentAuthorization");
+        await onAgentAuthorizationSigned({
+          db,
+          tenantId: clientOnboardingMeta.tenantId,
+          signerEmail: decrypted.email,
+          signerName: signerName || null,
+          signedAt: new Date().toISOString(),
+        });
+      } catch (activateErr) {
+        console.warn("[esign] dpp agent-authorization activation failed (non-fatal):", activateErr.message);
+      }
+    }
+
     return res.json({ ok: true, allSigned, message: allSigned ? "Document fully signed." : "Signature recorded. Waiting for remaining signers." });
   } catch (e) {
     return res.status(400).json({ ok: false, error: "Signing failed: " + e.message });
