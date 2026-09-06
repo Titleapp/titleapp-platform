@@ -259,6 +259,18 @@ async function handleTopUpBalance(req, res, { userId }) {
     customer: customerId,
     mode: "payment",
     line_items: lineItems,
+    // Path 2 fix (overage-billing pass): a Checkout Session in "payment" mode
+    // does NOT save the card for future off-session use by default — only
+    // createSubscription.js's flow (attach + set default_payment_method) did
+    // that. That meant a user who only ever topped up via Checkout (never
+    // subscribed) had no default_payment_method on file, so
+    // checkBalanceRecharge's off_session auto-recharge would fail with
+    // "no_payment_method" even though they'd paid before. setup_future_usage
+    // tells Stripe to save the resulting payment method on the customer;
+    // creditBalanceFromCheckout below then makes it the default so
+    // off-session auto-recharge (and any future institution/individual
+    // overage charge) actually has a card to use.
+    payment_intent_data: { setup_future_usage: "off_session" },
     metadata: { userId, type: "balance_topup", amount: String(amount) },
     success_url: successUrl || "https://app.sociii.ai/vault?topup=success",
     cancel_url: cancelUrl || "https://app.sociii.ai/vault?topup=cancelled",
@@ -294,6 +306,27 @@ async function creditBalanceFromCheckout(session) {
     stripePaymentIntentId: session.payment_intent,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  // Persist the card as the customer's default payment method (see
+  // setup_future_usage above) so future off-session charges — auto-recharge,
+  // or any real-time/batch overage settlement in
+  // services/billing/overageSettlement.js — have something to charge. This
+  // is the other half of the Path 2 "real payment method, not just a
+  // balance number" fix; best-effort, non-fatal if it fails (the balance
+  // top-up itself already succeeded and must not be rolled back over this).
+  try {
+    if (session.payment_intent && session.customer) {
+      const stripe = getStripe();
+      const pi = await stripe.paymentIntents.retrieve(session.payment_intent);
+      if (pi.payment_method) {
+        await stripe.customers.update(session.customer, {
+          invoice_settings: { default_payment_method: pi.payment_method },
+        });
+      }
+    }
+  } catch (e) {
+    console.warn(`[creditBalanceFromCheckout] could not set default payment method for ${userId} (non-fatal):`, e.message);
+  }
 
   console.log(`Balance top-up: ${userId} +$${amountNum}`);
 }

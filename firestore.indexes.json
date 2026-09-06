@@ -541,6 +541,23 @@
         { "fieldPath": "scope", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "dataFeeEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "billed", "order": "ASCENDING" },
+        { "fieldPath": "payerType", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dataFeeEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "billed", "order": "ASCENDING" },
+        { "fieldPath": "payerType", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
