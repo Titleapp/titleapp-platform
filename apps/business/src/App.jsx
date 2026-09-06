@@ -4197,6 +4197,17 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <AviationWorkerCanvas workerSlug="av-safety" />;
       case "av-copilot":
         return <AviationWorkerCanvas workerSlug="av-copilot" />;
+      // CODEX 64 — cockpit-optimized 60/40 iPad view (map + intelligence
+      // panel, GPS strip, brief staleness). Routed here for the native
+      // "aviation" flavor when main.jsx detects a real iPad viewport.
+      case "av-cockpit": {
+        const CockpitView = React.lazy(() => import("./pages/aviation/CockpitView"));
+        return (
+          <React.Suspense fallback={<div style={{ padding: 32, color: "#94a3b8" }}>Loading cockpit view…</div>}>
+            <CockpitView />
+          </React.Suspense>
+        );
+      }
       // Legacy slugs — keep for backward compat
       case "av-copilot-001":
         return <AviationWorkerCanvas workerSlug="av-copilot-001" />;
@@ -4435,6 +4446,11 @@ export default function App() {
   const isWbCalcTest = /^\/sandbox\/wb-calculator\/?$/.test(window.location.pathname);
   const isAvChartsTest = /^\/sandbox\/aviation-charts\/?$/.test(window.location.pathname);
   const isMeterReadTest = /^\/sandbox\/meter-reading\/?$/.test(window.location.pathname);
+
+  // ── /instrument route intercept (CODEX 64 — Backup Instrument Mode) ─────
+  // Full-screen map + GPS strip, no auth required, no tenant data. Same
+  // bypass-AdminShell pattern as /sandbox and /invest/room below.
+  const isBackupInstrument = /^\/instrument\/?$/.test(window.location.pathname);
 
   // ── /marketplace/:slug route intercept ─────────────────────
   // Public marketplace listing page — no auth required
@@ -5440,6 +5456,16 @@ export default function App() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // ── Backup Instrument Mode (CODEX 64) — no auth, no tenant data ───────────
+  if (isBackupInstrument) {
+    const BackupInstrumentMode = React.lazy(() => import("./pages/aviation/BackupInstrumentMode"));
+    return (
+      <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0f172a" }} />}>
+        <BackupInstrumentMode />
+      </React.Suspense>
     );
   }
 

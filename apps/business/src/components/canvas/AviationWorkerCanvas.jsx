@@ -18,7 +18,8 @@ import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-async function apiGet(path) {
+// eslint-disable-next-line react-refresh/only-export-components
+export async function apiGet(path) {
   const auth = getAuth();
   const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
   const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
@@ -62,7 +63,8 @@ function parseCeiling(raw) {
   return `${m[1]}${parseInt(m[2]) * 100}`;
 }
 
-function weatherToBlocks(metars) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function weatherToBlocks(metars) {
   if (!metars || !metars.length) return null;
   const catBand = { VFR: "GREEN", MVFR: "BLUE", IFR: "RED", LIFR: "RED" };
   const rows = metars.map(s => [
@@ -106,7 +108,8 @@ function logbookToBlocks(entries) {
   ];
 }
 
-function currencyToBlocks(c) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function currencyToBlocks(c) {
   if (!c) return null;
   if (!c.hasFlightLog && !c.hasEvents) return [{
     type: "prose",
@@ -148,7 +151,8 @@ function currencyToBlocks(c) {
   return blocks;
 }
 
-function squawksToBlocks(squawks) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function squawksToBlocks(squawks) {
   const list = squawks || [];
   if (!list.length) return [{
     type: "cards",
@@ -180,7 +184,8 @@ function squawksToBlocks(squawks) {
 // (computeAirworthiness), fetched via GET /v1/mx:listAircraft. Replaces the
 // static "AIRWORTHY · PC-12/47E ... 1,847 TTSN" hero block that was the same
 // hardcoded fixture for every user, forever.
-function airworthinessToBlocks(fleet) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function airworthinessToBlocks(fleet) {
   const list = fleet || [];
   if (!list.length) {
     return [{
@@ -295,7 +300,8 @@ function maintenanceScheduleToBlocks(fleet) {
 // aircraft tab's airworthiness view uses — see handleListSquawks), MEL
 // reference, and operating restrictions. Distinct view of the same real
 // squawks collection the Aircraft tab's Corrective Action panel writes to.
-function melItemsToBlocks(squawks) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function melItemsToBlocks(squawks) {
   const list = (squawks || []).filter(s => s.status === "deferred");
   if (!list.length) return [{
     type: "prose",
@@ -778,7 +784,8 @@ function Prose({ items }) {
   );
 }
 
-function Block({ block, onTabSwitch, onChatFill }) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function Block({ block, onTabSwitch, onChatFill }) {
   switch (block.type) {
     case "heroes":  return <Heroes items={block.items} />;
     case "kpis":    return <Kpis items={block.items} />;

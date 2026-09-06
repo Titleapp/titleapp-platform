@@ -139,6 +139,21 @@ function makePirepIcon(urgent) {
   return L.divIcon({ html: svg, className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 }
 
+// Own-ship position — CODEX 64's GPS puck fix (or device GPS fallback),
+// distinct from both general ADS-B traffic and fleet aircraft: a bright cyan
+// chevron with a pulsing halo so "this is me" is unambiguous on a busy map.
+function makeOwnPositionIcon(trackDeg, stale) {
+  const size = 26;
+  const h = trackDeg != null ? trackDeg : 0;
+  const color = stale ? "#94a3b8" : "#22d3ee";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-13 -13 26 26"
+    style="transform:rotate(${h}deg);display:block;">
+    <circle cx="0" cy="0" r="11" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>
+    <path d="M0,-9 L6,7 L0,3.5 L-6,7 Z" fill="${color}" stroke="#0f172a" stroke-width="1"/>
+  </svg>`;
+  return L.divIcon({ html: svg, className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+}
+
 // Aircraft traffic: top-down airplane SVG rotated by heading.
 // fleet=true renders in gold with a halo ring so owned aircraft stand out from general ADS-B traffic.
 function makeAircraftIcon(heading, emergency, fleet) {
@@ -315,6 +330,10 @@ export default function AviationMap({
   icaos = ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH"],
   compact = false,
   fleetTails = [],   // e.g. ["N701AA","N702AA","N703AA"] — rendered gold with halo
+  // CODEX 64 cockpit/backup-instrument additions:
+  ownPosition = null,     // { lat, lon, trackDeg, groundspeedKts, altitudeFt, stale } — GPS puck/device fix
+  followPosition = false, // recenter map on ownPosition as it updates (in-flight moving map)
+  minimal = false,        // backup instrument mode: no weather fetch, no METAR dots, no layer rail — bare map + own position only, per CODEX 64 ("no tenant data, no brief content")
 }) {
   const fleetSet = new Set((fleetTails || []).map(t => t.toUpperCase()));
   const [weather, setWeather] = useState({ data: null, loading: true });
@@ -396,13 +415,23 @@ export default function AviationMap({
     return () => clearInterval(radarPlayTimer.current);
   }, [radarPlaying]);
 
-  // Auto-load METAR weather on mount
+  // Auto-load METAR weather on mount — skipped entirely in `minimal` mode
+  // (backup instrument mode): CODEX 64 requires that mode show "no tenant
+  // data, no brief content" with no auth, so it must not make an
+  // authenticated/brief-shaped fetch at all, not just hide the result.
   useEffect(() => {
+    if (minimal) { setWeather({ data: null, loading: false }); return; }
     const ids = icaos.join(",");
     apiGet(`/v1/aviation:weather?ids=${ids}&taf=1&sigmet=1`)
       .then(d => setWeather({ data: d, loading: false }))
       .catch(() => setWeather({ data: null, loading: false }));
-  }, [icaos.join(",")]);
+  }, [icaos.join(","), minimal]);
+
+  // Own-position recenter (in-flight moving map) — takes over from the
+  // static `center` prop once a live fix exists and followPosition is on.
+  const effectiveCenter = (followPosition && ownPosition?.lat != null && ownPosition?.lon != null)
+    ? [ownPosition.lat, ownPosition.lon]
+    : center;
 
   const fetchLayer = useCallback(async (key) => {
     setLayers(prev => ({ ...prev, [key]: { ...prev[key], loading: true } }));
@@ -483,13 +512,20 @@ export default function AviationMap({
   const mapHeight = compact ? 240 : height;
 
   return (
-    <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1px solid #1e293b" }}>
+    // `height: mapHeight` here (not just on MapContainer below) matters when a
+    // caller passes a percentage/"100%" height (the cockpit view's flex-stretched
+    // map column) — a plain block div with no explicit height doesn't count as
+    // a "definite" height for a percentage-height child to resolve against,
+    // so without this the map would silently collapse to 0px in that case.
+    <div style={{ position: "relative", height: mapHeight, borderRadius: 10, overflow: "hidden", border: "1px solid #1e293b" }}>
       {/* ForeFlight-style vertical icon rail — data layers, then hazard filters,
           each an independent on/off button (no separate "layers menu" screen).
           Positioned below Leaflet's own top-left zoom control (kept as-is —
           a custom one via a MapContainer ref broke under React StrictMode's
-          dev-mode double-mount) so the two don't overlap. */}
-      <div style={{
+          dev-mode double-mount) so the two don't overlap.
+          Hidden entirely in `minimal` mode (backup instrument mode) — that
+          mode shows cached map tiles only, no data-layer controls. */}
+      {!minimal && <div style={{
         position: "absolute", top: compact ? 8 : 90, left: 8, zIndex: 1000,
         display: "flex", flexDirection: "column", gap: 4,
         background: "rgba(15,23,42,0.85)", borderRadius: 8, padding: 5,
@@ -518,11 +554,11 @@ export default function AviationMap({
             <IconToggle icon="🗑" title="Clear all strokes" enabled={false} loading={false} onClick={() => setStrokes([])} color="#94a3b8" />
           </>
         )}
-      </div>
+      </div>}
 
       {/* Map */}
       <MapContainer
-        center={center}
+        center={effectiveCenter}
         zoom={zoom}
         style={{ height: mapHeight, width: "100%" }}
         zoomControl={!compact}
@@ -586,10 +622,30 @@ export default function AviationMap({
           />
         )}
 
-        <RecenterMap center={center} zoom={zoom} />
+        <RecenterMap center={effectiveCenter} zoom={zoom} />
 
-        {/* METAR dots — always on, colored by flight category */}
-        {metars.map(m => (
+        {/* Own-ship GPS position (BLE puck or device GPS fallback) — the
+            CODEX 64 moving-map dot. Rendered even in `minimal` mode, since
+            backup instrument mode's whole purpose is showing this. */}
+        {ownPosition?.lat != null && ownPosition?.lon != null && (
+          <Marker
+            position={[ownPosition.lat, ownPosition.lon]}
+            icon={makeOwnPositionIcon(ownPosition.trackDeg, ownPosition.stale)}
+            zIndexOffset={1000}
+          >
+            <Popup>
+              <div style={{ fontFamily: "monospace", fontSize: 12, lineHeight: 1.6, background: "#1e293b", color: "#e2e8f0", padding: "4px 6px", borderRadius: 4 }}>
+                <strong style={{ color: "#22d3ee" }}>Your position</strong>{ownPosition.stale && <span style={{ color: "#f59e0b" }}> (stale)</span>}
+                {ownPosition.trackDeg != null && <><br />TRK {Math.round(ownPosition.trackDeg)}°</>}
+                {ownPosition.groundspeedKts != null && <><br />GS {Math.round(ownPosition.groundspeedKts)}kt</>}
+                {ownPosition.altitudeFt != null && <><br />ALT {Math.round(ownPosition.altitudeFt)}ft</>}
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* METAR dots — always on (unless `minimal`), colored by flight category */}
+        {!minimal && metars.map(m => (
           <CircleMarker
             key={m.icao}
             center={[m.lat, m.lon]}
@@ -836,8 +892,8 @@ export default function AviationMap({
         </div>
       )}
 
-      {/* Legend */}
-      {!compact && (
+      {/* Legend — hidden in `minimal` mode along with the METAR dots it explains */}
+      {!compact && !minimal && (
         <div style={{
           position: "absolute", bottom: radarOn ? 44 : 8, left: 8, zIndex: 1000,
           background: "rgba(15,23,42,0.88)", borderRadius: 6,
