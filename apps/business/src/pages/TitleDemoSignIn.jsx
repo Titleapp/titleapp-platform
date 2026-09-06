@@ -19,10 +19,13 @@ export default function TitleDemoSignIn() {
 
   // Buyer / seller sub-routes — redirect to portal immediately, no auth needed
   const path = window.location.pathname;
-  if (path.includes("/buyer"))  { window.location.replace("/portal?company=attorneys-title&persona=buyer&orderId=ATH-2026-0743");  return null; }
-  if (path.includes("/seller")) { window.location.replace("/portal?company=attorneys-title&persona=seller&orderId=ATH-2026-0743"); return null; }
+  const isBuyer = path.includes("/buyer");
+  const isSeller = path.includes("/seller");
 
   useEffect(() => {
+    if (isBuyer)  { window.location.replace("/portal?company=attorneys-title&persona=buyer&orderId=ATH-2026-0743");  return; }
+    if (isSeller) { window.location.replace("/portal?company=attorneys-title&persona=seller&orderId=ATH-2026-0743"); return; }
+
     let cancelled = false;
     const ctrl = new AbortController();
     const watchdog = setTimeout(() => {

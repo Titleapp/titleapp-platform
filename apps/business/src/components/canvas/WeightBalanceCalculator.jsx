@@ -22,6 +22,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from "react";
+import { WB_DISCLAIMER } from "../aviation/aviationDisclaimers";
 
 // lbs per US gallon at typical conditions — real, standard planning values
 // (not temperature-corrected; POH fuel-density tables vary slightly by °C).
@@ -239,6 +240,10 @@ export default function WeightBalanceCalculator({ aircraftProfile, onResultChang
         {!result.anyLimitsConfigured && (
           <div style={{ fontSize: 11, color: "#b45309", marginTop: 4, fontWeight: 600 }}>⚠ No real limits configured yet — this is arithmetic only, not a pass/fail safety check.</div>
         )}
+      </div>
+      {/* CODEX 64 — persistent, non-dismissible disclaimer on every CG screen. */}
+      <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: "#fffbeb", border: "1px solid #fde68a", fontSize: 10.5, color: "#92400e", lineHeight: 1.4 }}>
+        {WB_DISCLAIMER}
       </div>
     </div>
   );
