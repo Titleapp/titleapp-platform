@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite --port 5174",
     "dev:nursing": "vite --mode nursing --port 5175",
+    "dev:aviation": "vite --mode aviation --port 5176",
     "build": "vite build",
     "build:nursing": "vite build --mode nursing",
+    "build:aviation": "vite build --mode aviation",
     "lint": "eslint .",
     "knip": "knip",
     "preview": "vite preview --port 4174",
@@ -16,13 +18,18 @@
     "cap:android": "npm run build && npx cap sync android && npx cap open android",
     "cap:nursing:sync": "npm run build:nursing && npx cap sync",
     "cap:nursing:ios": "npm run build:nursing && npx cap sync ios && npx cap open ios",
-    "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android"
+    "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android",
+    "cap:aviation:sync": "npm run build:aviation && npx cap sync",
+    "cap:aviation:ios": "npm run build:aviation && npx cap sync ios && npx cap open ios",
+    "cap:aviation:android": "npm run build:aviation && npx cap sync android && npx cap open android"
   },
   "dependencies": {
+    "@capacitor-community/bluetooth-le": "^8.3.0",
     "@capacitor/android": "^8.4.2",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
     "@capacitor/ios": "^8.4.2",
+    "@transistorsoft/capacitor-background-geolocation": "^9.4.0",
     "canvas-confetti": "^1.9.4",
     "firebase": "^12.8.0",
     "leaflet": "^1.9.4",
