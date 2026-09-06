@@ -92,6 +92,14 @@ async function handleCreateTripRequest(req, res, ctx) {
       requiresIfr: body.missionRequest.requiresIfr === true,
       cargoCapacityLbs: body.missionRequest.cargoCapacityLbs != null ? Number(body.missionRequest.cargoCapacityLbs) : null,
     } : null,
+    // assetClass — cheap, forward-looking field per drone-architecture research
+    // (2026-09-05): manned-aircraft logic (PIC/crew-duty/W&B-by-seat) and a
+    // future autonomous-fleet product (fleet-commander ratio, battery-cycle
+    // MX, UTM/LAANC airspace auth instead of crew scheduling) are different
+    // enough that this needs its own tag now rather than a retrofit later.
+    // Defaults to "manned" — every existing trip request is one, and no
+    // existing logic reads this field yet, so this is additive only.
+    assetClass: (body.assetClass === "autonomous_fleet" ? "autonomous_fleet" : "manned"),
     matchReasons: Array.isArray(body.matchReasons) ? body.matchReasons.slice(0, 20).map(r => String(r).slice(0, 300)) : [],
     status: "draft",
     createdByUid: ctx.userId,
