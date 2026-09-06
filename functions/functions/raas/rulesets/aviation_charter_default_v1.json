@@ -1,0 +1,194 @@
+{
+  "id": "aviation_charter_default_v1",
+  "version": "v1",
+  "domain": "aviation-charter-operations-default",
+  "title": "Platform Default Charter-Ops GOM/SOP/OpSpec Reference (unreviewed — not an approved manual)",
+  "description": "Platform default GOM/SOP/OpSpec reference for Part 135 charter and Part 91 operators who have not uploaded their own approved manual. Backs crewQualsEngine.js's Level-1/Level-2 tier system as the Level-2 fallback content when no tenant crew_limits_opspec document is on file — a conservative, original, best-practice charter-operations reference built from public-domain FAA GOM/OpSpec structure and general Part 135/91 regulatory-compliance practice. It is NOT derived from, and does not reproduce, any specific real operator's proprietary manual.",
+  "needsRegulatoryReview": true,
+
+  "contentProvenance": "Authored from (a) the publicly inspectable structure of FAA Part 135 certificate-holder GOM/OpSpec requirements (14 CFR Part 119/135 manual-content rules, OpSpec paragraph structure, AC 135-series guidance) and (b) general Part 91/135 operational-safety practice. It intentionally does not reference, copy, or adapt language from any named or identifiable real operator's actual manual. It is AI-authored best-practice content, not a legal or regulatory work product — see disclaimer.",
+
+  "appliesTo": [
+    "av-dispatch-001",
+    "av-dispatch-board",
+    "av-copilot-001",
+    "av-mx-001",
+    "av-crew-scheduling",
+    "av-flight-duty-enforcer",
+    "av-alex",
+    "av-alex-personal"
+  ],
+
+  "hard_stops": [
+    {
+      "id": "charter-default-not-approved-manual",
+      "label": "This default is not an approved GOM/SOP/OpSpec",
+      "logic": "This ruleset is a best-practice reference template only. It is not FAA-approved, has not been reviewed by an aviation attorney, POI/FSDO, or Designated Pilot Examiner, and is not tailored to any specific certificate, aircraft, or operation. It must never be presented to a user as the operator's actual, approved GOM, SOP, or OpSpec, or as something that satisfies 14 CFR 119/135 manual-content requirements.",
+      "trigger": "AI states, implies, or allows a user to believe that this default content IS the operator's approved GOM/SOP/OpSpec, or that operating under it satisfies FAA manual, certification, or OpSpec requirements.",
+      "on_fail": "Correct immediately: state that this is an unreviewed best-practice default, not an approved manual, and that the certificate holder (or, for Part 91, the operator) remains solely responsible for obtaining and operating under their own FAA-approved GOM, SOP, and OpSpec. Recommend uploading the operator's real, approved manual to replace this default."
+    },
+    {
+      "id": "charter-default-operational-control",
+      "label": "Operational control authority — PIC and management jointly; PIC has final, non-delegable authority",
+      "logic": "Under this conservative default, operational control of each flight is exercised jointly by the certificate holder's management (through its operational control/dispatch function) and the Pilot-in-Command, consistent with 14 CFR 135.77. The PIC retains final, non-delegable authority to refuse or discontinue a flight for safety reasons, regardless of any dispatch release, schedule pressure, or commercial consideration. For Part 91 operations with no dispatch function, the PIC (or the pilot/owner flying single-pilot) holds sole operational control per 14 CFR 91.3.",
+      "trigger": "AI suggests that a dispatcher, scheduler, charter/sales desk, or company management can override or compel a PIC to fly, continue, or accept a flight the PIC has declined on safety grounds.",
+      "on_fail": "State plainly that a PIC's authority to refuse or discontinue a flight for safety cannot be overridden by dispatch, management, or commercial pressure under this default, and that this authority is a regulatory floor, not a company courtesy that can be waived."
+    },
+    {
+      "id": "charter-default-weather-minimums",
+      "label": "Conservative default takeoff/landing/alternate weather minimums",
+      "logic": "Absent an uploaded operator OpSpec specifying its own minimums (which may only be equal to or stricter than these), this default applies the published instrument approach minimums for the runway/procedure to be flown, with no reduction for autopilot-coupled approaches, HUD, or enhanced/synthetic vision systems unless that specific authorization is documented in an uploaded, FAA-approved OpSpec. An alternate must be planned whenever destination weather forecast for the estimated time of arrival is below a 2,000 ft ceiling and 3 statute miles visibility, and the alternate itself must forecast at or above its published alternate minimums, or standard alternate minimums (600-2 for a precision approach, 800-2 for non-precision) where none are published.",
+      "trigger": "AI states that a flight may depart, continue, or land using takeoff, landing, or alternate weather minimums lower than the published or standard minimums above, or asserts a reduced-minimums authorization (e.g., CAT II/III, lower-than-standard takeoff minimums, an approved alternate-minimums reduction) without a specific uploaded, approved OpSpec on file authorizing it.",
+      "on_fail": "Apply the published/standard minimums instead, state that a lower minimum requires a specific uploaded, FAA-approved OpSpec authorization that is not on file, and flag the flight for alternate, hold, or divert planning if minimums cannot be met."
+    },
+    {
+      "id": "charter-default-weight-balance-authority",
+      "label": "Weight & balance — flight-specific calculation and sign-off required",
+      "logic": "A completed, flight-specific weight-and-balance calculation — using that aircraft's current empty weight and CG from its most recent weighing or equipment change, and that flight's actual planned fuel, passenger, and cargo load — must exist before any flight carrying passengers or cargo, and must show the aircraft within its certificated gross weight and CG envelope. This default treats a computed CG within 0.5% MAC of a published limit, or a gross weight within 200 lb of maximum, as MARGINAL and requiring a recheck rather than automatically compliant. Only the PIC (or, where an uploaded OpSpec designates it, a qualified load planner/dispatcher subject to PIC review) may approve a load as flyable. A generic, templated, or carried-over weight-and-balance figure from a different flight, load, or fuel state does not satisfy this requirement.",
+      "trigger": "AI represents an aircraft as within weight-and-balance limits without a load-specific calculation for that flight, or characterizes a margin within 0.5% MAC / 200 lb of a limit as unconditionally acceptable.",
+      "on_fail": "State that a flight-specific weight-and-balance calculation is required, identify what is missing (current empty weight/CG, or the actual planned load), and flag any margin within the thresholds above for a manual recheck before release."
+    },
+    {
+      "id": "charter-default-duty-flight-rest",
+      "label": "Duty, flight time, and rest — regulatory floor only, no informal extensions",
+      "logic": "This default applies the same 14 CFR 135.267 single-pilot-conservative floor used by this platform's crew-qualification engine: 8 flight hours per 24 hours, 14 duty hours per 24 hours, 34 flight hours per 7 days, 120 flight hours per 30 days, 1,200 flight hours per 365 days, and a minimum 10 consecutive hours of rest before the next duty period. These are FLOOR values: an uploaded operator OpSpec may only apply STRICTER limits, never looser ones. This default never grants an extension, waiver, or ad hoc 'captain's discretion' addition to a duty or flight-time limit, and augmented-crew or reduced-rest provisions apply only when a specific, uploaded, FAA-approved OpSpec or exemption documents them.",
+      "trigger": "AI states, computes, or implies that a duty, flight-time, or rest limit may be extended, waived, satisfied by less than the applicable rest, or met through 'captain's discretion,' without an uploaded operator OpSpec or exemption specifically authorizing it.",
+      "on_fail": "Apply the stricter of the regulatory floor or an uploaded OpSpec value, state that no informal extension exists under this default, and identify the specific limit and the margin remaining."
+    },
+    {
+      "id": "charter-default-mel-inoperative-equipment",
+      "label": "MEL / inoperative equipment — no approved MEL means the flight is grounded",
+      "logic": "An inoperative instrument or item of equipment may be carried ONLY if the aircraft has an FAA-approved Minimum Equipment List — the operator's own approved MEL (Part 135), or for Part 91, the FAA Master Minimum Equipment List basis with an approved Letter of Authorization — and that specific item is listed with its category (A/B/C/D), operating conditions, and any required placard or maintenance action. Absent an uploaded, approved MEL for that airframe, this default treats every inoperative item as grounding: the flight may not depart until the item is repaired or a proper MEL/LOA is obtained and uploaded. This default never infers a deferral by analogy to a similar aircraft type or a different tail number's MEL.",
+      "trigger": "AI states that an inoperative item 'should be fine to defer,' cites a MEL category or repair interval for an aircraft with no uploaded, approved MEL on file, or applies another tail number's MEL entry to this aircraft.",
+      "on_fail": "State that no approved MEL is on file for this aircraft, that the item cannot be deferred under this default, and that the flight is grounded until the item is repaired or an approved MEL/LOA is uploaded and applied."
+    },
+    {
+      "id": "charter-default-release-authority",
+      "label": "Flight/dispatch release — five confirmed elements, joint concurrence where applicable",
+      "logic": "A flight release requires, at minimum: (a) PIC review and concurrence, (b) current weather/NOTAMs for departure, destination, and any required alternate, (c) crew legality against the duty/rest floor above, (d) aircraft airworthiness and MEL status, and (e) a completed, flight-specific weight-and-balance. For Part 135 operations with a dispatch/operational-control function, release requires joint concurrence of the dispatcher/operational-control person AND the PIC — neither may release a flight the other has declined. For Part 91 operations, the PIC alone holds release authority, subject to the same underlying checks.",
+      "trigger": "AI represents a flight as released, cleared, or ready to go without all five elements above confirmed, or represents one party's release as valid over the other's stated non-concurrence in a joint-control operation.",
+      "on_fail": "Withhold the release representation, list which of the five elements is missing or unconfirmed, and state that both parties (where a joint-control operation applies) must concur before a flight is released."
+    },
+    {
+      "id": "charter-default-training-currency",
+      "label": "Training and currency — lapses block that capacity, with no informal extension",
+      "logic": "A pilot's currency — flight review within the preceding 24 calendar months (14 CFR 61.56), instrument currency within the preceding 6 calendar months (61.57), a valid medical certificate, and, for Part 135 pilots, competency/proficiency checks (135.293/135.297/135.299) and recurrent training (135.351) — must be current at the time of the flight. This default applies no grace period beyond what the FARs themselves already provide, and grants no informal extension for scheduling convenience. An expired item blocks that pilot from serving in the applicable capacity until renewed.",
+      "trigger": "AI states that an expired or lapsed currency or training item is 'close enough,' can be handled after the flight, or should not block dispatch of that pilot in that capacity.",
+      "on_fail": "State that the expired item blocks that pilot from serving in that capacity under this default, identify the specific regulation and expiration date, and note that renewal — not an extension — is the only path to clearing it."
+    },
+    {
+      "id": "charter-default-emergency-procedures",
+      "label": "Emergency and abnormal events — declare, preserve, report",
+      "logic": "When an in-flight emergency, or an accident/incident potentially reportable under 49 CFR 830, occurs, this default's conservative posture is: (a) the PIC has full and immediate authority to deviate from any rule, procedure, or clearance to the extent required to meet the emergency (14 CFR 91.3(b)); (b) the aircraft, records, and relevant data should be preserved and not altered pending review, consistent with 49 CFR 830 notification and preservation duties; (c) mandatory occurrence/accident notification and reporting timelines under 49 CFR 830, and any applicable operator safety-reporting rules, are immediate priorities. This default does not itself determine NTSB reportability — it surfaces the conservative posture and defers the specific determination to the PIC, the safety officer, and, where warranted, legal counsel.",
+      "trigger": "AI advises continuing normal operations, or repairing, releasing, or altering the aircraft, or delays a notification recommendation, after an event that plausibly meets 49 CFR 830 accident/incident criteria, without flagging preservation and reporting obligations.",
+      "on_fail": "Recommend preserving the aircraft and records, flag the 49 CFR 830 notification/reporting obligation for human review by the safety officer or PIC, and avoid asserting that the event is not reportable."
+    },
+    {
+      "id": "charter-default-fatigue-self-grounding",
+      "label": "Fatigue and fitness for duty — self-grounding is always available and is never second-guessed",
+      "logic": "Any crew member may remove themselves from a flight assignment on fatigue or fitness-for-duty grounds (consistent with 14 CFR 91.17 and 135.249's fitness-for-duty requirements and general fatigue-risk-management practice) without first needing to demonstrate a specific numeric duty-time violation. Subjective fatigue is, by itself, a sufficient basis for self-grounding under this default, and a self-grounding call is not something this default treats as requiring override or second-guessing.",
+      "trigger": "AI questions, second-guesses, or suggests overriding a crew member's stated fatigue-based self-grounding, or implies the crew member must first prove a specific duty-time violation to justify it.",
+      "on_fail": "Affirm the crew member's authority to self-ground on fatigue grounds without further justification, and identify the scheduling or crew-replacement action needed."
+    },
+    {
+      "id": "charter-default-passenger-cargo-limits",
+      "label": "Passenger/cargo carriage — certificated limits and manifest enforced",
+      "logic": "No flight may carry passengers or cargo beyond the aircraft's certificated seating configuration, certificated maximum payload, or the weight-and-balance-approved load for that specific flight. A manifest reflecting the actual persons and cargo aboard must exist for each charter/revenue flight. This default does not authorize informal extra seating (e.g., unrestrained lap-held occupants beyond applicable guidance, unauthorized jump-seat riders) absent an uploaded OpSpec specifically addressing it.",
+      "trigger": "AI suggests carrying passengers or cargo beyond the certificated configuration or the flight's approved weight-and-balance load, or omits the manifest requirement for a charter/revenue flight.",
+      "on_fail": "State the certificated limit, require a manifest, and decline to authorize carriage beyond the approved load."
+    },
+    {
+      "id": "charter-default-no-record-falsification",
+      "label": "No falsified, backdated, or favorably-rounded duty, currency, maintenance, or release records",
+      "logic": "Duty times, currency dates, maintenance actions, MEL entries, and release/dispatch records must reflect what actually occurred, recorded at or near the time of the event. This default never assists in creating or wording a record that backdates, rounds favorably, or otherwise misstates duty time, currency, maintenance status, or release conditions to make an otherwise-illegal flight appear legal — consistent with this platform's append-only record-keeping architecture.",
+      "trigger": "AI is asked to help create, adjust, or word a duty, currency, maintenance, or release record in a way that would misstate the actual facts to make an otherwise-illegal or otherwise-unsafe flight appear legal or safe.",
+      "on_fail": "Decline, explain that records must reflect actual facts, and redirect to correcting the underlying operational issue (rest, repair, currency renewal, load reduction) rather than the record."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "charter-default-manual-authority-claim",
+      "pattern": "(this (default|template|ruleset)|the platform default).{0,50}(is|counts as|serves as|satisfies).{0,25}(an? )?(approved|your|the operator'?s)?\\s*(GOM|SOP|OpSpec|operations manual)",
+      "flags": "i",
+      "message": "This default is a best-practice reference template, not an FAA-approved GOM/SOP/OpSpec. Never represent it as the operator's actual approved manual — recommend uploading the real, FAA-approved document to replace it."
+    },
+    {
+      "id": "charter-default-dispatch-override-pic",
+      "pattern": "(dispatch|scheduler|management|company|sales)\\s+(can|may|will|should)\\s+(override|overrule|order|require|compel)\\s+the\\s+(PIC|captain|pilot)",
+      "flags": "i",
+      "message": "The PIC's authority to refuse or discontinue a flight for safety cannot be overridden by dispatch, management, or commercial pressure under this default — that authority is a regulatory floor."
+    },
+    {
+      "id": "charter-default-reduced-minimums-claim",
+      "pattern": "(lower|reduced|relaxed)\\s+(takeoff|landing|alternate)\\s+minimums?",
+      "flags": "i",
+      "message": "A minimums reduction below the published/standard default requires a specific, uploaded, FAA-approved OpSpec authorization on file. Absent that, apply the published or standard minimums."
+    },
+    {
+      "id": "charter-default-duty-extension-claim",
+      "pattern": "(extend|waive|exceed|captain'?s\\s+discretion).{0,30}(duty|flight\\s*time|rest)\\s*(limit|period|requirement)?",
+      "flags": "i",
+      "message": "No informal extension or waiver of a duty/flight-time/rest limit exists under this default. Apply the stricter of the regulatory floor or an uploaded OpSpec value."
+    },
+    {
+      "id": "charter-default-mel-deferral-claim",
+      "pattern": "(defer|carry|fly\\s+with)\\s+(that|this|the)\\s+(inop|inoperative|broken|defective)\\s+(item|equipment|instrument)",
+      "flags": "i",
+      "message": "A deferral requires an uploaded, FAA-approved MEL for this specific aircraft listing that item's category and conditions. Absent that, the item grounds the flight under this default."
+    },
+    {
+      "id": "charter-default-currency-lapse-claim",
+      "pattern": "(expired|lapsed|out.?of.?date)\\s+(currency|flight\\s+review|BFR|medical|IPC|recurrent)\\s+(is\\s+)?(fine|ok|okay|close\\s+enough|not\\s+a\\s+problem)",
+      "flags": "i",
+      "message": "An expired currency or training item blocks that pilot from serving in that capacity under this default. Identify the specific regulation and expiration date — renewal, not an extension, clears it."
+    },
+    {
+      "id": "charter-default-fatigue-second-guess",
+      "pattern": "(you\\s+(don'?t|do\\s+not)\\s+really\\s+need\\s+to|must\\s+prove|justify)\\s+.{0,25}(fatigue|too\\s+tired|self.?ground)",
+      "flags": "i",
+      "message": "A crew member's fatigue-based self-grounding is a sufficient, independent basis under this default and does not need further justification or second-guessing."
+    },
+    {
+      "id": "charter-default-record-backdate-claim",
+      "pattern": "(backdate|adjust|round\\s+favorably|misstate)\\s+(the\\s+)?(duty|currency|maintenance|release)\\s+(time|record|log)",
+      "flags": "i",
+      "message": "This default never assists in creating a record that misstates duty, currency, maintenance, or release facts. Redirect to fixing the underlying operational issue instead."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "charter-default-using-fallback-reminder",
+      "label": "Operator has no uploaded GOM/SOP/OpSpec — running on the platform default",
+      "logic": "If a tenant has no published crew_limits_opspec document on file, every crew-qualification and dispatch determination for that tenant is being computed against this unreviewed platform default rather than the operator's own approved manual.",
+      "trigger": "usingDefaultOpSpec === true for the active tenant",
+      "message": "This determination is grounded in the platform's default best-practice reference, not this operator's own FAA-approved GOM/SOP/OpSpec (none is on file). Recommend the operator upload their approved manual so future determinations use it instead."
+    },
+    {
+      "id": "charter-default-crew-approaching-limit",
+      "label": "Crew member approaching a duty/flight-time cap",
+      "logic": "If a crew member's used duty or flight hours reach 90% or more of the applicable cap under this default, surface a caution rather than waiting for the hard stop.",
+      "trigger": "usedHours >= 0.90 * applicableCap",
+      "message": "This crew member is within 10% of a duty/flight-time cap under this default. Surface the specific limit and remaining margin so scheduling can route around it before it becomes a hard stop."
+    },
+    {
+      "id": "charter-default-currency-expiring-soon",
+      "label": "Currency or training item expiring within 30 days",
+      "logic": "If any currency or training item's expiration falls within 30 days, surface it as an upcoming scheduling constraint even though it is not yet expired.",
+      "trigger": "daysUntilExpiration <= 30 AND daysUntilExpiration > 0",
+      "message": "A currency or training item for this crew member expires within 30 days. Recommend scheduling the renewal before it lapses and blocks that pilot from serving in the applicable capacity."
+    },
+    {
+      "id": "charter-default-weight-margin-tight",
+      "label": "Weight-and-balance margin within the conservative caution band",
+      "logic": "If a computed CG is within 0.5% MAC of a published limit, or gross weight is within 200 lb of maximum, this default treats the load as marginal rather than automatically compliant.",
+      "trigger": "cgMarginPctMac <= 0.5 OR grossWeightMarginLb <= 200",
+      "message": "This load's weight-and-balance margin is inside this default's caution band. Recommend a manual recheck of the figures before treating the load as approved."
+    }
+  ],
+
+  "disclaimer": "This is a best-practice reference template, not an FAA-approved Operations Manual, GOM, SOP, or OpSpec. It was authored from publicly available FAA regulatory structure and general Part 135/91 operational-safety practice — it has not been reviewed by an aviation attorney, a POI/FSDO, or a Designated Pilot Examiner, and it is not tailored to any specific aircraft, certificate, or operation. The certificate holder (or, for Part 91 operations, the aircraft operator) remains solely responsible for obtaining, maintaining, and operating under their own FAA-approved GOM, SOP, and OpSpec. This default exists only so a pilot or operator without their own uploaded manual is not operating with zero baseline guidance — it does not substitute for, and must never be represented, treated, or cited as, an approved operations manual. Every determination made using this default remains subject to the actual FARs, the operator's own approved documents once uploaded, and the judgment of the Pilot-in-Command.",
+
+  "system_context": "You are grounding a Dispatch/crew-qualification/MX determination in the platform's default charter-operations reference (aviation_charter_default_v1) because this tenant has not uploaded its own FAA-approved GOM/SOP/OpSpec. This default is AI-authored best-practice content built from public-domain FAA GOM/OpSpec structure and general Part 135/91 practice — it is NOT an approved manual, and needsRegulatoryReview stays true on every determination that uses it, regardless of how complete or well-written it reads. Key constraints: (1) Never represent this default as the operator's approved GOM/SOP/OpSpec — always disclose that it is a fallback and recommend uploading the real, approved document. (2) The PIC's authority to refuse or discontinue a flight for safety is final and non-delegable; dispatch/management concurrence is required for release but can never compel a PIC past a safety refusal. (3) Duty/flight-time/rest limits are the 14 CFR 135.267 single-pilot-conservative floor (8/24, 14/24, 34/7d, 120/30d, 1200/365d, 10hr rest) — floor only, no informal extensions, and an uploaded OpSpec may only be stricter, never looser. (4) Weather, weight-and-balance, and MEL determinations default to the published/standard, flight-specific, and 'no approved MEL means grounded' positions respectively — never relax them without a specific uploaded, approved OpSpec authorization. (5) Training/currency lapses block that capacity; fatigue-based self-grounding is always valid without further justification. (6) After a reportable-adjacent event, preserve records and flag 49 CFR 830 obligations rather than asserting non-reportability. (7) Never help create a duty/currency/maintenance/release record that misstates facts to make an unsafe or illegal flight appear legal. Surface the disclaimer above whenever this default is the basis for what you are telling the user, not only on first mention."
+}
