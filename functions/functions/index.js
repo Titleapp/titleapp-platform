@@ -2403,6 +2403,39 @@ exports.api = onRequest(
       }
     }
 
+    // ── CODEX 70 Surface 2 — Course Uploader: instructor identity (Path A) ──
+    // POST /v1/edu:instructor:sendOtp — public, institutional-email OTP send.
+    if (route === "/edu:instructor:sendOtp" && method === "POST") {
+      try {
+        const { sendInstructorOtp } = require("./services/education/instructorAuth");
+        return await sendInstructorOtp(req, res);
+      } catch (e) {
+        console.error("edu:instructor:sendOtp failed:", e);
+        return jsonError(res, 500, "Failed to send verification code");
+      }
+    }
+    // POST /v1/edu:instructor:verifyOtp — public, confirms code + mints token.
+    if (route === "/edu:instructor:verifyOtp" && method === "POST") {
+      try {
+        const { verifyInstructorOtp } = require("./services/education/instructorAuth");
+        return await verifyInstructorOtp(req, res);
+      } catch (e) {
+        console.error("edu:instructor:verifyOtp failed:", e);
+        return jsonError(res, 500, "Verification failed");
+      }
+    }
+    // GET /v1/edu:course:token?slug=... — public, mints the shared courseUid
+    // custom token so a student can open /course/:slug with no account.
+    if (route === "/edu:course:token" && method === "GET") {
+      try {
+        const { mintCourseToken } = require("./services/education/courseSession");
+        return await mintCourseToken(req, res);
+      } catch (e) {
+        console.error("edu:course:token failed:", e);
+        return jsonError(res, 500, "Failed to mint course token");
+      }
+    }
+
     // POST /v1/alex:summarizeGuestSession — generate + deliver session summary
     if (route === "/alex:summarizeGuestSession" && method === "POST") {
       try {
@@ -3750,6 +3783,78 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         } catch (e) {
           console.error("[builder_interview] Claude call failed:", e.message);
           return res.json({ ok: true, response: "I'm here to help you shape this. Tell me more about what you'd build." });
+        }
+      }
+
+      // CODEX 70 Surface 2 — Course Uploader tutor chat. Both the instructor's
+      // Step 4 preview and every student on /course/:slug hit chat:message with
+      // body.context.source === "course_chat". This is a small, additive,
+      // net-new branch (mirrors the builder_interview pattern immediately
+      // above it) — deliberately NOT touching the large state-machine chat
+      // path below, which every other worker relies on.
+      //
+      // Grounding: pulls this course's Studio Locker documents (by courseUid +
+      // workerId, scoped to the authenticated session — chatAuthUser must be
+      // the courseUid minted by /v1/edu:course:token or /v1/edu:course:create)
+      // and injects their extracted text into the system prompt. This is real
+      // dynamic grounding — NOT the same mechanism used by nursing-education-001
+      // (which reads a static bundled knowledge file). Nothing else in this
+      // codebase currently wires the Studio Locker into a chat system prompt;
+      // this is net-new, scoped only to course_chat.
+      if (body.context && body.context.source === "course_chat" && body.context.workerId) {
+        try {
+          if (!chatAuthUser || !chatAuthUser.uid) {
+            return res.json({ ok: true, response: "This course session has expired. Please reopen your course link." });
+          }
+          const { listDocuments } = require("./services/sandbox/studioLocker");
+          const docs = await listDocuments({ userId: chatAuthUser.uid, workerId: body.context.workerId });
+
+          const MAX_COURSE_CONTEXT_CHARS = 120000;
+          let used = 0;
+          const chunks = [];
+          for (const d of docs) {
+            if (d.ingestionStatus !== "complete" || !d.extractedText) continue;
+            const remaining = MAX_COURSE_CONTEXT_CHARS - used;
+            if (remaining <= 0) break;
+            const text = d.extractedText.length > remaining ? d.extractedText.slice(0, remaining) : d.extractedText;
+            chunks.push(`--- ${d.name} ---\n${text}`);
+            used += text.length;
+          }
+          const materials = chunks.length
+            ? chunks.join("\n\n")
+            : "(No course materials uploaded yet — answer generally and encourage the instructor to upload the syllabus/rubrics.)";
+
+          const tutorName = body.context.tutorName || "your course tutor";
+          const courseName = body.context.courseName || "this course";
+          const description = body.context.description || "";
+
+          const systemPrompt = `You are ${tutorName}, an AI tutor for "${courseName}". ${description}\n\n` +
+            `Answer using the course materials below when relevant. Be direct and helpful. If the materials don't cover something, say so plainly rather than guessing.\n\n` +
+            `=== COURSE MATERIALS ===\n${materials}`;
+
+          const history = Array.isArray(body.context.conversationHistory)
+            ? body.context.conversationHistory.filter(m => m && m.role && m.content)
+            : [];
+          const messages = history.map(m => ({
+            role: m.role === "assistant" ? "assistant" : "user",
+            content: String(m.content),
+          }));
+          if (!messages.length || messages[messages.length - 1].role !== "user") {
+            messages.push({ role: "user", content: String(userInput || "") });
+          }
+
+          const anthropic = getAnthropic();
+          const completion = await anthropic.messages.create({
+            model: "claude-sonnet-4-5-20250929",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages,
+          });
+          const replyText = completion.content[0]?.text || "What would you like to know?";
+          return res.json({ ok: true, response: replyText, materialsLoaded: chunks.length });
+        } catch (e) {
+          console.error("[course_chat] failed:", e.message);
+          return res.json({ ok: true, response: "I ran into a problem loading your course materials — try again in a moment." });
         }
       }
 
@@ -35114,6 +35219,50 @@ Analyze now:`;
       } catch (e) {
         console.error("edu:evaluations failed:", e);
         return jsonError(res, 500, "Failed to list clinical evaluations");
+      }
+    }
+
+    // POST /v1/edu:course:create — CODEX 70 Surface 2, Step 2. Authenticated
+    // as the just-verified instructor. Creates the course + its own ephemeral
+    // courseUid (see courseSession.js for why this is not the instructor's uid).
+    if (route === "/edu:course:create" && method === "POST") {
+      try {
+        const iAuth = await requireFirebaseUser(req, res);
+        if (iAuth.handled) return iAuth.res;
+        const { createCourseSession } = require("./services/education/courseSession");
+        return await createCourseSession(req, res, iAuth.user);
+      } catch (e) {
+        console.error("edu:course:create failed:", e);
+        return jsonError(res, 500, "Failed to create course");
+      }
+    }
+
+    // POST /v1/edu:course:driveImport — Step 3, Google Drive path. Authenticated
+    // as the course session (courseUid). Downloads selected Drive files and
+    // ingests them into the Studio Locker via the existing ingest pipeline.
+    if (route === "/edu:course:driveImport" && method === "POST") {
+      try {
+        const dAuth = await requireFirebaseUser(req, res);
+        if (dAuth.handled) return dAuth.res;
+        const { importCourseFilesFromDrive } = require("./services/education/courseDriveImport");
+        return await importCourseFilesFromDrive(req, res, dAuth.user);
+      } catch (e) {
+        console.error("edu:course:driveImport failed:", e);
+        return jsonError(res, 500, "Drive import failed");
+      }
+    }
+
+    // POST /v1/edu:course:publish — Step 4. Authenticated as the course
+    // session. Marks the course "live" — cosmetic status only in v1.
+    if (route === "/edu:course:publish" && method === "POST") {
+      try {
+        const pAuth = await requireFirebaseUser(req, res);
+        if (pAuth.handled) return pAuth.res;
+        const { publishCourse } = require("./services/education/courseSession");
+        return await publishCourse(req, res, pAuth.user);
+      } catch (e) {
+        console.error("edu:course:publish failed:", e);
+        return jsonError(res, 500, "Failed to publish course");
       }
     }
 
