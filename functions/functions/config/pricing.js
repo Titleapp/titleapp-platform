@@ -32,6 +32,31 @@ module.exports = {
   // ── Line 2 — Data Pass-Through Fee ───────────────────────────
   dataFeeMarkupMultiplier: 2.0,        // actual_cost * 2.0 = user charge
 
+  // ── Institution overage auto-charge defaults (Path 1 — CODEX 88 §3) ──
+  // Per-tenant overrides live at tenants/{tenantId}.billing.overage — see
+  // services/billing/institutionOverage.js for the full mechanism (opt-in
+  // only; default payer is still the individual seat/student, matching
+  // businessInABox/education's overagePaidBy below). These are the fallback
+  // values a newly-enrolled tenant gets before a billing admin customizes
+  // them via POST /v1/tenant:overage:configure.
+  institutionOverageDefaults: {
+    thresholdCents: 2000,   // $20 — accumulate unbilled data-fee events, then charge
+    capCents: 50000,        // $500 / billing period — hard auto-charge ceiling
+  },
+
+  // AI-interaction-volume overage (the OTHER half of Sean's ask — box-plan
+  // students/seats sending heavy chat volume within their included seats).
+  // No real Stripe metered price exists for this yet (config/stripeBoxes.js
+  // has only basePriceId/seatPriceId per plan) and the only rate available
+  // (perActiveStudentMonthly/perActiveSeatMonthly below) is a SEAT-overage
+  // rate, not a considered interaction-volume rate — CODEX 76 §6 items 1+3,
+  // still open. services/billing/institutionOverage.js computes this for
+  // VISIBILITY only (chargeable: false) until Sean sets a real rate and a
+  // real metered price/product exists in Stripe. Do not wire this into
+  // auto-charging without both of those — see this session's report for
+  // exactly what Stripe access this pass did/didn't have.
+  aiInteractionOverageStripePriceId: null, // NOT YET CREATED — no live Stripe API credential in this session's sandbox (STRIPE_SECRET_KEY is Secret-Manager-only, not present in dev). Fill in once Sean creates a real metered price for this and sets a real rate.
+
   // ── Line 3 — Audit Trail Fee ─────────────────────────────────
   auditTrailFeePerRecord: 0.005,       // $ per blockchain record
   auditTrailGasCostAlert: 0.004,       // Alert if gas exceeds this

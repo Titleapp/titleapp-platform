@@ -102,14 +102,87 @@ function getSourceConfig(source) {
 }
 
 /**
+ * Decide who pays for a data-fee event: the tenant (institution pool, Path 1
+ * — CODEX 88 §3, opt-in only) or the individual (Path 2 — the default,
+ * matching config/pricing.js's businessInABox "seat" / education "student"
+ * overagePaidBy semantics). Stamped onto the event at write time so
+ * settlement never has to re-derive routing from a tenant config that may
+ * have changed since — see services/billing/overageSettlement.js /
+ * institutionOverage.js, which trust this stamp.
+ */
+async function resolvePayer(tenantId, userId) {
+  if (tenantId) {
+    try {
+      const tenantSnap = await getDb().collection("tenants").doc(tenantId).get();
+      const overageCfg = tenantSnap.exists ? (tenantSnap.data().billing?.overage || {}) : {};
+      if (overageCfg.autoChargeEnabled && overageCfg.payerMode === "institution") {
+        return { payerType: "tenant", tenantId };
+      }
+    } catch (e) {
+      console.warn("[dataFee] resolvePayer tenant lookup failed, defaulting to user-payer:", e.message);
+    }
+  }
+  return { payerType: "user", userId };
+}
+
+/**
+ * Real-time settlement attempt for USER-payer events only (Path 2). Runs
+ * inside a Firestore transaction so a burst of concurrent data-fee calls
+ * can't double-spend the same balance. Deducts the EXACT quoted amount —
+ * never more — and never less than what recordDataFee already wrote to the
+ * event, honoring the "never silently charge more than quoted" ground rule
+ * in both directions (never charge more, never quietly under-collect and
+ * call it settled).
+ *
+ * Returns true if settled from balance; false leaves the event `billed:
+ * false` for the batch sweep in overageSettlement.js to pick up (insufficient
+ * balance now, or no balance funded yet — the sweep also tries the user's
+ * saved Stripe payment method, which this fast path deliberately skips to
+ * keep the hot call path to one Firestore transaction, not a Stripe round
+ * trip on every metered call).
+ */
+async function trySettleFromUserBalance(db, userId, eventRef, costBilledCents) {
+  try {
+    return await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(userId);
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) return false;
+      const balanceCents = Math.round((userSnap.data().billing?.balance || 0) * 100);
+      if (balanceCents < costBilledCents) return false;
+
+      const newBalance = +((userSnap.data().billing.balance) - costBilledCents / 100).toFixed(2);
+      tx.update(userRef, {
+        "billing.balance": newBalance,
+        "billing.lastDeductedAt": admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.update(eventRef, {
+        billed: true,
+        billedAt: admin.firestore.FieldValue.serverTimestamp(),
+        settledVia: "balance",
+      });
+      return true;
+    });
+  } catch (e) {
+    console.warn("[dataFee] real-time balance settlement failed (non-fatal, falls back to batch sweep):", e.message);
+    return false;
+  }
+}
+
+/**
  * Record a data-fee event for an external API call.
  *
- * Writes to `dataFeeEvents/{eventId}`. At billing-cycle close, the cycle-close
- * processor aggregates these into Stripe Invoice Items per user.
+ * Writes to `dataFeeEvents/{eventId}` first (append-only, always durable —
+ * the priced record exists regardless of what settlement does next), then
+ * attempts real settlement: USER-payer events try an immediate balance
+ * deduction (Path 2's common case); TENANT-payer events are deliberately
+ * left unbilled here — institutionOverage.js's threshold/cap sweep owns
+ * when those actually get charged (see that file for why).
  *
  * Failures are non-fatal — we log but don't throw, because billing should
- * never block the user-facing request. Missed events are reconciled by the
- * monthly audit job (TODO once enough events flow through).
+ * never block the user-facing request. Unsettled events are drained by
+ * services/billing/overageSettlement.js (user sweep) and
+ * services/billing/institutionOverage.js (tenant sweep), both scheduled
+ * hourly in index.js.
  *
  * @param {object} params
  * @param {string} params.source            Source key (e.g., "apollo:search").
@@ -118,7 +191,7 @@ function getSourceConfig(source) {
  * @param {number} [params.units=1]         Billable units (e.g., people returned).
  * @param {string} [params.requestedBy]     Code path or worker that triggered this.
  * @param {object} [params.metadata]        Extra context for audit (sanitized).
- * @returns {Promise<{eventId, costActualCents, costBilledCents, units}>}
+ * @returns {Promise<{eventId, costActualCents, costBilledCents, units, settled, settledVia}>}
  */
 async function recordDataFee({ source, userId, tenantId = null, units = 1, requestedBy = null, metadata = null }) {
   if (!source || !userId) {
@@ -130,13 +203,17 @@ async function recordDataFee({ source, userId, tenantId = null, units = 1, reque
   const safeUnits = Math.max(1, Math.round(Number(units) || 1));
   const costActualCents  = Math.round(cfg.actualCentsPerUnit * safeUnits);
   const costBilledCents  = Math.round(cfg.actualCentsPerUnit * cfg.markup * safeUnits);
+  const db = getDb();
 
+  let ref;
   try {
-    const ref = await getDb().collection("dataFeeEvents").add({
+    const payer = await resolvePayer(tenantId, userId);
+    ref = await db.collection("dataFeeEvents").add({
       source,
       label: cfg.label,
       userId,
       tenantId: tenantId || null,
+      payerType: payer.payerType,
       units: safeUnits,
       actualCentsPerUnit: cfg.actualCentsPerUnit,
       markup: cfg.markup,
@@ -148,12 +225,24 @@ async function recordDataFee({ source, userId, tenantId = null, units = 1, reque
       stripeInvoiceItemId: null,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+    let settled = false;
+    let settledVia = null;
+    if (payer.payerType === "user") {
+      settled = await trySettleFromUserBalance(db, userId, ref, costBilledCents);
+      if (settled) settledVia = "balance";
+    }
+    // payerType === "tenant" is intentionally left unsettled here — see
+    // institutionOverage.js's threshold/cap sweep.
+
     return {
       ok: true,
       eventId: ref.id,
       costActualCents,
       costBilledCents,
       units: safeUnits,
+      settled,
+      settledVia,
     };
   } catch (e) {
     console.warn("[dataFee] write failed (non-fatal):", e.message, { source, userId, units: safeUnits });
@@ -183,12 +272,30 @@ function sanitizeMetadata(meta) {
 //   - Default thresholds; user override via `users/{uid}.dataFeeSettings`
 //   - Minimum balance floor with hard block
 //
-// v2 SCOPE (post-launch — see project memory `feedback_data_credit_billing_universal.md`):
+// v1.5 — SHIPPED this pass (CODEX 88 overage-billing build), closing the gap
+// this comment block used to flag under "real-time balance check": the
+// "actually collect the money" layer.
+//   - recordDataFee() now attempts REAL, immediate settlement against the
+//     user's real `users/{uid}.billing.balance` (resolvePayer +
+//     trySettleFromUserBalance, above) instead of only ever writing
+//     `billed: false` and leaving it there forever.
+//   - quoteDataFeeForUser() loads that same real balance server-side instead
+//     of trusting a client-supplied userBalanceCents — quoteDataFee() itself
+//     is unchanged (still pure logic, still directly testable/callable with
+//     an explicit balance for e.g. enterprise/no-balance-gating callers).
+//   - services/billing/overageSettlement.js + institutionOverage.js drain
+//     whatever recordDataFee's real-time attempt couldn't settle (Path 2
+//     Stripe-invoice fallback; Path 1 institution threshold/cap sweep).
+//
+// v2 SCOPE (still not built — see project memory
+// `feedback_data_credit_billing_universal.md`):
 //   - Worker session budgets (default $10/session, autonomous-flow safety net)
 //   - Bulk-action quoting (estimate full Apollo run before kickoff)
 //   - Per-source UX overrides (some sources always-confirm regardless of tier)
 //   - Settings UI for user threshold configuration
-//   - Real-time balance check against cycle-to-date data spend
+//   - Real-time balance check against cycle-to-date data spend (note: the
+//     PER-CALL real-time check above is done; a running cycle-to-date spend
+//     view for the user is still not built)
 //   - Approval-token pattern (frontend gets a signed token after confirm,
 //     server validates it on the actual call to prevent skipping confirm)
 // ─────────────────────────────────────────────────────────────────────────
@@ -316,9 +423,43 @@ async function quoteDataFee({ source, units = 1, userId = null, userBalanceCents
   };
 }
 
+/**
+ * Real-balance-backed wrapper around quoteDataFee — this is what route
+ * handlers should call for any user-facing quote, instead of quoteDataFee
+ * directly with a client-supplied userBalanceCents.
+ *
+ * The gap this closes (from the task brief): the /dataFee:quote route
+ * previously trusted whatever `userBalanceCents` the CALLER sent in the
+ * request body to decide whether to block/warn/confirm. That's a
+ * server-side money decision built on client-supplied input — a client that
+ * omits or inflates the number bypasses the gate entirely. This loads the
+ * user's real `users/{uid}.billing.balance` from Firestore server-side and
+ * ignores whatever the client claims, so the tier/block decision is always
+ * grounded in the REAL, Stripe-funded balance from Path 2's payment flow
+ * (billing/usageProcessor.js's handleTopUpBalance + checkBalanceRecharge),
+ * not a number the caller has to already know (or could lie about).
+ */
+async function quoteDataFeeForUser({ source, units = 1, userId }) {
+  let userBalanceCents = null;
+  if (userId) {
+    try {
+      const snap = await getDb().collection("users").doc(userId).get();
+      if (snap.exists) {
+        const balance = snap.data().billing?.balance;
+        if (typeof balance === "number") userBalanceCents = Math.round(balance * 100);
+      }
+    } catch (e) {
+      console.warn("[dataFee] quoteDataFeeForUser balance lookup failed, quoting without balance context:", e.message);
+    }
+  }
+  return quoteDataFee({ source, units, userId, userBalanceCents });
+}
+
 module.exports = {
   recordDataFee,
   quoteDataFee,
+  quoteDataFeeForUser,
+  resolvePayer,
   loadUserThresholds,
   getSourceConfig,
   SOURCE_REGISTRY,

@@ -3633,6 +3633,19 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         tenantId: req.headers["x-tenant-id"] || null,
       });
 
+      // Box-plan usage visibility (CODEX 76, corrected scope 2026-08-28;
+      // ported into this worktree by the overage-billing pass so Path 1's
+      // institution auto-charge has real AI-interaction-volume data to read
+      // from — see services/billing/boxPlanUsage.js and
+      // services/billing/institutionOverage.js). Best-effort, non-blocking,
+      // fires for every tenant regardless of box-plan status (cheap counter
+      // write; filtering to actual box-plan tenants happens at read time).
+      try {
+        const { recordInteraction } = require("./services/billing/boxPlanUsage");
+        const usageTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
+        recordInteraction(db, usageTenantId).catch(() => {});
+      } catch (_usageErr) { /* non-blocking by design */ }
+
       // 50.28 — deterministic cross-worker routing (chatEngine path). This is
       // the path the frontend ChatPanel hits (it always sends body.sessionId).
       // Earlier we added this to the second /chat:message handler but that
@@ -18867,26 +18880,88 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // Authenticated; available to subscribers (not just admins) so workers
     // can call it during KYC and constraint check flows.
     // POST /v1/dataFee:quote — pre-call cost estimate + tier classification.
-    // Body: { source, units?, userBalanceCents? }
+    // Body: { source, units? }
     // Returns: { tier, costActualCents, costBilledCents, message, blocked, reason }
     // Frontend should call this BEFORE making any data-source action and route
     // through the appropriate UX (silent / inline-warn / modal-confirm).
-    // v1 — see services/billing/dataFee.js for v2 scope (worker session budgets,
-    // approval-token pattern, real-time balance check).
+    // v1.5 (overage-billing pass) — this route no longer accepts a
+    // client-supplied userBalanceCents. A client-controlled number backing a
+    // server-side block/warn/confirm decision is a real gap (a client that
+    // omits or inflates it bypasses the gate) — quoteDataFeeForUser now loads
+    // the caller's REAL, Stripe-funded users/{uid}.billing.balance
+    // server-side instead. See services/billing/dataFee.js for v2 scope
+    // (worker session budgets, approval-token pattern).
     if (route === "/dataFee:quote" && method === "POST") {
       try {
-        const { quoteDataFee } = require("./services/billing/dataFee");
-        const { source, units = 1, userBalanceCents = null } = body;
+        const { quoteDataFeeForUser } = require("./services/billing/dataFee");
+        const { source, units = 1 } = body;
         if (!source) return jsonError(res, 400, "Missing source");
-        const quote = await quoteDataFee({
+        const quote = await quoteDataFeeForUser({
           source,
           units,
           userId: ctx.userId,
-          userBalanceCents,
         });
         return res.json({ ok: true, ...quote });
       } catch (e) {
         console.error("[dataFee:quote] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Institution overage — Path 1 (CODEX 88, built this pass).
+    // See services/billing/institutionOverage.js for the full design:
+    // threshold-gated auto-charge, hard per-period cap, manual-approval
+    // release once the cap is hit. Admin-gated on the tenant, matching the
+    // enforceRoleGate pattern already used by billing/purchaseCreditPack.js.
+    // ───────────────────────────────────────────────────────────
+
+    // GET /v1/tenant:overage:status — read-only, any tenant member can view.
+    if (route === "/tenant:overage:status" && method === "GET") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required (x-tenant-id header)");
+        const { getTenantOverageStatus } = require("./services/billing/institutionOverage");
+        const status = await getTenantOverageStatus(ctx.tenantId);
+        return res.json(status);
+      } catch (e) {
+        console.error("[tenant:overage:status] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/tenant:overage:configure — admin-only. Body: { autoChargeEnabled?, payerMode?, thresholdCents?, capCents? }
+    if (route === "/tenant:overage:configure" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required (x-tenant-id header)");
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(ctx.userId, ctx.tenantId, "admin");
+        if (!gate.ok) return res.status(403).json({ ok: false, error: "tenant_admin_required", currentRole: gate.role });
+
+        const { setTenantOverageConfig } = require("./services/billing/institutionOverage");
+        const result = await setTenantOverageConfig(ctx.tenantId, body || {});
+        return res.json(result);
+      } catch (e) {
+        console.error("[tenant:overage:configure] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/tenant:overage:approve — admin-only manual release once the
+    // cap is hit. This is the ONLY path that charges beyond the configured
+    // per-period cap — required per the task's ground rule against
+    // unlimited silent auto-charging.
+    if (route === "/tenant:overage:approve" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required (x-tenant-id header)");
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(ctx.userId, ctx.tenantId, "admin");
+        if (!gate.ok) return res.status(403).json({ ok: false, error: "tenant_admin_required", currentRole: gate.role });
+
+        const { approveManualOverageRelease } = require("./services/billing/institutionOverage");
+        const result = await approveManualOverageRelease(ctx.tenantId, ctx.userId);
+        return res.json(result);
+      } catch (e) {
+        console.error("[tenant:overage:approve] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
@@ -36707,6 +36782,51 @@ exports.usageEventProcessor = onSchedule(
 exports.balanceRechargeCheck = onSchedule(
   { schedule: "*/15 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkBalanceRecharge(); }
+);
+
+// ----------------------------
+// BILLING: Data-Fee Overage Settlement (CODEX 88, built this pass)
+//
+// The "actually collect the money" layer for dataFeeEvents (Line 2, data
+// pass-through — Apollo/ATTOM/OFAC/GIS/etc.). recordDataFee() in
+// services/billing/dataFee.js already settles the common Path 2 case
+// (individual has enough real balance) in real time; these two sweeps drain
+// what real-time settlement couldn't: Path 2's Stripe-invoice fallback
+// (settleUserDataFeeEvents) and Path 1's institution threshold/cap gate
+// (runInstitutionOverageSweep). Hourly, same cadence as the existing
+// Document Control usageEventProcessor above — deliberately a SEPARATE
+// scheduled function so a bug in data-fee settlement can't stall Document
+// Control billing or vice versa.
+// ----------------------------
+const { settleUserDataFeeEvents } = require("./services/billing/overageSettlement");
+const { runInstitutionOverageSweep } = require("./services/billing/institutionOverage");
+
+exports.dataFeeSettlementProcessor = onSchedule(
+  { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await settleUserDataFeeEvents(); }
+);
+
+exports.institutionOverageSweep = onSchedule(
+  { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await runInstitutionOverageSweep(); }
+);
+
+// ----------------------------
+// BILLING: QUARTERLY BOX PLAN SEAT SYNC (Sean, 2026-08-20; ported into this
+// worktree by the overage-billing pass — see services/billing/seatSync.js
+// header for the original gap this closed).
+// Business/Academia in a Box seatCount was set once at Checkout and never
+// re-synced - a tenant that grows keeps paying the old seat price forever.
+// Reviewed once a quarter, not real-time, per Sean's direction.
+// ----------------------------
+const { syncBoxPlanSeats } = require("./billing/seatSync");
+
+exports.boxPlanSeatSyncQuarterly = onSchedule(
+  { schedule: "0 4 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1", timeoutSeconds: 300 },
+  async () => {
+    const result = await syncBoxPlanSeats();
+    console.log("[boxPlanSeatSyncQuarterly] complete:", JSON.stringify(result));
+  }
 );
 
 // ----------------------------
