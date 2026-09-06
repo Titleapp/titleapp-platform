@@ -1,9 +1,23 @@
 # CODEX 89 — Dispatch Orchestration Pipeline (ACARS-style, standardized)
 
-**Status:** 🔴 spec only — not built. Written for red-team review before any code.
+**Status:** 🔴 spec only — not built. Round 1 red-team complete 2026-09-05 (Sean + external pass); still not built.
 **Applies to:** Aviation Dispatch worker (`av-dispatch-001`, persona SKYE)
 **Date:** 2026-09-05
 **Trigger:** Sean's ask — a Dispatch worker that ingests a flight request and, "within a few milliseconds," has the aircraft, crew, and weather verified; then one accept action notifies the crew and delivers their flight package. Modeled on how an airline's ACARS/dispatch-release process works, and how some Part 135 operators already do it — but standardized so dispatch judgment can't introduce the inconsistency a human process allows.
+
+## Round 1 red-team — outcome
+
+Six points raised, all accepted, one (crew qualifications, §3) substantially simplified by Sean's own correction rather than the original framing:
+
+1. **Crew-quals is not a new-database problem — it's the existing RAAS tier system applied to crew.** Sean: CFRs are cut-and-dry, and an operator's GOM/SOP/OpSpec may be *more* conservative than the CFRs but never less. So the fix is Studio Locker/RAAS having (a) a complete CFR set (already real) and (b) the operator's own GOM/SOP/OpSpec uploaded per their certificate — with a conservative "vanilla Part 135-style" GOM/SOP/OpSpec as the default for Part 91 operators who don't have their own, so they can't accidentally out-extend a real conservative operator's own limits. This is Level 1 (regulatory floor) + Level 2 (operator policy) exactly as already architected platform-wide — not new architecture.
+   - **Refinement, verified by reading `GET /v1/pilot:currency`:** it splits into two different trust levels. Mode A (90-day/6-month recency currency) is computed from real logged flights — already robust, no new risk. Mode B (medical cert, type rating, BFR/IPC/recurrent) reads the latest self-logged `currency_event` per type — this is the one place a stale or dishonest entry could slip through rules that are otherwise correct.
+   - **Resolved by Sean:** once a pilot or company runs on SKYE, this stops being self-report. Currency *events* get captured at the source — the CFI signs off recurrent training, the AME signs off the medical, directly in SKYE — the same instructor-attestation pattern already built and proven for nursing competency sign-offs (a verified instructor attestation event, not a self-reported one, is what makes a record real). Not new architecture; the same pattern applied to a new domain.
+   - **What's still a real, smaller open item:** the transition period, before a given operator's crew all have their events captured this way — old/imported currency data has no attestation trail. Fail-closed behavior for that specific gap (missing or unattested currency for a given pilot) needs a definition, not just "fail closed like W&B."
+2. **Accepted — race condition.** Parallel verification (aircraft/weather/crew) followed by dependent duty-time projection can go stale relative to each other by accept-time if the matched aircraft or weather changes the mission profile. Added an explicit re-validation pass immediately before accept (§4, step 3.5).
+3. **Accepted — alternate-airport selection is its own line item.** Pulled out of the "weather" bucket into its own step with its own failure modes (§4, step 2b split from 2c).
+4. **Accepted — sharpest point.** "One accept" changes the dispatcher's actual job from checking to trusting a checkmark. The accept screen must show underlying data, not just ✓/✗, so a human can actually catch a bad match (§4, step 4).
+5. **Accepted — notification acknowledgment is a safety default, not a UX detail.** Explicit decision needed: does an unacknowledged notification block the flight, or does the system wrongly assume delivery = acknowledgment (§6, open question 3).
+6. **Accepted — the release re-affirmation must be an enforced UI gate**, not just editable fields the dispatcher happens not to change (§4, step 5).
 
 ---
 
@@ -28,61 +42,75 @@ Everything Dispatch needs for this pipeline already exists **as separate, real, 
 
 **Bottom line:** the pieces are real. The orchestration layer that ties them together, and the crew-qualifications data model, are the actual gaps.
 
-## 3. The crew-qualifications gap — the one piece that isn't just wiring
+## 3. Crew qualifications — resolved architecture (post round-1 red-team)
 
-Today: `pilot:currency` is a **personal**, per-pilot record. Dispatch cannot query "which of my crew are type-rated and current on a King Air 350 tonight." This needs a real, fleet-wide, Dispatch-readable qualifications record per crew member: type ratings held, medical class + expiration, recurrent training due dates, and currency (landings, IFR, night) — mirroring the same real-vs-fixture discipline as everything else built this session. This is genuinely new data architecture, not a query change.
+**Not a new database. The existing RAAS tier system, applied to crew:**
+- **Level 1 (regulatory floor):** the complete CFR set already lives in Studio Locker/RAAS.
+- **Level 2 (operator policy):** the operator's own GOM/SOP/OpSpec, uploaded to Studio Locker per their certificate. A Part 91 operator with no formal OpSpec gets a conservative default "vanilla Part 135-style" GOM/SOP/OpSpec, so those pilots can't accidentally out-extend what a real conservative operator would allow.
+- **The data Dispatch reads to check against those rules:** `GET /v1/pilot:currency`, extended with real Dispatch read-access (scoped, logged — this is the one genuine access-control decision, smaller than "build a new database": granting an assigning authority read access to a candidate's existing currency record, not creating a second copy of it).
+- **The trust model for that data:** Mode A (90-day/6-month recency) is already computed from real logged flights. Mode B (medical/type/recurrent) becomes attested-at-source once an operator runs on SKYE — the CFI/AME/DPE signs off the event directly in SKYE at the time it happens, the same instructor-attestation pattern already proven for nursing competency sign-offs. Self-report is a transition-period condition, not the steady state.
 
-**Open question for red-team:** who is authorized to see this data? A pilot's medical/training record is sensitive. Today it's private-by-design (personal Vault). Making it Dispatch-readable is a real privacy/scope decision, not just a technical one — same category of judgment call as the FERPA scoping work done elsewhere this session, applied to crew records instead of student records.
+**Remaining open item, narrower than before:** fail-closed behavior specifically for unattested/imported currency data during an operator's transition onto SKYE (§6, open question 1) — not a general "who can see crew records" question anymore.
 
-## 4. Proposed pipeline (draft — this is what needs red-teaming)
+## 4. Proposed pipeline (post round-1 red-team)
 
 ```
 1. REQUEST RECEIVED
    Customer/ops submits: origin, destination, time window, mission type, pax/cargo.
 
-2. PARALLEL VERIFICATION (target: near-instant, all three run together, not sequentially)
+2. PARALLEL VERIFICATION (target: near-instant, three independent checks run together)
    a. Aircraft — matchAircraft() scores fleet by type/capability + real airworthiness (EXISTS)
-   b. Weather — pull real METAR/TAF for destination + a computed alternate (NEW: alternate
-      selection logic doesn't exist yet either — today alternates are chosen by the pilot,
-      not computed)
-   c. Crew — cross-reference duty-hour cap (EXISTS, otRules.js) AND type-rating/currency
-      (NEW — see §3) for every crew member who could plausibly be assigned
+   b. Alternate selection — its own step, own failure modes (NEW — distance/weather minimums/
+      fuel range/runway suitability; a legal-but-operationally-bad alternate is a real failure
+      mode, not just "no alternate")
+   c. Weather — real METAR/TAF for destination + the selected alternate (EXISTS for the data,
+      NEW for feeding it into this flow)
+   d. Crew — duty-hour cap (EXISTS, otRules.js) AND currency/quals checked against the
+      operator's own RAAS-governed CFR+GOM/SOP/OpSpec rules (§3 — resolved architecture,
+      not new database) for every crew member who could plausibly be assigned
 
-3. DUTY-TIME PROJECTION, not just a snapshot
-   If departure slips or the flight runs long, does any assigned crew member cross into an
-   illegal duty period? otRules.js's math is real but static — this needs to become a
-   live projection against the ACTUAL proposed schedule, re-run if the schedule changes.
+3. RE-VALIDATE immediately before accept (closes the round-1 race-condition finding)
+   Steps 2b-2d can go stale relative to each other — a matched aircraft or a selected
+   alternate can change the mission profile, which changes duty-time math, which can
+   invalidate the crew match step 2d just verified. Re-run the dependent checks against
+   the FINAL combined result, not just the individually-parallel ones, immediately before
+   presenting accept.
 
-4. ACCEPT (single action)
-   Dispatcher/ops reviews the combined verification (aircraft ✓, weather ✓, crew ✓,
-   duty-time margin shown) and accepts — this is the one point requiring human judgment,
-   consistent with "Dispatch creates, PIC accepts" from CODEX 64's existing manifest model.
+4. ACCEPT (single action, human judgment preserved on purpose)
+   The dispatcher's job is not "trust four checkmarks" — the accept screen shows the
+   underlying data behind each check (actual duty-hour margin, actual currency dates,
+   actual weather minimums vs. actual alternate), not just ✓/✗, so a human can catch a
+   wrong match rather than rubber-stamp a green light. Consistent with "Dispatch creates,
+   PIC accepts" from CODEX 64's existing manifest model.
 
-5. AUTO-POPULATE the release record (ReleaseFlightModal's fields, not a new form)
+5. AUTO-POPULATE the release record (ReleaseFlightModal's fields, not a new form) —
+   BEHIND A HARD GATE
    Tail number, aircraft, crew, weather-briefing content, W&B all pre-filled from steps 2-3
-   instead of re-typed. Human still explicitly attests before it's final — this doesn't
-   remove the human sign-off, it removes the re-entry of data the system already verified.
+   instead of re-typed. The human re-affirmation is an enforced UI action (cannot submit
+   without it), not merely "the fields happen to be editable" — closes round-1 finding #6.
 
-6. NOTIFY + DELIVER
-   Crew notified (push/SMS/email — mechanism TBD) with a real flight package: route, weather
-   brief, NOTAMs, W&B, crew assignment, aircraft — everything CoPilot's own Pre-flight Brief
-   view (CODEX 64, already real) already knows how to render, just pushed proactively instead
-   of the pilot having to pull it.
+6. NOTIFY + DELIVER, with an explicit acknowledgment contract
+   Crew notified (push/SMS/email — mechanism TBD, still open) with a real flight package:
+   route, weather brief, NOTAMs, W&B, crew assignment, aircraft — everything CoPilot's own
+   Pre-flight Brief view (CODEX 64, already real) already knows how to render. Whether an
+   unacknowledged notification blocks the flight, or the system defaults to assuming
+   delivery = acknowledgment, is an explicit decision to make before building this step,
+   not an implicit default (§6, open question 3).
 ```
 
 ## 5. What this deliberately does NOT include (and why)
 
-- **Real FAA/ICAO flight plan filing.** A genuine, separate, vendor/regulatory decision — see CODEX 64's explicit non-goal. If Sean wants this, it should be its own CODEX (which provider, API access, cost, liability if a filing is wrong) — not folded into this pipeline silently.
+- **Real FAA/ICAO flight plan filing.** A genuine, separate, vendor/regulatory decision — see CODEX 64's explicit non-goal. If Sean wants this, it should be its own CODEX (which provider, API access, cost, liability if a filing is wrong) — not folded into this pipeline silently. See §6 item 6.
 - **Fully autonomous accept.** Step 4 keeps a human in the loop on purpose — this pipeline's job is to make the *verification* instant and the *data entry* automatic, not to remove dispatch judgment from the actual go/no-go decision. Sean's own framing ("standardized so Dispatch isn't given a chance to fuck everything up") is about eliminating inconsistent manual re-entry and missed checks, not about removing the human decision itself — worth confirming that reading is right before building.
 
-## 6. Open questions for red-team
+## 6. Open questions (narrowed after round 1)
 
-1. Crew-qualifications data model and access scope (§3) — who can see it, how is it kept current, what happens when it's stale or missing for a given pilot (fail closed like the W&B "no profile" mode, per CODEX 64's own precedent)?
-2. Alternate-airport selection — computed automatically, or still a human/pilot call? If automated, on what criteria (distance, weather, fuel range)?
-3. Notification mechanism for step 6 (push notification via the native app? SMS? email? all three?) — and what's the fallback if a crew member doesn't acknowledge in time?
+1. Fail-closed behavior specifically for unattested/imported/stale currency data during an operator's transition onto SKYE (not general access-scope anymore — that's resolved in §3).
+2. Alternate-airport selection criteria — distance, weather minimums, fuel range, runway suitability: which of these gate automatically vs. surface as a dispatcher choice?
+3. Notification mechanism for step 6 (push via the native app? SMS? email? all three?) — and the explicit acknowledgment-vs-delivery decision from §4 step 6.
 4. What exactly triggers "accept" being blocked vs. just flagged — e.g., is a crew member 0.5 hours from their duty cap a hard block or a visible warning the dispatcher can override?
 5. Does this apply to Part 91 self-dispatch (per CODEX 64's existing self-dispatch mode) at all, or only to staffed-Dispatch operations?
-6. Real FAA/ICAO filing (§6) — worth scoping as its own CODEX now, or genuinely later?
+6. Real FAA/ICAO filing — still its own future CODEX, not this one.
 
 ---
 
