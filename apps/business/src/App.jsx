@@ -5098,6 +5098,10 @@ export default function App() {
   // ── /apply route intercept ────────────────────────────────
   const isApply = window.location.pathname === "/apply" || window.location.pathname === "/apply/";
 
+  // ── CODEX 70 Surface 2: Course Uploader + public course landing ──────
+  const isEducationUpload = /^\/education\/upload\/?$/.test(window.location.pathname);
+  const courseSlugMatch = window.location.pathname.match(/^\/course\/([a-z0-9][a-z0-9-]{0,60})\/?$/);
+
   // ── /workers routes ─────────────────────────────────────
   const isWorkersIndex = /^\/workers\/?$/.test(window.location.pathname);
   const workersSlugMatch = window.location.pathname.match(/^\/workers\/([a-z0-9-]+)\/?$/);
@@ -5978,6 +5982,26 @@ export default function App() {
   // ── Creator Application: public, no auth required ──────────
   if (isApply) {
     return <CreatorApplication />;
+  }
+
+  // ── CODEX 70 Surface 2: Course Uploader wizard, public, no auth ─────
+  if (isEducationUpload) {
+    const CourseUploader = React.lazy(() => import("./pages/CourseUploader"));
+    return (
+      <React.Suspense fallback={null}>
+        <CourseUploader />
+      </React.Suspense>
+    );
+  }
+
+  // ── CODEX 70 Surface 2: public course landing page (students) ──────
+  if (courseSlugMatch) {
+    const CoursePage = React.lazy(() => import("./pages/CoursePage"));
+    return (
+      <React.Suspense fallback={null}>
+        <CoursePage slug={courseSlugMatch[1]} />
+      </React.Suspense>
+    );
   }
 
   // ── Workers: marketplace index, no auth required ──────────

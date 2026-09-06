@@ -455,4 +455,8 @@ async function verifyMagicLink(req, res) {
 module.exports = {
   sendMagicLink,
   verifyMagicLink,
+  // Exposed so other education/notification modules (e.g. instructorAuth's
+  // OTP email) can reuse the same SendGrid transport instead of duplicating
+  // API-key handling. No behavior change to the magic-link flow itself.
+  sendEmail,
 };
