@@ -13784,7 +13784,47 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }
         if (!relCtx.tenantId) return jsonError(res, 400, "Open an operator workspace to release a flight");
         const memberGate = await requireMembershipIfNeeded({ uid: relAuth.user.uid, tenantId: relCtx.tenantId }, res);
-        if (memberGate && memberGate.handled) return memberGate.res;
+        // 2026-09-05 (CODEX 89 build) — fixed: this guard checked
+        // memberGate.handled/.res, properties requireMembershipIfNeeded never
+        // sets (it either returns {ok:true, membership} or the already-sent
+        // Express `res` directly). The guard never fired, so a failed
+        // membership check still fell through into writing the release. Every
+        // OTHER call site in this file uses the `if (!memberGate.ok) return
+        // memberGate;` form (e.g. nursing:competency:attest) — matched here.
+        if (!memberGate.ok) return memberGate;
+
+        // 2026-09-05 (CODEX 89 Dispatch pipeline, step 5) — optional
+        // verification-backed release path. When the release was produced by
+        // the Verify → Accept pipeline, the client sends verificationId +
+        // requestId + humanReaffirmed. This is an ENFORCED gate, not a
+        // client-trust convenience: the server re-reads the actual
+        // verification snapshot and refuses to release if it isn't present,
+        // doesn't say CLEARED, or humanReaffirmed wasn't explicitly true —
+        // never trusts the client's own claim that checks passed. A release
+        // created the old way (no verificationId — manual entry, or Part 91
+        // self-dispatch per CODEX 89 §6 open question 5) is unaffected; this
+        // is additive, not a replacement of the existing manual path.
+        let verificationRef = null;
+        if (b.verificationId) {
+          if (!b.requestId) return jsonError(res, 400, "requestId required alongside verificationId");
+          if (b.humanReaffirmed !== true) {
+            return jsonError(res, 400, "humanReaffirmed must be explicitly true — pre-filled fields alone are not a re-affirmation");
+          }
+          const scopeId = relCtx.tenantId;
+          verificationRef = db.collection("dispatchTripRequests").doc(scopeId).collection("requests").doc(b.requestId)
+            .collection("verifications").doc(b.verificationId);
+          const verificationSnap = await verificationRef.get();
+          if (!verificationSnap.exists) {
+            return jsonError(res, 400, "verificationId not found for this trip request — re-run verification before release");
+          }
+          const verification = verificationSnap.data();
+          if (verification.kind !== "revalidation") {
+            return jsonError(res, 400, "The final check before release must be a revalidation pass (POST /v1/dispatch:revalidateTrip), not the initial parallel verification — re-run revalidation immediately before releasing");
+          }
+          if (verification.releaseRecommendation !== "CLEARED") {
+            return jsonError(res, 409, "Cannot release — the most recent revalidation is not CLEARED", { blockingItems: verification.blockingItems || [] });
+          }
+        }
 
         const releaseRef = db.collection("flightReleases").doc();
         await releaseRef.set({
@@ -13805,6 +13845,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           status: "released",
           releasedAt: admin.firestore.FieldValue.serverTimestamp(),
           releasedBy: relAuth.user.uid,
+          verificationId: b.verificationId || null,
+          requestId: b.requestId || null,
+          humanReaffirmed: b.verificationId ? true : null,
         });
         return res.json({ ok: true, releaseId: releaseRef.id, status: "released" });
       } catch (e) {
@@ -13823,7 +13866,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const relTenantId = req.query?.tenantId?.toString() || relCtx.tenantId;
         if (!relTenantId) return jsonError(res, 400, "tenantId required");
         const memberGate = await requireMembershipIfNeeded({ uid: relAuth.user.uid, tenantId: relTenantId }, res);
-        if (memberGate && memberGate.handled) return memberGate.res;
+        if (!memberGate.ok) return memberGate; // see fix note above — same dead-guard bug, same fix
         const snap = await db.collection("flightReleases")
           .where("tenantId", "==", relTenantId)
           .orderBy("releasedAt", "desc")
@@ -27909,113 +27952,13 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const pcAuth = await requireFirebaseUser(req, res);
         if (pcAuth.handled) return pcAuth.res;
         const pcCtx = getCtx(req, body, pcAuth.user);
-        const now = new Date();
-
-        const flightSnap = await db.collection("logbookEntries")
-          .where("userId", "==", pcCtx.userId)
-          .where("entryType", "==", "aviation.flight")
-          .orderBy("createdAt", "desc")
-          .limit(500)
-          .get();
-        const flights = flightSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        const eventSnap = await db.collection("logbookEntries")
-          .where("userId", "==", pcCtx.userId)
-          .where("entryType", "==", "aviation.currency_event")
-          .orderBy("createdAt", "desc")
-          .limit(100)
-          .get();
-        const events = eventSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        function entryDate(e) {
-          const d = e.data || e;
-          if (d.date) return new Date(d.date);
-          if (e.createdAt?._seconds) return new Date(e.createdAt._seconds * 1000);
-          return null;
-        }
-        function daysUntil(isoStr) {
-          if (!isoStr) return null;
-          return Math.ceil((new Date(isoStr) - now) / 86400000);
-        }
-        function bandFor(days) {
-          if (days == null) return "WHITE";
-          if (days <= 0) return "RED";
-          if (days <= 30) return "YELLOW";
-          return "GREEN";
-        }
-        function expirationFromDate(dateStr, calendarMonths) {
-          if (!dateStr) return null;
-          const d = new Date(dateStr);
-          d.setMonth(d.getMonth() + calendarMonths);
-          return d.toISOString().slice(0, 10);
-        }
-
-        const cut90  = new Date(now - 90 * 86400000);
-        const cut6mo = new Date(now); cut6mo.setMonth(cut6mo.getMonth() - 6);
-
-        const f90  = flights.filter(e => { const d = entryDate(e); return d && d >= cut90; });
-        const f6mo = flights.filter(e => { const d = entryDate(e); return d && d >= cut6mo; });
-
-        const dayLandings90   = f90.reduce((s, e) => s + ((e.data || e).landingCount || 0), 0);
-        const nightLandings90 = f90.reduce((s, e) => s + ((e.data || e).nightLandingCount || 0), 0);
-        const approaches6mo   = f6mo.reduce((s, e) => s + ((e.data || e).approachCount || 0), 0);
-        const holds6mo        = f6mo.reduce((s, e) => s + ((e.data || e).holdCount || 0), 0);
-
-        function latestEvent(type) {
-          const e = events.find(e => (e.data || e).eventType === type);
-          if (!e) return null;
-          const d = e.data || e;
-          return { date: d.date, expiration: d.expirationDate, aircraftType: d.aircraftType || null, medicalClass: d.medicalClass || null };
-        }
-
-        const bfr          = latestEvent("bfr");
-        const ipc          = latestEvent("ipc");
-        const medical      = latestEvent("medical");
-        const typeRec      = latestEvent("type_recurrent") || latestEvent("135_proficiency_check");
-        const lineCheck    = latestEvent("135_line_check");
-        const ioe          = latestEvent("135_ioe");
-
-        const currency = {
-          hasFlightLog: flights.length > 0,
-          hasEvents: events.length > 0,
-          recency90Day: {
-            dayLandings: dayLandings90,
-            nightLandings: nightLandings90,
-            current: dayLandings90 >= 3,
-            band: dayLandings90 >= 3 ? "GREEN" : "RED",
-          },
-          instrumentCurrency: {
-            approaches6mo,
-            holds6mo,
-            current: approaches6mo >= 6 && holds6mo >= 1,
-            band: approaches6mo >= 6 && holds6mo >= 1 ? "GREEN" : approaches6mo > 0 ? "YELLOW" : "RED",
-          },
-          medical: medical ? {
-            ...medical,
-            daysRemaining: daysUntil(medical.expiration),
-            band: bandFor(daysUntil(medical.expiration)),
-          } : null,
-          bfr: bfr ? (() => {
-            const exp = bfr.expiration || expirationFromDate(bfr.date, 24);
-            return { ...bfr, expiration: exp, daysRemaining: daysUntil(exp), band: bandFor(daysUntil(exp)) };
-          })() : null,
-          ipc: ipc ? (() => {
-            const exp = ipc.expiration || expirationFromDate(ipc.date, 6);
-            return { ...ipc, expiration: exp, daysRemaining: daysUntil(exp), band: bandFor(daysUntil(exp)) };
-          })() : null,
-          typeRecurrent: typeRec ? {
-            ...typeRec,
-            daysRemaining: daysUntil(typeRec.expiration),
-            band: bandFor(daysUntil(typeRec.expiration)),
-          } : null,
-          lineCheck135: lineCheck ? {
-            ...lineCheck,
-            daysRemaining: daysUntil(lineCheck.expiration),
-            band: bandFor(daysUntil(lineCheck.expiration)),
-          } : null,
-          ioe135: ioe || null,
-        };
-
+        // 2026-09-05 (CODEX 89 Dispatch pipeline) — computation extracted to
+        // services/aviation/pilotCurrency.js so Dispatch's crew-quals check
+        // can compute the SAME currency for a candidate crew member, not a
+        // second disconnected copy. This route's own behavior for the
+        // signed-in caller (self) is unchanged.
+        const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
+        const currency = await computePilotCurrency(db, pcCtx.userId);
         return res.json({ ok: true, currency });
       } catch (e) {
         console.error("pilot:currency failed:", e);
@@ -34118,6 +34061,140 @@ Analyze now:`;
           const matchHandlers = require("./services/dispatch/aircraftMatching");
           return await matchHandlers.handleMatchAircraft(req, res, dctx);
         }
+
+        // ── CODEX 89 Dispatch orchestration pipeline (2026-09-05) ──
+
+        // Step 2b — alternate-airport selection as its own step (round-1
+        // red-team point 3). No cross-crew data involved, no extra gate.
+        case "selectAlternate": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { handleSelectAlternate } = require("./services/dispatch/alternateSelection");
+          return await handleSelectAlternate(req, res);
+        }
+
+        // Step 2d — crew currency/duty check against a candidate pilot's OWN
+        // real records, scoped read for a dispatcher (CODEX 89 §3). Gated
+        // to owner/admin on the tenant, same role bar as the codebase's
+        // other cross-person sensitive actions (nursing:competency:attest,
+        // ATI score recording) — there is no separate "dispatcher" role in
+        // the membership model today, flagged in the build report as a v1
+        // simplification, not invented here. Self-checks (pilotUserId ===
+        // caller) are always allowed without the tenant/role gate.
+        case "crewCheck": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const b = req.body || {};
+          if (!b.pilotUserId) return jsonError(res, 400, "pilotUserId required");
+          if (b.pilotUserId !== dctx.userId) {
+            if (!dctx.tenantId) return jsonError(res, 400, "tenantId required to check another crew member's records");
+            const memberGate = await requireMembershipIfNeeded({ uid: dctx.userId, tenantId: dctx.tenantId }, res);
+            if (!memberGate.ok) return memberGate;
+            const role = memberGate.membership && memberGate.membership.role;
+            if (role !== "admin" && role !== "owner") {
+              return jsonError(res, 403, "Forbidden", { reason: "Checking another crew member's currency/duty records requires an owner/admin role on this tenant" });
+            }
+            await db.collection("crewDataAccessLog").add({
+              requestingUid: dctx.userId, tenantId: dctx.tenantId, crewUidsAccessed: [b.pilotUserId],
+              purpose: "dispatch_crew_check", accessedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
+          const { computeDutyStatus } = require("./services/copilot/logic/dutyTimeTracker");
+          const { loadEffectiveLimits, evaluateCrewMember } = require("./services/dispatch/crewQualsEngine");
+          const [currency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap, effectiveLimits] = await Promise.all([
+            computePilotCurrency(db, b.pilotUserId),
+            db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
+            db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
+            db.collection("logbooks").doc(b.pilotUserId).collection("entries").get(),
+            loadEffectiveLimits(db, dctx.tenantId),
+          ]);
+          const dutyPeriods = dutyPeriodsSnap.docs.map((d) => d.data());
+          const activeDuty = activeDutySnap.empty ? null : activeDutySnap.docs[0].data();
+          const logEntries = logEntriesSnap.docs.map((d) => d.data());
+          const dutyStatus = computeDutyStatus(dutyPeriods, logEntries, activeDuty);
+          const result = evaluateCrewMember({ pilotUserId: b.pilotUserId, role: b.role || null, currency, dutyStatus, effectiveLimits });
+          return res.json({ ok: true, crewCheck: result });
+        }
+
+        // Step 2 (parallel) + step 3 (re-validation) — see
+        // services/dispatch/tripVerification.js for why these are two
+        // distinct calls, not the same function relabeled. Both gated the
+        // same way as crewCheck when the trip has assigned crew (cross-
+        // person data access), enforced per-crew-member inside
+        // tripVerification.js's own authorization-independent compute path —
+        // the gate here is what decides whether the caller may invoke it at
+        // all for a roster that isn't just themselves.
+        case "verifyTrip":
+        case "revalidateTrip": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const b = req.body || {};
+          if (!b.requestId) return jsonError(res, 400, "requestId required");
+          if (!dctx.tenantId) return jsonError(res, 400, "Open an operator workspace to verify a trip");
+          const crew = Array.isArray(b.crew) ? b.crew.filter((c) => c && c.uid) : [];
+          const otherCrew = crew.filter((c) => c.uid !== dctx.userId);
+          if (otherCrew.length) {
+            const memberGate = await requireMembershipIfNeeded({ uid: dctx.userId, tenantId: dctx.tenantId }, res);
+            if (!memberGate.ok) return memberGate;
+            const role = memberGate.membership && memberGate.membership.role;
+            if (role !== "admin" && role !== "owner") {
+              return jsonError(res, 403, "Forbidden", { reason: "Verifying a trip with assigned crew other than yourself requires an owner/admin role on this tenant" });
+            }
+          }
+          const scopeId = dctx.tenantId;
+          const requestSnap = await db.collection("dispatchTripRequests").doc(scopeId).collection("requests").doc(b.requestId).get();
+          if (!requestSnap.exists) return jsonError(res, 404, "Trip request not found");
+          const tripRequest = requestSnap.data();
+
+          const { runVerification, runRevalidation } = require("./services/dispatch/tripVerification");
+          const verifyOpts = {
+            scopeId, tenantId: dctx.tenantId, requestId: b.requestId, requestingUid: dctx.userId,
+            tailNumber: b.tailNumber || tripRequest.tailNumber,
+            destinationIcao: b.destinationIcao || tripRequest.destination,
+            alternateIcao: b.alternateIcao || undefined,
+            requiresIfr: b.requiresIfr === true || tripRequest.missionRequest?.requiresIfr === true,
+            minRunwayFt: b.minRunwayFt, aircraftRangeNm: b.aircraftRangeNm,
+            crew,
+          };
+          if (dispatchAction === "verifyTrip") {
+            const result = await runVerification({ ...verifyOpts, kind: "initial" });
+            return res.json(result);
+          }
+          // revalidation — pull the most recent prior snapshot to diff against
+          const priorSnap = await db.collection("dispatchTripRequests").doc(scopeId).collection("requests").doc(b.requestId)
+            .collection("verifications").orderBy("computedAt", "desc").limit(1).get();
+          const prior = priorSnap.empty ? null : priorSnap.docs[0].data();
+          const result = await runRevalidation(verifyOpts, prior);
+          return res.json(result);
+        }
+
+        // Step 6 — crew notification + package delivery + the explicit
+        // acknowledgment decision (see crewNotifications.js header for the
+        // decision itself and why it was made explicitly rather than
+        // defaulted). No extra tenant/role gate beyond being signed in —
+        // notifyCrew is invoked by whoever just released the flight (already
+        // gated by releaseFlight itself); crewPackage/acknowledgePackage are
+        // self-scoped inside the handlers (a crew member only ever reaches
+        // their own package).
+        case "notifyCrew": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { handleNotifyCrew } = require("./services/dispatch/crewNotifications");
+          return await handleNotifyCrew(req, res, dctx);
+        }
+        case "crewPackage": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const { handleGetCrewPackage } = require("./services/dispatch/crewNotifications");
+          return await handleGetCrewPackage(req, res, dctx);
+        }
+        case "acknowledgePackage": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { handleAcknowledgePackage } = require("./services/dispatch/crewNotifications");
+          return await handleAcknowledgePackage(req, res, dctx);
+        }
+        case "releaseReadiness": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const { handleReleaseReadiness } = require("./services/dispatch/crewNotifications");
+          return await handleReleaseReadiness(req, res, dctx);
+        }
+
         default:
           return jsonError(res, 404, "Unknown dispatch action: " + dispatchAction);
         }

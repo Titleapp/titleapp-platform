@@ -293,6 +293,53 @@ async function getRunways({ icao }) {
   return { ...out, cached: false };
 }
 
+// ── Single airport by ICAO, with real lat/lon (spatial helpers above all
+// take a center point as INPUT — nothing resolved "what is KOGG's lat/lon"
+// FROM an ICAO code before this). Added 2026-09-05 for CODEX 89's Dispatch
+// alternate-airport-selection step: given a destination ICAO, this is how
+// the radius search around it (getAirports) gets seeded. ──
+const AIRPORT_BY_ICAO_TTL_MS = 60 * 60 * 1000; // NASR data is ~static (28-day AIRAC cycle)
+
+async function getAirportByIcao(icao) {
+  const code = String(icao || "").trim().toUpperCase();
+  if (!code) return { error: "icao is required (e.g. PHNL)" };
+
+  const key = `airport:${code}`;
+  const cached = cacheGet(key, AIRPORT_BY_ICAO_TTL_MS);
+  if (cached) return { ...cached, cached: true };
+
+  const params = new URLSearchParams({
+    where: `ICAO_ID='${code}'`,
+    outFields: "IDENT,ICAO_ID,NAME,ELEVATION,TYPE_CODE,SERVCITY,STATE,OPERSTATUS,IAPEXISTS,PRIVATEUSE",
+    returnGeometry: "true",
+    outSR: "4326",
+    f: "geojson",
+  });
+  const gj = await fetchJson(`${FAA_FEATURESERVERS.airports}/query?${params}`);
+  const feature = (gj.features || [])[0];
+  if (!feature) {
+    const out = { error: `No airport found for ICAO ${code}` };
+    return out; // don't cache misses — a typo shouldn't poison the cache
+  }
+  const p = feature.properties || {};
+  const c = feature.geometry && Array.isArray(feature.geometry.coordinates) ? feature.geometry.coordinates : [null, null];
+  const out = {
+    ident: p.IDENT || null,
+    icao: p.ICAO_ID || code,
+    name: p.NAME || null,
+    type: p.TYPE_CODE || null,
+    elevationFt: p.ELEVATION ?? null,
+    city: p.SERVCITY || null,
+    state: p.STATE || null,
+    operStatus: p.OPERSTATUS || null,
+    hasApproaches: p.IAPEXISTS === 1,
+    privateUse: p.PRIVATEUSE === 1,
+    lat: c[1], lon: c[0],
+  };
+  cacheSet(key, out);
+  return { ...out, cached: false };
+}
+
 // ── route handlers ─────────────────────────────────────────────
 async function handleTfr(req, res) {
   const state = req.query?.state || req.body?.state || null;
@@ -342,7 +389,7 @@ async function handleRunways(req, res) {
 }
 
 module.exports = {
-  getTfrs, getAirspace, getAirports, getWaypoints, getNavaids, getRunways,
+  getTfrs, getAirspace, getAirports, getWaypoints, getNavaids, getRunways, getAirportByIcao,
   handleTfr, handleAirspace, handleAirports, handleWaypoints, handleNavaids, handleRunways,
   FAA_FEATURESERVERS,
 };
