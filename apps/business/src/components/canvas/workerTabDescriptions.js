@@ -168,7 +168,7 @@ export const WORKER_TAB_DESCRIPTIONS = {
   // ── CRE / Deal Analyst ────────────────────────────────────────────────────
   "cre-analyst": {
     "overview":     "Deal summary — property basics, key metrics, and status at a glance.",
-    "underwriting": "Underwriting model inputs and NOI outputs. Ask Rudy to run a sensitivity or stress-test a scenario.",
+    "underwriting": "Underwriting model inputs and NOI outputs. Ask Petra to run a sensitivity or stress-test a scenario.",
     "comparables":  "Comparable sales and lease comps for this market and asset class.",
     "risk":         "Risk flags, market risk factors, and deal-level CAS scores.",
     "documents":    "Deal documents, LOIs, and due diligence materials.",

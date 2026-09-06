@@ -4627,10 +4627,17 @@ TONE: brief and functional. This worker exists to get someone to the form quickl
               }
 
               let workerName = dw.persona_name || dw.display_name || dw.name || workerSlug;
-              // re-salesperson slug is user-facing as "Real Estate Advocate"
-              if (workerSlug === "re-salesperson") workerName = "Real Estate Advocate";
               // Suite persona names — override the generic catalog name so workers
               // introduce themselves by their persona (Max, Jordan, Skye, etc.)
+              // Petra is the single persona across the ENTIRE Title + Real Estate
+              // suite (Sean, 2026-09-05: "Title being the lynchpin of all real
+              // estate" — you pay rent on Petra, use Petra to do a home
+              // inspection, or a property underwriting; it's all one identity).
+              // Previously "re-salesperson" resolved to "Dana" via this same
+              // table, which silently collided with the unrelated MSR/mortgage-
+              // servicing borrower persona (also "Dana", set on that worker's
+              // own digitalWorkers doc) — consolidating into Petra here removes
+              // that collision as a side effect, not just a rename.
               const _SUITE_PERSONAS = {
                 "platform-accounting": "Max",
                 "platform-hr": "Jordan",
@@ -4651,13 +4658,13 @@ TONE: brief and functional. This worker exists to get someone to the form quickl
                 "esc-firpta-1031": "Petra", "esc-commission-reconciliation": "Petra",
                 "esc-hoa-estoppel": "Petra", "esc-status-portal": "Petra", "esc-recording-monitor": "Petra",
                 "re-escrow-001": "Petra", "re-title-search-001": "Petra",
-                "re-salesperson": "Dana",
-                "cre-analyst": "Rudy", "construction-manager": "Rudy", "construction-draws": "Rudy",
-                "construction-lending": "Rudy", "capital-stack-optimizer": "Rudy",
-                "property-management": "Rudy", "legal-contracts": "Rudy", "compliance-tracker": "Rudy",
-                "mortgage-senior-debt": "Rudy", "mortgage-broker": "Rudy", "site-due-diligence": "Rudy",
-                "land-use-entitlement": "Rudy", "law-landuse-001": "Rudy",
-                "appraisal-valuation": "Rudy", "market-research": "Rudy",
+                "re-salesperson": "Petra",
+                "cre-analyst": "Petra", "construction-manager": "Petra", "construction-draws": "Petra",
+                "construction-lending": "Petra", "capital-stack-optimizer": "Petra",
+                "property-management": "Petra", "legal-contracts": "Petra", "compliance-tracker": "Petra",
+                "mortgage-senior-debt": "Petra", "mortgage-broker": "Petra", "site-due-diligence": "Petra",
+                "land-use-entitlement": "Petra", "law-landuse-001": "Petra",
+                "appraisal-valuation": "Petra", "market-research": "Petra",
                 "eu-battery-dpp-001": "Elara", "eu-passport-registry-001": "Elara",
                 "eu-supply-chain-tracer-001": "Elara",
               };

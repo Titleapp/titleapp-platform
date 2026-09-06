@@ -248,7 +248,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy about a property and the map updates here.",
+    emptyPrompt: "Ask Petra about a property and the map updates here.",
     _title: "Map",
   },
   "card:re-property-analysis": {
@@ -256,7 +256,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy to analyze a property to see the report here.",
+    emptyPrompt: "Ask Petra to analyze a property to see the report here.",
     _title: "Property Analysis",
   },
   "card:re-market-report": {
@@ -264,7 +264,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy for a market report to see it here.",
+    emptyPrompt: "Ask Petra for a market report to see it here.",
     _title: "Market Report",
   },
   "card:re-comp-analysis": {
@@ -272,7 +272,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy to run comps to see the analysis here.",
+    emptyPrompt: "Ask Petra to run comps to see the analysis here.",
     _title: "Comparable Sales Analysis",
   },
 
@@ -431,7 +431,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy about your portfolio to see units, rent status, and MX here.",
+    emptyPrompt: "Ask Petra about your portfolio to see units, rent status, and MX here.",
     _title: "Portfolio",
   },
   "card:pm-leaseup": {
@@ -447,7 +447,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy to screen an applicant — Fair Housing rules enforced.",
+    emptyPrompt: "Ask Petra to screen an applicant — Fair Housing rules enforced.",
     _title: "Screening",
   },
   "card:pm-maintenance": {
@@ -471,7 +471,7 @@ export const CANVAS_TYPES = {
     dataSource: "conversation",
     dismissible: true,
     mobileFallback: "inline-card",
-    emptyPrompt: "Ask Rudy about upcoming deadlines to see your compliance calendar here.",
+    emptyPrompt: "Ask Petra about upcoming deadlines to see your compliance calendar here.",
     _title: "Compliance",
   },
 
