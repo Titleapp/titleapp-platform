@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite --port 5174",
     "dev:nursing": "vite --mode nursing --port 5175",
+    "dev:realestate": "vite --mode realestate --port 5176",
     "build": "vite build",
     "build:nursing": "vite build --mode nursing",
+    "build:realestate": "vite build --mode realestate",
     "lint": "eslint .",
     "knip": "knip",
     "preview": "vite preview --port 4174",
@@ -16,10 +18,14 @@
     "cap:android": "npm run build && npx cap sync android && npx cap open android",
     "cap:nursing:sync": "npm run build:nursing && npx cap sync",
     "cap:nursing:ios": "npm run build:nursing && npx cap sync ios && npx cap open ios",
-    "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android"
+    "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android",
+    "cap:realestate:sync": "npm run build:realestate && npx cap sync",
+    "cap:realestate:ios": "npm run build:realestate && npx cap sync ios && npx cap open ios",
+    "cap:realestate:android": "npm run build:realestate && npx cap sync android && npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
     "@capacitor/ios": "^8.4.2",

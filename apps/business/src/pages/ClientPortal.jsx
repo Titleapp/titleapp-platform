@@ -19,6 +19,14 @@
  *         /portal?company=uh-nursing&persona=student                  (UH Maui College demo, 2026-08-20)
  *         /passport/:passportId                                       (DPP end-consumer scan — public, no login, rewrites to ?company=nordholm&persona=consumer&passportId=..., 2026-08-20)
  *         /portal?company=meridian-servicing&persona=borrower           (Meridian Loan Servicing demo — MSR Servicing & Compliance, CODEX S52.60, 2026-08-21)
+ *
+ * Native wrappers (Capacitor, see src/main.jsx + package.json's cap:* scripts)
+ * hard-redirect a bare "/" cold launch straight into one of these routes,
+ * skipping the marketing site entirely — VITE_NATIVE_FLAVOR=nursing always
+ * to company=uh-nursing&persona=student; VITE_NATIVE_FLAVOR=realestate to
+ * whatever company/persona its own .env.<flavor> names (default
+ * merritt-capital/tenant — see main.jsx for why tenant, not buyer/seller, is
+ * the safe default for a cold launch with no orderId).
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -647,12 +655,18 @@ function MaintenanceCanvas({ skin, history, onSubmit }) {
           }}>{c}</button>
         ))}
       </div>
+      {/* 16px, not 14px — under 16px, focusing this field auto-zooms the
+          whole page on iOS (no maximum-scale/user-scalable=no in the
+          viewport meta, which is correct — disabling pinch-zoom for
+          accessibility isn't the fix). A tenant typing a maintenance
+          description is exactly the "keyboard behavior" this was worth
+          checking for real. */}
       <textarea
         value={issue}
         onChange={e => setIssue(e.target.value)}
         placeholder="Briefly describe what's going on…"
         rows={4}
-        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", outline: "none", resize: "vertical" }}
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 16, fontFamily: "inherit", outline: "none", resize: "vertical" }}
       />
       {err && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>{err}</div>}
       <button disabled={!cat || !issue.trim() || busy} onClick={submit} style={{
@@ -1360,15 +1374,32 @@ function SignInGate({ skin, persona, onSignedIn }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    // 100dvh (not 100vh) + safe-area padding on top/bottom — this is the same
+    // iOS-notch/home-indicator bug this session already fixed for the main
+    // portal shell (100vh->100dvh, cd943735), just missed here: buyer/seller
+    // and tenant are the two personas that actually hit this screen (see
+    // hasRealBacking above), so a real title/tenant customer on a native
+    // cold launch would have seen the sign-in form crowd the notch/status
+    // bar with a static 24px pad, and 100vh (taller than the visible
+    // viewport once iOS Safari/WKWebView chrome is accounted for) could leave
+    // the form vertically off-center or clipped.
+    <div style={{
+      minHeight: "100dvh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 24, paddingTop: "calc(24px + env(safe-area-inset-top, 0px))", paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
+    }}>
       <form onSubmit={doSignIn} style={{ width: "100%", maxWidth: 360 }}>
         <div style={{ width: 44, height: 44, borderRadius: 11, background: skin.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{skin.glyph}</div>
         <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>{copy.heading}</div>
         <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>{copy.body.replace("{name}", skin.name)}</div>
+        {/* 16px, not 15px — iOS auto-zooms the whole viewport on focus for any
+            input under 16px (this page's viewport meta has no
+            maximum-scale/user-scalable=no, nor should it — that's an
+            accessibility regression). Below 16 it's a real, reproducible
+            "the keyboard opening zooms my screen" bug on first sign-in. */}
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" autoComplete="email"
-          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", marginBottom: 10, outline: "none" }} />
+          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 16, fontFamily: "inherit", marginBottom: 10, outline: "none" }} />
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password"
-          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", marginBottom: 14, outline: "none" }} />
+          style={{ display: "block", width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 16, fontFamily: "inherit", marginBottom: 14, outline: "none" }} />
         {err && <div style={{ fontSize: 13, color: "#b45309", marginBottom: 12, lineHeight: 1.4 }}>{err}</div>}
         <button type="submit" disabled={busy || !email.trim() || !password} style={{
           width: "100%", padding: "13px", borderRadius: 10, border: "none", fontSize: 15, fontWeight: 700,
@@ -2027,14 +2058,15 @@ export default function ClientPortal() {
   // button instead — see navOpen below. Losing this menu below 760px meant
   // the native app had no way at all to reach "Clinical progress" etc.
   // outside of chat (Sean, 2026-09-04: "also no nav menu").
-  // The native nursing build hard-redirects bare "/" straight back into this
-  // same portal (main.jsx's flavor redirect) — so every "Switch to your
-  // SOCIII" / "Take me to my SOCIII" escape hatch just bounces a student
-  // back to where she already is, which reads as "the button doesn't work"
-  // (Sean, 2026-09-05). There's no real destination to escape to for this
-  // dedicated single-purpose app, so hide these affordances entirely here
-  // rather than leave a link that does nothing.
-  const isNativeNursingFlavor = typeof import.meta !== "undefined" && import.meta.env?.VITE_NATIVE_FLAVOR === "nursing";
+  // Every native flavor build (nursing, realestate — see main.jsx) hard-
+  // redirects bare "/" straight back into this same portal, so every "Switch
+  // to your SOCIII" / "Take me to my SOCIII" escape hatch just bounces the
+  // customer back to where they already are, which reads as "the button
+  // doesn't work" (Sean, 2026-09-05, re: the nursing build). There's no real
+  // destination to escape to for any of these dedicated single-purpose apps,
+  // so hide these affordances entirely here rather than leave a link that
+  // does nothing.
+  const isNativeAppFlavor = typeof import.meta !== "undefined" && ["nursing", "realestate"].includes(import.meta.env?.VITE_NATIVE_FLAVOR);
   const [isDesktop, setIsDesktop] = useState(typeof window !== "undefined" ? window.innerWidth >= 760 : true);
   const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
@@ -2204,7 +2236,7 @@ export default function ClientPortal() {
           </div>
         </div>
         {/* super-user escape hatch — quiet, only matters to the few who have their own SOCIII */}
-        {!isNativeNursingFlavor && <a href="/" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "none" }}>Switch to your SOCIII ↗</a>}
+        {!isNativeAppFlavor && <a href="/" style={{ fontSize: 12, color: "#94a3b8", textDecoration: "none" }}>Switch to your SOCIII ↗</a>}
       </header>
 
       {/* Mobile nav — a bottom sheet holding the same items the desktop rail
@@ -2212,7 +2244,10 @@ export default function ClientPortal() {
           way to reach "Clinical progress" etc. outside of chat. */}
       {!isDesktop && navOpen && (
         <div onClick={() => setNavOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 20, display: "flex", alignItems: "flex-end" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", borderRadius: "16px 16px 0 0", padding: "10px 10px 22px", maxHeight: "70vh", overflowY: "auto" }}>
+          {/* Bottom-anchored sheet — same safe-area gap as the header/canvas/
+              chat-input already get, so its lowest row doesn't sit under the
+              home-indicator on a notched iPhone. */}
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", borderRadius: "16px 16px 0 0", padding: "10px 10px calc(22px + env(safe-area-inset-bottom, 0px))", maxHeight: "70vh", overflowY: "auto" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#e2e8f0", margin: "4px auto 12px" }} />
             {navItems.map((it, i) => (
               <button key={i} onClick={() => { setNavOpen(false); it.action(); }}
@@ -2220,7 +2255,7 @@ export default function ClientPortal() {
                 <span style={{ color: skin.accent, display: "flex" }}>{it.icon}</span>{it.label}
               </button>
             ))}
-            {!isNativeNursingFlavor && (
+            {!isNativeAppFlavor && (
               <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 14px", borderRadius: 10, fontSize: 13, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
                 {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
               </a>
@@ -2243,7 +2278,7 @@ export default function ClientPortal() {
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            {!isNativeNursingFlavor && (
+            {!isNativeAppFlavor && (
               <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, fontSize: 12.5, color: "#94a3b8", textDecoration: "none", borderTop: "1px solid #f1f5f9", marginTop: 6 }}>
                 {I(<><path d="M7 17L17 7M7 7h10v10"/></>)} Take me to my SOCIII
               </a>
@@ -2340,7 +2375,7 @@ export default function ClientPortal() {
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(inputVal); } }}
               placeholder={`Message ${skin.short}…`}
               disabled={thinking}
-              style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 15, fontFamily: "inherit", outline: "none", opacity: thinking ? 0.6 : 1 }}
+              style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 16, fontFamily: "inherit", outline: "none", opacity: thinking ? 0.6 : 1 }}
             />
             <button
               onClick={() => sendMessage(inputVal)}
@@ -2425,9 +2460,9 @@ export default function ClientPortal() {
 
       {/* Soft cross-sell — land-and-expand, never loud. Dropped entirely in
           the native nursing app: there's no "your own SOCIII" to switch to
-          in this dedicated single-purpose shell (see isNativeNursingFlavor). */}
+          in this dedicated single-purpose shell (see isNativeAppFlavor). */}
       <footer style={{ padding: "12px 18px", borderTop: "1px solid #f1f5f9", textAlign: "center", fontSize: 12, color: "#94a3b8" }}>
-        {isNativeNursingFlavor
+        {isNativeAppFlavor
           ? <>Powered by <strong style={{ color: "#64748b" }}>SOCIII</strong> · your records are yours to keep.</>
           : <>Powered by <strong style={{ color: "#64748b" }}>SOCIII</strong> · your records are yours to keep —{" "}
               <a href="/" style={{ color: skin.accent, textDecoration: "none", fontWeight: 600 }}>use it for your own stuff too →</a>
