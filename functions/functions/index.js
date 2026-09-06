@@ -3633,19 +3633,6 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         tenantId: req.headers["x-tenant-id"] || null,
       });
 
-      // Box-plan usage visibility (CODEX 76, corrected scope 2026-08-28;
-      // ported into this worktree by the overage-billing pass so Path 1's
-      // institution auto-charge has real AI-interaction-volume data to read
-      // from — see services/billing/boxPlanUsage.js and
-      // services/billing/institutionOverage.js). Best-effort, non-blocking,
-      // fires for every tenant regardless of box-plan status (cheap counter
-      // write; filtering to actual box-plan tenants happens at read time).
-      try {
-        const { recordInteraction } = require("./services/billing/boxPlanUsage");
-        const usageTenantId = req.headers["x-tenant-id"] || body.tenantId || null;
-        recordInteraction(db, usageTenantId).catch(() => {});
-      } catch (_usageErr) { /* non-blocking by design */ }
-
       // 50.28 — deterministic cross-worker routing (chatEngine path). This is
       // the path the frontend ChatPanel hits (it always sends body.sessionId).
       // Earlier we added this to the second /chat:message handler but that
@@ -36809,24 +36796,6 @@ exports.dataFeeSettlementProcessor = onSchedule(
 exports.institutionOverageSweep = onSchedule(
   { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await runInstitutionOverageSweep(); }
-);
-
-// ----------------------------
-// BILLING: QUARTERLY BOX PLAN SEAT SYNC (Sean, 2026-08-20; ported into this
-// worktree by the overage-billing pass — see services/billing/seatSync.js
-// header for the original gap this closed).
-// Business/Academia in a Box seatCount was set once at Checkout and never
-// re-synced - a tenant that grows keeps paying the old seat price forever.
-// Reviewed once a quarter, not real-time, per Sean's direction.
-// ----------------------------
-const { syncBoxPlanSeats } = require("./billing/seatSync");
-
-exports.boxPlanSeatSyncQuarterly = onSchedule(
-  { schedule: "0 4 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1", timeoutSeconds: 300 },
-  async () => {
-    const result = await syncBoxPlanSeats();
-    console.log("[boxPlanSeatSyncQuarterly] complete:", JSON.stringify(result));
-  }
 );
 
 // ----------------------------
