@@ -21,14 +21,30 @@
  *   Default for operators with none uploaded — per Sean's round-1
  *   resolution: "a conservative vanilla Part 135-style GOM/SOP/OpSpec...
  *   so they can't accidentally out-extend a real conservative operator's
- *   own limits." What ships here is the MECHANISM (a clearly-labeled
- *   fallback), not independently-vetted regulatory content: the bundled
- *   default is numerically identical to the Part 135.267 floor itself —
- *   i.e., "no stricter than the regulation, and no looser either." This
- *   needs real aviation-regulatory review before it should be presented to
- *   an operator as their actual OpSpec-equivalent; every response using it
- *   is tagged usingDefaultOpSpec + needsRegulatoryReview so nothing hides
- *   that it's a placeholder.
+ *   own limits." The numeric side of that default is CFR_135_267_FLOOR
+ *   below (unchanged from the original build — "no stricter than the
+ *   regulation, and no looser either"). The narrative/content side — real,
+ *   original charter-ops GOM/SOP/OpSpec text (operational control, weather
+ *   minimums, weight & balance authority, MEL procedures, dispatch release
+ *   authority, training/currency, emergency procedures, etc.) — now lives in
+ *   raas/rulesets/aviation_charter_default_v1.json, loaded below via
+ *   loadDefaultOpSpecRuleset(). It was written from public-domain FAA
+ *   GOM/OpSpec structure and general Part 135/91 practice — NOT copied or
+ *   adapted from any specific real operator's proprietary manual (see that
+ *   file's own `contentProvenance` field).
+ *
+ *   IMPORTANT — do not strip this: however complete that ruleset content
+ *   reads, it is a best-practice reference template, not an FAA-approved
+ *   GOM/SOP/OpSpec. It has not been reviewed by an aviation attorney, a
+ *   POI/FSDO, or a DPE. Every response grounded in it — the JSON's own
+ *   `disclaimer`/`system_context` fields, this engine's `effectiveLimits`
+ *   output, and the Dispatch UI that renders it (TripVerifyPanel in
+ *   AviationWorkerCanvas.jsx) — must keep surfacing that disclaimer and the
+ *   `needsRegulatoryReview: true` flag for as long as no tenant OpSpec is
+ *   uploaded. "Written by an AI from public-domain structure" is a starting
+ *   point, not a substitute for the certificate holder's own approved
+ *   manual — never let a future edit quietly drop the disclaimer or the
+ *   flag thinking either is boilerplate.
  *
  * What this module deliberately does NOT do:
  *   - Build the CFI/AME attestation-at-source flow for Mode B currency
@@ -72,6 +88,28 @@ function mergeLimit(kind, cfrValue, operatorValue) {
   return kind === "cap" ? Math.min(cfrValue, op) : Math.max(cfrValue, op);
 }
 
+const DEFAULT_OPSPEC_RULESET_ID = "aviation_charter_default_v1";
+
+/**
+ * Load the platform default GOM/SOP/OpSpec reference content (see the file
+ * header above and raas/rulesets/aviation_charter_default_v1.json itself).
+ * Reuses raas.engine.js's loadRuleset() — same loader/cache every other
+ * ruleset in this codebase goes through — rather than a second require path.
+ * Returns null (never throws) if the file is somehow missing, so a bad
+ * ruleset load degrades to "no disclaimer surfaced," not a crashed request —
+ * fixing that gap belongs in the RAAS engine layer, not silently swallowed
+ * here in a way that looks like success.
+ */
+function loadDefaultOpSpecRuleset() {
+  try {
+    const { loadRuleset } = require("../../raas/raas.engine");
+    return loadRuleset(DEFAULT_OPSPEC_RULESET_ID) || null;
+  } catch (e) {
+    console.error(`[crewQualsEngine] Failed to load default OpSpec ruleset "${DEFAULT_OPSPEC_RULESET_ID}":`, e.message);
+    return null;
+  }
+}
+
 /**
  * Look up the operator's uploaded crew-limits OpSpec, if any. Pure read, no
  * authorization here — the caller (index.js route) has already gated who
@@ -108,13 +146,32 @@ async function loadEffectiveLimits(db, tenantId) {
     }
   }
 
+  // The default's real content (not just its numbers) — hard_stops,
+  // disclaimer, system_context — only matters when there's no tenant
+  // upload; loaded lazily so an operator with their own OpSpec never pays
+  // for or surfaces default-ruleset content at all.
+  const defaultRuleset = structured ? null : loadDefaultOpSpecRuleset();
+
   return {
     effective,
     conflicts,
     usingDefaultOpSpec: !structured,
+    // Still true even now that the default has real content behind it —
+    // "written by an AI from public-domain regulatory structure" is not the
+    // same as "reviewed by an aviation attorney or DPE." Never drop this
+    // flag while usingDefaultOpSpec is true (see file header).
     needsRegulatoryReview: !structured,
-    opSpecTitle: operatorDoc ? (operatorDoc.title || "Operator GOM/SOP/OpSpec") : "Vanilla Part 135-style default (= regulatory floor; not independently reviewed)",
+    opSpecTitle: operatorDoc
+      ? (operatorDoc.title || "Operator GOM/SOP/OpSpec")
+      : (defaultRuleset?.title || defaultRuleset?.description || "Platform default charter-operations GOM/SOP/OpSpec reference (not independently reviewed)"),
     opSpecSource: operatorDoc ? "tenant_upload" : "platform_default",
+    // Populated only for the platform default — this is the disclaimer that
+    // MUST reach every surface rendering a default-grounded determination
+    // (see aviation_charter_default_v1.json's own `disclaimer` field, and
+    // the file header above for why this can never be silently dropped).
+    disclaimer: operatorDoc ? null : (defaultRuleset?.disclaimer || null),
+    systemContext: operatorDoc ? null : (defaultRuleset?.system_context || null),
+    rulesetId: operatorDoc ? null : (defaultRuleset?.id || DEFAULT_OPSPEC_RULESET_ID),
   };
 }
 
@@ -194,6 +251,15 @@ function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effective
     }
   }
 
+  // Surface the default-OpSpec disclaimer as a soft flag too, not only in
+  // the structured effectiveLimits block below — anything that only reads
+  // blockingItems/softFlags as flat display strings (chat surfaces, plain
+  // log lines) still sees it this way. Never gated behind any "only show
+  // once" logic — every crew check grounded in the default repeats it.
+  if (effectiveLimits.usingDefaultOpSpec && effectiveLimits.disclaimer) {
+    softFlags.push(`No operator GOM/SOP/OpSpec on file — this check used the platform default reference (${effectiveLimits.opSpecTitle}). ${effectiveLimits.disclaimer}`);
+  }
+
   return {
     pilotUserId,
     role: role || null,
@@ -206,6 +272,14 @@ function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effective
       opSpecTitle: effectiveLimits.opSpecTitle,
       opSpecSource: effectiveLimits.opSpecSource,
       conflicts: effectiveLimits.conflicts,
+      // Only populated when usingDefaultOpSpec is true (see
+      // loadEffectiveLimits above) — the actual disclaimer text every
+      // consumer of this object (API responses, the Dispatch UI, chat
+      // grounding) must surface, not just the boolean flags. Do not strip
+      // this thinking it's redundant with needsRegulatoryReview — the flag
+      // says "review needed"; this field is the actual user-facing notice.
+      disclaimer: effectiveLimits.disclaimer || null,
+      rulesetId: effectiveLimits.rulesetId || null,
     },
     blockingItems,
     softFlags,

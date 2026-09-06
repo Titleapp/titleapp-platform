@@ -2162,6 +2162,7 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
               {verifyResult.blockingItems.map((b, i) => <div key={i} style={{ color: "#b91c1c" }}>⛔ {b}</div>)}
             </div>
           )}
+          <DefaultOpSpecNotice crew={verifyResult.crew} />
         </div>
       )}
 
@@ -2176,8 +2177,32 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
               {revalResult.blockingItems.map((b, i) => <div key={i} style={{ color: "#b91c1c" }}>⛔ {b}</div>)}
             </div>
           )}
+          <DefaultOpSpecNotice crew={revalResult.crew} />
         </div>
       )}
+    </div>
+  );
+}
+
+// DefaultOpSpecNotice — surfaces crewQualsEngine.js's default-GOM/SOP/OpSpec
+// disclaimer in the UI whenever a crew-legality check for THIS trip actually
+// used the platform default (no tenant OpSpec on file), instead of leaving
+// it buried in the API response. Do not remove or water this down: the
+// underlying content (raas/rulesets/aviation_charter_default_v1.json) is an
+// unreviewed best-practice reference, not an FAA-approved manual, and every
+// place it grounds a determination has to say so — see that file's own
+// `disclaimer` field and crewQualsEngine.js's file header for why.
+function DefaultOpSpecNotice({ crew }) {
+  const usingDefault = (crew || []).find((cr) => cr.effectiveLimits?.usingDefaultOpSpec);
+  if (!usingDefault) return null;
+  const disclaimer = usingDefault.effectiveLimits.disclaimer
+    || "This is a best-practice reference template, not an FAA-approved GOM/SOP/OpSpec — the certificate holder is solely responsible for their own approved manual.";
+  return (
+    <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "#fffbeb", border: "1px solid #fde68a" }}>
+      <div style={{ fontWeight: 700, color: "#92400e", marginBottom: 2 }}>
+        ⚠ No operator GOM/SOP/OpSpec on file — using platform default
+      </div>
+      <div style={{ color: "#78350f" }}>{disclaimer}</div>
     </div>
   );
 }
