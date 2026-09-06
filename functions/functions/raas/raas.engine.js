@@ -602,6 +602,91 @@ function getWorkerDisclaimer(workerSlug) {
   return ruleset?.disclaimer || null;
 }
 
+// ─── Per-course ruleset mechanism (CODEX 70 Surface 2 rework) ───────────
+//
+// Course Uploader courses have no dedicated file-backed ruleset in
+// WORKER_RULESET_MAP above — "course-tutor-001" is a single GENERIC worker
+// slug shared by every non-nursing course on the platform, so one static
+// file cannot express one course's own rules (e.g. "this course's tutor may
+// never give direct answers on graded work"). Each course instead stores
+// its own ruleset object — same shape as a ruleset JSON file: hard_stops,
+// chat_rules, soft_flags, disclaimer, system_context — directly on its own
+// Firestore doc, courses/{slug}.raasRuleset (built by
+// services/education/courseRuleset.js from the wizard's "Make sure your
+// rules are in place" step).
+//
+// getCourseEnforcementContext() below merges that per-course ruleset with
+// whatever static ruleset WORKER_RULESET_MAP already assigns to this
+// workerId (e.g. nursing-courses-001 -> nursing_clinical_v1) — ADDITIVE,
+// never a replacement:
+//   - course-tutor-001 (no static entry) gets ONLY its own course ruleset.
+//   - nursing-courses-001 (static entry = nursing_clinical_v1) gets BOTH
+//     nursing_clinical_v1 AND its own course-specific rules layered on top.
+//     (This also fixes a real, separate pre-existing gap: the course_chat
+//     branch in index.js bypassed WORKER_RULESET_MAP entirely, so even
+//     nursing-courses-001 chat got zero nursing_clinical_v1 enforcement
+//     before this — see index.js's course_chat handler.)
+//
+// This function does NOT modify loadChatRules(), getWorkerDisclaimer(), or
+// WORKER_RULESET_MAP itself — every other worker's enforcement path through
+// those functions is completely unchanged. Only a caller that explicitly
+// passes a courseRuleset object gets course-level behavior; today that is
+// only the course_chat branch in index.js.
+function getCourseEnforcementContext(workerSlug, courseRuleset) {
+  const staticRulesetId = WORKER_RULESET_MAP[workerSlug] || null;
+  const staticRuleset = staticRulesetId ? loadRuleset(staticRulesetId) : null;
+
+  // Compile chat_rules from both layers (course rules first — they're the
+  // most specific to this exact tutor) plus the universal defaults.
+  const compiled = [];
+  const compileFrom = (ruleset) => {
+    if (!ruleset || !Array.isArray(ruleset.chat_rules)) return;
+    for (const rule of ruleset.chat_rules) {
+      try {
+        compiled.push({ id: rule.id, pattern: new RegExp(rule.pattern, rule.flags || "i"), message: rule.message });
+      } catch (e) {
+        console.warn(`[enforcement] Skipping invalid course chat_rule pattern "${rule.id}":`, e.message);
+      }
+    }
+  };
+  compileFrom(courseRuleset);
+  compileFrom(staticRuleset);
+  compiled.push(...DEFAULT_CHAT_RULES);
+
+  // Disclaimer — join course-specific + static rather than picking one.
+  const disclaimerParts = [courseRuleset?.disclaimer, staticRuleset?.disclaimer].filter(Boolean);
+  const disclaimer = disclaimerParts.length ? [...new Set(disclaimerParts)].join(" ") : null;
+
+  // hard_stops from both layers. This engine's evaluateRule() only
+  // code-evaluates rules that carry a structured `eval` spec
+  // (field/operator/threshold) — every hard_stops rule in this ruleset
+  // family instead carries prose (label/logic/trigger/on_fail) meant for
+  // the LLM to follow directly (see rulesets/nursing_clinical_v1.json,
+  // which has no `eval` fields on its hard_stops either). Folding them into
+  // a system-prompt addendum follows that same existing convention rather
+  // than inventing a new one.
+  const hardStops = [
+    ...((courseRuleset && Array.isArray(courseRuleset.hard_stops)) ? courseRuleset.hard_stops : []),
+    ...((staticRuleset && Array.isArray(staticRuleset.hard_stops)) ? staticRuleset.hard_stops : []),
+  ];
+
+  const systemContextParts = [courseRuleset?.system_context, staticRuleset?.system_context].filter(Boolean);
+  if (hardStops.length) {
+    systemContextParts.push(
+      "Hard constraints — never violate:\n" +
+      hardStops.map((r) => `- ${r.label || r.id}: ${r.logic || r.trigger || ""}`).join("\n")
+    );
+  }
+
+  return {
+    chatRules: compiled.length ? compiled : null,
+    disclaimer,
+    systemPromptAddendum: systemContextParts.join("\n\n") || null,
+    hasCourseRuleset: !!courseRuleset,
+    hasStaticRuleset: !!staticRuleset,
+  };
+}
+
 module.exports = {
   loadRuleset,
   getNestedValue,
@@ -615,5 +700,6 @@ module.exports = {
   DEFAULT_CHAT_RULES,
   loadChatRules,
   getWorkerDisclaimer,
+  getCourseEnforcementContext,
   WORKER_RULESET_MAP,
 };

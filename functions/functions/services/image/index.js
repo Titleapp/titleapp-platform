@@ -17,4 +17,10 @@ module.exports = {
   get validateImagePrompt() {
     return require("./generator").validateImagePrompt;
   },
+  get IMAGE_CREDIT_COST() {
+    return require("./generator").IMAGE_CREDIT_COST;
+  },
+  get IMAGE_PRICE_USD() {
+    return require("./generator").IMAGE_PRICE_USD;
+  },
 };
