@@ -115,10 +115,15 @@ const DISCLOSURE_TEMPLATES = {
   dpp: {
     title: "DPP Consulting & Data Processing Agreement",
     body: (clientName) =>
+      // 2026-09-05: this used to name "Volta Advisory / SOCIII" as the
+      // engaging party — Volta Advisory was a demo-only fictional company
+      // name invented for one specific pilot walkthrough, never a real
+      // SOCIII entity or brand. Fixed here since this template ships to
+      // every real DPP client's disclosure, not just that demo.
       `[PLACEHOLDER TEMPLATE — NOT REVIEWED BY COUNSEL, CODEX S52.61 §5]\n\n` +
       `This agreement confirms that the undersigned, as authorized representative of ${clientName}, engages ` +
-      `Volta Advisory / SOCIII to prepare EU Digital Product Passport records on the manufacturer's behalf, and ` +
-      `authorizes the consultant to process the manufacturer's product data for that purpose. Real DPP ` +
+      `SOCIII to prepare EU Digital Product Passport records on the manufacturer's behalf, and ` +
+      `authorizes SOCIII to process the manufacturer's product data for that purpose. Real DPP ` +
       `consulting/data-processing agreement language needs actual legal drafting before this is used with a real ` +
       `manufacturer client — this is a functional placeholder so the e-signature and KYC-gating mechanism can be ` +
       `tested end to end. This signature identifies the authorized signer as an individual, per CODEX S52.62 ` +

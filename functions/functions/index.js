@@ -2891,13 +2891,23 @@ exports.api = onRequest(
         const snap = await db.collection("dppShopOnboarding").doc(shopId).get();
         if (!snap.exists) return res.json({ ok: true, onboarded: false });
         const d = snap.data();
+
+        const { getAgentAuthorizationState } = require("./services/dpp/agentAuthorization");
+        const agentAuth = await getAgentAuthorizationState({ db, tenantId: d.tenantId });
+
         return res.json({
           ok: true,
           onboarded: true,
           tenantId: d.tenantId,
           kycStatus: d.kycStatus,
           docStatus: d.docStatus,
-          ready: d.kycStatus === "verified" && d.docStatus === "uploaded",
+          agentAuthorizationStatus: agentAuth.status,
+          agentAuthorizationSignedAt: agentAuth.signedAt,
+          agentAuthorizationSigningUrl: agentAuth.status === "sent" ? agentAuth.signingUrl : null,
+          agentAuthorizationTrack: agentAuth.track,
+          prerequisites: agentAuth.prerequisites,
+          operatingAheadOfPrerequisites: agentAuth.operatingAheadOfPrerequisites,
+          ready: d.kycStatus === "verified" && d.docStatus === "uploaded" && agentAuth.status === "authorized",
         });
       } catch (e) {
         console.error("dpp:shopify:onboarding:status failed:", e.message);
@@ -3059,6 +3069,101 @@ exports.api = onRequest(
       } catch (e) {
         console.error("dpp:shopify:registrationDoc:finalize failed:", e.message);
         return jsonError(res, 500, "Failed to finalize document upload");
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Authorized-agent agreement, Shopify-app side (added 2026-09-05,
+    // alongside the self-serve /dpp:workspace:authorizeAgent:start route
+    // above). Same real mechanism (services/dpp/agentAuthorization.js ->
+    // services/esign/esignService.js's native/BoldSign send+sign) as the
+    // self-serve flow — this is only a different auth wrapper (shared
+    // secret, since the shop owner has no Firebase session), same as every
+    // other /dpp:shopify:* route. The signer identity comes from the
+    // dppShopOnboarding record captured at /dpp:shopify:onboardShop time
+    // (ownerEmail/ownerName/businessName), not from a decoded ID token —
+    // there isn't one here.
+    // ---------------------------------------------------------------
+
+    // POST /v1/dpp:shopify:authorizeAgent:start
+    if (route === "/dpp:shopify:authorizeAgent:start" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, agentAuthorizationConsent } = body || {};
+        const shopId = (shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        if (!agentAuthorizationConsent || agentAuthorizationConsent.accepted !== true) {
+          return jsonError(res, 400, "Explicit authorized-agent consent required before sending the agreement");
+        }
+
+        const onboardingSnap = await db.collection("dppShopOnboarding").doc(shopId).get();
+        if (!onboardingSnap.exists) return jsonError(res, 404, "Shop has not been onboarded yet — call dpp:shopify:onboardShop first");
+        const onboarding = onboardingSnap.data();
+
+        const { startAgentAuthorization } = require("./services/dpp/agentAuthorization");
+        const result = await startAgentAuthorization({
+          db,
+          tenantId: onboarding.tenantId,
+          actorUid: null,
+          signerEmail: onboarding.ownerEmail,
+          signerName: onboarding.ownerName || onboarding.ownerEmail,
+          companyName: onboarding.businessName || shopId,
+        });
+
+        return res.json({ ok: true, status: result.status, track: result.track, signingUrl: result.signingUrl, idempotent: !!result.idempotent });
+      } catch (e) {
+        console.error("dpp:shopify:authorizeAgent:start failed:", e.message);
+        return jsonError(res, e.statusCode || 500, e.message || "Failed to start authorized-agent agreement");
+      }
+    }
+
+    // GET /v1/dpp:shopify:authorizeAgent:view?shopDomain=xxx&token=xxx —
+    // proxies esignService.js's own public "view a pending native-track
+    // signing request" read (handleESignView) with an extra shopDomain
+    // cross-check, since this route is shared-secret gated rather than
+    // per-signer token-only like the generic /esign:view.
+    if (route === "/dpp:shopify:authorizeAgent:view" && method === "GET") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const shopId = (req.query?.shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        const esignService = require("./services/esign/esignService");
+        return await esignService.handleESignView(req, res);
+      } catch (e) {
+        console.error("dpp:shopify:authorizeAgent:view failed:", e.message);
+        return jsonError(res, 500, "Failed to load agreement");
+      }
+    }
+
+    // POST /v1/dpp:shopify:authorizeAgent:sign — { shopDomain, token,
+    // signatureName }. Delegates to esignService.js's own native-track
+    // handleESignSign (same completion path, same esignEvents/esignRequests
+    // records, same onAgentAuthorizationSigned hook via
+    // metadata.dppAgentAuthorization) — just remaps the body shape and
+    // gates on the shared secret instead of a Firebase session.
+    if (route === "/dpp:shopify:authorizeAgent:sign" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, token, signatureName } = body || {};
+        const shopId = (shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        if (!signatureName || !signatureName.trim()) return jsonError(res, 400, "signatureName required");
+
+        req.body = { token, signatureData: signatureName.trim(), signerName: signatureName.trim() };
+        const esignService = require("./services/esign/esignService");
+        return await esignService.handleESignSign(req, res);
+      } catch (e) {
+        console.error("dpp:shopify:authorizeAgent:sign failed:", e.message);
+        return jsonError(res, 500, "Failed to record signature");
       }
     }
 
@@ -26014,12 +26119,21 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // GET /v1/dpp:workspace:onboardingStatus — real, tenant-scoped
     // combined status for the self-serve DPP client onboarding flow
     // (AddWorkspaceWizard "dpp" vertical -> DppClientOnboarding.jsx, added
-    // 2026-09-05). Two independently-real, already-existing mechanisms,
+    // 2026-09-05). Three independently-real, already-existing mechanisms,
     // just read together here rather than duplicated: Stripe Identity KYC
-    // (identityVerifications, purpose "dpp_workspace_owner") and the
+    // (identityVerifications, purpose "dpp_workspace_owner"), the
     // business-registration document upload (generic /files:sign +
     // /files:finalize, tagged purpose "business_registration_doc" and
-    // related.onboarding: true). No new write path — this route only reads.
+    // related.onboarding: true), and (added 2026-09-05) the authorized-agent
+    // e-signed agreement (services/dpp/agentAuthorization.js) — the client's
+    // real, recorded authorization for SOCIII to act as its DPP compliance
+    // agent. `ready` requires all three; it is deliberately NOT gated on
+    // `prerequisites` (EU entity registration, E&O insurance) — Sean's
+    // explicit call, 2026-09-05 — `operatingAheadOfPrerequisites` surfaces
+    // that gap honestly instead of silently hiding it. No new write path
+    // for KYC/doc — this route only reads those two; the agent-authorization
+    // read below is likewise read-only (its write path is
+    // /dpp:workspace:authorizeAgent:start, just below).
     if (route === "/dpp:workspace:onboardingStatus" && method === "GET") {
       try {
         const purpose = "dpp_workspace_owner";
@@ -26039,16 +26153,61 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           .get();
         const docUploaded = !filesSnap.empty;
 
+        const { getAgentAuthorizationState } = require("./services/dpp/agentAuthorization");
+        const agentAuth = await getAgentAuthorizationState({ db, tenantId: ctx.tenantId });
+
         return res.json({
           ok: true,
           tenantId: ctx.tenantId,
           kycStatus,
           docUploaded,
-          ready: kycStatus === "verified" && docUploaded,
+          agentAuthorizationStatus: agentAuth.status,
+          agentAuthorizationSignedAt: agentAuth.signedAt,
+          agentAuthorizationSigningUrl: agentAuth.status === "sent" ? agentAuth.signingUrl : null,
+          agentAuthorizationTrack: agentAuth.track,
+          prerequisites: agentAuth.prerequisites,
+          operatingAheadOfPrerequisites: agentAuth.operatingAheadOfPrerequisites,
+          ready: kycStatus === "verified" && docUploaded && agentAuth.status === "authorized",
         });
       } catch (e) {
         console.error("dpp:workspace:onboardingStatus failed:", e.message);
         return jsonError(res, 500, "Failed to read DPP onboarding status");
+      }
+    }
+
+    // POST /v1/dpp:workspace:authorizeAgent:start — sends the real e-signed
+    // authorized-agent agreement (services/dpp/agentAuthorization.js) for
+    // this tenant's workspace owner to sign. Requires an explicit consent
+    // gate in the request body, same pattern /identity:session:create
+    // already uses for its own platform-identity consent — never inferred
+    // from just calling this route.
+    if (route === "/dpp:workspace:authorizeAgent:start" && method === "POST") {
+      const { agentAuthorizationConsent } = body || {};
+      if (!agentAuthorizationConsent || agentAuthorizationConsent.accepted !== true) {
+        return jsonError(res, 400, "Explicit authorized-agent consent required before sending the agreement");
+      }
+      try {
+        const { startAgentAuthorization } = require("./services/dpp/agentAuthorization");
+        const tenantSnap = await db.collection("tenants").doc(ctx.tenantId).get();
+        const companyName = tenantSnap.exists ? (tenantSnap.data().name || null) : null;
+        const result = await startAgentAuthorization({
+          db,
+          tenantId: ctx.tenantId,
+          actorUid: auth.user.uid,
+          signerEmail: auth.user.email,
+          signerName: auth.user.name || auth.user.email,
+          companyName,
+        });
+        return res.json({
+          ok: true,
+          status: result.status,
+          track: result.track,
+          signingUrl: result.signingUrl,
+          idempotent: !!result.idempotent,
+        });
+      } catch (e) {
+        console.error("dpp:workspace:authorizeAgent:start failed:", e.message);
+        return jsonError(res, e.statusCode || 500, e.message || "Failed to start authorized-agent agreement");
       }
     }
 
