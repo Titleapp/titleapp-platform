@@ -2225,6 +2225,30 @@ exports.api = onRequest(
             role:          "admin",
             activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
           },
+          // ── SKYE (aviation native app) — line pilot, Pacific Air Partners ──
+          // Distinct from `aviation` above (Alex Rivera is the operator admin
+          // persona, used to test MX/Dispatch/crew-scheduling broadly). This
+          // one is a member-role crew pilot — the persona /demo/skye signs
+          // into — seeded (scripts/demo/seedSkyePilotDemo.js) with a full
+          // career logbook (5,000 TT / 3,500 turbine-ME / 1,500 piston-SE,
+          // see that script's header) and currency built specifically to
+          // test the real GET /v1/pilot:currency bands: BFR + 61.57 IPC
+          // current, medical + 135.293 competency + 135.297 IPC all expiring
+          // within 30 days (YELLOW) as three SEPARATE items — see
+          // services/aviation/pilotCurrency.js's 2026-09-05 addendum for why
+          // 135.293 and 135.297 no longer collapse into one field. Same
+          // tenant as `aviation` (Pacific Air Partners) so the fleet (N701AA
+          // PC-12/47E, N704AA King Air B200, N705AA Cirrus SR22) and any
+          // MX/squawk data line up for both personas.
+          "skye-pilot": {
+            uid:           "demo-skye-pilot-001",
+            tenantId:      "demo-pacific-air-001",
+            workspaceName: "Pacific Air Partners",
+            vertical:      "aviation",
+            name:          "Marcus Reyes",
+            role:          "member",
+            activeWorkers: ["av-copilot-001"],
+          },
           // ── Brokerage (Summit Realty Group) ──────────────────────────────
           brokerage: {
             uid:           "demo-brokerage-jordan-001",

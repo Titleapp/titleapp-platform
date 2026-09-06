@@ -4398,6 +4398,7 @@ export default function App() {
   const isAviationCoPilotDemo  = _dp === "/demo/av-copilot"  || _dp === "/demo/av-copilot/";
   const isAviationMXDemo       = _dp === "/demo/av-mx"       || _dp === "/demo/av-mx/";
   const isAviationDispatchDemo = _dp === "/demo/av-dispatch" || _dp === "/demo/av-dispatch/";
+  const isSkyePilotDemo        = _dp === "/demo/skye"        || _dp === "/demo/skye/";
   const isTitleClientDemo      = _dp === "/demo/title/customer" || _dp === "/demo/title/customer/";
   const isTitleDemo            = _dp.startsWith("/demo/title") && !isTitleClientDemo;
   const isBrokerageDemo        = _dp === "/demo/brokerage"   || _dp === "/demo/brokerage/";
@@ -5343,6 +5344,10 @@ export default function App() {
   if (isAviationCoPilotDemo || isAviationMXDemo || isAviationDispatchDemo) {
     const AviationDemoSignIn = React.lazy(() => import("./pages/AviationDemoSignIn"));
     return <React.Suspense fallback={null}><AviationDemoSignIn /></React.Suspense>;
+  }
+  if (isSkyePilotDemo) {
+    const SkyeDemoSignIn = React.lazy(() => import("./pages/SkyeDemoSignIn"));
+    return <React.Suspense fallback={null}><SkyeDemoSignIn /></React.Suspense>;
   }
   if (isBrokerageDemo) {
     const BrokerageDemoSignIn = React.lazy(() => import("./pages/BrokerageDemoSignIn"));

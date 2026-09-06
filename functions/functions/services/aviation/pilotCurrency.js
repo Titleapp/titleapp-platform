@@ -26,6 +26,18 @@
  *     tagged trustLevel: "self_reported" so a caller (like the Dispatch
  *     accept screen) can surface that honestly instead of implying
  *     verification that doesn't exist yet.
+ *
+ * 2026-09-05 addendum — 135.297 given its own field. `typeRecurrent` used to
+ * collapse THREE distinct regulatory items into one slot: general recurrent
+ * training (135.351, event type "type_recurrent") and BOTH the 135.293
+ * competency check and the 135.297 instrument proficiency check (event type
+ * "135_proficiency_check"). A pilot can legitimately have 135.293 current
+ * while 135.297 is due (or vice versa) — collapsing them hid that. This adds
+ * a distinct `ipc297` field, read from a new "135_297_ipc" event type, sitting
+ * parallel to `typeRecurrent`/`lineCheck135`/`ioe135` below. `typeRecurrent`
+ * (fed by "type_recurrent" / "135_proficiency_check") is unchanged and now
+ * reads as "recurrent training / 135.293 competency check" — see
+ * crewQualsEngine.js's currencyChecks label for the same split.
  */
 
 function computePilotCurrency(db, targetUserId) {
@@ -98,6 +110,10 @@ async function _compute(db, targetUserId) {
   const typeRec = latestEvent("type_recurrent") || latestEvent("135_proficiency_check");
   const lineCheck = latestEvent("135_line_check");
   const ioe = latestEvent("135_ioe");
+  // 135.297 instrument proficiency check — distinct from the 61.57 `ipc`
+  // above (which is the private/91-side IPC) and from `typeRec` above (which
+  // now specifically represents 135.351 recurrent / 135.293 competency).
+  const ipc297 = latestEvent("135_297_ipc");
 
   return {
     pilotUserId: targetUserId,
@@ -139,6 +155,16 @@ async function _compute(db, targetUserId) {
       band: bandFor(daysUntil(lineCheck.expiration)),
     } : null,
     ioe135: ioe || null,
+    // 135.297 IPC — see file header addendum (2026-09-05). Separate from
+    // `typeRecurrent` (135.293/135.351) so the two can be current or expiring
+    // independently, and separate from `ipc` (61.57, private-side IPC).
+    ipc297: ipc297 ? (() => {
+      // Same 6-calendar-month cadence as 61.57 (135.297 requires an IPC
+      // "within the preceding 6 calendar months") — default only applies if
+      // the event didn't carry its own explicit expirationDate.
+      const exp = ipc297.expiration || expirationFromDate(ipc297.date, 6);
+      return { ...ipc297, expiration: exp, daysRemaining: daysUntil(exp), band: bandFor(daysUntil(exp)) };
+    })() : null,
   };
 }
 

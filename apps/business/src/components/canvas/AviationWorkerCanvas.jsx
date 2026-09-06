@@ -98,11 +98,45 @@ function logbookToBlocks(entries) {
     return [date, d.tailNumber || "—", `${d.depIcao || "—"} → ${d.arrIcao || "—"}`, d.flightTime != null ? `${d.flightTime}h` : "—", d.flightType || "—"];
   });
   const total = flights.reduce((s, e) => s + ((e.data || e).flightTime || 0), 0);
+
+  // 2026-09-05 — category/class hour totals, computed for real from whatever
+  // aircraftClass/engineType each entry actually carries (including large
+  // one-time "time carried forward" entries a pilot logs when migrating a
+  // career's worth of paper logbook time — see `carriedForward` flag below).
+  // This was previously nowhere: the old "Calendar year / Last 12 months /
+  // Last 90 days" tallies some canvas fixtures show are hardcoded strings,
+  // not derived from these entries — this block is the first REAL one, and
+  // it's intentionally scoped to just turbine-ME / piston-SE (the two splits
+  // that actually matter for currency/insurance conversations) rather than
+  // every FAA 8710 category — a fuller MEL/SEL/MES/SES/rotorcraft/glider
+  // breakdown is a bigger job (see form8710Builder.js for that shape, which
+  // is a different pilot-logbook system entirely — services/copilot/*, not
+  // this one — and isn't wired to these entries).
+  let turbineMultiEngine = 0;
+  let pistonSingleEngine = 0;
+  let otherHours = 0;
+  flights.forEach(e => {
+    const d = e.data || e;
+    const t = d.flightTime || 0;
+    const cls = (d.aircraftClass || "").toLowerCase();
+    const engine = (d.engineType || "").toLowerCase();
+    if (engine === "turbine" && cls.includes("multi-engine")) turbineMultiEngine += t;
+    else if (engine === "piston" && cls.includes("single-engine")) pistonSingleEngine += t;
+    else otherHours += t;
+  });
+  const categoryKpis = [
+    { label: "Total time (all entries)", value: `${total.toFixed(1)}h`, band: "WHITE" },
+  ];
+  if (turbineMultiEngine > 0) categoryKpis.push({ label: "Turbine, multi-engine", value: `${turbineMultiEngine.toFixed(1)}h`, band: "WHITE" });
+  if (pistonSingleEngine > 0) categoryKpis.push({ label: "Piston, single-engine", value: `${pistonSingleEngine.toFixed(1)}h`, band: "WHITE" });
+  if (otherHours > 0) categoryKpis.push({ label: "Other / unclassified", value: `${otherHours.toFixed(1)}h`, band: "WHITE" });
+
   return [
     { type: "kpis", items: [
       { label: "Entries (Vault)", value: `${flights.length}`, band: "WHITE" },
       { label: "Total time shown", value: `${total.toFixed(1)}h`, band: "GREEN" },
     ] },
+    { type: "kpis", items: categoryKpis },
     { type: "table", title: "Recent flights — live from your Vault", cols: ["Date", "Tail", "Route", "Time", "Type"], rows },
     { type: "prose", items: [{ band: "GREEN", title: "Your logbook is portable", text: "These entries live in your personal Vault — not in this worker. They travel with you between employers. Every entry is append-only and chain-signed." }] },
   ];
@@ -119,7 +153,11 @@ export function currencyToBlocks(c) {
   const heroes = [];
   if (c.medical) heroes.push({ band: c.medical.band, title: `Medical — ${c.medical.medicalClass || "Class 1"}`, detail: `Expires ${c.medical.expiration || "—"} · ${c.medical.daysRemaining != null ? `${c.medical.daysRemaining}d remaining` : ""}` });
   if (c.bfr)     heroes.push({ band: c.bfr.band,     title: "BFR",                detail: `${c.bfr.date || "—"} · ${c.bfr.daysRemaining != null ? `${c.bfr.daysRemaining}d until due` : ""}` });
-  if (c.typeRecurrent) heroes.push({ band: c.typeRecurrent.band, title: `Type Recurrent${c.typeRecurrent.aircraftType ? ` — ${c.typeRecurrent.aircraftType}` : ""}`, detail: `${c.typeRecurrent.date || "—"} · ${c.typeRecurrent.daysRemaining != null ? `${c.typeRecurrent.daysRemaining}d remaining` : ""}` });
+  if (c.typeRecurrent) heroes.push({ band: c.typeRecurrent.band, title: `135.293 Competency / Recurrent${c.typeRecurrent.aircraftType ? ` — ${c.typeRecurrent.aircraftType}` : ""}`, detail: `${c.typeRecurrent.date || "—"} · ${c.typeRecurrent.daysRemaining != null ? `${c.typeRecurrent.daysRemaining}d remaining` : ""}` });
+  // 2026-09-05 — split out of typeRecurrent (see pilotCurrency.js addendum):
+  // 135.297 IPC now has its own hero/flag so it can show due/expired
+  // independently of the 135.293 competency check above.
+  if (c.ipc297) heroes.push({ band: c.ipc297.band, title: `135.297 IPC${c.ipc297.aircraftType ? ` — ${c.ipc297.aircraftType}` : ""}`, detail: `${c.ipc297.date || "—"} · ${c.ipc297.daysRemaining != null ? `${c.ipc297.daysRemaining}d remaining` : ""}` });
 
   const kpis = [
     { label: "90-day landings",    value: `${c.recency90Day.dayLandings} / 3 req`,   band: c.recency90Day.band },
@@ -127,7 +165,8 @@ export function currencyToBlocks(c) {
     { label: "IFR approaches (6mo)", value: `${c.instrumentCurrency.approaches6mo} / 6 req`, band: c.instrumentCurrency.band },
     { label: "Holds (6mo)",        value: `${c.instrumentCurrency.holds6mo} / 1 req`,   band: c.instrumentCurrency.holds6mo >= 1 ? "GREEN" : "RED" },
   ];
-  if (c.ipc) kpis.push({ label: "IPC", value: `${c.ipc.date || "—"} · ${c.ipc.daysRemaining != null ? `${c.ipc.daysRemaining}d` : ""}`, band: c.ipc.band });
+  if (c.ipc) kpis.push({ label: "IPC (61.57)", value: `${c.ipc.date || "—"} · ${c.ipc.daysRemaining != null ? `${c.ipc.daysRemaining}d` : ""}`, band: c.ipc.band });
+  if (c.ipc297) kpis.push({ label: "135.297 IPC", value: `${c.ipc297.date || "—"} · ${c.ipc297.daysRemaining != null ? `${c.ipc297.daysRemaining}d` : ""}`, band: c.ipc297.band });
   if (c.lineCheck135) kpis.push({ label: "135 Line Check", value: `${c.lineCheck135.date || "—"} · ${c.lineCheck135.daysRemaining != null ? `${c.lineCheck135.daysRemaining}d` : ""}`, band: c.lineCheck135.band });
 
   const blocks = [];
@@ -137,8 +176,9 @@ export function currencyToBlocks(c) {
   const flags = [];
   [{ label: "Medical",       item: c.medical },
    { label: "BFR",           item: c.bfr },
-   { label: "Type Recurrent", item: c.typeRecurrent },
-   { label: "IPC",           item: c.ipc },
+   { label: "135.293 Competency / Recurrent", item: c.typeRecurrent },
+   { label: "IPC (61.57)",   item: c.ipc },
+   { label: "135.297 IPC",   item: c.ipc297 },
    { label: "135 Line Check", item: c.lineCheck135 }]
     .filter(({ item }) => item && (item.band === "RED" || item.band === "YELLOW"))
     .forEach(({ label, item }) => flags.push({

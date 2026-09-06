@@ -232,8 +232,13 @@ function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effective
     { key: "instrumentCurrency", label: "Instrument currency (6mo approaches/holds)" },
     { key: "medical", label: "Medical certificate" },
     { key: "bfr", label: "Flight review (BFR)" },
-    { key: "ipc", label: "Instrument proficiency check" },
-    { key: "typeRecurrent", label: "Type/135 recurrent" },
+    { key: "ipc", label: "Instrument proficiency check (61.57)" },
+    // 2026-09-05 — split from a single collapsed "Type/135 recurrent" field
+    // (see services/aviation/pilotCurrency.js's 2026-09-05 addendum): a pilot
+    // can be current on one and due on the other, and Dispatch needs to
+    // block/flag them independently, not as one merged item.
+    { key: "typeRecurrent", label: "135.293 competency check / recurrent training" },
+    { key: "ipc297", label: "135.297 instrument proficiency check" },
   ];
   for (const c of currencyChecks) {
     const item = currency[c.key];
