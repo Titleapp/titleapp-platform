@@ -1811,6 +1811,27 @@ exports.api = onRequest(
           }
         }
 
+        // 2026-09-05 — same correlation idea, for the Shopify DPP app's
+        // per-shop onboarding (purpose "dpp_shop_onboarding", started by
+        // POST /v1/dpp:shopify:kyc:start). identityVerifications/users
+        // above already recorded the pass/fail — this just lets
+        // dppShopOnboarding/{shopDomain} reflect it too, looked up by
+        // tenantId (unique per shop) since this webhook has no
+        // shopDomain of its own.
+        if (tenantId && purpose === "dpp_shop_onboarding" && (status === "verified" || status === "canceled")) {
+          try {
+            const shopSnap = await db.collection("dppShopOnboarding").where("tenantId", "==", tenantId).limit(1).get();
+            if (!shopSnap.empty) {
+              await shopSnap.docs[0].ref.set(
+                { kycStatus: status === "verified" ? "verified" : "failed", updatedAt: nowServerTs() },
+                { merge: true }
+              );
+            }
+          } catch (shopKycErr) {
+            console.warn("[verifiedIdentity] dpp-shop-onboarding correlation failed (non-fatal):", shopKycErr.message);
+          }
+        }
+
         return res.json({ ok: true });
       } catch (e) {
         console.error("❌ Stripe webhook handler error:", e);
@@ -2721,6 +2742,290 @@ exports.api = onRequest(
       } catch (e) {
         console.error("dpp:shopify:attachPassport failed:", e.message);
         return jsonError(res, 500, "DPP Shopify attach failed");
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Real per-shop onboarding for the sociii-dpp-passport Shopify app
+    // (2026-09-05). Every /dpp:shopify:* route above was built and
+    // deliberately self-documented as a single-tenant stopgap
+    // (SOCIII_TENANT_ID, one shared env var) — there was no way for a
+    // second real merchant to ever get their own SOCIII tenant. These five
+    // routes are the real per-installation onboarding a merchant goes
+    // through once, right after installing the app: a real SOCIII
+    // tenant/workspace scoped to their shop, Stripe Identity KYC of the
+    // authorized signer (the exact same mechanism every other vertical on
+    // this platform uses — services/identity/identitySession.js — not a
+    // new one), and a real business-registration document capture. Same
+    // shared-secret auth as the routes above (x-dpp-shopify-secret) —
+    // called from the Shopify app's own server (which holds the shop's
+    // OAuth session and owner email), never from a merchant's browser
+    // directly, and never requiring a Firebase session the merchant
+    // doesn't have.
+    // ---------------------------------------------------------------
+
+    // POST /v1/dpp:shopify:onboardShop — idempotent. First call for a given
+    // shopDomain creates a real Firebase Auth user for the shop owner (if
+    // one doesn't already exist for that email — same find-or-create
+    // pattern services/clients/clientOnboarding.js already uses), a real
+    // SOCIII tenant/workspace (vertical "dpp", same createWorkspace() path
+    // AddWorkspaceWizard.jsx uses), and a dppShopOnboarding/{shopDomain}
+    // record correlating the two. Every later call just returns the
+    // existing record — never creates a second tenant for the same shop.
+    if (route === "/dpp:shopify:onboardShop" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, ownerEmail, ownerName, businessName } = body || {};
+        if (!shopDomain) return jsonError(res, 400, "Missing shopDomain");
+        if (!ownerEmail || !ownerEmail.includes("@")) return jsonError(res, 400, "Valid ownerEmail required");
+
+        const shopId = String(shopDomain).toLowerCase().trim();
+        const onboardingRef = db.collection("dppShopOnboarding").doc(shopId);
+        const existing = await onboardingRef.get();
+        if (existing.exists) {
+          const d = existing.data();
+          return res.json({ ok: true, tenantId: d.tenantId, kycStatus: d.kycStatus, docStatus: d.docStatus, idempotent: true });
+        }
+
+        // Find-or-create the Firebase Auth account for the shop owner —
+        // same pattern as clientOnboarding.js's addClient().
+        let uid = null;
+        try {
+          const existingUser = await admin.auth().getUserByEmail(ownerEmail);
+          uid = existingUser.uid;
+        } catch (e) {
+          if (e.code === "auth/user-not-found") {
+            const created = await admin.auth().createUser({
+              email: ownerEmail,
+              emailVerified: false,
+              displayName: ownerName || undefined,
+            });
+            uid = created.uid;
+          } else {
+            throw e;
+          }
+        }
+
+        const workspace = await createWorkspace(uid, {
+          vertical: "dpp",
+          name: businessName || shopId,
+          tagline: `Shopify merchant — SOCIII Digital Product Passport (${shopId})`,
+          jurisdiction: null,
+          onboardingComplete: false,
+          type: "org",
+        });
+
+        await onboardingRef.set({
+          shopDomain: shopId,
+          tenantId: workspace.id,
+          ownerUid: uid,
+          ownerEmail,
+          ownerName: ownerName || null,
+          businessName: businessName || null,
+          kycStatus: "not_started",
+          docStatus: "not_uploaded",
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
+        await db.collection("auditTrail").add({
+          type: "dpp_shopify_shop_onboarded",
+          tenantId: workspace.id,
+          contactId: null,
+          actorUid: null,
+          details: { shopDomain: shopId, ownerEmail },
+          at: nowServerTs(),
+        });
+
+        return res.json({ ok: true, tenantId: workspace.id, kycStatus: "not_started", docStatus: "not_uploaded", idempotent: false });
+      } catch (e) {
+        console.error("dpp:shopify:onboardShop failed:", e.message);
+        return jsonError(res, 500, "Shop onboarding failed");
+      }
+    }
+
+    // GET /v1/dpp:shopify:onboarding:status?shopDomain=xxx
+    if (route === "/dpp:shopify:onboarding:status" && method === "GET") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const shopId = (req.query?.shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        const snap = await db.collection("dppShopOnboarding").doc(shopId).get();
+        if (!snap.exists) return res.json({ ok: true, onboarded: false });
+        const d = snap.data();
+        return res.json({
+          ok: true,
+          onboarded: true,
+          tenantId: d.tenantId,
+          kycStatus: d.kycStatus,
+          docStatus: d.docStatus,
+          ready: d.kycStatus === "verified" && d.docStatus === "uploaded",
+        });
+      } catch (e) {
+        console.error("dpp:shopify:onboarding:status failed:", e.message);
+        return jsonError(res, 500, "Failed to read shop onboarding status");
+      }
+    }
+
+    // POST /v1/dpp:shopify:kyc:start — kicks off a real Stripe Identity
+    // verification session for the shop owner, server-side (they have no
+    // Firebase session of their own — same reason
+    // services/identity/identitySession.js's createIdentitySessionForUid
+    // was extracted for clientOnboarding.js's use case). Requires the
+    // Shopify app to have already captured real consent from the merchant
+    // (a checked consent box in its own onboarding UI) and pass it through
+    // as identityConsent — this route does not fabricate consent.
+    if (route === "/dpp:shopify:kyc:start" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, returnUrl, identityConsent } = body || {};
+        const shopId = (shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+
+        const onboardingRef = db.collection("dppShopOnboarding").doc(shopId);
+        const snap = await onboardingRef.get();
+        if (!snap.exists) return jsonError(res, 404, "Shop has not been onboarded yet — call dpp:shopify:onboardShop first");
+        const onboarding = snap.data();
+
+        if (onboarding.kycStatus === "verified") {
+          return res.json({ ok: true, alreadyVerified: true, kycStatus: "verified" });
+        }
+
+        const { createIdentitySessionForUid } = require("./services/identity/identitySession");
+        const session = await createIdentitySessionForUid({
+          db,
+          uid: onboarding.ownerUid,
+          tenantId: onboarding.tenantId,
+          purpose: "dpp_shop_onboarding",
+          returnUrl: returnUrl || undefined,
+          identityConsent,
+        });
+
+        await onboardingRef.set({ kycStatus: "pending", kycSessionId: session.sessionId, updatedAt: nowServerTs() }, { merge: true });
+
+        return res.json({ ok: true, url: session.url, sessionId: session.sessionId, status: session.status });
+      } catch (e) {
+        console.error("dpp:shopify:kyc:start failed:", e.message);
+        return jsonError(res, 500, e.message && e.message.includes("consent") ? e.message : "Failed to start identity verification");
+      }
+    }
+
+    // POST /v1/dpp:shopify:registrationDoc:sign — real business-registration
+    // document upload, step 1 of 2 (sign, then registrationDoc:finalize
+    // below). Mirrors the generic /files:sign contract exactly (same
+    // storagePath shape, same files/ doc schema) but shared-secret authed
+    // instead of Firebase-bearer, since the caller is the Shopify app's own
+    // server, not the merchant's browser.
+    if (route === "/dpp:shopify:registrationDoc:sign" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, filename, contentType, sizeBytes } = body || {};
+        const shopId = (shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        if (!filename) return jsonError(res, 400, "Missing filename");
+
+        const onboardingSnap = await db.collection("dppShopOnboarding").doc(shopId).get();
+        if (!onboardingSnap.exists) return jsonError(res, 404, "Shop has not been onboarded yet");
+        const { tenantId } = onboardingSnap.data();
+
+        const fileId = "file_" + crypto.randomUUID().replace(/-/g, "");
+        const safeName = sanitizeFilename(filename);
+        const { yyyy, mm } = yyyymm();
+        const storagePath = `tenants/${tenantId}/onboarding/${yyyy}/${mm}/${fileId}-${safeName}`;
+        const ct = contentType || "application/octet-stream";
+        const expiresMs = 15 * 60 * 1000;
+
+        await db.collection("files").doc(fileId).set({
+          tenantId,
+          createdAt: nowServerTs(),
+          createdBy: null, // no Firebase user — uploaded via the Shopify app's own server on the merchant's behalf
+          filename: safeName,
+          originalFilename: filename,
+          contentType: ct,
+          sizeBytes: sizeBytes || null,
+          purpose: "business_registration_doc",
+          tags: ["dpp_onboarding", "shopify"],
+          related: { onboarding: true, shopDomain: shopId },
+          status: "pending",
+          storage: { bucket: STORAGE_BUCKET, path: storagePath },
+          storagePath,
+        });
+
+        const [url] = await getBucket().file(storagePath).getSignedUrl({
+          version: "v4",
+          action: "write",
+          expires: Date.now() + expiresMs,
+          contentType: ct,
+        });
+
+        return res.json({ ok: true, fileId, storagePath, uploadUrl: url, expiresInMs: expiresMs });
+      } catch (e) {
+        console.error("dpp:shopify:registrationDoc:sign failed:", e.message);
+        return jsonError(res, 500, "Failed to prepare document upload");
+      }
+    }
+
+    // POST /v1/dpp:shopify:registrationDoc:finalize — step 2. Marks the
+    // file ready and flips the shop's docStatus, mirroring /files:finalize.
+    if (route === "/dpp:shopify:registrationDoc:finalize" && method === "POST") {
+      try {
+        const providedSecret = req.headers["x-dpp-shopify-secret"];
+        if (!process.env.SHOPIFY_DPP_APP_SECRET || providedSecret !== process.env.SHOPIFY_DPP_APP_SECRET) {
+          return jsonError(res, 401, "Invalid or missing x-dpp-shopify-secret");
+        }
+        const { shopDomain, fileId } = body || {};
+        const shopId = (shopDomain || "").toString().toLowerCase().trim();
+        if (!shopId) return jsonError(res, 400, "Missing shopDomain");
+        if (!fileId) return jsonError(res, 400, "Missing fileId");
+
+        const onboardingRef = db.collection("dppShopOnboarding").doc(shopId);
+        const onboardingSnap = await onboardingRef.get();
+        if (!onboardingSnap.exists) return jsonError(res, 404, "Shop has not been onboarded yet");
+        const onboarding = onboardingSnap.data();
+
+        const fileRef = db.collection("files").doc(fileId);
+        const fileSnap = await fileRef.get();
+        if (!fileSnap.exists) return jsonError(res, 404, "File not found");
+        const fileData = fileSnap.data();
+        if (fileData.tenantId !== onboarding.tenantId) return jsonError(res, 403, "File does not belong to this shop's tenant");
+
+        await fileRef.update({ status: "ready", finalizedAt: nowServerTs() });
+        await onboardingRef.set({ docStatus: "uploaded", businessRegistrationFileId: fileId, updatedAt: nowServerTs() }, { merge: true });
+        await db.collection("auditTrail").add({
+          type: "dpp_shopify_registration_doc_uploaded",
+          tenantId: onboarding.tenantId,
+          contactId: null,
+          actorUid: null,
+          details: { shopDomain: shopId, fileId },
+          at: nowServerTs(),
+        });
+
+        const ready = onboarding.kycStatus === "verified";
+        if (ready) {
+          try {
+            await db.collection("users").doc(onboarding.ownerUid)
+              .collection("workspaces").doc(onboarding.tenantId)
+              .update({ onboardingComplete: true, updatedAt: nowServerTs() });
+          } catch (wsErr) {
+            console.warn("[dpp:shopify:registrationDoc:finalize] onboardingComplete flip failed (non-fatal):", wsErr.message);
+          }
+        }
+
+        return res.json({ ok: true, docStatus: "uploaded", ready });
+      } catch (e) {
+        console.error("dpp:shopify:registrationDoc:finalize failed:", e.message);
+        return jsonError(res, 500, "Failed to finalize document upload");
       }
     }
 
@@ -25382,13 +25687,20 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           console.warn("[identity:session:create] dataFee record failed (non-fatal, session already created):", feeErr.message);
         }
 
-        // Return minimal data to run Stripe UI
+        // Return minimal data to run Stripe UI. `url` is Stripe's own
+        // hosted verification page — added 2026-09-05 so callers that use
+        // a plain full-page redirect (this codebase's established Stripe
+        // Checkout pattern — CartDrawer.jsx, WorkspaceObligationsBanner.jsx
+        // etc. all do `window.location.href = data.checkoutUrl`) can do the
+        // same here instead of needing Stripe.js/Elements, which nothing in
+        // apps/business currently loads.
         return res.json({
           ok: true,
           purpose: String(purpose),
           tenantId: ctx.tenantId,
           sessionId: session.id,
           client_secret: session.client_secret,
+          url: session.url || null,
         });
       } catch (e) {
         console.error("❌ identity:session:create failed:", e);
@@ -25425,6 +25737,47 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // tenants/contexts that reference the same verifiedIdentityId.
         verifiedIdentityId: data.verifiedIdentityId || null,
       });
+    }
+
+    // GET /v1/dpp:workspace:onboardingStatus — real, tenant-scoped
+    // combined status for the self-serve DPP client onboarding flow
+    // (AddWorkspaceWizard "dpp" vertical -> DppClientOnboarding.jsx, added
+    // 2026-09-05). Two independently-real, already-existing mechanisms,
+    // just read together here rather than duplicated: Stripe Identity KYC
+    // (identityVerifications, purpose "dpp_workspace_owner") and the
+    // business-registration document upload (generic /files:sign +
+    // /files:finalize, tagged purpose "business_registration_doc" and
+    // related.onboarding: true). No new write path — this route only reads.
+    if (route === "/dpp:workspace:onboardingStatus" && method === "GET") {
+      try {
+        const purpose = "dpp_workspace_owner";
+        const docId = identityDocId({ uid: auth.user.uid, tenantId: ctx.tenantId, purpose });
+        const idvSnap = await db.collection("identityVerifications").doc(docId).get();
+        let kycStatus = "unverified";
+        if (idvSnap.exists) {
+          const stripeStatus = (idvSnap.data() || {}).stripeStatus || null;
+          kycStatus = stripeStatus === "verified" ? "verified" : stripeStatus === "canceled" ? "failed" : stripeStatus ? "pending" : "unverified";
+        }
+
+        const filesSnap = await db.collection("files")
+          .where("tenantId", "==", ctx.tenantId)
+          .where("purpose", "==", "business_registration_doc")
+          .where("status", "==", "ready")
+          .limit(1)
+          .get();
+        const docUploaded = !filesSnap.empty;
+
+        return res.json({
+          ok: true,
+          tenantId: ctx.tenantId,
+          kycStatus,
+          docUploaded,
+          ready: kycStatus === "verified" && docUploaded,
+        });
+      } catch (e) {
+        console.error("dpp:workspace:onboardingStatus failed:", e.message);
+        return jsonError(res, 500, "Failed to read DPP onboarding status");
+      }
     }
 
     // POST /v1/identity:resolve:delete — CODEX S52.62 §5 item 3 interim

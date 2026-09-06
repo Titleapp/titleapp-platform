@@ -6,6 +6,7 @@ import WorkerLockerPanel from "./components/WorkerLockerPanel";
 import WorkerLibrarySection from "./components/WorkerLibrarySection";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
+import DppClientOnboarding from "./components/DppClientOnboarding";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
 import WorkspaceInvestorMaterials from "./components/WorkspaceInvestorMaterials";
 import WorkspaceInvestorDeadlines from "./components/WorkspaceInvestorDeadlines";
@@ -5962,6 +5963,29 @@ export default function App() {
 
   if (currentView === "app" && needsOnboarding) {
     const onboardingVertical = localStorage.getItem("PENDING_ONBOARDING") || localStorage.getItem("VERTICAL") || "auto";
+    const onboardingDone = () => {
+      localStorage.removeItem("PENDING_ONBOARDING");
+      localStorage.setItem("ONBOARDING_COMPLETE", "true");
+      setNeedsOnboarding(false);
+    };
+    // DPP (brand/manufacturer client) gets its own onboarding flow — real
+    // identity verification + business registration document capture,
+    // not the generic multi-vertical sample-data wizard every other
+    // vertical uses. See DppClientOnboarding.jsx.
+    if (onboardingVertical === "dpp") {
+      return (
+        <div className="appShell" style={{ minHeight: "100vh" }}>
+          <div className="dualPanel" style={{ minHeight: "100vh" }}>
+            <aside className="chatSidebar">
+              <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
+            </aside>
+            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
+              <DppClientOnboarding onComplete={onboardingDone} />
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
@@ -5972,11 +5996,7 @@ export default function App() {
             <OnboardingWizard
               vertical={onboardingVertical}
               skipToStep={2}
-              onComplete={() => {
-                localStorage.removeItem("PENDING_ONBOARDING");
-                localStorage.setItem("ONBOARDING_COMPLETE", "true");
-                setNeedsOnboarding(false);
-              }}
+              onComplete={onboardingDone}
               onStepChange={setOnboardingStep}
             />
           </div>

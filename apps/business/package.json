@@ -21,7 +21,11 @@
     "cap:nursing:android": "npm run build:nursing && npx cap sync android && npx cap open android",
     "cap:realestate:sync": "npm run build:realestate && npx cap sync",
     "cap:realestate:ios": "npm run build:realestate && npx cap sync ios && npx cap open ios",
-    "cap:realestate:android": "npm run build:realestate && npx cap sync android && npx cap open android"
+    "cap:realestate:android": "npm run build:realestate && npx cap sync android && npx cap open android",
+    "build:dpp": "vite build",
+    "cap:dpp:sync": "npm run build:dpp && node scripts/withDppConfig.js npx cap sync",
+    "cap:dpp:ios": "npm run build:dpp && node scripts/withDppConfig.js npx cap sync ios && npx cap open ios",
+    "cap:dpp:android": "npm run build:dpp && node scripts/withDppConfig.js npx cap sync android && npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
