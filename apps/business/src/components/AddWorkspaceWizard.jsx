@@ -6,6 +6,7 @@ const VERTICAL_ABBREVS = {
   'real-estate': 'RE',
   aviation: 'AV',
   investor: 'IR',
+  education: 'ED',
   builder: 'AI',
 };
 
@@ -65,6 +66,17 @@ const VERTICALS = [
       'Compliance and RegCF filing assistance',
     ],
   },
+  {
+    id: 'education',
+    label: 'Nursing Education',
+    description: 'Nursing program instructor — cohort tracking, clinical evaluations, competency sign-off',
+    cosManages: [
+      'Student cohort roster and progress tracking',
+      'Clinical evaluation signing (tamper-proof, Vault-anchored)',
+      'Competency attestation and sign-off',
+      'FERPA-scoped — your students only, never shared across programs',
+    ],
+  },
 ];
 
 const VERTICAL_PLACEHOLDERS = {
@@ -97,6 +109,12 @@ const VERTICAL_PLACEHOLDERS = {
     tagline: 'Series A fundraise',
     stateLabel: 'Where is your company incorporated?',
     stateHelp: 'This determines your securities regulation framework',
+  },
+  education: {
+    name: 'Riverside School of Nursing',
+    tagline: 'BSN Program — Clinical Rotations & Cohort Tracking',
+    stateLabel: "Which state's Board of Nursing (BON) governs your program?",
+    stateHelp: 'Determines the state nursing-board rules applied to your clinical evaluations and competency records.',
   },
 };
 
@@ -144,6 +162,16 @@ const SAMPLE_WORKERS = {
     { id: 'flight-ops', name: 'Flight Operations', price: 29, description: 'Scheduling, crew management' },
     { id: 'certification', name: 'Certification Manager', price: 29, description: 'Pilot certs, type ratings, medicals' },
   ],
+  // Unlike the sample-only ids above (aircraft-records, re-listings, etc. —
+  // decorative placeholders with no matching digitalWorkers doc), these two
+  // are REAL, live worker slugs (functions/functions/index.js
+  // admin:bootstrap-nursing-education-001 / admin:bootstrap-clinical-evaluation-001)
+  // — the actual instructor dashboard + clinical-eval signing tool. Priced
+  // at $0 to match their real digitalWorkers catalog pricing (monthly: 0).
+  education: [
+    { id: 'nursing-education-001', name: 'Hannah — Nursing Education', price: 0, description: 'Longitudinal student record: competency, professionalism, attendance, and clinical incidents for your full cohort.' },
+    { id: 'clinical-evaluation-001', name: 'Student Evaluation (Clinical Evaluation Tool)', price: 0, description: 'Sign clinical evaluations — digitally signed, written into each student’s Vault, tamper-proof and verifiable.' },
+  ],
 };
 
 export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCancel, onBuilderStart }) {
@@ -181,6 +209,16 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
       return;
     }
     setSelectedVertical(id);
+    // Education's two real workers (cohort dashboard + clinical evaluation
+    // signing) are the product itself for an instructor, not optional
+    // marketplace add-ons — same idea as the free spine workers every other
+    // owned business workspace gets automatically. handleDetailsNext (below)
+    // skips the worker-picker step for the normal org-creation flow, so
+    // pre-select both here to guarantee they're included in workerIds on
+    // create (same workerIds-on-create mechanism App.jsx's
+    // _handleFirstSubscribe already uses to activate a real worker
+    // immediately at workspace creation).
+    setSelectedWorkers(id === 'education' ? (SAMPLE_WORKERS.education || []).map(w => w.id) : []);
     setStep(2);
   }
 
