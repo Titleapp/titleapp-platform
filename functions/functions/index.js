@@ -3801,6 +3801,18 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
       // (which reads a static bundled knowledge file). Nothing else in this
       // codebase currently wires the Studio Locker into a chat system prompt;
       // this is net-new, scoped only to course_chat.
+      //
+      // RAAS rework note: this branch used to call Claude directly with zero
+      // enforcement — no hard_stops, no chat_rules, no disclaimer, not even
+      // the static nursing_clinical_v1 ruleset that WORKER_RULESET_MAP
+      // already assigns to nursing-courses-001 (that ruleset was simply
+      // never reached from this path). It now loads this course's own
+      // per-course ruleset (courses/{slug}.raasRuleset, built by the
+      // wizard's "Make sure your rules are in place" step) and merges it
+      // with any static ruleset via raas.engine.js's
+      // getCourseEnforcementContext() — additive, so nursing-courses-001
+      // courses now get BOTH layers, and course-tutor-001 (no static entry)
+      // gets its own course rules where before it had none at all.
       if (body.context && body.context.source === "course_chat" && body.context.workerId) {
         try {
           if (!chatAuthUser || !chatAuthUser.uid) {
@@ -3827,9 +3839,35 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
           const tutorName = body.context.tutorName || "your course tutor";
           const courseName = body.context.courseName || "this course";
           const description = body.context.description || "";
+          const courseWorkerId = body.context.workerId;
+
+          // ── Per-course RAAS ruleset (additive to any static ruleset) ──
+          let courseRuleset = null;
+          try {
+            // chatAuthUser.courseSlug is a custom claim minted onto the
+            // courseUid token (see courseSession.js) — it round-trips onto
+            // the decoded ID token automatically. Fall back to a courseUid
+            // lookup for defense in depth (older tokens, claim stripped).
+            let courseSnap = null;
+            if (chatAuthUser.courseSlug) {
+              const bySlug = await db.collection("courses").doc(String(chatAuthUser.courseSlug)).get();
+              if (bySlug.exists) courseSnap = bySlug;
+            }
+            if (!courseSnap) {
+              const byUid = await db.collection("courses").where("courseUid", "==", chatAuthUser.uid).limit(1).get();
+              if (!byUid.empty) courseSnap = byUid.docs[0];
+            }
+            if (courseSnap) courseRuleset = courseSnap.data().raasRuleset || null;
+          } catch (rsErr) {
+            console.error("[course_chat] course ruleset lookup failed (continuing without it):", rsErr.message);
+          }
+
+          const { getCourseEnforcementContext } = require("./raas/raas.engine");
+          const enforcementCtx = getCourseEnforcementContext(courseWorkerId, courseRuleset);
 
           const systemPrompt = `You are ${tutorName}, an AI tutor for "${courseName}". ${description}\n\n` +
             `Answer using the course materials below when relevant. Be direct and helpful. If the materials don't cover something, say so plainly rather than guessing.\n\n` +
+            (enforcementCtx.systemPromptAddendum ? `${enforcementCtx.systemPromptAddendum}\n\n` : "") +
             `=== COURSE MATERIALS ===\n${materials}`;
 
           const history = Array.isArray(body.context.conversationHistory)
@@ -3850,8 +3888,32 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
             system: systemPrompt,
             messages,
           });
-          const replyText = completion.content[0]?.text || "What would you like to know?";
-          return res.json({ ok: true, response: replyText, materialsLoaded: chunks.length });
+          let replyText = completion.content[0]?.text || "What would you like to know?";
+
+          // ── Chat-rules enforcement (regex, post-generation) ──────────
+          // Same fail-open, append-disclaimer-once-per-session pattern the
+          // state-machine chat path uses at "Worker-specific RAAS
+          // enforcement (49.9)" — never blocks the response, just flags +
+          // discloses.
+          let courseEnforcement = { checked: false };
+          try {
+            if (enforcementCtx.chatRules) {
+              courseEnforcement = validateChatOutput(replyText, enforcementCtx.chatRules);
+              courseEnforcement.checked = true;
+              const priorText = history.filter(m => m.role === "assistant").map(m => m.content || "").join(" ").toLowerCase();
+              const disclaimerAlreadySent = enforcementCtx.disclaimer &&
+                priorText.includes(enforcementCtx.disclaimer.slice(0, 40).toLowerCase());
+              if (!courseEnforcement.passed && enforcementCtx.disclaimer && !disclaimerAlreadySent) {
+                console.warn(`[enforcement] course_chat worker:${courseWorkerId} violation:`, courseEnforcement.violations);
+                replyText += `\n\n*${enforcementCtx.disclaimer}*`;
+                courseEnforcement.disclaimerAppended = true;
+              }
+            }
+          } catch (enfErr) {
+            console.error("[enforcement] course_chat enforcement error (continuing):", enfErr.message);
+          }
+
+          return res.json({ ok: true, response: replyText, materialsLoaded: chunks.length, enforcement: courseEnforcement });
         } catch (e) {
           console.error("[course_chat] failed:", e.message);
           return res.json({ ok: true, response: "I ran into a problem loading your course materials — try again in a moment." });
@@ -35263,6 +35325,84 @@ Analyze now:`;
       } catch (e) {
         console.error("edu:course:publish failed:", e);
         return jsonError(res, 500, "Failed to publish course");
+      }
+    }
+
+    // POST /v1/edu:course:setRuleset — CODEX 70 rework, Step 3 ("Make sure
+    // your rules are in place"). Authenticated as the course session.
+    // Builds and stores this course's own RAAS ruleset
+    // (courses/{slug}.raasRuleset) from a short structured questionnaire —
+    // see courseRuleset.js and raas.engine.js's getCourseEnforcementContext()
+    // for how it's enforced at chat time (additive to any static
+    // WORKER_RULESET_MAP ruleset for this workerId, never a replacement).
+    if (route === "/edu:course:setRuleset" && method === "POST") {
+      try {
+        const rAuth = await requireFirebaseUser(req, res);
+        if (rAuth.handled) return rAuth.res;
+        const { setCourseRuleset } = require("./services/education/courseRuleset");
+        return await setCourseRuleset(req, res, rAuth.user);
+      } catch (e) {
+        console.error("edu:course:setRuleset failed:", e);
+        return jsonError(res, 500, "Failed to save course rules");
+      }
+    }
+
+    // GET /v1/edu:course:mediaPricing — public. Real cost figures from the
+    // live fal.ai image generator (services/image/generator.js) so the
+    // wizard can show the actual price BEFORE the instructor triggers a
+    // generation, never a hidden or hardcoded-and-drifting number.
+    if (route === "/edu:course:mediaPricing" && method === "GET") {
+      try {
+        const { IMAGE_CREDIT_COST, IMAGE_PRICE_USD } = require("./services/image");
+        return res.json({ ok: true, creditCost: IMAGE_CREDIT_COST, priceUsd: IMAGE_PRICE_USD });
+      } catch (e) {
+        console.error("edu:course:mediaPricing failed:", e);
+        return jsonError(res, 500, "Failed to load pricing");
+      }
+    }
+
+    // POST /v1/edu:course:uploadMedia — Step 2, local image/video upload.
+    // Authenticated as the course session. Stores to Cloud Storage and
+    // records on courses/{slug}.mediaAssets — see courseMedia.js.
+    if (route === "/edu:course:uploadMedia" && method === "POST") {
+      try {
+        const mAuth = await requireFirebaseUser(req, res);
+        if (mAuth.handled) return mAuth.res;
+        const { uploadCourseMedia } = require("./services/education/courseMedia");
+        return await uploadCourseMedia(req, res, mAuth.user);
+      } catch (e) {
+        console.error("edu:course:uploadMedia failed:", e);
+        return jsonError(res, 500, "Media upload failed");
+      }
+    }
+
+    // POST /v1/edu:course:generateImage — Step 2, fal.ai-generated
+    // supporting image/chart. Authenticated as the course session, but
+    // billed to the REAL instructor account (courses/{slug}.instructorUid),
+    // not the anonymous courseUid — see courseMedia.js for why.
+    if (route === "/edu:course:generateImage" && method === "POST") {
+      try {
+        const gAuth = await requireFirebaseUser(req, res);
+        if (gAuth.handled) return gAuth.res;
+        const { generateCourseImage } = require("./services/education/courseMedia");
+        return await generateCourseImage(req, res, gAuth.user);
+      } catch (e) {
+        console.error("edu:course:generateImage failed:", e);
+        return jsonError(res, 500, "Image generation failed");
+      }
+    }
+
+    // GET /v1/edu:course:media?slug=... — list this course's media assets
+    // (uploaded + fal.ai-generated). Authenticated as the course session.
+    if (route === "/edu:course:media" && method === "GET") {
+      try {
+        const lAuth = await requireFirebaseUser(req, res);
+        if (lAuth.handled) return lAuth.res;
+        const { listCourseMedia } = require("./services/education/courseMedia");
+        return await listCourseMedia(req, res, lAuth.user);
+      } catch (e) {
+        console.error("edu:course:media failed:", e);
+        return jsonError(res, 500, "Failed to load media");
       }
     }
 

@@ -24,6 +24,7 @@
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const { getOrCreateInstructorTenant, activateCourseWorkerOnTenant } = require("./instructorTenant");
 
 function getDb() { return admin.firestore(); }
 
@@ -70,6 +71,22 @@ async function createCourseSession(req, res, instructorUser) {
   const slug = await uniqueSlug(db, base);
   const courseUid = `course_${crypto.randomBytes(10).toString("hex")}`;
 
+  // Real-billing wiring (CODEX 70 rework, gap #2). Prefer the tenantId
+  // custom claim minted at OTP-verify time (instructorAuth.js); fall back
+  // to resolving/creating it here for defense in depth (e.g. a token
+  // minted before this field existed, or the earlier resolution failed).
+  // Either way, this course attaches to ONE real, billed tenant the
+  // instructor owns — never a second, parallel billing concept.
+  let tenantId = instructorUser.tenantId || null;
+  if (!tenantId) {
+    try {
+      const resolved = await getOrCreateInstructorTenant(instructorUser, { institution });
+      tenantId = resolved.tenantId;
+    } catch (e) {
+      console.error("[courseSession] tenant resolution failed (non-blocking):", e.message);
+    }
+  }
+
   await db.collection("courses").doc(slug).set({
     slug,
     courseUid,
@@ -82,13 +99,22 @@ async function createCourseSession(req, res, instructorUser) {
     description: description || "",
     instructorUid: instructorUser.uid,
     instructorEmail: instructorUser.email || null,
+    tenantId: tenantId || null,
+    mediaAssets: [],
     status: "draft",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // Attach this course's worker to the instructor's real tenant so it
+  // shows up in activeWorkers (same array every other worker's billing and
+  // workspace UI reads from) instead of existing only inside courseUid.
+  if (tenantId) {
+    await activateCourseWorkerOnTenant(instructorUser, tenantId, workerId);
+  }
+
   const courseToken = await admin.auth().createCustomToken(courseUid, { courseSlug: slug, role: "instructor_preview" });
-  return res.json({ ok: true, slug, workerId, courseUid, courseToken });
+  return res.json({ ok: true, slug, workerId, courseUid, courseToken, tenantId });
 }
 
 /**

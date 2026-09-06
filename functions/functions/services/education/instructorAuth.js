@@ -192,8 +192,28 @@ async function verifyInstructorOtp(req, res) {
     status: "active",
   }, { merge: true });
 
-  const token = await admin.auth().createCustomToken(uid, { instructor: true });
-  return res.json({ ok: true, uid, token, institution });
+  // Real-billing wiring (CODEX 70 rework, gap #2) — resolve this instructor
+  // to (or create) exactly one real 'education' tenant, the same
+  // createWorkspace()-backed mechanism AddWorkspaceWizard.jsx uses. Every
+  // course this instructor builds attaches to this tenant (see
+  // courseSession.js) instead of living only inside an anonymous,
+  // unbilled courseUid. Non-blocking: if tenant resolution fails, OTP
+  // verification still succeeds — courseSession.js retries tenant
+  // resolution at course-creation time as a second chance.
+  let tenantId = null;
+  try {
+    const { getOrCreateInstructorTenant } = require("./instructorTenant");
+    const tenantResult = await getOrCreateInstructorTenant({ uid }, { institution });
+    tenantId = tenantResult.tenantId;
+    await db.collection("instructors").doc(uid).set({ tenantId }, { merge: true });
+  } catch (e) {
+    console.error("[instructorAuth] tenant resolution failed (non-blocking):", e.message);
+  }
+
+  const claims = { instructor: true };
+  if (tenantId) claims.tenantId = tenantId;
+  const token = await admin.auth().createCustomToken(uid, claims);
+  return res.json({ ok: true, uid, token, institution, tenantId });
 }
 
 module.exports = {

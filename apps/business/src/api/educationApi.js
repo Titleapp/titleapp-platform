@@ -91,10 +91,34 @@ export function publishCourse(slug) {
   return call("POST", "/v1/edu:course:publish", { body: { slug } });
 }
 
-// ─── Step 3 — Google Drive import ──────────────────────────────────────────
+// ─── Step 2 — Google Drive import ───────────────────────────────────────────
 
 export function driveImportCourseFiles({ workerId, files }) {
   return call("POST", "/v1/edu:course:driveImport", { body: { workerId, files } });
+}
+
+// ─── Step 2 — Media (images/charts/video) ──────────────────────────────────
+
+export function getMediaPricing() {
+  return call("GET", "/v1/edu:course:mediaPricing", { auth: false });
+}
+
+export function uploadCourseMedia({ slug, fileName, mimeType, data }) {
+  return call("POST", "/v1/edu:course:uploadMedia", { body: { slug, fileName, mimeType, data } });
+}
+
+export function generateCourseImage({ slug, prompt, style, size }) {
+  return call("POST", "/v1/edu:course:generateImage", { body: { slug, prompt, style, size } });
+}
+
+export function listCourseMedia(slug) {
+  return call("GET", "/v1/edu:course:media", { query: { slug } });
+}
+
+// ─── Step 3 — RAAS ruleset ("Make sure your rules are in place") ──────────
+
+export function setCourseRuleset(slug, answers) {
+  return call("POST", "/v1/edu:course:setRuleset", { body: { slug, answers } });
 }
 
 // ─── Course chat (Step 4 preview + /course/:slug) ──────────────────────────

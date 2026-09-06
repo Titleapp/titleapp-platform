@@ -546,4 +546,16 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed, chargedCredits: _chargedCredits, priceUsd: _chargedCredits > 0 ? IMAGE_PRICE_USD : 0 };
 }
 
-module.exports = { generateImage, buildPrompt, scrubPhi, scrubAviationPii, checkNsfw, validateImagePrompt };
+module.exports = {
+  generateImage,
+  buildPrompt,
+  scrubPhi,
+  scrubAviationPii,
+  checkNsfw,
+  validateImagePrompt,
+  // Exported so callers (e.g. services/education/courseMedia.js) can show
+  // the real cost to a user BEFORE they trigger a paid generation, instead
+  // of hardcoding a second copy of these numbers that could drift.
+  IMAGE_CREDIT_COST,
+  IMAGE_PRICE_USD,
+};
