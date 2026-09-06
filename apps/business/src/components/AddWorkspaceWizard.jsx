@@ -7,6 +7,7 @@ const VERTICAL_ABBREVS = {
   aviation: 'AV',
   investor: 'IR',
   education: 'ED',
+  dpp: 'DP',
   builder: 'AI',
 };
 
@@ -77,6 +78,26 @@ const VERTICALS = [
       'FERPA-scoped — your students only, never shared across programs',
     ],
   },
+  {
+    // 2026-09-05 — real self-serve entry point for a brand/manufacturer
+    // that wants SOCIII as its Digital Product Passport advocate. Distinct
+    // from the sociii-dpp-passport Shopify app's install-time onboarding
+    // (which creates this same vertical of workspace automatically for a
+    // Shopify merchant) — this is the path for a DPP client that isn't on
+    // Shopify. Requires real KYC + a business registration document before
+    // the workspace is usable — see DppClientOnboarding.jsx, which runs
+    // right after this wizard via the same needsOnboarding gate every
+    // other vertical uses (App.jsx).
+    id: 'dpp',
+    label: 'Digital Product Passport (Brand / Manufacturer)',
+    description: 'SOCIII as your DPP advocate — EU Digital Product Passport compliance for your products',
+    cosManages: [
+      'EU Battery Regulation (2023/1542) Digital Product Passport records',
+      'Supplier & materials data intake',
+      'Registry submission tracking',
+      'Requires identity verification + a business registration document before setup completes',
+    ],
+  },
 ];
 
 const VERTICAL_PLACEHOLDERS = {
@@ -115,6 +136,17 @@ const VERTICAL_PLACEHOLDERS = {
     tagline: 'BSN Program — Clinical Rotations & Cohort Tracking',
     stateLabel: "Which state's Board of Nursing (BON) governs your program?",
     stateHelp: 'Determines the state nursing-board rules applied to your clinical evaluations and competency records.',
+  },
+  dpp: {
+    name: 'Voltara BV',
+    tagline: 'Battery manufacturer — EU Digital Product Passport compliance',
+    stateLabel: 'Where is your business registered?',
+    // NOTE: this wizard's jurisdiction picker is US states only, across
+    // every vertical — a real gap for a DPP client actually registered in
+    // the EU. Not fixed in this pass (pre-existing across the whole
+    // wizard, not introduced here); flagged for a real fix before this is
+    // used with a non-US manufacturer.
+    stateHelp: 'Used for your engagement paperwork. You can change this later.',
   },
 };
 
@@ -172,6 +204,20 @@ const SAMPLE_WORKERS = {
     { id: 'nursing-education-001', name: 'Hannah — Nursing Education', price: 0, description: 'Longitudinal student record: competency, professionalism, attendance, and clinical incidents for your full cohort.' },
     { id: 'clinical-evaluation-001', name: 'Student Evaluation (Clinical Evaluation Tool)', price: 0, description: 'Sign clinical evaluations — digitally signed, written into each student’s Vault, tamper-proof and verifiable.' },
   ],
+  // Deliberately empty, unlike education above. The only existing DPP
+  // worker slugs (eu-battery-dpp-001, eu-passport-registry-001,
+  // eu-supply-chain-tracer-001 — functions/functions/index.js ~line 4377)
+  // have their entire systemPrompt hardcoded to one specific demo client
+  // ("Volta Advisory / Voltara BV", real SKUs, real completion
+  // percentages) — they are demo fixtures, not tenant-generic products
+  // like nursing-education-001 is. Auto-granting them to a brand-new real
+  // tenant here would show that tenant another client's data — exactly
+  // the cross-tenant leak this platform's own rules forbid. Do not add
+  // these here until those workers are rebuilt to read tenant-scoped
+  // Firestore data (dppProducts/dppSuppliers, same as /dpp:demo:data
+  // already reads) instead of a hardcoded prompt. Alex still helps a new
+  // DPP workspace owner from chat in the meantime, same as 'general'.
+  dpp: [],
 };
 
 export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCancel, onBuilderStart }) {
