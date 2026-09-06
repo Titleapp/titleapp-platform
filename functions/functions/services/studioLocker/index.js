@@ -1,4 +1,15 @@
-const { getDb } = require("../_shared/db");
+// 2026-09-05 (CODEX 89 dispatch build) — this required a nonexistent module
+// ("../_shared/db" was never created anywhere in the codebase — grep confirms
+// zero other references). Every call to loadStudioLockerContext() was silently
+// throwing MODULE_NOT_FOUND, caught by index.js's non-fatal try/catch around
+// the call site, so EVERY worker chat (all verticals, not just aviation) has
+// been running with ZERO Studio Locker context injected — no CFR/GOM baseline,
+// no company documents — since this file was added. Fixed to the same
+// admin.firestore() pattern every other services/ file uses.
+const admin = require("firebase-admin");
+function getDb() {
+  return admin.firestore();
+}
 
 const STUDIO_LOCKER_BUDGET_TOKENS = 8000;
 const CHARS_PER_TOKEN = 4;

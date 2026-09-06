@@ -1017,16 +1017,35 @@ export function LogFlightModal({ onClose, onLogged }) {
 // (capability aviation.dispatch_release_flight_v1), writing flightReleases.
 // This does NOT gate or reference log_flight in any way — that link is an
 // open design question, intentionally left undecided here.
-// ─────────────────────────────────────────────────────────────────────────
+//
+// 2026-09-05 (CODEX 89 Dispatch pipeline, steps 5-6) — two new, OPTIONAL
+// props, both backward compatible (the plain "+ Release Flight" button
+// still renders this with neither, unchanged from before):
+//   prefill      — field values auto-populated from a verified trip
+//                  (tailNumber/aircraft/depIcao/arrIcao/proposedDepartureTime/
+//                  pic/sic/alternateIcao). Fields stay EDITABLE — pre-filled
+//                  is not the gate.
+//   verification — { requestId, verificationId, summary, crew } from the
+//                  revalidation pass. Its presence is what turns on the
+//                  enforced re-affirmation checkbox below (separate from the
+//                  pre-filled fields, per round-1 red-team finding #6 — the
+//                  gate is an explicit NEW action, not "fields happen to be
+//                  editable") and the post-release crew-notify step.
 // eslint-disable-next-line react-refresh/only-export-components
-export function ReleaseFlightModal({ onClose, onReleased }) {
+export function ReleaseFlightModal({ onClose, onReleased, prefill, verification }) {
   const [form, setForm] = useState({
-    tailNumber: "", aircraft: "", depIcao: "", arrIcao: "", proposedDepartureTime: "",
-    pic: "", sic: "", operationType: "part135", weatherBriefingAcknowledged: false,
+    tailNumber: prefill?.tailNumber || "", aircraft: prefill?.aircraft || "",
+    depIcao: prefill?.depIcao || "", arrIcao: prefill?.arrIcao || "",
+    proposedDepartureTime: prefill?.proposedDepartureTime || "",
+    pic: prefill?.pic || "", sic: prefill?.sic || "", operationType: prefill?.operationType || "part135",
+    weatherBriefingAcknowledged: false,
     weightBalanceAcknowledged: false, fuelLoad: "", releasingAuthority: "",
   });
   const [wbResult, setWbResult] = useState(null);
   const [status, setStatus] = useState(null);
+  const [humanReaffirmed, setHumanReaffirmed] = useState(false);
+  const [notifyStatus, setNotifyStatus] = useState(null);
+  const [readiness, setReadiness] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
   const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
@@ -1039,7 +1058,8 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
   const aircraftProfile = getAircraftTypeProfile(form.aircraft);
   const required = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim() && form.proposedDepartureTime
     && form.pic.trim() && form.operationType && form.releasingAuthority.trim() && form.fuelLoad
-    && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged;
+    && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged
+    && (!verification || humanReaffirmed);
 
   async function run() {
     if (!required) return;
@@ -1058,11 +1078,53 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
         weightBalanceAcknowledged: form.weightBalanceAcknowledged,
         fuelLoad: form.fuelLoad,
         releasingAuthority: form.releasingAuthority.trim(),
+        ...(verification ? {
+          verificationId: verification.verificationId,
+          requestId: verification.requestId,
+          humanReaffirmed: true,
+        } : {}),
       });
       setStatus({ state: "done", releaseId: j.releaseId });
     } catch (e) {
       setStatus({ state: "error", message: e.message });
     }
+  }
+
+  // Step 6 — notify crew + real-time readiness (pending acknowledgments).
+  // Only reachable from the verified pipeline (verification.crew is the
+  // roster that was actually checked) — the plain manual release path has
+  // no crew list to notify and is unaffected.
+  async function notifyCrew(releaseId) {
+    if (!verification?.crew?.length) return;
+    setNotifyStatus({ state: "running" });
+    try {
+      const j = await apiPost("/v1/dispatch:notifyCrew", {
+        releaseId,
+        requestId: verification.requestId,
+        crew: verification.crew,
+        flightPackage: {
+          tailNumber: form.tailNumber.trim().toUpperCase(),
+          depIcao: form.depIcao.trim().toUpperCase(),
+          arrIcao: form.arrIcao.trim().toUpperCase(),
+          alternateIcao: verification.summary?.alternateIcao || null,
+          proposedDepartureTime: form.proposedDepartureTime,
+          weatherBrief: verification.summary?.weatherText || null,
+          notams: null,
+          weightBalance: wbResult || null,
+        },
+      });
+      setNotifyStatus({ state: "done", notified: j.notified });
+      refreshReadiness(releaseId);
+    } catch (e) {
+      setNotifyStatus({ state: "error", message: e.message });
+    }
+  }
+
+  async function refreshReadiness(releaseId) {
+    try {
+      const j = await apiGet(`/v1/dispatch:releaseReadiness?releaseId=${encodeURIComponent(releaseId)}`);
+      setReadiness(j);
+    } catch { /* non-fatal — dispatch board can retry */ }
   }
 
   return (
@@ -1072,6 +1134,27 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
           Formal dispatch release — required for Part 135 operational control (14 CFR 135.77 and neighboring sections) before departure.
         </p>
+        {/* CODEX 89 step 4 — underlying data behind each check, not just a
+            checkmark, so a human can catch a wrong match. Read-only; the
+            editable release fields below are pre-filled FROM this but the
+            re-affirmation checkbox further down is the actual gate. */}
+        {verification && (
+          <div style={{ marginBottom: 16, padding: 12, border: "1px solid #bae6fd", borderRadius: 8, background: "#f0f9ff" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#0369a1", marginBottom: 6 }}>
+              Verification data (revalidated {verification.computedAt ? new Date(verification.computedAt).toLocaleString() : ""}) — {verification.releaseRecommendation}
+            </div>
+            {(verification.summaryLines || []).map((line, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#334155", marginBottom: 2 }}>{line}</div>
+            ))}
+            {(verification.blockingItems || []).length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                {verification.blockingItems.map((b, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#b91c1c" }}>⛔ {b}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>Aircraft type</label><input style={fieldStyle} value={form.aircraft} onChange={(e) => set("aircraft", e.target.value)} placeholder="PC-12/47E" /></div>
@@ -1101,8 +1184,53 @@ export function ReleaseFlightModal({ onClose, onReleased }) {
           </label>
         </div>
         <WeightBalanceCalculator aircraftProfile={aircraftProfile} onResultChange={setWbResult} />
+        {/* CODEX 89 step 5 — the enforced re-affirmation gate. Deliberately
+            NOT one of the pre-filled/editable fields above: unchecked by
+            default even though everything else is pre-populated, per
+            round-1 red-team finding #6 ("cannot submit without it," not
+            "fields happen to be editable"). Only rendered when this modal
+            was opened from the verified pipeline. */}
+        {verification && (
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#7c2d12", marginTop: 10, padding: 10, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8 }}>
+            <input type="checkbox" checked={humanReaffirmed} onChange={(e) => setHumanReaffirmed(e.target.checked)} style={{ marginTop: 2 }} />
+            <span>I have reviewed the verification data above (aircraft, alternate, weather, crew currency/duty) myself and re-affirm this specific release — I am not relying on the checkmarks alone. *</span>
+          </label>
+        )}
         {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Flight released. Release ID: {status.releaseId}</div>}
+        {status?.state === "done" && (
+          <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>
+            Flight released. Release ID: {status.releaseId}
+          </div>
+        )}
+        {/* CODEX 89 step 6 — notify crew + real acknowledgment gate (see
+            crewNotifications.js for the explicit decision this implements:
+            delivered ≠ acknowledged; readyForDeparture stays false until
+            every crew member listed acknowledges). Only offered when this
+            release came from the verified pipeline with a real crew list. */}
+        {status?.state === "done" && verification?.crew?.length > 0 && (
+          <div style={{ marginTop: 10, padding: 10, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+            {!notifyStatus && (
+              <button onClick={() => notifyCrew(status.releaseId)} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>
+                Notify crew ({verification.crew.length})
+              </button>
+            )}
+            {notifyStatus?.state === "running" && <div style={{ fontSize: 12, color: "#64748b" }}>Notifying crew…</div>}
+            {notifyStatus?.state === "error" && <div style={{ fontSize: 12, color: "#dc2626" }}>{notifyStatus.message}</div>}
+            {notifyStatus?.state === "done" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#334155", marginBottom: 6 }}>Crew notified. Not ready for departure until every crew member acknowledges below.</div>
+                {readiness && (
+                  <div style={{ fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: readiness.readyForDeparture ? "#15803d" : "#b45309" }}>
+                      {readiness.readyForDeparture ? "READY — all crew acknowledged" : `AWAITING ACKNOWLEDGMENT — ${readiness.pendingCrew?.length || 0} pending`}
+                    </span>
+                    <button onClick={() => refreshReadiness(status.releaseId)} style={{ marginLeft: 10, fontSize: 11, color: "#0284c7", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>refresh</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
           <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
@@ -1904,7 +2032,157 @@ function ScheduledMaintenanceActionsPanel({ refreshKey, onAction }) {
 // real trip request (POST /v1/dispatch:createTripRequest) with the mission
 // criteria and match reasons attached for audit.
 // ─────────────────────────────────────────────────────────────────────────
-function MissionRequestPanel() {
+// ─────────────────────────────────────────────────────────────────────────
+// TripVerifyPanel — CODEX 89 §4 steps 2-5, live inside the Requests tab
+// once a trip request exists. Two distinct server calls, not one relabeled:
+// "Run verification" (POST /v1/dispatch:verifyTrip, the parallel checks)
+// and "Re-validate before accept" (POST /v1/dispatch:revalidateTrip) — the
+// round-1 red-team fix for the race condition where a matched aircraft or
+// alternate can go stale relative to the crew check by accept-time. Accept
+// is only reachable after a revalidation pass comes back CLEARED.
+// ─────────────────────────────────────────────────────────────────────────
+function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOpenRelease }) {
+  const [crew, setCrew] = useState([{ uid: "", role: "PIC" }]);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [revalResult, setRevalResult] = useState(null);
+  const [busy, setBusy] = useState(null); // "verify" | "revalidate" | null
+  const [err, setErr] = useState(null);
+
+  function updateCrewRow(i, field, val) {
+    setCrew((rows) => rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  }
+  function addCrewRow() {
+    setCrew((rows) => [...rows, { uid: "", role: "SIC" }]);
+  }
+  function crewPayload() {
+    return crew.filter((c) => c.uid.trim()).map((c) => ({ uid: c.uid.trim(), role: c.role }));
+  }
+
+  async function runVerify() {
+    setBusy("verify"); setErr(null); setVerifyResult(null); setRevalResult(null);
+    try {
+      const j = await apiPost("/v1/dispatch:verifyTrip", {
+        requestId, destinationIcao: destination, tailNumber, requiresIfr, crew: crewPayload(),
+      });
+      setVerifyResult(j);
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  async function runRevalidate() {
+    setBusy("revalidate"); setErr(null);
+    try {
+      const j = await apiPost("/v1/dispatch:revalidateTrip", {
+        requestId, destinationIcao: destination, tailNumber, requiresIfr, crew: crewPayload(),
+      });
+      setRevalResult(j);
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  function openAccept() {
+    if (!revalResult || revalResult.releaseRecommendation !== "CLEARED") return;
+    const summaryLines = [
+      `Aircraft ${revalResult.tailNumber}: ${revalResult.aircraft?.airworthiness?.status || "not checked"}`,
+      revalResult.alternates?.recommended
+        ? `Alternate: ${revalResult.alternates.recommended.icao} (${revalResult.alternates.recommended.distanceNm} nm) — ${revalResult.alternates.minimumsModel}`
+        : `Alternate: ${revalResult.alternates?.message || "none found"}`,
+      ...(revalResult.weather?.metars || []).map((m) => `Weather ${m.icao}: ${m.flightCategory || "unknown"}, wind ${m.windDir ?? "?"}@${m.windSpeedKt ?? "?"}kt, vis ${m.visibilitySm ?? "?"}sm`),
+      ...(revalResult.crew || []).map((cr) => `Crew ${cr.pilotUserId}: duty ${cr.dutyStatus?.currentDuty?.dutyHours ?? "?"}/${cr.dutyStatus?.currentDuty?.maxDutyHours ?? "?"}h, ${cr.cleared ? "cleared" : "BLOCKED"}${cr.softFlags?.length ? ` (${cr.softFlags.length} flag(s))` : ""}`),
+      ...(revalResult.drift || []).map((d) => `Since initial check: ${d}`),
+    ];
+    onOpenRelease({
+      prefill: {
+        tailNumber: revalResult.tailNumber || tailNumber,
+        arrIcao: revalResult.destinationIcao || destination,
+        pic: crew.find((c) => c.role === "PIC")?.uid || "",
+        sic: crew.find((c) => c.role === "SIC")?.uid || "",
+      },
+      verification: {
+        requestId,
+        verificationId: revalResult.verificationId,
+        releaseRecommendation: revalResult.releaseRecommendation,
+        blockingItems: revalResult.blockingItems || [],
+        computedAt: revalResult.computedAt,
+        summaryLines,
+        summary: { alternateIcao: revalResult.alternateIcao, weatherText: summaryLines.join(" · ") },
+        crew: crewPayload(),
+      },
+    });
+  }
+
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "6px 8px", fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, background: "white" };
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Verify & prepare release</div>
+      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Crew (uid — real Firebase uid; needed to check currency/duty against this operator's crew records)</div>
+      {crew.map((c, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+          <input style={fieldStyle} value={c.uid} onChange={(e) => updateCrewRow(i, "uid", e.target.value)} placeholder="pilot uid" />
+          <select style={{ ...fieldStyle, width: 90 }} value={c.role} onChange={(e) => updateCrewRow(i, "role", e.target.value)}>
+            <option value="PIC">PIC</option>
+            <option value="SIC">SIC</option>
+          </select>
+        </div>
+      ))}
+      <button onClick={addCrewRow} style={{ fontSize: 11, color: "#0284c7", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 8 }}>+ add crew member</button>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={runVerify} disabled={busy !== null} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "white", background: "#0284c7", border: "none", borderRadius: 8, cursor: "pointer", opacity: busy !== null ? 0.6 : 1 }}>
+          {busy === "verify" ? "Verifying…" : "Run verification"}
+        </button>
+        <button onClick={runRevalidate} disabled={busy !== null || !verifyResult} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer", opacity: (busy !== null || !verifyResult) ? 0.5 : 1 }}>
+          {busy === "revalidate" ? "Re-validating…" : "Re-validate before accept"}
+        </button>
+        <button onClick={openAccept} disabled={!revalResult || revalResult.releaseRecommendation !== "CLEARED"} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "white", background: revalResult?.releaseRecommendation === "CLEARED" ? "#15803d" : "#94a3b8", border: "none", borderRadius: 8, cursor: revalResult?.releaseRecommendation === "CLEARED" ? "pointer" : "default" }}>
+          Accept & prepare release
+        </button>
+      </div>
+
+      {err && <div style={{ marginTop: 8, fontSize: 12, color: "#dc2626" }}>{err}</div>}
+
+      {verifyResult && (
+        <div style={{ marginTop: 10, fontSize: 12 }}>
+          <div style={{ fontWeight: 700, color: verifyResult.releaseRecommendation === "CLEARED" ? "#15803d" : "#b91c1c" }}>
+            Initial check: {verifyResult.releaseRecommendation}
+          </div>
+          <div style={{ color: "#334155" }}>Aircraft: {verifyResult.aircraft?.airworthiness?.status || "not on file"}</div>
+          <div style={{ color: "#334155" }}>
+            Alternate: {verifyResult.alternates?.recommended ? `${verifyResult.alternates.recommended.icao} (${verifyResult.alternates.recommended.distanceNm} nm)` : (verifyResult.alternates?.message || "none")}
+          </div>
+          {(verifyResult.crew || []).map((cr) => (
+            <div key={cr.pilotUserId} style={{ color: cr.cleared ? "#334155" : "#b91c1c" }}>
+              Crew {cr.pilotUserId}: {cr.cleared ? "cleared" : cr.blockingItems.join("; ")}
+            </div>
+          ))}
+          {(verifyResult.blockingItems || []).length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              {verifyResult.blockingItems.map((b, i) => <div key={i} style={{ color: "#b91c1c" }}>⛔ {b}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {revalResult && (
+        <div style={{ marginTop: 10, fontSize: 12, padding: 8, background: "#f8fafc", borderRadius: 8 }}>
+          <div style={{ fontWeight: 700, color: revalResult.releaseRecommendation === "CLEARED" ? "#15803d" : "#b91c1c" }}>
+            Re-validation: {revalResult.releaseRecommendation}
+          </div>
+          {(revalResult.drift || []).map((d, i) => <div key={i} style={{ color: "#b45309" }}>↻ {d}</div>)}
+          {(revalResult.blockingItems || []).length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              {revalResult.blockingItems.map((b, i) => <div key={i} style={{ color: "#b91c1c" }}>⛔ {b}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissionRequestPanel({ onOpenRelease }) {
   const [form, setForm] = useState({
     requiredType: "", category: "", missionType: "", minSeats: "", requiresIfr: false, cargoCapacityLbs: "", destination: "",
   });
@@ -2030,6 +2308,18 @@ function MissionRequestPanel() {
               {typeof createdFor[c.tailNumber] === "string" && createdFor[c.tailNumber].startsWith("error") && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "#dc2626" }}>{createdFor[c.tailNumber]}</div>
               )}
+              {/* CODEX 89 §4 steps 2-5 — parallel verification, then a
+                  separate re-validation pass immediately before accept.
+                  Only shown once a real trip request exists for this tail. */}
+              {typeof createdFor[c.tailNumber] === "string" && !createdFor[c.tailNumber].startsWith("error") && createdFor[c.tailNumber] !== "running" && (
+                <TripVerifyPanel
+                  requestId={createdFor[c.tailNumber]}
+                  destination={form.destination.trim().toUpperCase()}
+                  tailNumber={c.tailNumber}
+                  requiresIfr={form.requiresIfr}
+                  onOpenRelease={onOpenRelease}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -2064,6 +2354,11 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   // 2026-08-21 gap-audit fix — "+ Log Flight" (CoPilot) / "+ Release Flight" (Dispatch)
   const [showLogFlight, setShowLogFlight] = useState(false);
   const [showReleaseFlight, setShowReleaseFlight] = useState(false);
+  // CODEX 89 (2026-09-05) — when ReleaseFlightModal is opened from the
+  // verified Requests-tab pipeline (TripVerifyPanel's "Accept & prepare
+  // release"), this carries the prefill/verification payload; null for the
+  // plain "+ Release Flight" button, which is unaffected.
+  const [releaseFlightPayload, setReleaseFlightPayload] = useState(null);
   // 2026-09-05 gap-audit fix — "+ File Squawk" (MX) / Corrective Action.
   // Filing and closing a squawk were chat-only before this; same pattern as
   // Log/Release Flight above.
@@ -2304,7 +2599,14 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       </div>
 
       {showLogFlight && <LogFlightModal onClose={() => setShowLogFlight(false)} onLogged={() => setShowLogFlight(false)} />}
-      {showReleaseFlight && <ReleaseFlightModal onClose={() => setShowReleaseFlight(false)} onReleased={() => setShowReleaseFlight(false)} />}
+      {showReleaseFlight && (
+        <ReleaseFlightModal
+          prefill={releaseFlightPayload?.prefill}
+          verification={releaseFlightPayload?.verification}
+          onClose={() => { setShowReleaseFlight(false); setReleaseFlightPayload(null); }}
+          onReleased={() => { setShowReleaseFlight(false); setReleaseFlightPayload(null); }}
+        />
+      )}
       {showAddSquawk && (
         <AddSquawkModal
           onClose={() => setShowAddSquawk(false)}
@@ -2425,7 +2727,11 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
 
       {/* Mission request intake + real aircraft-type/capability matching —
           Dispatch "Requests" tab. See MissionRequestPanel above. */}
-      {isDispatchWorker && currentTabId === "requests" && <MissionRequestPanel />}
+      {isDispatchWorker && currentTabId === "requests" && (
+        <MissionRequestPanel
+          onOpenRelease={(payload) => { setReleaseFlightPayload(payload); setShowReleaseFlight(true); }}
+        />
+      )}
     </div>
   );
 }
