@@ -429,6 +429,120 @@ function releasesToBlocks(releases) {
   ];
 }
 
+// Schedule tab — real trip requests/dispatched flights over time, derived
+// from the same dispatchTripRequests collection the Requests tab's
+// aircraft-matching flow writes to (GET /v1/dispatch:listTripRequests).
+// Replaces the hardcoded "AMA-0808-01/02/03" fixture rows — those trip IDs
+// never existed in any real collection.
+function scheduleToBlocks(requests) {
+  const list = requests || [];
+  if (!list.length) return [{
+    type: "cards",
+    items: [{ band: "BLUE", label: "NO TRIP REQUESTS YET", title: "Nothing scheduled yet", detail: "Trip requests appear here as soon as one is created — match a mission to a tail on the Requests tab and click \"Create trip request,\" or tell Alex to create one.", action: "Open Requests tab" }],
+  }];
+  const toDate = (r) => {
+    if (r.requestedDepartureZulu) return new Date(r.requestedDepartureZulu);
+    if (r.createdAt?._seconds) return new Date(r.createdAt._seconds * 1000);
+    return null;
+  };
+  const sorted = [...list].sort((a, b) => (toDate(a)?.getTime() || 0) - (toDate(b)?.getTime() || 0));
+  const counts = { draft: 0, released: 0, cancelled: 0 };
+  sorted.forEach(r => { if (counts[r.status] != null) counts[r.status]++; });
+  const rows = sorted.map(r => {
+    const d = toDate(r);
+    return [
+      r.id ? r.id.slice(0, 8) : "—",
+      r.tailNumber || "Unassigned",
+      `${r.departure || "—"} → ${r.destination || "—"}`,
+      d ? d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—",
+      (r.assignedCrew || []).map(c => c.name).filter(Boolean).join(", ") || "—",
+      r.status ? r.status.toUpperCase() : "—",
+    ];
+  });
+  const flags = sorted
+    .filter(r => r.status !== "cancelled" && !r.tailNumber)
+    .map(r => ({ band: "YELLOW", title: `${r.destination || "Unknown destination"} — no tail assigned`, detail: `Requested by ${r.client || "unknown client"} · ${r.id ? r.id.slice(0, 8) : ""}` }));
+  const blocks = [
+    { type: "kpis", items: [
+      { label: "Draft",     value: `${counts.draft}`,     band: "BLUE" },
+      { label: "Released",  value: `${counts.released}`,  band: "GREEN" },
+      { label: "Cancelled", value: `${counts.cancelled}`, band: "WHITE" },
+    ] },
+  ];
+  if (flags.length) blocks.push({ type: "flags", items: flags });
+  blocks.push({ type: "table", title: "Trip requests — live from Firestore (dispatchTripRequests)", cols: ["Trip", "Tail", "Route", "Departure", "Crew", "Status"], rows });
+  return blocks;
+}
+
+// Crew tab — real duty-assignment roster from crewSchedule/{scopeId}/
+// assignments (services/scheduling/crewScheduling.js, GET
+// /v1/scheduling:listSchedule) — the same real collection Sean's
+// crew-scheduling buildout (2026-08-17) already writes to via the
+// av-crew-scheduling worker. Replaces the hardcoded "Rivera A. / Martinez
+// J. / Thompson K." §135.273 fixture table, which was never backed by any
+// real per-pilot record.
+//
+// IMPORTANT — what this is NOT: there is no fleet-wide crew qualifications/
+// type-rating/medical-currency database anywhere in this codebase. Each
+// pilot's own currency (medical class, BFR, IPC, etc.) lives in that
+// pilot's personal Vault (GET /v1/pilot:currency) and is not readable
+// cross-crew by Dispatch. So this view shows the real duty-assignment
+// roster and computed duty hours — never invented cert/medical data.
+function crewRosterToBlocks(assignments) {
+  const list = assignments || [];
+  if (!list.length) return [{
+    type: "cards",
+    items: [{ band: "BLUE", label: "NO CREW ASSIGNMENTS YET", title: "Nothing on the roster yet", detail: "Crew duty assignments appear here once published from Crew Scheduling (av-crew-scheduling) — role, tail, trip, and duty period. Nothing is fabricated here.", action: "Open Crew Scheduling" }],
+  }];
+  const now = Date.now();
+  const rows = list.slice(0, 40).map(a => {
+    const start = a.dutyStartZulu ? new Date(a.dutyStartZulu) : null;
+    const end = a.dutyEndZulu ? new Date(a.dutyEndZulu) : null;
+    const hrs = start && end ? Math.max(0, (end - start) / 3600000) : (start ? Math.max(0, (now - start.getTime()) / 3600000) : null);
+    return [
+      a.crewName || a.crewId || "—",
+      a.role || "—",
+      a.tailNumber || "—",
+      a.tripId || "—",
+      start ? start.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—",
+      end ? end.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : (start ? "On duty" : "—"),
+      hrs != null ? `${hrs.toFixed(1)}h` : "—",
+      a.status ? a.status.toUpperCase() : "—",
+    ];
+  });
+  const onDuty = list.filter(a => a.dutyStartZulu && !a.dutyEndZulu && a.status !== "released" && a.status !== "cancelled");
+  const heroes = [{
+    band: onDuty.length ? "GREEN" : "WHITE",
+    title: `${onDuty.length} crew currently on duty`,
+    detail: onDuty.length ? onDuty.map(a => `${a.crewName || a.crewId} (${a.role})`).join(", ") : "No open duty periods on file right now",
+  }];
+  return [
+    { type: "heroes", items: heroes },
+    { type: "table", title: "Crew duty roster — live from Firestore (crewSchedule)", cols: ["Crew", "Role", "Tail", "Trip", "Duty start", "Duty end", "Duty hrs", "Status"], rows },
+    { type: "prose", items: [{ band: "BLUE", title: "Qualifications and medical currency are not tracked here", text: "This platform has no fleet-wide crew qualifications, type-rating, or medical-currency database — each pilot's own currency lives in their personal Vault and isn't visible cross-crew. This view is the real duty-assignment roster only; §135.273 legality for a specific release is still computed in the Release Flight dialog from pilot-reported duty/rest/flight-hour inputs." }] },
+  ];
+}
+
+// Pax Manifest tab — real passenger manifests attached to trip requests
+// (dispatchTripRequests/{scopeId}/requests/{id}.paxManifest — see
+// services/dispatch/tripRequests.js). Replaces the hardcoded "Reyes, Maria
+// / Tanaka, Yuki" fixture rows, which were never tied to any real trip
+// record.
+function paxManifestToBlocks(requests) {
+  const list = (requests || []).filter(r => (r.paxManifest || []).length && r.status !== "cancelled");
+  if (!list.length) return [{
+    type: "cards",
+    items: [{ band: "BLUE", label: "NO MANIFESTS YET", title: "No passengers on any trip request yet", detail: "Add pax to a trip request's paxManifest (via Alex or the create-trip-request flow) — they'll appear here per flight, tied to the real trip record.", action: "Open Requests tab" }],
+  }];
+  const blocks = [];
+  list.slice(0, 15).forEach(r => {
+    const totalLbs = (r.paxManifest || []).reduce((s, p) => s + (Number(p.weightLbs) || 0), 0);
+    const rows = r.paxManifest.map(p => [p.name || "—", p.weightLbs ? `${p.weightLbs} lbs` : "—", p.notes || "—"]);
+    blocks.push({ type: "table", title: `${r.tailNumber || "Unassigned"} · ${r.departure || "—"} → ${r.destination || "—"} · ${r.status ? r.status.toUpperCase() : ""} · ${totalLbs} lbs pax`, cols: ["Name", "Weight", "Notes"], rows });
+  });
+  return blocks;
+}
+
 function trafficToBlocks(ac) {
   const list = ac || [];
   if (!list.length) return [{
@@ -780,6 +894,16 @@ const LIVE_TABS = {
     // Real release history — see releasesToBlocks() and the "releases" kind
     // branch below. Reads the same endpoint ReleaseFlightModal writes to.
     "releases": { kind: "releases" },
+    // 2026-09-05 Dispatch deep-dive — Schedule/Crew/Pax Manifest were the
+    // last 100% fixture tabs in Dispatch. All three now read real Firestore
+    // collections already written elsewhere in the aviation suite: trip
+    // requests (dispatchTripRequests, written by the Requests tab's
+    // aircraft-matching flow) and the crew-scheduling roster (crewSchedule,
+    // written by the av-crew-scheduling worker). See scheduleToBlocks(),
+    // crewRosterToBlocks(), and paxManifestToBlocks() above.
+    "schedule": { kind: "schedule" },
+    "crew": { kind: "crewRoster" },
+    "pax-manifest": { kind: "paxManifest" },
   },
   "av-ground-school-001": {
     "quiz-zone": { kind: "currency" },
@@ -2032,6 +2156,15 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
           const data = await apiGet(`/v1/aviation:dispatch:releases${tenantId && tenantId !== "vault" ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
           blocks = releasesToBlocks(data.releases);
+        } else if (cfg.kind === "schedule") {
+          const data = await apiGet(`/v1/dispatch:listTripRequests`);
+          blocks = scheduleToBlocks(data.requests);
+        } else if (cfg.kind === "crewRoster") {
+          const data = await apiGet(`/v1/scheduling:listSchedule`);
+          blocks = crewRosterToBlocks(data.assignments);
+        } else if (cfg.kind === "paxManifest") {
+          const data = await apiGet(`/v1/dispatch:listTripRequests`);
+          blocks = paxManifestToBlocks(data.requests);
         }
         if (blocks) setLiveBlocks(prev => ({ ...prev, [key]: blocks }));
       } catch (e) {

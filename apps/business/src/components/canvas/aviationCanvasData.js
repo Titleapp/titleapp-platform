@@ -504,65 +504,50 @@ export const AV_CANVAS = {
         blocks: [],
       },
       {
+        // 2026-09-05 Dispatch deep-dive — real trip requests, not a fixture.
+        // Derived from dispatchTripRequests/{scopeId}/requests — the same
+        // real collection the Requests tab's mission-matching flow writes to
+        // (POST /v1/dispatch:createTripRequest) — read via
+        // GET /v1/dispatch:listTripRequests. See scheduleToBlocks() in
+        // AviationWorkerCanvas.jsx. Replaces the hardcoded "AMA-0808-01/02/03"
+        // rows, which never existed in any real collection.
         id: "schedule",
         label: "Schedule",
-        description: "Today's and upcoming flight schedule — trips, tail assignments, crew, and release status.",
-        blocks: [
-          { type: "heroes", items: [
-            { band: "GREEN", title: "2 flights today",       detail: "AMA-0808-01 en route · AMA-0808-02 departs 18:00Z" },
-            { band: "GREEN", title: "All crew legal",         detail: "All assigned crew within duty time limits" },
-            { band: "GREEN", title: "All tails airworthy",    detail: "3 available PC-12 tails · no AOG aircraft today" },
-          ] },
-          { type: "table", title: "Today's schedule — 2026-08-08", cols: ["Trip", "Tail", "Crew PIC", "Route", "Depart", "Status"], rows: [
-            ["AMA-0808-01", "N701AA", "Rivera A.",    "PHOG → PHNL", "14:00Z", "En route"],
-            ["AMA-0808-02", "N702AA", "Martinez J.", "PHKO → PHOG", "18:00Z", "Pending"],
-            ["AMA-0808-03", "N703AA", "—",           "—",           "—",      "Available"],
-          ] },
-          { type: "table", title: "Upcoming 3 days", cols: ["Date", "Trip", "Route", "Tail", "Status"], rows: [
-            ["Aug 9",  "AMA-0809-01", "PHNL → PHTO", "N701AA", "Scheduled"],
-            ["Aug 10", "AMA-0810-01", "PHOG → PHNL", "N702AA", "Scheduled"],
-            ["Aug 10", "AMA-0810-02", "PHKO → PHOG", "N703AA", "Tentative"],
-          ] },
-        ],
+        description: "Every trip request on file — which tail is committed to which mission, and when — derived from the real trip-request record the Requests tab writes to. Not a fixture: create a trip request from the Requests tab (or tell Alex) and it appears here.",
+        blocks: [],
       },
       {
+        // 2026-09-05 Dispatch deep-dive — real duty-assignment roster from
+        // crewSchedule/{scopeId}/assignments (services/scheduling/
+        // crewScheduling.js, GET /v1/scheduling:listSchedule) — the same
+        // real collection Sean's crew-scheduling buildout (2026-08-17)
+        // already writes to via the av-crew-scheduling worker. Replaces the
+        // hardcoded "Rivera A. / Martinez J. / Thompson K." §135.273 fixture
+        // table, which was never backed by any real per-pilot record.
+        //
+        // What this does NOT include: there is no fleet-wide crew
+        // qualifications/type-rating/medical-currency database anywhere in
+        // this codebase. Each pilot's own currency (medical, BFR, IPC, etc.)
+        // lives in that pilot's personal Vault (GET /v1/pilot:currency) and
+        // is not readable cross-crew — so it can't be shown here as real
+        // data without inventing it. §135.273 release legality is still
+        // computed at release time in the Release Flight dialog from
+        // pilot-reported duty/rest inputs, same as before.
         id: "crew",
         label: "Crew",
-        description: "Crew legality computed per 14 CFR §135.273 (unscheduled Part 135). Skye requires actual duty period start, rest hours, and accumulated flight hours before releasing a trip — a proposed schedule is not verification. Provide these to Skye to get a computed release package.",
-        blocks: [
-          { type: "table", title: "Crew legality — today (§135.273 snapshot)", cols: ["Pilot", "Cert", "Medical", "Duty used / rem", "24h flight", "Status"], rows: [
-            { band: "GREEN",  cells: ["Rivera A.",    "ATP · PC-12 type", "Class 1 — May 2027",  "4h / 10h rem",  "2.1h / 8h max",  "● GREEN"] },
-            { band: "YELLOW", cells: ["Martinez J.", "ATP · PC-12 type", "Class 1 — Aug 2026 ⚠","0h / 14h",      "0h / 8h max",    "● CAUTION"] },
-            { band: "GREEN",  cells: ["Thompson K.", "CPL · Inst",        "Class 2 — Mar 2027",  "0h / 14h",      "0h / 8h max",    "● GREEN"] },
-          ] },
-          { type: "flags", items: [
-            { band: "YELLOW", title: "Martinez J. — Medical renewal in 32 days", detail: "Class 1 due Aug 2026 · Schedule AME appointment this week · Still legal to fly now" },
-          ] },
-          { type: "cards", items: [
-            { band: "BLUE", label: "RELEASE GATE — §135.273", title: "Tell Skye your duty start + rest + flight hours to compute a release", detail: "Say: 'Release AMA-0810-01 — duty started 06:00 HST, 9h rest prior, 0h flight today, 214h this quarter, 612h this year.' Skye computes all §135.273 limits and issues RELEASED / CONDITIONAL / BLOCKED with citations. Missing any input = BLOCKED.", action: "Start release" },
-          ] },
-        ],
+        description: "Real crew duty roster — who's assigned to which tail/trip and their duty period — from the crew-scheduling record. Qualifications, medical, and type-rating currency are not tracked fleet-wide anywhere in this platform (each pilot's own currency lives in their personal Vault) — not shown here rather than invented. §135.273 release legality is still computed at release time from pilot-reported duty/rest inputs.",
+        blocks: [],
       },
       {
+        // 2026-09-05 Dispatch deep-dive — real passenger manifests attached
+        // to trip requests (dispatchTripRequests/{scopeId}/requests/{id}
+        // .paxManifest — see services/dispatch/tripRequests.js). Replaces
+        // the hardcoded "Reyes, Maria / Tanaka, Yuki" fixture rows, which
+        // were never tied to any real trip record.
         id: "pax-manifest",
         label: "Pax Manifest",
-        description: "Passenger manifest for active and upcoming flights — names, weights, mission type (medevac or charter), and W&B feed.",
-        blocks: [
-          { type: "table", title: "AMA-0808-01 — active flight (air medical)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
-            ["Patient",     "180 lbs", "Patient",      "Air medical — PHOG → PHNL · Queen's Medical Center"],
-            ["Medic 1",     "195 lbs", "Flight nurse",  "Aeromed crew"],
-            ["Medic 2",     "175 lbs", "Paramedic",     "Aeromed crew"],
-          ] },
-          { type: "table", title: "AMA-0808-02 — charter flight (PHKO → PHOG 18:00Z)", cols: ["Name", "Weight", "Role", "Notes"], rows: [
-            ["Reyes, Maria",    "145 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
-            ["Reyes, Carlos",   "185 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
-            ["Tanaka, Yuki",    "130 lbs", "Passenger", "Corporate charter · Maui Land & Pineapple"],
-            ["Baggage",          "85 lbs", "Cargo",     "2 soft bags · aft baggage · W&B verified"],
-          ] },
-          { type: "cards", items: [
-            { band: "BLUE", label: "ADD PAX", title: "Tell Skye to add a passenger to any flight", detail: "Say: 'Add pax to AMA-0808-02 — [name], [weight], [role].' The manifest updates in the dispatch record and feeds W&B automatically. Charter and medevac pax handled the same way.", action: "Open chat" },
-          ] },
-        ],
+        description: "Real passenger manifests, per trip request — names, weights, and notes as entered on the actual trip record. Add pax via the trip request's paxManifest field (through Alex or the create-trip-request flow) and they appear here.",
+        blocks: [],
       },
       {
         id: "aircraft-status",
