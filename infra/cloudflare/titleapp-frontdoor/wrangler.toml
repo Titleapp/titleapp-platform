@@ -4,6 +4,13 @@ compatibility_date = "2024-01-01"
 account_id = "943ae2cdf19f03a1e4ab86a97d28f657"
 workers_dev = true
 
+# Was OFF on the 9-month-old original worker -- directly why the SSE bug
+# took real archaeology to even locate. Turned on as part of the S52.64
+# rebuild so the next issue is fast to diagnose via `wrangler tail` /
+# the dashboard's Logs & Traces view, instead of guessing from outside.
+[observability]
+enabled = true
+
 [vars]
 BACKEND_ORIGIN = "https://api-feyfibglbq-uc.a.run.app"
 FIREBASE_PROJECT_ID = "title-app-alpha"

@@ -1,0 +1,16 @@
+{
+  "name": "titleapp-frontdoor",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Edge router Cloudflare Worker for the SOCIII/TitleApp backend",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "deploy:test": "wrangler deploy --config wrangler.test.toml"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

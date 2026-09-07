@@ -1651,6 +1651,34 @@ exports.api = onRequest(
     setCorsHeaders(req, res);
     if (req.method === "OPTIONS") return res.status(204).send("");
 
+    // S52.64 edge-secret check — part of the titleapp-frontdoor Worker
+    // rebuild's red-team fix. The Worker is meant to be the only path to
+    // this backend; a curl test during the rebuild confirmed the Cloud Run
+    // origin IS directly reachable (no network-level block), so this closes
+    // that gap: the Worker sets X-Edge-Secret on every proxied request from
+    // a Wrangler secret (never plain-text), and this checks it matches.
+    //
+    // Deliberately INERT until EDGE_SHARED_SECRET is actually configured in
+    // Secret Manager (`firebase functions:secrets:set EDGE_SHARED_SECRET`)
+    // — do NOT set that secret until the new Worker is confirmed deployed
+    // to production and sending this header, or every real request will
+    // start failing immediately. This two-step activation is intentional:
+    // deploying this code is safe on its own; setting the secret is the
+    // separate, coordinated cutover step.
+    if (process.env.EDGE_SHARED_SECRET) {
+      const provided = (req.headers["x-edge-secret"] || "").toString();
+      // Constant-time comparison: hash both sides to a fixed length first so
+      // neither the byte-by-byte match position nor a length mismatch can
+      // leak timing information, then compare with crypto.timingSafeEqual
+      // (which itself throws on unequal-length buffers — hashing sidesteps
+      // that entirely since both digests are always the same length).
+      const providedHash = crypto.createHash("sha256").update(provided).digest();
+      const expectedHash = crypto.createHash("sha256").update(process.env.EDGE_SHARED_SECRET).digest();
+      if (!crypto.timingSafeEqual(providedHash, expectedHash)) {
+        return jsonError(res, 403, "Forbidden", { reason: "Direct backend access is not permitted — requests must go through the edge router." });
+      }
+    }
+
     const route = getRoute(req);
     const method = req.method;
     const body = req.body || {};
