@@ -230,11 +230,11 @@ const styles = {
 
 const INDUSTRIES = [
   ["Aviation", "Flight planning, logbook, and risk-assessment workers under FAR/AIM."],
-  ["Real Estate", "Commercial analysis, cap-rate, and lease-review workers."],
-  ["Title & Escrow", "Title-search and document-control workers built on the digital-title audit layer."],
-  ["Web3", "Governance, treasury, and token-analytics workers."],
-  ["Government", "Recording, permitting, licensing, and inspection workflows."],
+  ["Real Estate", "Title, escrow, operations, sales & leasing, and lending workers built on the digital-title audit layer."],
+  ["Education", "Nursing-education and clinical-charting workers, live with University of Hawaii."],
+  ["DPP / EU Compliance", "Digital Product Passport workers ahead of the EU's 2027 mandate, live with Traitly."],
   ["Health / EMS", "Nursing-assessment and protocol-advisor workers under clinical rules."],
+  ["Government", "Recording, permitting, licensing, and inspection workflows."],
   ["Solar", "Site, compliance, and documentation workers."],
   ["Banking", "Coming online now; the newest industry on the platform."],
 ];
@@ -473,9 +473,9 @@ export default function Whitepaper() {
         </p>
         <p style={styles.p}>
           This has two consequences. The first is capital efficiency: the
-          production platform was built across eight industries on roughly
-          $35,000 of operating burn over five months, because the platform was
-          building itself as it went. The second is credibility: every
+          production platform was built on $13,436.56 of source-verified
+          operating burn over six months (Feb–Jul 2026), because the platform
+          was building itself as it went. The second is credibility: every
           operational problem SOCIII hits is a problem its customers also hit,
           discovered from inside the work rather than guessed at from outside it.
         </p>
@@ -488,10 +488,12 @@ export default function Whitepaper() {
 
         <h2 style={styles.h2}>8. Where it runs today</h2>
         <p style={styles.p}>
-          SOCIII is in production, not in pilot. More than 1,000 rule-governed
-          workers (state-augmented) operate across eight regulated industries
-          today, with Banking coming online now and new industries added
-          regularly:
+          SOCIII is in production, not in pilot. 56+ named, rule-governed
+          workers (state-augmented) operate today across four core
+          go-to-market verticals — Education, DPP/Compliance, Real Estate
+          (title, operations, sales &amp; leasing, lending), and Aviation —
+          plus the back-office functions every workspace runs on, with
+          additional verticals in earlier-stage exploration:
         </p>
         <div style={styles.industries}>
           {INDUSTRIES.map(([name, desc]) => (
