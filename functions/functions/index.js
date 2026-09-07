@@ -6460,6 +6460,97 @@ IMPORTANT — a due date passing does not automatically mean money is owed. Reas
                   },
                 });
                 workerPrompt += `\n\nCRM ACCESS: You have a query_contacts tool that reads this tenant's actual contact records. Use it to verify a contact's details or find matches instead of guessing or inventing them.`;
+
+                // FIX 2026-09-07 (Sean's directive after the Sage audit — "let's
+                // build that up"): Contacts had no integration access at all
+                // beyond query_contacts. Twilio/SendGrid are SHARED
+                // platform-level credentials (one account for the whole
+                // platform, not per-tenant OAuth like LinkedIn/etc.) — so the
+                // real isolation concern here is which CONTACT a tool can
+                // reference, not credential scoping. draft_sms_to_contact and
+                // draft_email_to_contact deliberately do NOT send anything —
+                // same no-auto-send discipline as Ivy having no posting tool,
+                // since RAAS's approval gate is prompt-level only, not
+                // code-enforced. They write to the REAL, EXISTING
+                // `messageQueue` collection (same schema the real
+                // enqueueMessage side-effect and messageQueueProcessor use)
+                // but with status:"draft" instead of "pending" —
+                // messageProcessor.js filters strictly on
+                // where("status","==","pending"), so a "draft" row is
+                // completely inert and can never be auto-sent; it only shows
+                // up for a human to review and manually promote/send via the
+                // UI (see the "Draft Messages" panel). search_apollo /
+                // enrich_contact mirror the exact tool defs and service calls
+                // already used by Alex (Chief of Staff) — read-only lookups
+                // against Apollo.io's licensed data, not sending to anyone —
+                // just extended to Contacts, scoped by reqTenantId the same
+                // way every other tool in this file is.
+                businessTools.push({
+                  name: "draft_sms_to_contact",
+                  description: "Draft an SMS to a specific contact. This SAVES A DRAFT ONLY — it does not send anything. The user must review and send it themselves from the Draft Messages panel.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      contactId: { type: "string", description: "The contact's document id, from a prior query_contacts result." },
+                      message: { type: "string", description: "The SMS body text." },
+                    },
+                    required: ["contactId", "message"],
+                  },
+                });
+                businessTools.push({
+                  name: "draft_email_to_contact",
+                  description: "Draft an email to a specific contact. This SAVES A DRAFT ONLY — it does not send anything. The user must review and send it themselves from the Draft Messages panel.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      contactId: { type: "string", description: "The contact's document id, from a prior query_contacts result." },
+                      subject: { type: "string" },
+                      body: { type: "string" },
+                    },
+                    required: ["contactId", "subject", "body"],
+                  },
+                });
+                businessTools.push({
+                  name: "check_message_history",
+                  description: "Check prior SMS/email activity (sent, pending, or drafted) with a specific contact.",
+                  input_schema: {
+                    type: "object",
+                    properties: { contactId: { type: "string" } },
+                    required: ["contactId"],
+                  },
+                });
+                businessTools.push({
+                  name: "search_apollo",
+                  description: "Search Apollo.io for people or companies for lead generation. Call this when the user wants to find prospects, research a company's team, or build an outreach list.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      person_titles: { type: "array", items: { type: "string" }, description: "Job titles to target, e.g. ['CEO', 'VP of Engineering']" },
+                      person_seniorities: { type: "array", items: { type: "string" }, description: "Seniority levels: 'c_suite', 'vp', 'director', 'manager', 'senior', 'entry'" },
+                      organization_names: { type: "array", items: { type: "string" }, description: "Specific company names to search within" },
+                      q_organization_industries: { type: "array", items: { type: "string" }, description: "Industries, e.g. ['artificial intelligence', 'real estate']" },
+                      person_locations: { type: "array", items: { type: "string" }, description: "Locations, e.g. ['San Francisco, CA']" },
+                      keywords: { type: "string", description: "Free-text keywords" },
+                      per_page: { type: "number", description: "Results to return, default 10, max 25" },
+                    },
+                  },
+                });
+                businessTools.push({
+                  name: "enrich_contact",
+                  description: "Enrich an existing contact (by contactId) or a new person (by name+company or email) via Apollo.io — returns real title, email, phone, LinkedIn, and company details.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      contactId: { type: "string", description: "An existing contact's document id to enrich, if enriching a contact already in the CRM." },
+                      first_name: { type: "string" },
+                      last_name: { type: "string" },
+                      organization_name: { type: "string" },
+                      email: { type: "string" },
+                      domain: { type: "string" },
+                    },
+                  },
+                });
+                workerPrompt += `\n\nMESSAGING: You have draft_sms_to_contact, draft_email_to_contact, and check_message_history tools. draft_* tools ONLY save a draft for the user to review — they never send anything. Never tell the user a message was "sent" — say it was drafted and is ready for their review.\n\nLEAD GENERATION: You have search_apollo and enrich_contact tools for real Apollo.io lookups — use them instead of guessing contact or company details.`;
               }
 
               // CODEX S52.48 step 8 — same pattern rolled out to Marketing: a real
@@ -7807,6 +7898,87 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 aiText = _stripeFollowUp.content.find(b => b.type === 'text')?.text || aiText;
               }
 
+              // Sage (Contacts) messaging + Apollo tools — see businessTools.push
+              // block above (workerSlug === "platform-contacts") for the
+              // draft-only / tenant-isolation reasoning. draft_* tools write
+              // status:"draft" to the real messageQueue collection —
+              // messageProcessor.js only ever picks up status:"pending", so a
+              // draft row can never be auto-sent; a human promotes it manually.
+              const _SAGE_TOOL_NAMES = ["draft_sms_to_contact", "draft_email_to_contact", "check_message_history", "search_apollo", "enrich_contact"];
+              if (toolBlock && _SAGE_TOOL_NAMES.includes(toolBlock.name) && workerSlug === "platform-contacts") {
+                let _sageToolText;
+                try {
+                  if (!authUser) {
+                    _sageToolText = "No signed-in user on this request — cannot complete this action.";
+                  } else if (toolBlock.name === "draft_sms_to_contact" || toolBlock.name === "draft_email_to_contact") {
+                    const _in = toolBlock.input || {};
+                    // Tenant-scope check: the contact must belong to THIS tenant —
+                    // never draft against a contact id from another tenant.
+                    const _contactSnap = _in.contactId ? await db.collection("contacts").doc(_in.contactId).get() : null;
+                    if (!_in.contactId || !_contactSnap.exists || _contactSnap.data().tenantId !== reqTenantId) {
+                      _sageToolText = "Could not find that contact in this tenant's CRM — draft not saved. Use query_contacts first to get a real contactId.";
+                    } else {
+                      const _contact = _contactSnap.data();
+                      const _isSms = toolBlock.name === "draft_sms_to_contact";
+                      await db.collection("messageQueue").add({
+                        userId: authUser.uid,
+                        tenantId: reqTenantId,
+                        channel: _isSms ? "sms" : "email",
+                        to: _isSms ? (_contact.phone || null) : (_contact.email || null),
+                        contactId: _in.contactId,
+                        contactName: _contact.name || null,
+                        subject: _isSms ? null : (_in.subject || null),
+                        body: _isSms ? (_in.message || "") : (_in.body || ""),
+                        status: "draft",
+                        createdAt: nowServerTs(),
+                        source: "contacts-worker",
+                      });
+                      _sageToolText = `Draft ${_isSms ? "SMS" : "email"} saved for ${_contact.name || "this contact"} — NOT sent. It's waiting in Draft Messages for the user to review and send.`;
+                    }
+                  } else if (toolBlock.name === "check_message_history") {
+                    const _in = toolBlock.input || {};
+                    const _hist = await db.collection("messageQueue").where("tenantId", "==", reqTenantId).where("contactId", "==", _in.contactId || "").limit(20).get();
+                    if (_hist.empty) {
+                      _sageToolText = "No prior SMS/email activity found for this contact.";
+                    } else {
+                      const _lines = _hist.docs.map(d => { const m = d.data(); return `${m.channel} | status=${m.status} | ${m.subject || m.body.slice(0, 60)}`; });
+                      _sageToolText = `${_hist.size} message(s) (channel | status | subject/preview):\n${_lines.join("\n")}`;
+                    }
+                  } else if (toolBlock.name === "search_apollo") {
+                    const apollo = require("./services/marketingService/apollo");
+                    const _result = await apollo.searchPeople(toolBlock.input || {}, { tenantId: reqTenantId, workerId: workerSlug });
+                    const _people = (_result.people || []).slice(0, 25);
+                    _sageToolText = _people.length === 0
+                      ? "No Apollo results for that search."
+                      : `${_people.length} result(s) (name | title | company | email):\n${_people.map(p => `${p.name || ""} | ${p.title || ""} | ${p.organization?.name || ""} | ${p.email || "(not available)"}`).join("\n")}`;
+                  } else if (toolBlock.name === "enrich_contact") {
+                    const apollo = require("./services/marketingService/apollo");
+                    let _in = toolBlock.input || {};
+                    if (_in.contactId) {
+                      const _cSnap = await db.collection("contacts").doc(_in.contactId).get();
+                      if (!_cSnap.exists || _cSnap.data().tenantId !== reqTenantId) {
+                        _sageToolText = "Could not find that contact in this tenant's CRM.";
+                      } else {
+                        const _c = _cSnap.data();
+                        _in = { email: _c.email, first_name: (_c.name || "").split(" ")[0], last_name: (_c.name || "").split(" ").slice(1).join(" "), organization_name: _c.company };
+                      }
+                    }
+                    if (_sageToolText === undefined) {
+                      const _person = await apollo.enrichPerson(_in, { tenantId: reqTenantId, workerId: workerSlug });
+                      _sageToolText = _person
+                        ? `${_person.name || ""} | ${_person.title || ""} | ${_person.organization?.name || ""} | email=${_person.email || "(not available)"} | phone=${_person.phone_numbers?.[0]?.sanitized_number || "(not available)"} | linkedin=${_person.linkedin_url || "(not available)"}`
+                        : "No Apollo match found for that person.";
+                    }
+                  }
+                } catch (_sageErr) {
+                  console.warn(`[worker:${workerSlug}] ${toolBlock.name} failed:`, _sageErr.message);
+                  _sageToolText = "Could not complete that action right now — a transient error occurred.";
+                }
+                const _sageFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _sageToolText }] }];
+                const _sageFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _sageFollowUpMessages });
+                aiText = _sageFollowUp.content.find(b => b.type === 'text')?.text || aiText;
+              }
+
               // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
               // search_drive auto-reads the top result so the model doesn't need a second
               // tool call to say "reading now" — everything lands in one response turn.
@@ -7866,12 +8038,31 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   const kw = (input.query || "").trim().toLowerCase();
                   let rows = snap.docs.map(d => d.data());
                   if (kw) {
-                    rows = rows.filter(c =>
-                      (c.name || "").toLowerCase().includes(kw) ||
-                      (c.email || "").toLowerCase().includes(kw) ||
-                      (c.company || "").toLowerCase().includes(kw) ||
-                      (c.title || "").toLowerCase().includes(kw)
+                    // FIX 2026-09-07 (found via Sage audit): "advisor" was loosely
+                    // text-matching against `title` (a contact's job title at ANOTHER
+                    // company, e.g. "Strategic Advisor" at some unrelated firm) and
+                    // returning bulk LinkedIn-import prospects as if they were SOCIII's
+                    // real advisors. Real advisor records now carry a genuine
+                    // `type: "advisor"` field and a "socii-advisor" segment (set on
+                    // Kent Redwine, Ruthie Clearwater, Elise van der Bel). When the
+                    // keyword matches a real `type` value or a real segment, filter on
+                    // THAT instead of the loose title/company text match — narrower and
+                    // correct for role-based queries, while every other keyword search
+                    // (a name, a company, an email fragment) is completely unaffected.
+                    const _typeOrSegmentMatch = rows.some(c =>
+                      (c.type || "").toLowerCase() === kw ||
+                      (c.segments || []).some(s => (s || "").toLowerCase().includes(kw))
                     );
+                    rows = rows.filter(c => {
+                      if (_typeOrSegmentMatch) {
+                        return (c.type || "").toLowerCase() === kw ||
+                          (c.segments || []).some(s => (s || "").toLowerCase().includes(kw));
+                      }
+                      return (c.name || "").toLowerCase().includes(kw) ||
+                        (c.email || "").toLowerCase().includes(kw) ||
+                        (c.company || "").toLowerCase().includes(kw) ||
+                        (c.title || "").toLowerCase().includes(kw);
+                    });
                   }
                   rows = rows.slice(0, lim);
                   if (rows.length === 0) return `No contacts found matching query=${JSON.stringify(input.query || "")}.`;
