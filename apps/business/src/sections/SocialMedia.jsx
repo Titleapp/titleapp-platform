@@ -97,7 +97,7 @@ async function apiFetch(path, method = "GET", body = null) {
 }
 
 // Platforms whose connect flow is not yet built (show "Coming soon")
-const COMING_SOON = new Set(["linkedin", "instagram", "facebook", "gbp"]);
+const COMING_SOON = new Set(["instagram", "facebook", "gbp"]);
 // Platforms managed at the SOCIII platform level (no per-user OAuth needed)
 const PLATFORM_MANAGED = new Set(["twitter", "telegram"]);
 
@@ -133,6 +133,14 @@ export default function SocialMedia() {
       if (tt?.connected) {
         setConnectedPlatforms(prev => prev.includes("tiktok") ? prev : [...prev, "tiktok"]);
         if (tt.displayName) setPlatformMeta(prev => ({ ...prev, tiktok: tt.displayName }));
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      const li = await apiFetch("/v1/linkedin:status");
+      if (li?.connected) {
+        setConnectedPlatforms(prev => prev.includes("linkedin") ? prev : [...prev, "linkedin"]);
+        if (li.name) setPlatformMeta(prev => ({ ...prev, linkedin: li.name }));
       }
     } catch { /* best-effort */ }
   }, []);
@@ -228,6 +236,40 @@ export default function SocialMedia() {
         });
         const ex = await apiFetch("/v1/tiktok:exchangeCode", "POST", { code });
         setToast(ex?.displayName ? `Connected TikTok: ${ex.displayName}` : "TikTok connected");
+        setTimeout(() => setToast(null), 3000);
+        refreshConnections();
+      } catch (e) {
+        setError(e.message);
+      }
+      return;
+    }
+
+    if (platformId === "linkedin") {
+      try {
+        const res = await apiFetch("/v1/linkedin:authUrl");
+        if (!res.authUrl) throw new Error("Could not start LinkedIn connection");
+        const popup = window.open(res.authUrl, "linkedin-auth", "width=600,height=700");
+        if (!popup) throw new Error("Popup blocked — allow popups for this site and try again.");
+        const code = await new Promise((resolve, reject) => {
+          let done = false;
+          const handler = (event) => {
+            if (!event.data || event.data.type !== "linkedin-auth-code" || !event.data.code) return;
+            window.removeEventListener("message", handler);
+            done = true;
+            resolve(event.data.code);
+          };
+          window.addEventListener("message", handler);
+          const poll = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(poll);
+                if (!done) { window.removeEventListener("message", handler); reject(new Error("Connection cancelled.")); }
+              }
+            } catch { /* cross-origin until redirect */ }
+          }, 500);
+        });
+        const ex = await apiFetch("/v1/linkedin:exchangeCode", "POST", { code });
+        setToast(ex?.name ? `Connected LinkedIn: ${ex.name}` : "LinkedIn connected");
         setTimeout(() => setToast(null), 3000);
         refreshConnections();
       } catch (e) {

@@ -22,15 +22,28 @@ const CREATIVE_BASE = "https://sociii.ai/launch-creative";
 
 // The rotation. slug = file stem (of-<slug>-video-01.mp4); each is a Digital
 // Worker showcase. Captions are first-party, owned by SOCIII.
+//
+// 2026-09-06 — do NOT touch "katarzyna" (EU DPP) or "maria" (ER Nursing)
+// captions/personas without Sean's explicit go-ahead: those workers are tied
+// to real third-party domain experts (Elise / Ruthie) who have not consented
+// to being featured in "OF for Smart People" comedic ads. Hard stop, not a
+// judgment call — per Sean directly: "The only ones you can't make OF for
+// smart people ads of are RUTHIE and ELISE. I would need their permission
+// first. The rest of them are my creations."
+//
+// fred/madison/katie/darnell/monty/brad/julia/michael/dietrich/clint don't
+// map to any real SOCIII vertical (no matching entry in functions/index.js
+// _SUITE_PERSONAS or the real worker catalog) — flagged as retirement
+// candidates, not renamed, pending Sean's decision.
 const ROSTER = [
   { slug: "fred",         name: "Fred",        role: "International Tax",            caption: "Meet Fred. He handles cross-border tax so you don't lie awake over transfer pricing. Your newest Digital Worker — rule-governed, always on." },
-  { slug: "brandon",      name: "Brandon",     role: "Tax & Accounting",            caption: "Brandon closes your books while you sleep. A Digital Worker that knows the rules, not just the prompts." },
+  { slug: "brandon",      name: "Brandon",     role: "Tax & Accounting",            caption: "Brandon's never turning heads at happy hour. But you want him closing your books before the IRS letter shows up. Just maybe not meeting your parents." },
   { slug: "madison",      name: "Madison",     role: "HIPAA Compliance",            caption: "Madison reads every workflow for HIPAA exposure before it ships. Compliance that never takes a day off." },
   { slug: "katie",        name: "Katie",       role: "Legal Compliance",            caption: "Katie flags the clause you'd have missed. A Digital Worker built on the laws of your field — not vibes." },
   { slug: "darnell",      name: "Darnell",     role: "Family Law",                  caption: "Darnell drafts, checks, and explains — in plain English. Family law, governed by real rules." },
-  { slug: "manpreet",     name: "Manpreet",    role: "Tax Compliance",             caption: "Manpreet keeps you inside the lines, jurisdiction by jurisdiction. A Digital Worker you can actually trust with the rules." },
+  { slug: "manpreet",     name: "Manpreet",    role: "Tax Compliance",             caption: "Manpreet's never turning heads at a party. But you want her standing next to you in an audit. Just maybe not meeting your mother." },
   { slug: "monty",        name: "Monty",       role: "Used Car F&I",               caption: "Monty runs F&I like a 20-year desk manager — every deal compliant, every number checked. Meet your Digital Worker." },
-  { slug: "captain-lisa", name: "Captain Lisa",role: "Boeing 777 Co-Pilot",        caption: "Captain Lisa knows the checklist cold. When the work is too important to wing it, you want a rule-governed Digital Worker in the seat." },
+  { slug: "captain-lisa", name: "Captain Lisa",role: "Boeing 777 Co-Pilot",        caption: "Captain Lisa's not winning a swimsuit calendar. But you want her in the right seat the day the weather turns. Just maybe not on a first date." },
   { slug: "brad",         name: "Brad",        role: "Biotech Gene Mapping",        caption: "Brad maps the genome and shows his work. Expertise that scales — a Digital Worker, not a chatbot." },
   { slug: "katarzyna",    name: "Katarzyna",   role: "EU Digital Product Passport", caption: "Katarzyna keeps your products EU-compliant — Digital Product Passport, end to end. Your newest Digital Worker." },
   { slug: "maria",        name: "Maria",       role: "ER Nursing",                  caption: "Maria triages the paperwork so clinicians can be clinicians. A Digital Worker built on the standards of care." },
@@ -38,7 +51,7 @@ const ROSTER = [
   { slug: "michael",      name: "Michael",     role: "Personal Finance",            caption: "Michael watches your money with a fiduciary's discipline. A Digital Worker that follows the rules of advice, not the hype." },
   { slug: "dietrich",     name: "Dietrich",    role: "Estate Planning",             caption: "Dietrich gets the estate plan right the first time. Decades of practice, packaged as a Digital Worker." },
   { slug: "clint",        name: "Clint",       role: "IT Admin",                    caption: "Clint runs the helpdesk that never sleeps and never loses a ticket. Meet your IT Digital Worker." },
-  { slug: "randy",        name: "Randy",       role: "Aviation Maintenance",        caption: "Randy signs off the logbook by the book — every AD, every cycle. Aviation MX as a rule-governed Digital Worker." },
+  { slug: "randy",        name: "Randy",       role: "Aviation Maintenance",        caption: "Randy's never once been mistaken for a Top Gun poster. But you want him elbow-deep in your MX log before the inspection. Just maybe not seated next to your grandma at Thanksgiving." },
 ];
 
 const TAGLINE = "\n\nBuild your own at sociii.ai 🌺\n#DigitalWorkers #SOCIII";

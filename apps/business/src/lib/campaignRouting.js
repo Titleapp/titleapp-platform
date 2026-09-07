@@ -56,7 +56,7 @@ export const CAMPAIGN_ROUTES = {
     character: "Nancy",
     creatorSlug: "nancy",
     campaignFamily: "of",
-    alexOpening: "Oh, Nancy caught your eye? Smart pick. Nancy's an HR director who's seen every employment landmine — normally $350/hour to ask her anything. The worker is all of her for $29/month. What's the people problem on your desk?",
+    alexOpening: "Oh, Nancy caught your eye? Smart pick. Nancy's an HR director who's seen every employment landmine — normally $350/hour to ask her anything. The worker is all of her — some workers are free, others cost a little. What's the people problem on your desk?",
   },
   "of-brandon": {
     workerSlug: "platform-accounting",
@@ -64,7 +64,7 @@ export const CAMPAIGN_ROUTES = {
     character: "Brandon",
     creatorSlug: "brandon",
     campaignFamily: "of",
-    alexOpening: "Oh, Brandon caught your eye? Smart pick. Brandon's a CPA who reads the tax code for fun — normally $450/hour to argue an audit with. The worker is all of him for $29/month. What's your tax situation?",
+    alexOpening: "Oh, Brandon caught your eye? Smart pick. Brandon's a CPA who reads the tax code for fun — normally $450/hour to argue an audit with. The worker is all of him — some workers are free, others cost a little. What's your tax situation?",
   },
   "of-madison": {
     workerSlug: "platform-hipaa-compliance",
@@ -91,12 +91,18 @@ export const CAMPAIGN_ROUTES = {
     alexOpening: "Oh, Darnell caught your eye? Smart pick. Darnell's a family-law attorney with 15 years in custody and divorce work — normally $450/hour. The worker is all of him for $29/month. What's the family-law thing you've been Googling at 2 AM?",
   },
   "of-manpreet": {
-    workerSlug: "platform-tax-compliance",
+    // CODEX 2026-09-05 suite-persona consolidation: no standalone
+    // "tax-compliance" suite exists in _SUITE_PERSONAS — closest real worker
+    // is Accounting (introduces itself as "Max"). Slug fixed from stale
+    // "platform-tax-compliance" (matched nothing real) to the real Accounting
+    // worker doc, same as Brandon. Judgment call, not a pre-existing mapping —
+    // flag to Sean if Tax Compliance was meant to stay a separate product.
+    workerSlug: "platform-accounting",
     workerDisplayName: "Tax Compliance",
     character: "Manpreet",
     creatorSlug: "manpreet",
     campaignFamily: "of",
-    alexOpening: "Oh, Manpreet caught your eye? Smart pick. Manpreet's a tax compliance specialist who survived 14 IRS audits on the other side — normally $500/hour. The worker is all of her for $29/month. What's your business situation?",
+    alexOpening: "Oh, Manpreet caught your eye? Smart pick. Manpreet's a tax compliance specialist who survived 14 IRS audits on the other side — normally $500/hour. The worker is all of her — some workers are free, others cost a little. What's your business situation?",
   },
   "of-monty": {
     workerSlug: "platform-auto-fi",
@@ -107,12 +113,16 @@ export const CAMPAIGN_ROUTES = {
     alexOpening: "Oh, Monty caught your eye? Smart pick. Monty's an F&I director with 25 years at four dealerships — normally $300/hour to keep your deals clean. The worker is all of him for $29/month. What deal is stuck?",
   },
   "of-captain-lisa": {
-    workerSlug: "aviation-copilot-b777",
+    // CODEX 2026-09-05 suite-persona consolidation: this worker introduces
+    // itself as "Skye" (all aviation workers, one identity) — slug fixed to
+    // the real live worker doc (was stale "aviation-copilot-b777", which
+    // matched nothing in _SUITE_PERSONAS in functions/index.js).
+    workerSlug: "av-copilot-001",
     workerDisplayName: "Boeing 777 CoPilot",
     character: "Captain Lisa",
     creatorSlug: "lisa",
     campaignFamily: "of",
-    alexOpening: "Oh, Captain Lisa caught your eye? Smart pick. Lisa's a B777 line captain with 15,000 hours — the kind of expert you couldn't book for a consult at any price. The worker is all of her ops knowledge for $29/month. What's your flying?",
+    alexOpening: "Oh, Captain Lisa caught your eye? Smart pick. Lisa's a B777 line captain with 15,000 hours — the kind of expert you couldn't book for a consult at any price. The worker is all of her ops knowledge — some workers are free, others cost a little. What's your flying?",
   },
   "of-brad": {
     workerSlug: "platform-biotech-genomics",
@@ -171,12 +181,15 @@ export const CAMPAIGN_ROUTES = {
     alexOpening: "Oh, Clint caught your eye? Smart pick. Clint's an SMB IT director who's run networks for 50-person offices — normally $200/hour to fix your printer mess. The worker is all of him for $29/month. What's actually broken?",
   },
   "of-randy": {
-    workerSlug: "platform-aviation-mx",
+    // CODEX 2026-09-05 suite-persona consolidation: introduces itself as
+    // "Skye" (all aviation workers, one identity) — slug fixed to the real
+    // live worker doc (was stale "platform-aviation-mx", not in _SUITE_PERSONAS).
+    workerSlug: "av-mx-001",
     workerDisplayName: "Aviation MX",
     character: "Randy",
     creatorSlug: "randy",
     campaignFamily: "of",
-    alexOpening: "Oh, Randy caught your eye? Smart pick. Randy's an A&P with 22 years and an IA ticket — normally $150/hour for a shop visit. The worker is all of him for $29/month. What you turning wrenches on?",
+    alexOpening: "Oh, Randy caught your eye? Smart pick. Randy's an A&P with 22 years and an IA ticket — normally $150/hour for a shop visit. The worker is all of him — some workers are free, others cost a little. What you turning wrenches on?",
   },
 
   // ─── Hate Your Boss ────────────────────────────────────────────

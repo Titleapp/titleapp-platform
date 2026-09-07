@@ -1643,7 +1643,7 @@ exports.api = onRequest(
   // S52.31c (2026-06-06) — ATTOM_API_KEY restored to secrets array after Sean
   // set the (sandbox) secret in Secret Manager via firebase functions:secrets:set.
   // Live ATTOM calls confirmed on the ATTOM dashboard post-deploy.
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY", "BOLDSIGN_API_KEY", "IDENTITY_HMAC_KEY"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA", "ATTOM_API_KEY", "RAPIDAPI_KEY", "BOLDSIGN_API_KEY", "IDENTITY_HMAC_KEY", "LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -6458,6 +6458,50 @@ IMPORTANT — a due date passing does not automatically mean money is owed. Reas
                   },
                 });
                 workerPrompt += `\n\nCAMPAIGN DATA ACCESS: You have a query_campaigns tool that reads this tenant's actual campaign records (budget, spend, metrics). Use it to verify real performance numbers instead of inventing plausible-sounding ones.`;
+
+                // FIX 2026-09-06 (Sean's directive after the Ivy audit): Marketing
+                // workers had ZERO tool access to the social integrations built
+                // this session (LinkedIn/TikTok/X/YouTube) — only the frontend
+                // SocialMedia.jsx UI could check/use them, so a worker could never
+                // answer "is LinkedIn connected?" for real. These four tools are
+                // READ-ONLY status checks, scoped to authUser.uid — the CURRENT
+                // authenticated request's own user, exactly like every other
+                // per-request-scoped variable in this file (query_ledger,
+                // search_drive, etc. all key off authUser/reqTenantId the same
+                // way). Never a hardcoded, cached, or cross-request uid — this is
+                // the critical constraint Sean flagged: one tenant's Marketing
+                // worker must never see another tenant's (or Sean's own) connected
+                // accounts. Reuses the exact Firestore path the real
+                // /v1/{platform}:status routes already read
+                // (users/{uid}/integrations/{platform} — see
+                // services/social/linkedin.js, tiktok.js, youtube.js, xUserAuth.js)
+                // rather than inventing a new scoping mechanism.
+                //
+                // Deliberately NOT adding a posting/publishing tool here — RAAS's
+                // no_unauthorized_posting hard-stop is prompt-level only, not
+                // code-enforced (confirmed earlier this session), so a worker-callable
+                // "post now" tool would be a real risk. Status checks only.
+                businessTools.push({
+                  name: "check_linkedin_status",
+                  description: "Check whether the CURRENT user has connected their LinkedIn account. Call this when asked whether LinkedIn is connected, before claiming you can or can't post there.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                businessTools.push({
+                  name: "check_tiktok_status",
+                  description: "Check whether the CURRENT user has connected their TikTok account. Call this when asked whether TikTok is connected.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                businessTools.push({
+                  name: "check_x_status",
+                  description: "Check whether the CURRENT user has connected their X (Twitter) account. Call this when asked whether X/Twitter is connected.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                businessTools.push({
+                  name: "check_youtube_status",
+                  description: "Check whether the CURRENT user has connected their YouTube account. Call this when asked whether YouTube is connected.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                workerPrompt += `\n\nSOCIAL CONNECTION STATUS: You have check_linkedin_status, check_tiktok_status, check_x_status, and check_youtube_status tools that check THIS USER's own real connection state. Use them instead of guessing or assuming a platform is or isn't connected. You do NOT have a tool to post or publish anything directly — publishing still requires the user to do it themselves from Settings → Social Media. If asked to post something, you may draft the content in chat, but tell the user they need to post it themselves through that UI for now.`;
               }
 
               // CODEX S52.48 step 8 — same pattern rolled out to IR: a real
@@ -7657,6 +7701,43 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 }
               }
 
+              // Social integration status checks — see businessTools.push block above
+              // (workerSlug === "platform-marketing" || "marketing-content") for why
+              // these exist and the tenant/user-isolation reasoning. Deliberately a
+              // simple standalone block (not part of the Drive/query-tools multi-round
+              // loop below) since these are single reads with no verification-loop need.
+              const _SOCIAL_STATUS_PLATFORM_DOC = {
+                check_linkedin_status: "linkedin",
+                check_tiktok_status: "tiktok",
+                check_x_status: "twitter",
+                check_youtube_status: "youtube",
+              };
+              if (toolBlock && _SOCIAL_STATUS_PLATFORM_DOC[toolBlock.name]) {
+                let _socialStatusText;
+                try {
+                  if (!authUser) {
+                    _socialStatusText = "No signed-in user on this request — cannot check connection status.";
+                  } else {
+                    // authUser.uid is bound once per-request at the top of this handler
+                    // (requireFirebaseUser) — never a different request's uid, never
+                    // cached across requests. This is the SAME variable every other
+                    // tenant-scoped tool in this file already relies on.
+                    const _snap = await db.collection("users").doc(authUser.uid)
+                      .collection("integrations").doc(_SOCIAL_STATUS_PLATFORM_DOC[toolBlock.name]).get();
+                    const _data = _snap.exists ? _snap.data() : null;
+                    _socialStatusText = (_data && _data.connected)
+                      ? `Connected. Account name on file: ${_data.name || "(not set)"}.`
+                      : "Not connected. The user has not connected this account yet — direct them to Settings → Social Media to connect it.";
+                  }
+                } catch (_ssErr) {
+                  console.warn(`[worker:${workerSlug}] ${toolBlock.name} failed:`, _ssErr.message);
+                  _socialStatusText = "Could not check connection status right now — a transient error occurred.";
+                }
+                const _ssFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _socialStatusText }] }];
+                const _ssFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _ssFollowUpMessages });
+                aiText = _ssFollowUp.content.find(b => b.type === 'text')?.text || aiText;
+              }
+
               // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
               // search_drive auto-reads the top result so the model doesn't need a second
               // tool call to say "reading now" — everything lands in one response turn.
@@ -8034,9 +8115,29 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     }
                   } catch (_fuErr) {
                     console.warn(`[worker:${workerSlug}] verification follow-up failed:`, _fuErr.message);
-                    aiText = _fuErr.message === "drive_followup_timeout"
-                      ? `I started checking a second source but the verification timed out. Try asking about a specific statement or date range so I can narrow it down.`
-                      : (_driveToolResult.startsWith("Could not") ? _driveToolResult : `Here's what I found:\n\n${_driveToolResult.slice(0, 2000)}`);
+                    // FIX 2026-09-06: this used to dump _driveToolResult's raw,
+                    // internal-debug-formatted string straight to the user when the
+                    // model follow-up call failed (timeout, API error, etc.) — e.g.
+                    // "Here's what I found: No campaigns found matching query='2026'
+                    // status=(any)." That's a leaked tool-result template, not a real
+                    // reply. Every other tool handler in this file just leaves aiText
+                    // alone on failure (falls through to the generic "I'm {workerName}.
+                    // How can I help?" safety net at the end of this dispatch block) —
+                    // this one now matches that pattern, with slightly better framing
+                    // for the two known-safe cases (explicit timeout, explicit Drive
+                    // access error) and a clean no-results sentence instead of echoing
+                    // internal query=/status= syntax. Real found data still passes
+                    // through as-is (that's legitimate tenant data, not a leak).
+                    if (_fuErr.message === "drive_followup_timeout") {
+                      aiText = `I started checking a second source but the verification timed out. Try asking about a specific statement or date range so I can narrow it down.`;
+                    } else if (_driveToolResult.startsWith("Could not")) {
+                      aiText = _driveToolResult;
+                    } else if (/^No (campaigns|contacts|investors|recorded transactions|open tax\/compliance obligations|files?) /.test(_driveToolResult)) {
+                      aiText = `I didn't find anything matching that — could you tell me a bit more about what you're looking for?`;
+                    }
+                    // else: leave aiText as whatever the model's initial response text
+                    // was (set at the top of this dispatch from aiResponse.content) —
+                    // matches every other tool handler's failure behavior in this file.
                   }
                 }
               }

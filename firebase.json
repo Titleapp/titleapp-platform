@@ -8,6 +8,7 @@
       { "source": "/auth/shopify-callback", "destination": "/auth/shopify-callback.html" },
       { "source": "/auth/tiktok-callback", "destination": "/auth/tiktok-callback.html" },
       { "source": "/auth/twitter-callback", "destination": "/auth/twitter-callback.html" },
+      { "source": "/auth/linkedin-callback", "destination": "/auth/linkedin-callback.html" },
       { "source": "/track", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/unsub", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/nursing-docs", "destination": "/nursing-docs.html" },
