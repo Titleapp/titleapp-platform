@@ -6420,6 +6420,27 @@ IMPORTANT — a due date passing does not automatically mean money is owed. Reas
 - Quarterly estimated federal tax (EFTPS) is only required if the tenant expects to owe $500+ in federal tax for the year (IRC §6655). A net-loss or no-income period means no payment is actually due, even though the calendar checkpoint still fires. Don't assume the threshold is or isn't met — say so needs confirming with the tenant's CPA, and don't treat the tracker's "overdue" flag as proof real money is late.
 - Delaware franchise tax is calculated from authorized shares or assumed par value, NOT net income — it is very likely still owed even in a net-loss year. Don't let "no income" get generalized to this obligation too.
 - The annual Form 1120 return must be filed every year regardless of profit or loss — a "zero return" is still required at $0 income. This is separate from and not excused by having no estimated-tax liability.`;
+
+                // FIX 2026-09-07 (Sean's directive after the Max audit): Sean
+                // believed Max already had Stripe access — it didn't, for
+                // conversational use. Stripe billing itself is real (webhooks,
+                // checkout, subscriptions all wired), but no chat tool could read
+                // it. This is a READ-ONLY status check, scoped to the CURRENT
+                // request's own tenant/user — same reqTenantId/authUser.uid
+                // scoping every other tool in this file uses, same
+                // stripeCustomerId lookup path the real checkout flow already
+                // writes to (tenants/{tenantId}.stripeCustomerId for
+                // tenant-billed accounts, users/{uid}.stripeCustomerId
+                // otherwise — see the getOrCreateCustomer logic ~L14777-14803).
+                // No new mapping invented. No charge/refund/cancel/modify
+                // capability — read-only, matching the no-posting-tool
+                // discipline already applied to Ivy's social-status tools.
+                businessTools.push({
+                  name: "check_stripe_status",
+                  description: "Check this tenant's real Stripe billing status — whether a Stripe customer exists, active subscriptions, and current MRR if computable. Call this when asked about Stripe, billing status, or subscription revenue instead of guessing.",
+                  input_schema: { type: "object", properties: {}, required: [] },
+                });
+                workerPrompt += `\n\nSTRIPE STATUS: You have a check_stripe_status tool that reads THIS TENANT's real Stripe data. Use it instead of guessing or assuming billing is or isn't connected. You do NOT have any ability to charge, refund, cancel, or modify billing — read-only status only.`;
               }
 
               // CODEX S52.48 step 8 — same pattern rolled out to Contacts: a real
@@ -7736,6 +7757,54 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 const _ssFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _socialStatusText }] }];
                 const _ssFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _ssFollowUpMessages });
                 aiText = _ssFollowUp.content.find(b => b.type === 'text')?.text || aiText;
+              }
+
+              // Stripe status check — see businessTools.push block above
+              // (workerSlug === "platform-accounting") for the tenant-isolation
+              // reasoning. Same simple standalone single-read pattern as the
+              // social status checks above — not part of the query_ledger
+              // multi-round loop below, since this is one read with no
+              // verification-loop need. Reuses the EXISTING stripeCustomerId
+              // field the real checkout flow already writes to
+              // (tenants/{tenantId}.stripeCustomerId or users/{uid}.stripeCustomerId
+              // — see getOrCreateCustomer ~L14777-14803) rather than inventing a
+              // new tenant->Stripe mapping.
+              if (toolBlock && toolBlock.name === "check_stripe_status") {
+                let _stripeStatusText;
+                try {
+                  if (!authUser) {
+                    _stripeStatusText = "No signed-in user on this request — cannot check Stripe status.";
+                  } else {
+                    const _isRealTenant = reqTenantId && reqTenantId !== "vault";
+                    const _stripeDocRef = _isRealTenant
+                      ? db.collection("tenants").doc(reqTenantId)
+                      : db.collection("users").doc(authUser.uid);
+                    const _stripeDocSnap = await _stripeDocRef.get();
+                    const _customerId = _stripeDocSnap.exists ? (_stripeDocSnap.data().stripeCustomerId || null) : null;
+                    if (!_customerId) {
+                      _stripeStatusText = "Not connected. No Stripe customer is on file for this workspace yet.";
+                    } else {
+                      const stripe = getStripe();
+                      const [_customer, _subs] = await Promise.all([
+                        stripe.customers.retrieve(_customerId),
+                        stripe.subscriptions.list({ customer: _customerId, status: "all", limit: 10 }),
+                      ]);
+                      const _active = _subs.data.filter(s => s.status === "active" || s.status === "trialing");
+                      if (_active.length === 0) {
+                        _stripeStatusText = `Connected (Stripe customer ${_customerId}), but no active or trialing subscriptions on file.`;
+                      } else {
+                        const _mrrCents = _active.reduce((sum, s) => sum + (s.items?.data || []).reduce((isum, it) => isum + ((it.price?.unit_amount || 0) * (it.quantity || 1)), 0), 0);
+                        _stripeStatusText = `Connected (Stripe customer ${_customerId}). ${_active.length} active/trialing subscription(s). Computed MRR from active subscriptions: $${(_mrrCents / 100).toFixed(2)}.`;
+                      }
+                    }
+                  }
+                } catch (_stripeErr) {
+                  console.warn(`[worker:${workerSlug}] check_stripe_status failed:`, _stripeErr.message);
+                  _stripeStatusText = "Could not check Stripe status right now — a transient error occurred.";
+                }
+                const _stripeFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _stripeStatusText }] }];
+                const _stripeFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _stripeFollowUpMessages });
+                aiText = _stripeFollowUp.content.find(b => b.type === 'text')?.text || aiText;
               }
 
               // Drive tools — search_drive + read_drive_file (all workers, non-streaming path).
