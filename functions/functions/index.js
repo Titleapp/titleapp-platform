@@ -999,10 +999,10 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
     // Auto-grant default platform Spine workers
     const DEFAULT_PLATFORM_WORKERS = [
       { slug: "chief-of-staff", name: "Alex — Chief of Staff" },
-      { slug: "platform-accounting", name: "Alex Business Accounting" },
-      { slug: "platform-hr", name: "Alex HR & People" },
-      { slug: "platform-marketing", name: "Alex Marketing & Content" },
-      { slug: "platform-contacts", name: "Contacts" },
+      { slug: "platform-accounting", name: "Max — Accounting" },
+      { slug: "platform-hr", name: "Jordan — HR & People" },
+      { slug: "platform-marketing", name: "Ivy — Marketing & Content" },
+      { slug: "platform-contacts", name: "Sage — Contacts" },
     ];
     const wpBatch = db.batch();
     for (const w of DEFAULT_PLATFORM_WORKERS) {
@@ -1975,10 +1975,10 @@ exports.api = onRequest(
           // Auto-grant default platform Spine workers to every new user
           const DEFAULT_PLATFORM_WORKERS = [
             { slug: "chief-of-staff", name: "Alex — Chief of Staff" },
-            { slug: "platform-accounting", name: "Alex Business Accounting" },
-            { slug: "platform-hr", name: "Alex HR & People" },
-            { slug: "platform-marketing", name: "Alex Marketing & Content" },
-            { slug: "platform-contacts", name: "Contacts" },
+            { slug: "platform-accounting", name: "Max — Accounting" },
+            { slug: "platform-hr", name: "Jordan — HR & People" },
+            { slug: "platform-marketing", name: "Ivy — Marketing & Content" },
+            { slug: "platform-contacts", name: "Sage — Contacts" },
           ];
           const workerBatch = db.batch();
           for (const w of DEFAULT_PLATFORM_WORKERS) {
