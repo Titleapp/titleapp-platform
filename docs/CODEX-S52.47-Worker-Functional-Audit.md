@@ -26,7 +26,7 @@ Fix straightforward, scoped bugs in place when found. Flag bigger architectural 
 
 | # | Worker | Persona | Why this priority | Status |
 |---|---|---|---|---|
-| 1 | Marketing & Content | Ivy | Already mid-campaign-planning, first real test already failed | **In progress** — chat mis-routing + possible hang found, full audit running |
+| 1 | Marketing & Content | Ivy | Already mid-campaign-planning, first real test already failed | **Audited 2026-09-06.** Chat: works correctly for normal messages (verified with escalating live tests); breaks specifically on long multi-paragraph briefs with pseudo-headers (GOALS:/BUDGET:/etc.) — misfires `query_campaigns` tool with a garbled query, gets zero results, and a broken error-handling path (`index.js:8032-8035`) leaks the raw internal template string to the user instead of a natural reply. **Same shared code path backs Max/Sage/Reed's query tools too — likely reproducible on all 4.** Not yet fixed (needs care, shared code). RAAS ruleset: genuinely fine, `platform_marketing_v1` correctly loaded, not a fallback. Integration access: **confirmed real gap** — zero tool access to LinkedIn/TikTok/X/YouTube status or posting; those are frontend-only via `SocialMedia.jsx` human clicks. She self-reports the gap honestly rather than hallucinating. |
 | 2 | Accounting | Max | Back-of-house, queued next | Not started |
 | 3 | HR & People | Jordan | Back-of-house | Not started |
 | 4 | Contacts | Sage | Back-of-house | Not started |
