@@ -116,3 +116,19 @@ This matches what Sean already said this morning for the App Store priority orde
 Internal claims (portal/persona architecture, worker backing, Capacitor config and dependency state, native directory absence) are sourced to a repo-audit research pass this session, with the Capacitor config/dependency claims and the CODEX 64 native-app quote independently re-verified via direct file reads rather than relying solely on the delegated pass. CODEX 64, 74, 75, and 82 were each either read in full this session (74, 75) or directly grepped for the specific claims cited (64, 82) — none of this document's claims about those Codices are secondhand paraphrase without a direct check.
 
 Not yet verified, and worth confirming before this Codex's recommendations are treated as final: (a) whether `apps/business`'s existing route/build structure can cleanly support four different `appId`/icon "flavors" without real refactoring — this session confirmed the config exists, not that multi-flavor builds have been tested; (b) the actual competitive/market case for a merchant-side DPP app (§4.3) — flagged as the more promising UX direction here, but not independently researched this session the way CODEX 74's Shopify-competitor teardown was.
+
+---
+
+## 9. Addendum (2026-09-08) — Standing Launch-Sequence Requirement for Every Native Flavor
+
+Answers part of Open Decision #1 (§7): the four Capacitor "flavors" path was the one actually built (aviation/SKYE, nursing/Hannah, realestate/Petra — DPP confirmed to live in its own separate repo, `apps/sociii-dpp-passport`, not this multi-flavor system).
+
+Real device/simulator testing tonight (aviation flavor, on Sean's own Mac) surfaced that "wrap the existing web app" isn't sufficient on its own — a native flavor's signed-out cold launch defaulted to SOCIII's full public marketing homepage, which is wrong for an installed native app. Sean's explicit direction, now a **standing requirement for every native app flavor this platform builds, not just aviation**:
+
+1. **Splash** — native launch splash screen (Capacitor's own `SplashScreen` plugin, already configured per-flavor via `capacitor.<flavor>.config.json`).
+2. **Sign in, with SSO support** — a minimal, flavor-branded sign-in screen (not the public marketing homepage) for a signed-out launch. Must support Google Sign-In natively (Capacitor WebViews block the web SDK's `signInWithPopup`/`signInWithRedirect` OAuth flow — a real native Google Sign-In plugin + per-flavor Firebase iOS/Android app registration is required, not just a web-style button), alongside email/password where relevant.
+3. **Bypass sign-in if already authenticated** — a returning, already-signed-in user should never see the sign-in screen at all, landing straight in the real app.
+
+**Reference implementation:** `apps/business/src/components/NativeSignIn.jsx` (aviation flavor) is the first real build of this pattern — built flavor-brand-aware (keyed off `VITE_NATIVE_FLAVOR`) specifically so it extends to nursing/realestate without a rewrite, not hardcoded to "SKYE." Google Sign-In wiring for aviation was still in progress as of this addendum (native plugin + Firebase app registration for `ai.sociii.aviation` — see the branch's own commit history for current status).
+
+**Applies to:** any current or future native flavor of this platform. Nursing/realestate currently use a different entry mechanism (`/portal?company=...&persona=...`, working without a prior sign-in gate for their specific customer-portal use case) — when/if either of them gets its own `NativeSignIn`-style screen instead of (or in addition to) that portal flow, it must follow this same three-part pattern, reusing `NativeSignIn.jsx`'s flavor-branding structure rather than a divergent one-off.
