@@ -1,0 +1,33 @@
+{
+  "originHash" : "64ff50057f7258355aebfad80c44a2128d5640188c9ac1fc603ca0040cbdd321",
+  "pins" : [
+    {
+      "identity" : "capacitor-swift-pm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+      "state" : {
+        "revision" : "9b9fb0af76b2b653f6e9b999f658adc132b9ab4c",
+        "version" : "8.4.2"
+      }
+    },
+    {
+      "identity" : "native-background-geolocation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/transistorsoft/native-background-geolocation.git",
+      "state" : {
+        "revision" : "254594c7f516c072f9fdb89598807933b37eda92",
+        "version" : "4.6.0"
+      }
+    },
+    {
+      "identity" : "transistor-background-fetch",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/transistorsoft/transistor-background-fetch.git",
+      "state" : {
+        "revision" : "34676021268c22c5cd356d9c96644aa0ee5fb68d",
+        "version" : "4.1.1"
+      }
+    }
+  ],
+  "version" : 3
+}

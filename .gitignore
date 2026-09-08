@@ -40,9 +40,5 @@ investor_blast_preview.csv
 # Claude Code internal state
 .claude/
 
-# Capacitor native app dirs (generated — not source)
-apps/business/android/
-apps/business/ios/
-
 # Separate standalone Shopify app repo — never track as a nested gitlink
 apps/sociii-dpp-passport/
