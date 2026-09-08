@@ -581,6 +581,17 @@ const WORKER_RULESET_MAP = {
   "feasibility-001": "feasibility_v0",
   "re-marketing-001": "re_marketing_v0",
   "law-landuse-001": "law_landuse_v0",
+  // CODEX S52.67 (2026-09-07) — all 3 DPP suite workers had zero coverage
+  // here despite having real, working RAAS-boundary content hardcoded
+  // directly into their fallback systemPrompt strings in index.js (a
+  // separate, non-tenant-configurable path that violates "business logic
+  // lives in rule definitions, not prompts" — CLAUDE.md invariant #5).
+  // Extracted the genuinely reusable regulatory principles (not the
+  // Voltara-BV-specific SKU data, which correctly stays as tenant data)
+  // into a real, portable ruleset.
+  "eu-battery-dpp-001": "eu_battery_dpp_v0",
+  "eu-passport-registry-001": "eu_battery_dpp_v0",
+  "eu-supply-chain-tracer-001": "eu_battery_dpp_v0",
 };
 
 /** Cache compiled chat rules per ruleset */

@@ -1,0 +1,68 @@
+{
+  "id": "eu_battery_dpp_v0",
+  "version": "v0",
+  "domain": "eu-battery-dpp-compliance",
+  "description": "EU Battery Digital Product Passport suite (eu-battery-dpp-001 / eu-passport-registry-001 / eu-supply-chain-tracer-001) — Phase 0 ruleset. Regulation (EU) 2023/1542 (the Battery Regulation) and its Annex XIII (battery passport content requirements) are settled, in-force EU law — safe to cite directly. The broader Ecodesign for Sustainable Products Regulation (EU) 2024/1781 (ESPR) is the umbrella framework the Battery Regulation's passport requirement sits under; cited for context, not independently sourced clause-by-clause here. Registry operational details (submission portal mechanics, exact credential process) are cited from the worker's own configured client data, not independently re-verified against the EU Commission's registry technical specs in this pass — flagged, same honesty standard as title_escrow_v1's unsourced-layer disclosure.",
+
+  "appliesTo": ["eu-battery-dpp-001", "eu-passport-registry-001", "eu-supply-chain-tracer-001"],
+
+  "hard_stops": [
+    {
+      "id": "dpp-no-compliance-claim-without-registration",
+      "label": "Never state or imply a product/SKU is 'EU Battery Regulation compliant' or 'complete' unless its actual passport status is registered",
+      "logic": "Regulation (EU) 2023/1542 Annex XIII requires all 7 data clusters (general/manufacturer info, compliance & certifications, carbon footprint/LCA, supply chain due diligence, materials & composition, circularity & resource efficiency, performance & durability/SoH) to be complete and the passport formally registered before a battery can be placed on the EU market with a valid passport. A near-complete or in-progress record is not a compliant one.",
+      "trigger": "AI states or implies a SKU/product is 'compliant,' 'EU Battery Regulation compliant,' 'done,' or 'complete' when its real recorded status is anything other than formally registered.",
+      "on_fail": "Use only 'on track,' 'ready to submit,' or the real cluster/attribute completion percentage — never 'compliant' or 'complete' language until the real record shows registered status."
+    },
+    {
+      "id": "dpp-no-invented-registry-identifiers",
+      "label": "Never invent a passport ID, EU DPP Central Registry reference number, or QR code",
+      "logic": "These identifiers are assigned by the EU Commission's Central Registry at the moment of successful registration — they do not exist before that point and cannot be predicted or pre-assigned by any party outside the registry.",
+      "trigger": "AI provides a specific passport ID, registry reference number, or QR code value for a SKU that has not yet been registered in the real records.",
+      "on_fail": "State plainly that no registry identifier exists yet and will not exist until the registry issues one at successful registration."
+    },
+    {
+      "id": "dpp-cluster3-gate",
+      "label": "No passport may be generated, exported, or represented as submission-ready while Cluster 3 (battery carbon footprint / life-cycle assessment) is below 100% for that SKU",
+      "logic": "Annex XIII gates full passport generation on a complete, third-party-assessed carbon footprint declaration. A passport built or exported around an incomplete LCA is not a valid instrument.",
+      "trigger": "AI is asked to build, export, or represent as ready a passport for a SKU whose Cluster 3 data is not 100% complete.",
+      "on_fail": "Refuse, name the SKU and the exact missing Cluster 3 item(s) (e.g. outstanding third-party LCA certificate), and do not produce a placeholder or partial passport document."
+    },
+    {
+      "id": "dpp-no-fabricated-cluster-data",
+      "label": "Never fabricate a cluster/attribute completion percentage, a State of Health (SoH) value, or any other data point not present in this workspace's real records",
+      "logic": "Every data point in a Digital Product Passport is meant to be traceable to a real source (manufacturer record, supplier submission, BMS feed, third-party assessment) — inventing one, even a plausible-sounding one, breaks that traceability and is a real regulatory-exposure risk for the customer relying on it.",
+      "trigger": "AI states a specific completion percentage, SoH reading, supplier status, or other cluster attribute value with no corresponding record in this workspace.",
+      "on_fail": "Say the data point isn't in the current record set (and, if relevant, which upstream source — manufacturer, supplier portal, BMS feed, third-party assessor — would need to provide it) rather than inventing a plausible value."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "dpp-blanket-all-skus-claim",
+      "pattern": "(all (products|skus|batteries) (are|is) (compliant|complete|ready|registered))",
+      "flags": "i",
+      "message": "Report per-SKU status, not a blanket claim — cite the specific SKU and its actual cluster/status."
+    },
+    {
+      "id": "dpp-invented-reference-pattern",
+      "pattern": "(registry (reference|id|number)[:\\s]+[A-Z0-9-]{4,})",
+      "flags": "i",
+      "message": "Confirm this registry reference number actually exists in the real record before stating it — the EU DPP Central Registry assigns these only at successful registration."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "dpp-registry-operational-details-unverified",
+      "label": "Registry submission mechanics (portal process, credential requirements) sourced from client configuration, not independently re-verified against current EU Commission technical specs",
+      "logic": "Registry operational details can change as the EU Commission's Central Registry infrastructure matures; this ruleset does not re-verify them against the live official source on every response.",
+      "trigger": "AI states a specific registry submission mechanic (portal steps, credential/eIDAS requirements, opening dates) as fact.",
+      "message": "Confirm current registry submission mechanics against the official EU Commission Central Registry guidance before relying on this for an actual submission — details can change."
+    }
+  ],
+
+  "disclaimer": "This worker tracks EU Battery Regulation (EU) 2023/1542 Digital Product Passport data intake, compliance status, and supply-chain traceability for the SKUs on file. It will not claim compliance or completion before real registration, will not invent registry identifiers, and will not fabricate cluster or attribute data. Registry operational mechanics are sourced from client configuration and not independently re-verified against live EU Commission specs in this phase. Phase 0: general compliance principles, not exhaustively legally sourced clause-by-clause.",
+
+  "system_context": "You operate under Regulation (EU) 2023/1542 (the EU Battery Regulation) and its Annex XIII Digital Product Passport requirements, within the broader Ecodesign for Sustainable Products Regulation (EU) 2024/1781 (ESPR) framework. Never state or imply a SKU is 'compliant' or 'complete' unless its real record shows registered status — use 'on track' or cite the real completion percentage instead. Never invent a passport ID, registry reference number, QR code, or any cluster/attribute data point (including State of Health) not present in this workspace's real records. No passport may be built, exported, or represented as submission-ready while Cluster 3 (carbon footprint / LCA) is below 100% for that SKU — name the specific missing item instead. Always cite the specific SKU and its actual real status; never make blanket claims about 'all products' or 'all SKUs.'"
+}

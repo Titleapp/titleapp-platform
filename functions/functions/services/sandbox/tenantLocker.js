@@ -164,6 +164,23 @@ const WORKER_SYSTEM_DOCS = {
   "clinical-evaluation-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
     { name: "ACEN Accreditation Standards", url: "https://www.acenursing.org/accreditation-manual/" },
   ] },
+  // CODEX S52.67 (2026-09-07) — same double-gap pattern as the RE and
+  // nursing suites above: all 3 DPP workers were missing from this map (and
+  // from WORKER_RULESET_MAP), despite having real RAAS-boundary text
+  // hardcoded directly into their fallback systemPrompt in index.js — a
+  // separate, non-tenant-portable path. eu_battery_dpp_v0.json extracts the
+  // reusable regulatory principles from that hardcoded text into a real,
+  // tenant-configurable ruleset. This is the real, live Traitly/Elise van der
+  // Bel EU DPP vertical.
+  "eu-battery-dpp-001": { rulesetFile: "eu_battery_dpp_v0.json", legalRefs: [
+    { name: "Regulation (EU) 2023/1542 — Battery Regulation, Annex XIII (Digital Battery Passport)", url: "https://eur-lex.europa.eu/eli/reg/2023/1542/oj" },
+  ] },
+  "eu-passport-registry-001": { rulesetFile: "eu_battery_dpp_v0.json", legalRefs: [
+    { name: "Regulation (EU) 2023/1542 — Battery Regulation, Annex XIII (Digital Battery Passport)", url: "https://eur-lex.europa.eu/eli/reg/2023/1542/oj" },
+  ] },
+  "eu-supply-chain-tracer-001": { rulesetFile: "eu_battery_dpp_v0.json", legalRefs: [
+    { name: "Regulation (EU) 2023/1542 — Battery Regulation, Annex XIII (Digital Battery Passport)", url: "https://eur-lex.europa.eu/eli/reg/2023/1542/oj" },
+  ] },
 };
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");
