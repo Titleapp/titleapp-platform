@@ -14,6 +14,7 @@ import SyntheticPFD from "./SyntheticPFD";
 import AviationNearest from "./AviationNearest";
 import AviationQRH from "./AviationQRH";
 import WeightBalanceCalculator from "./WeightBalanceCalculator";
+import PerformanceCalculator from "./PerformanceCalculator";
 import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
 import ScratchPad from "../aviation/ScratchPad";
 import AviationProfileView from "./AviationProfileView";
@@ -1226,6 +1227,9 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
           </label>
         </div>
         <WeightBalanceCalculator aircraftProfile={aircraftProfile} onResultChange={setWbResult} />
+        {/* Informational only, not a release gate — see PerformanceCalculator.jsx
+            header comment for why (real coverage is one aircraft/one phase today). */}
+        <PerformanceCalculator aircraftProfile={aircraftProfile} />
         {/* CODEX 89 step 5 — the enforced re-affirmation gate. Deliberately
             NOT one of the pre-filled/editable fields above: unchecked by
             default even though everything else is pre-populated, per

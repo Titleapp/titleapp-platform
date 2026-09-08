@@ -20,4 +20,12 @@ export const WB_DISCLAIMER =
   "against the aircraft AFM W&B document before flight. Pilot in command is responsible " +
   "for confirming aircraft is within CG and weight limits.";
 
+export const PERFORMANCE_DISCLAIMER =
+  "Takeoff/landing distance is a generic planning ESTIMATE — a published sea-level " +
+  "baseline adjusted with generic FAA density-altitude and wind rules of thumb, not this " +
+  "aircraft's certified AFM/POH performance chart. It is not corrected per-aircraft for " +
+  "runway slope, surface condition, or engine flat-rating. Consult the AFM/POH performance " +
+  "charts for the certified distance before every flight. Pilot in command is responsible " +
+  "for confirming actual runway suitability.";
+
 export const LAUNCH_DISCLAIMER_STORAGE_KEY = "sociii_av_launch_disclaimer_ack_v1";

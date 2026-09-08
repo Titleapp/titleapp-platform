@@ -35,6 +35,24 @@ export const AIRCRAFT_TYPE_PROFILES = {
                              // (xpda.com/pc12/pc12weightbalance.pdf) but too large to
                              // fetch/parse this pass; real number needs that source read properly
     cgEnvelope: null,        // not sourced — same blocker as above
+    // Real, cited best-glide ratio — this is the same figure AviationNearest.jsx
+    // already hardcoded (best glide 118 KIAS, 15:1 per POH/AFM); consolidated
+    // here so it's one sourced fact instead of two copies.
+    glideRatio: 15,
+    // Performance baseline — sea-level, ISA, max weight, from jetav.com's spec
+    // page (same source already trusted above for empty/max weights, cross-
+    // checked against Sean's real ForeFlight screenshot). This single figure
+    // is NOT confirmed as ground-roll vs. total-distance-over-50ft-obstacle —
+    // the source page doesn't say which. Landing distance is deliberately
+    // left null: a search this session surfaced two conflicting numbers
+    // (2,783 ft vs. 2,170 ft over a 50ft obstacle) from sources that don't
+    // agree on methodology, so there is no single citable figure to use —
+    // per this file's own rule, an uncertain number is worse than none.
+    performance: {
+      takeoffDistanceSeaLevelIsaFt: 2650, // jetav.com/pilatus-pc-1247-performance-specs — "TO (Sea Level, ISA Temp) 2,650"
+      landingDistanceSeaLevelIsaFt: null, // not sourced — conflicting figures found, none single-sourced/citable
+      _perfSourceNote: "Takeoff figure from jetav.com's PC-12/47 spec page, methodology (ground roll vs. 50ft-obstacle) unstated by that source. Not a POH chart read. Density-altitude/wind adjustments applied on top of this are GENERIC FAA rules of thumb (see aviationPerformance.js), not this aircraft's real performance curve — turboprops with flat-rated engines (PT6A) typically degrade less with density altitude than the generic piston-aircraft rule assumes, so this estimator is expected to run conservative (over-estimate required distance), not optimistic. Needs a real POH chart read before this is more than a rough planning aid.",
+    },
     stations: [
       // Real station labels per the type (pilot+copilot bench, 2 more rows,
       // baggage), but NOT real arms — those come from the same unread POH PDF.
