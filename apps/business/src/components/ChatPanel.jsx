@@ -534,12 +534,38 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       // Persistent worker memory: use a stable sessionId so each worker
       // resumes its own history across page reloads and browser sessions.
-      // Format: cos_{uid} for Alex, wkr_{uid}_{slug} for all other workers.
+      // Format: cos_{uid}_{tenantId} for Alex, wkr_{uid}_{tenantId}_{slug} for
+      // all other workers.
+      //
+      // CODEX S52.65 follow-up (2026-09-07) — tenantId is now part of this ID,
+      // not just uid+slug. Root cause of the still-open "header-bleed" bug
+      // (a worker's header shows one tenant's content, sometimes a DIFFERENT
+      // tenant's conversation): TENANT_ID lives in a single global localStorage
+      // key, shared across every tab of this origin, not scoped per tab/session.
+      // With today's dozens of simultaneously-open sociii.ai tabs (concurrent
+      // demo/audit sessions, Sean's own real tenant, the guest "Sean's
+      // Accounting" tenant), whichever tab last wrote TENANT_ID wins that value
+      // for every OTHER tab too. Before this fix, the deterministic sessionId
+      // was `wkr_{uid}_{slug}` with NO tenant in it — so the same user+worker
+      // combination produced the IDENTICAL sessionId in every tenant that user
+      // belongs to. The tenantId `where()` filter in loadConversationHistory()
+      // below was the only thing preventing a cross-tenant read, and that
+      // filter's value was exactly the racy, cross-tab-shared one. Folding
+      // tenantId into the sessionId itself means the two tenants' conversations
+      // now live under genuinely different session IDs, so a stale/wrong
+      // TENANT_ID reads AT WORST an empty history (fails safe), never another
+      // tenant's real conversation, because query and sessionId now always
+      // agree with each other even when both are wrong. This does not fix the
+      // underlying "TENANT_ID is shared across tabs" architecture smell — a
+      // real fix for that needs tenant context sourced per-tab (e.g. from a
+      // React context/prop instead of a bare localStorage key), which is a
+      // bigger change flagged as follow-up, not attempted here.
       try {
         const uid = getAuth().currentUser?.uid;
+        const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
         const safeSlug = (slug || "unknown").replace(/[^a-z0-9-]/gi, "_");
         const newSid = uid
-          ? (slug === "chief-of-staff" ? `cos_${uid}` : `wkr_${uid}_${safeSlug}`)
+          ? (slug === "chief-of-staff" ? `cos_${uid}_${tenantId}` : `wkr_${uid}_${tenantId}_${safeSlug}`)
           : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         localStorage.setItem("ta_chat_session_id", newSid);
       } catch { /* ignore */ }
@@ -1823,14 +1849,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           sessionId: (() => {
             const KEY = "ta_chat_session_id";
             let sid = localStorage.getItem(KEY);
-            // If no sid yet, compute stable id from uid+worker now (same scheme
-            // as handleWorkerSelect above, so sessions persist across reloads).
+            // If no sid yet, compute stable id from uid+tenant+worker now (same
+            // scheme as handleWorkerSelect above — CODEX S52.65 follow-up,
+            // tenantId included so this fallback can't collide across tenants
+            // for the same uid+worker either).
             if (!sid) {
               const uid = getAuth().currentUser?.uid;
               const slug = (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null;
               const safeSlug = (slug || "unknown").replace(/[^a-z0-9-]/gi, "_");
+              const sidTenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
               sid = uid
-                ? (slug === "chief-of-staff" ? `cos_${uid}` : `wkr_${uid}_${safeSlug}`)
+                ? (slug === "chief-of-staff" ? `cos_${uid}_${sidTenantId}` : `wkr_${uid}_${sidTenantId}_${safeSlug}`)
                 : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
               localStorage.setItem(KEY, sid);
             }
@@ -2586,6 +2615,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }
 
   // ── Disclaimer Widget ─────────────────────────────────────────
+
+  // Two separate seed paths (fireCelebration / loadDisclaimerFlow) can each
+  // leave their own disclaimer:true message in state; without this guard the
+  // widget (and its 3 accept checkboxes) renders once per such message.
+  function isLastDisclaimerMessage(idx) {
+    for (let i = messages.length - 1; i > idx; i--) {
+      if (messages[i].disclaimer) return false;
+    }
+    return true;
+  }
 
   function renderDisclaimerWidget() {
     const v = localStorage.getItem('VERTICAL') || 'auto';
@@ -3951,7 +3990,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             )}
 
             {/* Disclaimer widget */}
-            {msg.disclaimer && showDisclaimer && !disclaimerAccepted && (
+            {msg.disclaimer && showDisclaimer && !disclaimerAccepted && isLastDisclaimerMessage(idx) && (
               renderDisclaimerWidget()
             )}
 

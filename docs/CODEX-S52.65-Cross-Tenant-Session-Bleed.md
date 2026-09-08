@@ -171,3 +171,28 @@ The `DEMO_SHARED_UIDS` fix above stops one visitor's *conversation* from bleedin
 - `functions/functions/scripts/demo/seedTitleDemo.js` — exported as callable function, CLI usage preserved.
 - `functions/functions/scripts/demo/seedSkyePilotDemo.js` — exported as callable function, CLI usage preserved.
 - `functions/functions/index.js` — `resetTitleDemo` and `resetSkyeDemo` scheduled functions.
+---
+
+## Fourth follow-up (2026-09-07, same day): closing out the client-side finding
+
+Closes the "Client-side finding" flagged above (`L88-90`) as the likely second contributor to the original header-bleed symptom.
+
+### Root cause, confirmed by code trace (not guessed)
+
+`ChatPanel.jsx` generates a deterministic chat-session ID for each worker (`wkr_{uid}_{slug}`, or `cos_{uid}` for the Chief of Staff), used both to key the Firestore history read and to fall back on if a message is sent before that ID exists. The generator never included `tenantId`. Meanwhile, `loadConversationHistory()` filters the same read by a *separate* `tenantId` value pulled from a single global `localStorage.TENANT_ID` key — and `localStorage` is scoped per browser **origin**, shared across every tab of `sociii.ai` in the same profile, not per-tab. With one `uid` able to hold real memberships in more than one tenant (see `CLAUDE.md` invariant #5) and dozens of `sociii.ai` tabs open across today's concurrent forks/testing, whichever tab last wrote `TENANT_ID` could make any *other* tab's next chat-history read silently use the wrong tenant, while the session-ID string itself stayed identical either way — so nothing about the fetch would look wrong until the wrong content rendered under a correct-looking worker header. This is the same class of bug already independently documented in [[feedback_demo_qa_sequential_only]] (shared-localStorage session clobber across parallel demo-persona tabs), and the same failure shape as the backend `chatMessages` fix earlier today (`90457d6c`) — except there the vulnerable dimension was a missing query filter; here it's the client-generated ID itself not encoding tenant, so a stale/wrong cached `TENANT_ID` couldn't be caught downstream.
+
+### Fix, deployed today
+
+Embedded `tenantId` directly into the session-ID string at both generation sites in `ChatPanel.jsx` — `handleWorkerSelect` (the `ta:select-worker` handler) and the send-time fallback IIFE — changing `wkr_{uid}_{slug}` / `cos_{uid}` to `wkr_{uid}_{tenantId}_{slug}` / `cos_{uid}_{tenantId}`, with `tenantId` read the same way the existing query filter already reads it (`localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault'`). Fail-safe, not fail-open: the ID and the query filter now always agree, even when both are stale/wrong, so a bad cached tenant value at worst produces an empty/fresh conversation, never another tenant's real one. Build (`npm run build`) and deploy (`firebase deploy --only hosting`) both succeeded; live on `title-app-alpha`.
+
+**Not fixed, flagged as follow-up** (same spirit as the original write-up's recommendation): the underlying smell that `TENANT_ID` is a single cross-tab-shared `localStorage` key at all. A fuller fix would source tenant context per-tab from a React context/prop instead of `localStorage`; grepped for one and found none already built, and building it is a bigger change than this pass's scope warranted.
+
+### Live verification
+
+Verified in the real deployed workspace (Elise's "Volta Advisory" tenant, the only real tenant reachable in this browser profile's open tabs). Rapid same-tab worker switching — Elara (DPP Compliance Tracker) → Max (Accounting) → Ivy (Marketing & Content) → Alex (Chief of Staff) — was performed with screenshots after each switch: every header matched its own worker's own greeting/content correctly, no cross-worker bleed, confirming **no regression** to normal chat-history loading post-fix.
+
+**Honest limitation**: the specific traced mechanism is a *cross-tab, cross-tenant* race (Tab A reads a `TENANT_ID` last written by Tab B, a different tenant). Every currently-open browser tab in this profile is authenticated as the same tenant (Elise/Volta Advisory), so the true two-different-tenant race could not be reproduced live in this pass — doing so would require signing into a second real tenant, which was not attempted (no credential entry). The fix itself does not depend on reproducing the race to be correct: it closes the traced mechanism directly (the session ID can no longer collide across tenants regardless of `TENANT_ID`'s staleness), and the same failure class is already independently corroborated by [[feedback_demo_qa_sequential_only]]. Flagging this rather than claiming a live repro that didn't happen, per this session's standing discipline against shipping unverified guesses.
+
+### Commits this section
+- `apps/business/src/components/ChatPanel.jsx` — tenant-scoped chat session IDs at both generation sites.
+- `docs/CODEX-S52.65-Cross-Tenant-Session-Bleed.md` — this section.
