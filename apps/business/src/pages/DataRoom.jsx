@@ -26,8 +26,8 @@ const DOCS = [
   {
     section: "Investment thesis",
     items: [
-      { id: "memorandum", title: "Investor Memorandum (v2)",       file: "SOCIII-Investor-Memorandum-v2.docx", note: "Long-form thesis + market + financials" },
-      { id: "deck",       title: "Investor Deck (v3)",             file: "SOCIII-InvestorDeck-v3.pptx",        note: "12-slide pitch" },
+      { id: "memorandum", title: "Investor Memorandum (Sep 8, 2026)", file: "SOCIII-Investor-Memorandum-2026-09-08.docx", note: "Long-form thesis + market + financials" },
+      { id: "deck",       title: "Investor Deck (Sep 8, 2026)",       file: "SOCIII-InvestorDeck-2026-09-08.pptx",        note: "17-slide pitch" },
     ],
   },
   {
