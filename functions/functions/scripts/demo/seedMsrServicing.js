@@ -33,7 +33,7 @@ const daysFromNow = (n) => {
   return d.toISOString().slice(0, 10);
 };
 
-(async () => {
+async function seedMsrServicing() {
   console.log("═══ seedMsrServicing.js — CODEX S52.60 ═══\n");
 
   // ── 1. Register the worker ──────────────────────────────────────────
@@ -209,4 +209,10 @@ const daysFromNow = (n) => {
   }
 
   console.log("\n═══ Done ═══");
-})().catch((e) => { console.error("ERROR:", e.message); process.exit(1); });
+}
+
+module.exports = { seedMsrServicing };
+
+if (require.main === module) {
+  seedMsrServicing().then(() => process.exit(0)).catch((e) => { console.error("ERROR:", e.message); process.exit(1); });
+}

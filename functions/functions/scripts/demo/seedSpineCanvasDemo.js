@@ -483,7 +483,7 @@ async function seedCollection(colRef, docs, label) {
   console.log(`  • ${label}: cleared ${cleared} (tenant-scoped), wrote ${docs.length}`);
 }
 
-(async () => {
+async function seedSpineCanvasDemo() {
   console.log("═══ seedSpineCanvasDemo.js — spine-worker canvas data for 5 demo tenants ═══");
 
   console.log(`\n═══ DPP / Volta Advisory (${DPP_TENANT}) ═══`);
@@ -530,5 +530,10 @@ async function seedCollection(colRef, docs, label) {
   console.log("  no platform-* spine workers). Already has 90 real transactions. No new records written.");
 
   console.log("\n═══ Seed complete ═══");
-  process.exit(0);
-})().catch(e => { console.error("FAILED:", e.message, e.stack); process.exit(1); });
+}
+
+module.exports = { seedSpineCanvasDemo };
+
+if (require.main === module) {
+  seedSpineCanvasDemo().then(() => process.exit(0)).catch(e => { console.error("FAILED:", e.message, e.stack); process.exit(1); });
+}

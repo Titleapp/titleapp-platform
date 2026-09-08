@@ -3,7 +3,7 @@
 // SPINE-4 staff-credential worker), and add VET-003, SPINE-4, and the Real
 // Estate worker (title-abstract-001) to Dr. Chen's workspace. Idempotent.
 const admin = require("firebase-admin");
-admin.initializeApp({ projectId: "title-app-alpha" });
+if (!admin.apps.length) admin.initializeApp({ projectId: "title-app-alpha" });
 const db = admin.firestore();
 const UID = "NHVBEVFSiBUFUzHUq5a9Xioc3hH2";
 const TENANT = "ws_1781920656122_tl9dhn";
@@ -58,7 +58,7 @@ const SPINE4_TABS = [
   { id: "reminders",   label: "Reminders",   signal: "card:staff-roster", order: 4 },
 ];
 
-(async () => {
+async function seedVet003() {
   // 1. dosing_orders (idempotent)
   const priorO = await db.collection("dosing_orders").where("tenantId", "==", TENANT).where("demo", "==", true).get();
   if (!priorO.empty) { const b = db.batch(); priorO.docs.forEach(d => b.delete(d.ref)); await b.commit(); console.log(`cleared ${priorO.size} prior orders`); }
@@ -98,5 +98,10 @@ const SPINE4_TABS = [
   const next = Array.from(new Set([...cur, ...add]));
   await wsRef.set({ activeWorkers: next }, { merge: true });
   console.log(`✓ activeWorkers now: ${next.join(", ")}`);
-  process.exit(0);
-})().catch(e => { console.error("FAILED:", e.message, e.stack); process.exit(1); });
+}
+
+module.exports = { seedVet003 };
+
+if (require.main === module) {
+  seedVet003().then(() => process.exit(0)).catch(e => { console.error("FAILED:", e.message, e.stack); process.exit(1); });
+}

@@ -171,6 +171,39 @@ The `DEMO_SHARED_UIDS` fix above stops one visitor's *conversation* from bleedin
 - `functions/functions/scripts/demo/seedTitleDemo.js` — exported as callable function, CLI usage preserved.
 - `functions/functions/scripts/demo/seedSkyePilotDemo.js` — exported as callable function, CLI usage preserved.
 - `functions/functions/index.js` — `resetTitleDemo` and `resetSkyeDemo` scheduled functions.
+
+---
+
+## Third follow-up (2026-09-07, same day): rolling the reset pattern out to more personas
+
+Continuing the scoped follow-up above. Result: **5 more personas now have a real scheduled reset** (7 of 17 total, up from 2), 2 more confirmed as needing dedicated work first, and one real near-miss bug caught before it shipped.
+
+### Investigated and wired
+
+- **`vet`** — `scripts/demo/seedVet003.js`, self-documented "Idempotent," refactored to the proven export pattern and manually re-run standalone (confirmed: correctly cleared 12 prior dosing orders, reseeded 12 fresh, no errors). New scheduled function: `resetVetDemo`.
+- **`msr-servicing` / `msr-borrower`** — `scripts/demo/seedMsrServicing.js`, self-documented "Idempotent — safe to run more than once," same treatment. New scheduled function: `resetMsrServicingDemo`.
+- **`traitly`, the broader `aviation` persona (Pacific Air, distinct from `skye-pilot` which `resetSkyeDemo` already covers), `brokerage`, `education`, and partially `uh-admin`** (nursing) — all five covered by a single script, `scripts/demo/seedSpineCanvasDemo.js`, discovered while investigating the `education`/`nursing` gap the prior pass couldn't identify with confidence. This script seeds the "back-of-house spine" layer only (`transactions`/`campaigns`/`contacts`/`teamMembers` — what the Accounting/Marketing/HR/Contacts dashboards actually read) for these five tenants in one already-tenant-scoped pass, with an explicit code comment citing the *same* 2026-08-20 unscoped-clear incident and confirming its own `clearDemo()` helper requires `tenantId` and throws if it's missing. Manually re-run standalone: confirmed correct, tenant-scoped clear+reseed logged for all five, and confirmed it correctly skips `demo-makai-nursing` (different persona, already has 90 real transactions, deliberately not touched) and correctly limits `uh-nursing` to transactions+teamMembers only (matching that tenant's real `activeWorkers` — no campaigns/contacts spine workers subscribed there). New scheduled function: `resetSpineCanvasDemos`.
+  - **Honest limitation**: this is a *partial* reset for these five — only the spine/back-office layer, not each tenant's vertical-specific data (DPP passport data, nursing clinical records, aviation worker-specific state, etc.), which have no scheduled reset yet.
+
+### Real near-miss caught before shipping
+
+`seedVet003.js` called `admin.initializeApp({ projectId: "title-app-alpha" })` with **no `admin.apps.length` guard** — unlike every other seed script in this codebase. Requiring it from `index.js` (which already has a default Firebase app initialized) crashed the entire function deployment at analysis time (`FirebaseAppError: The default Firebase app already exists`). Caught by the deploy itself, not a code review — fixed with the same one-line guard (`if (!admin.apps.length) admin.initializeApp(...)`) every other script already had, re-verified working standalone, redeployed clean. Worth a quick audit of any *other* not-yet-wired seed scripts for this same missing guard before wiring them — this specific failure mode only surfaces at require-time, not at standalone-CLI-run time, so a script can look perfectly fine running alone and still break the whole deploy once `require()`'d from `index.js`.
+
+### Investigated, deliberately NOT wired — flagged for dedicated follow-up
+
+- **`realestate`** (Merritt Capital Group) — no single seed script exists; the tenant's data is spread across 8 separate `seedRE*.js` files (`seedREAccounting.js`, `seedREContacts.js`, `seedREHRPeople.js`, `seedREInvestors.js`, `seedREMaintenanceTickets.js`, `seedREMarketingCampaigns.js`, `seedREOperatingFeed.js`, `seedREVaultDTCs.js`), none exported, none documented as idempotent as a set, no orchestrator. Composing these into one safe reset is real new work (untangling execution order and cross-script assumptions), not "wire up an existing proven script" — exactly the category this pass was told not to attempt. Flagged for dedicated design time.
+- **`traitly`'s own vertical-specific data** (beyond what `seedSpineCanvasDemo.js`'s spine layer covers) — the apparent canonical script, `scripts/demo/seedDppDemo.js`, is **not** self-documented as idempotent, and its own header comment says it was "not runnable from this environment (no Firebase CLI / service account configured on this machine as of 2026-08-13)" — meaning it may have **never actually been executed even once**. Wiring an unverified, possibly-never-run script into a recurring production schedule is a real risk (first-ever execution against live Firestore data, on a schedule, unattended) — not attempted. A related script, `seedDppPassport.js`, IS self-documented idempotent but seeds a different thing entirely (end-consumer product-passport data, not the `traitly` operator persona's own tenant) — out of scope for this specific persona's reset.
+- Also identified but not re-investigated this pass, since the naming is a trap worth flagging explicitly: `scripts/demo/seedEdu001.js` sounds education/nursing-related by name but actually seeds the **`vet`** persona's "EDU-001 CVT Exam Prep Worker" (veterinary technician exam prep, not human nursing/education) — confirmed via its hardcoded UID/tenant matching the `vet` persona exactly. Do not wire this thinking it's the `education`/nursing gap.
+
+### Updated rollout status: 7 of 17 personas now have a real scheduled reset
+`title`, `skye-pilot` (prior pass) + `vet`, `msr-servicing`/`msr-borrower`, `traitly`/`aviation`/`brokerage`/`education`/`uh-admin` (spine layer only, this pass) = 7 personas with some form of bounded reset; `realestate`, `nursing-admin`/`nursing-student` (`demo-makai-nursing`, deliberately untouched), and `traitly`'s non-spine data remain open, each requiring either composing multiple scripts safely or verifying/writing a script that doesn't exist yet — not something to rush.
+
+### Commits this section
+- `functions/functions/scripts/demo/seedVet003.js` — exported as callable function (with the `initializeApp` guard fix), CLI usage preserved.
+- `functions/functions/scripts/demo/seedMsrServicing.js` — exported as callable function, CLI usage preserved.
+- `functions/functions/scripts/demo/seedSpineCanvasDemo.js` — exported as callable function, CLI usage preserved.
+- `functions/functions/index.js` — `resetVetDemo`, `resetMsrServicingDemo`, `resetSpineCanvasDemos` scheduled functions.
+
 ---
 
 ## Fourth follow-up (2026-09-07, same day): closing out the client-side finding
