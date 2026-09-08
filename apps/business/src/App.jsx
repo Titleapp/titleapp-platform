@@ -5105,21 +5105,31 @@ export default function App() {
           } else if (sessionStorage.getItem("ta_redirect_page")) {
             // Redirect page is set (e.g., investor coming from /invest, or a
             // native aviation launch landing on "av-cockpit"/"av-copilot-001" —
-            // see main.jsx) — bypass hub. Auto-select the best tenant for the
-            // redirect target's vertical, fall back to first membership only
-            // if the user has no matching-vertical tenant at all (e.g. a
+            // see main.jsx) — bypass hub. Auto-select the best tenant, fall
+            // back to first membership only if no better match exists (e.g. a
             // multi-company account like Sean's, where "first membership"
             // could easily be an unrelated company — this exact bug shipped
             // once already: an aviation native launch landed a real user in
             // an unrelated tenant's default "Alex" worker instead of SKYE).
+            //
+            // Aviation is NOT a tenant-level `vertical` — a real tenant hosting
+            // an aviation worker can have vertical "general"/"GLOBAL" (it's a
+            // multi-vertical company, not an aviation-only one), so the only
+            // real signal is whether the tenant's own `activeWorkers` list
+            // actually has an aviation worker provisioned. Investor keeps the
+            // original vertical-based check since that one genuinely is a
+            // tenant-level classification.
             const redirectPageValue = sessionStorage.getItem("ta_redirect_page");
-            const preferredVertical = redirectPageValue && redirectPageValue.startsWith("av-") ? "aviation" : "investor";
+            const isAviationRedirect = redirectPageValue && redirectPageValue.startsWith("av-");
             const mems = data.memberships || [];
             const tenants = data.tenants || {};
             let bestTid = null;
             for (const m of mems) {
               const t = tenants[m.tenantId] || {};
-              if (t.vertical && t.vertical.toLowerCase() === preferredVertical) {
+              const matches = isAviationRedirect
+                ? Array.isArray(t.activeWorkers) && t.activeWorkers.some((w) => typeof w === "string" && w.startsWith("av-"))
+                : t.vertical && t.vertical.toLowerCase() === "investor";
+              if (matches) {
                 bestTid = m.tenantId;
                 break;
               }
