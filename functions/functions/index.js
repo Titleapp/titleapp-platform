@@ -35094,6 +35094,97 @@ Analyze now:`;
           return res.json({ ok: true, crewCheck: result });
         }
 
+        // CODEX S52.67 gap #3 — fleet-wide crew qualifications/currency
+        // roster for Dispatch. NOT a new database: reuses the exact same
+        // real, already-gated computation as `crewCheck` above
+        // (computePilotCurrency, computeDutyStatus, evaluateCrewMember),
+        // just applied to every distinct crew member who has ever appeared
+        // on this tenant's real crewSchedule (services/scheduling/
+        // crewScheduling.js), instead of one candidate at a time during a
+        // specific trip's release check.
+        //
+        // Honest limitation, stated plainly rather than assumed away:
+        // crewSchedule's `crewId` field is a free-form string set by
+        // whatever published the assignment (services/scheduling/
+        // crewScheduling.js's handleCreateAssignment does not validate it
+        // against Firebase Auth or `memberships` at write time) — it is NOT
+        // guaranteed to be a real platform uid. This endpoint only computes
+        // real currency/duty data for crewIds that DO resolve to an active
+        // membership on this tenant; every other crewId is returned with
+        // `linked: false` and no fabricated data, so a name-only or
+        // mistyped roster entry reads as "not linked to an account," never
+        // as a false "no data on file" that could be mistaken for a real
+        // currency gap.
+        case "crewRosterCurrency": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          if (!dctx.tenantId) return jsonError(res, 400, "Open an operator workspace to view the crew roster");
+          const memberGate = await requireMembershipIfNeeded({ uid: dctx.userId, tenantId: dctx.tenantId }, res);
+          if (!memberGate.ok) return memberGate;
+          const requesterRole = memberGate.membership && memberGate.membership.role;
+          if (requesterRole !== "admin" && requesterRole !== "owner") {
+            return jsonError(res, 403, "Forbidden", { reason: "Viewing fleet-wide crew currency requires an owner/admin role on this tenant" });
+          }
+
+          const assignSnap = await db.collection("crewSchedule").doc(dctx.tenantId)
+            .collection("assignments").orderBy("dutyStartZulu", "desc").limit(200).get();
+          const seen = new Map(); // crewId -> { crewId, crewName, role }
+          for (const doc of assignSnap.docs) {
+            const a = doc.data();
+            if (!a.crewId || seen.has(a.crewId)) continue;
+            seen.set(a.crewId, { crewId: a.crewId, crewName: a.crewName || null, role: a.role || null });
+          }
+          const candidates = Array.from(seen.values()).slice(0, 30); // cost cap — see MAX_POINTS-style caps elsewhere in this session's aviation work
+
+          if (candidates.length === 0) {
+            return res.json({ ok: true, roster: [], note: "No crew have appeared on this tenant's crewSchedule yet." });
+          }
+
+          // Resolve linkage (real active membership on THIS tenant) for
+          // every candidate in parallel before computing anything real —
+          // this is the tenant-scoping check Core Architectural Invariant #5
+          // exists for for this exact shape of cross-user query.
+          const membershipChecks = await Promise.all(candidates.map((c) =>
+            db.collection("memberships").doc(`${c.crewId}_${dctx.tenantId}`).get()
+              .catch(() => null)
+          ));
+
+          const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
+          const { computeDutyStatus } = require("./services/copilot/logic/dutyTimeTracker");
+          const { loadEffectiveLimits, evaluateCrewMember } = require("./services/dispatch/crewQualsEngine");
+          const effectiveLimits = await loadEffectiveLimits(db, dctx.tenantId);
+
+          const linkedUids = [];
+          const roster = await Promise.all(candidates.map(async (c, i) => {
+            const memDoc = membershipChecks[i];
+            const linked = !!(memDoc && memDoc.exists && memDoc.data()?.status === "active");
+            if (!linked) {
+              return { crewId: c.crewId, crewName: c.crewName, role: c.role, linked: false };
+            }
+            linkedUids.push(c.crewId);
+            const [currency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap] = await Promise.all([
+              computePilotCurrency(db, c.crewId),
+              db.collection("dutyPeriods").doc(c.crewId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
+              db.collection("dutyPeriods").doc(c.crewId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
+              db.collection("logbooks").doc(c.crewId).collection("entries").get(),
+            ]);
+            const dutyPeriods = dutyPeriodsSnap.docs.map((d) => d.data());
+            const activeDuty = activeDutySnap.empty ? null : activeDutySnap.docs[0].data();
+            const logEntries = logEntriesSnap.docs.map((d) => d.data());
+            const dutyStatus = computeDutyStatus(dutyPeriods, logEntries, activeDuty);
+            const check = evaluateCrewMember({ pilotUserId: c.crewId, role: c.role, currency, dutyStatus, effectiveLimits });
+            return { crewId: c.crewId, crewName: c.crewName, role: c.role, linked: true, crewCheck: check };
+          }));
+
+          if (linkedUids.length > 0) {
+            await db.collection("crewDataAccessLog").add({
+              requestingUid: dctx.userId, tenantId: dctx.tenantId, crewUidsAccessed: linkedUids,
+              purpose: "dispatch_crew_roster_currency", accessedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          return res.json({ ok: true, roster });
+        }
+
         // Step 2 (parallel) + step 3 (re-validation) — see
         // services/dispatch/tripVerification.js for why these are two
         // distinct calls, not the same function relabeled. Both gated the

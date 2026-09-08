@@ -537,7 +537,21 @@ function scheduleToBlocks(requests) {
 // pilot's personal Vault (GET /v1/pilot:currency) and is not readable
 // cross-crew by Dispatch. So this view shows the real duty-assignment
 // roster and computed duty hours — never invented cert/medical data.
-function crewRosterToBlocks(assignments) {
+// CODEX S52.67 gap #3 addendum (2026-09-08): `currencyRoster`, when present,
+// is the real, live GET /v1/dispatch:crewRosterCurrency result — one entry
+// per distinct crewId seen in crewSchedule, each either `linked:true` (a
+// real active membership on this tenant, with real computed currency/duty
+// via the SAME evaluateCrewMember() the Release Flight dialog's crewCheck
+// already uses) or `linked:false` (crewId doesn't resolve to a platform
+// account — no data fabricated for it). `currencyRoster` is null when that
+// fetch failed or the caller isn't owner/admin (gated server-side) — in
+// that case this renders the same honest "not available" notice as before,
+// now correctly scoped to "you don't have access" rather than "doesn't exist."
+function currencyBandColor(band) {
+  return band === "GREEN" ? "#4ade80" : band === "YELLOW" ? "#fbbf24" : band === "RED" ? "#f87171" : "#64748b";
+}
+
+function crewRosterToBlocks(assignments, currencyRoster) {
   const list = assignments || [];
   if (!list.length) return [{
     type: "cards",
@@ -565,11 +579,38 @@ function crewRosterToBlocks(assignments) {
     title: `${onDuty.length} crew currently on duty`,
     detail: onDuty.length ? onDuty.map(a => `${a.crewName || a.crewId} (${a.role})`).join(", ") : "No open duty periods on file right now",
   }];
-  return [
+
+  const blocks = [
     { type: "heroes", items: heroes },
     { type: "table", title: "Crew duty roster — live from Firestore (crewSchedule)", cols: ["Crew", "Role", "Tail", "Trip", "Duty start", "Duty end", "Duty hrs", "Status"], rows },
-    { type: "prose", items: [{ band: "BLUE", title: "Qualifications and medical currency are not tracked here", text: "This platform has no fleet-wide crew qualifications, type-rating, or medical-currency database — each pilot's own currency lives in their personal Vault and isn't visible cross-crew. This view is the real duty-assignment roster only; §135.273 legality for a specific release is still computed in the Release Flight dialog from pilot-reported duty/rest/flight-hour inputs." }] },
   ];
+
+  if (!currencyRoster) {
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "Fleet-wide qualifications/currency not shown", text: "You need an owner/admin role on this tenant to view other crew members' currency/duty records (same gate as the Release Flight dialog's crew check), or this tenant has no open workspace right now. Each pilot can still see their own currency in their personal Vault." }] });
+  } else if (currencyRoster.length === 0) {
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "No crew currency data yet", text: "No crew have appeared on this tenant's schedule yet, so there's nothing to check currency for." }] });
+  } else {
+    const currencyCols = ["Crew", "Role", "Linked", "90-day", "Instrument", "Medical", "BFR", "61.57 IPC", "135.293", "135.297"];
+    const currencyRows = currencyRoster.map((m) => {
+      if (!m.linked) {
+        return [m.crewName || m.crewId, m.role || "—", "✗ not linked", "—", "—", "—", "—", "—", "—", "—"];
+      }
+      const c = m.crewCheck?.currency || {};
+      const chip = (item) => item ? { text: item.band === "RED" ? "EXPIRED" : item.band === "YELLOW" ? "DUE SOON" : item.band === "GREEN" ? "OK" : "—", color: currencyBandColor(item.band) } : { text: "no record", color: currencyBandColor("WHITE") };
+      const rec = chip(c.recency90Day?.current != null ? { band: c.recency90Day.band } : null);
+      const ins = chip(c.instrumentCurrency ? { band: c.instrumentCurrency.band } : null);
+      const med = chip(c.medical);
+      const bfr = chip(c.bfr);
+      const ipc = chip(c.ipc);
+      const rec293 = chip(c.typeRecurrent);
+      const ipc297 = chip(c.ipc297);
+      return [m.crewName || m.crewId, m.role || "—", "✓ linked", rec.text, ins.text, med.text, bfr.text, ipc.text, rec293.text, ipc297.text];
+    });
+    blocks.push({ type: "table", title: "Crew qualifications & currency — live per-pilot records (CODEX S52.67)", cols: currencyCols, rows: currencyRows });
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "Real data, self-reported provenance", text: "Currency comes from each pilot's own logged flights and self-logged currency events (medical/BFR/IPC/135.293/135.297) — there is no instructor/AME attestation-at-source yet, so treat \"OK\"/\"DUE SOON\"/\"EXPIRED\" as accurate to what's on file, not independently verified. \"not linked\" means this crewId from the schedule doesn't match an active account on this tenant — not a currency gap, a data-linkage gap." }] });
+  }
+
+  return blocks;
 }
 
 // Pax Manifest tab — real passenger manifests attached to trip requests
@@ -2533,8 +2574,15 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           const data = await apiGet(`/v1/dispatch:listTripRequests`);
           blocks = scheduleToBlocks(data.requests);
         } else if (cfg.kind === "crewRoster") {
-          const data = await apiGet(`/v1/scheduling:listSchedule`);
-          blocks = crewRosterToBlocks(data.assignments);
+          // CODEX S52.67 gap #3 — currency fetch runs alongside the existing
+          // duty-assignment fetch, not instead of it; a failure there
+          // (e.g. non-admin/owner role, or no tenant open) must not blank
+          // out the real duty roster that already worked before this pass.
+          const [data, currencyData] = await Promise.all([
+            apiGet(`/v1/scheduling:listSchedule`),
+            apiGet(`/v1/dispatch:crewRosterCurrency`).catch((e) => { console.warn("crewRosterCurrency fetch failed:", e.message); return null; }),
+          ]);
+          blocks = crewRosterToBlocks(data.assignments, currencyData?.roster || null);
         } else if (cfg.kind === "paxManifest") {
           const data = await apiGet(`/v1/dispatch:listTripRequests`);
           blocks = paxManifestToBlocks(data.requests);
