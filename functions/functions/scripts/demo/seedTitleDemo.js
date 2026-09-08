@@ -514,7 +514,13 @@ async function clearCollection(col, field = "demo") {
   return snap.size;
 }
 
-(async () => {
+// CODEX S52.65 follow-up (2026-09-07): exported as a plain async function
+// (was a bare top-level IIFE ending in process.exit()) so a live Cloud
+// Function can require() and call this to reset the shared /demo/title
+// tenant back to canonical seed state on a schedule, without killing the
+// function instance. The require.main guard below preserves the original
+// standalone `node scripts/demo/seedTitleDemo.js` CLI usage unchanged.
+async function seedTitleDemo() {
   console.log("═══ seedTitleDemo.js — ABC Title Company / Attorneys Title Henderson County TX ═══\n");
 
   // ── HR ─────────────────────────────────────────────────────────────────────
@@ -638,5 +644,10 @@ async function clearCollection(col, field = "demo") {
   Vault DTCs:           ${DTCS.length}
   Drive files:          ${DRIVE_FILES.length}
 `);
-  process.exit(0);
-})().catch(e => { console.error(e); process.exit(1); });
+}
+
+module.exports = { seedTitleDemo };
+
+if (require.main === module) {
+  seedTitleDemo().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+}

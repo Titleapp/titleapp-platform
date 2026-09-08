@@ -59,6 +59,12 @@ function isoDaysAgo(days) {
   return isoDaysFromNow(-days);
 }
 
+// CODEX S52.65 follow-up (2026-09-07): exported (was a bare `main()` call
+// ending in process.exit()) so a scheduled Cloud Function can require() and
+// invoke this to periodically restore /demo/skye's shared demo tenant —
+// re-running this naturally keeps the currency-expiration dates correctly
+// "within 30 days of now" too, which this script already computed at run
+// time by design. require.main guard below preserves standalone CLI usage.
 async function main() {
   const logCol = db.collection("logbookEntries");
 
@@ -249,4 +255,8 @@ async function main() {
   console.log("\n✓ SKYE demo pilot (Marcus Reyes, demo-skye-pilot-001) seeded.");
 }
 
-main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
+module.exports = { seedSkyePilotDemo: main };
+
+if (require.main === module) {
+  main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
+}

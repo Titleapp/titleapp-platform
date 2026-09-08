@@ -36912,6 +36912,49 @@ exports.resetMonthlyUsage = onSchedule(
   async () => { await handleResetMonthlyUsage(); }
 );
 
+// CODEX S52.65 follow-up (2026-09-07) — every public one-click demo shares
+// ONE fixed Firebase uid+tenantId across every real visitor (see
+// DEMO_SHARED_UIDS above and docs/CODEX-S52.65-Cross-Tenant-Session-Bleed.md).
+// The chat-session-resume fix stops one visitor's CONVERSATION from bleeding
+// into the next, but any real Firestore writes a demo visitor's session
+// triggers (notes, tool-call side effects, etc.) still land in the same
+// shared tenant and would otherwise accumulate indefinitely across every
+// future visitor. This does not achieve true per-visit isolation (that would
+// need a new tenant+full reseed per visit, a bigger change, not attempted
+// here) — it bounds the pollution window to at most this interval by
+// periodically restoring the tenant to its canonical seed state. Scoped to
+// /demo/title only for now (highest real-traffic demo today, per a live
+// incident — see the CODEX) — the same pattern (export the seed script's
+// main logic as a function, schedule it here) should be applied to the
+// other ~16 demo personas as a follow-up; each already has its own real seed
+// script under scripts/demo/ or scripts/, this is not a new mechanism.
+const { seedTitleDemo } = require("./scripts/demo/seedTitleDemo");
+
+exports.resetTitleDemo = onSchedule(
+  { schedule: "0 */2 * * *", timeZone: "America/Chicago", region: "us-central1" },
+  async () => {
+    console.log("[resetTitleDemo] restoring /demo/title canonical seed state");
+    await seedTitleDemo();
+    console.log("[resetTitleDemo] done");
+  }
+);
+
+// Second-highest-traffic demo today per the same CODEX — same pattern.
+// Re-running this also naturally re-computes the currency-expiration dates
+// as "within 30 days of now" (the script derives them from new Date() at
+// run time by design), so this schedule keeps /demo/skye's YELLOW-band
+// currency demo correct going forward too, not just resetting pollution.
+const { seedSkyePilotDemo } = require("./scripts/demo/seedSkyePilotDemo");
+
+exports.resetSkyeDemo = onSchedule(
+  { schedule: "0 */2 * * *", timeZone: "America/Chicago", region: "us-central1" },
+  async () => {
+    console.log("[resetSkyeDemo] restoring /demo/skye canonical seed state");
+    await seedSkyePilotDemo();
+    console.log("[resetSkyeDemo] done");
+  }
+);
+
 // ----------------------------
 // ADMIN: ACCOUNTING + REFUNDS
 // ----------------------------
