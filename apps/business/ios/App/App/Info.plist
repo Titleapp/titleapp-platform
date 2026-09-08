@@ -7,9 +7,25 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>SOCIII</string>
+        <string>SKYE</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Google Sign-In's REVERSED_CLIENT_ID, from GoogleService-Info.plist
+				     (registered for bundle id ai.sociii.aviation in the title-app-alpha
+				     Firebase project). GoogleSignIn-iOS redirects back to the app via
+				     this custom scheme after the system browser OAuth step; without it
+				     the sign-in flow has no way to return to the app. -->
+				<string>com.googleusercontent.apps.496560182504-fsj52pj3rarv7rot55fc9ivv90rg4fik</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
