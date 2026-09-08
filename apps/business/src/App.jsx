@@ -5103,14 +5103,23 @@ export default function App() {
             viewResolvedRef.current = true;
             transitionTo("app");
           } else if (sessionStorage.getItem("ta_redirect_page")) {
-            // Redirect page is set (e.g., investor coming from /invest) — bypass hub
-            // Auto-select the best tenant: prefer investor vertical, fall back to first
+            // Redirect page is set (e.g., investor coming from /invest, or a
+            // native aviation launch landing on "av-cockpit"/"av-copilot-001" —
+            // see main.jsx) — bypass hub. Auto-select the best tenant for the
+            // redirect target's vertical, fall back to first membership only
+            // if the user has no matching-vertical tenant at all (e.g. a
+            // multi-company account like Sean's, where "first membership"
+            // could easily be an unrelated company — this exact bug shipped
+            // once already: an aviation native launch landed a real user in
+            // an unrelated tenant's default "Alex" worker instead of SKYE).
+            const redirectPageValue = sessionStorage.getItem("ta_redirect_page");
+            const preferredVertical = redirectPageValue && redirectPageValue.startsWith("av-") ? "aviation" : "investor";
             const mems = data.memberships || [];
             const tenants = data.tenants || {};
             let bestTid = null;
             for (const m of mems) {
               const t = tenants[m.tenantId] || {};
-              if (t.vertical === "investor" || (t.vertical && t.vertical.toLowerCase() === "investor")) {
+              if (t.vertical && t.vertical.toLowerCase() === preferredVertical) {
                 bestTid = m.tenantId;
                 break;
               }
