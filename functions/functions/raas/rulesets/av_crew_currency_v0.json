@@ -1,0 +1,74 @@
+{
+  "id": "av_crew_currency_v0",
+  "version": "v0",
+  "domain": "aviation-crew-currency-governance",
+  "description": "Real-world crew-currency regulations are role-specific: a pilot's medical/BFR/instrument/135-check requirements (14 CFR Part 61 and 135) do not apply to a mechanic (14 CFR Part 65 A&P/IA requirements apply instead) or to a Dispatch ops-coordinator (no personal FAA currency certificate requirement applies to this codebase's 'dispatcher' role, which is a general operations-coordination duty, not the FAA-certificated Aircraft Dispatcher credential under 14 CFR Part 65 Subpart C — see dispatcherNote below). Extracted 2026-09-08 after a live smoke test found the crew-currency engine evaluating every crew member against the full pilot-currency checklist regardless of role, producing false 'expired/missing' results for non-pilots. This ruleset is the single source of truth for which regulatory currency checks apply to which duty role and their real thresholds — services/dispatch/crewQualsEngine.js reads roleCurrencyRequirements below programmatically rather than hardcoding a per-role check list in JS.",
+
+  "appliesTo": ["av-dispatch-001", "av-dispatch-board", "av-mx-001", "av-crew-scheduling", "av-currency-tracker"],
+
+  "roleCurrencyRequirements": {
+    "pilot": {
+      "citationNote": "14 CFR Part 61 (and Part 135 for on-demand charter/air-taxi operators, the default assumption for this platform's crew-legality engine per crewQualsEngine.js's CFR_135_267_FLOOR).",
+      "checks": [
+        { "key": "recency90Day", "label": "Day passenger-carrying currency", "citation": "14 CFR 61.57(a)(1)", "threshold": "3 takeoffs and 3 landings (any type) as sole manipulator of the controls within the preceding 90 days, to carry passengers." },
+        { "key": "nightCurrency", "label": "Night passenger-carrying currency", "citation": "14 CFR 61.57(a)(2)", "threshold": "3 takeoffs and 3 FULL-STOP landings within the preceding 90 days, during the period beginning 1 hour after sunset and ending 1 hour before sunrise, to carry passengers at night. Distinct from day currency above — a pilot can hold one and not the other; this codebase previously collapsed both into one day-only check, which is incorrect." },
+        { "key": "instrumentCurrency", "label": "Instrument currency", "citation": "14 CFR 61.57(c)", "threshold": "6 instrument approaches, holding procedures, and intercepting/tracking courses through navigational electronic systems within the preceding 6 calendar months, to act as PIC under IFR or in weather conditions below VFR minimums. A pilot outside this window has an additional 6-calendar-month 'grace period' (61.57(c)(3)) before an Instrument Proficiency Check (IPC, 61.57(d)) is required to reestablish currency — this ruleset's engine treats the base 6-month window as the GREEN/YELLOW/RED boundary and does not separately model the grace period; flag rather than silently apply it." },
+        { "key": "medical", "label": "Medical certificate", "citation": "14 CFR 61.23", "threshold": "Duration depends on medical class AND age at exam AND the class of operation being conducted (61.23(d) full table below) — this platform stores the pilot's own self-reported real expiration date rather than computing one from class+age, so the correct duration is whatever the pilot's actual FAA-issued certificate states. Reference table only, for sanity-checking an entered date, not for computing one: First-class — 12 calendar months (ATP ops) if under 40 at exam, 6 months if 40+; 12 months for commercial-privilege ops regardless of age. Second-class — 12 months for commercial-privilege ops regardless of age. Third-class (or unused portion of 1st/2nd class) for private/recreational/student ops — 60 months if under 40 at exam, 24 months if 40+. A self-reported expiration date more than 60 months from the exam/report date is not possible under any class/age combination and should be treated as a data-entry error, not a fact." },
+        { "key": "bfr", "label": "Flight review (BFR)", "citation": "14 CFR 61.56", "threshold": "Every 24 calendar months, from an authorized instructor (or an accepted alternative such as a phase of the FAA WINGS program or a proficiency check), to act as PIC." },
+        { "key": "ipc", "label": "Instrument Proficiency Check (61.57(d))", "citation": "14 CFR 61.57(c)/(d)", "threshold": "Required to reestablish instrument currency once both the 6-month currency window and its 6-month grace period have lapsed. Tracked here as its own 6-calendar-month-cadence event distinct from `instrumentCurrency` above (the raw approach/hold tally) — see file header note in pilotCurrency.js." },
+        { "key": "typeRecurrent", "label": "135.293 competency check / 135.351 recurrent training", "citation": "14 CFR 135.293 and 135.351", "threshold": "Annual (12 calendar months) competency check and recurrent ground/flight training for pilots in Part 135 operations. ASSUMPTION, stated explicitly: this codebase has no per-tenant signal distinguishing Part 91 vs. Part 135 operating rules (docs/CODEX-aviation-suite.md describes an `operationCategory` branch that does not actually exist anywhere in the code as of this ruleset's authoring) — this platform defaults conservatively to treating all pilot crew as Part 135, consistent with crewQualsEngine.js's existing CFR_135_267_FLOOR default. A pure Part 91 operator would not actually be subject to this check; that distinction is not yet modeled." },
+        { "key": "ipc297", "label": "135.297 instrument proficiency check", "citation": "14 CFR 135.297", "threshold": "Every 6 calendar months for pilots conducting Part 135 IFR operations — same Part-135-default assumption as typeRecurrent above applies." }
+      ]
+    },
+    "mx": {
+      "citationNote": "14 CFR Part 65 Subpart D (Mechanics) and Subpart E (Inspection Authorization) — NOT the Part 61/135 pilot requirements above. A mechanic was never required to hold a medical certificate, BFR, or any pilot currency item; evaluating one against those checks is a modeling error, not a real gap in their record.",
+      "checks": [
+        { "key": "apRecentExperience", "label": "A&P recent experience", "citation": "14 CFR 65.83", "threshold": "To exercise the privileges of an Airframe & Powerplant (A&P) certificate, a mechanic must have, within the preceding 24 months, either worked at least 6 months maintaining aircraft in the certificate's rating(s), or passed an approved refresher/competency exam — commonly summarized as '24 of the preceding 36 months' of recent maintenance experience. If neither condition is met, 65.83 requires demonstrating ability to a qualified inspector before exercising the certificate's privileges again." },
+        { "key": "iaRenewal", "label": "Inspection Authorization (IA) renewal", "citation": "14 CFR 65.93 (issuance) and 65.91-65.92 (privileges/renewal)", "threshold": "An IA is renewed annually (each March, on the anniversary structure FAA Order 8900.1 describes), contingent on meeting one of the real activity thresholds in 65.93(a) (e.g. performed at least 1 annual inspection for each 90 days held, or performed/supervised at least 2 major repairs, or attended an approved IA refresher course, or passed a written test) during the preceding 12 months. Distinct from, and in addition to, holding a current A&P — a mechanic can be a current A&P without a current IA, and vice versa is not possible (IA requires an underlying current A&P)." }
+      ]
+    },
+    "dispatcher": {
+      "citationNote": "This codebase's 'dispatcher' duty role (services/scheduling/crewScheduling.js VALID_ROLES) represents a general flight-operations/dispatch-coordination duty, not the FAA-certificated Aircraft Dispatcher credential under 14 CFR Part 65 Subpart C. Confirmed by inspection: nothing in this codebase issues, tracks, or references an Aircraft Dispatcher certificate number or the Part 65 Subpart C training/currency requirements that would attach to one. If a future tenant's dispatch staff DO hold that certificate, this ruleset does not yet model its currency requirements (recentcy of dispatch experience under 65.59, etc.) — that would need to be added as a real, separately-cited addition, not assumed to already be covered here.",
+      "checks": [],
+      "dispatcherNote": "No personal FAA regulatory currency requirement applies to this role as currently modeled in this codebase. Do not surface blocking or red items against a dispatcher for pilot-only or mechanic-only currency checks."
+    }
+  },
+
+  "hard_stops": [
+    {
+      "id": "crew-currency-no-cross-role-application",
+      "label": "Never apply one duty role's currency requirements to a crew member in a different duty role",
+      "logic": "A pilot's medical/BFR/instrument/135-check requirements (14 CFR 61/135) and a mechanic's A&P/IA requirements (14 CFR 65) are legally distinct requirement sets tied to distinct certificates. Applying one role's checklist to a different role produces a false 'expired/missing' determination — this is not a conservative error, it's an incorrect one, since the requirement was never real for that person.",
+      "trigger": "AI (or the underlying evaluateCrewMember computation) reports a pilot-only currency item (medical, BFR, IPC, 61.57 recency, 135.293/135.297) as expired, missing, or a blocking item for a crew member whose role is 'mx' or 'dispatcher'; or reports an A&P/IA item against a 'pilot' or 'dispatcher'.",
+      "on_fail": "Only surface the currency checks listed for that crew member's actual role in roleCurrencyRequirements above; for 'dispatcher', state plainly that no personal regulatory currency requirement applies rather than showing blank/expired fields."
+    },
+    {
+      "id": "crew-currency-no-fabricated-thresholds",
+      "label": "Never state a currency threshold, calendar window, or regulation citation not present in this ruleset or a verified primary FAA source",
+      "logic": "Currency thresholds are precise regulatory facts (exact day/month counts, exact CFR sections) — an approximate or misremembered number is not a safe substitute and could understate a real requirement.",
+      "trigger": "AI states a specific currency threshold or citation for a duty role/check not listed in roleCurrencyRequirements above.",
+      "on_fail": "State that this specific threshold isn't in the current ruleset and should be verified against the actual CFR text or the tenant's own OpSpec/GOM before being relied on."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "crew-currency-part135-assumption",
+      "label": "135.293/135.297 checks are applied to every pilot by conservative default, since this codebase has no real per-tenant Part 91 vs. 135 operating-rules signal",
+      "logic": "docs/CODEX-aviation-suite.md describes an operationCategory branch (Part 135 standard / HEMES / Part 91) that does not exist in the actual code as of this ruleset — the default-conservative Part 135 assumption elsewhere in crewQualsEngine.js (CFR_135_267_FLOOR) is extended here for consistency, not because every tenant is confirmed Part 135.",
+      "trigger": "A pilot's typeRecurrent or ipc297 check is surfaced as blocking or flagged.",
+      "message": "This check assumes Part 135 operations by platform default — confirm this tenant's actual operating rules if that assumption may not hold."
+    },
+    {
+      "id": "crew-currency-medical-self-reported",
+      "label": "Medical certificate expiration is the pilot's own self-reported date, not independently computed from class/age/exam date",
+      "logic": "See roleCurrencyRequirements.pilot.checks[medical].threshold's reference table — this platform trusts the self-reported expiration date rather than recomputing it, since it has no verified exam date or birthdate on file for most pilots.",
+      "trigger": "A medical certificate currency band is surfaced.",
+      "message": "Medical expiration is self-reported by the pilot, not independently verified against the real 61.23(d) duration table — sanity-check against the actual FAA-issued certificate."
+    }
+  ],
+
+  "disclaimer": "Crew currency checks in this platform are computed per duty role from real logged flights and self-reported currency events (pilots) or self-reported maintenance/inspection-authorization events (mechanics), governed by this ruleset's role-to-requirement mapping. No personal FAA currency check is modeled for the Dispatch ops-coordination role. Part 135-specific pilot checks (135.293/135.297) are applied by conservative platform default in the absence of a real per-tenant Part 91/135 signal. All Mode B (self-reported) currency data is tagged as such and is not independently attested by an instructor, AME, or IA inspector at source.",
+
+  "system_context": "You are governed by av_crew_currency_v0: pilot currency requirements (14 CFR 61.56, 61.57(a)(1)/(a)(2)/(c)/(d), 61.23, 135.293, 135.297) apply ONLY to crew members with role 'pilot'. Mechanic currency requirements (14 CFR 65.83 A&P recent experience, 65.93/65.91 IA renewal) apply ONLY to role 'mx'. The 'dispatcher' role in this codebase has no personal FAA regulatory currency requirement modeled — never state or imply a dispatcher's currency is expired, missing, or a compliance gap for a pilot- or mechanic-only requirement. Never invent a currency threshold or CFR citation not listed in this ruleset's roleCurrencyRequirements."
+}

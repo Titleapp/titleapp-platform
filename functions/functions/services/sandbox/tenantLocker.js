@@ -225,11 +225,54 @@ function buildWebSearchGovernanceDoc() {
   return _webSearchGovernanceDocCache;
 }
 
+// 2026-09-08 — av_crew_currency_v0 (role-aware crew currency governance).
+// Same ADDITIVE principle as WEB_SEARCH_GOVERNANCE above, but scoped: unlike
+// web_search/fetch_url this isn't a tool pushed into every worker, it's only
+// relevant to the aviation workers that actually surface crew-currency data,
+// so it's injected only for that explicit slug set rather than universally.
+const AV_CREW_CURRENCY_RULESET_FILE = "av_crew_currency_v0.json";
+const AV_CREW_CURRENCY_WORKER_IDS = new Set([
+  "av-dispatch-001", "av-dispatch-board", "av-mx-001", "av-crew-scheduling", "av-currency-tracker",
+]);
+let _crewCurrencyDocCache = null;
+function buildCrewCurrencyGovernanceDoc() {
+  if (_crewCurrencyDocCache) return _crewCurrencyDocCache;
+  try {
+    const raw = fs.readFileSync(path.join(RULESETS_DIR, AV_CREW_CURRENCY_RULESET_FILE), "utf-8");
+    const ruleset = JSON.parse(raw);
+    const lines = [`RAAS RULESET — ${ruleset.domain || "aviation-crew-currency-governance"} (role-aware crew currency)\n`];
+    if (ruleset.hard_stops?.length) {
+      lines.push("HARD STOPS (never violate):");
+      ruleset.hard_stops.forEach(h => lines.push(`  • ${h.logic || h.id}`));
+    }
+    if (ruleset.system_context) lines.push(`\n${ruleset.system_context}`);
+    if (ruleset.disclaimer) lines.push(`\n${ruleset.disclaimer}`);
+    const text = lines.join("\n");
+    _crewCurrencyDocCache = {
+      id: "__raas__av_crew_currency_v0",
+      name: "RAAS Rules — Crew Currency Governance (aviation Dispatch/MX)",
+      type: "system",
+      readOnly: true,
+      charCount: text.length,
+      createdAt: null,
+      text,
+    };
+  } catch (e) {
+    console.warn("[tenantLocker] failed to load av_crew_currency_v0 ruleset:", e.message);
+    _crewCurrencyDocCache = null;
+  }
+  return _crewCurrencyDocCache;
+}
+
 async function buildSystemDocs(workerId) {
   const cfg = WORKER_SYSTEM_DOCS[workerId];
   const docs = [];
   const wsDoc = buildWebSearchGovernanceDoc();
   if (wsDoc) docs.push(wsDoc);
+  if (AV_CREW_CURRENCY_WORKER_IDS.has(workerId)) {
+    const ccDoc = buildCrewCurrencyGovernanceDoc();
+    if (ccDoc) docs.push(ccDoc);
+  }
   if (!cfg) return docs;
   // 1. Live constraintRaasModules content (preferred — same source actually
   // injected into the model's prompt, so panel display can never drift from

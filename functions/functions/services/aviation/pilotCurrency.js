@@ -27,6 +27,17 @@
  *     accept screen) can surface that honestly instead of implying
  *     verification that doesn't exist yet.
  *
+ * 2026-09-08 addendum — `nightCurrency` given its own field (14 CFR
+ * 61.57(a)(2)). `recency90Day` below only ever checked DAY takeoffs/landings
+ * (61.57(a)(1)) even though `nightLandings90` was already being tallied —
+ * night passenger-carrying currency is a DISTINCT 90-day requirement (3
+ * full-stop landings between 1hr after sunset and 1hr before sunrise), and a
+ * pilot can be current on one and not the other. Found and fixed alongside
+ * raas/rulesets/av_crew_currency_v0.json's role-aware currency work. Treats
+ * every logged night landing as full-stop, since this platform's flight-log
+ * schema doesn't currently distinguish full-stop vs. touch-and-go for night
+ * landings — a stated simplification, not a hidden one.
+ *
  * 2026-09-05 addendum — 135.297 given its own field. `typeRecurrent` used to
  * collapse THREE distinct regulatory items into one slot: general recurrent
  * training (135.351, event type "type_recurrent") and BOTH the 135.293
@@ -124,6 +135,13 @@ async function _compute(db, targetUserId) {
       nightLandings: nightLandings90,
       current: dayLandings90 >= 3,
       band: dayLandings90 >= 3 ? "GREEN" : "RED",
+    },
+    // 14 CFR 61.57(a)(2) — distinct from recency90Day above (61.57(a)(1)).
+    // See file header 2026-09-08 addendum.
+    nightCurrency: {
+      nightLandings: nightLandings90,
+      current: nightLandings90 >= 3,
+      band: nightLandings90 >= 3 ? "GREEN" : "RED",
     },
     instrumentCurrency: {
       approaches6mo,

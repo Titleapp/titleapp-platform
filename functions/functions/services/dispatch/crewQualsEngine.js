@@ -207,12 +207,82 @@ function applyEffectiveLimitsToDutyStatus(dutyStatus, effective) {
   return { ...dutyStatus, limits };
 }
 
+// 2026-09-08 — role-aware currency checks (av_crew_currency_v0.json). Loaded
+// lazily via the same loadRuleset() every other ruleset in this codebase
+// goes through — see raas/rulesets/av_crew_currency_v0.json for the real
+// FAA citations behind each entry below and why role-awareness matters (a
+// live smoke test found mechanics and dispatchers being evaluated against
+// pilot-only medical/BFR/IPC requirements that were never theirs to hold).
+const CREW_CURRENCY_RULESET_ID = "av_crew_currency_v0";
+
+// Fallback check lists — used ONLY if the ruleset file fails to load (should
+// never happen in practice; loadRuleset() logs a warning if it does). Kept
+// in sync with av_crew_currency_v0.json's roleCurrencyRequirements by hand;
+// the ruleset file is the source of truth, this is a fail-safe, not a
+// duplicate authority.
+const FALLBACK_PILOT_CHECKS = [
+  { key: "recency90Day", label: "90-day recency (day landings)" },
+  { key: "nightCurrency", label: "90-day recency (night landings)" },
+  { key: "instrumentCurrency", label: "Instrument currency (6mo approaches/holds)" },
+  { key: "medical", label: "Medical certificate" },
+  { key: "bfr", label: "Flight review (BFR)" },
+  { key: "ipc", label: "Instrument proficiency check (61.57)" },
+  { key: "typeRecurrent", label: "135.293 competency check / recurrent training" },
+  { key: "ipc297", label: "135.297 instrument proficiency check" },
+];
+const FALLBACK_MX_CHECKS = [
+  { key: "apRecentExperience", label: "A&P recent experience (65.83)" },
+  { key: "iaRenewal", label: "Inspection Authorization renewal (65.93)" },
+];
+
+/**
+ * Which currency checks apply to a given duty role, and their display
+ * labels — sourced from av_crew_currency_v0.json's roleCurrencyRequirements
+ * so the regulation-to-role mapping lives in one governed place, not
+ * duplicated as a JS conditional. Unknown/missing role falls back to the
+ * full pilot check list (the platform's pre-existing conservative default)
+ * rather than showing nothing, but callers should treat that as a signal
+ * the crewSchedule assignment is missing a real role value.
+ */
+function currencyChecksForRole(role) {
+  let ruleset = null;
+  try {
+    const { loadRuleset } = require("../../raas/raas.engine");
+    ruleset = loadRuleset(CREW_CURRENCY_RULESET_ID);
+  } catch (e) {
+    console.warn(`[crewQualsEngine] Failed to load ${CREW_CURRENCY_RULESET_ID}:`, e.message);
+  }
+  const req = ruleset?.roleCurrencyRequirements;
+  if (role === "mx") {
+    const mxChecks = req?.mx?.checks;
+    return (Array.isArray(mxChecks) && mxChecks.length)
+      ? mxChecks.map(c => ({ key: c.key, label: c.label }))
+      : FALLBACK_MX_CHECKS;
+  }
+  if (role === "dispatcher") {
+    return []; // no personal FAA regulatory currency requirement — see ruleset's dispatcherNote.
+  }
+  // "pilot" or unknown/null role (conservative default, see docstring above).
+  const pilotChecks = req?.pilot?.checks;
+  return (Array.isArray(pilotChecks) && pilotChecks.length)
+    ? pilotChecks.map(c => ({ key: c.key, label: c.label }))
+    : FALLBACK_PILOT_CHECKS;
+}
+
 /**
  * Assemble the full, human-readable crew-legality check for one candidate
  * crew member — the underlying data the Dispatch accept screen shows
  * (CODEX 89 §4 step 4), not a bare pass/fail.
+ *
+ * `currency` is pilotCurrency.js's computePilotCurrency() output (used for
+ * role "pilot", and as the conservative fallback for an unknown/missing
+ * role). `mxCurrency` is mxCurrency.js's computeMxCurrency() output (used
+ * for role "mx"). A caller only needs to compute the one that matches the
+ * crew member's real role — see index.js's crewCheck/crewRosterCurrency
+ * routes for the real branching — but both params are accepted so this
+ * function can look up whichever role-appropriate source it needs.
  */
-function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effectiveLimits }) {
+function evaluateCrewMember({ pilotUserId, role, currency, mxCurrency, dutyStatus, effectiveLimits }) {
   const adjustedDuty = applyEffectiveLimitsToDutyStatus(dutyStatus, effectiveLimits.effective);
   const blockingItems = [];
   const softFlags = [];
@@ -226,22 +296,19 @@ function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effective
   }
 
   // Currency — hard-block on expired/missing, soft-flag on self-reported
-  // provenance and on approaching expiration.
-  const currencyChecks = [
-    { key: "recency90Day", label: "90-day recency (day/night landings)" },
-    { key: "instrumentCurrency", label: "Instrument currency (6mo approaches/holds)" },
-    { key: "medical", label: "Medical certificate" },
-    { key: "bfr", label: "Flight review (BFR)" },
-    { key: "ipc", label: "Instrument proficiency check (61.57)" },
-    // 2026-09-05 — split from a single collapsed "Type/135 recurrent" field
-    // (see services/aviation/pilotCurrency.js's 2026-09-05 addendum): a pilot
-    // can be current on one and due on the other, and Dispatch needs to
-    // block/flag them independently, not as one merged item.
-    { key: "typeRecurrent", label: "135.293 competency check / recurrent training" },
-    { key: "ipc297", label: "135.297 instrument proficiency check" },
-  ];
+  // provenance and on approaching expiration. 2026-09-08: which checks run,
+  // and which real data source they read from, is now role-aware (see
+  // currencyChecksForRole() and av_crew_currency_v0.json above) — a live
+  // smoke test found every crew member evaluated against the full pilot
+  // checklist regardless of role, which produced false "expired/missing"
+  // results for mechanics and dispatchers.
+  const currencySource = role === "mx" ? (mxCurrency || {}) : (currency || {});
+  const currencyChecks = currencyChecksForRole(role);
+  if (currencyChecks.length === 0 && role === "dispatcher") {
+    softFlags.push("No personal FAA regulatory currency requirement applies to this ops role (see av_crew_currency_v0.json).");
+  }
   for (const c of currencyChecks) {
-    const item = currency[c.key];
+    const item = currencySource[c.key];
     if (item == null) {
       blockingItems.push(`${c.label}: no record on file — cannot verify`);
       continue;
@@ -269,7 +336,11 @@ function evaluateCrewMember({ pilotUserId, role, currency, dutyStatus, effective
     pilotUserId,
     role: role || null,
     dutyStatus: adjustedDuty,
+    // pilot-currency shape is returned as `currency` for backward
+    // compatibility with existing callers; `mxCurrency` is additive, only
+    // populated when the caller supplied it (real for role "mx").
     currency,
+    ...(mxCurrency != null ? { mxCurrency } : {}),
     effectiveLimits: {
       values: effectiveLimits.effective,
       usingDefaultOpSpec: effectiveLimits.usingDefaultOpSpec,

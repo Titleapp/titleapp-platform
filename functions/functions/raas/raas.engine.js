@@ -612,6 +612,17 @@ const _chatRulesCache = {};
 // regardless of whether workerSlug has its own WORKER_RULESET_MAP entry.
 const WEB_SEARCH_GOVERNANCE_RULESET_ID = "web_search_governance_v1";
 
+// 2026-09-08 — av_crew_currency_v0 (role-aware crew currency governance, see
+// that file for the real FAA citations behind it). Unlike WEB_SEARCH_GOVERNANCE
+// above this is NOT truly universal — it only matters for the aviation
+// workers that actually surface crew-currency/qualifications data — so it
+// merges additively (same "compose, never replace" principle) but scoped to
+// this explicit worker-slug set rather than every worker on the platform.
+const AV_CREW_CURRENCY_RULESET_ID = "av_crew_currency_v0";
+const AV_CREW_CURRENCY_WORKER_SLUGS = new Set([
+  "av-dispatch-001", "av-dispatch-board", "av-mx-001", "av-crew-scheduling", "av-currency-tracker",
+]);
+
 function compileChatRules(ruleset) {
   if (!ruleset || !Array.isArray(ruleset.chat_rules)) return [];
   const compiled = [];
@@ -643,8 +654,13 @@ function loadChatRules(workerSlug) {
 
   // Merge: worker-specific rules (if any) + universal web-search governance
   // (CODEX S52.66 Phase 1.5 — applies even to workers with no WORKER_RULESET_MAP
-  // entry, since web_search/fetch_url are unconditional tools) + DEFAULT_CHAT_RULES.
-  const merged = [...compiled, ...compileChatRules(loadRuleset(WEB_SEARCH_GOVERNANCE_RULESET_ID)), ...DEFAULT_CHAT_RULES];
+  // entry, since web_search/fetch_url are unconditional tools) + scoped
+  // crew-currency governance (aviation Dispatch/MX/crew-scheduling workers
+  // only) + DEFAULT_CHAT_RULES.
+  const crewCurrencyRules = AV_CREW_CURRENCY_WORKER_SLUGS.has(workerSlug)
+    ? compileChatRules(loadRuleset(AV_CREW_CURRENCY_RULESET_ID))
+    : [];
+  const merged = [...compiled, ...compileChatRules(loadRuleset(WEB_SEARCH_GOVERNANCE_RULESET_ID)), ...crewCurrencyRules, ...DEFAULT_CHAT_RULES];
   _chatRulesCache[cacheKey] = merged;
   return merged;
 }

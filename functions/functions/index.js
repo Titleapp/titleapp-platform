@@ -35077,10 +35077,18 @@ Analyze now:`;
             });
           }
           const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
+          const { computeMxCurrency } = require("./services/aviation/mxCurrency");
           const { computeDutyStatus } = require("./services/copilot/logic/dutyTimeTracker");
           const { loadEffectiveLimits, evaluateCrewMember } = require("./services/dispatch/crewQualsEngine");
-          const [currency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap, effectiveLimits] = await Promise.all([
-            computePilotCurrency(db, b.pilotUserId),
+          // 2026-09-08 — role-aware: only compute the currency source that
+          // actually applies to this crew member's role (av_crew_currency_v0.json).
+          // A "dispatcher" needs neither; still runs computePilotCurrency as
+          // the conservative fallback source if role is unset, matching
+          // crewQualsEngine.js's documented fallback behavior.
+          const isMx = b.role === "mx";
+          const [currency, mxCurrency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap, effectiveLimits] = await Promise.all([
+            isMx ? Promise.resolve(null) : computePilotCurrency(db, b.pilotUserId),
+            isMx ? computeMxCurrency(db, b.pilotUserId) : Promise.resolve(null),
             db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
             db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
             db.collection("logbooks").doc(b.pilotUserId).collection("entries").get(),
@@ -35090,7 +35098,7 @@ Analyze now:`;
           const activeDuty = activeDutySnap.empty ? null : activeDutySnap.docs[0].data();
           const logEntries = logEntriesSnap.docs.map((d) => d.data());
           const dutyStatus = computeDutyStatus(dutyPeriods, logEntries, activeDuty);
-          const result = evaluateCrewMember({ pilotUserId: b.pilotUserId, role: b.role || null, currency, dutyStatus, effectiveLimits });
+          const result = evaluateCrewMember({ pilotUserId: b.pilotUserId, role: b.role || null, currency, mxCurrency, dutyStatus, effectiveLimits });
           return res.json({ ok: true, crewCheck: result });
         }
 
@@ -35149,6 +35157,7 @@ Analyze now:`;
           ));
 
           const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
+          const { computeMxCurrency } = require("./services/aviation/mxCurrency");
           const { computeDutyStatus } = require("./services/copilot/logic/dutyTimeTracker");
           const { loadEffectiveLimits, evaluateCrewMember } = require("./services/dispatch/crewQualsEngine");
           const effectiveLimits = await loadEffectiveLimits(db, dctx.tenantId);
@@ -35161,8 +35170,14 @@ Analyze now:`;
               return { crewId: c.crewId, crewName: c.crewName, role: c.role, linked: false };
             }
             linkedUids.push(c.crewId);
-            const [currency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap] = await Promise.all([
-              computePilotCurrency(db, c.crewId),
+            // 2026-09-08 — role-aware: only compute the currency source that
+            // actually applies (av_crew_currency_v0.json). Fixes a live-tested
+            // bug where every crew member was evaluated against the full
+            // pilot-currency checklist regardless of real duty role.
+            const isMx = c.role === "mx";
+            const [currency, mxCurrency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap] = await Promise.all([
+              isMx ? Promise.resolve(null) : computePilotCurrency(db, c.crewId),
+              isMx ? computeMxCurrency(db, c.crewId) : Promise.resolve(null),
               db.collection("dutyPeriods").doc(c.crewId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
               db.collection("dutyPeriods").doc(c.crewId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
               db.collection("logbooks").doc(c.crewId).collection("entries").get(),
@@ -35171,7 +35186,7 @@ Analyze now:`;
             const activeDuty = activeDutySnap.empty ? null : activeDutySnap.docs[0].data();
             const logEntries = logEntriesSnap.docs.map((d) => d.data());
             const dutyStatus = computeDutyStatus(dutyPeriods, logEntries, activeDuty);
-            const check = evaluateCrewMember({ pilotUserId: c.crewId, role: c.role, currency, dutyStatus, effectiveLimits });
+            const check = evaluateCrewMember({ pilotUserId: c.crewId, role: c.role, currency, mxCurrency, dutyStatus, effectiveLimits });
             return { crewId: c.crewId, crewName: c.crewName, role: c.role, linked: true, crewCheck: check };
           }));
 
