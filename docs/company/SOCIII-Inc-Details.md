@@ -34,7 +34,7 @@
 
 - **Patent filings (2026-05-24):** Applicant + Assignee on all six provisionals (64/073,693, 64/073,700, 64/073,704, 64/073,705, 64/073,706, 64/073,708)
 - **Stripe Treasury:** Provisioning underway
-- **DUNS:** application path TBD (free 30-day self-service via dnb.com, or $229 expedited)
+- **DUNS:** Resolved — **14-503-1310** (D-U-N-S® Number, confirmed 2026-09-08; came through Apple's own request path, no separate D&B account needed)
 - **Apple Developer / Google Play Console:** requires DUNS first
 - **Bank accounts:** Stripe Atlas standard banking
 - **Cap table:** Carta or Stripe Atlas-native (TBD)

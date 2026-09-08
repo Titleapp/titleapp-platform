@@ -24,8 +24,8 @@
 | **Apple ID created** | 2026-05-24 |
 | **2FA** | Enabled (required by Apple) |
 | **Organization** | SOCIII, Inc. |
-| **Enrollment status** | In progress — DUNS request submitted via Apple 2026-05-24 ~2:20 PM PT |
-| **DUNS** | Pending — Apple submits to D&B on SOCIII's behalf; expected 1-2 business days |
+| **Enrollment status** | Withdrawn 2026-09-08 by Apple — reason given: org website "must be publicly available, functional, and its domain name must be associated with your organization." Fixed 2026-09-08 (added real /about, /contact content — see docs/company/SOCIII-Inc-Details.md); resubmit via developer.apple.com/account once ready. Not a DUNS issue — DUNS is resolved (below). |
+| **DUNS** | **Resolved: 14-503-1310** (D-U-N-S® Number, confirmed 2026-09-08) |
 | **D-U-N-S linked to** | SOCIII Inc., 1810 E Sahara Ave, Las Vegas NV 89104 |
 | **DUNS contact on file** | Sean Combs, sean@sociii.ai, (310) 430-0780 |
 | **Password** | In password manager (do not record here) |
@@ -111,8 +111,8 @@
 
 | Field | Value |
 |---|---|
-| **DUNS number** | Pending — requested via Apple Developer enrollment |
-| **Direct D&B account** | Not opened (going through Apple's request path) |
+| **DUNS number** | **14-503-1310** (resolved 2026-09-08) |
+| **Direct D&B account** | Not opened (came through Apple's request path) |
 
 ---
 
