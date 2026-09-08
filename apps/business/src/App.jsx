@@ -5,6 +5,8 @@ import DemoWelcomeBanner from "./components/DemoWelcomeBanner";
 import WorkerLockerPanel from "./components/WorkerLockerPanel";
 import WorkerLibrarySection from "./components/WorkerLibrarySection";
 import LandingPage from "./components/LandingPage";
+import NativeSignIn from "./components/NativeSignIn";
+import { Capacitor } from "@capacitor/core";
 import OnboardingWizard from "./components/OnboardingWizard";
 import DppClientOnboarding from "./components/DppClientOnboarding";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
@@ -5935,7 +5937,17 @@ export default function App() {
 
   // Transition overlay removed — architectural fix (49.3)
 
-  if (!token || currentView === "login") return <LandingPage />;
+  // Native + flavored builds (SKYE, etc.) get a minimal sign-in screen
+  // instead of the full public marketing homepage — a cold native launch
+  // should feel like "the app," not the website. Web build is unaffected:
+  // Capacitor.isNativePlatform() is false there, so this always falls
+  // through to the original <LandingPage /> unchanged.
+  if (!token || currentView === "login") {
+    if (Capacitor.isNativePlatform() && import.meta.env.VITE_NATIVE_FLAVOR) {
+      return <NativeSignIn />;
+    }
+    return <LandingPage />;
+  }
 
   if (currentView === "onboarding") {
     return (
