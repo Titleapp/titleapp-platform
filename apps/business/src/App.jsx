@@ -3969,23 +3969,37 @@ function AdminShell({ onBackToHub, initialSection }) {
   // reset the panel and auto-fire state when switching workers.
   const panelRef = React.useRef(null);
   const autoFiredRef = React.useRef(null);
+  // A ta_redirect_page value that names a specific worker (the av-* slugs —
+  // see the switch in renderSection()) needs WorkerStateContext synced too,
+  // not just currentSection: ChatPanel reads workerCtx.activeWorkerData (via
+  // useWorkerState()) to decide whose persona/greeting to show, entirely
+  // independently of which canvas currentSection renders. Every OTHER path
+  // that opens a specific worker (ta:select-worker, ta_open_worker below)
+  // already calls workerCtx.selectWorker(slug) alongside setCurrentSection —
+  // this lazy initializer was the one place that set currentSection to a
+  // worker slug without the matching selectWorker call, so the canvas
+  // correctly showed the aviation worker while the chat sidebar kept
+  // defaulting to the generic Chief of Staff. Can't call selectWorker here
+  // directly (this runs during render, inside useState's initializer —
+  // calling another component's setState mid-render is unsafe); stash it in
+  // a ref and fire it from the effect right below instead.
+  const pendingWorkerSelectRef = React.useRef(null);
   const [currentSection, setCurrentSection] = useState(() => {
-    // TEMPORARY DIAGNOSTIC (2026-09-08) — confirms exactly what AdminShell's
-    // very first mount sees: whether initialSection was already truthy
-    // (skipping the sessionStorage read entirely) and what ta_redirect_page
-    // held at this exact moment — remove once the redirect is confirmed
-    // working end-to-end.
-    console.log("[ta_redirect_page] AdminShell mount — currentSection init:", {
-      initialSection, sessionStorageValue: sessionStorage.getItem("ta_redirect_page"),
-    });
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
     if (redirectPage) {
       sessionStorage.removeItem("ta_redirect_page");
+      if (redirectPage.startsWith("av-")) pendingWorkerSelectRef.current = redirectPage;
       return redirectPage;
     }
     return "dashboard";
   });
+  useEffect(() => {
+    if (pendingWorkerSelectRef.current && workerCtx?.selectWorker) {
+      workerCtx.selectWorker(pendingWorkerSelectRef.current);
+      pendingWorkerSelectRef.current = null;
+    }
+  }, [workerCtx]);
   const [dashboardKey, setDashboardKey] = React.useState(0);
   useEffect(() => {
     function handleNav(e) {
@@ -5154,15 +5168,6 @@ export default function App() {
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
               }
             }
-            // TEMPORARY DIAGNOSTIC (2026-09-08) — confirms resolveView() sees
-            // ta_redirect_page correctly and that it's STILL present in
-            // sessionStorage right before the "app" transition that mounts
-            // AdminShell (whose own lazy init is the only code that consumes
-            // it) — remove once the redirect is confirmed working end-to-end.
-            console.log("[ta_redirect_page] resolveView() ta_redirect_page branch:", {
-              redirectPageValue, bestTid, isAviationRedirect,
-              stillInSessionStorageBeforeTransition: sessionStorage.getItem("ta_redirect_page"),
-            });
             viewResolvedRef.current = true;
             transitionTo("app");
           } else if (localStorage.getItem("TENANT_ID")) {
