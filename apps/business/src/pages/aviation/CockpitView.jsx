@@ -31,6 +31,7 @@ import GpsPairingModal from "../../components/aviation/GpsPairingModal";
 import BriefStalenessBanner from "../../components/aviation/BriefStalenessBanner";
 import LaunchDisclaimerGate from "../../components/aviation/LaunchDisclaimerGate";
 import ScratchPad from "../../components/aviation/ScratchPad";
+import AviationProfileView from "../../components/canvas/AviationProfileView";
 import { SUPPLEMENTAL_FOOTER } from "../../components/aviation/aviationDisclaimers";
 
 // Real Hawaii operating bases — same ICAO set AviationMap defaults to and
@@ -128,7 +129,10 @@ export default function CockpitView() {
               Scratch Pad doesn't need to guess GpsStatusStrip's height. */}
           <div style={{ position: "absolute", top: 8, right: 8, zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <GpsStatusStrip gps={gps} onTapPair={() => setShowPairing(true)} />
-            <ScratchPad />
+            <div style={{ display: "flex", gap: 6 }}>
+              <ScratchPad />
+              <AviationProfileView />
+            </div>
           </div>
         </div>
 

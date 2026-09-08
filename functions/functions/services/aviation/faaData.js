@@ -378,6 +378,22 @@ const handleAirports = makePointHandler(getAirports, "FAA NASR US_Airport");
 const handleWaypoints = makePointHandler(getWaypoints, "FAA NASR DesignatedPoint");
 const handleNavaids = makePointHandler(getNavaids, "FAA NASR NavaidComponent");
 
+// GET /v1/aviation:airport?icao=PHNL — single-airport lookup (lat/lon/
+// elevation), exposing the getAirportByIcao helper above that already backs
+// Dispatch's alternate-airport selection internally. Added 2026-09-07 for
+// the Profile/terrain view's route-waypoint resolution: it needs a real
+// lat/lon (and field elevation, to anchor the climb/descent ends of the
+// planned-altitude line) for each waypoint identifier the pilot types in.
+async function handleAirportByIcao(req, res) {
+  const icao = req.query?.icao || req.body?.icao;
+  const result = await getAirportByIcao(icao);
+  if (result.error) {
+    res.status(400).json({ ok: false, error: result.error, code: "bad_request" });
+    return;
+  }
+  res.status(200).json({ ok: true, source: "FAA NASR US_Airport", ...result });
+}
+
 async function handleRunways(req, res) {
   const icao = req.query?.icao || req.body?.icao;
   const result = await getRunways({ icao });
@@ -390,6 +406,6 @@ async function handleRunways(req, res) {
 
 module.exports = {
   getTfrs, getAirspace, getAirports, getWaypoints, getNavaids, getRunways, getAirportByIcao,
-  handleTfr, handleAirspace, handleAirports, handleWaypoints, handleNavaids, handleRunways,
+  handleTfr, handleAirspace, handleAirports, handleWaypoints, handleNavaids, handleRunways, handleAirportByIcao,
   FAA_FEATURESERVERS,
 };

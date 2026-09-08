@@ -14546,6 +14546,40 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/aviation:airport?icao=PHNL — single-airport lookup (real
+    // lat/lon + field elevation from FAA NASR), exposing the getAirportByIcao
+    // helper faaData.js already uses internally for Dispatch's alternate-
+    // airport selection. Free, public, no auth (same posture as airports/
+    // navaids/pireps/tfr above). Added 2026-09-07 for the Profile/terrain
+    // view: it resolves each manually-entered route waypoint (ICAO/fix) to
+    // coordinates before sampling terrain along the route.
+    if (route === "/aviation:airport" && method === "GET") {
+      try {
+        const { handleAirportByIcao } = require("./services/aviation/faaData");
+        return await handleAirportByIcao(req, res);
+      } catch (e) {
+        console.error("aviation:airport failed:", e);
+        return jsonError(res, 500, "Airport lookup failed");
+      }
+    }
+
+    // POST /v1/aviation:elevation — ground elevation sampling for the SKYE
+    // aviation Profile view (vertical-profile / terrain-avoidance chart,
+    // ForeFlight's "Profile" tab equivalent). Proxies Open-Meteo's free,
+    // keyless Elevation API — see services/aviation/elevation.js for why this
+    // doesn't need webFetch/secureFetch's full SSRF allowlist (fixed host,
+    // no caller-supplied URL, just validated lat/lon pairs). Free, public,
+    // no auth. Added 2026-09-07.
+    if (route === "/aviation:elevation" && (method === "POST" || method === "GET")) {
+      try {
+        const { handleElevation } = require("./services/aviation/elevation");
+        return await handleElevation(req, res);
+      } catch (e) {
+        console.error("aviation:elevation failed:", e);
+        return jsonError(res, 500, "Elevation lookup failed");
+      }
+    }
+
     // NOTE (2026-09-05): GET /v1/aviation:squawks used to live here, reading
     // tenants/{tenantId}/squawks — a flat collection that held zero real
     // documents (checked directly) and was never what computeAirworthiness()
