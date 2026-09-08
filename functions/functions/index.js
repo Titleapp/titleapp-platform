@@ -14580,6 +14580,25 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET/POST /v1/aviation:offAirportSites?lat=&lon=&radiusNm= — off-airport
+    // landing site candidates for the Emergency Glide feature (CODEX S52.67
+    // gap #2) when no airport is within glide range. Proxies OpenStreetMap's
+    // free, keyless Overpass API for real farmland/meadow/golf-course
+    // features near a position — see services/aviation/offAirportSites.js
+    // for why this is an honest best-effort approximation, not a curated
+    // aviation landing-site database, and why it doesn't need webFetch/
+    // secureFetch's SSRF allowlist (fixed host, validated lat/lon/radius
+    // only, no caller-supplied URL). Free, public, no auth. Added 2026-09-08.
+    if (route === "/aviation:offAirportSites" && (method === "GET" || method === "POST")) {
+      try {
+        const { handleOffAirportSites } = require("./services/aviation/offAirportSites");
+        return await handleOffAirportSites(req, res);
+      } catch (e) {
+        console.error("aviation:offAirportSites failed:", e);
+        return jsonError(res, 500, "Off-airport site lookup failed");
+      }
+    }
+
     // NOTE (2026-09-05): GET /v1/aviation:squawks used to live here, reading
     // tenants/{tenantId}/squawks — a flat collection that held zero real
     // documents (checked directly) and was never what computeAirworthiness()

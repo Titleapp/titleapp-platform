@@ -860,7 +860,7 @@ export function Block({ block, onTabSwitch, onChatFill }) {
     case "syntheticPfd":
       return <div style={{ marginBottom: 18 }}><SyntheticPFD /></div>;
     case "nearest":
-      return <div style={{ marginBottom: 18 }}><AviationNearest /></div>;
+      return <div style={{ marginBottom: 18 }}><AviationNearest aircraftType={block.aircraftType} /></div>;
     case "aviationQrh":
       return <div style={{ marginBottom: 18 }}><AviationQRH initialProcedureId={block.procedureId} /></div>;
     default: return null;

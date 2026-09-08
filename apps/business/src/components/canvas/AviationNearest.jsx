@@ -1,7 +1,7 @@
 /**
- * AviationNearest.jsx — Nearest airports with glide-ring and arrival-altitude calculation.
+ * AviationNearest.jsx — Nearest airports with glide-ring and arrival-altitude
+ * calculation, plus off-airport landing site candidates (CODEX S52.67 gap #2).
  *
- * PC-12/47E: best glide = 118 KIAS → 15:1 glide ratio per POH/AFM.
  * Glide range (nm) = (altitude_ft / 6076.115) * glide_ratio
  * Arrival altitude (ft MSL) = current_alt - (dist_nm * 6076.115 / glide_ratio)
  *
@@ -10,8 +10,22 @@
  *   YELLOW — arrives 0–499 ft AGL (marginal — very low energy arrival)
  *   RED    — arrives below field elevation (cannot reach)
  *
- * Glide ratio must match the specific aircraft type's POH/AFM.
- * PC-12/47E = 15:1. Future: pull from Foundation document per aircraft reg.
+ * Glide ratio now comes from the real Aircraft Type profile
+ * (aircraftTypeProfiles.js `glideRatio` field) via the `aircraftType` prop,
+ * instead of a hardcoded constant for one aircraft — this was a real,
+ * flagged gap (CODEX S52.67): the ratio only matched one specific aircraft
+ * (PC-12/47E, 15:1) regardless of which aircraft was actually selected
+ * elsewhere in the app. Falls back to that same 15:1 PC-12/47E value when no
+ * `aircraftType` is passed or no profile matches, so existing chat-canvas
+ * callers that don't pass this prop see unchanged behavior — but the value
+ * is now sourced from one place (aircraftTypeProfiles.js) instead of two
+ * separate hardcoded copies.
+ *
+ * When no airport is within glide range (or none nearby at all), fetches
+ * off-airport landing site candidates — see offAirportCandidates state below
+ * and services/aviation/offAirportSites.js for the honest, approximate
+ * nature of that data (OpenStreetMap farmland/meadow/golf-course features,
+ * NOT a curated aviation landing-site database).
  *
  * Data: nearest airports from aviation:airports backend endpoint, filtered
  * to within 100nm of current GPS position.
@@ -21,19 +35,22 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
 
 // ── Glide calculation ─────────────────────────────────────────────────────────
-// PC-12/47E: 15:1 per POH/AFM (best glide 118 KIAS). Varies by aircraft type/wing shape.
-// TODO: pull from Foundation document keyed by aircraft registration.
-const GLIDE_RATIO = 15;
+// Fallback when no aircraftType prop is passed or it doesn't match a real
+// profile — PC-12/47E, 15:1 per POH/AFM (best glide 118 KIAS), the same
+// figure this file always used before it became aircraft-aware.
+const FALLBACK_GLIDE_RATIO = 15;
+const FALLBACK_AIRCRAFT_LABEL = "PC-12/47E";
 const FT_PER_NM  = 6076.115;
 
-function glideRangeNm(altitudeFt) {
-  return altitudeFt / FT_PER_NM * GLIDE_RATIO;
+function glideRangeNm(altitudeFt, glideRatio) {
+  return altitudeFt / FT_PER_NM * glideRatio;
 }
 
-function arrivalAltFt(currentAltFt, distNm) {
-  return Math.round(currentAltFt - (distNm * FT_PER_NM / GLIDE_RATIO));
+function arrivalAltFt(currentAltFt, distNm, glideRatio) {
+  return Math.round(currentAltFt - (distNm * FT_PER_NM / glideRatio));
 }
 
 function nmToMeters(nm) { return nm * 1852; }
@@ -99,6 +116,18 @@ function makeAirportDot(band) {
   });
 }
 
+// Distinct square/orange marker for off-airport candidates — visually
+// different from the round airport dots so it's never mistaken for a real
+// charted airport.
+const OFF_AIRPORT_ICON = L.divIcon({
+  html: `<svg width="12" height="12" viewBox="0 0 12 12">
+    <rect x="1" y="1" width="10" height="10" fill="#fb923c" stroke="#fff" stroke-width="1.5" transform="rotate(45 6 6)"/>
+  </svg>`,
+  className: "",
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
+});
+
 function MapFit({ position, airports }) {
   const map = useMap();
   useEffect(() => {
@@ -109,21 +138,27 @@ function MapFit({ position, airports }) {
   return null;
 }
 
-export default function AviationNearest() {
+export default function AviationNearest({ aircraftType }) {
   const [position, setPosition] = useState(null); // { lat, lon, altFt }
   const [altInput, setAltInput] = useState("8500");
   const [status, setStatus] = useState("idle"); // idle | locating | active | denied
   const [nearest, setNearest] = useState([]);
+  const [offAirportSites, setOffAirportSites] = useState({ status: "idle", sites: [], error: null }); // idle | loading | loaded | error
   const watchRef = useRef(null);
 
+  const matchedProfile = getAircraftTypeProfile(aircraftType);
+  const glideRatio = matchedProfile?.glideRatio ?? FALLBACK_GLIDE_RATIO;
+  const aircraftLabel = matchedProfile?.label || (aircraftType ? aircraftType : FALLBACK_AIRCRAFT_LABEL);
+  const glideRatioIsReal = matchedProfile?.glideRatio != null || !aircraftType; // real match, or the honest PC-12 fallback (also real/cited)
+
   const altFt = parseInt(altInput.replace(/,/g, ""), 10) || 0;
-  const rangeNm = glideRangeNm(altFt);
+  const rangeNm = glideRangeNm(altFt, glideRatio);
 
   function classifyAirport(apt, pos) {
     if (!pos) return { dist: null, bearing: null, band: "RED", arrivalAlt: null, marginAgl: null };
     const dist = distanceNm(pos.lat, pos.lon, apt.lat, apt.lon);
     const bearing = bearingDeg(pos.lat, pos.lon, apt.lat, apt.lon);
-    const arrival = arrivalAltFt(altFt, dist);
+    const arrival = arrivalAltFt(altFt, dist, glideRatio);
     const margin = arrival - apt.elev;
     // Band based on arrival margin above field elevation
     const band = margin >= 500 ? "GREEN" : margin >= 0 ? "YELLOW" : "RED";
@@ -141,7 +176,34 @@ export default function AviationNearest() {
       .map(apt => ({ ...apt, ...classifyAirport(apt, pos) }))
       .sort((a, b) => (a.dist ?? 999) - (b.dist ?? 999));
     setNearest(computed);
-  }, [altFt]);
+  }, [altFt, glideRatio]);
+
+  // No airport reachable (best case is YELLOW/RED, i.e. nothing GREEN) —
+  // fetch off-airport candidates. Only fires once per position+altitude
+  // settling, not on every keystroke (debounced via the effect below).
+  const noGoodAirport = position && nearest.length > 0 && !nearest.some(a => a.band === "GREEN");
+  useEffect(() => {
+    if (!noGoodAirport || !position) {
+      setOffAirportSites({ status: "idle", sites: [], error: null });
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setOffAirportSites({ status: "loading", sites: [], error: null });
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const radiusNm = Math.min(60, Math.max(5, Math.round(rangeNm)));
+        const resp = await fetch(`${apiBase}/api?path=${encodeURIComponent(`/v1/aviation:offAirportSites?lat=${position.lat}&lon=${position.lon}&radiusNm=${radiusNm}`)}`);
+        const json = await resp.json();
+        if (cancelled) return;
+        if (!json.ok) { setOffAirportSites({ status: "error", sites: [], error: json.error || "Lookup failed" }); return; }
+        setOffAirportSites({ status: "loaded", sites: json.sites || [], error: null });
+      } catch (e) {
+        if (!cancelled) setOffAirportSites({ status: "error", sites: [], error: e.message });
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [noGoodAirport, position?.lat, position?.lon, rangeNm]);
 
   function locate() {
     if (!navigator.geolocation) { setStatus("denied"); return; }
@@ -186,7 +248,9 @@ export default function AviationNearest() {
       <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <div style={{ color: "#475569", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Aircraft</div>
-          <div style={{ color: "#e2e8f0", fontSize: 13, fontFamily: "monospace", fontWeight: 600 }}>PC-12/47E · Best glide 118 KIAS · 15:1 (POH/AFM)</div>
+          <div style={{ color: "#e2e8f0", fontSize: 13, fontFamily: "monospace", fontWeight: 600 }}>
+            {aircraftLabel} · {glideRatio}:1{glideRatioIsReal ? " (POH/AFM)" : " — not sourced for this type, using PC-12/47E default"}
+          </div>
         </div>
         <div>
           <div style={{ color: "#475569", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Current altitude</div>
@@ -293,6 +357,19 @@ export default function AviationNearest() {
             );
           })}
 
+          {/* Off-airport candidates — orange diamonds, distinct from round airport dots */}
+          {noGoodAirport && offAirportSites.sites.map(site => (
+            <Marker key={`oa-${site.id}`} position={[site.lat, site.lon]} icon={OFF_AIRPORT_ICON}>
+              <Popup>
+                <div style={{ fontFamily: "monospace", fontSize: 12, background: "#0d1117", color: "#e2e8f0", padding: 6, borderRadius: 4 }}>
+                  <strong>{site.label}</strong> (uncharted)<br />
+                  {site.distNm} nm from position<br />
+                  <span style={{ color: "#a8a29e", fontSize: 10 }}>OpenStreetMap — not a curated aviation site</span>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
           {position && <MapFit position={position} airports={nearest} />}
         </MapContainer>
       </div>
@@ -377,8 +454,40 @@ export default function AviationNearest() {
         })}
       </div>
 
+      {/* Off-airport candidates — only surfaced when no airport reaches GREEN.
+          See services/aviation/offAirportSites.js for why this is an honest
+          geographic approximation (OSM farmland/meadow/golf-course features),
+          not a curated aviation off-airport-landing database. */}
+      {noGoodAirport && (
+        <div style={{ padding: "0 14px 12px" }}>
+          <div style={{ borderRadius: 8, border: "1px solid #7c2d12", background: "rgba(124,45,18,0.15)", padding: "10px 12px" }}>
+            <div style={{ color: "#fb923c", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+              ⚠ No airport reaches GREEN — off-airport candidates (uncharted, approximate)
+            </div>
+            {offAirportSites.status === "loading" && <div style={{ color: "#94a3b8", fontSize: 11 }}>Searching nearby open fields/golf courses…</div>}
+            {offAirportSites.status === "error" && <div style={{ color: "#f87171", fontSize: 11 }}>{offAirportSites.error}</div>}
+            {offAirportSites.status === "loaded" && offAirportSites.sites.length === 0 && (
+              <div style={{ color: "#94a3b8", fontSize: 11 }}>No open-field/golf-course candidates found within glide range in OpenStreetMap data — this does not mean none exist, only that OSM doesn't have them tagged.</div>
+            )}
+            {offAirportSites.status === "loaded" && offAirportSites.sites.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {offAirportSites.sites.slice(0, 8).map(site => (
+                  <div key={site.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#e2e8f0" }}>
+                    <span>{site.label}</span>
+                    <span style={{ color: "#94a3b8", fontFamily: "monospace" }}>{site.distNm} nm</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ color: "#a8a29e", fontSize: 9, marginTop: 6, lineHeight: 1.4 }}>
+              From OpenStreetMap, not a curated aviation landing-site database — no surface, slope, obstruction, or power-line survey. Uncharted. This is a last-resort reference, not a recommendation. PIC judgment governs actual site selection.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "0 14px 12px", color: "#334155", fontSize: 10, textAlign: "center" }}>
-        Arrival altitude = current MSL − (dist × 6076 ft/nm ÷ 15:1 glide ratio per PC-12/47E POH/AFM).
+        Arrival altitude = current MSL − (dist × 6076 ft/nm ÷ {glideRatio}:1 glide ratio, {aircraftLabel}{glideRatioIsReal ? " POH/AFM" : " — default, not this aircraft's real ratio"}).
         Does not account for wind, terrain, or obstacle clearance. Verify with AFM. Not for navigation.
       </div>
     </div>
