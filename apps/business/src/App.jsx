@@ -3995,11 +3995,26 @@ function AdminShell({ onBackToHub, initialSection }) {
     return "dashboard";
   });
   useEffect(() => {
-    if (pendingWorkerSelectRef.current && workerCtx?.selectWorker) {
-      workerCtx.selectWorker(pendingWorkerSelectRef.current);
+    // 2026-09-08 (2nd pass) — the direct `workerCtx.selectWorker(...)` call this
+    // effect used to make was silently a no-op: AdminShell sits OUTSIDE where
+    // WorkerStateProvider actually wraps things (AppShell.jsx renders the
+    // Provider around ITS OWN children; AdminShell renders <AppShell> as ITS
+    // output, one level further out). AdminShell's own useWorkerState() call
+    // above therefore reads the context's default/null value, never the real
+    // provider instance ChatPanel sees — confirmed live: currentSection and
+    // the tenant were both correct, only the chat sidebar's persona stayed on
+    // the generic default. AppShell.jsx already has the correct, tested
+    // pattern for exactly this "select a worker from outside the provider"
+    // case — WorkerSelectListener, a tiny component rendered INSIDE
+    // AppShell/WorkerStateProvider that listens for a window "ta:select-worker"
+    // event and calls the REAL ctx.selectWorker from inside the provider's own
+    // subtree. Reuse that real, already-working mechanism instead of a second,
+    // broken direct-context-call path.
+    if (pendingWorkerSelectRef.current) {
+      window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: { slug: pendingWorkerSelectRef.current } }));
       pendingWorkerSelectRef.current = null;
     }
-  }, [workerCtx]);
+  }, []);
   const [dashboardKey, setDashboardKey] = React.useState(0);
   useEffect(() => {
     function handleNav(e) {
