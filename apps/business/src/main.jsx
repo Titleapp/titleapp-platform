@@ -54,12 +54,29 @@ if (NATIVE_FLAVOR === "realestate" && window.location.pathname === "/" && !windo
 // URL Type in Info.plist — that registration lives in the generated,
 // gitignored ios/ project, so it isn't part of this diff either; add it when
 // building the real native project.
+//
+// 2026-09-08 — real bug found via device testing: the ONLY URL scheme
+// actually registered in Info.plist right now is Google Sign-In's
+// REVERSED_CLIENT_ID (com.googleusercontent.apps.<...> — GoogleSignIn-iOS's
+// documented, universal scheme format for returning from the system OAuth
+// browser to the app). This listener's original "any URL with a query
+// string is a portal deep link" check has no way to tell that callback
+// apart from a real portal link, so a successful Google sign-in was
+// triggering an unwanted reload to `/portal?<oauth-callback-params>` —
+// discarding in-memory app state (including the aviation flavor's
+// ta_redirect_page handshake below) mid-flow and landing the user on the
+// generic default worker instead of SKYE. Real sign-in itself still
+// completed correctly (the auth SDK's own internal handling of this same
+// callback is separate from this listener), only the POST-sign-in
+// navigation broke. Explicitly ignore any callback using that scheme
+// family — it's Google's own documented convention, not a one-off guess.
 import("@capacitor/core").then(({ Capacitor }) => {
   if (!Capacitor.isNativePlatform()) return;
   import("@capacitor/app").then(({ App: CapApp }) => {
     CapApp.addListener("appUrlOpen", ({ url }) => {
       try {
         const target = new URL(url);
+        if (target.protocol.startsWith("com.googleusercontent.apps")) return;
         if (target.search) {
           window.history.replaceState(null, "", `/portal${target.search}`);
           window.location.reload();
