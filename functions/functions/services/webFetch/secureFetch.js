@@ -198,4 +198,4 @@ async function secureLookup({ workerSlug, topic, tenantId, userId }) {
   return { ok: true, url: parsed.toString(), text, truncated };
 }
 
-module.exports = { secureLookup, extractVisibleText, isPrivateOrLinkLocalIp };
+module.exports = { secureLookup, extractVisibleText, isPrivateOrLinkLocalIp, assertPublicHostname };

@@ -605,24 +605,47 @@ const _chatRulesCache = {};
  * @param {string} workerSlug - Worker slug (e.g., "platform-accounting")
  * @returns {Array|null} Compiled chat rules array, or null if no dedicated ruleset
  */
+// CODEX S52.66 Phase 1.5 (2026-09-07) — web_search/fetch_url tools are pushed
+// into EVERY worker's tool list unconditionally in index.js, not gated per
+// worker like WORKER_RULESET_MAP. This ruleset's chat_rules therefore merge
+// in universally below, the same way DEFAULT_CHAT_RULES already does,
+// regardless of whether workerSlug has its own WORKER_RULESET_MAP entry.
+const WEB_SEARCH_GOVERNANCE_RULESET_ID = "web_search_governance_v1";
+
+function compileChatRules(ruleset) {
+  if (!ruleset || !Array.isArray(ruleset.chat_rules)) return [];
+  const compiled = [];
+  for (const rule of ruleset.chat_rules) {
+    try {
+      compiled.push({ id: rule.id, pattern: new RegExp(rule.pattern, rule.flags || "i"), message: rule.message });
+    } catch (e) {
+      console.warn(`[enforcement] Skipping invalid chat_rule pattern "${rule.id}":`, e.message);
+    }
+  }
+  return compiled;
+}
+
 function loadChatRules(workerSlug) {
   const rulesetId = WORKER_RULESET_MAP[workerSlug];
-  if (!rulesetId) return null;
+  const cacheKey = rulesetId || "__none__";
+  if (_chatRulesCache[cacheKey]) return _chatRulesCache[cacheKey];
 
-  if (_chatRulesCache[rulesetId]) return _chatRulesCache[rulesetId];
+  let compiled = [];
+  if (rulesetId) {
+    const ruleset = loadRuleset(rulesetId);
+    // Preserve the exact prior failure signal workerCanary.js's #42 guard
+    // depends on — a mapped ruleset that fails to load (or loads with zero
+    // chat_rules) must still surface as null here, not get masked by the
+    // universal web-search governance merge below.
+    if (!ruleset || !ruleset.chat_rules || ruleset.chat_rules.length === 0) return null;
+    compiled = compileChatRules(ruleset);
+  }
 
-  const ruleset = loadRuleset(rulesetId);
-  if (!ruleset || !ruleset.chat_rules || ruleset.chat_rules.length === 0) return null;
-
-  const compiled = ruleset.chat_rules.map((rule) => ({
-    id: rule.id,
-    pattern: new RegExp(rule.pattern, rule.flags || "i"),
-    message: rule.message,
-  }));
-
-  // Merge: worker-specific rules + universal DEFAULT_CHAT_RULES
-  const merged = [...compiled, ...DEFAULT_CHAT_RULES];
-  _chatRulesCache[rulesetId] = merged;
+  // Merge: worker-specific rules (if any) + universal web-search governance
+  // (CODEX S52.66 Phase 1.5 — applies even to workers with no WORKER_RULESET_MAP
+  // entry, since web_search/fetch_url are unconditional tools) + DEFAULT_CHAT_RULES.
+  const merged = [...compiled, ...compileChatRules(loadRuleset(WEB_SEARCH_GOVERNANCE_RULESET_ID)), ...DEFAULT_CHAT_RULES];
+  _chatRulesCache[cacheKey] = merged;
   return merged;
 }
 

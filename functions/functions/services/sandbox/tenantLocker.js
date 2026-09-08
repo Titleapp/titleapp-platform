@@ -185,10 +185,52 @@ const WORKER_SYSTEM_DOCS = {
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");
 
+// CODEX S52.66 Phase 1.5 (2026-09-07) — web_search/fetch_url are pushed into
+// EVERY worker's tool list unconditionally in index.js (not gated per-worker
+// like everything else in WORKER_SYSTEM_DOCS above), so their governance
+// ruleset must be injected the same way: universally, regardless of whether
+// this workerId has its own entry above. This is ADDITIVE — it composes
+// alongside a worker's own vertical ruleset, never replaces it, and adding it
+// here (rather than retrofitting every existing single-value WORKER_SYSTEM_DOCS
+// entry to hold multiple rulesets) avoids any regression risk to the
+// compliance rulesets already wired for accounting/HR/marketing/nursing/
+// title-RE/DPP/etc.
+const WEB_SEARCH_GOVERNANCE_RULESET_FILE = "web_search_governance_v1.json";
+let _webSearchGovernanceDocCache = null;
+function buildWebSearchGovernanceDoc() {
+  if (_webSearchGovernanceDocCache) return _webSearchGovernanceDocCache;
+  try {
+    const raw = fs.readFileSync(path.join(RULESETS_DIR, WEB_SEARCH_GOVERNANCE_RULESET_FILE), "utf-8");
+    const ruleset = JSON.parse(raw);
+    const lines = [`RAAS RULESET — ${ruleset.domain || "web-search-governance"} (applies to every worker with web_search/fetch_url access)\n`];
+    if (ruleset.hard_stops?.length) {
+      lines.push("HARD STOPS (never violate):");
+      ruleset.hard_stops.forEach(h => lines.push(`  • ${h.logic || h.id}`));
+    }
+    if (ruleset.system_context) lines.push(`\n${ruleset.system_context}`);
+    const text = lines.join("\n");
+    _webSearchGovernanceDocCache = {
+      id: "__raas__web_search_governance_v1",
+      name: "RAAS Rules — Web Search & Fetch Governance (universal)",
+      type: "system",
+      readOnly: true,
+      charCount: text.length,
+      createdAt: null,
+      text,
+    };
+  } catch (e) {
+    console.warn("[tenantLocker] failed to load web_search_governance_v1 ruleset:", e.message);
+    _webSearchGovernanceDocCache = null;
+  }
+  return _webSearchGovernanceDocCache;
+}
+
 async function buildSystemDocs(workerId) {
   const cfg = WORKER_SYSTEM_DOCS[workerId];
-  if (!cfg) return [];
   const docs = [];
+  const wsDoc = buildWebSearchGovernanceDoc();
+  if (wsDoc) docs.push(wsDoc);
+  if (!cfg) return docs;
   // 1. Live constraintRaasModules content (preferred — same source actually
   // injected into the model's prompt, so panel display can never drift from
   // real enforcement). Falls back to the legacy static-file ruleset only if

@@ -90,6 +90,23 @@ const SOURCE_REGISTRY = {
   // agree): $1.50/session actual cost. Same standard 2x markup ⇒ $3.00
   // charged. Nothing charged this before today.
   "stripe:identity_verification": { actualCentsPerUnit: 150, markup: 2.0, label: "Stripe Identity verification session" },
+
+  // CODEX S52.66 Phase 1.5 (2026-09-07) — web_search/fetch_url tools (every
+  // worker, unconditional) existed with real Brave Search calls but ZERO
+  // cost tracking before this. ESTIMATE, not an invoiced rate: Brave's
+  // publicly documented "Base" Search API tier was ~$3/1000 queries
+  // (~$0.003/query) as of last knowledge — deliberately rounded UP to
+  // 1¢/query here (actualCentsPerUnit can't represent sub-cent amounts
+  // cleanly with this registry's cent-integer + Math.round shape) as a
+  // conservative buffer covering the Wikipedia/HN fallback calls and our own
+  // compute, not a precise pass-through. RECONFIRM against Brave's current
+  // invoice before treating this as a real margin number.
+  "brave:web_search":    { actualCentsPerUnit: 1, markup: 2.0, label: "Brave web search (worker web_search tool) — ESTIMATED rate, reconfirm vs. invoice" },
+  // fetch_url has no third-party per-call vendor fee (it's a direct fetch,
+  // not a metered API) — actualCentsPerUnit: 0 means this event is recorded
+  // for audit/usage-tracking visibility (Sean's "don't get caught over our
+  // skis" ask) without billing the user for SOCIII's own bandwidth/compute.
+  "web:fetch_url":       { actualCentsPerUnit: 0, markup: 1.0, label: "Direct URL fetch (worker fetch_url tool) — no vendor fee, tracked for audit only" },
 };
 
 function getSourceConfig(source) {
