@@ -117,6 +117,39 @@ function getDocPipeline() {
 
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
+
+// SEC-2026-09-07b — every /v1/demo:token persona (see the PERSONAS map inside
+// the "/demo:token" route below) signs EVERY real visitor into the SAME fixed
+// uid+tenantId — that's intentional for one-click public demos, but it means
+// the chat-session "resume most recent session" continuity feature (see
+// SESSION_RESUME_MAX_AGE_MS below) can hand one demo visitor's in-progress
+// conversation to the very next, unrelated visitor of the same public demo
+// URL — reproduced live (Sean, recording a /demo/title Loom, got a reply in
+// Chinese from a prior visitor's session). The chatSessions tenantId fix
+// (SEC-2026-09-07, same file) does NOT protect against this case, because
+// here the tenantId genuinely IS the same for every visitor by design — the
+// missing dimension is per-VISITOR identity, which these shared logins never
+// had. Real fix: never attempt session-resume continuity for these uids;
+// each demo visit always starts fresh. Keep this list in sync with the
+// PERSONAS map's `uid` values (a future refactor should hoist PERSONAS to
+// module scope and derive this from it directly instead of maintaining two
+// lists — flagged, not done here, to keep this fix small and low-risk).
+const DEMO_SHARED_UIDS = new Set([
+  "NHVBEVFSiBUFUzHUq5a9Xioc3hH2", // vet (demo@sociii.ai)
+  "qJZesWZclFZO0Xwp1l5PxE16Bnj2", // realestate (re-demo@sociii.ai)
+  "demo-nursing-admin-001",
+  "sara-kahele-demo", // nursing-student, uh-student, vet-client, re-tenant
+  "demo-uh-admin-001",
+  "demo-msr-compliance-001",
+  "demo-msr-borrower-001",
+  "demo-title-admin-001",
+  "demo-title-buyer-001",
+  "demo-aviation-alex-001",
+  "demo-skye-pilot-001",
+  "demo-brokerage-jordan-001",
+  "demo-education-patricia-001",
+  "demo-traitly-elise-001",
+]);
 // S52.28c — sovereign strategy context prepended to every hand-rolled surface
 // prompt in this file (investor, discovery, sandbox, developer, contact,
 // authoring intercept). Prompts that flow through assemblePrompt() already
@@ -4293,7 +4326,11 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         // tab 10 minutes ago) without carrying a demo's history into the
         // next day's session.
         const SESSION_RESUME_MAX_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
-        if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
+        // SEC-2026-09-07b — never resume continuity for a shared public-demo
+        // login (see DEMO_SHARED_UIDS above): every visitor to /demo/title,
+        // /demo/skye, etc. shares the same uid+tenantId by design, so resume
+        // would hand one visitor's in-progress conversation to the next.
+        if (!sessionSnap.exists && authUser && !DEMO_SHARED_UIDS.has(authUser.uid) && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
             // SEC-2026-09-07 — this used to match on userId alone, with no
             // tenant check. A single uid can hold memberships in more than

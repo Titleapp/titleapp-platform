@@ -97,3 +97,26 @@ Added an explicit, permanent invariant to `CLAUDE.md`'s "Core Architectural Inva
 - `functions/functions/index.js` — `chatMessages` tenant-scoping fix (see diff for exact lines).
 - `CLAUDE.md` — new Core Architectural Invariant #5.
 - `docs/CODEX-S52.65-Cross-Tenant-Session-Bleed.md` — this section.
+
+---
+
+## URGENT ADDENDUM (2026-09-07, same day): the real, LIVE symptom — public demo cross-visitor bleed
+
+While the follow-up sweep above was in progress, Sean reproduced a **live, on-camera symptom**: recording a Loom of the public `/demo/title` demo, it answered a question in Chinese out of nowhere — reproduced twice, also seen independently by a separate audit fork. Sean's hypothesis: *"we have a situation in which the demo doesn't reset when a new user comes in, but rather leaves a remnant."* Confirmed correct, and root-caused precisely.
+
+### Why the original fix didn't cover this
+
+Every public one-click demo (`/demo/title`, `/demo/skye`, `/demo/vet`, and ~15 other personas — the full `PERSONAS` map inside the `/demo:token` route, `functions/functions/index.js` ~L2072) signs **every real visitor into the exact same fixed Firebase `uid` and `tenantId`** — e.g. `title` → uid `demo-title-admin-001`, tenant `demo-attorneys-title-001`, for literally everyone who ever loads `/demo/title`. This is intentional (a real, designed one-click-demo mechanism, confirmed via `TitleDemoSignIn.jsx` → `GET /v1/demo:token&persona=title` → `signInWithCustomToken`) — but it means the tenantId scoping fix from earlier today provides **zero protection here**: that fix correctly stops one uid's session from resuming under a *different* tenant, but here the tenant and uid are the same for every visitor by design. The missing dimension is per-**visitor** identity, which these shared demo logins never had. A code comment already on this exact line (dated 2026-08-20, predating today) documents this bug having already surfaced once before ("a demo/title walkthrough from yesterday was silently carried into today's session") — that earlier fix only bounded the resume window to 8 hours, it never addressed *who* the resumed session could belong to.
+
+### Fix, deployed today
+
+Added `DEMO_SHARED_UIDS` (`index.js`, module scope, near the top of the file) — an explicit set of all 14 unique fixed demo uids currently in the `PERSONAS` map — and excluded them from the session-resume-continuity path (the same `if (!sessionSnap.exists && authUser && ...)` gate already used to skip resume for other special surfaces like `invest`/`developer`/`sandbox`). Any visitor to any public demo now always starts a genuinely fresh session; no visitor can inherit a prior visitor's in-progress conversation, language, or context.
+
+**Known limitation, not fixed in this pass**: this closes the "resume most recent session for this uid" path. It does NOT change what happens if the same browser reuses its own cached `ta_chat_session_id` from a previous visit (`localStorage`, client-side) — a genuinely fresh visitor with a clean browser is fully protected, but repeated manual testing in the same non-incognito browser tab could still show the previous test's session directly (a different, lower-severity mechanism, expected behavior for a literal repeat visit from the identical browser state, not a cross-visitor leak).
+
+**Also not fixed, flagged as technical debt**: `DEMO_SHARED_UIDS` is a manually-maintained list that must be kept in sync with `PERSONAS` by hand — a future refactor should hoist `PERSONAS` to module scope and derive this list from it directly (`Object.values(PERSONAS).map(p => p.uid)`) rather than maintaining two lists that can drift.
+
+**Verified**: `node -c` syntax check passed; deployed (`firebase deploy --only functions:api`, succeeded); confirmed the live `/demo:token?persona=title` endpoint still responds correctly post-deploy (still mints a token for `demo-title-admin-001` as expected — this fix doesn't change token minting, only session-resume behavior). **Full behavioral end-to-end verification** (two sequential fresh-browser visits within the resume window, confirming visitor B never sees visitor A's conversation) was not performed in this pass — recommended before Sean's next demo recording.
+
+### Commit
+- `functions/functions/index.js` — `DEMO_SHARED_UIDS` registry + resume-skip condition.
