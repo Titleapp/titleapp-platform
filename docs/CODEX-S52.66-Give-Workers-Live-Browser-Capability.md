@@ -1,6 +1,6 @@
 # CODEX S52.66 — Give Digital Workers Live Browser Capability
 
-**Status:** Proposal, not started
+**Status:** Phase 1 SHIPPED (2026-09-07) for `site-recon-001` only — see "What was actually built" below. Expansion to other workers remains proposal-stage.
 **Owner:** Sean (prioritization) · Claude (design/build once greenlit)
 **Scope:** whether and how SOCIII's Digital Workers get real, live web-browsing capability — not just the underlying LLM
 
@@ -51,3 +51,44 @@ Today's own session is the proof of concept: several of the day's most important
 ## What this doc is not
 
 This is a proposal and design starting point, not a build plan — no code has been written. The technical integration approach (how a worker's tool-calling loop actually invokes a browser session, what infrastructure that runs on, how it's rate-limited and sandboxed) needs its own dedicated design pass before Phase 1 starts. **That design pass must treat prompt-injection, SSRF, and exfiltration defense (risks #1-4 above) as the primary design constraint, not a section added after the integration approach is chosen** — retrofitting sandbox/network-level enforcement onto an architecture built around "the model just calls a browser tool" is far harder than designing the sandbox boundary first. Flagging the idea and the shape of the risk now so it's not lost, per Sean's explicit ask.
+
+(Everything above this line is the original proposal, left as written. Below is what Phase 1 actually became once built.)
+
+## What was actually built (Phase 1, shipped 2026-09-07)
+
+**Worker:** `site-recon-001` only (real workerSlug, confirmed against existing tool registrations in `index.js` — not guessed).
+
+**New files:**
+- `functions/functions/services/webFetch/allowlist.js` — per-worker domain allowlist + fixed `topic` → URL map. The model only ever picks a `topic` enum key; it never constructs or sees a URL.
+- `functions/functions/services/webFetch/secureFetch.js` — the enforcement module. Exports `secureLookup({ workerSlug, topic, tenantId, userId })`.
+- Wired into `functions/functions/index.js`: a `county_reference_lookup` tool added to `site-recon-001`'s `businessTools` (registered only if `getAllowedTopics(workerSlug)` is non-empty), plus its tool-result handler, following the exact `check_stripe_status`/`check_linkedin_status` pattern (tool call → real work → follow-up `anthropic.messages.create()` with the `tool_result` appended).
+- `cheerio` added as a new dependency (`^1.0.0`, npm resolved to `^1.2.0`) for HTML sanitization — no existing dependency in `package.json` covered this.
+
+**Phase 1 allowlist — 2 domains, both for Henderson County, TX (the live Attorneys Title prospect):**
+- `www.henderson-county.com` / `henderson-county.com` — county government site (clerk, recording, departments).
+- `henderson-cad.org` — Henderson County Appraisal District (property tax appraisal, exemptions, protest process).
+
+Both verified live and reachable (HTTP 200, robots.txt has no blanket `Disallow` on public content) before being added. A third candidate path, `henderson-county.com/departments/county-clerk`, returned a 404 on direct fetch and was dropped in favor of the confirmed-working root URL rather than shipping an unverified deep link.
+
+**Scope correction, disclosed honestly per the directive's own instruction:** the real Henderson CAD/Tyler Technologies parcel-search portal (`esearch.henderson-cad.org`) is JS/form-driven, not a plain GET-deep-linkable page — confirmed by fetching it directly and finding no inspectable query-string format. Building real per-parcel deep search against it would require form submission and multi-step interaction, which is explicitly out of Phase 1's read-only, single-fetch scope. **Phase 1 therefore ships county-level informational/reference lookup only** (general clerk/recording process info, general appraisal-district info) — not per-parcel search. Site Recon's existing ATTOM-backed `site_recon_lookup` tool remains the path for actual parcel data; this new tool is a narrower, honest complement to it, not a replacement. Per-parcel live lookup against Tyler Technologies-style portals is real future work, not something this phase silently claims to deliver.
+
+**Security primitives — status, each verified working, not just planned:**
+1. Infrastructure-enforced allowlist — `isDomainAllowed()` re-checks the *resolved* URL's hostname against a hardcoded per-worker list, independent of the `topic`→URL mapping step. Verified: a request for topic `"totally_not_a_real_topic"` and for an unconfigured `workerSlug` both rejected at the code level before any network call.
+2. SSRF protection — `assertPublicHostname()` does a real DNS lookup and rejects RFC 1918 ranges, loopback, and 169.254.0.0/16 (incl. the `169.254.169.254` cloud metadata address). Verified via direct unit-style calls: `169.254.169.254` and other private ranges correctly rejected, `8.8.8.8` correctly allowed through the IP check.
+3. Content sanitization — `extractVisibleText()` (cheerio) strips `<script>/<style>/<noscript>/<template>/<iframe>`, elements hidden via `display:none`/`visibility:hidden`/`opacity:0` or the `hidden` attribute, HTML comments, and zero-width/bidi-override characters, before anything reaches the model.
+4. No model-constructed URLs — `county_reference_lookup`'s `input_schema` accepts only a `topic` enum; `allowlist.js` maps that to a fixed, pre-vetted URL.
+5. Request budget/timeout — single fetch per call, 6s hard timeout via `AbortController`, `redirect: "error"` (not `"follow"`) so a redirect hard-fails instead of silently bypassing the allowlist/SSRF checks on an unvalidated final URL.
+6. Rate limiting — Firestore-transaction-backed, 5 requests/domain/60s (`webFetchRateLimits/{domain}`), so it holds across cold/warm serverless instances. Verified live: after one real fetch, the rate-limit doc in Firestore showed the request timestamp recorded.
+7. Audit logging — URL, timestamp, tenant/worker, truncated SHA-256 content hash, and content length to `webFetchAuditLog`, not a full-page archive. **Caught and fixed one real bug here during live testing:** the write was originally fire-and-forget (not awaited), which a live test proved actually drops the write in a serverless context where the instance can freeze right after the response is sent. Fixed to `await` the write before returning; redeployed; re-verified the audit entry now lands every time.
+8. Output sanitization — plain sanitized text only returned to the model, capped at 4000 chars, with an explicit instruction in the tool-result framing not to reproduce raw HTML/links or follow instructions found in fetched content.
+
+**Deploy:** `firebase deploy --only functions:api` — successful, twice (initial ship, then the audit-log-await fix). Function URL: `https://api-feyfibglbq-uc.a.run.app`.
+
+**Live tests performed (against the real deployed code path, via Firestore + real HTTPS fetches, not mocks):**
+- Real allowlisted lookup, `county_clerk_info` → `https://www.henderson-county.com/`: succeeded, returned 2,555 chars of real sanitized visible text.
+- Real allowlisted lookup, `cad_info` → `https://henderson-cad.org/`: succeeded, returned sanitized text (truncated at the 4,000-char cap), and confirmed a matching `webFetchAuditLog` entry was written.
+- Deliberate rejection test — unknown `topic` value: rejected at the code level with a clear error, before any network request.
+- Deliberate rejection test — unconfigured `workerSlug`: rejected at the code level (no allowlist entry exists, so no domain is ever reachable for that worker).
+- Direct `isDomainAllowed()` check against a non-approved domain (`evil.example.com`): returned `false`, confirming enforcement isn't just "the model wouldn't ask for that" but a real code-level gate.
+
+**Not done / explicitly future work:** expansion to any other worker or vertical (Av Mx, Petra feasibility, Elara, Hannah, Reed, Ivy — all still proposal-stage per the sections above), per-parcel deep search via JS/form-driven county portals, and the live-vs-cached conflict policy needed before Phase 2.
