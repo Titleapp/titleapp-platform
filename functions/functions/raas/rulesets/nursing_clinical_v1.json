@@ -9,7 +9,11 @@
     "nursing-courses-001",
     "nursing-tutor-001",
     "nursing-comms-001",
-    "nursing-accreditation-001"
+    "nursing-accreditation-001",
+    "nursing-education-001",
+    "nursing-micro-001",
+    "nursing-ob-001",
+    "clinical-evaluation-001"
   ],
 
   "hard_stops": [

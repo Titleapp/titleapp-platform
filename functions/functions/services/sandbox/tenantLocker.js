@@ -132,6 +132,38 @@ const WORKER_SYSTEM_DOCS = {
     ],
   },
   "law-landuse-001": { rulesetFile: "law_landuse_v0.json", legalRefs: [] },
+  // CODEX S52.66 (2026-09-07) — nursing_clinical_v1's hard_stops (no
+  // fabricated ATI scores/clinical hours, no AI NCLEX-readiness declarations,
+  // no fake competency signoffs, required OER/ATI attribution, no unsupported
+  // accreditation claims) were written but NEVER actually injected into a
+  // live prompt for any of these 9 workers — this map was the only real
+  // injection path (same disclaimer as msr-servicing-001/re-title-search-001
+  // above: this folds hard_stops into the system prompt as instructions, it
+  // does not server-side block a response). CODEX S52.60 (2026-08-21) had
+  // already flagged nursing-education-001 specifically as having this exact
+  // gap when fixing MSR — flagged 17 days ago, never fixed until now. This
+  // includes nursing-education-001, the flagship worker real students and
+  // instructors use today, including the real UH Maui College partnership.
+  "nursing-records-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
+    { name: "FERPA — Family Educational Rights and Privacy Act", url: "https://www2.ed.gov/policy/gen/guid/fpco/ferpa/index.html" },
+  ] },
+  "nursing-courses-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [] },
+  "nursing-tutor-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [] },
+  "nursing-comms-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
+    { name: "FERPA — Family Educational Rights and Privacy Act", url: "https://www2.ed.gov/policy/gen/guid/fpco/ferpa/index.html" },
+  ] },
+  "nursing-accreditation-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
+    { name: "ACEN Accreditation Standards", url: "https://www.acenursing.org/accreditation-manual/" },
+    { name: "CCNE Standards for Accreditation", url: "https://www.aacnnursing.org/ccne-accreditation/accreditation-resources/baccalaureate-graduate/standards-procedures" },
+  ] },
+  "nursing-education-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
+    { name: "FERPA — Family Educational Rights and Privacy Act", url: "https://www2.ed.gov/policy/gen/guid/fpco/ferpa/index.html" },
+  ] },
+  "nursing-micro-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [] },
+  "nursing-ob-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [] },
+  "clinical-evaluation-001": { rulesetFile: "nursing_clinical_v1.json", legalRefs: [
+    { name: "ACEN Accreditation Standards", url: "https://www.acenursing.org/accreditation-manual/" },
+  ] },
 };
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");

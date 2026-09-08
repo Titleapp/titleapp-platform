@@ -530,6 +530,19 @@ const WORKER_RULESET_MAP = {
   "nursing-tutor-001": "nursing_clinical_v1",
   "nursing-comms-001": "nursing_clinical_v1",
   "nursing-accreditation-001": "nursing_clinical_v1",
+  // CODEX S52.66 (2026-09-07) — nursing-education-001 (the flagship worker
+  // real students/instructors actually use, incl. the real UH Maui College
+  // partnership) and its 3 siblings had ZERO ruleset coverage here despite
+  // CODEX S52.60 (2026-08-21) explicitly flagging nursing-education-001 as
+  // having "the identical gap" MSR was fixed for at the same time — flagged
+  // 17 days ago, never actually fixed. Same clinical-safety rules apply
+  // (no fabricated ATI scores/clinical hours, no AI NCLEX-readiness
+  // declarations, no fake competency signoffs) — this is the same
+  // nursing_clinical_v1 ruleset the 5 demo-suite workers above use.
+  "nursing-education-001": "nursing_clinical_v1",
+  "nursing-micro-001": "nursing_clinical_v1",
+  "nursing-ob-001": "nursing_clinical_v1",
+  "clinical-evaluation-001": "nursing_clinical_v1",
   // Aviation workers — Phase 2: RAAS as code (CODEX 42)
   // Aviation workers: core 3 use their own v1 rules (CoPilot/MX/Dispatch);
   // other aviation workers use aviation_hard_stops_v1 as the chat-level baseline.
