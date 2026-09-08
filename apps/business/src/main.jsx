@@ -105,8 +105,13 @@ if (import.meta.env.VITE_NATIVE_FLAVOR === "aviation" && window.location.pathnam
     (navigator.maxTouchPoints || 0) > 1
   );
   try {
-    sessionStorage.setItem("ta_redirect_page", isRealIPad ? "av-cockpit" : "av-copilot-001");
-  } catch { /* ignore — worst case, lands on the default dashboard */ }
+    const _val = isRealIPad ? "av-cockpit" : "av-copilot-001";
+    sessionStorage.setItem("ta_redirect_page", _val);
+    // TEMPORARY DIAGNOSTIC (2026-09-08) — confirms this branch actually ran
+    // and what got written; remove once the redirect is confirmed working
+    // end-to-end on a real device.
+    console.log("[ta_redirect_page] SET at main.jsx boot:", _val, "readback:", sessionStorage.getItem("ta_redirect_page"));
+  } catch (e) { console.log("[ta_redirect_page] setItem FAILED:", e); }
 }
 
 // Re-enable service worker with network-first strategy (safe from reload loops).

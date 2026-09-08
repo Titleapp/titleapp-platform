@@ -3970,6 +3970,14 @@ function AdminShell({ onBackToHub, initialSection }) {
   const panelRef = React.useRef(null);
   const autoFiredRef = React.useRef(null);
   const [currentSection, setCurrentSection] = useState(() => {
+    // TEMPORARY DIAGNOSTIC (2026-09-08) — confirms exactly what AdminShell's
+    // very first mount sees: whether initialSection was already truthy
+    // (skipping the sessionStorage read entirely) and what ta_redirect_page
+    // held at this exact moment — remove once the redirect is confirmed
+    // working end-to-end.
+    console.log("[ta_redirect_page] AdminShell mount — currentSection init:", {
+      initialSection, sessionStorageValue: sessionStorage.getItem("ta_redirect_page"),
+    });
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
     if (redirectPage) {
@@ -5146,6 +5154,15 @@ export default function App() {
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
               }
             }
+            // TEMPORARY DIAGNOSTIC (2026-09-08) — confirms resolveView() sees
+            // ta_redirect_page correctly and that it's STILL present in
+            // sessionStorage right before the "app" transition that mounts
+            // AdminShell (whose own lazy init is the only code that consumes
+            // it) — remove once the redirect is confirmed working end-to-end.
+            console.log("[ta_redirect_page] resolveView() ta_redirect_page branch:", {
+              redirectPageValue, bestTid, isAviationRedirect,
+              stillInSessionStorageBeforeTransition: sessionStorage.getItem("ta_redirect_page"),
+            });
             viewResolvedRef.current = true;
             transitionTo("app");
           } else if (localStorage.getItem("TENANT_ID")) {
