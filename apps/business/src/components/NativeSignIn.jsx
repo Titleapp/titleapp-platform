@@ -83,11 +83,8 @@ export default function NativeSignIn() {
         setSubmitting(false);
         return;
       }
-      // TEMPORARY DIAGNOSTIC (2026-09-08) — surface the real error on-screen
-      // while wiring this up for the first time; remove once Google Sign-In
-      // is confirmed working end-to-end.
       console.error("[NativeSignIn] Google sign-in failed:", err);
-      setError(`Google sign-in failed: ${err?.code || "unknown"} — ${err?.message || String(err)}`);
+      setError("Google sign-in failed. Try again.");
       setSubmitting(false);
     }
   }
