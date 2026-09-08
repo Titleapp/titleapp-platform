@@ -17428,6 +17428,16 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       const { workerId, slug } = body;
       if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
       try {
+        // CODEX S52.65 follow-up: the chatMessages preview query below was userId-only,
+        // same vulnerability class as the fixed chatSessions bug. NOTE: `subscriptions`
+        // docs do NOT use a plain `tenantId` field — they use a `ownerType`/`ownerId`
+        // discriminator (see the "49.32 discriminator fields drive resolveSubscription"
+        // comment near subscription writes, and middleware/resolveSubscription.js) —
+        // a naive `.where("tenantId", ...)` filter here would silently match zero real
+        // documents and break subscription-status checks for everyone. Left unfixed
+        // here deliberately; needs a proper ownerType/ownerId-aware fix, flagged in
+        // CODEX S52.65 rather than guessed at.
+        const _reqTenantId = getCtx(req, body, user).tenantId || "vault";
         // Find subscription
         const subsQuery = db.collection(`subscriptions`)
           .where("userId", "==", user.uid)
@@ -17463,6 +17473,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         try {
           const chatQuery = db.collection(`chatMessages`)
             .where("userId", "==", user.uid)
+            .where("tenantId", "==", _reqTenantId)
             .where("workerId", "==", workerId || slug)
             .orderBy("createdAt", "desc")
             .limit(4);
