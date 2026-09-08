@@ -159,6 +159,15 @@ const ARTICLES = [
     tag: "Manifesto",
     accent: "#ea580c",
   },
+  {
+    slug: "wearables-hands-free-workers",
+    title: "Your Digital Worker just grew a body — coming soon on RealWear",
+    subtitle: "A pilot with a copilot who never sleeps. A mechanic with a literal extra hand. A nurse who gets an 80% workday back. What happens when a governed Digital Worker moves off the screen and onto your face.",
+    date: "2026-09-08",
+    readingMinutes: 4,
+    tag: "Product",
+    accent: "#0B7A6E",
+  },
 ];
 
 const PRESS_RELEASE_BODIES = {
@@ -1196,6 +1205,42 @@ const ARTICLE_BODIES = {
       </p>
       <p>
         Open above, closed below. The model that built RedHat. The model that built HuggingFace. The model that's going to build SOCIII. The moat is exactly where it should be — in the part nobody can see.
+      </p>
+    </>
+  ),
+  "wearables-hands-free-workers": (
+    <>
+      <p>
+        A pilot's hands are on the yoke and the throttle. A mechanic's hands are inside an open cowling. A nurse's hands are on a patient, not a keyboard. For three professions where the job physically will not let go of your hands, we've been building a Digital Worker experience that assumes you have a screen and ten free fingers. That assumption was always wrong for the people who need this the most.
+      </p>
+      <p>
+        We're building support for RealWear's hands-free, voice-driven headsets — coming soon. Here's what changes.
+      </p>
+
+      <h2>The pilot gets a copilot who never blinks</h2>
+      <p>
+        Right now, SKYE lives in an app. Soon, SKYE lives in your ear. Preflight weather, NOTAMs, currency status, dispatch release — said out loud, hands still on the checklist. Not a chatbot you type into between tasks. A copilot sitting right seat, who's read every NOTAM along your route before you asked, and who's still awake on hour eleven of a long duty day when you're not.
+      </p>
+
+      <h2>The mechanic gets a literal extra hand</h2>
+      <p>
+        You're elbow-deep in an engine compartment with a torque wrench in one hand and a flashlight in the other. Today, that means walking to a terminal to log the squawk, or hoping you remember the detail by the time you get there. Soon: describe the discrepancy out loud, snap a photo hands-free, and the worker files it, checks it against the MEL, and flags the AD it's tied to — before you've set the wrench down.
+      </p>
+
+      <h2>The nurse gets 80% of the workday back</h2>
+      <p>
+        This is the one that should make hospital administrators sit up. Nurses and PAs report spending as much as 80% of a shift on documentation instead of patients. A charting worker that listens during the encounter and drafts the note in real time doesn't just give clinicians their day back — it means better, more complete documentation, submitted faster. Faster, cleaner documentation means faster, cleaner billing. That's not a soft benefit. That's a hospital's revenue cycle moving at the speed of the actual care being given, not the speed of someone typing it up at 11pm.
+      </p>
+      <p>
+        And yes — this runs under the same HIPAA-compliant handling every clinical worker on this platform already requires. Hands-free doesn't mean fewer rules. It means the same governed, audited worker, wearing a different body.
+      </p>
+
+      <h2>Why this isn't just a gadget bolt-on</h2>
+      <p>
+        Voice interfaces for enterprise software have a bad reputation, and it's earned — most of them are a novelty wrapped around a bot with no accountability for what it says. That's not what's shipping here. Every word RealWear hardware feeds to a SOCIII worker still goes through the same RAAS rule engine and the same audit trail as if you'd typed it. The mechanic's squawk still hits the real MEL logic. The nurse's chart entry still carries the same audit-anchored record a regulator could pull three years from now. Moving off the screen doesn't relax the governance. It's the same worker, the same rules, just finally where the job actually happens.
+      </p>
+      <p>
+        This is in active development now, first for Aviation (Pilot and MX) and Nursing/Healthcare charting. More soon.
       </p>
     </>
   ),

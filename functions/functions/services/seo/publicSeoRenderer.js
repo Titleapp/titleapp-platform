@@ -46,6 +46,102 @@ const HOMEPAGE_COPY = {
   `,
 };
 
+// 2026-09-08 — added for Apple Developer Program org-verification: Apple
+// withdrew our enrollment because /about, /contact etc. all fell through to
+// the generic homepage fallback (see renderPublicPage below — none of these
+// routes were wired), so no visible legal entity name/address/contact info
+// existed anywhere a reviewer or crawler could see without executing JS.
+// Real values from docs/company/SOCIII-Inc-Details.md — do NOT add the
+// company phone number here, that doc explicitly restricts it to internal
+// use only (EIN and Delaware file number are excluded for the same reason
+// and aren't needed on a public page anyway).
+const ABOUT_COPY = {
+  title: "About SOCIII, Inc.",
+  description:
+    "SOCIII, Inc. is a Delaware C Corporation building governed AI Digital Workers for regulated professions — real estate title, aviation, nursing education, and more.",
+  bodyHtml: `
+    <main>
+      <h1>About SOCIII, Inc.</h1>
+      <p>SOCIII, Inc. is a Delaware C Corporation building an open SDK and marketplace for
+      <strong>Digital Workers</strong> — AI-governed services built by domain experts, billed by
+      the platform, and accountable to a cryptographic audit trail.</p>
+      <h2>Company</h2>
+      <ul>
+        <li><strong>Legal name:</strong> SOCIII, Inc.</li>
+        <li><strong>Entity type:</strong> Delaware C Corporation</li>
+        <li><strong>Address:</strong> 1810 E Sahara Ave, STE 75942, Las Vegas, NV 89104, US</li>
+        <li><strong>Contact:</strong> <a href="mailto:alex@sociii.ai">alex@sociii.ai</a></li>
+      </ul>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/press">Press</a> ·
+      <a href="/docs">Docs</a> · <a href="/whitepaper">Whitepaper</a></p>
+    </main>
+  `,
+};
+
+function pressReleaseItemHtml(a) {
+  const title = escapeHtml(a.title);
+  const subtitle = escapeHtml(a.subtitle || "");
+  const date = escapeHtml(a.date || "");
+  return `<li><a href="/press/${escapeHtml(a.slug)}"><strong>${title}</strong></a> — ${subtitle} <em>(${date})</em></li>`;
+}
+
+// Mirrors the PRESS_RELEASES + ARTICLES arrays in apps/business/src/pages/PressPage.jsx.
+// Kept as a parallel list rather than importing that file (it's a big client
+// component with chat-widget state, not meant to run server-side) — update
+// both places when a press item is added. Title/subtitle/date is real content
+// (not placeholder), same depth as renderWorkerPage below.
+const PRESS_ITEMS = [
+  { slug: "patent-filings-2026-05-24", title: "SOCIII files three patent provisional applications covering AI worker governance", subtitle: "Audit Trail Architecture, Knowledge Capture Pipeline, and the Five-Tier RAAS substrate establish the company's IP foundation.", date: "2026-05-24" },
+  { slug: "sociii-inc-formation-2026-05", title: "SOCIII, Inc. formed in Delaware to build the Digital Workers platform", subtitle: "Sean Lee Combs files the corporate entity to formalize the platform that succeeds TitleApp's vertical-AI work.", date: "2026-05-15" },
+  { slug: "governed-persona-scarlett-johanssen", title: "The problem with AI personas isn't the name. It's who controls the rules.", subtitle: "When Scarlett Johanssen objected to OpenAI's voice, she identified a symptom. The cure isn't banning AI identities — it's governing them.", date: "2026-08-01" },
+  { slug: "digital-workers-new-textbook", title: "Are Digital Workers the New Textbook?", subtitle: "The $4 billion academic publishing industry has a problem. The professors who created all the value are about to notice.", date: "2026-07-02" },
+  { slug: "shopify-intelligence-layer", title: "Shopify Intelligence Layer", subtitle: "How SOCIII's Digital Workers plug into Shopify merchant data.", date: "2026-06-01" },
+  { slug: "eu-dpp-shopify-merchants", title: "EU Digital Product Passport for Shopify Merchants", subtitle: "What the EU battery passport mandate means for Shopify sellers, and how SOCIII helps.", date: "2026-06-01" },
+  { slug: "alex-action-loop-june-2026", title: "The Alex Action Loop", subtitle: "How SOCIII's Chief of Staff worker proposes, and a human approves, before anything executes.", date: "2026-06-01" },
+  { slug: "mcp-port-audit-moat", title: "MCP, Port, Audit: The Moat", subtitle: "Why an MCP server for LLM-native worker discovery plus a cryptographic audit trail is defensible IP.", date: "2026-06-01" },
+  { slug: "raas-five-tier-rules", title: "RAAS: The Five-Tier Rules Engine", subtitle: "How SOCIII composes platform, vertical, and workspace-level rules into one governed worker.", date: "2026-06-01" },
+  { slug: "expert-built-workers", title: "Expert-Built Workers", subtitle: "Why domain experts, not just engineers, should be building AI workers.", date: "2026-06-01" },
+  { slug: "audit-trails-table-stakes", title: "Audit Trails Are Table Stakes", subtitle: "Why every AI Digital Worker needs a tamper-evident audit trail, not just good outputs.", date: "2026-06-01" },
+  { slug: "free-spine-amazon-not-costco", title: "The Free Spine: Amazon, Not Costco", subtitle: "Why SOCIII's open SDK is a platform play, not a membership model.", date: "2026-06-01" },
+  { slug: "of-for-smart-people", title: "OF for Smart People", subtitle: "SOCIII's top-of-funnel brand thesis: make governed AI workers silly and fun, not sleek and robotic.", date: "2026-06-01" },
+  { slug: "open-sdk-closed-platform", title: "Open SDK, Closed Platform", subtitle: "How SOCIII keeps the worker-building SDK open while the platform itself stays governed.", date: "2026-06-01" },
+  { slug: "manifesto-sdk-birth-certificate", title: "Manifesto: The SDK Is a Birth Certificate", subtitle: "Every Digital Worker starts life as a fork of the open SDK.", date: "2026-06-01" },
+  { slug: "manifesto-open-is-the-only-scale", title: "Manifesto: Open Is the Only Scale", subtitle: "Why a closed AI worker platform can't out-scale an open one.", date: "2026-06-01" },
+  { slug: "manifesto-substrate-is-the-moat", title: "Manifesto: The Substrate Is the Moat", subtitle: "SOCIII's real defensible IP is the rules engine and audit trail, not any single worker.", date: "2026-06-01" },
+  { slug: "wearables-hands-free-workers", title: "Your Digital Worker just grew a body — coming soon on RealWear", subtitle: "A pilot with a copilot who never sleeps. A mechanic with a literal extra hand. A nurse who gets an 80% workday back. HIPAA-compliant, audit-anchored, hands-free.", date: "2026-09-08" },
+];
+
+function renderPressIndex() {
+  return {
+    title: "Press — SOCIII",
+    description: "Press releases and articles from SOCIII, Inc. — governed AI Digital Workers for regulated professions.",
+    bodyHtml: `
+      <main>
+        <h1>Press</h1>
+        <ul>${PRESS_ITEMS.map(pressReleaseItemHtml).join("\n")}</ul>
+        <p><a href="/">&larr; Back to SOCIII</a></p>
+      </main>
+    `,
+  };
+}
+
+function renderPressArticle(slug) {
+  const a = PRESS_ITEMS.find((x) => x.slug === slug);
+  if (!a) return null;
+  return {
+    title: `${a.title} — SOCIII Press`,
+    description: a.subtitle || a.title,
+    bodyHtml: `
+      <main>
+        <h1>${escapeHtml(a.title)}</h1>
+        <p><em>${escapeHtml(a.date || "")}</em></p>
+        <p>${escapeHtml(a.subtitle || "")}</p>
+        <p><a href="/press">&larr; Back to Press</a></p>
+      </main>
+    `,
+  };
+}
+
 function escapeHtml(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")
@@ -338,6 +434,13 @@ async function renderPublicPage(db, path) {
     routeContent = HOMEPAGE_COPY;
   } else if (path === "/marketplace") {
     routeContent = await renderMarketplace(db);
+  } else if (path === "/about" || path === "/about/" || path === "/contact" || path === "/contact/") {
+    routeContent = ABOUT_COPY;
+  } else if (path === "/press" || path === "/press/") {
+    routeContent = renderPressIndex();
+  } else if (path.startsWith("/press/")) {
+    const slug = path.slice("/press/".length).replace(/\/+$/, "");
+    if (slug) routeContent = renderPressArticle(slug);
   } else if (path.startsWith("/c/")) {
     const slug = path.slice(3).replace(/\/+$/, "");
     if (slug) routeContent = await renderWorkerPage(db, slug);
@@ -372,4 +475,6 @@ module.exports = {
   WHITEPAPER_COPY,
   CREATORS_JOURNEY_COPY,
   SANDBOX_WORKER_COPY,
+  ABOUT_COPY,
+  PRESS_ITEMS,
 };

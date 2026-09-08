@@ -21,6 +21,10 @@
       { "source": "/whitepaper", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "/creators/journey", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "/sandbox/worker", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/about", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/contact", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/press", "function": { "functionId": "publicSeo", "region": "us-central1" } },
+      { "source": "/press/**", "function": { "functionId": "publicSeo", "region": "us-central1" } },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
