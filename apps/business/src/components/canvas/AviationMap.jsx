@@ -207,13 +207,15 @@ function RotatedImageOverlayLayer({ imageUrl, topLeft, topRight, bottomLeft, opa
   return null;
 }
 
-// ── Freehand chart annotation ─────────────────────────────────────────────────
+// ── Scribble — freehand chart annotation ──────────────────────────────────────
 // Geo-referenced ink, ForeFlight-style — strokes are lat/lon points (not
 // screen pixels), so they stay pinned to the chart through pan/zoom, same as
 // the SIGMET/AIRMET polygons below. In-memory only for now: whether markup
 // should persist (save with a route, share with dispatch) is an open
 // question, not assumed here.
-function DrawLayer({ active, onStrokeComplete }) {
+const SCRIBBLE_COLORS = ["#ef4444", "#facc15", "#38bdf8", "#f8fafc"]; // red/yellow/blue/white — visible over both basemaps
+
+function DrawLayer({ active, color, onStrokeComplete }) {
   const map = useMap();
   const drawingRef = useRef(false);
   const pointsRef = useRef([]);
@@ -239,14 +241,14 @@ function DrawLayer({ active, onStrokeComplete }) {
     mouseup() {
       if (!active || !drawingRef.current) return;
       drawingRef.current = false;
-      if (pointsRef.current.length > 1) onStrokeComplete(pointsRef.current);
+      if (pointsRef.current.length > 1) onStrokeComplete({ points: pointsRef.current, color });
       pointsRef.current = [];
       setLivePoints(null);
     },
   });
 
   if (!livePoints || livePoints.length < 2) return null;
-  return <Polyline positions={livePoints} pathOptions={{ color: "#facc15", weight: 3, opacity: 0.9 }} />;
+  return <Polyline positions={livePoints} pathOptions={{ color, weight: 3, opacity: 0.9 }} />;
 }
 
 // ── Layer toggle button ───────────────────────────────────────────────────────
@@ -353,7 +355,8 @@ export default function AviationMap({
   }, []);
   const anyHazardOn = Object.values(hazardsOn).some(Boolean);
   const [drawMode, setDrawMode] = useState(false);
-  const [strokes, setStrokes] = useState([]);
+  const [strokes, setStrokes] = useState([]); // [{ points: [[lat,lon],...], color }]
+  const [scribbleColor, setScribbleColor] = useState(SCRIBBLE_COLORS[0]);
   const trafficTimer = useRef(null);
 
   // Airport Diagram georeferencing (GCP calibration) — panel renders outside
@@ -547,7 +550,30 @@ export default function AviationMap({
           <IconToggle key={key} icon={cfg.icon} title={cfg.label} enabled={hazardsOn[key]} loading={false} onClick={() => toggleHazard(key)} color={cfg.color} />
         ))}
         <div style={{ height: 1, background: "#334155", margin: "2px 2px" }} />
-        <IconToggle icon="✏️" title={drawMode ? "Stop drawing" : "Draw on chart"} enabled={drawMode} loading={false} onClick={() => setDrawMode(v => !v)} color="#facc15" />
+        <IconToggle icon="✏️" title={drawMode ? "Stop Scribble" : "Scribble — draw on chart"} enabled={drawMode} loading={false} onClick={() => setDrawMode(v => !v)} color="#facc15" />
+        {drawMode && (
+          // Row, not column — this rail is already tall on the cockpit's
+          // short map pane (a pre-existing, separately-tracked layout
+          // issue); a single extra row keeps this addition from pushing
+          // the rail further past the container's overflow:hidden edge.
+          <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 4, padding: "3px 0", justifyContent: "center" }}>
+            {SCRIBBLE_COLORS.map(c => (
+              <button
+                key={c}
+                type="button"
+                title={`Scribble color ${c}`}
+                aria-label={`Scribble color ${c}`}
+                onClick={() => setScribbleColor(c)}
+                style={{
+                  width: 18, height: 18, borderRadius: "50%", padding: 0, cursor: "pointer",
+                  background: c,
+                  border: scribbleColor === c ? "2px solid #f8fafc" : "1px solid rgba(255,255,255,0.4)",
+                  boxShadow: scribbleColor === c ? "0 0 0 1.5px #0f172a" : "none",
+                }}
+              />
+            ))}
+          </div>
+        )}
         {strokes.length > 0 && (
           <>
             <IconToggle icon="↩︎" title="Undo last stroke" enabled={false} loading={false} onClick={() => setStrokes(prev => prev.slice(0, -1))} color="#94a3b8" />
@@ -577,9 +603,9 @@ export default function AviationMap({
           />
         ) : (
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-            subdomains="abcd"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+            subdomains="abc"
             maxZoom={19}
           />
         )}
@@ -806,9 +832,9 @@ export default function AviationMap({
           />
         )}
 
-        <DrawLayer active={drawMode} onStrokeComplete={(pts) => setStrokes(prev => [...prev, pts])} />
-        {strokes.map((pts, i) => (
-          <Polyline key={`stroke-${i}`} positions={pts} pathOptions={{ color: "#facc15", weight: 3, opacity: 0.9 }} />
+        <DrawLayer active={drawMode} color={scribbleColor} onStrokeComplete={(stroke) => setStrokes(prev => [...prev, stroke])} />
+        {strokes.map((stroke, i) => (
+          <Polyline key={`stroke-${i}`} positions={stroke.points} pathOptions={{ color: stroke.color, weight: 3, opacity: 0.9 }} />
         ))}
 
         {/* SIGMET polygons — the only hazard feed with real geometry today */}

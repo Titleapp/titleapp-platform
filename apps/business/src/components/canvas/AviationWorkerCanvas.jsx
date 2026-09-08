@@ -15,6 +15,7 @@ import AviationNearest from "./AviationNearest";
 import AviationQRH from "./AviationQRH";
 import WeightBalanceCalculator from "./WeightBalanceCalculator";
 import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
+import ScratchPad from "../aviation/ScratchPad";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -2563,7 +2564,14 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
 
   return (
     <div style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto" }}>
-      <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => { setRoleOverride(slug); setActiveTab(null); }} />
+      {/* RoleSwitcher + Scratch Pad both sit outside the tab-content below,
+          so switching Copilot/MX/Dispatch never hides or resets either one —
+          same ScratchPad component/localStorage note as the pilot cockpit
+          (CockpitView.jsx), just mounted here too. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => { setRoleOverride(slug); setActiveTab(null); }} />
+        {AVIATION_ROLES.some(r => r.slug === workerSlug) && <ScratchPad />}
+      </div>
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
