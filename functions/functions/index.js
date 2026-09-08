@@ -3776,6 +3776,15 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
 
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
+      // SEC-2026-09-07 — tenant scoping for chat sessions. Stamped on every
+      // chatSessions write below and used to filter the cross-session
+      // "resume most recent" lookup, which previously matched on userId
+      // alone with no tenant check at all — a real cross-tenant data
+      // exposure risk for any uid holding memberships in more than one
+      // tenant (a real, supported data model here: memberships doc ids are
+      // `${uid}_${tenantId}`, so multi-tenant users are a designed case,
+      // not an edge case). See CODEX S52.65 for the full writeup.
+      const reqTenantId = (req.headers["x-tenant-id"] || body.tenantId || "vault").toString();
 
       // Day 2 diagnostic — log entry into chatEngine path so we can trace where
       // empty `response` field originates. Remove once root cause is found.
@@ -4286,13 +4295,30 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         const SESSION_RESUME_MAX_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
         if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
+            // SEC-2026-09-07 — this used to match on userId alone, with no
+            // tenant check. A single uid can hold memberships in more than
+            // one tenant (memberships doc ids are `${uid}_${tenantId}` —
+            // a real, designed multi-tenant-per-user case, not an edge
+            // case), so an unscoped "most recent session for this uid"
+            // lookup could resume a DIFFERENT tenant's conversation —
+            // wrong company's data rendered under the current session.
+            // Filtering by tenantId closes that; docs written before this
+            // fix have no tenantId field and simply won't match, which is
+            // the safe failure mode (no resume, not a wrong-tenant resume).
             const recentSnap = await db.collection("chatSessions")
               .where("userId", "==", authUser.uid)
+              .where("tenantId", "==", reqTenantId)
               .orderBy("updatedAt", "desc")
               .limit(1)
               .get();
             if (!recentSnap.empty) {
               const recentDoc = recentSnap.docs[0];
+              // Belt-and-suspenders: never trust the query filter alone for
+              // something this sensitive — re-check the field directly on
+              // the fetched doc before using it.
+              if (recentDoc.data().tenantId !== reqTenantId) {
+                console.error("[chatEngine.session-resume] SKIPPED — tenantId mismatch on fetched doc despite query filter", { docTenantId: recentDoc.data().tenantId, reqTenantId });
+              } else {
               const recentUpdatedAt = recentDoc.data().updatedAt;
               const ageMs = recentUpdatedAt?.toMillis ? (Date.now() - recentUpdatedAt.toMillis()) : Infinity;
               if (ageMs <= SESSION_RESUME_MAX_AGE_MS) {
@@ -4303,6 +4329,7 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
                 console.log("chatEngine: resumed session", effectiveSessionId, "for user", authUser.uid, "age(ms)=", ageMs);
               } else {
                 console.log("chatEngine: most recent session too old to resume, starting fresh", "age(ms)=", ageMs);
+              }
               }
             }
           } catch (e) {
@@ -4406,6 +4433,7 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
                 sessionState.creatorAuthoringHistory.push({ role: "assistant", content: sr.text });
                 await sessionRef.set({
                   state: sessionState,
+                  tenantId: reqTenantId,
                   surface: "creator-journey",
                   userId: authUser.uid,
                   ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -4482,6 +4510,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
 
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'creator-journey',
               userId: authUser.uid,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -4523,6 +4552,7 @@ If they ask off-topic questions (about SOCIII, billing, other workers), give a o
               }
               await sessionRef.set({
                 state: sessionState,
+                tenantId: reqTenantId,
                 surface: 'creator-journey',
                 userId: authUser.uid,
                 ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -8554,6 +8584,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
               // Persist session
               await sessionRef.set({
                 state: sessionState,
+                tenantId: reqTenantId,
                 surface: 'worker',
                 activeWorker: workerSlug,
                 userId: authUser ? authUser.uid : null,
@@ -9279,6 +9310,7 @@ IDENTITY RULES:
             // Persist session
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'sales',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -9417,6 +9449,7 @@ IDENTITY RULES:
           if (action === 'go_to_dataroom' && authUser && sessionState.tenantId) {
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'invest',
               userId: authUser.uid,
               updatedAt: nowServerTs(),
@@ -9476,6 +9509,7 @@ IDENTITY RULES:
                   if (!tenantId && memberships.length > 0) tenantId = memberships[0].tenantId;
                   await sessionRef.set({
                     state: sessionState,
+                    tenantId: reqTenantId,
                     surface: 'invest',
                     userId: signupResult.uid,
                     ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -9500,6 +9534,7 @@ IDENTITY RULES:
                 // New user — show terms card
                 await sessionRef.set({
                   state: sessionState,
+                  tenantId: reqTenantId,
                   surface: 'invest',
                   userId: signupResult.uid,
                   ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -9585,6 +9620,7 @@ IDENTITY RULES:
               sessionState.termsAccepted = true;
               await sessionRef.set({
                 state: sessionState,
+                tenantId: reqTenantId,
                 surface: 'invest',
                 userId: sessionState.userId,
                 updatedAt: nowServerTs(),
@@ -9629,6 +9665,7 @@ IDENTITY RULES:
             sessionState.discoveryHistory.push({ role: 'assistant', content: linkMsg });
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'invest',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -9837,6 +9874,7 @@ For legal specifics, custom terms, or strategic questions, offer to connect with
 
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'invest',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -11164,6 +11202,7 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
 
                 await sessionRef.set({
                   state: sessionState,
+                  tenantId: reqTenantId,
                   surface: 'business',
                   userId: authUser.uid,
                   ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -11309,6 +11348,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
             // Save session state
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'landing',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -11481,7 +11521,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           if (action === 'magic_link_clicked' && !sessionState.devEmail) {
             // Session lost the email — ask again instead of silently failing
             sessionState.devHistory.push({ role: 'assistant', content: "I seem to have lost your email. What email should I use for your developer account?" });
-            await sessionRef.set({ state: sessionState, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
+            await sessionRef.set({ state: sessionState, tenantId: reqTenantId, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
             return res.json({
               ok: true,
               message: "I seem to have lost your email. What email should I use for your developer account?",
@@ -11520,6 +11560,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                   const tenantId = memberships.length > 0 ? memberships[0].tenantId : null;
                   await sessionRef.set({
                     state: sessionState,
+                    tenantId: reqTenantId,
                     surface: 'developer',
                     userId: signupResult.uid,
                     ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -11544,6 +11585,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                 // New user — show terms card
                 await sessionRef.set({
                   state: sessionState,
+                  tenantId: reqTenantId,
                   surface: 'developer',
                   userId: signupResult.uid,
                   ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -11576,7 +11618,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                 ? `${name}, let me get that set up for you. One moment.`
                 : `Let me get that set up for you. One moment.`;
               sessionState.devHistory.push({ role: 'assistant', content: fallbackMsg });
-              await sessionRef.set({ state: sessionState, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
+              await sessionRef.set({ state: sessionState, tenantId: reqTenantId, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
               return res.json({
                 ok: true,
                 message: fallbackMsg,
@@ -11663,6 +11705,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
               sessionState.termsAccepted = true;
               await sessionRef.set({
                 state: sessionState,
+                tenantId: reqTenantId,
                 surface: 'developer',
                 userId: sessionState.userId,
                 updatedAt: nowServerTs(),
@@ -11711,6 +11754,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
             sessionState.devHistory.push({ role: 'assistant', content: linkMsg });
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'developer',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12323,6 +12367,7 @@ ${nameGuidance}${authGuidance}`;
 
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'developer',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12370,6 +12415,7 @@ ${nameGuidance}${authGuidance}`;
             });
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: surface || 'developer',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12471,6 +12517,7 @@ CONVERSATION STYLE:
 
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'privacy',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12604,6 +12651,7 @@ ${messageGuidance}`;
 
             await sessionRef.set({
               state: sessionState,
+              tenantId: reqTenantId,
               surface: 'contact',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12642,6 +12690,7 @@ ${messageGuidance}`;
           console.warn("chatEngine: developer handler did not return, using fallback");
           await sessionRef.set({
             state: sessionState,
+            tenantId: reqTenantId,
             surface: 'developer',
             userId: authUser ? authUser.uid : null,
             ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12661,6 +12710,7 @@ ${messageGuidance}`;
           console.warn("chatEngine: invest handler did not return, using fallback");
           await sessionRef.set({
             state: sessionState,
+            tenantId: reqTenantId,
             surface: 'invest',
             userId: authUser ? authUser.uid : null,
             ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12781,6 +12831,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               // Write state and return
               await sessionRef.set({
                 state: engineResult.state,
+                tenantId: reqTenantId,
                 surface: surface || "landing",
                 userId: effectiveUserId,
                 ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12814,6 +12865,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
 
           await sessionRef.set({
             state: engineResult.state,
+            tenantId: reqTenantId,
             surface: surface || "landing",
             userId: effectiveUserId,
             ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -12954,6 +13006,7 @@ Respond with ONLY a JSON object:
 
           await sessionRef.set({
             state: engineResult.state,
+            tenantId: reqTenantId,
             surface: surface || "landing",
             userId: effectiveUserId,
             ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -13036,6 +13089,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
 
           await sessionRef.set({
             state: engineResult.state,
+            tenantId: reqTenantId,
             surface: surface || "landing",
             userId: effectiveUserId,
             ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
@@ -13139,6 +13193,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         // Write updated state to Firestore
         await sessionRef.set({
           state: engineResult.state,
+          tenantId: reqTenantId,
           surface: surface || "landing",
           userId: effectiveUserId,
           ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
