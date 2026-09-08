@@ -1,0 +1,54 @@
+{
+  "id": "re_marketing_v0",
+  "version": "v0",
+  "domain": "real-estate-marketing-fair-housing",
+  "description": "Disposition Marketing (re-marketing-001) — Phase 0 ruleset. The Fair Housing Act protected-class citation below is well-established federal law (42 U.S.C. § 3604, in force since 1968 and amended 1988) and is safe to cite directly, unlike jurisdiction-specific or unsettled items elsewhere in this suite. State/local fair-housing law that extends beyond the federal protected classes (many states add sexual orientation, gender identity, source of income, marital status, age, etc.) is NOT independently sourced per-jurisdiction in this pass — treated with the same honesty as title_escrow_v1's unsourced state-law layer.",
+
+  "appliesTo": ["re-marketing-001"],
+
+  "hard_stops": [
+    {
+      "id": "rm-fair-housing-no-discriminatory-content",
+      "label": "No marketing content that discriminates against, expresses a preference for, or steers based on a federal Fair Housing Act protected class",
+      "logic": "42 U.S.C. § 3604(c) makes it unlawful to make, print, or publish any notice, statement, or advertisement that indicates any preference, limitation, or discrimination based on race, color, religion, sex, familial status, national origin, or disability, or an intention to make such a preference/limitation/discrimination. This applies to listing copy, targeting criteria, and imagery choices — not only overt statements but coded/proxy language commonly recognized as discriminatory (e.g. 'perfect for young professionals,' 'no children,' 'near [religious institution] community').",
+      "trigger": "AI drafts, approves, or fails to flag marketing content (listing copy, ad targeting criteria, image/caption choices) that expresses a preference, limitation, or discriminatory intent tied to race, color, religion, sex, familial status, national origin, or disability — including common coded/proxy phrasing.",
+      "on_fail": "Do not publish or approve the content. Rewrite to describe the property and its objective features only (size, price, amenities, location) — never the type of person who should live there. Cite 42 U.S.C. § 3604(c)."
+    },
+    {
+      "id": "rm-no-fabricated-listing-claim",
+      "label": "Every factual claim in marketing content (square footage, features, comps, price history) must come from a real record in this workspace, never invented or exaggerated",
+      "logic": "A fabricated or exaggerated listing claim is both a fair-marketing/consumer-protection risk and a real liability if a buyer relies on it.",
+      "trigger": "AI states a specific factual claim (square footage, feature, comparable price, price history) in marketing content without a corresponding source record in this workspace.",
+      "on_fail": "Remove or flag the unsourced claim. State the fact is not confirmed in this workspace's records rather than presenting it as verified."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "rm-protected-class-language",
+      "pattern": "(perfect for (young|families|singles|couples)|no (kids|children)|ideal for (christian|jewish|muslim)|walking distance to (church|synagogue|mosque)|quiet (adult|mature) (community|building))",
+      "flags": "i",
+      "message": "This phrasing reads as a Fair Housing Act protected-class preference or proxy (42 U.S.C. § 3604(c)) — rewrite to describe the property's objective features only, never the type of person who should live there."
+    },
+    {
+      "id": "rm-unsourced-claim-language",
+      "pattern": "(approximately|roughly|estimated at|around \\d)",
+      "flags": "i",
+      "message": "Confirm this figure against a real record in this workspace before publishing — an estimated/rounded figure presented as fact is a real liability in marketing content."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "rm-state-law-gap-flag",
+      "label": "Content reviewed against federal fair-housing law only",
+      "logic": "This ruleset only enforces the federal Fair Housing Act protected classes. Many states add protected classes (sexual orientation, gender identity, source of income, marital status, age) that this ruleset does not check.",
+      "trigger": "contentApprovedForPublish == true",
+      "message": "This content was checked against federal Fair Housing Act protected classes only. Confirm state/local fair-housing law for this property's jurisdiction separately before publishing."
+    }
+  ],
+
+  "disclaimer": "This worker drafts marketing/disposition content from records in this workspace. It enforces federal Fair Housing Act protected-class compliance (42 U.S.C. § 3604(c)) but does not independently check state or local fair-housing law, which in many jurisdictions extends further (sexual orientation, gender identity, source of income, marital status, age, and others). Confirm jurisdiction-specific requirements separately. Phase 0: federal fair-housing baseline only.",
+
+  "system_context": "You draft real estate marketing/disposition content from records in this workspace. Never produce content that expresses a preference, limitation, or discriminatory intent based on race, color, religion, sex, familial status, national origin, or disability — including coded/proxy phrasing recognized as discriminatory in the real estate industry (42 U.S.C. § 3604(c)). Describe the property and its objective features only, never the type of person who should live there. Never state a factual claim (square footage, feature, price, comp) without a real source record in this workspace. State/local fair-housing law beyond the federal protected classes is not independently checked by this worker — flag that gap rather than assuming coverage."
+}

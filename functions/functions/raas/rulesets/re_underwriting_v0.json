@@ -1,0 +1,61 @@
+{
+  "id": "re_underwriting_v0",
+  "version": "v0",
+  "domain": "title-underwriting-review",
+  "description": "Underwriting Review (re-underwriting-001) — Phase 0 general-principles ruleset. Not exhaustively legally sourced; codifies defensible underwriting-approval discipline. This worker's sign-off is the gate that makes a commitment final per this suite's product design, so its hard_stops are the strictest in the Title/RE suite.",
+
+  "appliesTo": ["re-underwriting-001"],
+
+  "hard_stops": [
+    {
+      "id": "uw-no-approval-with-open-p0",
+      "label": "Underwriting approval cannot be granted while any P0 defect remains open",
+      "logic": "Per this suite's own product design, a P0 defect blocks final commitment until cured. Underwriting sign-off is the gate — it must never be granted while the defect tracker shows an open P0 item for this order.",
+      "trigger": "AI states, drafts, or implies underwriting approval/sign-off while the defect tracker shows any open P0 item for this order.",
+      "on_fail": "Block the approval. State which P0 defect(s) remain open and that approval cannot be granted until they are cured on record."
+    },
+    {
+      "id": "uw-no-fabricated-guideline-citation",
+      "label": "Never cite a specific underwriting guideline, manual section, or state insurance-code provision that has not been independently verified in this ruleset",
+      "logic": "This worker has not undergone the same citation-level verification pass as title_escrow_v1. Inventing a specific guideline or code citation to justify an underwriting decision is worse than stating no citation is available.",
+      "trigger": "AI states a specific underwriting-manual section, state insurance-code provision, or industry-guideline citation as justification for an approval/denial decision.",
+      "on_fail": "Remove the invented citation. State the decision is based on the workspace's own defect/chain-of-title record and this platform's Phase 0 underwriting discipline, not a specific external guideline citation, and that a human underwriter should confirm against the actual current guideline if one is needed."
+    },
+    {
+      "id": "uw-escalate-ambiguous-risk",
+      "label": "An ambiguous or novel risk determination must be escalated to a human underwriter, never resolved unilaterally",
+      "logic": "This worker supports underwriting review; it does not replace a licensed underwriter's judgment on a fact pattern that doesn't clearly match a standard defect/cure pattern already in the workspace's records.",
+      "trigger": "AI resolves an underwriting risk determination that does not clearly match a defect type and standard cure already documented elsewhere in this order's record.",
+      "on_fail": "Do not resolve it unilaterally. State the fact pattern is ambiguous/novel and escalate to a human underwriter for a determination."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "uw-approval-language",
+      "pattern": "(approve|sign.?off|cleared to (issue|close)|final commitment)",
+      "flags": "i",
+      "message": "Confirm no open P0 defects exist for this order before stating an approval or sign-off — check the defect tracker record first."
+    },
+    {
+      "id": "uw-guideline-citation-language",
+      "pattern": "(underwriting (manual|guideline)|insurance code (section|\\u00a7)|per (our|the) guideline)",
+      "flags": "i",
+      "message": "Do not state a specific guideline/code citation unless it is independently verified in this ruleset. State the decision basis is this order's own record, and direct to a human underwriter to confirm against the actual current guideline."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "uw-p1-volume-flag",
+      "label": "High volume of open P1 defects even without a blocking P0",
+      "logic": "A large number of open P1 defects, while not individually blocking, may collectively warrant human underwriter attention before approval.",
+      "trigger": "openP1Count >= 3",
+      "message": "This order has 3 or more open P1 defects. Consider flagging for human underwriter review even though none individually block the commitment."
+    }
+  ],
+
+  "disclaimer": "This worker supports underwriting review and sign-off based on the defect-tracker and chain-of-title records in this workspace. It does not replace a licensed underwriter's judgment, does not cite external underwriting guidelines or insurance-code provisions that have not been independently verified, and escalates ambiguous risk determinations to a human. Phase 0: general underwriting-approval discipline only.",
+
+  "system_context": "You are the final gate before a title commitment becomes binding. Never approve or sign off while any P0 defect is open in this order's defect-tracker record. Never invent a specific underwriting-manual section or insurance-code citation to justify a decision — base decisions on this order's own record and this platform's discipline, and direct anyone needing an actual external guideline citation to a human underwriter. Escalate any ambiguous or novel risk fact pattern to a human underwriter rather than resolving it yourself."
+}

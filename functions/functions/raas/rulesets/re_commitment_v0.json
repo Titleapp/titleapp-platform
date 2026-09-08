@@ -1,0 +1,61 @@
+{
+  "id": "re_commitment_v0",
+  "version": "v0",
+  "domain": "title-commitment-issuance",
+  "description": "Commitment Engine (re-commitment-001) — Phase 0 general-principles ruleset. Not exhaustively legally sourced the way title_escrow_v1 is; codifies defensible commitment-issuance discipline rather than independently-verified state insurance-code rate/form citations, which have not been researched for this worker yet.",
+
+  "appliesTo": ["re-commitment-001"],
+
+  "hard_stops": [
+    {
+      "id": "co-schedule-sourced-from-chain",
+      "label": "Every item in Schedule A (ownership/legal description) and Schedule B (exceptions) must trace to a real chain-of-title event, never an invented or generic exception",
+      "logic": "The title commitment's Schedule A (current owner, legal description, insured amount) and Schedule B (standard and special exceptions, liens, easements) are consequential documents relied on by lenders and buyers. Every fact must come from the actual chain-of-title record for this specific order.",
+      "trigger": "AI drafts or describes a Schedule A/B item without a corresponding sourced chain-of-title event for this specific order.",
+      "on_fail": "Do not include the item. State that the underlying record is missing and ask for it before drafting that portion of the commitment."
+    },
+    {
+      "id": "co-no-issuance-without-underwriter-approval",
+      "label": "A commitment does not become binding/final until underwriting sign-off exists in the record",
+      "logic": "Per this suite's own product design, the Underwriting Review worker signs off on the final commitment after all P0 defects are cured. The Commitment Engine drafts the commitment but does not represent it as final/binding on its own authority.",
+      "trigger": "AI states or implies a commitment is final, binding, or ready for reliance without a corresponding underwriting-approval event in the record.",
+      "on_fail": "State the commitment is in draft/pending underwriting review, not final, until an underwriting-approval event exists."
+    },
+    {
+      "id": "co-no-omitted-known-exception",
+      "label": "A known lien, judgment, easement, or defect already in the chain-of-title or defect-tracker record must appear on Schedule B — never silently omitted",
+      "logic": "Omitting a known exception from Schedule B misrepresents the state of title to whoever relies on the commitment (lender, buyer, insurer).",
+      "trigger": "A chain-of-title event or open defect exists in the order record that does not appear as a Schedule B exception in the drafted commitment.",
+      "on_fail": "Add the exception to Schedule B before presenting the commitment, or state explicitly that the commitment is incomplete pending that item's resolution."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "co-final-binding-language",
+      "pattern": "(final commitment|binding|ready to (rely|close)|policy (will|can) issue)",
+      "flags": "i",
+      "message": "Confirm underwriting sign-off exists in the record before describing this commitment as final or binding — a drafted commitment pending review is not yet reliable."
+    },
+    {
+      "id": "co-rate-compliance-language",
+      "pattern": "(promulgated rate|TDI rate|filed rate|rate compliance)",
+      "flags": "i",
+      "message": "State-specific title insurance rate regulation (e.g. Texas Department of Insurance promulgated rates) is not independently sourced in this ruleset — do not assert specific rate-compliance conclusions without confirming against the current filed rate schedule for the applicable state."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "co-schedule-b-mismatch",
+      "label": "Open defect-tracker item not reflected in the drafted Schedule B",
+      "logic": "If the defect tracker shows an open P0/P1 item for this order that is not reflected as a Schedule B exception, flag before the commitment is presented.",
+      "trigger": "openDefectCount > 0 AND scheduleBExceptionCount < openDefectCount",
+      "message": "There are open defect-tracker items not reflected in Schedule B. Reconcile before presenting this commitment."
+    }
+  ],
+
+  "disclaimer": "This worker drafts the title commitment (Schedule A/B) from the chain-of-title record and defect tracker in this workspace. It does not make the final underwriting determination, does not independently verify state-specific title insurance rate compliance, and does not provide legal advice. Phase 0: general commitment-drafting discipline only.",
+
+  "system_context": "You draft the title commitment (Schedule A ownership/legal description, Schedule B standard and special exceptions) strictly from the chain-of-title and defect-tracker records present in this workspace. Every item must be sourced — never invent or assume a fact. Never describe a commitment as final or binding without a recorded underwriting-approval event; the Underwriting Review worker, not this one, makes that determination. Never omit a known lien, judgment, easement, or open defect from Schedule B. Do not assert state-specific title insurance rate-compliance conclusions without confirming against the actual current filed rate schedule."
+}

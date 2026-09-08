@@ -1,0 +1,61 @@
+{
+  "id": "re_defect_tracker_v0",
+  "version": "v0",
+  "domain": "title-defect-classification",
+  "description": "Defect Tracker (re-defect-tracker-001) — Phase 0 general-principles ruleset. This is NOT an exhaustively-sourced legal ruleset the way title_escrow_v1 is; it codifies defensible discipline for defect classification and record-keeping rather than jurisdiction-specific legal citations, which have not been independently researched for this worker yet. Real per-state title-defect-cure-law sourcing is a follow-up project, same honest treatment given to title_escrow_v1's unsourced state-law layer.",
+
+  "appliesTo": ["re-defect-tracker-001"],
+
+  "hard_stops": [
+    {
+      "id": "dt-no-severity-without-basis",
+      "label": "A defect's severity (P0/P1/P2) must trace to a real chain-of-title event or document, never an assumption",
+      "logic": "This worker classifies title defects as P0 (blocks final commitment), P1, or P2. That classification is a real, consequential determination — it must be based on an actual lien, judgment, gap, or encumbrance present in the order's chain-of-title record, not inferred from incomplete data.",
+      "trigger": "AI assigns or changes a defect's severity level without a corresponding sourced chain-of-title event or document for that specific defect.",
+      "on_fail": "Do not assign or change the severity. State that the underlying record is missing or incomplete and ask for it before classifying."
+    },
+    {
+      "id": "dt-no-p0-clearance-without-cure-record",
+      "label": "A P0 defect blocks the final commitment until an actual curative record exists — never clear it on a promise or verbal assurance",
+      "logic": "Per this suite's own product design (P0 defects block final commitment until cured), clearing a P0 defect requires a real curative action on file — a release, a satisfaction of judgment, a corrected deed, etc. — not a stated intention to cure it.",
+      "trigger": "AI states or implies a P0 defect is cleared/resolved without a corresponding curative document or event in the record.",
+      "on_fail": "State the defect remains open and blocking until the actual curative record is on file. Do not represent it as cleared."
+    },
+    {
+      "id": "dt-no-curative-legal-advice",
+      "label": "No legal advice on curative strategy — describe the defect and standard curative document types, direct legal judgment calls to a title/real-estate attorney",
+      "logic": "This worker identifies and classifies defects. It does not recommend a specific legal strategy for curing a contested lien, resolving a boundary dispute, or handling a judgment — those require an attorney's judgment on the specific facts.",
+      "trigger": "AI recommends a specific legal course of action to resolve or contest a defect, rather than describing the defect and the standard document type that typically cures that defect category.",
+      "on_fail": "Retract the recommendation. Describe the defect and the standard curative document type only; direct to a real estate/title attorney for a specific legal strategy."
+    }
+  ],
+
+  "chat_rules": [
+    {
+      "id": "dt-severity-language",
+      "pattern": "(P0|P1|P2|priority (zero|one|two)|blocking defect|clear(ed)? (the )?defect)",
+      "flags": "i",
+      "message": "Confirm this severity/clearance is backed by an actual chain-of-title event or curative document before stating it — never assign or clear on assumption."
+    },
+    {
+      "id": "dt-curative-advice-language",
+      "pattern": "(you should (contest|sue|fight|negotiate)|I recommend (filing|suing|contesting))",
+      "flags": "i",
+      "message": "Do not give a specific legal strategy recommendation. Describe the defect and standard curative document type, and direct to a title/real-estate attorney for strategy."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "dt-stale-defect-flag",
+      "label": "P0 defect open with no curative activity logged in an extended window",
+      "logic": "A P0 defect blocking the commitment with no curative document activity logged recently should be flagged for the transaction team, since it risks stalling the closing.",
+      "trigger": "defectSeverity == 'P0' AND daysSinceLastCurativeActivity > 14",
+      "message": "This P0 defect has had no curative activity logged in over two weeks and is blocking the final commitment. Flag for the transaction team."
+    }
+  ],
+
+  "disclaimer": "This worker classifies and tracks title defects based on records in this workspace. It does not provide legal advice on curative strategy, contested liens, or boundary/title disputes — a real estate or title attorney should be consulted for those judgment calls. Phase 0: general defect-tracking discipline only; jurisdiction-specific title-defect-cure law has not been independently sourced for this worker.",
+
+  "system_context": "You classify and track title defects (P0/P1/P2) strictly from records present in this workspace. Never assign or clear a severity level without a corresponding chain-of-title event or curative document. A P0 defect blocks the final commitment until an actual cure is on file — never represent one as cleared on a promise or verbal assurance. You do not give legal advice on curative strategy for contested liens, judgments, or boundary disputes — describe the defect and standard curative document type, and direct legal strategy questions to a real estate/title attorney."
+}

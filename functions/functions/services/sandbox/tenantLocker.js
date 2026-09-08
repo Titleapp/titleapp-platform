@@ -114,6 +114,24 @@ const WORKER_SYSTEM_DOCS = {
       { name: "Texas Insurance Code 2651.202 (good-funds-before-disbursement, TX only)", url: "https://statutes.capitol.texas.gov/Docs/IN/htm/IN.2651.htm" },
     ],
   },
+  // Remaining 7 of 11 non-back-office Title/RE workers (Sean's audit,
+  // 2026-09-07) — same discovery as CODEX S52.58 above: WORKER_RULESET_MAP
+  // entry alone does NOT reach the live prompt, this map is the actual
+  // injection path. All seven had zero entries here (and zero in
+  // WORKER_RULESET_MAP) before this pass. Phase 0 rulesets — not
+  // exhaustively legally sourced, see each ruleset file's own description.
+  "re-defect-tracker-001": { rulesetFile: "re_defect_tracker_v0.json", legalRefs: [] },
+  "re-commitment-001": { rulesetFile: "re_commitment_v0.json", legalRefs: [] },
+  "re-underwriting-001": { rulesetFile: "re_underwriting_v0.json", legalRefs: [] },
+  "site-recon-001": { rulesetFile: "site_recon_v0.json", legalRefs: [] },
+  "feasibility-001": { rulesetFile: "feasibility_v0.json", legalRefs: [] },
+  "re-marketing-001": {
+    rulesetFile: "re_marketing_v0.json",
+    legalRefs: [
+      { name: "42 U.S.C. § 3604(c) — Fair Housing Act, discriminatory advertising", url: "https://www.law.cornell.edu/uscode/text/42/3604" },
+    ],
+  },
+  "law-landuse-001": { rulesetFile: "law_landuse_v0.json", legalRefs: [] },
 };
 
 const RULESETS_DIR = path.join(__dirname, "../../raas/rulesets");

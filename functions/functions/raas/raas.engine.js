@@ -556,6 +556,18 @@ const WORKER_RULESET_MAP = {
   // plus one verified TX-only state citation; had zero coverage before this.
   "re-title-search-001": "title_escrow_v1",
   "re-escrow-001": "title_escrow_v1",
+  // Remaining 7 of 11 non-back-office Title/RE workers (Sean's audit,
+  // 2026-09-07): had ZERO dedicated ruleset — loadChatRules() returned null
+  // for all seven. Phase 0 general-principles rulesets, not exhaustively
+  // legally sourced the way title_escrow_v1 is (see each file's own
+  // description for what is/isn't independently verified).
+  "re-defect-tracker-001": "re_defect_tracker_v0",
+  "re-commitment-001": "re_commitment_v0",
+  "re-underwriting-001": "re_underwriting_v0",
+  "site-recon-001": "site_recon_v0",
+  "feasibility-001": "feasibility_v0",
+  "re-marketing-001": "re_marketing_v0",
+  "law-landuse-001": "law_landuse_v0",
 };
 
 /** Cache compiled chat rules per ruleset */
