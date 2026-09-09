@@ -98,6 +98,36 @@ Sean's read: nowhere in the app do you actually choose which role you are — Pi
 
 **Approach plate link produced no result.** The chart-fetching system is real (not a fixture) — `functions/functions/services/aviation/dtpp.js` pulls the actual current FAA d-tpp cycle metafile and PDF, matching against `AviationCharts.jsx`'s static plate-name list via a documented "loose match" (see its own top-of-file comment on this). An ILS approach-plate link returned nothing; not yet root-caused — could be a cycle-fetch failure or a name-match miss for that specific plate. Needs the exact airport/plate to reproduce.
 
+## Role-based onboarding + home screens (Sean's spec, live — the big one)
+
+This is a coherent product direction spanning most of tonight's smaller findings, not an isolated fix. Captured close to verbatim.
+
+**General mobile-environment principle:** the canvas should be the initial/primary view on mobile/tablet, with the Skye chat button always at-the-ready (floating) — not chat-first. This confirms and extends work already in place (aviation canvas-first at mobile tier, shipped 2026-08-30).
+
+**RH nav menu should default collapsed**, not open. (Not yet matched to a specific component in code — verify against the actual right-panel/nav toggle before implementing; several small header icons were seen tonight that could be this.)
+
+**First-run role selection, professionally worded:** on first major usage, ask "are you a pilot, maintenance tech, or dispatch" (his phrasing note: use professional wording, not internal shorthand like "MX"). That choice drives the entire opening experience from then on — with easy switching afterward for the shared-device case (one company iPad passed between a pilot, a mechanic, and a dispatcher).
+
+**Pilot opening screen:** the Map — your location, radar, weather — with **New Flight** and other nav functions immediately accessible from there. (Ties directly to the already-flagged "Log Flight exists, Plan/New Flight doesn't" gap — this spec answers where that action should live.)
+
+**MX (Maintenance Tech) opening screen:** Fleet Status + your assigned aircraft's daily/weekly/monthly checklist and notes. Sean's specific vision: a **half-report, half-chat** hybrid screen — Skye greets by name and summarizes what's on the plate today and this week ("Hi [name], here's what's on your plate for today and this week. How can I help?"), then quick access to a fleet status manifest and a map showing asset locations. This is essentially the Duty-tab reference-design idea (rolling summary + gauges/status) fused with a personalized conversational opener, applied as the actual home screen for this role.
+
+**Dispatch opening screen:** same pattern as MX — a daily/weekly briefing + conversational "how can I help" opener, plus quick access to a map showing asset locations.
+
+**How this ties everything together:** the Map (real, working), the missing New Flight action, the Duty-tab reference design, the redundant-internal-chat question, and the RoleSwitcher all converge into one thing — three distinct, role-tailored home screens replacing a single generic canvas default, with chat woven into the home screen itself for MX/Dispatch rather than kept separate.
+
+## Map should be full-screen, controls overlaid on top
+
+Sean's read: the map and similar visual surfaces need to go full-screen — currently too many buttons/controls sit stacked above the map in normal layout flow, shrinking the actual map area. Fix direction: float the controls as an overlay on top of the map (absolute-positioned), not stacked in the layout pushing it smaller.
+
 ## Recommendation
 
-Given the size of items 1–3 above (each a real feature build, not a bug), the next dedicated SKYE session should scope and prioritize among: (a) a real structured flight-planning tool, (b) inline canvas cards for single-pane/tablet width, (c) a "Plan/New Flight" entry point, (d) the hamburger menu bug. Item (a) is probably the highest-value given it's the core "ForeFlight killer" pitch and the thing Sean specifically hit first.
+**Top priority, superseding the earlier framing below: the role-based onboarding + home-screen redesign** (see that section above). It's the one piece of direction from tonight that actually unifies almost everything else found — the Map (real, working), the missing New Flight action, the Duty-tab reference design, the redundant internal-chat question, the RoleSwitcher, and the general canvas-first-on-mobile principle all converge into "three distinct, role-tailored home screens" rather than being separate fixes. Scope that first; several of the smaller items below become sub-tasks of it rather than standalone work.
+
+Everything else, roughly in order after that:
+1. Full-screen map with overlaid controls (quick, well-scoped layout fix).
+2. A real structured flight-planning tool (route/WX/navaids/NOTAMs/fuel/W&B/company info) — likely absorbed into the Pilot home screen's "New Flight" entry point once that's scoped.
+3. The Airports-tab and Aircraft-tab consolidations (reduce tab sprawl, feed the same flight-planning work).
+4. Inline canvas cards for single-pane/tablet width (`ChatPanel.jsx` never passes `addInlineCard` to `CanvasResolver`).
+5. The hamburger-menu bug and the RH-nav-defaults-open issue (not yet root-caused, either could be quick once located).
+6. Smaller confirmed items: Synthetic PFD's artificial horizon not painting, the ILS approach-plate link, Ground/Flight training split + device-type field, Risk Analysis (FRAT) tool.
