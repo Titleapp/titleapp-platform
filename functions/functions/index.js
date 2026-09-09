@@ -4330,7 +4330,25 @@ LEASE TEXT:\n${String(leaseText).slice(0, 8000)}`;
         // login (see DEMO_SHARED_UIDS above): every visitor to /demo/title,
         // /demo/skye, etc. shares the same uid+tenantId by design, so resume
         // would hand one visitor's in-progress conversation to the next.
-        if (!sessionSnap.exists && authUser && !DEMO_SHARED_UIDS.has(authUser.uid) && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
+        // 2026-09-08 — SEC-2026-09-07's tenantId scoping closed the cross-TENANT
+        // leak but left the cross-WORKER-within-the-SAME-tenant leak wide open,
+        // and it's the one CODEX-S52.65 actually opened with as the motivating
+        // symptom (Ivy's chat content rendered under Alex's header). Reproduced
+        // live 2026-09-08: switched to a freshly-never-used aviation worker
+        // (deterministic sessionId `wkr_{uid}_{tenantId}_av-copilot-001`, no doc
+        // yet), and the "most recent session in this tenant" fallback below
+        // handed back an unrelated old marketing/Ivy conversation under the
+        // correctly-labeled Skye header. The client (ChatPanel.jsx) has sent a
+        // deterministic `wkr_{uid}_{tenantId}_{slug}`/`cos_{uid}_{tenantId}`
+        // sessionId since the S52.65 follow-up specifically so the backend can
+        // always tell which worker a session belongs to just from its id — a
+        // missing doc for that id means "this worker has no history yet," not
+        // "go find ANY session and borrow it." Skip the resume fallback
+        // entirely for that format; only fall back for older/anonymous ids
+        // (e.g. `cs_...`) that predate per-worker scoping and never encoded a
+        // worker at all.
+        const _sessionIdIsWorkerScoped = /^(wkr|cos)_/.test(sessionId || "");
+        if (!sessionSnap.exists && !_sessionIdIsWorkerScoped && authUser && !DEMO_SHARED_UIDS.has(authUser.uid) && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
             // SEC-2026-09-07 — this used to match on userId alone, with no
             // tenant check. A single uid can hold memberships in more than

@@ -19,8 +19,14 @@ function debounce(fn, ms) {
 }
 
 // ── Mobile detection ────────────────────────────────────────
+// 2026-09-08: must match AppShell.jsx's DESKTOP_MIN_WIDTH (1024) — that's
+// the actual threshold where .chatSidebar/.mobileChatPanel and the desktop
+// right-panel chrome switch. This used to say 768 and would have silently
+// routed tablet-width (768-1023px) canvas signals to the desktop right panel
+// while AppShell was rendering the single-pane mobile shell underneath it —
+// exactly the "canvas mismatch" failure mode this codebase has hit before.
 function isMobileViewport() {
-  return typeof window !== "undefined" && window.innerWidth < 768;
+  return typeof window !== "undefined" && window.innerWidth < 1024;
 }
 
 // ── Core resolve logic ──────────────────────────────────────

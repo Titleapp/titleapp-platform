@@ -290,6 +290,11 @@ export const AV_CANVAS = {
           { type: "aviationQrh" },
         ],
       },
+      {
+        id: "efb",
+        label: "Full EFB",
+        description: "8710 generator, ForeFlight logbook import, currency, duty time, and examiner sign-off — a full standalone electronic flight bag view. Renders separately from the tabs above.",
+      },
     ],
   },
 

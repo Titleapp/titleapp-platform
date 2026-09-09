@@ -91,21 +91,22 @@ import("@capacitor/core").then(({ Capacitor }) => {
 // landing on the Pilots role view (worker slug "av-copilot-001") via the
 // same `ta_redirect_page` sessionStorage handshake App.jsx's AdminShell
 // already honors elsewhere (SubscribeSuccess.jsx, WorkerSandbox.jsx) for
-// "land here once authenticated" redirects. Detects a REAL iPad viewport
-// (not just "not mobile" — see AppShell.jsx's single 768px breakpoint,
-// which conflates phone and tablet) to choose between the full 60/40
-// cockpit layout (CODEX 64) and the regular single-column Pilots canvas.
+// "land here once authenticated" redirects.
+//
+// 2026-09-08 (Sean's call): always land on the real worker canvas now,
+// including on iPad — this used to fork real iPads to a separate "av-cockpit"
+// section (CockpitView.jsx, CODEX 64's 60/40 map+intel layout), built as a
+// workaround for AppShell.jsx's old single 768px breakpoint conflating phone
+// and tablet. That's fixed now (see AppShell.jsx's DESKTOP_MIN_WIDTH tablet
+// tier), so the fork is retired: CockpitView had no chat integration, no
+// role-switcher (Pilot/MX/Dispatch), and no EFB tab, and every worker-canvas
+// feature built from here on would otherwise need building twice. CockpitView.jsx
+// and App.jsx's "av-cockpit" section are left in place, unreached, in case its
+// persistent map-never-hidden-by-a-tab layout is worth porting into the canvas
+// later — not deleted outright.
 if (import.meta.env.VITE_NATIVE_FLAVOR === "aviation" && window.location.pathname === "/" && !window.location.search) {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
-  // Classic iPad UA check, plus the post-iPadOS-13 case where Safari/WKWebView
-  // reports as "Macintosh" — disambiguated by touch support, which no real Mac has.
-  const isRealIPad = /iPad/.test(ua) || (
-    typeof navigator !== "undefined" &&
-    navigator.platform === "MacIntel" &&
-    (navigator.maxTouchPoints || 0) > 1
-  );
   try {
-    sessionStorage.setItem("ta_redirect_page", isRealIPad ? "av-cockpit" : "av-copilot-001");
+    sessionStorage.setItem("ta_redirect_page", "av-copilot-001");
   } catch { /* ignore — worst case, lands on the default dashboard */ }
 }
 

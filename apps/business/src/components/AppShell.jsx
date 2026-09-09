@@ -28,19 +28,35 @@ import { auth } from "../firebase";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 // Desktop (.chatSidebar) and mobile (.mobileChatPanel) ChatPanel instances are
-// BOTH always mounted (CSS display:none, not unmount) at the 769px breakpoint
-// App.css already uses (see .chatSidebar{display:none} under max-width:768px
-// and .mobileChatPanel{display:none} under min-width:769px). Without this,
-// both instances independently register a 'ta:select-worker' listener and
-// write the same chat-session localStorage keys on every worker switch
-// (Sean, 2026-08-17) — pass isVisible so only the one the user can actually
-// see does that work.
+// BOTH always mounted (CSS display:none, not unmount) at the DESKTOP_MIN_WIDTH
+// breakpoint App.css uses (see .chatSidebar{display:none} under
+// max-width:1023px and .mobileChatPanel{display:none} under min-width:1024px).
+// Without this, both instances independently register a 'ta:select-worker'
+// listener and write the same chat-session localStorage keys on every worker
+// switch (Sean, 2026-08-17) — pass isVisible so only the one the user can
+// actually see does that work.
+//
+// 2026-09-08 (tablet breakpoint, part 2) — raised from 769px to 1024px so an
+// iPad mini in PORTRAIT (744px, the common kneeboard/EFB orientation) gets the
+// single-pane "mobile" shell (sidebar drawer, full-screen chat overlay, bottom
+// nav) instead of being squeezed into the two-pane desktop layout it doesn't
+// have the width for. Landscape (1133px) still clears this and gets the real
+// dual-pane desktop layout — plenty of width there. The phone-density sub-tiers
+// (1100/640/480px in App.css) are untouched, so a tablet-width screen still
+// gets the roomier, non-cramped styling those tiers exist to avoid — this
+// single threshold change is what actually produces the 3rd (tablet) tier,
+// not a parallel breakpoint system. THIS NUMBER MUST MATCH the matching CSS
+// breakpoints in App.css and the window.innerWidth check below — they drift
+// out of sync silently otherwise (this constant exists so there's exactly one
+// place to change if that threshold ever needs to move again).
+export const DESKTOP_MIN_WIDTH = 1024;
+
 function useIsDesktopViewport() {
   const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(min-width: 769px)").matches : true
+    typeof window !== "undefined" ? window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches : true
   );
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 769px)");
+    const mq = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`);
     const onChange = (e) => setIsDesktop(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -315,7 +331,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   // ?promoted=true param but stays closed by default.
   const [chatOpen, setChatOpen] = useState(() => {
     try {
-      if (typeof window !== "undefined" && window.innerWidth < 768) return true;
+      if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) return true;
       return new URLSearchParams(window.location.search).get("promoted") === "true";
     } catch { return false; }
   });

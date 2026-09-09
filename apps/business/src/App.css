@@ -874,7 +874,7 @@ body{
 .mobileBackToChat{
   display:none; /* hidden on desktop */
 }
-@media (max-width:768px){
+@media (max-width:1023px){
   .mobileBackToChat{
     display:flex;
     position:fixed;
@@ -901,7 +901,7 @@ body{
 body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 
 /* mobileChatPanel is a mobile-only full-screen overlay — never show on desktop */
-@media (min-width:769px){
+@media (min-width:1024px){
   .mobileChatPanel,
   .mobileChatPanel.mobileChatPanelOpen{ display:none !important; }
 }
@@ -943,7 +943,7 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 }
 
 /* ── 768px: Collapse sidebar + chat ── */
-@media (max-width: 768px){
+@media (max-width: 1023px){
   /* Sidebar → drawer overlay; hide completely when closed so it doesn't bleed
      into the layout (position:fixed alone can be defeated by parent transforms) */
   .topbar{ display:flex; }
@@ -1015,7 +1015,7 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 /* Bottom nav — always visible below 768px */
 .mobileBottomNav{ display:none; }
 
-@media (max-width: 768px){
+@media (max-width: 1023px){
   .mobileBottomNav{
     position:fixed;
     bottom:0;
@@ -1104,7 +1104,7 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 }
 
 /* Canvas panel safe-area (notched phones — bottom of canvas must clear home bar) */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   [class*="canvasPanel"], [class*="rightPanel"] {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -1127,7 +1127,7 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 /* ── MorningBrief + WorkerHome mobile polish (#57) ── */
 .morningBriefWrapper { padding: 28px 32px; }
 .workersSection { padding: 0 32px 32px; max-width: 960px; }
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .morningBriefWrapper { padding: 20px 16px; }
   .workersSection { padding: 0 16px 100px; }
 }
@@ -1146,13 +1146,13 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
   color: #475569; transition: left 0.18s ease, background 0.15s, color 0.15s;
 }
 .sidebarCollapseToggle:hover { background: #f1f5f9; color: #1e293b; }
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .sidebarCollapseToggle { display: none; }
   .sidebar.collapsed { width: auto !important; min-width: 0 !important; overflow: visible; }
 }
 
 /* ── CODEX 57 P1+P2 mobile responsive fixes ── */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   /* P1: Grid layouts → 2-col on mobile */
   .trackGrid4 { grid-template-columns: 1fr 1fr; }
   .valueTrackerGrid { grid-template-columns: 1fr 1fr; }

@@ -2,18 +2,30 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase";
 import DriveImportModal from "../components/DriveImportModal";
 
-const API_BASE = "https://api-feyfibglbq-uc.a.run.app/v1";
+// Routed through the Cloudflare Frontdoor, same as every other live canvas
+// (see apiGet/apiPost in AviationWorkerCanvas.jsx) — this used to hit
+// api-feyfibglbq-uc.a.run.app directly, bypassing the Frontdoor's CORS/auth
+// normalization entirely. That Cloud Run URL is not guaranteed stable across
+// deploys; this component had been disconnected from the app long enough
+// that it was pointing at a URL nothing else in the codebase uses anymore.
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 async function apiCall(route, method = "GET", body = null) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   const token = await user.getIdToken();
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
   const opts = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API_BASE}/copilot:pc12:${route}`, opts);
+  const path = encodeURIComponent(`/v1/copilot:pc12:${route}`);
+  const res = await fetch(`${API_BASE}/api?path=${path}`, opts);
   return res.json();
 }
 
@@ -39,7 +51,7 @@ function statusColor(status) {
   return C.red;
 }
 
-export default function CoPilotEFB() {
+export default function CoPilotEFB({ onExit } = {}) {
   const [tab, setTab] = useState("status");
   const [status, setStatus] = useState(null);
   const [currency, setCurrency] = useState(null);
@@ -198,8 +210,16 @@ export default function CoPilotEFB() {
       {/* Top bar */}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {onExit && (
+            <button
+              onClick={onExit}
+              style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, cursor: "pointer", padding: "4px 8px 4px 0", display: "flex", alignItems: "center", gap: 4 }}
+            >
+              ← Back
+            </button>
+          )}
           <span style={{ color: C.tealLight, fontWeight: 700, fontSize: 18 }}>PC12-47E CoPilot</span>
-          <span style={{ color: C.textDim, fontSize: 13 }}>Sample Part 135 operator</span>
+          <span style={{ color: C.textDim, fontSize: 13 }}>Full EFB</span>
           {activeMode === "direct" && (
             <button onClick={() => setShowModeInfo(!showModeInfo)} style={{
               background: "#7c3aed22", border: "1px solid #7c3aed", borderRadius: 4, padding: "2px 8px",

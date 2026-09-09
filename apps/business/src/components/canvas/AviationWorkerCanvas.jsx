@@ -18,6 +18,7 @@ import PerformanceCalculator from "./PerformanceCalculator";
 import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
 import ScratchPad from "../aviation/ScratchPad";
 import AviationProfileView from "./AviationProfileView";
+import CoPilotEFB from "../../sections/CoPilotEFB";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -2608,6 +2609,15 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         No canvas data for {workerSlug}. Ask Skye to run a briefing.
       </div>
     );
+  }
+
+  // The "efb" tab (Pilot/CoPilot only) is a full standalone screen, not a
+  // block-rendered tab like the others — CoPilotEFB owns its own header,
+  // internal tab bar, and 100vh dark layout, so it takes over completely
+  // here rather than nesting inside this canvas's own chrome. onExit hands
+  // control back to the normal tab bar above.
+  if (isCopilotWorker && currentTabId === "efb") {
+    return <CoPilotEFB onExit={() => setActiveTab(spec.tabs[0]?.id || null)} />;
   }
 
   const tab = spec.tabs.find((t) => t.id === currentTabId) || spec.tabs[0];
