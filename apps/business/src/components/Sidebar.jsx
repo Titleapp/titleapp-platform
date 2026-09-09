@@ -866,10 +866,17 @@ const WORKER_DISPLAY_NAMES = {
   "msr-servicing-001": "Dana",
   "nursing-micro-001": "Morgan",
   "nursing-ob-001": "Clara",
-  "av-copilot-001": "CoPilot",
-  "av-copilot-sr22": "CoPilot · SR22",
-  "av-mx-001": "MX",
-  "av-dispatch-001": "Dispatch",
+  // 2026-09-08 — these showed up in the sidebar's worker list as bare role
+  // names ("CoPilot"/"MX"/"Dispatch") with no persona at all, while the chat
+  // header for the same worker shows "Skye · CoPilot" (AppShell.jsx's
+  // chatAssistantName override). Sean's own naming architecture is one
+  // persona per vertical suite — Skye is aviation's persona across all
+  // three role-lenses — so the sidebar was the one place her name never
+  // actually appeared. Matches ChatPanel's `${persona} · ${activeWorkerName}` format.
+  "av-copilot-001": "Skye · CoPilot",
+  "av-copilot-sr22": "Skye · CoPilot · SR22",
+  "av-mx-001": "Skye · MX",
+  "av-dispatch-001": "Skye · Dispatch",
   "av-ground-school-001": "Ground School",
   "pet-health-client": "Pet Health Records",
   // Tenant-facing consumer workers
