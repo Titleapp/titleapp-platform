@@ -217,6 +217,8 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 
 **How to apply going forward:** any future ForeFlight-sourced research should be labeled explicitly as Pilot-scope only, with MX/Dispatch table-stakes questions routed to S52.67-style benchmarks (Vellox/Ramco, or their successors) instead — don't expect ForeFlight screenshots to ever answer an MX or Dispatch question, because the product was never built to.
 
+**The other half of this — how a user actually gets routed to the right role — is already fully specced, not a new gap.** `CODEX-S52.69`'s top-priority item (2026-09-08, still unbuilt) is exactly this: a first-run "are you a pilot, maintenance tech, or dispatch" question that drives three genuinely distinct home screens from then on, with easy switching afterward for the shared-device case. This doc's Part 3/4 findings (TOLD, PACK, Imagery, etc.) are all *content* gaps within whichever role a user lands in; the onboarding spec in S52.69 is the *routing* gap that decides which role's content they see in the first place. Both need to happen — table-stakes features are wasted if a user never gets routed to the screen that has them.
+
 ---
 
 ## Recommendation
