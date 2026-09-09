@@ -1,6 +1,7 @@
 # CODEX S52.70 — ForeFlight Menu Inventory and SKYE Table-Stakes Map
 
 **Status:** Complete (2026-09-09). Grounded in Sean's own narration of his real ForeFlight iPad (MEM→LIT flight) **plus a full read of all 245 of his actual screenshots** (folder: `~/Downloads/FOREFLIGHT IMAGES`, also in Google Drive), reviewed in 4 parallel batches. This version corrects several guesses from the narration-only first draft and adds features that only showed up in the screenshots themselves.
+**Scope note:** ForeFlight is single-user pilot software with no MX or Dispatch equivalent, so Parts 1-4 below are necessarily Pilot-scoped. **See Part 5 for MX/Dispatch coverage** (SKYE already has real coverage there that this ForeFlight comparison structurally can't surface) and role-ownership assignment for the gaps found here.
 **Relationship to prior research:** `CODEX-S52.67` did video/transcript-based ForeFlight research and produced a gap punch list. This doc is the primary ForeFlight reference going forward — grounded in Sean's own device and real screenshots, organized as ForeFlight actually presents itself. Agreements with S52.67 are noted; net-new findings are marked **NEW**.
 **SKYE-side source of truth:** `docs/SKYE-AVIATION-TAB-ARCHITECTURE.md` — cited, not re-derived.
 
@@ -187,6 +188,34 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 - Full overlay-layer parity (PIREPs, Lightning, Dewpoint Spread long tail)
 - Search & Rescue mode, Discover/education hub, Cockpit Sharing — niche or retention-only, not workflow-critical
 - Dinghy/oceanic survival-equipment fields — real but low priority for current domestic Part 135/medevac ops
+
+---
+
+## Part 5 — Role division of labor: Pilot vs. MX vs. Dispatch
+
+**Scope gap flagged by Sean (2026-09-09) and fixed here:** everything above skews heavily Pilot-side. That's not an oversight in how the doc was written — it's a structural fact about the source material: **ForeFlight is single-user pilot software. It has no MX (fleet maintenance) surface and no Dispatch/ops surface at all.** There was nothing MX- or Dispatch-shaped in 245 screenshots of a pilot's own iPad to extract, because ForeFlight doesn't build for those roles. So Parts 1-4 are an honest inventory of what they cover — but presenting that as "the SKYE gap analysis" without saying so up front understates how far ahead SKYE already is in the two roles ForeFlight simply doesn't address.
+
+**ForeFlight has zero answer to either of these roles. SKYE already has real, mostly-live coverage for both** (per `docs/SKYE-AVIATION-TAB-ARCHITECTURE.md`):
+
+- **MX (`av-mx-001`) — SKYE's single most complete lens, nearly every tab real**: Aircraft (airworthiness computation), Aircraft Logbook, Scheduled MX, Unscheduled MX, Inspections, ADs/SBs, MEL (category A/B/C/D rectification-deadline math), Warranty, NEF — all backed by real endpoints (`aircraftRecords.js`). Only Documents is static. Chat tool-awareness for `file_squawk`/`log_maintenance_entry` fixed 9/8.
+- **Dispatch (`av-dispatch-001`) — also mostly real**: Requests, Schedule, Crew (the `crewRosterCurrency` roster this session corrected), Pax Manifest, Aircraft Status, NOTAMs, Weather, Releases are all backed by real endpoints. Fleet Map is the one gap (only the generic, non-`-001` slug has a live weather map). Dispatch's system prompt claims a 7-step release package; `weather_brief`/`get_notams` are real chat tools, crew-legality/FRAT/W&B are not (see PACK, above).
+
+**For MX and Dispatch table-stakes specifically, ForeFlight is not the right benchmark — `CODEX-S52.67` already did that research correctly**, against Vellox Group/FlightVector (real ops/dispatch software, and the platform Sean personally flies under at Life Flight Network) and Ramco Aviation (MRO/maintenance software). That doc's biggest MX/Dispatch-relevant finding, independently confirmed there: **no Safety Management System (SMS) module** — a real industry-standard category for Part 135/HEMS operators specifically, with no SKYE equivalent. That belongs in the same table-stakes conversation as this doc's Pilot-side findings, not a separate one.
+
+**Assigning role-ownership to this doc's own gaps** (per Sean's own workflow narrative — at many Part 135 ops, Dispatch files the flight plan, arranges FBO logistics, and produces the manifest, not just the pilot):
+
+| Gap (from Part 3/4) | Primary role | Why |
+|---|---|---|
+| TOLD calculator (enhance) | Pilot, but Dispatch needs to see the same number | Pilot computes it preflight; Dispatch's release decision depends on the same figure — one calculation, both roles need visibility |
+| PACK (crew-legality/FRAT/W&B tool-wiring) | **Dispatch primarily** | This is literally Dispatch's stated 7-step release package in its own system prompt — it's not a pilot feature at all, it's Dispatch's core job that happens to also benefit the pilot |
+| Crew currency roster | Dispatch (already real) | Already correctly Dispatch-facing (`crewRosterCurrency`), not pilot-facing — this is right, not a gap |
+| Imagery weather-chart library | Pilot + Dispatch shared | Both roles need the same weather picture; today only Pilot's `Preflight` tab has any weather at all |
+| Track Log → auto-draft logbook | Pilot | Personal logbook, pilot-only by nature (matches ForeFlight) |
+| Aircraft profile depth (performance/weights/fuel/filing) | MX owns the record, Pilot/Dispatch read it | MX's `Aircraft` tab is the natural owner; Pilot and Dispatch both need read access for planning |
+| Airport AI-summary | Pilot (mirrors ForeFlight's own placement) | Lowest-priority role question — a pilot-facing convenience either way |
+| SMS module (from S52.67, not this doc) | MX/Dispatch/Safety jointly | Confirmed the single biggest MX/Dispatch-relevant gap across both research passes — worth pulling into this doc's punch list rather than leaving it siloed in S52.67 |
+
+**How to apply going forward:** any future ForeFlight-sourced research should be labeled explicitly as Pilot-scope only, with MX/Dispatch table-stakes questions routed to S52.67-style benchmarks (Vellox/Ramco, or their successors) instead — don't expect ForeFlight screenshots to ever answer an MX or Dispatch question, because the product was never built to.
 
 ---
 
