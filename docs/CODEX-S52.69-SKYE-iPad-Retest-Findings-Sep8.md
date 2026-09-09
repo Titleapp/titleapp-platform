@@ -20,6 +20,7 @@
 - **Role-switcher (Pilots / MX / Dispatch)** — present and functional in the landscape/desktop-tier layout.
 - **CAS panel, Scratch Pad, Terrain/Profile view** — all rendering and present.
 - **Preflight tab** — closer to real (ties into the same live weather plumbing as other `LIVE_TABS` entries) — Sean's read: "good direction but not quite there."
+- **Aircraft Logbook tab format** — Sean's read: "really good" — no data yet (nothing logged), but the actual field format (Hobbs, total time per engine, start cycles, landing cycles, squawks, pilot/MX sign-offs) is the right shape. This is the real `aircraftRecords.js`-backed logbook (see the SKYE feature-inventory research earlier tonight — MX's deepest, most production-shaped backend) — validates that piece is worth building on directly rather than replacing.
 
 ## Confirmed fake/placeholder during testing
 
