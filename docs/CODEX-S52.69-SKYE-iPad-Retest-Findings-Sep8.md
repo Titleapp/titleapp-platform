@@ -36,6 +36,24 @@
 3. **Canvas signals don't render inline in single-pane (portrait/tablet) mode.** `ChatPanel.jsx` calls `CanvasResolver.resolve(signal, context, panel.showCanvas)` — 3 arguments; the resolver's 4th parameter, `addInlineCard`, is never passed. So a chat-triggered canvas result (e.g. "Skye Output is ready in the canvas on the right") has nowhere to render at single-pane width — confirmed live: Sean got nothing in portrait, saw it fine after rotating to landscape (where the right panel is simultaneously visible). Building the inline-card path is real work: wiring an actual `Block`-based renderer into `ChatPanel`'s message stream, not a quick patch.
 4. **Hamburger menu reported not working** on the opening/portrait view — not yet root-caused; needs a dedicated look (separate from the items above).
 
+## Synthetic PFD (backup instrument mode)
+
+Sean's read: "Pretty good... but no artificial horizon. See the speed and altitude tape. Good start." The speed/altitude tapes render correctly; the attitude ball area was a plain black circle instead of a sky/ground horizon. **This is a real rendering bug, not a missing feature** — `SyntheticPFD.jsx` has a fully implemented canvas-drawn artificial horizon (sky/ground gradient fill, horizon line, pitch-ladder degree marks, all keyed off `pitch`/`bank`), it's just not painting. Not yet root-caused (candidates: canvas context/sizing issue, or a silent early-return when real device motion sensors aren't available — this was tested on the Simulator, which has no real accelerometer/gyroscope, so `PITCH 0° BANK 0°` may reflect "no sensor data" rather than "level flight"; needs a real device to fully distinguish a Simulator limitation from an actual bug). The clear "NOT A CERTIFIED INSTRUMENT" disclaimer and backup-only framing is real, deliberate, and correct.
+
+## Nearest tab
+
+Sean's read: "Kind of there but needs to show location and direct heading to nearest airport and arrival altitude. Can't really read this. But good directionally." Two issues: a legibility/layout problem (can't read it as-is) and missing fields (current position, direct heading to the nearest airport, arrival altitude) on top of the glide-range-ring calculation already described in this tab's spec.
+
+## QRH tab
+
+Sean's read: functionally the checklist-switching works, but **findability is the real problem** — buried in the same scrollable tab row as everything else, same symptom as the general "too many tabs" complaint below. His specific ask: QRH (emergency checklists) is safety-critical and should not require hunting through tabs — wants it prominent and instantly reachable, visually distinct (his words: "probably in BIG RED LETTERS so QRH stands out"), matching how a real EFB treats emergency reference as always-one-tap-away, not buried navigation.
+
+## Information-architecture feedback (Sean, live)
+
+**Consolidate under an "Airports" tab, ForeFlight-style.** With this many tabs (Dashboard/Flight/Currency/Preflight/Trip/Debrief/Logbook/Aircraft Logbook/Charts/Synthetic PFD/Nearest/QRH/Full EFB), tab-to-tab navigation is already getting hard to manage. Sean's proposed direction: unify Charts + runway data + SIDs/STARs/DPs + AFD data + photos + weather + NOTAMs under one **Airports** tab per the ForeFlight pattern, then make that a **dynamic, clickable field inside Flight Planning** — click an airport in the flight plan and see all of the above for that specific field. This is a real information-architecture change, not a quick fix, and it directly addresses backlog item 1 (the flight-planning form) at the same time — worth scoping together, not separately.
+
+**Approach plate link produced no result.** The chart-fetching system is real (not a fixture) — `functions/functions/services/aviation/dtpp.js` pulls the actual current FAA d-tpp cycle metafile and PDF, matching against `AviationCharts.jsx`'s static plate-name list via a documented "loose match" (see its own top-of-file comment on this). An ILS approach-plate link returned nothing; not yet root-caused — could be a cycle-fetch failure or a name-match miss for that specific plate. Needs the exact airport/plate to reproduce.
+
 ## Recommendation
 
 Given the size of items 1–3 above (each a real feature build, not a bug), the next dedicated SKYE session should scope and prioritize among: (a) a real structured flight-planning tool, (b) inline canvas cards for single-pane/tablet width, (c) a "Plan/New Flight" entry point, (d) the hamburger menu bug. Item (a) is probably the highest-value given it's the core "ForeFlight killer" pitch and the thing Sean specifically hit first.
