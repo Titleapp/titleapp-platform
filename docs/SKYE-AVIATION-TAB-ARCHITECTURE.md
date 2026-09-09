@@ -72,7 +72,7 @@ MX is the single most complete lens — nearly every tab is real. See the SKYE f
 | Weather | 🟢 | `GET /v1/aviation:weather` | Same ICAO set as NOTAMs |
 | Releases | 🟢 | `GET /v1/aviation:dispatch:releases` | |
 
-Dispatch's live persona system prompt claims a 7-step release package (crew legality, airworthiness, weather, FRAT, W&B, NOTAMs, IRS docs) but only `weather_brief` is an actual registered chat tool — the tabs above are real, the *chat* can't act on most of them yet (see SKYE feature-inventory research, earlier this session).
+Dispatch's live persona system prompt claims a 7-step release package (crew legality, airworthiness, weather, FRAT, W&B, NOTAMs, IRS docs). `weather_brief` and `get_notams` are both real, registered chat tools (the latter existed all along but wasn't mentioned in the prompt text until fixed 2026-09-08, commit `425ca23b`) — crew legality, FRAT, and W&B still have no wired tool as far as verified. The tabs above are real; the *chat* still can't act on the FRAT/W&B pieces yet.
 
 ## Other role keys in `aviationCanvasData.js` — mostly inactive/unused
 
