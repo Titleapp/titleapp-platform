@@ -40,6 +40,12 @@
 
 Sean's read: "Pretty good... but no artificial horizon. See the speed and altitude tape. Good start." The speed/altitude tapes render correctly; the attitude ball area was a plain black circle instead of a sky/ground horizon. **This is a real rendering bug, not a missing feature** — `SyntheticPFD.jsx` has a fully implemented canvas-drawn artificial horizon (sky/ground gradient fill, horizon line, pitch-ladder degree marks, all keyed off `pitch`/`bank`), it's just not painting. Not yet root-caused (candidates: canvas context/sizing issue, or a silent early-return when real device motion sensors aren't available — this was tested on the Simulator, which has no real accelerometer/gyroscope, so `PITCH 0° BANK 0°` may reflect "no sensor data" rather than "level flight"; needs a real device to fully distinguish a Simulator limitation from an actual bug). The clear "NOT A CERTIFIED INSTRUMENT" disclaimer and backup-only framing is real, deliberate, and correct.
 
+## Full EFB tab (tonight's reconnect)
+
+Sean's read: sub-tab structure is good. **Status** sub-tab (aircraft + pilot status check) correctly reads as "step 1" of flight planning. **Logbook** sub-tab is confirmed as the **Pilot** logbook specifically — correctly distinct from the canvas's separate **Aircraft** Logbook tab (both are real, necessary, and different: pilot flight time/currency vs. airframe maintenance records). Disclaimer/acknowledgment gate reads well.
+
+**Missing: a Risk Analysis (FRAT) tool for the pilot to fill out**, ideally living in Pilot Logbook/Status. Confirms a gap already flagged in this session's earlier SKYE feature-inventory research: the live `av-dispatch-001` persona's system prompt claims FRAT scoring as part of its release package, but only `weather_brief` is an actual registered tool — FRAT is aspirational prompt text, not a real, fillable tool anywhere in the product yet.
+
 ## Nearest tab
 
 Sean's read: "Kind of there but needs to show location and direct heading to nearest airport and arrival altitude. Can't really read this. But good directionally." Two issues: a legibility/layout problem (can't read it as-is) and missing fields (current position, direct heading to the nearest airport, arrival altitude) on top of the glide-range-ring calculation already described in this tab's spec.
