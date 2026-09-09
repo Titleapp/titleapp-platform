@@ -67,7 +67,7 @@ MX is the single most complete lens — nearly every tab is real. See the SKYE f
 | Fleet Map | ⚪ (not in `LIVE_TABS` for the `-001` slug — only the generic fleet-level `av-dispatch` has a live weather-map tab) | | |
 | Requests | 🟢 | real aircraft-matching against fleet on file | Not a static form |
 | Schedule | 🟢 | `GET /v1/dispatch:listTripRequests` | |
-| Crew | 🟢 | `GET /v1/scheduling:listSchedule` + `GET /v1/dispatch:crewRosterCurrency` | Fleet-wide qual/medical/type-rating currency explicitly NOT tracked here by design (lives in each pilot's personal Vault) |
+| Crew | 🟢 | `GET /v1/scheduling:listSchedule` + `GET /v1/dispatch:crewRosterCurrency` | **Corrected 2026-09-09** (was previously wrong, self-contradicting the endpoint cited in the same row): fleet-wide qual/medical/type-rating currency **is** tracked here — `crewRosterCurrency` is a real, tenant-scoped, owner/admin-gated endpoint computing real per-crew-member pilot/MX currency, not a stub. Caught by an independent red-team review of `docs/CODEX-S52.70-ForeFlight-Menu-Inventory-and-SKYE-Table-Stakes-Map.md`, which had propagated this doc's own error |
 | Pax Manifest | 🟢 | `GET /v1/dispatch:listTripRequests` | |
 | Aircraft Status | 🟢 | `GET /v1/mx:listAircraft` (`airworthiness`) | Same data MX Tracker reads — can't show a different answer |
 | NOTAMs | 🟢 | `GET /v1/aviation:notams` | Hardcoded to Hawaii bases (PHOG/PHNL/PHKO/PHTO/PHNY) — not yet derived from the actual filed trip |

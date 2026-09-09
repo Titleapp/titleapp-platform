@@ -4,6 +4,12 @@
 **Relationship to prior research:** `CODEX-S52.67` did video/transcript-based ForeFlight research and produced a gap punch list. This doc is the primary ForeFlight reference going forward — grounded in Sean's own device and real screenshots, organized as ForeFlight actually presents itself. Agreements with S52.67 are noted; net-new findings are marked **NEW**.
 **SKYE-side source of truth:** `docs/SKYE-AVIATION-TAB-ARCHITECTURE.md` — cited, not re-derived.
 
+**Red-team correction (2026-09-09):** an independent adversarial review of this doc's SKYE-side claims (fresh agent, no prior context, checked every 🟢/🔵 marker against the actual code rather than trusting this doc's own citations) found two claims that were **wrong, not just imprecise**, and both got corrected in place below rather than hidden:
+1. **TOLD calculator was marked 🔴 "confirmed absent"; it's actually 🟡.** `apps/business/src/components/canvas/PerformanceCalculator.jsx` + `aviationPerformance.js` is a real, working density-altitude/wind-adjusted takeoff/landing distance estimator, mounted live in `AviationWorkerCanvas.jsx`'s `ReleaseFlightModal`. It's real physics + FAA rule-of-thumb math (FAA-P-8740-02), with honest fail-closed behavior when no sourced baseline exists for an aircraft type — not a fabrication. What it lacks vs. ForeFlight: only one aircraft type sourced (PC-12/47E), no TORA/TODA/ASDA per-runway comparison, no live METAR auto-pull, no per-flap climb table, no PDF export, and it's informational-only (doesn't gate the release the way ForeFlight's does). This is an **upgrade job, not a zero-to-one build** — materially changes the priority call below.
+2. **Crew qualifications/currency was listed as the highest-confidence *unaddressed* gap; it's actually built.** `functions/functions/index.js`'s `crewRosterCurrency` route is a real, deployed, tenant-scoped, owner/admin-gated endpoint that resolves every crew member on the tenant's real `crewSchedule` and computes real per-person currency (pilot: 90-day/Instrument/Medical/BFR/61.57 IPC/135.293/135.297; MX: `computeMxCurrency`) — not a stub. `AviationWorkerCanvas.jsx`'s Dispatch Crew tab (`crewRosterToBlocks()`) renders it as a real table. The architecture doc's note that this is "explicitly NOT tracked... by design" was itself wrong and has been corrected in that doc too.
+
+Everything else the red team checked (NOTAMs hardcoded to Hawaii, the inline-canvas-card gap, W&B lacking saved profiles, PACK having no equivalent, MEDEVAC flag absent, Emergency Glide Mode absent) held up as accurate. Two moderate overstatements were also softened: the "Airport weather/NOTAMs" row and the glide-ratio "cheap fix" framing (see their rows below for what changed and why).
+
 ---
 
 ## Part 1 — ForeFlight Menu Inventory (screenshot-verified)
@@ -111,7 +117,7 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 
 | ForeFlight feature | SKYE status | Detail |
 |---|---|---|
-| Airport weather/NOTAMs/runways | 🟢 | `Preflight` tab (`GET /v1/aviation:weather`); Dispatch has `GET /v1/aviation:notams` (real, but hardcoded to Hawaii bases — needs to generalize to the filed trip) |
+| Airport weather/NOTAMs/runways | 🟡 | `Preflight` tab (`GET /v1/aviation:weather`); Dispatch has `GET /v1/aviation:notams` (real, but hardcoded to Hawaii bases — needs to generalize to the filed trip). Downgraded from 🟢 per red-team check — Sean's own live-test read on this tab was "good direction, not quite there," which the doc had dropped |
 | 3D Airport view | 🔴 | No equivalent. Confirmed rich (day/night, runway-selector grid, live HUD) — bigger lift than first assumed |
 | FAA live airport camera feed | 🔴 | No equivalent. Confirmed real public source (`weathercams.faa.gov`) — genuinely cheap to integrate if that endpoint is open |
 | Airport Comments → AI "Pilots Say..." summary | 🔴 | No equivalent, and notable: this is ForeFlight's *own* only shipped AI feature. SKYE's whole premise is AI-native — this specific feature is low-hanging fruit that plays directly to SKYE's strength (an LLM synthesizing airport-specific pilot notes is easy relative to TOLD/W&B math) |
@@ -122,12 +128,12 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 | **Imagery (Prog Charts, regional forecasts, Winds Aloft, AIRMET/SIGMET, Icing, Turbulence, Satellite, Doppler)** | 🔴 | No equivalent — single weather endpoint today. **Upgraded finding**: bigger gap than "map overlays," deserves its own line item |
 | Plates: guided STAR→Approach→DA/MDA/DH→Insert→auto briefing strip (day/night photo, missed-approach text) | 🟡 | `Charts` tab does real chart lookup/fetch, but the guided selection workflow and auto-generated briefing strip are not confirmed to exist. Also: an ILS plate lookup failed live during retest, not fully root-caused |
 | Flights: route/plan building | ⚪→🔴 | Canvas `Flight` tab is fully hardcoded fixture data (highest-priority rebuild target per architecture doc) |
-| **TOLD calculator** | 🔴 | Confirmed absent, now with a full target spec (live METAR pull, per-flap climb table, TORA/TODA/ASDA, PDF export). Two independent research passes agree this is SKYE's single biggest gap |
+| **TOLD calculator** | 🟡 | **Corrected 2026-09-09**: a real one exists (`PerformanceCalculator.jsx`/`aviationPerformance.js`, real density-altitude/wind physics + FAA rule-of-thumb math, mounted in Dispatch's `ReleaseFlightModal`), not absent. Gap vs. ForeFlight: one aircraft type sourced, no TORA/TODA/ASDA per-runway table, no live METAR auto-pull, no per-flap climb data, no PDF export, informational-only (doesn't gate release). This is an enhancement job, not a build-from-zero |
 | Flight Meter/Times (Hobbs, Out/Off/On/In, Flight/Block time) | 🔴 | No equivalent confirmed |
 | ICAO flight plan filing incl. MEDEVAC/special-handling flags | 🔴 | Filing exists on the Dispatch side conceptually but full ICAO-form fidelity (STS codes, wake category, dinghy/survival fields) not confirmed. **MEDEVAC flag specifically relevant** given Sean's real job — worth prioritizing over the oceanic/dinghy fields |
 | W&B multiple saved profiles per tail | 🔴 | SKYE has a real W&B calculator (per S52.67) but multiple saved configs per aircraft not confirmed — now resolved as a real ForeFlight feature to match |
-| **PACK (data-currency check + briefing bundle)** | 🔴 | No equivalent. Reframed by this review: the core mechanic is a **completeness/currency check**, not just bundling — needs FRAT + W&B + crew-legality tools (already flagged missing in architecture doc) to exist before a real PACK-equivalent is possible |
-| Scratch Pad | 🟢 | Confirmed working in retest |
+| **PACK (data-currency check + briefing bundle)** | 🔴 | No equivalent. Reframed by this review: the core mechanic is a **completeness/currency check**, not just bundling. Crew-legality *data* is real (`crewRosterCurrency`), FRAT and W&B-via-chat are confirmed missing per the architecture doc's tool audit — but whether crew-legality data is reachable by chat as a callable tool (vs. only a REST endpoint a human views) is unverified, not confirmed either way. Check `_cosTools` before scoping |
+| Scratch Pad | 🟡 | Confirmed working in retest, but it's a generic freeform drawing canvas (`ScratchPad.jsx`, localStorage-persisted) — no clearance-specific templates or structured fields like ForeFlight's. Downgraded from 🟢 per red-team check: real but not full parity |
 | In-flight route amendment (scratch pad → FPL) | 🔴 | Known gap: `ChatPanel.jsx` missing `addInlineCard` arg |
 | Documents (content locker) | 🟢 | Full EFB → Documents sub-tab, real, rated "really good" by Sean |
 | Logbook (pilot only, no aircraft equivalent) | 🔵 | SKYE-only advantage: has both Pilot logbook and Aircraft Logbook (real, shared read-only view). Confirm this stays a stated differentiator |
@@ -145,35 +151,37 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 | Cockpit Sharing / Auto-Receive Panel FPL | 🔴 | Low priority unless SKYE needs installed-avionics integration beyond ADS-B |
 | **Checklist "Speak: Challenge & Response" voice mode** | 🔴 | No equivalent — but this is a validated existing UX pattern to copy directly for SKYE's RealWear hands-free checklist work, not a from-scratch design problem |
 | **Dispatch visibility into flight/weather/route info** | 🟡 | SKYE's Dispatch role already has real weather/NOTAMs/releases/manifest tabs — structurally ahead of ForeFlight (no dispatch-facing surface at all). Real gap: NOTAMs hardcoded to Hawaii bases |
-| **RAAS / rules engine behind any of this** | 🔵 | ForeFlight has none by design (Sean's own words). SKYE's structural advantage across every row above |
+| **RAAS / rules engine behind any of this** | 🔵 | ForeFlight has none by design (Sean's own words). Real structural advantage, but **uneven coverage today** — confirmed wired for weather/NOTAMs; confirmed *not* wired to chat yet for FRAT/W&B/crew-legality. Don't read this as a blanket advantage against every row above |
 
 ---
 
 ## Part 4 — Reconciled table-stakes punch list
 
-**Confirmed by multiple independent passes (highest confidence):**
-1. **TOLD calculator.** Now has a full, screenshot-verified target spec (live METAR pull, TORA/TODA/ASDA, per-flap climb data, PDF export). Two research passes (S52.67 video research + this screenshot review) and 3 of 4 review batches independently flagged it as ForeFlight's most-used, most-detailed feature.
-2. **Track Log / post-flight replay — now with a specific, higher-value target: auto-drafting logbook entries**, not just a replay view. This raises its priority — it's a real workflow-time-saver, not just a nice-to-have viewer.
-3. **Crew qualifications / currency visible cross-crew.** Unchanged from S52.67, still unaddressed.
-4. **Glide ratio hardcoded to one aircraft.** Now visually confirmed as a real, fleet-wide-configurable ForeFlight feature — cheap fix, `aircraftTypeProfiles.js` pattern already exists in the codebase.
+**Corrected 2026-09-09 after red-team check:** crew qualifications/currency visible cross-crew is **not** an open gap — `crewRosterCurrency` (real, deployed, tenant-scoped) already does this; removed from the punch list below. TOLD calculator moved from "build from zero" to "enhance existing" (see Part 3). One open question the red team raised and this doc can't yet answer: whether crew-legality/FRAT/W&B data is reachable by Dispatch's *chat* as a callable tool, vs. only as a REST endpoint a human views — that distinction matters for the PACK item below and needs a direct check of `_cosTools` before scoping it, not an assumption either way.
+
+**Confirmed genuine gaps (highest confidence):**
+1. **TOLD calculator — upgrade, not build.** Real screenshot-verified target spec for what's missing from the existing `PerformanceCalculator.jsx`: live METAR auto-pull, TORA/TODA/ASDA per-runway table, per-flap climb data, PDF export, additional aircraft types beyond PC-12/47E, and a decision on whether it should gate release (like ForeFlight) or stay informational.
+2. **Track Log / post-flight replay with auto-drafting logbook entries** — not just a replay view, a real workflow-time-saver ForeFlight has and SKYE doesn't.
+3. **Glide ratio — not hardcoded, but effectively inert.** Red-team correction: `AviationNearest.jsx` already has a real lookup path (`aircraftType` prop → profile → fallback), it's just that (a) nothing in the app currently passes a non-default `aircraftType`, and (b) `aircraftTypeProfiles.js` — its own header marks it a placeholder — has exactly one aircraft type sourced, the same value as the fallback. So wiring the existing path through today would change nothing; the real work is sourcing real per-type POH glide data for each additional aircraft SKYE needs to support. Bigger lift than "cheap fix" as originally framed.
 
 **Upgraded or reframed this pass:**
-5. **PACK.** Reframed from "briefing bundler" to "data-currency/completeness checker that also bundles a download." Still blocked on the same FRAT/W&B/crew-legality tool gap already known, but now has a clearer product shape.
-6. **Imagery (weather-chart library).** Elevated to its own line item — bigger than "map overlays," a real gap.
-7. **Aircraft profile depth.** Elevated — the "custom content" idea Sean described is real but sits on top of a materially deeper baseline profile (performance/weights/fuel/filing) SKYE doesn't have yet either.
-8. **Emergency Glide Mode as a dedicated full-screen UI**, not just the underlying calculator SKYE already has.
+4. **PACK.** Reframed from "briefing bundler" to "data-currency/completeness checker that also bundles a download." Confirmed no equivalent exists. Scoping it depends on the open question above (is crew-legality/FRAT/W&B data chat-callable yet, not just REST-viewable).
+5. **Imagery (weather-chart library).** Elevated to its own line item — bigger than "map overlays," a real gap.
+6. **Aircraft profile depth.** Elevated — the "custom content" idea Sean described is real but sits on top of a materially deeper baseline profile (performance/weights/fuel/filing) SKYE doesn't have yet either.
+7. **Emergency Glide Mode as a dedicated full-screen UI**, not just the underlying calculator SKYE already has.
 
 **Net-new, not in S52.67 at all:**
-9. **Airport AI-summary ("Pilots Say...")** — ForeFlight's only shipped AI feature, and a low-effort, high-fit win for an AI-native platform to match or beat immediately.
-10. **NOTAM-currency warning banner directly on charts** — a UX pattern, not a data gap, cheap to adopt once the underlying chart-currency check exists.
-11. **Checklist voice mode ("Speak: Challenge & Response")** — directly reusable reference UX for the RealWear hands-free work already underway; de-risks that design problem rather than adding a new one.
-12. **ICAO flight-plan MEDEVAC/special-handling flag** — small, concrete, and personally relevant to Sean's real job; worth prioritizing ahead of the broader oceanic/dinghy fields that come with it.
+8. **Airport AI-summary ("Pilots Say...")** — ForeFlight's only shipped AI feature. Real caveat from the red-team pass: the LLM-summarization step is the easy part; the actual precondition — does SKYE have or can it get a corpus of crowd pilot comments per airport to summarize — is unverified, not confirmed cheap.
+9. **NOTAM-currency warning banner directly on charts** — a UX pattern, not a data gap, cheap to adopt once the underlying chart-currency check exists.
+10. **Checklist voice mode ("Speak: Challenge & Response")** — directly reusable reference UX for the RealWear hands-free work already underway; de-risks that design problem rather than adding a new one.
+11. **ICAO flight-plan MEDEVAC/special-handling flag** — small, concrete, and personally relevant to Sean's real job; worth prioritizing ahead of the broader oceanic/dinghy fields that come with it.
 
 **Already strong / keep as differentiators (do not regress):**
 - Pilot + Aircraft dual logbook (ForeFlight has only the former)
 - Documents content locker (already rated "really good")
-- No rules engine in ForeFlight at all — SKYE's RAAS layer is a standing structural advantage
+- Fleet-wide crew qualifications/currency roster for Dispatch (`crewRosterCurrency`) — real, and something ForeFlight itself doesn't expose this way
 - Dispatch-facing surface (ForeFlight has none)
+- RAAS/rules engine — a real structural advantage, but **only where a rule is actually wired to a chat-callable tool today** (confirmed for weather/NOTAMs; confirmed *not* wired yet for FRAT/W&B-via-chat/crew-legality-via-chat per the architecture doc's own tool audit). Don't cite RAAS as a blanket advantage against every ForeFlight gap above — it's real, but its coverage is uneven today.
 
 **Not table stakes — explicitly deprioritize:**
 - Full overlay-layer parity (PIREPs, Lightning, Dewpoint Spread long tail)
@@ -184,4 +192,10 @@ Legend: 🟢 SKYE has a real equivalent · 🟡 Partial/weaker equivalent · �
 
 ## Recommendation
 
-The TOLD calculator remains the single highest-confidence build target — now with a concrete, screenshot-verified spec rather than a general description. The best net-new insight from the full-image pass is the **airport AI-summary feature**: it's ForeFlight's own only AI feature, it plays directly to SKYE's structural strength (an LLM synthesizing pilot notes is far cheaper to build than TOLD/W&B math), and it's a visible, demoable "we already beat ForeFlight at something" talking point for Part 135 operators. Worth pitching alongside the TOLD calculator as a paired near-term build: one closes the biggest safety-relevant gap, the other is a fast, cheap win that's easy to show off.
+**Corrected 2026-09-09.** The original version of this recommendation named the TOLD calculator as "the single highest-confidence build-from-zero target" — that premise was wrong (a real calculator already exists) and has been fixed throughout this doc. The honest recommendation now:
+
+1. **Enhance the existing TOLD calculator** (`PerformanceCalculator.jsx`) rather than build one: add live METAR auto-pull, a TORA/TODA/ASDA per-runway table, per-flap climb data, and source performance profiles for whatever aircraft types beyond the PC-12/47E SKYE needs to support next. Decide deliberately whether it should gate a release (like ForeFlight) or stay informational — that's a product/safety call, not an engineering one.
+2. **PACK is the clearest real zero-to-one gap** — genuinely no equivalent exists. But before scoping it, resolve the open question this red-team pass surfaced: is crew-legality/FRAT/W&B data reachable by Dispatch's chat as a callable tool today, or only visible via REST endpoints a human reads? That answer determines whether PACK is mostly composition (if the data's chat-reachable) or needs new tool-wiring first (if it isn't) — don't assume either way without checking `_cosTools` directly.
+3. **Airport AI-summary feature** is still a good candidate for a fast, visible win — ForeFlight's only shipped AI feature, directly playable to SKYE's strength — but only once someone confirms SKYE has (or can get) a real corpus of per-airport pilot comments to summarize. The AI step is cheap; the data-sourcing step is unverified and could be the actual blocker.
+
+The corrected picture is less flattering than the original draft but more useful for actually planning work: SKYE has more built already (crew currency, a real basic TOLD calc) than the first pass credited it for, and the genuinely open gaps are narrower and more specific than "build a performance calculator from scratch."
