@@ -1,26 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
 
-const API_BASE = "https://api-feyfibglbq-uc.a.run.app/v1";
+// 2026-09-08 — was hardcoded directly to api-feyfibglbq-uc.a.run.app,
+// bypassing the Frontdoor's CORS/auth normalization entirely, same bug
+// (and same fix) as CoPilotEFB.jsx's apiCall in this same reconnect pass.
+// This is why the Google Drive import link didn't work when tested live.
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-async function driveApi(route, method = "GET", body = null) {
+async function _apiCall(namespace, route, method, body) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   const token = await user.getIdToken();
-  const opts = { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } };
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const opts = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+  };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API_BASE}/drive:${route}`, opts);
+  const path = encodeURIComponent(`/v1/${namespace}:${route}`);
+  const res = await fetch(`${API_BASE}/api?path=${path}`, opts);
   return res.json();
 }
 
+async function driveApi(route, method = "GET", body = null) {
+  return _apiCall("drive", route, method, body);
+}
+
 async function vaultApi(route, method = "POST", body = null) {
-  const user = auth.currentUser;
-  if (!user) throw new Error("Not authenticated");
-  const token = await user.getIdToken();
-  const opts = { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API_BASE}/vault:${route}`, opts);
-  return res.json();
+  return _apiCall("vault", route, method, body);
 }
 
 const IMPORT_DOC_TYPES = [

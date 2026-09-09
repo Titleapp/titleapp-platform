@@ -58,6 +58,20 @@ Sean's read: functionally the checklist-switching works, but **findability is th
 
 Sean's read: structure is good (ground training + instructor endorsements land in a sensible place), but **only Ground Training exists — no Flight Training entry type**, and no way to record which device the training happened in (aircraft vs. training device vs. approved simulator). This is a live confirmation of a gap already identified in this session's earlier SKYE feature-inventory research: `form8710Builder.js`'s totals object has a `simulator` field that no code path ever populates, and no entry type or `deviceType`/`aircraftCategory` value distinguishes a simulator/training-device session from a real aircraft flight anywhere in the schema. Real, scoped fix: add a device-type field (aircraft / training device / approved simulator) to the training/flight-log entry form, and wire it through to the 8710 totals. Follow-up: there's already a training-type dropdown in the entry form ("good start") — it just needs Ground and Flight split into genuinely separate categories, not a single combined option.
 
+## Documents tab
+
+Sean's read: "really good" — reads as the equivalent of Studio Locker (the existing platform-wide document-storage pattern) but for CoPilot specifically, and the Google Drive import already built into `CoPilotEFB.jsx` (`DriveImportModal`) is well-received and working as intended. Feature idea on top of what's there: real aircraft-specific docs should be importable from the actual aircraft/operator, **plus** SOCIII should supply general aircraft-**type** template documents (e.g. a stock PC-12/47E AFM/checklist set) as a starting baseline rather than requiring every pilot to source everything from scratch.
+
+## Documents tab — Google Drive import bug (FIXED)
+
+Sean's read: "GDrive link not working." Root cause: `DriveImportModal.jsx` independently hardcoded the same stale direct Cloud Run URL (`api-feyfibglbq-uc.a.run.app`) that `CoPilotEFB.jsx`'s own `apiCall` had before tonight's earlier fix — same bug, duplicated in a second file, bypassing the Frontdoor's CORS/auth normalization entirely. Fixed the same way (route through `/api?path=/v1/...`). Not yet retested live (needs rebuild).
+
+## CoPilot's internal "Chat" sub-tab — redundant with Skye chat
+
+Sean's read: "Seems to be a redundant chat box... this is Skye's domain, chat doesn't seem to work." Two things:
+1. **The "doesn't work" part may already be fixed** — this internal chat calls the same `apiCall("chat", ...)` in `CoPilotEFB.jsx` whose URL bug was fixed earlier tonight (see Full EFB section above). Needs a rebuild + retest to confirm.
+2. **The redundancy critique is a real, separate architecture question, independent of the bug.** This isn't just duplicate UI — it very likely runs as a fully separate, isolated conversation (its own PC-12-specific system prompt/session), not sharing history with the main Skye chat. Worth deciding whether the EFB needs its own chat sub-tab at all, versus just being a structured-data surface that the one real Skye chat (always present) reads and writes into.
+
 ## Duty tab — concrete reference design (Sean, live)
 
 Current Duty sub-tab: too simple, needs a real duty-time snapshot. Sean pointed to his actual employer's flight-ops software (Life Flight Network's FVOps, `lfn.fvflightops.com`) as "the only useful thing in that app" — a concrete, proven reference to build toward, not a vague ask:
