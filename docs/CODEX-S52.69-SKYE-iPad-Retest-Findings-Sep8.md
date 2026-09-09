@@ -54,6 +54,10 @@ Sean's read: "Kind of there but needs to show location and direct heading to nea
 
 Sean's read: functionally the checklist-switching works, but **findability is the real problem** — buried in the same scrollable tab row as everything else, same symptom as the general "too many tabs" complaint below. His specific ask: QRH (emergency checklists) is safety-critical and should not require hunting through tabs — wants it prominent and instantly reachable, visually distinct (his words: "probably in BIG RED LETTERS so QRH stands out"), matching how a real EFB treats emergency reference as always-one-tap-away, not buried navigation.
 
+## Design principle (Sean, live)
+
+**Redundant paths to the same data are a feature, not duplication to eliminate.** EFB's own Currency sub-tab is functionally another version of the canvas's Currency tab — Sean's explicit take: that's good, CoPilot should have 2-3 ways to reach the same information, because different pilots work differently. Worth keeping in mind when consolidating tabs per the Airports/Aircraft-hub ideas below: the goal is reducing *navigation friction*, not collapsing every view down to one canonical path.
+
 ## Information-architecture feedback (Sean, live)
 
 **A missing "Aircraft" tab, mirroring the "Airports" tab idea below.** Sean's read on QRH's format: good, and presumably sourced from the real POH/AFM for the aircraft type — confirmed directionally correct: the tab's own description in `aviationCanvasData.js` says "verbatim checklists from the PC-12/47E AFM... retrieved, never generated" (real design intent, actual checklist-text fidelity not independently verified tonight). His proposed structural fix: an **Aircraft** tab should be the real hub — holding the aircraft's documents (POH/AFM itself) and acting as the secondary path into everything airframe-specific that's currently scattered as flat sibling tabs: performance charts, W&B, QRH. Same pattern as the Airports-tab idea (below) but keyed by tail number/type instead of by field — together these two hub tabs would absorb most of the "too many tabs" sprawl.
