@@ -71,9 +71,42 @@ function build8710(profile, entries) {
   for (const e of all) {
     const t = e.totalTime || 0;
     const entryDate = new Date(e.date);
+    // 2026-09-08 — `aircraftCategory` already existed on every entry
+    // (handlers.js's handleAddLogEntry accepts and stores it, defaulting to
+    // "airplane") and the ForeFlight/FVO import parsers already set it, but
+    // this aggregator never read it — every entry's time landed in
+    // totals.totalTime and an airplane-class bucket regardless, and
+    // totals.simulator (declared above) had no code path that could ever
+    // populate it. FAA 8710 reports simulator/FTD/PCATD time in its own
+    // column, separate from real aircraft time — confirmed live 2026-09-08
+    // (Sean: Training tab has no device-type distinction). Real aircraft
+    // time (the overwhelming majority of entries, and every entry that
+    // predates this fix) is unaffected — this only changes the destination
+    // bucket for entries explicitly marked non-aircraft.
+    const isSimTime = ["simulator", "training-device", "ftd", "pcatd"].includes(
+      (e.aircraftCategory || "airplane").toLowerCase()
+    );
 
-    // All-time totals
-    totals.totalTime += t;
+    if (isSimTime) {
+      totals.simulator += t;
+    } else {
+      totals.totalTime += t;
+      // Classify by aircraft class — only meaningful for real aircraft time.
+      const cls = (e.aircraftClass || "").toLowerCase();
+      if (cls.includes("multi-engine") && cls.includes("land")) totals.airplaneMEL += t;
+      else if (cls.includes("single-engine") && cls.includes("land")) totals.airplaneSEL += t;
+      else if (cls.includes("multi-engine") && cls.includes("sea")) totals.airplaneMES += t;
+      else if (cls.includes("single-engine") && cls.includes("sea")) totals.airplaneSES += t;
+      else if (cls.includes("rotorcraft") || cls.includes("helicopter")) totals.rotorcraft += t;
+      else if (cls.includes("glider")) totals.glider += t;
+      else totals.airplaneMEL += t; // Default PC12 to MEL
+      totals.turbineTime += (e.turbineTime || 0);
+      totals.complexTime += (e.complexTime || 0);
+      totals.highPerformanceTime += (e.highPerformanceTime || 0);
+    }
+
+    // Sub-metrics FAA tracks regardless of aircraft vs. simulator (a sim
+    // session's logged instrument approaches/time still count toward these).
     totals.picTime += (e.picTime || 0);
     totals.sicTime += (e.sicTime || 0);
     totals.crossCountry += (e.crossCountry || 0);
@@ -84,19 +117,6 @@ function build8710(profile, entries) {
     totals.dualGiven += (e.dualGiven || 0);
     totals.landingsDay += (e.landingsDay || 0);
     totals.landingsNight += (e.landingsNight || 0);
-    totals.turbineTime += (e.turbineTime || 0);
-    totals.complexTime += (e.complexTime || 0);
-    totals.highPerformanceTime += (e.highPerformanceTime || 0);
-
-    // Classify by aircraft class
-    const cls = (e.aircraftClass || "").toLowerCase();
-    if (cls.includes("multi-engine") && cls.includes("land")) totals.airplaneMEL += t;
-    else if (cls.includes("single-engine") && cls.includes("land")) totals.airplaneSEL += t;
-    else if (cls.includes("multi-engine") && cls.includes("sea")) totals.airplaneMES += t;
-    else if (cls.includes("single-engine") && cls.includes("sea")) totals.airplaneSES += t;
-    else if (cls.includes("rotorcraft") || cls.includes("helicopter")) totals.rotorcraft += t;
-    else if (cls.includes("glider")) totals.glider += t;
-    else totals.airplaneMEL += t; // Default PC12 to MEL
 
     // Period totals
     if (entryDate >= sixMonthsAgo) addToPeriod(last6Months, e);
@@ -141,6 +161,7 @@ function build8710(profile, entries) {
 function createPeriodTotals() {
   return {
     totalTime: 0,
+    simulator: 0,
     picTime: 0,
     sicTime: 0,
     crossCountry: 0,
@@ -153,7 +174,14 @@ function createPeriodTotals() {
 }
 
 function addToPeriod(period, entry) {
-  period.totalTime += (entry.totalTime || 0);
+  // Same aircraft-vs-simulator split as the all-time totals above — a
+  // rolling 6/12-month window that silently folds simulator hours into
+  // real aircraft totalTime would misreport recent aircraft activity.
+  const isSimTime = ["simulator", "training-device", "ftd", "pcatd"].includes(
+    (entry.aircraftCategory || "airplane").toLowerCase()
+  );
+  if (isSimTime) period.simulator += (entry.totalTime || 0);
+  else period.totalTime += (entry.totalTime || 0);
   period.picTime += (entry.picTime || 0);
   period.sicTime += (entry.sicTime || 0);
   period.crossCountry += (entry.crossCountry || 0);

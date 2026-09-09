@@ -630,8 +630,22 @@ function UploadCard({ title, accept, onUpload }) {
   );
 }
 
+// 2026-09-08 — display labels for the aircraftCategory field, mapped to the
+// exact lowercase values form8710Builder.js checks for (see that file's
+// same-dated fix: real aircraft and simulator/training-device time are now
+// aggregated into separate FAA 8710 totals — this dropdown is the only
+// place that value gets set, so without it the backend fix has no way to
+// actually be reached from the UI). Confirmed live by Sean: the Training
+// tab had no way to log flight training distinct from ground training, or
+// to say whether a session was in the real aircraft vs. a device.
+const AIRCRAFT_CATEGORY_OPTIONS = [
+  { value: "airplane", label: "Aircraft" },
+  { value: "simulator", label: "Approved Simulator (Full Flight Sim / FFS)" },
+  { value: "training-device", label: "Training Device (FTD / PCATD)" },
+];
+
 function ManualEntryForm() {
-  const [form, setForm] = useState({ date: "", departure: "", destination: "", totalTime: "", picTime: "", sicTime: "" });
+  const [form, setForm] = useState({ date: "", departure: "", destination: "", totalTime: "", picTime: "", sicTime: "", aircraftCategory: "airplane" });
   const [msg, setMsg] = useState("");
 
   async function submit() {
@@ -644,7 +658,7 @@ function ManualEntryForm() {
         sicTime: Number(form.sicTime) || 0,
       });
       setMsg(result.ok ? "Entry added" : result.error);
-      if (result.ok) setForm({ date: "", departure: "", destination: "", totalTime: "", picTime: "", sicTime: "" });
+      if (result.ok) setForm({ date: "", departure: "", destination: "", totalTime: "", picTime: "", sicTime: "", aircraftCategory: "airplane" });
     } catch (e) {
       setMsg("Error: " + e.message);
     }
@@ -659,6 +673,16 @@ function ManualEntryForm() {
         <EFBInput label="Total Time" type="number" value={form.totalTime} onChange={v => setForm({ ...form, totalTime: v })} />
         <EFBInput label="PIC Time" type="number" value={form.picTime} onChange={v => setForm({ ...form, picTime: v })} />
         <EFBInput label="SIC Time" type="number" value={form.sicTime} onChange={v => setForm({ ...form, sicTime: v })} />
+        <div>
+          <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4 }}>Aircraft / Device</div>
+          <select value={form.aircraftCategory} onChange={e => setForm({ ...form, aircraftCategory: e.target.value })}
+            style={{
+              width: "100%", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4,
+              color: C.text, padding: "6px 10px", fontSize: 13, outline: "none",
+            }}>
+            {AIRCRAFT_CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
       <div style={{ marginTop: 12 }}>
         <EFBButton label="Add Entry" onClick={submit} color={C.tealLight} />
