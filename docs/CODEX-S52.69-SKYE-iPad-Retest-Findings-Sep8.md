@@ -86,6 +86,10 @@ This is real, scoped feature work (rolling time-window aggregation + gauge compo
 
 **Redundant paths to the same data are a feature, not duplication to eliminate.** EFB's own Currency sub-tab is functionally another version of the canvas's Currency tab — Sean's explicit take: that's good, CoPilot should have 2-3 ways to reach the same information, because different pilots work differently. Worth keeping in mind when consolidating tabs per the Airports/Aircraft-hub ideas below: the goal is reducing *navigation friction*, not collapsing every view down to one canonical path.
 
+## No first-run role selection (Pilot / MX / Dispatch)
+
+Sean's read: nowhere in the app do you actually choose which role you are — Pilot, MX, or Dispatch. The RoleSwitcher tabs let you flip between roles once you're already in the aviation worker, but there's no initial "which are you" moment establishing a default/primary identity. Sean's proposed fix: prompt for this on first major usage, and keep it always easy to switch afterward — explicitly calling out the shared-device case (a company iPad handed between a pilot, a mechanic, and a dispatcher) as a real reason switching needs to stay easy even after the initial choice.
+
 ## Information-architecture feedback (Sean, live)
 
 **A missing "Aircraft" tab, mirroring the "Airports" tab idea below.** Sean's read on QRH's format: good, and presumably sourced from the real POH/AFM for the aircraft type — confirmed directionally correct: the tab's own description in `aviationCanvasData.js` says "verbatim checklists from the PC-12/47E AFM... retrieved, never generated" (real design intent, actual checklist-text fidelity not independently verified tonight). His proposed structural fix: an **Aircraft** tab should be the real hub — holding the aircraft's documents (POH/AFM itself) and acting as the secondary path into everything airframe-specific that's currently scattered as flat sibling tabs: performance charts, W&B, QRH. Same pattern as the Airports-tab idea (below) but keyed by tail number/type instead of by field — together these two hub tabs would absorb most of the "too many tabs" sprawl.
