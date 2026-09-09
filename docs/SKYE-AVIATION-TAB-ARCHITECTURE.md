@@ -1,6 +1,6 @@
 # SKYE Aviation — Tab/Feature Architecture Map
 
-**This is a living reference, not a dated snapshot — update it in place as tabs are added, wired to real data, or restructured.** For the live QA notes and findings behind these entries, see `docs/CODEX-S52.69-SKYE-iPad-Retest-Findings-Sep8.md`.
+**This is a living reference, not a dated snapshot — update it in place as tabs are added, wired to real data, or restructured.** For the live QA notes and findings behind these entries, see `docs/CODEX-S52.69-SKYE-iPad-Retest-Findings-Sep8.md`. For feature-parity gaps against ForeFlight (features SKYE doesn't have at all yet, not just tabs that are fixture vs. live), see `docs/CODEX-S52.70-ForeFlight-Menu-Inventory-and-SKYE-Table-Stakes-Map.md`.
 
 Source files: `apps/business/src/components/canvas/aviationCanvasData.js` (tab definitions), `apps/business/src/components/canvas/AviationWorkerCanvas.jsx` (the `LIVE_TABS` object — the single source of truth for which tabs read real data vs. static fixture content), `apps/business/src/sections/CoPilotEFB.jsx` (the Full EFB screen).
 

@@ -2,6 +2,7 @@
 
 **Status:** Five real bugs found and fixed, deployed/committed. A live, tab-by-tab QA pass on the real iPad mini Simulator surfaced a further, larger backlog — captured here so it isn't lost in chat scrollback.
 **Owner:** Sean (direction, live testing) · Claude (investigation, fixes)
+**Relationship to other docs:** This is a dated incident/retest log — what broke and what got fixed on 9/8, plus the UX/workflow backlog it surfaced (role-based onboarding, home-screen redesign). For the *current* live-vs-fixture status of every tab, see the living reference `docs/SKYE-AVIATION-TAB-ARCHITECTURE.md`. For feature-parity gaps against ForeFlight specifically, see `docs/CODEX-S52.70-ForeFlight-Menu-Inventory-and-SKYE-Table-Stakes-Map.md` — that doc's "biggest gap" (TOLD calculator) and this doc's "biggest miss" (role-based home-screen redesign) are both true and don't conflict: one is a feature-parity gap, the other is a UX/workflow gap. Read both before prioritizing.
 
 ---
 
