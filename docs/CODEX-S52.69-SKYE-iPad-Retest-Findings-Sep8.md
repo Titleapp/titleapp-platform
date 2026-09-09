@@ -120,6 +120,22 @@ This is a coherent product direction spanning most of tonight's smaller findings
 
 Sean's read: the map and similar visual surfaces need to go full-screen — currently too many buttons/controls sit stacked above the map in normal layout flow, shrinking the actual map area. Fix direction: float the controls as an overlay on top of the map (absolute-positioned), not stacked in the layout pushing it smaller.
 
+## Reference materials Sean plans to supply
+
+- **ForeFlight flight-planning UI screenshots** — Sean got ForeFlight access today and offered to screenshot its full flight-planning flow as a concrete reference, same value as tonight's FVOps Duty-tab reference.
+- **FIS (PT6 engine) training manual** — source material for a proposed new **Training/Quiz tab** within CoPilot: quizzes on Systems, QRH, Emergencies, CFRs, WX, Instrument flying, structured like real checkride prep (ATP vs. Instrument vs. Private Pilot tracks, systems questions). This is a genuinely new, distinct feature from the existing EFB "Training" sub-tab (which logs completed training events, not study/quiz content).
+  - **Design constraint to carry into that build**: this platform's whole ethos is grounded, cited answers (QRH is explicitly "retrieved, never generated"). Quiz content should work the same way — sourced from the actual uploaded manual with citations, not freely generated systems facts. A wrong answer in checkride-prep content is a real safety-adjacent liability, not just a UX issue.
+
+## Full tab/feature architecture map — requested, not yet built
+
+Sean asked for a complete map of every navigation tab across all three roles and what actually backs each one (real endpoint / static fixture / unbuilt) — a structural reference for how the app is actually organized, distinct from this findings log. Offered to build this via code-reading (no device needed) as a follow-up.
+
+## Desktop parity — explicit standing requirement
+
+**Everything built for mobile/tablet must cross-populate to the desktop worker.** Display sizing differs, but functionality must be the same — this session's work has been mobile/tablet-focused only; desktop is a different code path (chrome differs even though the canvas component tree is shared) and hasn't been touched or verified.
+
+**Concrete desktop layout idea, from live use tonight:** for visual-heavy workers (this one; likely also the nursing charting worker and MX), collapse/hide the right-hand nav column by default when opening the worker, so the map/visual canvas gets ~2/3 of the screen and chat gets ~1/3 — rather than the current even 3-column split. This directly clarifies the earlier "RH nav menu should default collapsed" note from earlier in this same session (same underlying idea, seen at two different device widths). Not yet matched to the exact column/component in `AppShell.jsx`'s real layout code — verify before implementing, don't assume which of the 3 columns this is.
+
 ## Recommendation
 
 **Top priority, superseding the earlier framing below: the role-based onboarding + home-screen redesign** (see that section above). It's the one piece of direction from tonight that actually unifies almost everything else found — the Map (real, working), the missing New Flight action, the Duty-tab reference design, the redundant internal-chat question, the RoleSwitcher, and the general canvas-first-on-mobile principle all converge into "three distinct, role-tailored home screens" rather than being separate fixes. Scope that first; several of the smaller items below become sub-tasks of it rather than standalone work.
