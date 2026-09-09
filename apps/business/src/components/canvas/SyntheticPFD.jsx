@@ -18,8 +18,30 @@ const ftPerMin = (prev, curr, dt) => prev != null && curr != null && dt > 0
   ? ((curr - prev) / dt) * 60 : 0;
 
 // Draw the circular attitude indicator on a canvas element
+//
+// 2026-09-08 — Sean reported the AI renders as a plain black circle (no
+// sky/ground, not even level) on the iPad mini Simulator, while the speed/
+// altitude tapes and PITCH/BANK/VSI readout next to it render fine. The draw
+// logic here looks correct in isolation (verified by reading, not by a live
+// repro — no device/inspector access this pass), and the mount-time effect
+// below should paint a level horizon (pitch=0, bank=0) even with zero real
+// sensor data, so a fully black circle doesn't match "nothing update since
+// mount" — more consistent with a silently-thrown exception inside this
+// function, or a canvas 2D context that failed to initialize. Wrapped so the
+// NEXT real-device retest (Safari Web Inspector, per this session's own
+// established debug path) actually surfaces what's happening instead of
+// failing silently — do not remove this without a confirmed root cause.
 function drawAI(canvas, pitch, bank) {
+  try {
+    drawAIUnsafe(canvas, pitch, bank);
+  } catch (e) {
+    console.error("[SyntheticPFD] drawAI failed:", e);
+  }
+}
+
+function drawAIUnsafe(canvas, pitch, bank) {
   const ctx = canvas.getContext("2d");
+  if (!ctx) { console.error("[SyntheticPFD] canvas 2D context unavailable"); return; }
   const W = canvas.width;
   const H = canvas.height;
   const cx = W / 2;

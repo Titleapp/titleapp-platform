@@ -25,6 +25,18 @@ async function apiGet(path) {
 function normalizeChartName(s) {
   return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
+
+// 2026-09-08 — strips a standalone single-letter approach-variant token
+// (FAA's "ILS Y OR LOC Y RWY 02" style, when there's more than one approach
+// of the same type to the same runway) so it can be compared against a
+// variant-less static name like "ILS or LOC Rwy 02". Deliberately only
+// strips whole space-separated single-letter words (`\bY\b`, not the Y in
+// "RWY"), and only ever applied to the FAA-side candidate name, never to
+// the static target — see findRealChartUrl's tier-3 match for why.
+function stripVariantLetter(s) {
+  return String(s || "").replace(/\b[A-Z]\b/g, " ");
+}
+
 function findRealChartUrl(realCharts, plateName) {
   if (!Array.isArray(realCharts) || !realCharts.length) return null;
   const target = normalizeChartName(plateName);
@@ -35,7 +47,28 @@ function findRealChartUrl(realCharts, plateName) {
     const n = normalizeChartName(c.name);
     return n.includes(target) || target.includes(n);
   });
-  return contains ? contains.url : null;
+  if (contains) return contains.url;
+
+  // Tier 3 — only reached when tiers 1-2 found nothing. Real FAA chart names
+  // insert a variant letter (Y/Z/etc.) in the MIDDLE of the name when there's
+  // more than one approach of the same type to the same runway ("ILS Y OR LOC
+  // Y RWY 02"), which a plain substring check can't match against a
+  // variant-less static name ("ILS or LOC Rwy 02") — see this file's
+  // top-of-file comment for the exact real-world example that motivated this.
+  // Only strip the variant letter from the CANDIDATE side, and only when the
+  // static plate name itself has no variant letter of its own — a plate that
+  // already specifies "RNAV (GPS) Y Rwy 02" must still only match the real Y
+  // chart, never fuzzily collapse onto Z. If stripping produces more than one
+  // matching candidate, that means real variant charts exist and the static
+  // list under-specifies which one — stay unmatched (safe fallback to the
+  // FAA search page) rather than guess between them; a wrong approach plate
+  // is a real safety issue, not just a UX miss.
+  if (/\b[A-Z]\b/.test(plateName || "")) return null; // static name already specifies its own variant
+  const fuzzyMatches = realCharts.filter(c => {
+    const n = normalizeChartName(stripVariantLetter(c.name));
+    return n === target || n.includes(target) || target.includes(n);
+  });
+  return fuzzyMatches.length === 1 ? fuzzyMatches[0].url : null;
 }
 
 // Hawaii bases: hardcoded airport data + approach plate lists.
