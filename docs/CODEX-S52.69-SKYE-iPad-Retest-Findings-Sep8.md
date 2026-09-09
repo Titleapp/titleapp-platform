@@ -54,6 +54,16 @@ Sean's read: "Kind of there but needs to show location and direct heading to nea
 
 Sean's read: functionally the checklist-switching works, but **findability is the real problem** — buried in the same scrollable tab row as everything else, same symptom as the general "too many tabs" complaint below. His specific ask: QRH (emergency checklists) is safety-critical and should not require hunting through tabs — wants it prominent and instantly reachable, visually distinct (his words: "probably in BIG RED LETTERS so QRH stands out"), matching how a real EFB treats emergency reference as always-one-tap-away, not buried navigation.
 
+## Duty tab — concrete reference design (Sean, live)
+
+Current Duty sub-tab: too simple, needs a real duty-time snapshot. Sean pointed to his actual employer's flight-ops software (Life Flight Network's FVOps, `lfn.fvflightops.com`) as "the only useful thing in that app" — a concrete, proven reference to build toward, not a vague ask:
+
+- **Flight Time Summary**: a table of rolling windows (Calendar Year / Last 12 Months / Last 90/60/30 Days) × aircraft/fleet-group columns (their case: Fixed Wing, PC12 Logistics, EC135P2+, PC12 MED Standard), plus the same data as a bar chart.
+- **Flight & Duty Times**: five circular gauge widgets, each a progress ring against a real regulatory/company cap — e.g. "131.3/1400 hrs — Calendar Year Flight Time," "23.6/500 hrs — this quarter," "85.3/800 hrs — this + previous quarter," "0 hrs — past 24 hrs," "0 in 23 days — rest periods needed."
+- **My Qualification/Training Status**: a table (Category / Training Item / Date Last Completed / Expiration Date) with near-expiry rows visually highlighted (color-coded by urgency) — effectively merges duty-time and currency/quals tracking into one dashboard.
+
+This is real, scoped feature work (rolling time-window aggregation + gauge components + an expiration-highlighted quals table), not a quick fix — but now has a concrete, working reference to build against rather than a from-scratch design problem.
+
 ## Design principle (Sean, live)
 
 **Redundant paths to the same data are a feature, not duplication to eliminate.** EFB's own Currency sub-tab is functionally another version of the canvas's Currency tab — Sean's explicit take: that's good, CoPilot should have 2-3 ways to reach the same information, because different pilots work differently. Worth keeping in mind when consolidating tabs per the Airports/Aircraft-hub ideas below: the goal is reducing *navigation friction*, not collapsing every view down to one canonical path.
