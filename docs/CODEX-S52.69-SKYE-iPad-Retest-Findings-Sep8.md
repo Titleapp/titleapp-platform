@@ -54,6 +54,10 @@ Sean's read: "Kind of there but needs to show location and direct heading to nea
 
 Sean's read: functionally the checklist-switching works, but **findability is the real problem** — buried in the same scrollable tab row as everything else, same symptom as the general "too many tabs" complaint below. His specific ask: QRH (emergency checklists) is safety-critical and should not require hunting through tabs — wants it prominent and instantly reachable, visually distinct (his words: "probably in BIG RED LETTERS so QRH stands out"), matching how a real EFB treats emergency reference as always-one-tap-away, not buried navigation.
 
+## Training tab
+
+Sean's read: structure is good (ground training + instructor endorsements land in a sensible place), but **only Ground Training exists — no Flight Training entry type**, and no way to record which device the training happened in (aircraft vs. training device vs. approved simulator). This is a live confirmation of a gap already identified in this session's earlier SKYE feature-inventory research: `form8710Builder.js`'s totals object has a `simulator` field that no code path ever populates, and no entry type or `deviceType`/`aircraftCategory` value distinguishes a simulator/training-device session from a real aircraft flight anywhere in the schema. Real, scoped fix: add a device-type field (aircraft / training device / approved simulator) to the training/flight-log entry form, and wire it through to the 8710 totals.
+
 ## Duty tab — concrete reference design (Sean, live)
 
 Current Duty sub-tab: too simple, needs a real duty-time snapshot. Sean pointed to his actual employer's flight-ops software (Life Flight Network's FVOps, `lfn.fvflightops.com`) as "the only useful thing in that app" — a concrete, proven reference to build toward, not a vague ask:
