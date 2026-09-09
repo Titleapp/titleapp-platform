@@ -58,6 +58,8 @@ Mounted as the Pilot canvas's "Full EFB" tab (added 2026-09-08). Has its own hea
 
 MX is the single most complete lens — nearly every tab is real. See the SKYE feature-inventory research (earlier this session) for the deeper `aircraftRecords.js` backend behind it.
 
+**Chat tool-awareness fixed 2026-09-08 (commit `d9e3a6a1`):** MX's system prompt had no "TOOLS YOU HAVE" section at all — `file_squawk` and `log_maintenance_entry` were both real, already-wired tools (shared `_cosTools` array) the model had no explicit awareness of. Added, matching the pattern already fixed for CoPilot/Dispatch's `get_notams` gap. **This class of gap (real tool exists, prompt never mentions it) is now fully audited** — checked all 20 tools in `_cosTools` against all three aviation prompts; the only remaining ones with no tool anywhere are FRAT scoring, W&B computation, and crew-legality checking (Dispatch) — those genuinely have no tool in `_cosTools` at all, not just an unmentioned one.
+
 ## Dispatch (`av-dispatch-001`)
 
 | Tab | Live? | Backs onto | Notes |
