@@ -5,6 +5,27 @@
   --muted:#64748b;
   --line:#e8ebf3;
 
+  /* ── SKYE aviation canvas theme tokens (2026-09-09) ──
+     Scoped to [data-av-theme] so toggling never touches the rest of the
+     app — only chrome (backgrounds/text/borders) inverts; status colors
+     (Go/Caution/No-Go bands, brand blue action buttons) are deliberately
+     left alone in both themes, since they're semantic/safety signals, not
+     decoration. Sean's framing: dark preferred in the cockpit, light in
+     the MX shop — default is worker-aware, always manually overridable. */
+  --av-bg: #ffffff;
+  --av-bg-subtle: #f8fafc;
+  --av-bg-card: #ffffff;
+  --av-text: #0f172a;
+  --av-text-secondary: #334155;
+  --av-text-muted: #64748b;
+  --av-text-faint: #94a3b8;
+  --av-border: #e2e8f0;
+  --av-border-strong: #cbd5e1;
+  --av-status-red-bg: #fef2f2;
+  --av-status-green-bg: #f0fdf4;
+  --av-status-yellow-bg: #fffbeb;
+  --av-status-blue-bg: #f0f9ff;
+
   --sidebar:#1A1A2E;
   --sidebar2:#141425;
 
@@ -52,6 +73,22 @@
   /* Status indicator sizes */
   --status-dot-size: 8px;
   --status-arrow-size: 14px;
+}
+
+[data-av-theme="dark"] {
+  --av-bg: #0f172a;
+  --av-bg-subtle: #1e293b;
+  --av-bg-card: #182234;
+  --av-text: #e2e8f0;
+  --av-text-secondary: #cbd5e1;
+  --av-text-muted: #94a3b8;
+  --av-text-faint: #64748b;
+  --av-border: #334155;
+  --av-border-strong: #475569;
+  --av-status-red-bg: #3f1d1d;
+  --av-status-green-bg: #14291b;
+  --av-status-yellow-bg: #2e2310;
+  --av-status-blue-bg: #0c2233;
 }
 
 *{ box-sizing:border-box; }
@@ -944,6 +981,17 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
 
 /* ── 768px: Collapse sidebar + chat ── */
 @media (max-width: 1023px){
+  /* 2026-09-09 — live bug: .appShell's own flex-direction was never switched
+     to column here (only .dualPanel's was, below). With .appShell still a
+     flex ROW, visible siblings of .dualPanel — namely .topbar, width:100% —
+     sat BESIDE it instead of stacked above it, and .topbar's real width
+     squeezed .dualPanel (and everything inside it: the whole canvas/tab
+     bar) to 0 width. Confirmed live at 744px (iPad-mini portrait): .dualPanel
+     measured 0×33 at x=744, i.e. entirely past the visible viewport, despite
+     every element inside it individually having correct, non-zero styles —
+     this one line is the actual root cause behind "tabs/map running off the
+     page" on mobile/portrait, not a bug in the canvas or tab-bar code itself. */
+  .appShell{ flex-direction:column; }
   /* Sidebar → drawer overlay; hide completely when closed so it doesn't bleed
      into the layout (position:fixed alone can be defeated by parent transforms) */
   .topbar{ display:flex; }

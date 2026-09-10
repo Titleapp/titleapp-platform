@@ -8,6 +8,8 @@ import DataLinkStatus from "./studio/DataLinkStatus";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 import useCreatorStatus from "../hooks/useCreatorStatus";
 import { ALEX_SLUGS } from "../utils/workerConstants";
+import CrewRoleChooser from "./CrewRoleChooser";
+import { CREW_ROLE_TO_WORKER_SLUG, WORKER_SLUG_TO_CREW_ROLE } from "../utils/crewRole";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -955,6 +957,8 @@ export default function Sidebar({
   guestMode = false,
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+  const [makeRoleDefault, setMakeRoleDefault] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
   // __vault__ defaults collapsed so Academic Record tucks UNDER My Vault
@@ -966,8 +970,25 @@ export default function Sidebar({
   const [accountCollapsed, setAccountCollapsed] = useState(true);
   const workerCtx = useWorkerState();
   const { status: creatorStatus } = useCreatorStatus();
-  const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "consumer");
-  const isPersonal = vertical === "consumer" || (!guestMode && localStorage.getItem("TENANT_ID") === "vault");
+  // A real, multi-vertical business tenant (tenant.vertical === "GLOBAL" — e.g.
+  // SOCIII's own tenant, which hosts real worker suites like aviation without
+  // itself carrying a single-vertical tag) never gets a localStorage VERTICAL
+  // value written at all — see App.jsx resolveView()'s repeated
+  // `tenant.vertical !== "GLOBAL"` guards. Falling back to "consumer" whenever
+  // VERTICAL is simply unset (as most other pages in this app do, harmlessly,
+  // since none of their own vertical === "..." checks match "consumer" either)
+  // is wrong specifically here: it drives isPersonal below, which hides the
+  // real Workers/Studio Locker nav — including the S52.71 Crew Role
+  // switcher — for a signed-in member of a real GLOBAL-vertical tenant
+  // (found 2026-09-09 testing the Crew Role switcher on Sean's own SOCIII
+  // Inc tenant). A real personal-vault user is identified by TENANT_ID
+  // "vault"/"personal", or by an explicitly-set VERTICAL of "consumer" —
+  // "unset" is neither, so it must not default into "consumer" here.
+  const storedTenantId = localStorage.getItem("TENANT_ID");
+  const isVaultTenant = !guestMode && (storedTenantId === "vault" || storedTenantId === "personal");
+  const rawVertical = guestMode ? "" : localStorage.getItem("VERTICAL");
+  const vertical = guestMode ? "" : (rawVertical || (isVaultTenant ? "consumer" : ""));
+  const isPersonal = vertical === "consumer" || isVaultTenant;
 
   const rawWsName = guestMode ? "" : (localStorage.getItem("WORKSPACE_NAME") || "");
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
@@ -1139,6 +1160,28 @@ export default function Sidebar({
     }));
     onNavigate("worker-home");
     if (onClose) onClose();
+  }
+
+  // S52.71 Step 1 — RoleSwitcher. Session-only by default (the shared-iPad
+  // case: switching for the *current* person must never silently overwrite
+  // the membership's stored preferredCrewRole for whoever logs in next);
+  // only persists as the new default when the user explicitly opts in via
+  // the "make this my default" checkbox.
+  function handleCrewRoleSwitch(role) {
+    const slug = CREW_ROLE_TO_WORKER_SLUG[role];
+    handleWorkerClick({ slug, name: WORKER_DISPLAY_NAMES[slug], vertical: "Aviation" });
+    if (makeRoleDefault) {
+      const tenantId = localStorage.getItem("TENANT_ID");
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      fetch(`${apiBase}/api?path=/v1/me:setCrewRole`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "x-tenant-id": tenantId },
+        body: JSON.stringify({ tenantId, crewRole: role }),
+      }).catch(() => { /* best-effort — session switch above already happened */ });
+    }
+    setShowRoleSwitcher(false);
+    setMakeRoleDefault(false);
   }
 
   // CODEX 48.3 Phase A — return to vault home (clears worker selection)
@@ -1536,6 +1579,40 @@ export default function Sidebar({
                   </>
                 )}
               </>
+            )}
+
+            {/* S52.71 Step 1 — persistent RoleSwitcher (Pilot/MX/Dispatch).
+                Only shown when this workspace has an aviation worker at all;
+                deliberately styled apart from the generic worker list below —
+                this is "who are you right now," not "pick a tool," which
+                matters on a shared device passed between crew members. */}
+            {workerList.some(w => w.slug && w.slug.startsWith("av-")) && (
+              <div style={{ margin: "8px 0 10px" }}>
+                <button
+                  onClick={() => setShowRoleSwitcher(v => !v)}
+                  style={{
+                    width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fafafa", cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.3 }}>Crew Role</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                    {WORKER_SLUG_TO_CREW_ROLE[selectedWorker] ? WORKER_DISPLAY_NAMES[selectedWorker] : "Switch role"}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: showRoleSwitcher ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <path d="M2 4L6 8L10 4"/>
+                  </svg>
+                </button>
+                {showRoleSwitcher && (
+                  <div style={{ marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" }}>
+                    <CrewRoleChooser selected={WORKER_SLUG_TO_CREW_ROLE[selectedWorker] || null} onSelect={handleCrewRoleSwitch} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "#6b7280", cursor: "pointer" }}>
+                      <input type="checkbox" checked={makeRoleDefault} onChange={(e) => setMakeRoleDefault(e.target.checked)} />
+                      Make this my default next time I sign in
+                    </label>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* ────────────── WORKERS (only if workspace has workers) ────────────── */}

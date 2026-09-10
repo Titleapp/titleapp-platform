@@ -94,7 +94,7 @@ function logbookToBlocks(entries) {
   const flights = (entries || []).filter(e => e.entryType === "aviation.flight" || (e.data && e.data.tailNumber));
   if (!flights.length) return [{
     type: "prose",
-    items: [{ band: "BLUE", title: "No logbook entries yet", text: "Log your first flight by telling Alex: 'Log a flight — [tail], [dep], [arr], [hours], PIC.' The entry saves to your Vault and appears here." }],
+    items: [{ band: "BLUE", title: "No logbook entries yet", text: "Log your first flight by telling Skye: 'Log a flight — [tail], [dep], [arr], [hours], PIC.' The entry saves to your Vault and appears here." }],
   }];
   const rows = flights.slice(0, 15).map(e => {
     const d = e.data || e;
@@ -151,7 +151,7 @@ export function currencyToBlocks(c) {
   if (!c) return null;
   if (!c.hasFlightLog && !c.hasEvents) return [{
     type: "prose",
-    items: [{ band: "BLUE", title: "No logbook data yet", text: "Log your first flight or currency event by telling Alex — e.g. 'Log a flight' or 'Add my medical: Class 1, expires Dec 2026.' Data appears here automatically." }],
+    items: [{ band: "BLUE", title: "No logbook data yet", text: "Log your first flight or currency event by telling Skye — e.g. 'Log a flight' or 'Add my medical: Class 1, expires Dec 2026.' Data appears here automatically." }],
   }];
 
   const heroes = [];
@@ -200,7 +200,7 @@ export function squawksToBlocks(squawks) {
   const list = squawks || [];
   if (!list.length) return [{
     type: "cards",
-    items: [{ band: "GREEN", label: "NO OPEN SQUAWKS", title: "Fleet is clean", detail: "No squawks on file. File a new squawk by telling Alex: 'File a squawk on N701AA — [describe the issue].' It goes into the aircraft record immediately.", action: "Open chat" }],
+    items: [{ band: "GREEN", label: "NO OPEN SQUAWKS", title: "Fleet is clean", detail: "No squawks on file. File a new squawk by telling Skye: 'File a squawk on N701AA — [describe the issue].' It goes into the aircraft record immediately.", action: "Open chat" }],
   }];
   const open   = list.filter(s => s.status === "open");
   const closed = list.filter(s => s.status !== "open");
@@ -220,7 +220,7 @@ export function squawksToBlocks(squawks) {
   if (flags.length) blocks.push({ type: "flags", items: flags });
   if (open.length === 0) blocks.push({ type: "prose", items: [{ band: "GREEN", title: "No open squawks", text: "All fleet items are closed or resolved." }] });
   blocks.push({ type: "table", title: "Squawk log — live from Firestore", cols: ["Tail", "Date", "Description", "Status", "WO #"], rows });
-  blocks.push({ type: "cards", items: [{ band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'File a squawk on N701AA — [describe the issue].' Alex creates a timestamped entry and notifies MX. Immutable once filed.", action: "Open chat" }] });
+  blocks.push({ type: "cards", items: [{ band: "BLUE", label: "LOG A SQUAWK", title: "Tell Skye about any discrepancy", detail: "Say: 'File a squawk on N701AA — [describe the issue].' Skye creates a timestamped entry and notifies MX. Immutable once filed.", action: "Open chat" }] });
   return blocks;
 }
 
@@ -234,7 +234,7 @@ export function airworthinessToBlocks(fleet) {
   if (!list.length) {
     return [{
       type: "cards",
-      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Alex the tail number, type, and current hours — or say 'add N701AA, PC-12/47E' to get started. Nothing here is real yet, so nothing is assumed airworthy.", action: "Open chat" }],
+      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Skye the tail number, type, and current hours — or say 'add N701AA, PC-12/47E' to get started. Nothing here is real yet, so nothing is assumed airworthy.", action: "Open chat" }],
     }];
   }
   const bandFor = { GREEN: "GREEN", YELLOW: "YELLOW", RED: "RED", UNVERIFIED: "BLUE" };
@@ -261,6 +261,43 @@ export function airworthinessToBlocks(fleet) {
   return blocks;
 }
 
+// S52.71 Step 2 — Pilot's "My Aircraft(s)" panel. Deliberately not a new
+// rendering path: it concatenates the outputs of the three transformers
+// MX/Dispatch's own tabs already use on the exact same real endpoints
+// (airworthinessToBlocks, squawksToBlocks, maintenanceScheduleToBlocks,
+// aircraftLogbookToBlocks), with a short divider between each so the
+// combined tab reads as sections rather than one undifferentiated wall of
+// tables. One consolidated read-only surface — not MX's 5 tabs ported
+// wholesale, per S52.71's explicit recommendation.
+function sectionDivider(label) {
+  return { type: "prose", items: [{ band: "WHITE", title: label, text: "" }] };
+}
+// S52.71 Step 3 — typeRatings (from the caller's own membership doc) narrows
+// the panel to just the aircraft types the pilot is rated for. Empty/absent
+// ratings is the honest default (no ratings field existed until this step),
+// not an error state — it means fleet-wide, same as before this step.
+function myAircraftToBlocks(fleet, squawks, logbookEntries, typeRatings) {
+  const allFleet = fleet || [];
+  const ratings = typeRatings || [];
+  const scoped = ratings.length ? allFleet.filter((a) => ratings.includes(a.type)) : allFleet;
+  const scopedTails = new Set(scoped.map((a) => a.tailNumber));
+  const scopedSquawks = ratings.length ? (squawks || []).filter((s) => scopedTails.has(s.tailNumber)) : (squawks || []);
+  const scopedLogbook = ratings.length ? (logbookEntries || []).filter((e) => scopedTails.has(e.tailNumber)) : (logbookEntries || []);
+  const banner = ratings.length
+    ? { type: "prose", items: [{ band: "BLUE", title: `Rated for: ${ratings.join(", ")}`, text: `Showing ${scoped.length} of ${allFleet.length} aircraft in the fleet. Use "Edit My Ratings" above to change this.` }] }
+    : { type: "prose", items: [{ band: "BLUE", title: "Showing your whole fleet", text: "Set your type ratings with \"Edit My Ratings\" above to narrow this to just what you're rated to fly." }] };
+  return [
+    banner,
+    ...airworthinessToBlocks(scoped),
+    sectionDivider("OPEN SQUAWKS"),
+    ...squawksToBlocks(scopedSquawks),
+    sectionDivider("UPCOMING MAINTENANCE"),
+    ...maintenanceScheduleToBlocks(scoped),
+    sectionDivider("RECENT HISTORY"),
+    ...aircraftLogbookToBlocks(scopedLogbook),
+  ];
+}
+
 // AD/SB tab — per-tail airworthiness-directive detail. Same /v1/mx:listAircraft
 // payload as airworthinessToBlocks (computeAirworthiness already returns
 // adCompliance.items per tail), just rendered as the AD-specific breakdown
@@ -272,7 +309,7 @@ function adComplianceToBlocks(fleet) {
   if (!list.length) {
     return [{
       type: "cards",
-      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Alex the tail number and type to get started — AD compliance can't be tracked without an aircraft record.", action: "Open chat" }],
+      items: [{ band: "BLUE", label: "NO AIRCRAFT ON FILE", title: "Add your first aircraft", detail: "Tell Skye the tail number and type to get started — AD compliance can't be tracked without an aircraft record.", action: "Open chat" }],
     }];
   }
   const bandFor = { GREEN: "GREEN", YELLOW: "YELLOW", RED: "RED", UNVERIFIED: "BLUE" };
@@ -298,7 +335,7 @@ function adComplianceToBlocks(fleet) {
   if (rows.length) {
     blocks.push({ type: "table", title: "AD compliance — live from Firestore", cols: ["Tail", "AD #", "Subject", "Compliant as of", "Next due", "Status"], rows });
   } else {
-    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "No AD records on file", text: "Add AD compliance entries via Alex or the aircraft upsert form — until then this tab can't show real data, so it shows nothing rather than a fabricated example." }] });
+    blocks.push({ type: "prose", items: [{ band: "BLUE", title: "No AD records on file", text: "Add AD compliance entries via Skye or the aircraft upsert form — until then this tab can't show real data, so it shows nothing rather than a fabricated example." }] });
   }
   return blocks;
 }
@@ -432,7 +469,7 @@ function aircraftLogbookToBlocks(entries) {
   const list = entries || [];
   if (!list.length) return [{
     type: "cards",
-    items: [{ band: "BLUE", label: "NO LOGBOOK ENTRIES YET", title: "Nothing logged for this fleet yet", detail: "Entries appear automatically when a squawk is deferred or closed, scheduled maintenance is completed, an AD is complied with, or a warranty is added — or log one manually with \"+ Log Entry\" / by telling Alex.", action: "Open chat" }],
+    items: [{ band: "BLUE", label: "NO LOGBOOK ENTRIES YET", title: "Nothing logged for this fleet yet", detail: "Entries appear automatically when a squawk is deferred or closed, scheduled maintenance is completed, an AD is complied with, or a warranty is added — or log one manually with \"+ Log Entry\" / by telling Skye.", action: "Open chat" }],
   }];
   const categoryBand = { AD: "YELLOW", Unscheduled: "RED", Scheduled: "BLUE", Annual: "GREEN", Inspection: "BLUE", Warranty: "WHITE", Other: "WHITE" };
   const rows = list.slice(0, 30).map(e => [
@@ -488,7 +525,7 @@ function scheduleToBlocks(requests) {
   const list = requests || [];
   if (!list.length) return [{
     type: "cards",
-    items: [{ band: "BLUE", label: "NO TRIP REQUESTS YET", title: "Nothing scheduled yet", detail: "Trip requests appear here as soon as one is created — match a mission to a tail on the Requests tab and click \"Create trip request,\" or tell Alex to create one.", action: "Open Requests tab" }],
+    items: [{ band: "BLUE", label: "NO TRIP REQUESTS YET", title: "Nothing scheduled yet", detail: "Trip requests appear here as soon as one is created — match a mission to a tail on the Requests tab and click \"Create trip request,\" or tell Skye to create one.", action: "Open Requests tab" }],
   }];
   const toDate = (r) => {
     if (r.requestedDepartureZulu) return new Date(r.requestedDepartureZulu);
@@ -549,7 +586,7 @@ function scheduleToBlocks(requests) {
 // that case this renders the same honest "not available" notice as before,
 // now correctly scoped to "you don't have access" rather than "doesn't exist."
 function currencyBandColor(band) {
-  return band === "GREEN" ? "#4ade80" : band === "YELLOW" ? "#fbbf24" : band === "RED" ? "#f87171" : "#64748b";
+  return band === "GREEN" ? "#4ade80" : band === "YELLOW" ? "#fbbf24" : band === "RED" ? "#f87171" : "var(--av-text-muted)";
 }
 
 function crewRosterToBlocks(assignments, currencyRoster) {
@@ -623,7 +660,7 @@ function paxManifestToBlocks(requests) {
   const list = (requests || []).filter(r => (r.paxManifest || []).length && r.status !== "cancelled");
   if (!list.length) return [{
     type: "cards",
-    items: [{ band: "BLUE", label: "NO MANIFESTS YET", title: "No passengers on any trip request yet", detail: "Add pax to a trip request's paxManifest (via Alex or the create-trip-request flow) — they'll appear here per flight, tied to the real trip record.", action: "Open Requests tab" }],
+    items: [{ band: "BLUE", label: "NO MANIFESTS YET", title: "No passengers on any trip request yet", detail: "Add pax to a trip request's paxManifest (via Skye or the create-trip-request flow) — they'll appear here per flight, tied to the real trip record.", action: "Open Requests tab" }],
   }];
   const blocks = [];
   list.slice(0, 15).forEach(r => {
@@ -674,7 +711,7 @@ const AVIATION_ROLES = [
 function RoleSwitcher({ currentSlug, onSwitch }) {
   if (!AVIATION_ROLES.some(r => r.slug === currentSlug)) return null;
   return (
-    <div style={{ display: "flex", gap: 2, padding: 3, borderRadius: 10, background: "#f1f5f9", marginBottom: 14, width: "fit-content" }}>
+    <div style={{ display: "flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--av-bg-subtle)", marginBottom: 14, width: "fit-content" }}>
       {AVIATION_ROLES.map(r => {
         const active = r.slug === currentSlug;
         return (
@@ -684,7 +721,7 @@ function RoleSwitcher({ currentSlug, onSwitch }) {
             onClick={() => onSwitch(r.slug)}
             style={{
               padding: "6px 16px", fontSize: 12.5, fontWeight: 700, borderRadius: 8, border: "none", cursor: "pointer",
-              color: active ? "#0f172a" : "#64748b",
+              color: active ? "var(--av-text)" : "var(--av-text-muted)",
               background: active ? "#fff" : "transparent",
               boxShadow: active ? "0 1px 3px rgba(15,23,42,0.15)" : "none",
               transition: "all 0.12s",
@@ -709,13 +746,13 @@ function CasPanel({ counts }) {
         return (
           <div key={k} style={{
             display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999,
-            background: muted ? "#f8fafc" : cc.bg, border: `1px solid ${muted ? "#e2e8f0" : cc.border}`, opacity: muted ? 0.5 : 1,
+            background: muted ? "var(--av-bg-subtle)" : cc.bg, border: `1px solid ${muted ? "var(--av-border)" : cc.border}`, opacity: muted ? 0.5 : 1,
           }}>
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: cc.dot }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: muted ? "#94a3b8" : cc.text, textTransform: "capitalize" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: muted ? "var(--av-text-faint)" : cc.text, textTransform: "capitalize" }}>
               {AV_CAS_LABELS[k]}
             </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: muted ? "#cbd5e1" : cc.dot, minWidth: 18, textAlign: "center", borderRadius: 999, padding: "1px 6px" }}>{n}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: muted ? "var(--av-border-strong)" : cc.dot, minWidth: 18, textAlign: "center", borderRadius: 999, padding: "1px 6px" }}>{n}</span>
           </div>
         );
       })}
@@ -745,8 +782,8 @@ function Kpis({ items }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 18 }}>
       {items.map((k, i) => { const cc = c(k.band); return (
-        <div key={i} style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 10, padding: "14px" }}>
-          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{k.label}</div>
+        <div key={i} style={{ background: "var(--av-bg-subtle)", border: "1px solid var(--av-bg-subtle)", borderRadius: 10, padding: "14px" }}>
+          <div style={{ fontSize: 11, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{k.label}</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: cc.text }}>{k.value}</div>
         </div>
       ); })}
@@ -763,7 +800,7 @@ function Flags({ items }) {
         {sorted.map((f, i) => { const cc = c(f.band); return (
           <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: cc.bg, borderLeft: `3px solid ${cc.dot}` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: cc.text }}>{f.title}</div>
-            <div style={{ fontSize: 12, color: "#475569", marginTop: 2, lineHeight: 1.4 }}>{f.detail}</div>
+            <div style={{ fontSize: 12, color: "var(--av-text-secondary)", marginTop: 2, lineHeight: 1.4 }}>{f.detail}</div>
           </div>
         ); })}
       </div>
@@ -803,8 +840,8 @@ function Cards({ items, onTabSwitch, onChatFill }) {
         return (
           <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: cc.bg, border: `1px solid ${cc.border}` }}>
             {card.label && <div style={{ fontSize: 10, fontWeight: 700, color: cc.text, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>{card.label}</div>}
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1e293b" }}>{card.title}</div>
-            <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.5 }}>{card.detail}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--av-text)" }}>{card.title}</div>
+            <div style={{ fontSize: 12, color: "var(--av-text-secondary)", marginTop: 4, lineHeight: 1.5 }}>{card.detail}</div>
             {card.action && (
               isClickable ? (
                 <button
@@ -834,17 +871,17 @@ function AvTable({ title, cols, rows }) {
   return (
     <div style={{ marginBottom: 18 }}>
       {title && <SectionTitle>{title}</SectionTitle>}
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ border: "1px solid var(--av-border)", borderRadius: 10, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`, background: "#0f172a", color: "#fff", fontSize: 11, fontWeight: 600 }}>
           {cols.map((col, i) => <div key={i} style={{ padding: "8px 10px" }}>{col}</div>)}
         </div>
         {rows.map((row, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`, fontSize: 12, borderTop: "1px solid #f1f5f9", background: i % 2 ? "#fafafa" : "#fff" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`, fontSize: 12, borderTop: "1px solid var(--av-bg-subtle)", background: i % 2 ? "var(--av-bg-subtle)" : "#fff" }}>
             {row.map((cell, j) => {
               const isStatus = j === cols.length - 1 && typeof cell === "string" && (cell === "GROUNDED" || cell === "En route" || cell === "Airborne" || cell === "Pending WX");
               const statusColor = cell === "GROUNDED" ? "#b91c1c" : cell === "En route" || cell === "Airborne" ? "#15803d" : "#b45309";
               return (
-                <div key={j} style={{ padding: "8px 10px", color: isStatus ? statusColor : "#334155", fontWeight: isStatus ? 700 : 400 }}>
+                <div key={j} style={{ padding: "8px 10px", color: isStatus ? statusColor : "var(--av-text-secondary)", fontWeight: isStatus ? 700 : 400 }}>
                   {cell}
                 </div>
               );
@@ -862,7 +899,7 @@ function Prose({ items }) {
       {items.map((s, i) => { const cc = c(s.band); return (
         <div key={i} style={{ padding: "12px 14px", borderRadius: 8, background: cc.bg, borderLeft: `3px solid ${cc.dot}` }}>
           {s.title && <div style={{ fontSize: 13, fontWeight: 600, color: cc.text, marginBottom: 4 }}>{s.title}</div>}
-          <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.55 }}>{s.text}</div>
+          <div style={{ fontSize: 13, color: "var(--av-text-secondary)", lineHeight: 1.55 }}>{s.text}</div>
         </div>
       ); })}
     </div>
@@ -942,6 +979,10 @@ const LIVE_TABS = {
     // 2026-09-05 — real Aircraft Logbook (CAN), read-only here. Same real
     // /v1/mx:logbook:list source as MX's own "Aircraft Logbook" tab below.
     "aircraft-logbook": { kind: "aircraftLogbook" },
+    // S52.71 Step 2 — read-only fleet view: status + squawks + upcoming MX +
+    // history, combining the same three real endpoints MX/Dispatch already
+    // read individually. See myAircraftToBlocks below.
+    "my-aircraft": { kind: "myAircraft" },
   },
   "av-mx-001": {
     "aircraft": { kind: "airworthiness" },
@@ -1019,8 +1060,8 @@ export function LogFlightModal({ onClose, onLogged }) {
   });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.date && form.depIcao.trim() && form.arrIcao.trim() && form.flightTime;
 
   async function run() {
@@ -1049,9 +1090,9 @@ export function LogFlightModal({ onClose, onLogged }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Log a flight</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Log a flight</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>
           Appends an immutable entry to your personal Vault logbook. Cannot be edited after logging.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1076,10 +1117,10 @@ export function LogFlightModal({ onClose, onLogged }) {
           <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Business purpose</label><input style={fieldStyle} value={form.businessPurpose} onChange={(e) => set("businessPurpose", e.target.value)} placeholder="optional — IRS-required if claiming business use" /></div>
           <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Remarks</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Flight logged. Entry ID: {status.entryId}</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Flight logged. Entry ID: {status.entryId}</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onLogged} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1126,14 +1167,22 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
     weatherBriefingAcknowledged: false,
     weightBalanceAcknowledged: false, fuelLoad: "", releasingAuthority: "",
   });
+  // 2026-09-09 — Sean's ask: "build and release" as two distinct steps,
+  // not one combined form — you have to build the package before you can
+  // release it. Client-side gate only (no new persisted "draft" record):
+  // "build" is the existing field-entry/W&B-computation work, "review" is a
+  // read-only summary + the actual release action. Nothing about the real
+  // release call (POST /v1/aviation:dispatch:releaseFlight) changes — it
+  // still only fires from the review step's button, same as before.
+  const [step, setStep] = useState("build");
   const [wbResult, setWbResult] = useState(null);
   const [status, setStatus] = useState(null);
   const [humanReaffirmed, setHumanReaffirmed] = useState(false);
   const [notifyStatus, setNotifyStatus] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   // W&B checkbox is only enabled once the calculator has produced a real
   // result — it attests to a computed number, not a blind assertion. If no
   // real limits are configured (anyLimitsConfigured false), still allow the
@@ -1141,10 +1190,10 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
   // blocking release for aircraft without a profile yet.
   const wbReady = !!wbResult && (wbResult.withinLimits || !wbResult.anyLimitsConfigured);
   const aircraftProfile = getAircraftTypeProfile(form.aircraft);
-  const required = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim() && form.proposedDepartureTime
+  const buildRequired = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim() && form.proposedDepartureTime
     && form.pic.trim() && form.operationType && form.releasingAuthority.trim() && form.fuelLoad
-    && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged
-    && (!verification || humanReaffirmed);
+    && form.weatherBriefingAcknowledged && form.weightBalanceAcknowledged;
+  const required = buildRequired && (!verification || humanReaffirmed);
 
   async function run() {
     if (!required) return;
@@ -1214,81 +1263,107 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(600px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Release a flight</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-          Formal dispatch release — required for Part 135 operational control (14 CFR 135.77 and neighboring sections) before departure.
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(600px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>
+          {step === "build" ? "Build a flight package" : "Review & release"}
+        </h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>
+          {step === "build"
+            ? "Assemble the release package — flight details, weather briefing, and weight & balance. Nothing is released yet."
+            : "Formal dispatch release — required for Part 135 operational control (14 CFR 135.77 and neighboring sections) before departure."}
         </p>
-        {/* CODEX 89 step 4 — underlying data behind each check, not just a
-            checkmark, so a human can catch a wrong match. Read-only; the
-            editable release fields below are pre-filled FROM this but the
-            re-affirmation checkbox further down is the actual gate. */}
-        {verification && (
-          <div style={{ marginBottom: 16, padding: 12, border: "1px solid #bae6fd", borderRadius: 8, background: "#f0f9ff" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#0369a1", marginBottom: 6 }}>
-              Verification data (revalidated {verification.computedAt ? new Date(verification.computedAt).toLocaleString() : ""}) — {verification.releaseRecommendation}
+        {step === "build" && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+              <div><label style={labelStyle}>Aircraft type</label><input style={fieldStyle} value={form.aircraft} onChange={(e) => set("aircraft", e.target.value)} placeholder="PC-12/47E" /></div>
+              <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="PHOG" /></div>
+              <div><label style={labelStyle}>Destination ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="PHNL" /></div>
+              <div><label style={labelStyle}>Proposed departure (UTC) *</label><input type="datetime-local" style={fieldStyle} value={form.proposedDepartureTime} onChange={(e) => set("proposedDepartureTime", e.target.value)} /></div>
+              <div>
+                <label style={labelStyle}>Operation type *</label>
+                <select style={fieldStyle} value={form.operationType} onChange={(e) => set("operationType", e.target.value)}>
+                  <option value="part135">Part 135</option>
+                  <option value="part91">Part 91</option>
+                </select>
+              </div>
+              <div><label style={labelStyle}>PIC *</label><input style={fieldStyle} value={form.pic} onChange={(e) => set("pic", e.target.value)} placeholder="Rivera A." /></div>
+              <div><label style={labelStyle}>SIC</label><input style={fieldStyle} value={form.sic} onChange={(e) => set("sic", e.target.value)} placeholder="optional" /></div>
+              <div><label style={labelStyle}>Fuel load *</label><input style={fieldStyle} value={form.fuelLoad} onChange={(e) => set("fuelLoad", e.target.value)} placeholder="280 gal" /></div>
+              <div><label style={labelStyle}>Releasing authority *</label><input style={fieldStyle} value={form.releasingAuthority} onChange={(e) => set("releasingAuthority", e.target.value)} placeholder="Dispatcher name" /></div>
             </div>
-            {(verification.summaryLines || []).map((line, i) => (
-              <div key={i} style={{ fontSize: 12, color: "#334155", marginBottom: 2 }}>{line}</div>
-            ))}
-            {(verification.blockingItems || []).length > 0 && (
-              <div style={{ marginTop: 6 }}>
-                {verification.blockingItems.map((b, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#b91c1c" }}>⛔ {b}</div>
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--av-text-secondary)" }}>
+                <input type="checkbox" checked={form.weatherBriefingAcknowledged} onChange={(e) => set("weatherBriefingAcknowledged", e.target.checked)} />
+                Weather briefing obtained and acknowledged *
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: wbReady ? "var(--av-text-secondary)" : "var(--av-text-faint)" }}>
+                <input type="checkbox" checked={form.weightBalanceAcknowledged} disabled={!wbReady} onChange={(e) => set("weightBalanceAcknowledged", e.target.checked)} />
+                Weight & balance computed and within limits *{!wbReady && " (compute below first)"}
+              </label>
+            </div>
+            <WeightBalanceCalculator aircraftProfile={aircraftProfile} onResultChange={setWbResult} />
+            {/* Informational only, not a release gate — see PerformanceCalculator.jsx
+                header comment for why (real coverage is one aircraft/one phase today). */}
+            <PerformanceCalculator aircraftProfile={aircraftProfile} />
+          </>
+        )}
+        {step === "review" && (
+          <>
+            {/* Read-only summary of what was built — the point of the split is
+                that release is reviewing an assembled package, not filling out
+                a form under the same click as submitting it. */}
+            <div style={{ marginBottom: 16, padding: 12, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-subtle)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--av-text-secondary)", marginBottom: 6 }}>Package summary</div>
+              <div style={{ fontSize: 12, color: "var(--av-text-secondary)", lineHeight: 1.6 }}>
+                {form.tailNumber.toUpperCase()}{form.aircraft ? ` (${form.aircraft})` : ""} — {form.depIcao.toUpperCase()} → {form.arrIcao.toUpperCase()} · {form.proposedDepartureTime} UTC<br />
+                {form.operationType === "part135" ? "Part 135" : "Part 91"} · PIC {form.pic}{form.sic ? ` · SIC ${form.sic}` : ""} · Fuel {form.fuelLoad}<br />
+                Releasing authority: {form.releasingAuthority}<br />
+                Weather briefing ✓ · W&B {wbReady ? "computed, within limits ✓" : "not computed"}
+              </div>
+              <button onClick={() => setStep("build")} style={{ marginTop: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 6, cursor: "pointer" }}>
+                ◀ Back to edit
+              </button>
+            </div>
+            {/* CODEX 89 step 4 — underlying data behind each check, not just a
+                checkmark, so a human can catch a wrong match. Read-only; the
+                re-affirmation checkbox further down is the actual gate. */}
+            {verification && (
+              <div style={{ marginBottom: 16, padding: 12, border: "1px solid #bae6fd", borderRadius: 8, background: "var(--av-status-blue-bg)" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#0369a1", marginBottom: 6 }}>
+                  Verification data (revalidated {verification.computedAt ? new Date(verification.computedAt).toLocaleString() : ""}) — {verification.releaseRecommendation}
+                </div>
+                {(verification.summaryLines || []).map((line, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "var(--av-text-secondary)", marginBottom: 2 }}>{line}</div>
                 ))}
+                {(verification.blockingItems || []).length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    {verification.blockingItems.map((b, i) => (
+                      <div key={i} style={{ fontSize: 12, color: "#b91c1c" }}>⛔ {b}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
-          <div><label style={labelStyle}>Aircraft type</label><input style={fieldStyle} value={form.aircraft} onChange={(e) => set("aircraft", e.target.value)} placeholder="PC-12/47E" /></div>
-          <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="PHOG" /></div>
-          <div><label style={labelStyle}>Destination ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="PHNL" /></div>
-          <div><label style={labelStyle}>Proposed departure (UTC) *</label><input type="datetime-local" style={fieldStyle} value={form.proposedDepartureTime} onChange={(e) => set("proposedDepartureTime", e.target.value)} /></div>
-          <div>
-            <label style={labelStyle}>Operation type *</label>
-            <select style={fieldStyle} value={form.operationType} onChange={(e) => set("operationType", e.target.value)}>
-              <option value="part135">Part 135</option>
-              <option value="part91">Part 91</option>
-            </select>
-          </div>
-          <div><label style={labelStyle}>PIC *</label><input style={fieldStyle} value={form.pic} onChange={(e) => set("pic", e.target.value)} placeholder="Rivera A." /></div>
-          <div><label style={labelStyle}>SIC</label><input style={fieldStyle} value={form.sic} onChange={(e) => set("sic", e.target.value)} placeholder="optional" /></div>
-          <div><label style={labelStyle}>Fuel load *</label><input style={fieldStyle} value={form.fuelLoad} onChange={(e) => set("fuelLoad", e.target.value)} placeholder="280 gal" /></div>
-          <div><label style={labelStyle}>Releasing authority *</label><input style={fieldStyle} value={form.releasingAuthority} onChange={(e) => set("releasingAuthority", e.target.value)} placeholder="Dispatcher name" /></div>
-        </div>
-        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
-            <input type="checkbox" checked={form.weatherBriefingAcknowledged} onChange={(e) => set("weatherBriefingAcknowledged", e.target.checked)} />
-            Weather briefing obtained and acknowledged *
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: wbReady ? "#334155" : "#94a3b8" }}>
-            <input type="checkbox" checked={form.weightBalanceAcknowledged} disabled={!wbReady} onChange={(e) => set("weightBalanceAcknowledged", e.target.checked)} />
-            Weight & balance computed and within limits *{!wbReady && " (compute below first)"}
-          </label>
-        </div>
-        <WeightBalanceCalculator aircraftProfile={aircraftProfile} onResultChange={setWbResult} />
-        {/* Informational only, not a release gate — see PerformanceCalculator.jsx
-            header comment for why (real coverage is one aircraft/one phase today). */}
-        <PerformanceCalculator aircraftProfile={aircraftProfile} />
-        {/* CODEX 89 step 5 — the enforced re-affirmation gate. Deliberately
-            NOT one of the pre-filled/editable fields above: unchecked by
-            default even though everything else is pre-populated, per
-            round-1 red-team finding #6 ("cannot submit without it," not
-            "fields happen to be editable"). Only rendered when this modal
-            was opened from the verified pipeline. */}
-        {verification && (
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#7c2d12", marginTop: 10, padding: 10, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8 }}>
-            <input type="checkbox" checked={humanReaffirmed} onChange={(e) => setHumanReaffirmed(e.target.checked)} style={{ marginTop: 2 }} />
-            <span>I have reviewed the verification data above (aircraft, alternate, weather, crew currency/duty) myself and re-affirm this specific release — I am not relying on the checkmarks alone. *</span>
-          </label>
-        )}
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && (
-          <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>
-            Flight released. Release ID: {status.releaseId}
-          </div>
+            {/* CODEX 89 step 5 — the enforced re-affirmation gate. Deliberately
+                NOT one of the pre-filled/editable fields above: unchecked by
+                default even though everything else is pre-populated, per
+                round-1 red-team finding #6 ("cannot submit without it," not
+                "fields happen to be editable"). Only rendered when this modal
+                was opened from the verified pipeline. */}
+            {verification && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#7c2d12", marginTop: 10, padding: 10, background: "var(--av-status-yellow-bg)", border: "1px solid #fed7aa", borderRadius: 8 }}>
+                <input type="checkbox" checked={humanReaffirmed} onChange={(e) => setHumanReaffirmed(e.target.checked)} style={{ marginTop: 2 }} />
+                <span>I have reviewed the verification data above (aircraft, alternate, weather, crew currency/duty) myself and re-affirm this specific release — I am not relying on the checkmarks alone. *</span>
+              </label>
+            )}
+            {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+            {status?.state === "done" && (
+              <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>
+                Flight released. Release ID: {status.releaseId}
+              </div>
+            )}
+          </>
         )}
         {/* CODEX 89 step 6 — notify crew + real acknowledgment gate (see
             crewNotifications.js for the explicit decision this implements:
@@ -1296,17 +1371,17 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
             every crew member listed acknowledges). Only offered when this
             release came from the verified pipeline with a real crew list. */}
         {status?.state === "done" && verification?.crew?.length > 0 && (
-          <div style={{ marginTop: 10, padding: 10, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+          <div style={{ marginTop: 10, padding: 10, background: "var(--av-bg-subtle)", border: "1px solid var(--av-border)", borderRadius: 8 }}>
             {!notifyStatus && (
-              <button onClick={() => notifyCrew(status.releaseId)} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>
+              <button onClick={() => notifyCrew(status.releaseId)} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>
                 Notify crew ({verification.crew.length})
               </button>
             )}
-            {notifyStatus?.state === "running" && <div style={{ fontSize: 12, color: "#64748b" }}>Notifying crew…</div>}
+            {notifyStatus?.state === "running" && <div style={{ fontSize: 12, color: "var(--av-text-muted)" }}>Notifying crew…</div>}
             {notifyStatus?.state === "error" && <div style={{ fontSize: 12, color: "#dc2626" }}>{notifyStatus.message}</div>}
             {notifyStatus?.state === "done" && (
               <div>
-                <div style={{ fontSize: 12, color: "#334155", marginBottom: 6 }}>Crew notified. Not ready for departure until every crew member acknowledges below.</div>
+                <div style={{ fontSize: 12, color: "var(--av-text-secondary)", marginBottom: 6 }}>Crew notified. Not ready for departure until every crew member acknowledges below.</div>
                 {readiness && (
                   <div style={{ fontSize: 12 }}>
                     <span style={{ fontWeight: 700, color: readiness.readyForDeparture ? "#15803d" : "#b45309" }}>
@@ -1320,8 +1395,12 @@ export function ReleaseFlightModal({ onClose, onReleased, prefill, verification 
           </div>
         )}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
-          {status?.state === "done" ? (
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {step === "build" ? (
+            <button onClick={() => setStep("review")} disabled={!buildRequired} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: !buildRequired ? 0.5 : 1 }}>
+              Build package →
+            </button>
+          ) : status?.state === "done" ? (
             <button onClick={onReleased} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
             <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
@@ -1355,8 +1434,8 @@ export function AddSquawkModal({ onClose, onFiled }) {
   const [form, setForm] = useState({ tailNumber: "", description: "", workOrderNumber: "", reportedBy: "" });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.description.trim();
 
   async function run() {
@@ -1377,9 +1456,9 @@ export function AddSquawkModal({ onClose, onFiled }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>File a squawk</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>File a squawk</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>
           Appends an immutable discrepancy to this aircraft's record — MX sees it immediately.
         </p>
         <div style={{ display: "grid", gap: 10 }}>
@@ -1388,10 +1467,10 @@ export function AddSquawkModal({ onClose, onFiled }) {
           <div><label style={labelStyle}>Work order # (optional)</label><input style={fieldStyle} value={form.workOrderNumber} onChange={(e) => set("workOrderNumber", e.target.value)} /></div>
           <div><label style={labelStyle}>Reported by (optional)</label><input style={fieldStyle} value={form.reportedBy} onChange={(e) => set("reportedBy", e.target.value)} placeholder="defaults to you" /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Squawk filed. It's open on the aircraft's record now.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Squawk filed. It's open on the aircraft's record now.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onFiled} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1415,8 +1494,8 @@ export function AddMaintenanceItemModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ tailNumber: "", description: "", basis: "calendar", dueDate: "", dueAtHours: "", farReference: "", mandatory: true });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.description.trim() && (form.basis === "calendar" ? form.dueDate : form.dueAtHours);
 
   async function run() {
@@ -1440,9 +1519,9 @@ export function AddMaintenanceItemModal({ onClose, onAdded }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add scheduled maintenance item</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>An inspection interval or recurring due item — evaluated against this aircraft's hours/date on every read.</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Add scheduled maintenance item</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>An inspection interval or recurring due item — evaluated against this aircraft's hours/date on every read.</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>Description *</label><input style={fieldStyle} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="e.g. Annual inspection (91.409)" /></div>
@@ -1459,20 +1538,102 @@ export function AddMaintenanceItemModal({ onClose, onAdded }) {
             <div><label style={labelStyle}>Due at hours *</label><input type="number" style={fieldStyle} value={form.dueAtHours} onChange={(e) => set("dueAtHours", e.target.value)} placeholder="1900" /></div>
           )}
           <div><label style={labelStyle}>FAR reference (optional)</label><input style={fieldStyle} value={form.farReference} onChange={(e) => set("farReference", e.target.value)} placeholder="91.409" /></div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--av-text-secondary)" }}>
             <input type="checkbox" checked={form.mandatory} onChange={(e) => set("mandatory", e.target.checked)} />
             Mandatory — overdue blocks airworthiness (uncheck for advisory-only items, e.g. non-mandatory SBs)
           </label>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Item added to the aircraft's real record.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Item added to the aircraft's real record.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
             <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
               {status?.state === "running" ? "Adding…" : "Add item"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EditTypeRatingsModal — S52.71 Step 3. Sets the caller's own aircraft-type
+// ratings (POST /v1/me:setTypeRatings), which "My Aircraft(s)" then filters
+// by. Picks from types actually present in the fleet (not free-text) so a
+// typo can't silently hide an aircraft — aircraft.type is a free-form string
+// with no shared enum (services/mx/aircraftRecords.js).
+// ─────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function EditTypeRatingsModal({ onClose, onSaved }) {
+  const [types, setTypes] = useState(null);
+  const [checked, setChecked] = useState(new Set());
+  const [status, setStatus] = useState(null);
+  const [loadErr, setLoadErr] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+    Promise.all([apiGet("/v1/mx:listAircraft"), apiGet("/v1/me:memberships")]).then(([fleetData, membershipsData]) => {
+      if (cancelled) return;
+      setTypes([...new Set((fleetData.fleet || []).map((a) => a.type).filter(Boolean))]);
+      const mine = (membershipsData.memberships || []).find((m) => m.tenantId === tenantId);
+      setChecked(new Set(mine?.typeRatings || []));
+    }).catch((e) => { if (!cancelled) setLoadErr(e.message); });
+    return () => { cancelled = true; };
+  }, []);
+
+  function toggle(t) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
+
+  async function run() {
+    setStatus({ state: "running" });
+    try {
+      await apiPost("/v1/me:setTypeRatings", { typeRatings: Array.from(checked) });
+      setStatus({ state: "done" });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(420px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Edit my type ratings</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>Check every aircraft type you're rated to fly. "My Aircraft(s)" narrows to just these — leave all unchecked to keep seeing the whole fleet.</p>
+        {loadErr ? (
+          <div style={{ padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>Couldn't load the fleet: {loadErr}</div>
+        ) : types === null ? (
+          <div style={{ padding: 10, fontSize: 13, color: "var(--av-text-faint)" }}>Loading fleet…</div>
+        ) : types.length === 0 ? (
+          <div style={{ padding: 10, fontSize: 13, color: "var(--av-text-muted)", background: "var(--av-bg-subtle)", borderRadius: 8 }}>No aircraft on file yet — add one first (tell Skye the tail number and type), then come back to set your ratings.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {types.map((t) => (
+              <label key={t} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--av-text-secondary)" }}>
+                <input type="checkbox" checked={checked.has(t)} onChange={() => toggle(t)} />
+                {t}
+              </label>
+            ))}
+          </div>
+        )}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Ratings saved.</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          {status?.state === "done" ? (
+            <button onClick={onSaved} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+          ) : (
+            <button onClick={run} disabled={status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: status?.state === "running" ? 0.5 : 1 }}>
+              {status?.state === "running" ? "Saving…" : "Save ratings"}
             </button>
           )}
         </div>
@@ -1490,8 +1651,8 @@ export function AddWarrantyModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ tailNumber: "", component: "", provider: "", coverageType: "", expirationDate: "", expirationHours: "", notes: "" });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.component.trim();
 
   async function run() {
@@ -1515,9 +1676,9 @@ export function AddWarrantyModal({ onClose, onAdded }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add warranty / coverage record</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Informational — never blocks airworthiness.</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Add warranty / coverage record</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>Informational — never blocks airworthiness.</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>Component *</label><input style={fieldStyle} value={form.component} onChange={(e) => set("component", e.target.value)} placeholder="Engine — PT6A-67P" /></div>
@@ -1527,10 +1688,10 @@ export function AddWarrantyModal({ onClose, onAdded }) {
           <div><label style={labelStyle}>Or expiration hours</label><input type="number" style={fieldStyle} value={form.expirationHours} onChange={(e) => set("expirationHours", e.target.value)} placeholder="3600" /></div>
           <div><label style={labelStyle}>Notes</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Warranty record added.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Warranty record added.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1553,8 +1714,8 @@ export function AddNefItemModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ tailNumber: "", equipment: "", reason: "", authorizationRef: "" });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.equipment.trim();
 
   async function run() {
@@ -1575,19 +1736,19 @@ export function AddNefItemModal({ onClose, onAdded }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Add NEF item</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Equipment not installed that would otherwise be required — a documented absence, distinct from MEL.</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Add NEF item</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>Equipment not installed that would otherwise be required — a documented absence, distinct from MEL.</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>Equipment *</label><input style={fieldStyle} value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Second VOR receiver" /></div>
           <div><label style={labelStyle}>Reason</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.reason} onChange={(e) => set("reason", e.target.value)} placeholder="Why it's not installed" /></div>
           <div><label style={labelStyle}>Authorization reference</label><input style={fieldStyle} value={form.authorizationRef} onChange={(e) => set("authorizationRef", e.target.value)} placeholder="Ops Spec D-1 / STC #..." /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>NEF item documented.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>NEF item documented.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1613,8 +1774,8 @@ export function AddLogbookEntryModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ tailNumber: "", description: "", category: "Unscheduled", signedBy: "", signedByCert: "", ttsn: "" });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.description.trim() && form.signedBy.trim();
 
   async function run() {
@@ -1637,9 +1798,9 @@ export function AddLogbookEntryModal({ onClose, onAdded }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Log a maintenance entry</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Appends an immutable entry to this aircraft's real logbook (the CAN). Cannot be edited or deleted after signing.</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Log a maintenance entry</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>Appends an immutable entry to this aircraft's real logbook (the CAN). Cannot be edited or deleted after signing.</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>Description *</label><textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="What was done — specific enough to stand as the permanent record" /></div>
@@ -1658,10 +1819,10 @@ export function AddLogbookEntryModal({ onClose, onAdded }) {
           <div><label style={labelStyle}>Certificate # (optional)</label><input style={fieldStyle} value={form.signedByCert} onChange={(e) => set("signedByCert", e.target.value)} /></div>
           <div><label style={labelStyle}>TTSN at entry (optional)</label><input type="number" style={fieldStyle} value={form.ttsn} onChange={(e) => set("ttsn", e.target.value)} placeholder="defaults to aircraft's current hours on file" /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Entry logged. Permanent — cannot be altered.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Entry logged. Permanent — cannot be altered.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onAdded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1687,8 +1848,8 @@ export function CompleteMaintenanceItemModal({ item, onClose, onCompleted }) {
   const [completedAtHours, setCompletedAtHours] = useState("");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState(null);
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
 
   async function run() {
     if (!signedBy.trim()) return;
@@ -1709,18 +1870,18 @@ export function CompleteMaintenanceItemModal({ item, onClose, onCompleted }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{item.tailNumber} — mark complete</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{item.description}</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>{item.tailNumber} — mark complete</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>{item.description}</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Signed by (A&P/IA name) *</label><input style={fieldStyle} value={signedBy} onChange={(e) => setSignedBy(e.target.value)} placeholder="Williams, R A&P/IA" /></div>
           <div><label style={labelStyle}>Completed at hours (optional)</label><input type="number" style={fieldStyle} value={completedAtHours} onChange={(e) => setCompletedAtHours(e.target.value)} placeholder="defaults to aircraft's current hours on file" /></div>
           <div><label style={labelStyle}>Notes (optional)</label><textarea rows={2} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Marked complete. Logged to the Aircraft Logbook.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Marked complete. Logged to the Aircraft Logbook.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
           {status?.state === "done" ? (
             <button onClick={onCompleted} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1743,8 +1904,8 @@ export function RecordAdComplianceModal({ onClose, onRecorded }) {
   const [form, setForm] = useState({ tailNumber: "", ad: "", subject: "", compliantAsOf: new Date().toISOString().slice(0, 10), nextDue: "", signedBy: "", signedByCert: "" });
   const [status, setStatus] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = form.tailNumber.trim() && form.ad.trim() && form.compliantAsOf && form.signedBy.trim();
 
   async function run() {
@@ -1768,9 +1929,9 @@ export function RecordAdComplianceModal({ onClose, onRecorded }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>Record AD compliance</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Logs compliance to this aircraft's real record and to the Aircraft Logbook.</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>Record AD compliance</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>Logs compliance to this aircraft's real record and to the Aircraft Logbook.</p>
         <div style={{ display: "grid", gap: 10 }}>
           <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
           <div><label style={labelStyle}>AD number *</label><input style={fieldStyle} value={form.ad} onChange={(e) => set("ad", e.target.value)} placeholder="2026-08-12" /></div>
@@ -1780,10 +1941,10 @@ export function RecordAdComplianceModal({ onClose, onRecorded }) {
           <div><label style={labelStyle}>Signed by (A&P/IA name) *</label><input style={fieldStyle} value={form.signedBy} onChange={(e) => set("signedBy", e.target.value)} placeholder="Williams, R A&P/IA" /></div>
           <div><label style={labelStyle}>Certificate # (optional)</label><input style={fieldStyle} value={form.signedByCert} onChange={(e) => set("signedByCert", e.target.value)} /></div>
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>AD compliance recorded. Logged to the Aircraft Logbook.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>AD compliance recorded. Logged to the Aircraft Logbook.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {status?.state === "done" ? (
             <button onClick={onRecorded} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -1825,8 +1986,8 @@ export function AddSquawkPhotoModal({ onClose, onFiled }) {
   const [err, setErr] = useState(null);
   const [filed, setFiled] = useState(null);
   const fileRef = useRef(null);
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -1872,9 +2033,9 @@ export function AddSquawkPhotoModal({ onClose, onFiled }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>File a squawk — photo</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>File a squawk — photo</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>
           Photograph the discrepancy. Skye drafts a description — you review and confirm before it's logged.
         </p>
 
@@ -1885,39 +2046,39 @@ export function AddSquawkPhotoModal({ onClose, onFiled }) {
 
         <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{ display: "none" }} />
         <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} style={{
-          width: "100%", padding: "12px", borderRadius: 10, border: "1.5px dashed #cbd5e1", background: "#f8fafc",
-          color: "#334155", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", marginBottom: 12,
+          width: "100%", padding: "12px", borderRadius: 10, border: "1.5px dashed var(--av-border-strong)", background: "var(--av-bg-subtle)",
+          color: "var(--av-text-secondary)", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", marginBottom: 12,
         }}>{busy ? "Reading photo…" : "📷 Take or choose a photo"}</button>
 
         {photoPreview && (
           <img src={photoPreview} alt="discrepancy" style={{ width: "100%", borderRadius: 8, marginBottom: 12, maxHeight: 180, objectFit: "cover" }} />
         )}
 
-        {err && <div style={{ fontSize: 13, color: "#b91c1c", background: "#fef2f2", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
+        {err && <div style={{ fontSize: 13, color: "#b91c1c", background: "var(--av-status-red-bg)", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
 
         {draft && !filed && (
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+          <div style={{ border: "1px solid var(--av-border)", borderRadius: 10, padding: 14, marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{draft.isUnclear ? "Couldn't tell what's wrong" : "Draft description"}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)" }}>{draft.isUnclear ? "Couldn't tell what's wrong" : "Draft description"}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: confidenceColor, textTransform: "uppercase" }}>{draft.confidence} confidence</span>
             </div>
-            {draft.visible && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, lineHeight: 1.4 }}>{draft.visible}</div>}
+            {draft.visible && <div style={{ fontSize: 12, color: "var(--av-text-muted)", marginBottom: 8, lineHeight: 1.4 }}>{draft.visible}</div>}
             {draft.isUnclear && (
-              <div style={{ fontSize: 12, color: "#92400e", background: "#fffbeb", padding: 8, borderRadius: 6, marginBottom: 10 }}>
+              <div style={{ fontSize: 12, color: "#92400e", background: "var(--av-status-yellow-bg)", padding: 8, borderRadius: 6, marginBottom: 10 }}>
                 ⚠ The photo didn't clearly show a discrepancy — describe it yourself below.
               </div>
             )}
-            {draft.notes && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.4 }}>{draft.notes}</div>}
+            {draft.notes && <div style={{ fontSize: 12, color: "var(--av-text-muted)", marginBottom: 10, lineHeight: 1.4 }}>{draft.notes}</div>}
             <label style={labelStyle}>Description {draft.isUnclear ? "*" : "(edit if needed)"}</label>
             <textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical", marginBottom: 10 }}
               value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's wrong, what you observed" />
           </div>
         )}
 
-        {filed && <div style={{ marginTop: 4, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>Squawk filed on {filed.tailNumber} — work order {filed.workOrderNumber}. It's open on the aircraft's record now.</div>}
+        {filed && <div style={{ marginTop: 4, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>Squawk filed on {filed.tailNumber} — work order {filed.workOrderNumber}. It's open on the aircraft's record now.</div>}
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Close</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
           {filed ? (
             <button onClick={onFiled} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : draft ? (
@@ -1948,8 +2109,8 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
   const [by, setBy] = useState("");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState(null);
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
   const required = action === "deferred" ? !!category : by.trim().length > 0 || action === "closed";
 
   async function run() {
@@ -1974,12 +2135,12 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "white", borderRadius: 12 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{squawk.tailNumber} — corrective action</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{squawk.description}</p>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>{squawk.tailNumber} — corrective action</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>{squawk.description}</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <button onClick={() => setAction("closed")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "closed" ? "2px solid #16a34a" : "1px solid #e2e8f0", background: action === "closed" ? "#f0fdf4" : "white", color: action === "closed" ? "#16a34a" : "#64748b" }}>Close it out</button>
-          <button onClick={() => setAction("deferred")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "deferred" ? "2px solid #d97706" : "1px solid #e2e8f0", background: action === "deferred" ? "#fffbeb" : "white", color: action === "deferred" ? "#d97706" : "#64748b" }}>Defer (MEL)</button>
+          <button onClick={() => setAction("closed")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "closed" ? "2px solid #16a34a" : "1px solid var(--av-border)", background: action === "closed" ? "var(--av-status-green-bg)" : "var(--av-bg-card)", color: action === "closed" ? "#16a34a" : "var(--av-text-muted)" }}>Close it out</button>
+          <button onClick={() => setAction("deferred")} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: action === "deferred" ? "2px solid #d97706" : "1px solid var(--av-border)", background: action === "deferred" ? "var(--av-status-yellow-bg)" : "var(--av-bg-card)", color: action === "deferred" ? "#d97706" : "var(--av-text-muted)" }}>Defer (MEL)</button>
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {action === "deferred" && (
@@ -2009,10 +2170,10 @@ export function CloseSquawkModal({ squawk, onClose, onResolved }) {
             <div><label style={labelStyle}>Corrective action taken</label><textarea rows={3} style={{ ...fieldStyle, fontFamily: "inherit", resize: "vertical" }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done to resolve it" /></div>
           )}
         </div>
-        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "#fef2f2", borderRadius: 8 }}>{status.message}</div>}
-        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "#f0fdf4", borderRadius: 8 }}>{action === "closed" ? "Squawk closed." : "Squawk deferred."} Record updated.</div>}
+        {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+        {status?.state === "done" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#16a34a", background: "var(--av-status-green-bg)", borderRadius: 8 }}>{action === "closed" ? "Squawk closed." : "Squawk deferred."} Record updated.</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
           {status?.state === "done" ? (
             <button onClick={onResolved} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
           ) : (
@@ -2042,24 +2203,24 @@ function OpenSquawksPanel({ refreshKey, onAction }) {
   }, [refreshKey]);
 
   if (err) return <div style={{ fontSize: 12, color: "#dc2626", marginTop: 12 }}>Couldn't load open squawks: {err}</div>;
-  if (!fleet) return <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 12 }}>Loading open squawks…</div>;
+  if (!fleet) return <div style={{ fontSize: 12, color: "var(--av-text-faint)", marginTop: 12 }}>Loading open squawks…</div>;
   const rows = fleet.flatMap(a => (a.openSquawks || []).map(s => ({ ...s, tailNumber: a.tailNumber })));
   if (rows.length === 0) return <div style={{ fontSize: 13, color: "#16a34a", marginTop: 12, fontWeight: 600 }}>No open squawks — fleet is clean.</div>;
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>Open squawks — take action</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)", marginBottom: 8 }}>Open squawks — take action</div>
       {rows.map((s) => (
-        <div key={`${s.tailNumber}-${s.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <div key={`${s.tailNumber}-${s.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--av-bg-subtle)" }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{s.tailNumber} <span style={{
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)" }}>{s.tailNumber} <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, marginLeft: 6,
-              color: s.computedStatus === "RED" ? "#b91c1c" : s.computedStatus === "YELLOW" ? "#92400e" : "#64748b",
-              background: s.computedStatus === "RED" ? "#fee2e2" : s.computedStatus === "YELLOW" ? "#fef3c7" : "#f1f5f9",
+              color: s.computedStatus === "RED" ? "#b91c1c" : s.computedStatus === "YELLOW" ? "#92400e" : "var(--av-text-muted)",
+              background: s.computedStatus === "RED" ? "var(--av-status-red-bg)" : s.computedStatus === "YELLOW" ? "var(--av-status-yellow-bg)" : "var(--av-bg-subtle)",
             }}>{s.computedStatus}{s.category ? ` · MEL ${s.category}` : ""}</span></div>
-            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.description}</div>
+            <div style={{ fontSize: 12, color: "var(--av-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.description}</div>
           </div>
-          <button onClick={() => onAction(s)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Take action</button>
+          <button onClick={() => onAction(s)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Take action</button>
         </div>
       ))}
     </div>
@@ -2083,24 +2244,24 @@ function ScheduledMaintenanceActionsPanel({ refreshKey, onAction }) {
   }, [refreshKey]);
 
   if (err) return <div style={{ fontSize: 12, color: "#dc2626", marginTop: 12 }}>Couldn't load scheduled items: {err}</div>;
-  if (!fleet) return <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 12 }}>Loading scheduled maintenance…</div>;
+  if (!fleet) return <div style={{ fontSize: 12, color: "var(--av-text-faint)", marginTop: 12 }}>Loading scheduled maintenance…</div>;
   const rows = fleet.flatMap(a => (a.maintenanceSchedule?.items || []).map(i => ({ ...i, tailNumber: a.tailNumber })));
   if (rows.length === 0) return null;
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>Scheduled items — mark complete</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)", marginBottom: 8 }}>Scheduled items — mark complete</div>
       {rows.map((i) => (
-        <div key={`${i.tailNumber}-${i.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <div key={`${i.tailNumber}-${i.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--av-bg-subtle)" }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{i.tailNumber} <span style={{
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)" }}>{i.tailNumber} <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, marginLeft: 6,
-              color: i.computedStatus === "RED" ? "#b91c1c" : i.computedStatus === "YELLOW" ? "#92400e" : "#64748b",
-              background: i.computedStatus === "RED" ? "#fee2e2" : i.computedStatus === "YELLOW" ? "#fef3c7" : "#f1f5f9",
+              color: i.computedStatus === "RED" ? "#b91c1c" : i.computedStatus === "YELLOW" ? "#92400e" : "var(--av-text-muted)",
+              background: i.computedStatus === "RED" ? "var(--av-status-red-bg)" : i.computedStatus === "YELLOW" ? "var(--av-status-yellow-bg)" : "var(--av-bg-subtle)",
             }}>{i.computedStatus}</span></div>
-            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.description}</div>
+            <div style={{ fontSize: 12, color: "var(--av-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.description}</div>
           </div>
-          <button onClick={() => onAction(i)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Mark complete</button>
+          <button onClick={() => onAction(i)} style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}>Mark complete</button>
         </div>
       ))}
     </div>
@@ -2199,13 +2360,13 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
     });
   }
 
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
-  const fieldStyle = { width: "100%", padding: "6px 8px", fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 6, background: "white" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "6px 8px", fontSize: 12, border: "1px solid var(--av-border)", borderRadius: 6, background: "var(--av-bg-card)" };
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Verify & prepare release</div>
-      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Crew (uid — real Firebase uid; needed to check currency/duty against this operator's crew records)</div>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--av-border)" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--av-text)", marginBottom: 6 }}>Verify & prepare release</div>
+      <div style={{ fontSize: 11, color: "var(--av-text-muted)", marginBottom: 8 }}>Crew (uid — real Firebase uid; needed to check currency/duty against this operator's crew records)</div>
       {crew.map((c, i) => (
         <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
           <input style={fieldStyle} value={c.uid} onChange={(e) => updateCrewRow(i, "uid", e.target.value)} placeholder="pilot uid" />
@@ -2221,10 +2382,10 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
         <button onClick={runVerify} disabled={busy !== null} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "white", background: "#0284c7", border: "none", borderRadius: 8, cursor: "pointer", opacity: busy !== null ? 0.6 : 1 }}>
           {busy === "verify" ? "Verifying…" : "Run verification"}
         </button>
-        <button onClick={runRevalidate} disabled={busy !== null || !verifyResult} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer", opacity: (busy !== null || !verifyResult) ? 0.5 : 1 }}>
+        <button onClick={runRevalidate} disabled={busy !== null || !verifyResult} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer", opacity: (busy !== null || !verifyResult) ? 0.5 : 1 }}>
           {busy === "revalidate" ? "Re-validating…" : "Re-validate before accept"}
         </button>
-        <button onClick={openAccept} disabled={!revalResult || revalResult.releaseRecommendation !== "CLEARED"} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "white", background: revalResult?.releaseRecommendation === "CLEARED" ? "#15803d" : "#94a3b8", border: "none", borderRadius: 8, cursor: revalResult?.releaseRecommendation === "CLEARED" ? "pointer" : "default" }}>
+        <button onClick={openAccept} disabled={!revalResult || revalResult.releaseRecommendation !== "CLEARED"} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "white", background: revalResult?.releaseRecommendation === "CLEARED" ? "#15803d" : "var(--av-text-faint)", border: "none", borderRadius: 8, cursor: revalResult?.releaseRecommendation === "CLEARED" ? "pointer" : "default" }}>
           Accept & prepare release
         </button>
       </div>
@@ -2236,12 +2397,12 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
           <div style={{ fontWeight: 700, color: verifyResult.releaseRecommendation === "CLEARED" ? "#15803d" : "#b91c1c" }}>
             Initial check: {verifyResult.releaseRecommendation}
           </div>
-          <div style={{ color: "#334155" }}>Aircraft: {verifyResult.aircraft?.airworthiness?.status || "not on file"}</div>
-          <div style={{ color: "#334155" }}>
+          <div style={{ color: "var(--av-text-secondary)" }}>Aircraft: {verifyResult.aircraft?.airworthiness?.status || "not on file"}</div>
+          <div style={{ color: "var(--av-text-secondary)" }}>
             Alternate: {verifyResult.alternates?.recommended ? `${verifyResult.alternates.recommended.icao} (${verifyResult.alternates.recommended.distanceNm} nm)` : (verifyResult.alternates?.message || "none")}
           </div>
           {(verifyResult.crew || []).map((cr) => (
-            <div key={cr.pilotUserId} style={{ color: cr.cleared ? "#334155" : "#b91c1c" }}>
+            <div key={cr.pilotUserId} style={{ color: cr.cleared ? "var(--av-text-secondary)" : "#b91c1c" }}>
               Crew {cr.pilotUserId}: {cr.cleared ? "cleared" : cr.blockingItems.join("; ")}
             </div>
           ))}
@@ -2255,7 +2416,7 @@ function TripVerifyPanel({ requestId, destination, tailNumber, requiresIfr, onOp
       )}
 
       {revalResult && (
-        <div style={{ marginTop: 10, fontSize: 12, padding: 8, background: "#f8fafc", borderRadius: 8 }}>
+        <div style={{ marginTop: 10, fontSize: 12, padding: 8, background: "var(--av-bg-subtle)", borderRadius: 8 }}>
           <div style={{ fontWeight: 700, color: revalResult.releaseRecommendation === "CLEARED" ? "#15803d" : "#b91c1c" }}>
             Re-validation: {revalResult.releaseRecommendation}
           </div>
@@ -2286,7 +2447,7 @@ function DefaultOpSpecNotice({ crew }) {
   const disclaimer = usingDefault.effectiveLimits.disclaimer
     || "This is a best-practice reference template, not an FAA-approved GOM/SOP/OpSpec — the certificate holder is solely responsible for their own approved manual.";
   return (
-    <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "#fffbeb", border: "1px solid #fde68a" }}>
+    <div style={{ marginTop: 8, padding: 8, borderRadius: 8, background: "var(--av-status-yellow-bg)", border: "1px solid #fde68a" }}>
       <div style={{ fontWeight: 700, color: "#92400e", marginBottom: 2 }}>
         ⚠ No operator GOM/SOP/OpSpec on file — using platform default
       </div>
@@ -2304,8 +2465,8 @@ function MissionRequestPanel({ onOpenRelease }) {
   const [err, setErr] = useState(null);
   const [createdFor, setCreatedFor] = useState({}); // tailNumber -> requestId, per-candidate "create trip" status
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 8, background: "white" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
 
   async function runMatch() {
     setBusy(true);
@@ -2347,12 +2508,12 @@ function MissionRequestPanel({ onOpenRelease }) {
     }
   }
 
-  const scoreColor = (s) => (s.airworthinessStatus === "RED" ? "#b91c1c" : s.airworthinessStatus === "YELLOW" ? "#92400e" : s.airworthinessStatus === "UNVERIFIED" ? "#64748b" : "#15803d");
+  const scoreColor = (s) => (s.airworthinessStatus === "RED" ? "#b91c1c" : s.airworthinessStatus === "YELLOW" ? "#92400e" : s.airworthinessStatus === "UNVERIFIED" ? "var(--av-text-muted)" : "#15803d");
 
   return (
     <div style={{ marginTop: 4 }}>
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, marginBottom: 16, background: "#f8fafc" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 10 }}>Mission request</div>
+      <div style={{ border: "1px solid var(--av-border)", borderRadius: 10, padding: 16, marginBottom: 16, background: "var(--av-bg-subtle)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--av-text)", marginBottom: 10 }}>Mission request</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div><label style={labelStyle}>Aircraft type needed</label><input style={fieldStyle} value={form.requiredType} onChange={(e) => set("requiredType", e.target.value)} placeholder="C172 / King Air 350 / 777" /></div>
           <div>
@@ -2370,7 +2531,7 @@ function MissionRequestPanel({ onOpenRelease }) {
           <div><label style={labelStyle}>Min seats</label><input type="number" style={fieldStyle} value={form.minSeats} onChange={(e) => set("minSeats", e.target.value)} /></div>
           <div><label style={labelStyle}>Cargo capacity needed (lbs)</label><input type="number" style={fieldStyle} value={form.cargoCapacityLbs} onChange={(e) => set("cargoCapacityLbs", e.target.value)} /></div>
           <div><label style={labelStyle}>Destination ICAO (for trip request)</label><input style={fieldStyle} value={form.destination} onChange={(e) => set("destination", e.target.value)} placeholder="PHNL" /></div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155", marginTop: 20 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--av-text-secondary)", marginTop: 20 }}>
             <input type="checkbox" checked={form.requiresIfr} onChange={(e) => set("requiresIfr", e.target.checked)} />
             Requires IFR certification
           </label>
@@ -2380,30 +2541,30 @@ function MissionRequestPanel({ onOpenRelease }) {
         </button>
       </div>
 
-      {err && <div style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
+      {err && <div style={{ fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", padding: 10, borderRadius: 8, marginBottom: 12 }}>{err}</div>}
 
       {result && (
         <div>
-          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--av-text-muted)", marginBottom: 10 }}>
             {result.fleetSize} tail(s) on file for this workspace{result.candidates.length ? ` · ${result.candidates.length} match(es)` : ""}
           </div>
           {result.message && (
-            <div style={{ padding: 12, fontSize: 13, color: "#334155", background: "#f1f5f9", borderRadius: 8, marginBottom: 12 }}>{result.message}</div>
+            <div style={{ padding: 12, fontSize: 13, color: "var(--av-text-secondary)", background: "var(--av-bg-subtle)", borderRadius: 8, marginBottom: 12 }}>{result.message}</div>
           )}
           {result.candidates.map((c) => (
-            <div key={c.tailNumber} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 10 }}>
+            <div key={c.tailNumber} style={{ border: "1px solid var(--av-border)", borderRadius: 10, padding: 14, marginBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--av-text)" }}>
                     {c.tailNumber} {c.type ? `· ${c.type}` : ""}
-                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, color: scoreColor(c), background: "#f8fafc", border: `1px solid ${scoreColor(c)}` }}>{c.airworthinessStatus}</span>
+                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, color: scoreColor(c), background: "var(--av-bg-subtle)", border: `1px solid ${scoreColor(c)}` }}>{c.airworthinessStatus}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Match score: {c.score}</div>
+                  <div style={{ fontSize: 11, color: "var(--av-text-faint)", marginTop: 2 }}>Match score: {c.score}</div>
                 </div>
                 <button
                   onClick={() => createTripFor(c)}
                   disabled={createdFor[c.tailNumber] === "running" || (typeof createdFor[c.tailNumber] === "string" && !createdFor[c.tailNumber].startsWith("error"))}
-                  style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "white", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#0284c7", background: "var(--av-bg-card)", border: "1px solid #0284c7", borderRadius: 8, cursor: "pointer" }}
                 >
                   {createdFor[c.tailNumber] && !String(createdFor[c.tailNumber]).startsWith("error") && createdFor[c.tailNumber] !== "running" ? "Trip request created ✓" : "Create trip request"}
                 </button>
@@ -2460,6 +2621,26 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
     setActiveTab(null);
   }
   const workerSlug = roleOverride || incomingWorkerSlug;
+  // 2026-09-09 — Sean's ask: dark mode in the cockpit, light in the MX shop.
+  // Default is worker-aware (Pilot -> dark, MX/Dispatch -> light) but always
+  // manually overridable; once a person explicitly picks a theme it's
+  // persisted per-device (localStorage) and wins over the worker default —
+  // same reasoning as the shared-device case in the RoleSwitcher itself.
+  const AV_THEME_STORAGE_KEY = "sociii_aviation_theme_v1";
+  const [avTheme, setAvTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem(AV_THEME_STORAGE_KEY);
+      if (stored === "light" || stored === "dark") return stored;
+    } catch { /* ignore */ }
+    return workerSlug.startsWith("av-copilot") ? "dark" : "light";
+  });
+  function toggleAvTheme() {
+    setAvTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      try { localStorage.setItem(AV_THEME_STORAGE_KEY, next); } catch { /* ignore */ }
+      return next;
+    });
+  }
   const spec = getAvCanvas(workerSlug);
   const [liveBlocks, setLiveBlocks] = useState({});
   const [loading, setLoading] = useState({});
@@ -2484,6 +2665,8 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   const [showAddWarranty, setShowAddWarranty] = useState(false);
   const [showAddNefItem, setShowAddNefItem] = useState(false);
   const [mxRefreshKey, setMxRefreshKey] = useState(0);
+  // S52.71 Step 3 — Pilot's "Edit My Ratings" (my-aircraft tab only).
+  const [showEditRatings, setShowEditRatings] = useState(false);
   // 2026-09-05 — the real Aircraft Logbook (CAN): manual entry, plus the
   // real triggers for "scheduled maintenance completes" and "AD complied
   // with" that auto-append to it.
@@ -2515,18 +2698,24 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
             if (cfg.mapConfig && blocks) blocks.push({ type: "map", ...cfg.mapConfig });
           }
         } else if (cfg.kind === "notams") {
+          // 2026-09-09 — live bug: real Notamify NOTAM objects come back as
+          // { number, icao, summary, category, raw, startsAt, endsAt } (see
+          // notams.js's normalizeNotam()) — this branch was reading .text/
+          // .message/.notamId/.id/.airport/.location, none of which exist on
+          // the real shape, so every card fell through to the raw
+          // JSON.stringify(n) fallback and rendered as literal text.
           const data = await apiGet(`/v1/aviation:notams?locations=${cfg.locations}`);
           const allNotams = (data.airports || []).flatMap(a => a.notams || []);
           if (allNotams.length) {
             const relevant = allNotams.filter(n =>
-              !n.text?.toLowerCase().includes("light") && !n.text?.toLowerCase().includes("obstruction")
+              !n.summary?.toLowerCase().includes("light") && !n.summary?.toLowerCase().includes("obstruction")
             ).slice(0, 8);
             if (relevant.length) {
               blocks = [{ type: "cards", items: relevant.map(n => ({
-                band: n.text?.toLowerCase().includes("ils") || n.text?.toLowerCase().includes("rwy") ? "YELLOW" : "BLUE",
-                label: n.airport || n.location || "NOTAM",
-                title: n.notamId || n.id || "NOTAM",
-                detail: n.text || n.message || JSON.stringify(n).slice(0, 120),
+                band: n.summary?.toLowerCase().includes("ils") || n.summary?.toLowerCase().includes("rwy") ? "YELLOW" : "BLUE",
+                label: n.icao || "NOTAM",
+                title: n.number || "NOTAM",
+                detail: n.summary || n.raw || "No summary available",
               })) }];
             }
           }
@@ -2567,6 +2756,20 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         } else if (cfg.kind === "aircraftLogbook") {
           const data = await apiGet(`/v1/mx:logbook:list`);
           blocks = aircraftLogbookToBlocks(data.entries);
+        } else if (cfg.kind === "myAircraft") {
+          // S52.71 Step 2/3 — independent fetches, each caught separately
+          // (crewRoster precedent above) so one failing endpoint doesn't
+          // blank the other sections. The 4th call (own membership) supplies
+          // typeRatings for filtering — added Step 3.
+          const [fleetData, squawkData, logbookData, membershipsData] = await Promise.all([
+            apiGet(`/v1/mx:listAircraft`),
+            apiGet(`/v1/mx:listSquawks`).catch((e) => { console.warn("myAircraft squawks fetch failed:", e.message); return null; }),
+            apiGet(`/v1/mx:logbook:list`).catch((e) => { console.warn("myAircraft logbook fetch failed:", e.message); return null; }),
+            apiGet(`/v1/me:memberships`).catch((e) => { console.warn("myAircraft memberships fetch failed:", e.message); return null; }),
+          ]);
+          const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+          const myMembership = membershipsData?.memberships?.find((m) => m.tenantId === tenantId);
+          blocks = myAircraftToBlocks(fleetData.fleet, squawkData?.squawks, logbookData?.entries, myMembership?.typeRatings);
         } else if (cfg.kind === "releases") {
           const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
           const data = await apiGet(`/v1/aviation:dispatch:releases${tenantId && tenantId !== "vault" ? `?tenantId=${encodeURIComponent(tenantId)}` : ""}`);
@@ -2605,7 +2808,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
 
   if (!spec) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+      <div style={{ padding: 32, textAlign: "center", color: "var(--av-text-faint)", fontSize: 14 }}>
         No canvas data for {workerSlug}. Ask Skye to run a briefing.
       </div>
     );
@@ -2626,7 +2829,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   const tabBlocks = liveBlocks[liveKey] || tab?.blocks || [];
 
   return (
-    <div style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto" }}>
+    <div data-av-theme={avTheme} style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto", background: "var(--av-bg)", color: "var(--av-text)" }}>
       {/* RoleSwitcher + Scratch Pad + Terrain Profile all sit outside the
           tab-content below, so switching Copilot/MX/Dispatch never hides or
           resets any of them — same ScratchPad component/localStorage note
@@ -2637,6 +2840,21 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => { setRoleOverride(slug); setActiveTab(null); }} />
         {AVIATION_ROLES.some(r => r.slug === workerSlug) && (
           <div style={{ display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              onClick={toggleAvTheme}
+              title={avTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={avTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 12px", fontSize: 12.5, fontWeight: 700,
+                borderRadius: 8, border: "1.5px solid var(--av-border-strong)", background: "var(--av-bg-card)",
+                color: "var(--av-text)", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              <span aria-hidden="true">{avTheme === "dark" ? "☀️" : "🌙"}</span>
+              {avTheme === "dark" ? "Light" : "Dark"}
+            </button>
             <ScratchPad />
             <AviationProfileView />
           </div>
@@ -2648,11 +2866,11 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{spec.title}</span>
-              <span style={{ fontSize: 12, color: "#64748b" }}>{spec.subtitle}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>{spec.title}</span>
+              <span style={{ fontSize: 12, color: "var(--av-text-muted)" }}>{spec.subtitle}</span>
             </div>
             {spec.disclaimer && (
-              <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>{spec.disclaimer}</div>
+              <div style={{ fontSize: 11, color: "var(--av-text-faint)", fontStyle: "italic" }}>{spec.disclaimer}</div>
             )}
           </div>
           {/* 2026-08-21 gap-audit fix — prominent primary actions, matching
@@ -2664,6 +2882,15 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
               style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #0284c7, #0369a1)", border: "none", borderRadius: 8, cursor: "pointer" }}
             >
               + Log Flight
+            </button>
+          )}
+          {isCopilotWorker && currentTabId === "my-aircraft" && (
+            <button
+              type="button"
+              onClick={() => setShowEditRatings(true)}
+              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+            >
+              Edit My Ratings
             </button>
           )}
           {isDispatchWorker && (
@@ -2687,7 +2914,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
               <button
                 type="button"
                 onClick={() => setShowAddSquawkPhoto(true)}
-                style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
               >
                 📷 Photo Squawk
               </button>
@@ -2695,7 +2922,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                 <button
                   type="button"
                   onClick={() => setShowAddMaintenanceItem(true)}
-                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
                 >
                   + Add Maintenance Item
                 </button>
@@ -2704,7 +2931,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                 <button
                   type="button"
                   onClick={() => setShowAddWarranty(true)}
-                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
                 >
                   + Add Warranty
                 </button>
@@ -2713,7 +2940,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                 <button
                   type="button"
                   onClick={() => setShowAddNefItem(true)}
-                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
                 >
                   + Add NEF Item
                 </button>
@@ -2722,7 +2949,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                 <button
                   type="button"
                   onClick={() => setShowAddLogbookEntry(true)}
-                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
                 >
                   + Log Entry
                 </button>
@@ -2731,7 +2958,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
                 <button
                   type="button"
                   onClick={() => setShowRecordAdCompliance(true)}
-                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "white", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#0369a1", background: "var(--av-bg-card)", border: "1px solid #0369a1", borderRadius: 8, cursor: "pointer" }}
                 >
                   + Record AD Compliance
                 </button>
@@ -2766,6 +2993,12 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
         <AddMaintenanceItemModal
           onClose={() => setShowAddMaintenanceItem(false)}
           onAdded={() => { setShowAddMaintenanceItem(false); setMxRefreshKey(k => k + 1); }}
+        />
+      )}
+      {showEditRatings && (
+        <EditTypeRatingsModal
+          onClose={() => setShowEditRatings(false)}
+          onSaved={() => { setShowEditRatings(false); setMxRefreshKey(k => k + 1); }}
         />
       )}
       {showAddWarranty && (
@@ -2810,8 +3043,13 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       {/* CAS instrument panel */}
       <CasPanel counts={spec.cas} />
 
-      {/* Tab bar */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid #e2e8f0", paddingBottom: 0 }}>
+      {/* Tab bar — 2026-09-09: with 14 tabs on the Pilot/MX canvases, a plain
+          flex row with no overflow handling ran off the viewport with no way
+          to reach the rest (live-tested, reported "tabs running off the
+          page"). Horizontally scrollable strip is the immediate fix; the
+          real long-term fix is the Airports/Aircraft hub-tab consolidation
+          already scoped in S52.69 to reduce the tab count itself. */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--av-border)", paddingBottom: 0, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         {spec.tabs.map((t) => {
           const active = t.id === currentTabId;
           return (
@@ -2820,9 +3058,10 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
               onClick={() => setActiveTab(t.id)}
               style={{
                 padding: "8px 14px", fontSize: 13, fontWeight: active ? 600 : 400,
-                color: active ? "#0284c7" : "#64748b", background: "none", border: "none",
+                color: active ? "#0284c7" : "var(--av-text-muted)", background: "none", border: "none",
                 borderBottom: active ? "2px solid #0284c7" : "2px solid transparent",
                 cursor: "pointer", marginBottom: -1, transition: "color 0.15s",
+                whiteSpace: "nowrap", flexShrink: 0,
               }}
             >
               {t.label}
@@ -2838,12 +3077,12 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
 
       {/* Live data indicator */}
       {isLiveTab && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, fontSize: 11, color: "var(--av-text-muted)" }}>
           {loading[liveKey]
             ? <><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", display: "inline-block" }} /> Fetching live data…</>
             : liveBlocks[liveKey]
               ? <><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> Live data · {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</>
-              : <><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#94a3b8", display: "inline-block" }} /> Showing sample data</>
+              : <><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--av-text-faint)", display: "inline-block" }} /> Showing sample data</>
           }
         </div>
       )}

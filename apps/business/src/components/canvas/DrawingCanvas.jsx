@@ -140,10 +140,20 @@ export default function DrawingCanvas({ storageKey, background = "#ffffff", heig
   const finishStroke = useCallback(() => {
     if (!drawingRef.current || !currentStrokeRef.current) return;
     drawingRef.current = false;
-    if (currentStrokeRef.current.points.length > 1) {
-      setStrokes(prev => [...prev, currentStrokeRef.current]);
-    }
+    // 2026-09-09 — live bug ("can scribble but doesn't hold"): capture the
+    // completed stroke into a local BEFORE nulling the ref. setStrokes's
+    // updater function reads whatever currentStrokeRef.current is at the
+    // time React actually invokes it, not at the time setStrokes was
+    // called — nulling the ref immediately after used to mean the updater
+    // always saw null, so every stroke got recorded as `null` instead of
+    // real point data (silently skipped by redraw(), and by saveStrokes
+    // faithfully persisting `[null]` to localStorage — the save "worked,"
+    // it just never had real data to save).
+    const completedStroke = currentStrokeRef.current;
     currentStrokeRef.current = null;
+    if (completedStroke.points.length > 1) {
+      setStrokes(prev => [...prev, completedStroke]);
+    }
   }, []);
 
   const undo = useCallback(() => setStrokes(prev => prev.slice(0, -1)), []);

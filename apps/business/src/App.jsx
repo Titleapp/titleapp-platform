@@ -9,6 +9,8 @@ import NativeSignIn from "./components/NativeSignIn";
 import { Capacitor } from "@capacitor/core";
 import OnboardingWizard from "./components/OnboardingWizard";
 import DppClientOnboarding from "./components/DppClientOnboarding";
+import CrewRolePrompt from "./components/CrewRolePrompt";
+import { CREW_ROLE_TO_WORKER_SLUG } from "./utils/crewRole";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
 import WorkspaceInvestorMaterials from "./components/WorkspaceInvestorMaterials";
 import WorkspaceInvestorDeadlines from "./components/WorkspaceInvestorDeadlines";
@@ -4640,6 +4642,10 @@ export default function App() {
   });
   const [onboardingStep, setOnboardingStep] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  // S52.71 Step 1 — set when an aviation redirect resolves to a membership
+  // with no preferredCrewRole yet (first launch on this tenant). Carries the
+  // tenantId CrewRolePrompt needs to persist the answer.
+  const [needsCrewRoleOnboarding, setNeedsCrewRoleOnboarding] = useState(null);
   const [userName, setUserName] = useState("");
   const [lockerWorker, setLockerWorker] = useState(null);
   const viewResolvedRef = useRef(false);
@@ -5181,6 +5187,20 @@ export default function App() {
               if (tenant.companyName || tenant.name) {
                 localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+              }
+              // S52.71 Step 1 — a real preferredCrewRole on this person's
+              // membership overrides the Pilot default main.jsx set
+              // synchronously before this real membership data was available.
+              // No stored preference yet (first aviation launch on this
+              // tenant) — leave the Pilot default in place for this load, but
+              // flag CrewRolePrompt to ask and persist the real answer.
+              if (isAviationRedirect) {
+                const bestMem = mems.find((m) => m.tenantId === bestTid);
+                if (bestMem?.preferredCrewRole && CREW_ROLE_TO_WORKER_SLUG[bestMem.preferredCrewRole]) {
+                  sessionStorage.setItem("ta_redirect_page", CREW_ROLE_TO_WORKER_SLUG[bestMem.preferredCrewRole]);
+                } else if (!bestMem?.preferredCrewRole) {
+                  setNeedsCrewRoleOnboarding({ tenantId: bestTid });
+                }
               }
             }
             viewResolvedRef.current = true;
@@ -6132,6 +6152,12 @@ export default function App() {
     <AppErrorBoundary>
       <>
         <AdminShell onBackToHub={handleBackToHub} />
+        {needsCrewRoleOnboarding && (
+          <CrewRolePrompt
+            tenantId={needsCrewRoleOnboarding.tenantId}
+            onDone={() => setNeedsCrewRoleOnboarding(null)}
+          />
+        )}
         {isDemoSession && <DemoWelcomeBanner />}
         {lockerWorker && (
           <WorkerLockerPanel

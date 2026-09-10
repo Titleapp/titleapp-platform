@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SOCIII</string>
+    <string name="app_name">SKYE</string>
     <string name="title_activity_main">SOCIII</string>
     <string name="package_name">ai.sociii.app</string>
     <string name="custom_url_scheme">ai.sociii.app</string>

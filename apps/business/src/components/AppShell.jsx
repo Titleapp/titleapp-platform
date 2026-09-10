@@ -152,8 +152,19 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       const data = await resp.json();
       if (data.ok && data.workspaces) {
         setWorkspaces(data.workspaces);
-        // Sync localStorage vertical with actual workspace data
-        const wsId = localStorage.getItem("WORKSPACE_ID") || "vault";
+        // Sync localStorage vertical with actual workspace data. TENANT_ID
+        // is the key the real-login flow (App.jsx resolveView()) actually
+        // sets — WORKSPACE_ID is a legacy/demo-flow key that real logins
+        // often never write at all. Looking up by WORKSPACE_ID alone (as
+        // this used to) silently fell back to the "vault" default below for
+        // any real tenant that had no WORKSPACE_ID set, then synced VERTICAL
+        // from vault's own real value ("consumer") onto that tenant — found
+        // 2026-09-09 on Sean's own SOCIII Inc tenant (a real, multi-worker
+        // business tenant whose own vertical is "general"), which hid the
+        // Sidebar's Workers list/RoleSwitcher behind the "consumer"→personal
+        // check. TENANT_ID-first matches the fallback convention every other
+        // consumer of these two keys in this codebase already uses.
+        const wsId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
         let matchedWs = data.workspaces.find(w => w.id === wsId);
         // Stale WORKSPACE_ID/TENANT_ID (e.g. left over from a /demo/* sign-in
         // that stamped these same shared keys) won't match this user's real
@@ -378,7 +389,8 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => window.removeEventListener("ta:cart-updated", onCartUpdated);
   }, []);
 
-  const currentWorkspaceId = localStorage.getItem("WORKSPACE_ID") || "vault";
+  // TENANT_ID-first — see the matching fix/comment in loadWorkspaces() above.
+  const currentWorkspaceId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
 
   // Load worker data from current workspace
   const currentWs = workspaces.find(w => w.id === currentWorkspaceId) || {};

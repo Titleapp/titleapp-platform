@@ -17197,6 +17197,45 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return res.json({ ok: true, userId: auth.user.uid, email: auth.user.email || null, memberships, tenants });
     }
 
+    // POST /v1/me:setCrewRole — S52.71 Step 1. Self-service: a member sets
+    // their OWN durable crew-role default (pilot/mx/dispatch) on their own
+    // membership for a given tenant. No owner/admin gate — this only ever
+    // writes the caller's own record, matching S52.71's "permissions as open
+    // as possible" decision for this feature. Requires an active membership
+    // to already exist (this doesn't create one); uses requireMembershipIfNeeded
+    // purely for the existence/lookup check, not its role-based gating.
+    if (route === "/me:setCrewRole" && method === "POST") {
+      const { tenantId, crewRole } = body || {};
+      const VALID_ROLES = new Set(["pilot", "mx", "dispatch"]);
+      if (!tenantId) return jsonError(res, 400, "tenantId required");
+      if (!VALID_ROLES.has(crewRole)) return jsonError(res, 400, "crewRole must be one of pilot, mx, dispatch");
+      const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId }, res);
+      if (!memberGate.ok) return memberGate;
+      const membershipId = memberGate.membership?.id;
+      if (!membershipId) return jsonError(res, 400, "This tenant has no per-membership record to store a crew role on");
+      await db.collection("memberships").doc(membershipId).set({ preferredCrewRole: crewRole }, { merge: true });
+      return res.json({ ok: true, preferredCrewRole: crewRole });
+    }
+
+    // POST /v1/me:setTypeRatings — S52.71 Step 3. Self-service, same reasoning
+    // as /me:setCrewRole above: only ever writes the caller's own membership.
+    // tenantId comes from the X-Tenant-Id header (getCtx) since this is
+    // called via AviationWorkerCanvas.jsx's apiPost helper, which injects
+    // that header automatically — unlike setCrewRole above (called via a raw
+    // fetch outside that file, so it reads tenantId from the body instead).
+    if (route === "/me:setTypeRatings" && method === "POST") {
+      const ctx = getCtx(req, body, auth.user);
+      const { typeRatings } = body || {};
+      if (!Array.isArray(typeRatings)) return jsonError(res, 400, "typeRatings must be an array");
+      const clean = [...new Set(typeRatings.map((t) => String(t || "").trim()).filter(Boolean))].slice(0, 20);
+      const memberGate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
+      if (!memberGate.ok) return memberGate;
+      const membershipId = memberGate.membership?.id;
+      if (!membershipId) return jsonError(res, 400, "This tenant has no per-membership record to store ratings on");
+      await db.collection("memberships").doc(membershipId).set({ typeRatings: clean }, { merge: true });
+      return res.json({ ok: true, typeRatings: clean });
+    }
+
     // GET /v1/workers:list — list Workers for current tenant
     if (route === "/workers:list" && method === "GET") {
       const tenantId = req.headers["x-tenant-id"] || req.query?.tenantId;

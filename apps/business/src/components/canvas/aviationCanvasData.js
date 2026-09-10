@@ -71,7 +71,7 @@ export const AV_CANVAS = {
       {
         id: "flight",
         label: "Flight",
-        description: "Your next planned flight — ForeFlight-style. Fill in the details with Alex and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
+        description: "Your next planned flight — ForeFlight-style. Fill in the details with Skye and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
         blocks: [
           { type: "heroes", items: [
             { band: "BLUE",   title: "Next flight — PHOG → PHNL",          detail: "Aug 9 2026 · ETD 08:00 HST · IFR · FL230 · N701AA · Crew: Rivera" },
@@ -131,14 +131,14 @@ export const AV_CANVAS = {
             ["PC12 - CTS",                 "—",          "09/30/2026", "⚠ No completion on file"],
           ] },
           { type: "prose", items: [
-            { band: "YELLOW", title: "What SOCIII does that FVO can't", text: "FVO shows you a table. SOCIII watches the table, surfaces the deadline before it becomes a problem, and helps you schedule the sim block or CBT module — right from this conversation. All 9 expiring items are in the same recurrent window (Sep 30). Tell Alex 'help me schedule my PC-12 recurrent' and it drafts the FlightSafety request for you." },
+            { band: "YELLOW", title: "What SOCIII does that FVO can't", text: "FVO shows you a table. SOCIII watches the table, surfaces the deadline before it becomes a problem, and helps you schedule the sim block or CBT module — right from this conversation. All 9 expiring items are in the same recurrent window (Sep 30). Tell Skye 'help me schedule my PC-12 recurrent' and it drafts the FlightSafety request for you." },
           ] },
         ],
       },
       {
         id: "preflight",
         label: "Preflight",
-        description: "Your assembled go/no-go package for the next trip — weather, W&B, FRAT, and NOTAMs in one place. Alex built this from live data.",
+        description: "Your assembled go/no-go package for the next trip — weather, W&B, FRAT, and NOTAMs in one place. Skye built this from live data.",
         blocks: [
           { type: "heroes", items: [
             { band: "GREEN", title: "FRAT score 8/50 · Low Risk", detail: "All risk categories within normal limits" },
@@ -259,6 +259,17 @@ export const AV_CANVAS = {
         blocks: [],
       },
       {
+        // S52.71 Step 2 — Pilot read-only visibility into MX's world:
+        // operational status, open squawks, upcoming MX, and recent history,
+        // all from the same real endpoints MX/Dispatch already read. One
+        // consolidated view rather than porting MX's 5 separate tabs — see
+        // myAircraftToBlocks in AviationWorkerCanvas.jsx.
+        id: "my-aircraft",
+        label: "My Aircraft(s)",
+        description: "Every aircraft in the fleet — operational status, open squawks, upcoming maintenance, and recent history. Read-only; MX maintains the underlying records. Shows the whole fleet for now, not just aircraft you're rated to fly — per-pilot type ratings aren't tracked yet.",
+        blocks: [],
+      },
+      {
         id: "charts",
         label: "Charts",
         description: "Approach and departure charts, airport diagrams, and preferred IFR routing for your bases — PHOG, PHNL, PHKO, PHTO, PHNY. Sourced from FAA AeroNav. Always verify chart currency against the current AIRAC cycle before flight.",
@@ -346,7 +357,7 @@ export const AV_CANVAS = {
         // blocks intentionally empty here.
         id: "aircraft-logbook",
         label: "Aircraft Logbook",
-        description: "Append-only aircraft maintenance logbook — every entry timestamped and A&P/IA-signed. The legal record of this aircraft's life. Say 'Log maintenance on N701AA — [description], [A&P name], [TTSN]' to Alex, or use \"+ Log Entry\" above.",
+        description: "Append-only aircraft maintenance logbook — every entry timestamped and A&P/IA-signed. The legal record of this aircraft's life. Say 'Log maintenance on N701AA — [description], [A&P name], [TTSN]' to Skye, or use \"+ Log Entry\" above.",
         blocks: [],
       },
       {
@@ -371,7 +382,7 @@ export const AV_CANVAS = {
       {
         id: "unscheduled-mx",
         label: "Unscheduled MX",
-        description: "Open squawks, pilot write-ups, and unscheduled maintenance events. Log a squawk by telling Alex.",
+        description: "Open squawks, pilot write-ups, and unscheduled maintenance events. Log a squawk by telling Skye.",
         blocks: [
           { type: "flags", items: [
             { band: "YELLOW", title: "Gear door light — right main inoperative", detail: "Logged Jul 15 2026 · MEL 32-60-01 · Cat C 30-day deferral · Placard installed · No operational restriction day/night VFR/IFR · A&P Williams notified · Part on order: light assy P/N 1149-002 · Repair scheduled Jul 28" },
@@ -380,7 +391,7 @@ export const AV_CANVAS = {
             { band: "GREEN", title: "No Category A or B open items", text: "Aircraft is cleared for all operations. One open Cat C MEL item (gear door light) does not restrict dispatch. Placard installed at R/H main gear door." },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "LOG A SQUAWK", title: "Tell Alex about any discrepancy", detail: "Say: 'Log a squawk — [describe the issue].' Alex creates a timestamped entry and notifies your A&P. Squawks are immutable — resolved, not deleted.", action: "Open chat" },
+            { band: "BLUE", label: "LOG A SQUAWK", title: "Tell Skye about any discrepancy", detail: "Say: 'Log a squawk — [describe the issue].' Skye creates a timestamped entry and notifies your A&P. Squawks are immutable — resolved, not deleted.", action: "Open chat" },
           ] },
         ],
       },
@@ -518,7 +529,7 @@ export const AV_CANVAS = {
         // rows, which never existed in any real collection.
         id: "schedule",
         label: "Schedule",
-        description: "Every trip request on file — which tail is committed to which mission, and when — derived from the real trip-request record the Requests tab writes to. Not a fixture: create a trip request from the Requests tab (or tell Alex) and it appears here.",
+        description: "Every trip request on file — which tail is committed to which mission, and when — derived from the real trip-request record the Requests tab writes to. Not a fixture: create a trip request from the Requests tab (or tell Skye) and it appears here.",
         blocks: [],
       },
       {
@@ -551,7 +562,7 @@ export const AV_CANVAS = {
         // were never tied to any real trip record.
         id: "pax-manifest",
         label: "Pax Manifest",
-        description: "Real passenger manifests, per trip request — names, weights, and notes as entered on the actual trip record. Add pax via the trip request's paxManifest field (through Alex or the create-trip-request flow) and they appear here.",
+        description: "Real passenger manifests, per trip request — names, weights, and notes as entered on the actual trip record. Add pax via the trip request's paxManifest field (through Skye or the create-trip-request flow) and they appear here.",
         blocks: [],
       },
       {
@@ -578,7 +589,7 @@ export const AV_CANVAS = {
         description: "Active NOTAMs for Hawaii operations — relevant to today's Aeromed routes.",
         blocks: [
           { type: "cards", items: [
-            { band: "BLUE", label: "LIVE NOTAMS", title: "Ask Alex to pull current NOTAMs for your route", detail: "Tell Alex: 'Get NOTAMs for PHOG to PHNL' — Alex pulls live NOTAMs from the FAA and summarizes operationally relevant items.", action: "Open chat" },
+            { band: "BLUE", label: "LIVE NOTAMS", title: "Ask Skye to pull current NOTAMs for your route", detail: "Tell Skye: 'Get NOTAMs for PHOG to PHNL' — Skye pulls live NOTAMs from the FAA and summarizes operationally relevant items.", action: "Open chat" },
             { band: "WHITE", label: "STANDING", title: "PHOG — Confirm ILS 02/20 and RNAV approaches", detail: "Standard operations. Confirm approach status before filing.", action: "Confirm" },
           ] },
         ],
@@ -1099,7 +1110,7 @@ export const AV_CANVAS = {
             { label: "Last 30 days",    value: "7.0 hrs",      band: "WHITE" },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "LOGBOOK", title: "Log your last flight with Alex", detail: "Tell Alex your route, aircraft, and flight time — it will be appended to your Vault logbook as an immutable, chain-signed record with IRS business-purpose documentation.", action: "Log a flight" },
+            { band: "BLUE", label: "LOGBOOK", title: "Log your last flight with Skye", detail: "Tell Skye your route, aircraft, and flight time — it will be appended to your Vault logbook as an immutable, chain-signed record with IRS business-purpose documentation.", action: "Log a flight" },
           ] },
         ],
       },
@@ -1167,10 +1178,10 @@ export const AV_CANVAS = {
       {
         id: "flight-planning",
         label: "Flight Planning",
-        description: "Flight planning for your next trip — tell Alex your departure and destination.",
+        description: "Flight planning for your next trip — tell Skye your departure and destination.",
         blocks: [
           { type: "cards", items: [
-            { band: "BLUE", label: "READY", title: "Tell Alex your route to build a preflight package", detail: "Alex will pull live weather, NOTAMs, compute W&B from your N701AA AFM, calculate FRAT score, and generate a release-ready package.", action: "Start planning" },
+            { band: "BLUE", label: "READY", title: "Tell Skye your route to build a preflight package", detail: "Skye will pull live weather, NOTAMs, compute W&B from your N701AA AFM, calculate FRAT score, and generate a release-ready package.", action: "Start planning" },
           ] },
         ],
       },
@@ -1195,7 +1206,7 @@ function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoI
         description: `${typeLabel} flight planning — performance, fuel planning, and routing with type-specific data from your uploaded AFM.`,
         blocks: [
           { type: "cards", items: [
-            { band: "BLUE", label: "READY", title: `Tell Alex your route for a ${typeLabel} preflight package`, detail: `Alex will pull live weather, NOTAMs, compute W&B from your ${afmModel} AFM data, and generate a go/no-go package specific to the ${typeLabel}.`, action: "Start planning" },
+            { band: "BLUE", label: "READY", title: `Tell Skye your route for a ${typeLabel} preflight package`, detail: `Skye will pull live weather, NOTAMs, compute W&B from your ${afmModel} AFM data, and generate a go/no-go package specific to the ${typeLabel}.`, action: "Start planning" },
           ] },
         ],
       },
@@ -1211,7 +1222,7 @@ function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoI
             { label: "Service ceiling", value: "From AFM — upload to activate",  band: "WHITE" },
           ] },
           { type: "prose", items: [
-            { band: "BLUE", title: "Activate performance data", text: `Upload your ${afmModel} AFM or POH to unlock type-specific performance tables. Alex will parse climb, cruise, descent, and fuel-burn tables and use them in every preflight package.` },
+            { band: "BLUE", title: "Activate performance data", text: `Upload your ${afmModel} AFM or POH to unlock type-specific performance tables. Skye will parse climb, cruise, descent, and fuel-burn tables and use them in every preflight package.` },
           ] },
         ],
       },
@@ -1221,7 +1232,7 @@ function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoI
         description: `Weight and balance computation using your ${tailShort} empty weight and CG from the uploaded AFM.`,
         blocks: [
           { type: "cards", items: [
-            { band: "BLUE", label: "UPLOAD AFM TO ACTIVATE", title: `${afmModel} W&B data not yet loaded`, detail: `Upload your aircraft's empty weight and CG data from the ${afmModel} AFM. Alex will compute W&B for every trip automatically.`, action: "Upload AFM" },
+            { band: "BLUE", label: "UPLOAD AFM TO ACTIVATE", title: `${afmModel} W&B data not yet loaded`, detail: `Upload your aircraft's empty weight and CG data from the ${afmModel} AFM. Skye will compute W&B for every trip automatically.`, action: "Upload AFM" },
           ] },
         ],
       },
@@ -1253,7 +1264,7 @@ function copilotVariant(typeLabel, tail, tailShort, afmModel, engineLabel, tohoI
             { label: "Last flight",    value: "From logbook",      band: "WHITE" },
           ] },
           { type: "cards", items: [
-            { band: "BLUE", label: "CONNECT VAULT", title: "Connect your pilot Vault for live currency tracking", detail: "When your Vault is linked, Alex checks currency automatically at every preflight and flags anything that's approaching expiration.", action: "Connect Vault" },
+            { band: "BLUE", label: "CONNECT VAULT", title: "Connect your pilot Vault for live currency tracking", detail: "When your Vault is linked, Skye checks currency automatically at every preflight and flags anything that's approaching expiration.", action: "Connect Vault" },
           ] },
         ],
       },
@@ -1379,7 +1390,7 @@ AV_CANVAS["av-ground-school-001"] = {
           ["FW - 293 (a) 1, 4-8",   "—", "—"],
         ] },
         { type: "cards", items: [
-          { band: "YELLOW", label: "BOOK NOW", title: "Schedule FSI Scottsdale — PC-12 type recurrent", detail: "FSI Scottsdale (KSDL) or Denver (KAPA). 2-day course covers PC12 Flight + Ground + Emergency Training in one visit. After booking, tell Alex the date — he'll mark all three as scheduled and block your Aeromed schedule.", action: "Ask Skye to draft the request" },
+          { band: "YELLOW", label: "BOOK NOW", title: "Schedule FSI Scottsdale — PC-12 type recurrent", detail: "FSI Scottsdale (KSDL) or Denver (KAPA). 2-day course covers PC12 Flight + Ground + Emergency Training in one visit. After booking, tell Skye the date — he'll mark all three as scheduled and block your Aeromed schedule.", action: "Ask Skye to draft the request" },
         ] },
       ],
     },

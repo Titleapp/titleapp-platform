@@ -182,6 +182,29 @@ function RecenterMap({ center, zoom }) {
   return null;
 }
 
+// ── MapResizeFix — 2026-09-09, live iPad portrait bug ────────────────────────
+// Leaflet measures its container's box once at mount and never re-measures on
+// its own. On the single-pane mobile/portrait shell, the map can mount before
+// that layout pass has settled (or while briefly behind the chat overlay),
+// baking in a 0-sized tile grid that never recovers until something fires a
+// real `resize` event — which is exactly what rotating to landscape does,
+// matching the reported "portrait shows nothing, landscape works" symptom.
+// A ResizeObserver on the actual container element (not just `window`) covers
+// orientation changes, tab-switch-back-to-Map, and the shared-device iPad
+// case generally — `invalidateSize()` is Leaflet's own documented fix for
+// this exact class of bug, not a workaround.
+function MapResizeFix() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    if (!container || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 // ── Georeferenced chart overlay (imperative Leaflet layer) ───────────────────
 // L.ImageOverlay.Rotated isn't a react-leaflet component, so it's added/removed
 // directly on the underlying map instance via useMap() — same imperative
@@ -372,7 +395,9 @@ export default function AviationMap({
   // pavement to check an overlay against, only vector/label tiles. Kept as
   // a permanent toggle since it's genuinely useful on its own (visually
   // confirming taxi routes, ramp layout, construction) — not a throwaway.
-  const [satelliteOn, setSatelliteOn] = useState(false);
+  // 2026-09-09 — Sean's explicit ask: satellite should be the default view,
+  // not an opt-in toggle.
+  const [satelliteOn, setSatelliteOn] = useState(true);
 
   // Real FAA sectional + IFR chart tiles — the FAA's own official ArcGIS-
   // hosted cached tile services (owner: AeronauticalInformationServices_FAA,
@@ -649,6 +674,7 @@ export default function AviationMap({
         )}
 
         <RecenterMap center={effectiveCenter} zoom={zoom} />
+        <MapResizeFix />
 
         {/* Own-ship GPS position (BLE puck or device GPS fallback) — the
             CODEX 64 moving-map dot. Rendered even in `minimal` mode, since
