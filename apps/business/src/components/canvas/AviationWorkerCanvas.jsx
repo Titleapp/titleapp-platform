@@ -3105,8 +3105,19 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       </div>
 
       {/* Header */}
+      {/* 2026-09-15 — this row's buttons (+ New Flight, + Log Flight, etc.)
+          were being clipped entirely off-canvas with no way to reach them:
+          `justifyContent: space-between` on a non-wrapping flex row pushes
+          them to the far edge of this section's own width, which routinely
+          exceeds the narrower width RightPanel actually allocates when this
+          canvas is embedded in the normal worker-switch flow (not a
+          dedicated full-page view) — confirmed live: "+ Log Flight" only
+          ever appeared to work because a second, separate shortcut for it
+          exists elsewhere in the UI; "+ New Flight" had no such fallback and
+          was simply unreachable. flexWrap lets the buttons drop to their own
+          line instead of clipping when the container's narrower than they need. */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 2 }}>
               <span style={{ fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>{spec.title}</span>
