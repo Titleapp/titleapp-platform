@@ -409,6 +409,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // the streaming auto-scroll below (line ~1098) doesn't yank them back down
   // mid-read (Elise, 2026-08-19 — reported as "impossible to scroll up").
   const userScrolledAwayRef = useRef(false);
+  // Sequence token guarding loadConversationHistory's async setMessages
+  // against clobbering newer activity that happened while it was in flight
+  // (Elise, "output disappears" — see loadConversationHistory below).
+  const historyLoadSeqRef = useRef(0);
   const [activeWorkerName, setActiveWorkerName] = useState(null);
   const [activeWorkerSlug, setActiveWorkerSlug] = useState(null);
   // "About this worker" panel — Sean, 2026-08-21: the product itself needs to
@@ -669,12 +673,33 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (SLUG_OPENERS[workerId]) opener = SLUG_OPENERS[workerId];
     }
 
-    setMessages(prev => [...prev, {
+    // 2026-09-15 — this effect used to unconditionally append `opener` here,
+    // which is why history "disappeared" on a page reload / direct
+    // navigation into an already-active worker (Elise, reconfirmed
+    // 2026-09-14): that's precisely when workerCtx.activeWorkerData becomes
+    // ready with no ta:select-worker event ever firing, so
+    // handleWorkerSelect's real loadConversationHistory() call never ran —
+    // this canned opener was the ENTIRE chat, every time, regardless of
+    // real Firestore history. Fix: build/refresh the same sessionId
+    // handleWorkerSelect uses (so a direct-navigation visit is scoped
+    // correctly even if handleWorkerSelect never ran this session), clear
+    // messages, and let loadConversationHistory decide — real history wins
+    // if it exists, this opener is only the fallback for a genuine first
+    // visit.
+    try {
+      const uid = getAuth().currentUser?.uid;
+      const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
+      const newSid = uid ? `wkr_${uid}_${tenantId}_${(workerId || "unknown").replace(/[^a-z0-9-]/gi, "_")}` : null;
+      if (newSid) localStorage.setItem("ta_chat_session_id", newSid);
+    } catch { /* ignore */ }
+
+    setMessages([]);
+    loadConversationHistory({
       role: 'assistant',
       content: opener,
       isSystem: true,
       suggestions: prompts.length > 0 ? prompts : undefined,
-    }]);
+    });
 
     setTimeout(() => {
       if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
@@ -1119,15 +1144,21 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     const isNewMsg = messages.length > prevMsgLen.current;
     prevMsgLen.current = messages.length;
 
-    if (lastMsg?.workerCards?.length > 2) {
-      // Worker result cards — scroll to top of the bundle so user sees the first card
+    if (lastMsg?.workerCards?.length > 2 && !userScrolledAwayRef.current) {
+      // Worker result cards — scroll to top of the bundle so user sees the first card.
+      // Skipped if the user deliberately scrolled up to read history (Elise,
+      // reconfirmed 2026-09-14 — this branch previously force-scrolled
+      // unconditionally, undoing the 8/19 "impossible to scroll up" fix below,
+      // which only guarded the streaming-update branch, not this one).
       requestAnimationFrame(() => {
         const el = conversationRef.current?.querySelector("[data-worker-results='true']:last-of-type");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
         else conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
       });
-    } else if (isNewMsg && lastMsg?.role === 'assistant') {
-      // New assistant message — scroll to its TOP so the reader sees the beginning
+    } else if (isNewMsg && lastMsg?.role === 'assistant' && !userScrolledAwayRef.current) {
+      // New assistant message — scroll to its TOP so the reader sees the
+      // beginning. Same userScrolledAwayRef guard as above — a genuinely new
+      // message shouldn't yank the view away from history the user is reading.
       requestAnimationFrame(() => {
         const all = conversationRef.current.querySelectorAll('.chat-message.assistant');
         const last = all[all.length - 1];
@@ -1171,7 +1202,14 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
   }, [currentUser]);
 
-  async function loadConversationHistory() {
+  // 2026-09-15 — `fallbackMessage` lets a caller that would otherwise show a
+  // canned opener (see the "Worker-specific opener" effect below) defer to
+  // real history first: if this session has no real messageEvents, the
+  // fallback is what appears instead, so a worker's first-ever visit still
+  // gets its normal greeting. Optional and backward-compatible — the
+  // handleWorkerSelect call site below passes nothing and keeps its exact
+  // prior behavior (empty conversation when there's no history yet).
+  async function loadConversationHistory(fallbackMessage) {
     try {
       // Live read, not the closed-over `currentUser` — this function is called
       // from handleWorkerSelect's ta:select-worker listener, whose closure can
@@ -1182,6 +1220,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const liveUser = getAuth().currentUser;
       if (!liveUser) return;
 
+      // Race guard: this is an async Firestore read, and the caller
+      // (handleWorkerSelect) clears messages to [] right before invoking it.
+      // If the user sends a message — or switches workers again — while this
+      // read is still in flight, the unconditional `setMessages(loadedMessages)`
+      // below used to unconditionally replace state once it finally resolved,
+      // silently wiping out whatever real, newer exchange had just happened.
+      // That's the actual cause of "output disappears" (Elise, reconfirmed
+      // 2026-09-14) — the reply wasn't lost, a slow-to-resolve history load
+      // clobbered it a moment later. A sequence token lets a stale load detect
+      // it's been superseded and skip applying its (now outdated) result.
+      const mySeq = ++historyLoadSeqRef.current;
+
       const platformSid = sessionStorage.getItem('ta_platform_sid');
       const localSid = localStorage.getItem('ta_chat_session_id');
 
@@ -1191,43 +1241,78 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // it must NOT override the cos_ skip or Alex loads stale sync-problem conversations.
       if (localSid && localSid.startsWith('cos_')) return;
 
+      // A sessionId already encodes {uid}_{tenantId}_{slug} (CODEX S52.65
+      // follow-up, 2026-09-07) for any session created since that fix, so it's
+      // an exact, non-racy tenant scope. `TENANT_ID`/`WORKSPACE_ID` is a single
+      // localStorage key shared across every open tab of this origin and can
+      // legitimately have changed since this session was created (see the
+      // handleWorkerSelect comment above on the header-bleed root cause).
+      // Stacking a freshly-re-read, possibly-stale `tenantId` field filter on
+      // top of an already-exact `sessionId` filter can only spuriously zero
+      // out real history when the two disagree — it never adds real safety,
+      // since sessionId alone already fully scopes the query. That combination
+      // is the actual cause of "history doesn't persist" (Elise, reconfirmed
+      // 2026-09-14 as still broken after the 9/7 fix) — so only fall back to
+      // the tenantId field filter when there's no sessionId to scope by at all
+      // (the one case CLAUDE.md invariant #5 actually requires it).
+      const sidToUse = platformSid || localSid || null;
       const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
-      const constraints = [
-        where('userId', '==', liveUser.uid),
-        ...(tenantIdFilter ? [where('tenantId', '==', tenantIdFilter)] : []),
-        orderBy('createdAt', 'asc'),
-        limit(50),
-      ];
-      if (platformSid) {
-        constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', platformSid));
-      } else if (localSid) {
-        // Filter to the specific session stored in localStorage so we never replay
-        // messages from a different worker or a previous browser session.
-        constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', localSid));
-      }
-      const q = query(collection(db, 'messageEvents'), ...constraints);
-      const snapshot = await getDocs(q);
       const loadedMessages = [];
       // Track the most recent generated image so it isn't lost on reload —
       // the URL is persisted on the response event's structuredData. Sean:
       // "if I forget to download the picture I couldn't get it back."
       let lastImagePayload = null;
-      snapshot.forEach((doc) => {
-        const evt = doc.data();
-        if (evt.type === 'chat:message:received') {
-          loadedMessages.push({ role: 'user', content: evt.message });
-        } else if (evt.type === 'chat:message:responded') {
-          loadedMessages.push({ role: 'assistant', content: evt.response });
-          const url = evt.structuredData?.imageUrl;
-          if (url) lastImagePayload = { imageUrl: url, prompt: evt.structuredData?.imagePrompt || '', title: 'Generated Image' };
-        } else if (evt.type === 'chat:message:worker' || evt.type === 'chat:message:worker:stream') {
-          // Worker chat turns are audit-logged as one combined record (message +
-          // response together), not the received/responded pair above — same
-          // 2026-08-19 fix. Split back into the two chat bubbles.
-          if (evt.message) loadedMessages.push({ role: 'user', content: evt.message });
-          if (evt.response) loadedMessages.push({ role: 'assistant', content: evt.response });
+
+      // 2026-09-15 — root cause of "history doesn't persist" (Elise, reconfirmed
+      // 2026-09-14; live-verified again tonight): this used to query the
+      // `messageEvents` collection, but the live POST /v1/chat:message route
+      // (functions/functions/index.js, the one ChatPanel actually calls —
+      // confirmed by that route's own comment) writes real conversation turns
+      // to `chatSessions/{sessionId}.state.salesHistory`, NOT to messageEvents.
+      // messageEvents still holds real history up to 2026-09-08 — the date the
+      // live route evidently stopped writing to it — but nothing since, on
+      // ANY session, on production. The data was never lost; this was reading
+      // the wrong collection. Confirmed directly against Firestore before
+      // making this change (a real conversation was sitting untouched in
+      // chatSessions the whole time). Read the session doc directly instead —
+      // it's keyed by the exact same sessionId already used for scoping, so no
+      // separate tenantId filter is needed here either, for the same reason
+      // the sessionId-scoped messageEvents query didn't need one.
+      if (sidToUse) {
+        const sessionSnap = await getDoc(doc(db, 'chatSessions', sidToUse));
+        const history = sessionSnap.exists() ? (sessionSnap.data()?.state?.salesHistory || []) : [];
+        for (const turn of history) {
+          if (!turn || !turn.role || !turn.content) continue;
+          loadedMessages.push({ role: turn.role, content: turn.content });
         }
-      });
+      } else if (tenantIdFilter) {
+        // No sessionId to do a direct doc read with — the one case CLAUDE.md
+        // invariant #5 actually requires a tenantId filter. This only matters
+        // for pre-S52.65-follow-up sessionId formats that never encoded a
+        // worker/tenant at all; kept as a legacy fallback against the older
+        // messageEvents log rather than removed outright.
+        const q = query(
+          collection(db, 'messageEvents'),
+          where('userId', '==', liveUser.uid),
+          where('tenantId', '==', tenantIdFilter),
+          orderBy('createdAt', 'asc'),
+          limit(50),
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach((d) => {
+          const evt = d.data();
+          if (evt.type === 'chat:message:received') {
+            loadedMessages.push({ role: 'user', content: evt.message });
+          } else if (evt.type === 'chat:message:responded') {
+            loadedMessages.push({ role: 'assistant', content: evt.response });
+            const url = evt.structuredData?.imageUrl;
+            if (url) lastImagePayload = { imageUrl: url, prompt: evt.structuredData?.imagePrompt || '', title: 'Generated Image' };
+          } else if (evt.type === 'chat:message:worker' || evt.type === 'chat:message:worker:stream') {
+            if (evt.message) loadedMessages.push({ role: 'user', content: evt.message });
+            if (evt.response) loadedMessages.push({ role: 'assistant', content: evt.response });
+          }
+        });
+      }
       if (platformSid && loadedMessages.length > 0) {
         loadedMessages.push({
           role: 'assistant',
@@ -1235,7 +1320,19 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           isSystem: true,
         });
       }
-      setMessages(loadedMessages);
+      // Bail if a newer load (another worker switch) has started since —
+      // its own result supersedes this one, so applying this stale result
+      // would revert to an older conversation.
+      if (historyLoadSeqRef.current !== mySeq) return;
+      // Only apply the loaded history if nothing has been added to the
+      // conversation since the caller cleared it — if the user already sent
+      // a message (or the assistant already replied) while this read was in
+      // flight, prefer that real, newer exchange over the historical replay.
+      setMessages(prev => {
+        if (prev.length !== 0) return prev;
+        if (loadedMessages.length > 0) return loadedMessages;
+        return fallbackMessage ? [fallbackMessage] : prev;
+      });
       // Re-emit the last generated image back onto the canvas so it survives a
       // reload/navigation (no costly regeneration to "see it again").
       if (lastImagePayload && panel?.showCanvas) {
