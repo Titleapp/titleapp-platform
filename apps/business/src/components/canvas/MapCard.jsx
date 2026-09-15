@@ -17,6 +17,7 @@
  */
 
 import React, { useMemo } from "react";
+import { Capacitor } from "@capacitor/core";
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -32,6 +33,10 @@ const DEMO_REGIONS = {
 
 function buildEmbedUrl({ locations, address, region, vertical, mapType }) {
   if (!API_KEY) return null;
+  // Same rejection Google's Maps Embed API throws for any empty-Referer request
+  // (every Capacitor WebView, regardless of vertical) — see FlightPlanningCard.jsx.
+  // Render nothing rather than Google's in-frame rejection page.
+  if (Capacitor.isNativePlatform()) return null;
 
   // S52.46 — optional satellite/roadmap view (Site Recon "photos" of the real
   // parcel). The Embed API supports maptype on place/search modes, rendered with

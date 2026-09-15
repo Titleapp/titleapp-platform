@@ -514,7 +514,19 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label="Toggle menu"
         >
-          ☰
+          {/* 2026-09-09 live-QA fix: this was a raw "☰" (U+2630) text glyph —
+              unlike every other icon button in this file (cart, sidebar
+              collapse toggle, mobileChatNavBtn's own hamburger), which all
+              use inline SVG. That glyph isn't guaranteed to be in the system
+              font's fallback chain and rendered as a generic missing-glyph
+              box in the native build (reported as "just a greyed-out
+              screen" — tapping it did open the sidebar/backdrop correctly,
+              the icon itself was just invisible). Same likely cause behind
+              other icon-only buttons in the aviation canvas rendering as a
+              "?" box — those still need the same SVG-icon treatment. */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
         </button>
         <div className="topbarTitle" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <img src={sociiiMarkUrl} alt="" width={22} height={22} style={{ display: "block", borderRadius: 5 }} />

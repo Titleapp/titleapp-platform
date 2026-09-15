@@ -34,6 +34,28 @@ This is enough for this week's ask. It is not the same as "market ready."
 2. **A Shopify decision, not a Shopify build-blindly.** The DPP Shopify app already works end-to-end in local dev. Going from that to "a merchant can actually install this" means: replacing the placeholder `example.com` config with a real hosted URL, deciding public App Store listing vs. private/custom app install, and removing the single-tenant hardcoding so it can serve more than one SOCIII customer. This is a real scoping decision (cost/timeline/hosting) for Sean, not something to build on assumption.
 3. **Demo-tenant reset/repeatability**, formalized rather than assumed — the same seed script that's "not runnable from this environment... written and ready to run by whoever has deploy access" needs an owner and a real trigger (a button, a scheduled reset, something) if this demo is going to be shown to more than one prospect without manual intervention each time.
 
+## Shopify app deployment — concrete checklist (2026-09-10)
+
+Investigated what's actually blocking `apps/sociii-dpp-passport/` from being installed on a real store. Confirmed by direct code read, not guessed:
+
+**Already real and correctly configured (no action needed):**
+- `.env` already has real values, not placeholders — `SOCIII_API_BASE` points at the real Cloud Run backend, `SOCIII_DPP_SECRET` is a real shared secret. **`SOCIII_TENANT_ID` (`ws_1779846027006_hc71aw`) is confirmed — via `scripts/installSociiiWorkers.js`, `scripts/seedSociiiAccountingFy2026.js`, and others — to be Sean's own SOCIII, Inc. workspace, not Elise/Traitly's.** Fine for continued dev/testing against your own tenant, but this needs to be swapped to whichever real tenant Elise/Traitly actually operates under (the seeded `demo-volta-advisory-001`, or a freshly onboarded real one) before this app is installed on her actual store — otherwise her store would be writing battery-passport data into your own SOCIII workspace, not hers.
+- The single-tenant hardcoding flagged in the original scoping above is a non-issue for shipping *one* real store (Elise's) — it only matters if/when a second merchant needs to install this app.
+- App builds clean (`npm run build`), Prisma client generates clean.
+
+**Fixed tonight (safe, local-only change, doesn't touch anything live):**
+- `prisma/schema.prisma` had the Shopify session-storage DB hardcoded to a local `file:dev.sqlite` path — fatal on Cloud Run specifically, whose filesystem is ephemeral and can run multiple instances. A merchant's Shopify session would vanish on every cold start/restart, forcing constant re-auth. Now reads from `DATABASE_URL` (`.env` keeps the same sqlite default for local dev, so nothing changes today) — production deploy just needs a real Postgres connection string and `provider` flipped from `"sqlite"` to `"postgresql"` in that same file. No other code changes needed for this part.
+
+**Real blockers — need Sean's own accounts/decisions, not fixable from here:**
+1. **`shopify.app.toml` still points at placeholders**: `application_url = "https://example.com"` and `redirect_urls = ["https://example.com/api/auth"]`. Needs a real HTTPS URL before anything can go live.
+2. **A real Postgres instance** for Shopify session storage — smallest real option is a small Cloud SQL Postgres instance (keeps it in the same GCP project/billing as the rest of SOCIII) or an external managed Postgres (Neon/Supabase free tier) if avoiding GCP setup is preferred for a single-tenant app. Either way, this needs actual provisioning + the resulting `DATABASE_URL` in that environment's config.
+3. **Actual hosting.** The `Dockerfile` is real and builds a working container image — it needs to run somewhere reachable at a real URL. Cloud Run is the natural fit (same platform as the rest of SOCIII's backend) — that just needs `gcloud auth login` (interactive, needs Sean) then a `gcloud run deploy` from this directory, or wiring into whatever CI/CD the main app already uses.
+4. **A real domain/subdomain** pointing at that hosted URL — e.g. something like `dpp-shopify.sociii.ai`, a CNAME/A record added in Namecheap (same account already used for `sociii.ai`'s other DNS).
+5. **`shopify app deploy`** (needs `npx shopify login` — interactive, needs Sean's Shopify Partner account) to push the corrected config to Shopify's side once (1) points at the real URL.
+6. **Install on Elise/Traitly's actual store** — needs either a private/custom app install link (fastest path for one merchant) or a full App Store listing (only needed if this is meant for more than one merchant later).
+
+**Bottom line:** every remaining step needs either your GCP login, your Shopify Partner login, or a DNS change on your Namecheap account — none of that is something I can complete without you. But the checklist above is now the exact ordered list, not an open scoping question, so it should be mechanical whenever you're back at the keyboard with those logins handy.
+
 ## Recommendation
 
 Ship the demo login this week as promised — it's real and it's genuinely good (the onboarding flow especially). But don't let "we showed Nina and Elise something real" become "this is ready for the next ten prospects" — items 1-3 above are the actual distance between those two things, and item 1 (real product-creation UI) is the one that matters most if DPP is meant to convert beyond hand-guided demos.

@@ -30,6 +30,7 @@
  */
 
 import React from "react";
+import { Capacitor } from "@capacitor/core";
 import CanvasCardShell from "./CanvasCardShell";
 import OperatorUploadPrompt from "./OperatorUploadPrompt";
 
@@ -96,6 +97,12 @@ const S = {
 
 function buildDirectionsUrl(map) {
   if (!API_KEY || !map?.from || !map?.to) return null;
+  // Google's Maps Embed API rejects requests carrying an empty Referer header —
+  // which a Capacitor WebView always sends (custom app scheme, not http(s)) —
+  // and renders that rejection as a page *inside* the iframe, not a load error
+  // we can catch. Skip the embed entirely on native; the live aviation map
+  // (AviationMap.jsx, Map tab) already covers this without a referrer-restricted key.
+  if (Capacitor.isNativePlatform()) return null;
   return `https://www.google.com/maps/embed/v1/directions?key=${API_KEY}&origin=${encodeURIComponent(map.from)}&destination=${encodeURIComponent(map.to)}&mode=flying`;
 }
 

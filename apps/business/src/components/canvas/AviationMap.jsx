@@ -142,14 +142,28 @@ function makePirepIcon(urgent) {
 // Own-ship position — CODEX 64's GPS puck fix (or device GPS fallback),
 // distinct from both general ADS-B traffic and fleet aircraft: a bright cyan
 // chevron with a pulsing halo so "this is me" is unambiguous on a busy map.
-function makeOwnPositionIcon(trackDeg, stale) {
-  const size = 26;
+// Sean's ask (2026-09-09 live QA): "no locator for the user... probably a
+// plane icon (which you can change to a helicopter or uploaded avatar)."
+// Top-down silhouettes, not the generic directional caret this used to be —
+// same body shape as makeAircraftIcon's traffic silhouette (plane) plus a
+// helicopter variant, both kept visually distinct (cyan, dashed accuracy
+// ring) from ADS-B traffic/fleet icons so "that's me" is unambiguous.
+// Custom-uploaded-avatar is a real fast-follow, not built here — it needs an
+// upload UI + asset storage, which is a bigger scope than this pass.
+const OWN_POSITION_BODY = {
+  plane: `<path d="M0,-9 C0.5,-8 1.5,-5 1.5,-2 L7.5,2 L7.5,4 L1.5,2 L1.5,6.5 L3.5,7.5 L3.5,9 L0,8 L-3.5,9 L-3.5,7.5 L-1.5,6.5 L-1.5,2 L-7.5,4 L-7.5,2 L-1.5,-2 C-1.5,-5 -0.5,-8 0,-9 Z"/>`,
+  helicopter: `<path d="M-9,-1 L9,-1 L9,0.5 L-9,0.5 Z M0,-1 L0,-6 M-3,-6 L3,-6 L3,-5 L-3,-5 Z M-1,0.5 L-1,6 C-1,7 -2.5,7.5 -2.5,7.5 L-2.5,8.5 L2.5,8.5 L2.5,7.5 C2.5,7.5 1,7 1,6 L1,0.5 Z M1,3 L5,2.3 L5,3.3 L1,4 Z"/>`,
+};
+
+function makeOwnPositionIcon(trackDeg, stale, kind = "plane") {
+  const size = 30;
   const h = trackDeg != null ? trackDeg : 0;
   const color = stale ? "#94a3b8" : "#22d3ee";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-13 -13 26 26"
+  const body = OWN_POSITION_BODY[kind] || OWN_POSITION_BODY.plane;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-15 -15 30 30"
     style="transform:rotate(${h}deg);display:block;">
-    <circle cx="0" cy="0" r="11" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>
-    <path d="M0,-9 L6,7 L0,3.5 L-6,7 Z" fill="${color}" stroke="#0f172a" stroke-width="1"/>
+    <circle cx="0" cy="0" r="12" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>
+    <g fill="${color}" stroke="#0f172a" stroke-width="0.7">${body}</g>
   </svg>`;
   return L.divIcon({ html: svg, className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 }
@@ -360,6 +374,24 @@ export default function AviationMap({
   followPosition = false, // recenter map on ownPosition as it updates (in-flight moving map)
   minimal = false,        // backup instrument mode: no weather fetch, no METAR dots, no layer rail — bare map + own position only, per CODEX 64 ("no tenant data, no brief content")
 }) {
+  // Own-position icon style — plane (default) or helicopter, per-device
+  // preference. Sean's ask also included "or uploaded avatar" — real
+  // fast-follow (needs an upload UI + asset storage), not built here.
+  const OWN_ICON_STORAGE_KEY = "sociii_ownship_icon_v1";
+  const [ownIconKind, setOwnIconKind] = useState(() => {
+    try {
+      const stored = localStorage.getItem(OWN_ICON_STORAGE_KEY);
+      if (stored === "plane" || stored === "helicopter") return stored;
+    } catch { /* ignore */ }
+    return "plane";
+  });
+  const toggleOwnIconKind = useCallback(() => {
+    setOwnIconKind(prev => {
+      const next = prev === "plane" ? "helicopter" : "plane";
+      try { localStorage.setItem(OWN_ICON_STORAGE_KEY, next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   const fleetSet = new Set((fleetTails || []).map(t => t.toUpperCase()));
   const [weather, setWeather] = useState({ data: null, loading: true });
   const [layers, setLayers] = useState({
@@ -563,6 +595,7 @@ export default function AviationMap({
         <IconToggle icon="⬠" title="Airspace" enabled={layers.airspace.enabled} loading={layers.airspace.loading} onClick={() => toggleLayer("airspace")} color="#a78bfa" />
         <IconToggle icon="◈" title="Navaids"  enabled={layers.navaids.enabled}  loading={layers.navaids.loading}  onClick={() => toggleLayer("navaids")}  color="#22d3ee" />
         <IconToggle icon="✈" title="Traffic"  enabled={layers.traffic.enabled}  loading={layers.traffic.loading}  onClick={() => toggleLayer("traffic")}  color="#f87171" />
+        <IconToggle icon={ownIconKind === "plane" ? "✈" : "🚁"} title={`Your position icon: ${ownIconKind} (tap to change)`} enabled={true} loading={false} onClick={toggleOwnIconKind} color="#22d3ee" />
         <IconToggle icon="💬" title="PIREPs"   enabled={layers.pireps.enabled}   loading={layers.pireps.loading}   onClick={() => toggleLayer("pireps")}   color="#34d399" />
         <IconToggle icon="▭" title="Runways (georeferencing GCPs)" enabled={layers.runways.enabled} loading={layers.runways.loading} onClick={() => toggleLayer("runways")} color="#fbbf24" />
         <IconToggle icon="🗺" title="Calibrate Airport Diagram overlay" enabled={calibrationOpen} loading={false} onClick={() => setCalibrationOpen(v => !v)} color="#c084fc" />
@@ -682,7 +715,7 @@ export default function AviationMap({
         {ownPosition?.lat != null && ownPosition?.lon != null && (
           <Marker
             position={[ownPosition.lat, ownPosition.lon]}
-            icon={makeOwnPositionIcon(ownPosition.trackDeg, ownPosition.stale)}
+            icon={makeOwnPositionIcon(ownPosition.trackDeg, ownPosition.stale, ownIconKind)}
             zIndexOffset={1000}
           >
             <Popup>

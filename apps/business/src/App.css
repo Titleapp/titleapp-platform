@@ -276,6 +276,15 @@ body{
   overscroll-behavior:contain;
 }
 
+/* .main itself has no background — it just inherits the page's white, so the
+   28px padding around a dark-themed aviation canvas showed as a white frame
+   even though the canvas content itself was correctly dark (Sean, 2026-09-09
+   live QA). The canvas's own background can't reach up to style its parent,
+   so flip the gutter here whenever it's hosting the dark aviation theme. */
+.main:has([data-av-theme="dark"]){
+  background: #0f172a;
+}
+
 .pageHeader{
   display:flex;
   align-items:flex-end;

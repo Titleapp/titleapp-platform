@@ -49,9 +49,18 @@ Punit raised these directly, unprompted, as things to de-risk before investing i
 3. **Nursing dictation-mode decision** — follow up with Punit for the exact on-device-vs-cloud pinning configuration before scoping nursing-charting voice capture; this is a compliance decision (PHI), not a technical preference, and should be made explicitly rather than inherited as a default.
 4. **Pilot/EFB workflow build** — only after (2) confirms the audio path is viable; reuses the same MX-validated WearHF/camera/dictation foundation, applied to CoPilot's real endpoints (flight logging, NOTAM/weather briefings already live per `AviationWorkerCanvas.jsx`).
 
+## Testing plan (2026-09-09 update)
+
+Sean, a second Claude session, and RealWear's own guidance converged on a concrete test plan across the three workflows — confirmed cockpit hardware config for the reps: **Bose ProFlight boom mic (left) + RealWear Navigator in-ear piece (right)**. Full per-rep checklist (MX solo + 3-colleague variety testing, the cockpit mic-routing go/no-go gate, flight-element workflow tests once the gate clears, and classroom-only nursing/charting reps) lives in the companion onboarding doc: **`docs/CODEX-S52.72-RealWear-Testing-Onboarding.md`**.
+
+Two things worth keeping explicit as those reps run:
+- The device-level "wifi off, does it queue" tests in that checklist validate **RealWear's own local capture**, not SOCIII's actual offline-sync pipeline (see "Point of view" below) — that integration test is a distinct, later phase once real endpoint wiring exists.
+- MX walkaround reps involve recording colleagues' voice/photo — flag to them what's captured and where it goes, same spirit as the doc's own note that this is Sean's personal test, not a company-sanctioned rollout.
+
+**Why this matters beyond the pilot/MX use cases:** nursing charting is currently scoped as training/simulation only (Ruthie's education builder), but SOCIII has a real future bedside/field EMS charting worker on the roadmap, distinct from that education scope. This RealWear testing — especially the clinical-terminology recognition and on-device-vs-cloud PHI decision — is direct groundwork for that build, not a side exploration.
+
 ## Not yet answered — flagged only
 
-- Exact device model(s) in hand (Navigator series assumed from context, not confirmed here).
 - Whether SOCIII's existing worker backend endpoints need new "hands-free-shaped" response formats (short, voice-readable confirmations) versus reusing today's canvas-card JSON as-is.
 - Discord developer community (`https://discord.gg/5S5n4FU5U`) as an ongoing support channel — not yet used.
 

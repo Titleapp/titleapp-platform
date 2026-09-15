@@ -2837,7 +2837,19 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           (Profile — the ForeFlight-style terrain/vertical-profile chart)
           follows the identical mount-once-works-from-both-surfaces pattern. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => { setRoleOverride(slug); setActiveTab(null); }} />
+        <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => {
+          setRoleOverride(slug);
+          setActiveTab(null);
+          // 2026-09-09 live-QA fix: roleOverride only ever updated this canvas's
+          // own local render — it never told the rest of the app (ChatPanel,
+          // App.jsx's currentSection/workerCtx) which role was actually active.
+          // Result: switch to Pilots via this tab bar, then tap the Skye chat
+          // bubble, and chat opened against whatever worker was selected before
+          // (e.g. Dispatch) — the same ta:select-worker pipeline every other
+          // worker-switch surface (Sidebar, CrewRolePrompt, ChatPanel's own
+          // [[SWITCH_WORKER:...]]) already uses to keep chat in sync.
+          window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: { slug } }));
+        }} />
         {AVIATION_ROLES.some(r => r.slug === workerSlug) && (
           <div style={{ display: "flex", gap: 6 }}>
             <button
