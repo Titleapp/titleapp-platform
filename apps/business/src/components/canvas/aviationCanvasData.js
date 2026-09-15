@@ -138,10 +138,16 @@ export const AV_CANVAS = {
       {
         id: "preflight",
         label: "Preflight",
-        description: "Your assembled go/no-go package for the next trip — weather, W&B, FRAT, and NOTAMs in one place. Skye built this from live data.",
+        // 2026-09-15 — was worded as if this were a real, live-computed
+        // package ("Skye built this from live data"); this content is a
+        // static illustrative example — the live weather portion is real
+        // (see LIVE_TABS["av-copilot-001"].preflight), FRAT scoring and W&B
+        // computation are not built yet. Do not re-word this back to
+        // implying live computation until those are real.
+        description: "Example preflight package — weather, W&B, FRAT, and NOTAMs in one place. Live weather is real; FRAT scoring and W&B computation aren't wired up yet.",
         blocks: [
           { type: "heroes", items: [
-            { band: "GREEN", title: "FRAT score 8/50 · Low Risk", detail: "All risk categories within normal limits" },
+            { band: "GREEN", title: "Example: FRAT score 8/50 · Low Risk", detail: "Illustrative only — FRAT scoring isn't computed live yet" },
             { band: "GREEN", title: "KTEB · VFR · 3000 OVC",      detail: "Vis 10SM · Wind 280/14 · 09:00 departure" },
             { band: "BLUE",  title: "KPBI · MVFR clearing",        detail: "800 OVC improving 1500+ by 10:30 · Monitor TAF" },
           ] },
@@ -151,8 +157,8 @@ export const AV_CANVAS = {
             ["KPBI", "MVFR→VFR",  "800 OVC (improving)", "6SM",  "170/06",   "79°F"],
           ] },
           { type: "kpis", items: [
-            { label: "FRAT score",   value: "8 / 50 Low",        band: "GREEN" },
-            { label: "W&B status",   value: "9,847 lbs ✓",       band: "GREEN" },
+            { label: "FRAT score (example)",   value: "8 / 50 Low",        band: "WHITE" },
+            { label: "W&B status (example)",   value: "9,847 lbs ✓",       band: "WHITE" },
             { label: "Fuel required", value: "312 gal / 420 cap", band: "GREEN" },
             { label: "ETE",          value: "2.1 hrs",            band: "WHITE" },
           ] },
@@ -161,7 +167,7 @@ export const AV_CANVAS = {
           ] },
           { type: "map", address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI · IFR FL230" },
           { type: "prose", items: [
-            { band: "GREEN", title: "Go/no-go assessment", text: "Conditions support the flight. KPBI departure weather is MVFR with improving TAF — if KPBI holds below minimums at arrival, KFLL is a solid alternate 14 miles south. W&B is within limits at all fuel states. FRAT is Low. One NOTAM: ILS 10L OTS at KPBI — file for 28L ILS or expect visual. Suggest requesting IFR clearance direct KPBI with KFLL as alternate. File flight plan and obtain official briefing via 1800wxbrief.com before departure." },
+            { band: "WHITE", title: "Example go/no-go assessment (not a real briefing)", text: "This illustrates the shape of a completed package. Conditions support the flight. KPBI departure weather is MVFR with improving TAF — if KPBI holds below minimums at arrival, KFLL is a solid alternate 14 miles south. W&B is within limits at all fuel states. FRAT is Low. One NOTAM: ILS 10L OTS at KPBI — file for 28L ILS or expect visual. Suggest requesting IFR clearance direct KPBI with KFLL as alternate. File flight plan and obtain official briefing via 1800wxbrief.com before departure." },
           ] },
         ],
       },

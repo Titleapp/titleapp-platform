@@ -14517,6 +14517,41 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/aviation:frat:compute — real Flight Risk Assessment Tool score.
+    // Server computes weather/rest-duty/MEL itself from real live data
+    // (client-supplied values for those are never trusted for a
+    // safety-relevant score); only the self-report PAVE items come from the
+    // client. See services/aviation/fratScoring.js for the full model and
+    // its real FAA citation. Auth required — reads the caller's own
+    // duty/logbook records plus this scope's real aircraft MEL data.
+    if (route === "/aviation:frat:compute" && method === "POST") {
+      try {
+        const fAuth = await requireFirebaseUser(req, res);
+        if (fAuth.handled) return fAuth.res;
+        const ctx = getCtx(req, body, fAuth.user);
+        const { handleComputeFrat } = require("./services/aviation/fratScoring");
+        return await handleComputeFrat(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:frat:compute failed:", e);
+        return jsonError(res, 500, "FRAT computation failed");
+      }
+    }
+
+    // GET /v1/aviation:frat:latest[?tailNumber=N701AA] — most recent real
+    // FRAT assessment for this scope, for the Preflight tab.
+    if (route === "/aviation:frat:latest" && method === "GET") {
+      try {
+        const fAuth = await requireFirebaseUser(req, res);
+        if (fAuth.handled) return fAuth.res;
+        const ctx = getCtx(req, body, fAuth.user);
+        const { handleGetLatestFrat } = require("./services/aviation/fratScoring");
+        return await handleGetLatestFrat(req, res, ctx);
+      } catch (e) {
+        console.error("aviation:frat:latest failed:", e);
+        return jsonError(res, 500, "FRAT lookup failed");
+      }
+    }
+
     // GET /v1/aviation:traffic?lat=36.08&lon=-115.15&dist=50 — ADS-B Exchange
     // live aircraft (paid + metered). Auth required.
     if (route === "/aviation:traffic" && method === "GET") {

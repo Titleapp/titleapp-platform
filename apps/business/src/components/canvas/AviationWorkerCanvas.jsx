@@ -90,6 +90,56 @@ export function weatherToBlocks(metars) {
   ];
 }
 
+// 2026-09-15 — real FRAT card + breakdown for the Preflight tab, replacing
+// the fabricated static "FRAT score 8/50 · Low Risk" fixture. `assessment`
+// is the /v1/aviation:frat:latest response (or null if none built yet —
+// shown as an honest empty state pointing at "+ New Flight", never a
+// fabricated default). Route weather cards (routeMetars) are appended below
+// the FRAT card so Preflight keeps showing the same live weather it always
+// did, now alongside a real computed risk score instead of instead of it.
+export function fratToBlocks(assessment, routeMetars) {
+  const blocks = [];
+  if (!assessment) {
+    blocks.push({
+      type: "cards",
+      items: [{
+        band: "BLUE", label: "NO PREFLIGHT PACKAGE",
+        title: "Build a preflight package to see a real FRAT score",
+        detail: "Tap \"+ New Flight\" above — Skye checks live weather, your real rest/duty status, and this tail's open MELs. Nothing is estimated or shown until it's actually computed.",
+        action: "New Flight",
+      }],
+    });
+  } else {
+    const r = assessment.result || assessment;
+    // This UI only paints GREEN/YELLOW/RED (see currencyBandColor) — our
+    // 4-band model's ORANGE ("Area of Concern") compresses to YELLOW for
+    // color only; r.band/r.bandLabel in the underlying data are untouched.
+    const cardBand = { GREEN: "GREEN", YELLOW: "YELLOW", ORANGE: "YELLOW", RED: "RED" }[r.band] || "BLUE";
+    blocks.push({
+      type: "cards",
+      items: [{
+        band: cardBand,
+        title: `FRAT: ${r.total} pts · ${r.bandLabel}`,
+        detail: r.hardStop
+          ? `NO-GO: ${r.hardStopReason}`
+          : `${assessment.tailNumber || ""} ${assessment.depIcao || ""} → ${assessment.arrIcao || ""}`.trim() || "Computed just now",
+      }],
+    });
+    const cats = r.categories || {};
+    const rows = [
+      ["Self-report (PAVE)", cats.selfReport?.points ?? "—", "FAA GAJSC SE-42 sample"],
+      ["Rest/duty", cats.restDuty?.points ?? "—", cats.restDuty?.detail || "—"],
+      ["Weather", cats.weather?.points ?? "—", cats.weather?.detail || "—"],
+      ["MEL burden", cats.mel?.points ?? "—", cats.mel?.detail || "—"],
+    ];
+    blocks.push({ type: "table", title: "FRAT breakdown — real, computed (not fabricated)", cols: ["Category", "Points", "Detail"], rows });
+  }
+  if (routeMetars && routeMetars.length) {
+    blocks.push(...(weatherToBlocks(routeMetars) || []));
+  }
+  return blocks;
+}
+
 function logbookToBlocks(entries) {
   const flights = (entries || []).filter(e => e.entryType === "aviation.flight" || (e.data && e.data.tailNumber));
   if (!flights.length) return [{
@@ -973,7 +1023,12 @@ const LIVE_TABS = {
     // IPC, 90-day landings, 6-month approaches/holds, 135 line check) from
     // whatever the pilot has actually logged. See below.
     "currency":   { kind: "currency" },
-    "preflight":  { kind: "weather", ids: "KLAS,KPHX,KLAX",
+    // 2026-09-15 — was "weather" only (real route weather, but no real
+    // preflight package — that's what let the fabricated static FRAT
+    // fixture stand in as if it were live). Now fetches the most recent
+    // real FRAT assessment (or an honest empty state) plus the same route
+    // weather cards. See fratToBlocks/handleComputeFrat.
+    "preflight":  { kind: "frat", ids: "KLAS,KPHX,KLAX",
                     mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
     "logbook":    { kind: "logbook" },
     // 2026-09-05 — real Aircraft Logbook (CAN), read-only here. Same real
@@ -1129,6 +1184,136 @@ export function LogFlightModal({ onClose, onLogged }) {
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// NewFlightModal — 2026-09-15. The pre-flight counterpart to LogFlightModal
+// above: LogFlightModal is after-the-fact record-keeping, this is the
+// action that STARTS a flight — same distinction Sean drew building it.
+// Collects trip basics + the FAA GAJSC SE-42 self-report PAVE items, then
+// calls POST /v1/aviation:frat:compute, which does the real weather/rest-
+// duty/MEL computation server-side (never trust client-supplied values for
+// those) and returns a full scored breakdown. See services/aviation/
+// fratScoring.js for the model. Result is shown inline, not just toasted,
+// so a pilot can see WHY the score is what it is before deciding to fly.
+// eslint-disable-next-line react-refresh/only-export-components
+export function NewFlightModal({ onClose, onBuilt }) {
+  const [form, setForm] = useState({
+    tailNumber: "", depIcao: "", arrIcao: "", date: new Date().toISOString().slice(0, 10),
+    howDayGoing: "great", dayOrNight: "day", planningRushed: false,
+    usedChartsOrComputer: true, verifiedWeightBalance: true, evaluatedPerformance: true, briefedPassengers: true,
+  });
+  const [status, setStatus] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid var(--av-border)", borderRadius: 8, background: "var(--av-bg-card)" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--av-text-muted)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 };
+  const checkRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--av-text)" };
+  const required = form.tailNumber.trim() && form.depIcao.trim() && form.arrIcao.trim();
+
+  async function run() {
+    if (!required) return;
+    setStatus({ state: "running" });
+    try {
+      const j = await apiPost("/v1/aviation:frat:compute", {
+        tailNumber: form.tailNumber.trim().toUpperCase(),
+        depIcao: form.depIcao.trim().toUpperCase(),
+        arrIcao: form.arrIcao.trim().toUpperCase(),
+        date: form.date,
+        selfReport: {
+          howDayGoing: form.howDayGoing,
+          dayOrNight: form.dayOrNight,
+          planningRushed: form.planningRushed,
+          usedChartsOrComputer: form.usedChartsOrComputer,
+          verifiedWeightBalance: form.verifiedWeightBalance,
+          evaluatedPerformance: form.evaluatedPerformance,
+          briefedPassengers: form.briefedPassengers,
+        },
+      });
+      setStatus({ state: "done", result: j });
+    } catch (e) {
+      setStatus({ state: "error", message: e.message });
+    }
+  }
+
+  const bandColor = { GREEN: "#16a34a", YELLOW: "#ca8a04", ORANGE: "#ea580c", RED: "#dc2626" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)", maxHeight: "90vh", overflowY: "auto", padding: 24, background: "var(--av-bg-card)", borderRadius: 12 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "var(--av-text)" }}>New flight — build preflight package</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--av-text-muted)", lineHeight: 1.5 }}>
+          Skye checks live weather, your real rest/duty status, and this tail's open MELs — nothing here is estimated.
+        </p>
+        {status?.state === "done" ? (
+          <div>
+            <div style={{ padding: 14, borderRadius: 10, background: "var(--av-bg)", border: `2px solid ${bandColor[status.result.band] || "#64748b"}`, marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: bandColor[status.result.band] || "var(--av-text)" }}>
+                {status.result.total} pts · {status.result.bandLabel}
+              </div>
+              {status.result.hardStop && (
+                <div style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: "#dc2626" }}>NO-GO: {status.result.hardStopReason}</div>
+              )}
+            </div>
+            <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+              {["selfReport", "restDuty", "weather", "mel"].map((key) => {
+                const cat = status.result.categories?.[key];
+                if (!cat) return null;
+                const labels = { selfReport: "Self-report (PAVE)", restDuty: "Rest/duty", weather: "Weather", mel: "MEL burden" };
+                return (
+                  <div key={key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--av-border)" }}>
+                    <span style={{ color: "var(--av-text)" }}>{labels[key]}</span>
+                    <span style={{ color: "var(--av-text-muted)", textAlign: "right", maxWidth: "60%" }}>
+                      {cat.points} pt{cat.points === 1 ? "" : "s"} — {cat.detail || ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => { onBuilt?.(); onClose(); }} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Done</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
+              <div><label style={labelStyle}>Date *</label><input type="date" style={fieldStyle} value={form.date} onChange={(e) => set("date", e.target.value)} /></div>
+              <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="KLAS" /></div>
+              <div><label style={labelStyle}>Arrival ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="KLAX" /></div>
+              <div>
+                <label style={labelStyle}>How's the day going?</label>
+                <select style={fieldStyle} value={form.howDayGoing} onChange={(e) => set("howDayGoing", e.target.value)}>
+                  <option value="great">Great day</option>
+                  <option value="roughDay">One thing after another (late, errors, out of step)</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Day or night?</label>
+                <select style={fieldStyle} value={form.dayOrNight} onChange={(e) => set("dayOrNight", e.target.value)}>
+                  <option value="day">Day</option>
+                  <option value="night">Night</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+              <label style={checkRow}><input type="checkbox" checked={form.planningRushed} onChange={(e) => set("planningRushed", e.target.checked)} /> Rushed to get off the ground</label>
+              <label style={checkRow}><input type="checkbox" checked={form.usedChartsOrComputer} onChange={(e) => set("usedChartsOrComputer", e.target.checked)} /> Used charts/computer for all planning</label>
+              <label style={checkRow}><input type="checkbox" checked={form.verifiedWeightBalance} onChange={(e) => set("verifiedWeightBalance", e.target.checked)} /> Verified weight & balance</label>
+              <label style={checkRow}><input type="checkbox" checked={form.evaluatedPerformance} onChange={(e) => set("evaluatedPerformance", e.target.checked)} /> Evaluated performance</label>
+              <label style={checkRow}><input type="checkbox" checked={form.briefedPassengers} onChange={(e) => set("briefedPassengers", e.target.checked)} /> Briefed passengers</label>
+            </div>
+            {status?.state === "error" && <div style={{ marginTop: 12, padding: 10, fontSize: 13, color: "#dc2626", background: "var(--av-status-red-bg)", borderRadius: 8 }}>{status.message}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button onClick={onClose} style={{ padding: "8px 16px", fontSize: 13, background: "var(--av-bg-card)", color: "var(--av-text)", border: "1px solid var(--av-border)", borderRadius: 8, cursor: "pointer" }}>Close</button>
+              <button onClick={run} disabled={!required || status?.state === "running"} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg, #0284c7, #0369a1)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", opacity: (!required || status?.state === "running") ? 0.5 : 1 }}>
+                {status?.state === "running" ? "Building…" : "Build preflight package"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2648,6 +2833,12 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   // 2026-08-21 gap-audit fix — "+ Log Flight" (CoPilot) / "+ Release Flight" (Dispatch)
   const [showLogFlight, setShowLogFlight] = useState(false);
   const [showReleaseFlight, setShowReleaseFlight] = useState(false);
+  // 2026-09-15 — "+ New Flight" (CoPilot): starts a flight (real FRAT/W&B/
+  // weather build), distinct from "+ Log Flight" which records one after
+  // the fact. fratRefreshKey forces the Preflight tab's live fetch to
+  // re-run after a package is built, same pattern as mxRefreshKey below.
+  const [showNewFlight, setShowNewFlight] = useState(false);
+  const [fratRefreshKey, setFratRefreshKey] = useState(0);
   // CODEX 89 (2026-09-05) — when ReleaseFlightModal is opened from the
   // verified Requests-tab pipeline (TripVerifyPanel's "Accept & prepare
   // release"), this carries the prefill/verification payload; null for the
@@ -2697,6 +2888,17 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
             blocks = weatherToBlocks(data.metars);
             if (cfg.mapConfig && blocks) blocks.push({ type: "map", ...cfg.mapConfig });
           }
+        } else if (cfg.kind === "frat") {
+          // 2026-09-15 — real preflight package: latest FRAT assessment +
+          // the same route weather this tab always showed. One failing
+          // independently of the other doesn't blank the whole tab (same
+          // Promise.allSettled-style isolation as myAircraft above).
+          const [fratData, weatherData] = await Promise.all([
+            apiGet(`/v1/aviation:frat:latest`).catch((e) => { console.warn("frat:latest fetch failed:", e.message); return null; }),
+            apiGet(`/v1/aviation:weather?ids=${cfg.ids}`).catch((e) => { console.warn("preflight weather fetch failed:", e.message); return null; }),
+          ]);
+          blocks = fratToBlocks(fratData?.assessment || null, weatherData?.metars);
+          if (cfg.mapConfig && weatherData?.metars?.length) blocks.push({ type: "map", ...cfg.mapConfig });
         } else if (cfg.kind === "notams") {
           // 2026-09-09 — live bug: real Notamify NOTAM objects come back as
           // { number, icao, summary, category, raw, startsAt, endsAt } (see
@@ -2804,7 +3006,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       pollingRef.current = setInterval(fetchLive, 60_000);
     }
     return () => { if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; } };
-  }, [workerSlug, currentTabId, mxRefreshKey]);
+  }, [workerSlug, currentTabId, mxRefreshKey, fratRefreshKey]);
 
   if (!spec) {
     return (
@@ -2826,7 +3028,24 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   const tab = spec.tabs.find((t) => t.id === currentTabId) || spec.tabs[0];
   const liveKey = `${workerSlug}|${currentTabId}`;
   const isLiveTab = !!LIVE_TABS[workerSlug]?.[currentTabId];
-  const tabBlocks = liveBlocks[liveKey] || tab?.blocks || [];
+  // 2026-09-15 fix — a live-wired tab (e.g. Preflight's real weather fetch)
+  // used to fall back to aviationCanvasData.js's static fixture (fabricated
+  // "FRAT score 8/50 · Low Risk" / "W&B status 9,847 lbs ✓" green checkmarks)
+  // whenever the fetch hadn't resolved yet or failed outright — presenting
+  // canned example data as if it were a live-computed go/no-go decision for
+  // an aviation safety product. A live tab must never silently substitute
+  // static content; show an honest loading/unavailable state instead.
+  const tabBlocks = liveBlocks[liveKey]
+    ? liveBlocks[liveKey]
+    : isLiveTab
+      ? [{ type: "cards", items: [{
+          band: "BLUE",
+          title: loading[liveKey] ? "Loading live data…" : "Live data unavailable right now",
+          detail: loading[liveKey]
+            ? "Pulling the latest weather, NOTAMs, or aircraft data for this tab."
+            : "Couldn't reach live data for this tab. Ask Skye to check again, or try refreshing.",
+        }] }]
+      : (tab?.blocks || []);
 
   return (
     <div data-av-theme={avTheme} style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto", background: "var(--av-bg)", color: "var(--av-text)" }}>
@@ -2887,6 +3106,19 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           </div>
           {/* 2026-08-21 gap-audit fix — prominent primary actions, matching
               Contacts.jsx's "+ Add Contacts" purple-gradient button pattern. */}
+          {/* 2026-09-15 — "+ New Flight" starts a flight (real preflight
+              package: weather/rest-duty/MEL/FRAT); distinct green from
+              "+ Log Flight"'s blue so the two pre/post-flight actions are
+              never visually confused, per Sean's own framing of the gap. */}
+          {isCopilotWorker && (
+            <button
+              type="button"
+              onClick={() => setShowNewFlight(true)}
+              style={{ flexShrink: 0, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "white", background: "linear-gradient(135deg, #16a34a, #15803d)", border: "none", borderRadius: 8, cursor: "pointer" }}
+            >
+              + New Flight
+            </button>
+          )}
           {isCopilotWorker && (
             <button
               type="button"
@@ -2981,6 +3213,7 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
       </div>
 
       {showLogFlight && <LogFlightModal onClose={() => setShowLogFlight(false)} onLogged={() => setShowLogFlight(false)} />}
+      {showNewFlight && <NewFlightModal onClose={() => setShowNewFlight(false)} onBuilt={() => setFratRefreshKey((k) => k + 1)} />}
       {showReleaseFlight && (
         <ReleaseFlightModal
           prefill={releaseFlightPayload?.prefill}

@@ -1238,6 +1238,28 @@
       "writesAudit": true
     },
     {
+      "id": "aviation.frat_compute_v1",
+      "class": "aviation",
+      "summary": "2026-09-15 — computes a real Flight Risk Assessment Tool (FRAT) score for a planned flight: FAA GAJSC SE-42 self-report PAVE items (real, cited public-domain point values) plus real computed rest/duty status (dutyTimeTracker, FAR 135.267) and live METAR weather, plus a SOCIII-designed non-linear MEL-burden factor for the specific tail. Persists an append-only flightRiskAssessments/{scopeId}/assessments/{id} record. Replaces the fabricated static FRAT fixture that previously rendered unconditionally on the Preflight tab. Dispatched by POST /v1/aviation:frat:compute (functions/functions/index.js, services/aviation/fratScoring.js). Wired to the \"+ New Flight\" button on the Aviation CoPilot worker canvas.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "aviation.frat_latest_v1",
+      "class": "aviation",
+      "summary": "2026-09-15 — reads the most recent real FRAT assessment for this scope, for the Preflight tab. Read-only; no write. Dispatched by GET /v1/aviation:frat:latest.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
       "id": "aviation.get_weather_v1",
       "class": "aviation",
       "summary": "Fetch live METAR/TAF/SIGMET from aviationweather.gov for a given station or area.",

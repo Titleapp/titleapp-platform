@@ -42,6 +42,11 @@ function normalizeNotam(n) {
   };
 }
 
+// 2026-09-15 fix — no timeout on this fetch meant a hung/non-responding
+// Notamify endpoint left the awaiting chat request hanging indefinitely (the
+// try/catch around callers only helps once the promise actually settles).
+const NOTAMIFY_TIMEOUT_MS = 12_000;
+
 // Raw Notamify call for ONE ICAO. Throws on non-2xx so the caller can surface
 // a clear error (and we never cache a failure).
 async function fetchNotamsForIcao(icao) {
@@ -54,6 +59,7 @@ async function fetchNotamsForIcao(icao) {
       "X-API-Key": key,
       Accept: "application/json",
     },
+    signal: AbortSignal.timeout(NOTAMIFY_TIMEOUT_MS),
   });
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");

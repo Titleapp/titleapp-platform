@@ -57,16 +57,28 @@ export default function PerformanceCalculator({ aircraftProfile }) {
       <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Takeoff / Landing Performance</div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        {["takeoff", "landing"].map(p => (
-          <button key={p} type="button" onClick={() => setPhase(p)}
-            style={{
-              padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: "pointer",
-              border: phase === p ? "1px solid #0369a1" : "1px solid #cbd5e1",
-              background: phase === p ? "#eff6ff" : "white", color: phase === p ? "#0369a1" : "#475569",
-            }}>
-            {p === "takeoff" ? "Takeoff" : "Landing"}
-          </button>
-        ))}
+        {["takeoff", "landing"].map(p => {
+          // 2026-09-15 — this aircraft's landingDistanceSeaLevelIsaFt is null
+          // (no single-sourced/citable figure found — see aircraftTypeProfiles.js),
+          // so clicking Landing correctly shows an honest "not sourced yet"
+          // message via estimateDistance()'s ok:false path, same as it always
+          // has. That correct behavior read as a dead click to a reviewer who
+          // hadn't clicked through — flag it on the button itself so no click
+          // is needed to discover it.
+          const hasData = p !== "landing" || Number.isFinite(aircraftProfile?.performance?.landingDistanceSeaLevelIsaFt);
+          return (
+            <button key={p} type="button" onClick={() => setPhase(p)}
+              title={hasData ? undefined : "No sourced landing distance for this aircraft yet"}
+              style={{
+                padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: "pointer",
+                border: phase === p ? "1px solid #0369a1" : "1px solid #cbd5e1",
+                background: phase === p ? "#eff6ff" : "white", color: phase === p ? "#0369a1" : "#475569",
+                opacity: hasData ? 1 : 0.6,
+              }}>
+              {p === "takeoff" ? "Takeoff" : "Landing"}{!hasData && " (no data)"}
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>

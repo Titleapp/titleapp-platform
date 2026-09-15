@@ -45,8 +45,17 @@ function normIds(ids) {
     .slice(0, 50); // hard cap per request
 }
 
+// 2026-09-15 fix — this fetch had no timeout at all, so a hung/non-responding
+// AWC endpoint left the awaiting chat request hanging indefinitely (the
+// try/catch around callers only helps if the promise ever settles). AbortSignal
+// forces it to settle one way or the other.
+const AWC_TIMEOUT_MS = 12_000;
+
 async function awcFetch(url) {
-  const resp = await fetch(url, { headers: { "User-Agent": "SOCIII-Aviation/1.0 (support@titleapp.ai)" } });
+  const resp = await fetch(url, {
+    headers: { "User-Agent": "SOCIII-Aviation/1.0 (support@titleapp.ai)" },
+    signal: AbortSignal.timeout(AWC_TIMEOUT_MS),
+  });
   if (!resp.ok) throw new Error(`AWC ${resp.status} for ${url}`);
   const text = await resp.text();
   // AWC returns JSON when format=json; guard against an HTML error page.
