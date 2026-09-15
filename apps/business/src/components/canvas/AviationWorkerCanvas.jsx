@@ -1030,6 +1030,18 @@ const LIVE_TABS = {
     // weather cards. See fratToBlocks/handleComputeFrat.
     "preflight":  { kind: "frat", ids: "KLAS,KPHX,KLAX",
                     mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
+    // 2026-09-15 — the "Flight" tab was never wired to LIVE_TABS at all (the
+    // Preflight fix above missed this sibling tab), so it always fell
+    // through to aviationCanvasData.js's static fixture: a fabricated
+    // "Next flight — PHOG → PHNL... Crew: Rivera" heading, fake navlog, and
+    // fake FBO/weather — shown as "your next planned flight" to every real
+    // pilot unconditionally, worse than Preflight's bug since there was no
+    // live-fetch path here to ever override it. Reuses the exact same
+    // fratToBlocks/handleComputeFrat real-assessment path as Preflight
+    // (the two tabs describe the same underlying concept — "your next real
+    // flight" — so one real data source correctly backs both).
+    "flight":     { kind: "frat", ids: "KLAS,KPHX,KLAX",
+                    mapConfig: { address: "Las Vegas, NV", sectionLabel: "Route: KLAS → KLAX · IFR FL230" } },
     "logbook":    { kind: "logbook" },
     // 2026-09-05 — real Aircraft Logbook (CAN), read-only here. Same real
     // /v1/mx:logbook:list source as MX's own "Aircraft Logbook" tab below.
