@@ -107,7 +107,7 @@ async function handleUpsertAircraft(req, res, ctx) {
 // — see index.js's file_squawk tool for the history of why this mattered:
 // a squawk filed by voice/chat was invisible to computeAirworthiness()).
 // ============================================================
-async function addSquawkCore({ tailNumber, description, category, workOrderNumber, reportedBy, source, ctx }) {
+async function addSquawkCore({ tailNumber, description, category, workOrderNumber, reportedBy, source, photoObjectId, ctx }) {
   if (!tailNumber) { const e = new Error("tailNumber required"); e.status = 400; throw e; }
   if (!description) { const e = new Error("description required"); e.status = 400; throw e; }
 
@@ -123,13 +123,18 @@ async function addSquawkCore({ tailNumber, description, category, workOrderNumbe
     reportedBy: String(reportedBy || "").slice(0, 200),
     userId: ctx.userId,
     source: source || "manual",
+    // Reference into storageObjects/{objectId} (functions/functions/lib/storage) —
+    // NOT a URL. Storage signed URLs expire after 1 hour; a legal squawk record
+    // needs a durable reference, resolved to a fresh signed URL at read time via
+    // storageService.download(uid, objectId) whenever the photo is displayed.
+    photoObjectId: photoObjectId || null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
   const ref = aircraftRef(db, scopeId, tailNumber).collection("squawks").doc();
   await ref.set(doc);
 
-  return { squawkId: ref.id, tailNumber: String(tailNumber).toUpperCase(), workOrderNumber: doc.workOrderNumber, description: doc.description };
+  return { squawkId: ref.id, tailNumber: String(tailNumber).toUpperCase(), workOrderNumber: doc.workOrderNumber, description: doc.description, photoObjectId: doc.photoObjectId };
 }
 
 async function handleAddSquawk(req, res, ctx) {
@@ -137,7 +142,8 @@ async function handleAddSquawk(req, res, ctx) {
   try {
     const result = await addSquawkCore({
       tailNumber: body.tailNumber, description: body.description, category: body.category,
-      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: body.source, ctx,
+      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: body.source,
+      photoObjectId: body.photoObjectId || null, ctx,
     });
     return res.json({ ok: true, ...result });
   } catch (e) {
@@ -719,6 +725,7 @@ async function handleRecordAdCompliance(req, res, ctx) {
 // ============================================================
 async function handleReadMeterPhoto(req, res, ctx) {
   const Anthropic = require("@anthropic-ai/sdk");
+  const storageService = require("../../lib/storage");
   const body = req.body || {};
   if (!body.tailNumber) return res.status(400).json({ ok: false, error: "tailNumber required" });
   if (!body.imageBase64) return res.status(400).json({ ok: false, error: "imageBase64 required" });
@@ -780,6 +787,35 @@ NOTES: <one to two sentences>` }
     ? Math.round((readingNum - priorEntry.lastReading) * 10) / 10
     : null;
 
+  // Persist the actual photo, not just the OCR'd number — previously this
+  // image went to Anthropic inline as base64 and was discarded once the vision
+  // call returned; only the derived reading ever reached Firestore. A legal
+  // meter reading should be able to point back to the real source photo (a
+  // disputed/audited reading needs the evidence, not just the parsed digits).
+  // Reuses the same generic Storage service the document vault uses
+  // (functions/functions/lib/storage) rather than Anthropic's ephemeral
+  // request-scoped base64. Best-effort: a Storage failure here degrades to
+  // "no photo on file" rather than blocking the reading itself.
+  let photoObjectId = null;
+  try {
+    const buffer = Buffer.from(body.imageBase64, "base64");
+    const upload = await storageService.upload({
+      uid: ctx.userId,
+      orgId: ctx.tenantId || null,
+      scope: ctx.tenantId ? "business" : "personal",
+      subdir: "aviation-mx",
+      filename: `meter_${String(body.tailNumber).toUpperCase()}_${Date.now()}.${mediaType === "image/png" ? "png" : "jpg"}`,
+      buffer,
+      mimeType: mediaType,
+      createdByWorker: "aviation-mx",
+      tags: [String(body.tailNumber).toUpperCase(), "meter-photo"],
+    });
+    if (upload.ok) photoObjectId = upload.objectId;
+    else console.warn("[readMeterPhoto] photo persistence failed, continuing without it:", upload.error);
+  } catch (e) {
+    console.warn("[readMeterPhoto] photo persistence threw, continuing without it:", e.message);
+  }
+
   return res.json({
     ok: true,
     raw,
@@ -792,6 +828,10 @@ NOTES: <one to two sentences>` }
     priorReadingDate: priorEntry?.lastReadingDate ?? null,
     delta,
     requiresManualConfirmation: confidence !== "high" || readingNum == null || !meterType || meterType === "AMBIGUOUS",
+    // Reference into storageObjects/{objectId} — see addSquawkCore's comment on
+    // photoObjectId for why this is a reference, not a URL. The client should
+    // pass this straight through to commitMeterReading if the pilot confirms.
+    photoObjectId,
   });
 }
 
@@ -814,6 +854,7 @@ async function handleCommitMeterReading(req, res, ctx) {
   const ref = aircraftRef(db, scopeId, body.tailNumber);
   const meterType = String(body.meterType).slice(0, 100);
   const reading = Number(body.reading);
+  const photoObjectId = body.photoObjectId || null;
 
   await ref.set({
     meters: {
@@ -822,12 +863,16 @@ async function handleCommitMeterReading(req, res, ctx) {
         lastReadingDate: body.readingDate || new Date().toISOString(),
         confirmedBy: String(ctx.userId || "").slice(0, 200),
         source: body.source === "photo" ? "photo" : "manual",
+        // Reference into storageObjects/{objectId} from readMeterPhoto, if this
+        // reading came from one — see addSquawkCore's comment for why this is a
+        // reference, not a URL.
+        photoObjectId,
       },
     },
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), meterType, reading });
+  return res.json({ ok: true, tailNumber: String(body.tailNumber).toUpperCase(), meterType, reading, photoObjectId });
 }
 
 // ============================================================
@@ -842,6 +887,7 @@ async function handleCommitMeterReading(req, res, ctx) {
 // ============================================================
 async function handleReadSquawkPhoto(req, res, ctx) {
   const Anthropic = require("@anthropic-ai/sdk");
+  const storageService = require("../../lib/storage");
   const body = req.body || {};
   if (!body.imageBase64) return res.status(400).json({ ok: false, error: "imageBase64 required" });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ ok: false, error: "ANTHROPIC_API_KEY not configured" });
@@ -887,6 +933,36 @@ NOTES: <one to two sentences — anything the pilot should double check or add t
   const notes = pick("NOTES");
   const isUnclear = !visible || /^unclear/i.test(visible) || !suggestedDescription || /^none$/i.test(suggestedDescription);
 
+  // Persist the actual photo — previously this image went to Anthropic inline
+  // as base64 and was discarded once the vision call returned; only the AI's
+  // text interpretation ever reached Firestore. A squawk is a legal
+  // maintenance record; the underlying evidence (the photo of the actual
+  // damage/warning light/worn part) matters as much as the text description
+  // derived from it, especially on an UNCLEAR read where the photo itself may
+  // still be useful to a mechanic even though the AI couldn't confidently
+  // describe it. Reuses the generic Storage service (lib/storage) rather than
+  // Anthropic's ephemeral request-scoped base64. Best-effort: a Storage
+  // failure here degrades to "no photo on file," never blocks the read.
+  let photoObjectId = null;
+  try {
+    const buffer = Buffer.from(body.imageBase64, "base64");
+    const upload = await storageService.upload({
+      uid: ctx.userId,
+      orgId: ctx.tenantId || null,
+      scope: ctx.tenantId ? "business" : "personal",
+      subdir: "aviation-mx",
+      filename: `squawk_${body.tailNumber ? String(body.tailNumber).toUpperCase() + "_" : ""}${Date.now()}.${mediaType === "image/png" ? "png" : "jpg"}`,
+      buffer,
+      mimeType: mediaType,
+      createdByWorker: "aviation-mx",
+      tags: body.tailNumber ? [String(body.tailNumber).toUpperCase(), "squawk-photo"] : ["squawk-photo"],
+    });
+    if (upload.ok) photoObjectId = upload.objectId;
+    else console.warn("[readSquawkPhoto] photo persistence failed, continuing without it:", upload.error);
+  } catch (e) {
+    console.warn("[readSquawkPhoto] photo persistence threw, continuing without it:", e.message);
+  }
+
   return res.json({
     ok: true,
     raw,
@@ -896,6 +972,11 @@ NOTES: <one to two sentences — anything the pilot should double check or add t
     notes,
     requiresManualConfirmation: true, // ALWAYS — a squawk is a legal record; photo is a draft aid, never an auto-file
     isUnclear,
+    // Reference into storageObjects/{objectId} — see addSquawkCore's comment
+    // on photoObjectId for why this is a reference, not a URL. The client
+    // should pass this straight through to commitSquawkPhoto if the pilot
+    // confirms (or edits and confirms) the draft.
+    photoObjectId,
   });
 }
 
@@ -909,7 +990,8 @@ async function handleCommitSquawkPhoto(req, res, ctx) {
   try {
     const result = await addSquawkCore({
       tailNumber: body.tailNumber, description: body.description, category: body.category,
-      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: "photo", ctx,
+      workOrderNumber: body.workOrderNumber, reportedBy: body.reportedBy, source: "photo",
+      photoObjectId: body.photoObjectId || null, ctx,
     });
     return res.json({ ok: true, ...result });
   } catch (e) {
