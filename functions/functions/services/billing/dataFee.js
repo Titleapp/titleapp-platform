@@ -70,6 +70,12 @@ const SOURCE_REGISTRY = {
   // to cover the call + our compute; still negligible per pull.
   "adsb_exchange:traffic": { actualCentsPerUnit: 1, markup: 5.0, label: "ADS-B Exchange live traffic" },
 
+  // ADS-B Exchange single-registration position query — same product/cost
+  // shape as the traffic (lat/lon/dist) query above, added 2026-09-16 for
+  // missionLegTracker.js's live-polling job (CODEX 91). Was silently hitting
+  // the "Unknown source" fallback before this entry existed.
+  "adsb_exchange:registration": { actualCentsPerUnit: 1, markup: 5.0, label: "ADS-B Exchange registration lookup" },
+
   // Generative media — Kling video gen. Per Sean 2026-06-01 our cost is
   // ~$0.50/clip; 2× markup ⇒ creator pays $1.00. Wired so the Marketing
   // worker can charge for every render the platform produces server-side.
