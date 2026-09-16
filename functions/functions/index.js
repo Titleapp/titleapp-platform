@@ -35463,6 +35463,20 @@ Analyze now:`;
         case "commitMeterReading":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await mxHandlers.handleCommitMeterReading(req, res, mctx);
+        // CODEX 91 (2026-09-16) — historical flight-data & mission-time
+        // analytics. See services/mx/missionLegTracker.js for the real gap
+        // analysis and honest limitations (this is a simple ground/airborne
+        // state machine, not a full HEMS-mission-aware reconstruction).
+        case "getLaunchTimeHeatmap": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const { handleGetLaunchTimeHeatmap } = require("./services/mx/missionLegTracker");
+          return await handleGetLaunchTimeHeatmap(req, res, mctx);
+        }
+        case "detectUnfulfilledMissions": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const { handleDetectUnfulfilledMissions } = require("./services/mx/missionLegTracker");
+          return await handleDetectUnfulfilledMissions(req, res, mctx);
+        }
         default:
           return jsonError(res, 404, "Unknown mx action: " + mxAction);
         }
@@ -37377,6 +37391,53 @@ exports.resetMonthlyUsage = onSchedule(
 // other ~16 demo personas as a follow-up; each already has its own real seed
 // script under scripts/demo/ or scripts/, this is not a new mechanism.
 const { seedTitleDemo } = require("./scripts/demo/seedTitleDemo");
+
+// CODEX 91 (2026-09-16) — mission-leg live-polling job. Builds up real
+// wheels-up/wheels-down history going FORWARD from today, using the existing
+// live ADS-B connector (services/aviation/adsb.js) — the only piece of the
+// CODEX 91 gap analysis that doesn't wait on the still-open historical-data
+// vendor decision. See services/mx/missionLegTracker.js for the real
+// ground/airborne state machine and its honest limitations.
+//
+// OFF by default (config/missionLegTracker.enabled) and explicit per-tail
+// opt-in (config/missionLegTracker.tails), not "poll every aircraft doc in
+// every tenant" — our RapidAPI plan has a real monthly request quota (10,000
+// requests/mo on the tier this key appears to be provisioned at, per
+// external research this session, not independently confirmed against the
+// account itself), and polling every demo/seed aircraft across every tenant
+// could burn that quota on data nobody asked to track. Sean turns tails on
+// explicitly via this config doc.
+const { pollTailForLegs } = require("./services/mx/missionLegTracker");
+
+exports.pollMissionLegs = onSchedule(
+  { schedule: "*/15 * * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    const db = admin.firestore();
+    const cfgSnap = await db.doc("config/missionLegTracker").get();
+    const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+    if (!cfg.enabled) {
+      console.log("[pollMissionLegs] disabled via config/missionLegTracker.enabled, skipping");
+      return;
+    }
+    const tails = Array.isArray(cfg.tails) ? cfg.tails : [];
+    if (!tails.length) {
+      console.log("[pollMissionLegs] no tails configured in config/missionLegTracker.tails, skipping");
+      return;
+    }
+    for (const t of tails) {
+      if (!t.tailNumber || !t.scopeId) continue;
+      try {
+        const result = await pollTailForLegs({
+          tailNumber: t.tailNumber,
+          ctx: { tenantId: t.scopeId, userId: t.scopeId },
+        });
+        console.log(`[pollMissionLegs] ${t.tailNumber}:`, result.action || result.error);
+      } catch (e) {
+        console.error(`[pollMissionLegs] ${t.tailNumber} failed:`, e.message);
+      }
+    }
+  }
+);
 
 exports.resetTitleDemo = onSchedule(
   { schedule: "0 */2 * * *", timeZone: "America/Chicago", region: "us-central1" },

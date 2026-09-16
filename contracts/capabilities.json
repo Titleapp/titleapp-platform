@@ -1383,18 +1383,18 @@
     {
       "id": "aviation.read_meter_photo_v1",
       "class": "aviation",
-      "summary": "2026-09-04 — 'no penmanship, no pilot math' (Sean, CAN-as-centerpiece directive). Real Anthropic vision call reads a photographed panel hour meter (Hobbs, engine hours, etc.), identifies which meter it is, and computes the delta against the aircraft's last logged reading for that meter. Propose-only: never writes to the aircraft record itself — returns a confidence-scored reading (verified this session against a real panel photo: correctly flagged an upside-down mechanical meter as low-confidence rather than guessing) for a human to confirm or correct before aviation.commit_meter_reading_v1 is called. Dispatched by POST /v1/mx:readMeterPhoto (functions/functions/index.js, services/mx/aircraftRecords.js).",
+      "summary": "2026-09-04 — 'no penmanship, no pilot math' (Sean, CAN-as-centerpiece directive). Real Anthropic vision call reads a photographed panel hour meter (Hobbs, engine hours, etc.), identifies which meter it is, and computes the delta against the aircraft's last logged reading for that meter. Propose-only for the meter reading itself: never writes to aircraftRecords — returns a confidence-scored reading (verified this session against a real panel photo: correctly flagged an upside-down mechanical meter as low-confidence rather than guessing) for a human to confirm or correct before aviation.commit_meter_reading_v1 is called. Dispatched by POST /v1/mx:readMeterPhoto (functions/functions/index.js, services/mx/aircraftRecords.js). 2026-09-16 fix: previously the photo itself was sent to Anthropic as inline base64 and discarded after the vision call — only the OCR'd number ever persisted anywhere. Now also persists the actual photo via the generic Storage service (functions/functions/lib/storage) and returns its photoObjectId for the client to carry through to the commit step, so the source photo behind a legal meter reading actually exists somewhere durable.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
       "requiredRoles": [],
       "emitsEvent": false,
-      "writesAudit": false
+      "writesAudit": true
     },
     {
       "id": "aviation.commit_meter_reading_v1",
       "class": "aviation",
-      "summary": "2026-09-04 — the confirm half of the meter-reading flow: writes a human-confirmed (or human-corrected) meter reading to aircraftRecords/{scopeId}/aircraft/{tailNumber}.meters.{meterType}, deliberately separate from aviation.read_meter_photo_v1 so a vision misread can never reach the aircraft's legal record without a human confirming the number first. Dispatched by POST /v1/mx:commitMeterReading.",
+      "summary": "2026-09-04 — the confirm half of the meter-reading flow: writes a human-confirmed (or human-corrected) meter reading to aircraftRecords/{scopeId}/aircraft/{tailNumber}.meters.{meterType}, deliberately separate from aviation.read_meter_photo_v1 so a vision misread can never reach the aircraft's legal record without a human confirming the number first. Dispatched by POST /v1/mx:commitMeterReading. 2026-09-16: now also stores the photoObjectId from read_meter_photo_v1 (if provided) on the meter entry — a reference into storageObjects, not a URL, since the Storage service's signed URLs expire after 1 hour.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
@@ -1438,18 +1438,18 @@
     {
       "id": "aviation.read_squawk_photo_v1",
       "class": "aviation",
-      "summary": "2026-09-05 — photo-based squawk entry, the 'propose' half (Sean: 'voice or chat is best, but a photo is better, worst case a form'). Vision call over a photo of visible damage/a warning light/a worn part/etc. returns a DRAFT description + confidence, same honesty pattern as aviation.read_meter_photo_v1 — an unclear photo returns isUnclear rather than inventing a plausible discrepancy. Writes nothing; requiresManualConfirmation is always true (a squawk is a legal record). Dispatched by POST /v1/mx:readSquawkPhoto.",
+      "summary": "2026-09-05 — photo-based squawk entry, the 'propose' half (Sean: 'voice or chat is best, but a photo is better, worst case a form'). Vision call over a photo of visible damage/a warning light/a worn part/etc. returns a DRAFT description + confidence, same honesty pattern as aviation.read_meter_photo_v1 — an unclear photo returns isUnclear rather than inventing a plausible discrepancy. Writes nothing to the squawk record itself; requiresManualConfirmation is always true (a squawk is a legal record). Dispatched by POST /v1/mx:readSquawkPhoto. 2026-09-16 fix: previously the photo itself was sent to Anthropic as inline base64 and discarded after the vision call — only the AI's text description ever persisted anywhere, even on a confirmed squawk. Now also persists the actual photo via the generic Storage service (functions/functions/lib/storage) and returns its photoObjectId for the client to carry through to the commit step.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
       "requiredRoles": [],
       "emitsEvent": false,
-      "writesAudit": false
+      "writesAudit": true
     },
     {
       "id": "aviation.commit_squawk_photo_v1",
       "class": "aviation",
-      "summary": "2026-09-05 — the confirm half of photo-based squawk entry: after the pilot reviews/edits the draft from aviation.read_squawk_photo_v1, files it through the same real addSquawkCore write path as the manual form and chat (source:\"photo\" tagged for traceability), deliberately separate from the read step so a vision misread never reaches the aircraft's legal record without a human confirming it first. Dispatched by POST /v1/mx:commitSquawkPhoto.",
+      "summary": "2026-09-05 — the confirm half of photo-based squawk entry: after the pilot reviews/edits the draft from aviation.read_squawk_photo_v1, files it through the same real addSquawkCore write path as the manual form and chat (source:\"photo\" tagged for traceability), deliberately separate from the read step so a vision misread never reaches the aircraft's legal record without a human confirming it first. Dispatched by POST /v1/mx:commitSquawkPhoto. 2026-09-16: now also stores the photoObjectId from read_squawk_photo_v1 (if provided) on the squawk doc — a reference into storageObjects, not a URL, since the Storage service's signed URLs expire after 1 hour; resolve to a fresh URL at read time via the Storage service's download() function.",
       "contexts": ["tenant", "civilian"],
       "allowedCallers": ["human", "chat"],
       "requiredKyc": "KYC-0",
@@ -1511,6 +1511,28 @@
       "requiredRoles": [],
       "emitsEvent": true,
       "writesAudit": true
+    },
+    {
+      "id": "aviation.get_launch_time_heatmap_v1",
+      "class": "aviation",
+      "summary": "2026-09-16, CODEX 91 — aggregates a tail's closed mission legs (aircraftRecords/{scopeId}/aircraft/{tailNumber}/missionLegs, written by the new live-polling job in services/mx/missionLegTracker.js) into an hour-of-day/day-of-week launch-time distribution, for shift-planning/staffing analysis. Read-only. Real gap this closes: the existing crew-scheduling worker (AV-032) treats minimum_staffing_levels as a purely operator-configured input with no data-derived signal behind it — see CODEX 91 §2.4. Returns an honest empty result with an explanatory note if no legs are on file yet rather than fabricating a plausible-looking distribution — the underlying data accumulates going forward from a live-polling job (config/missionLegTracker), since a full historical backfill is a separate, not-yet-resolved vendor decision (CODEX 91 §4). Dispatched by GET /v1/mx:getLaunchTimeHeatmap.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "aviation.detect_unfulfilled_missions_v1",
+      "class": "aviation",
+      "summary": "2026-09-16, CODEX 91 — cross-references dispatchTripRequests with status \"released\" against ADS-B-verified mission legs on the assigned tail; a released trip request with no matching leg within the configured time window is flagged as unfulfilled. Per Sean: the flights that didn't happen are as informative as the ones that did — a real, detectable gap that can mean either an operational failure (aircraft/crew unavailable) or unmet market demand, distinguished only by the human reviewing the flagged gap, not by this capability. Trip requests missing a tailNumber or requestedDepartureZulu are reported separately as \"unscored,\" not silently dropped or miscounted as unfulfilled. Read-only. Dispatched by GET /v1/mx:detectUnfulfilledMissions (services/mx/missionLegTracker.js). See CODEX 91 §5, Open Decision #9.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
     },
     {
       "id": "auto.create_vehicle_deal_v1",

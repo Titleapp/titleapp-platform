@@ -15,6 +15,16 @@
  *  ADSB_EXCHANGE_RAPIDAPI_HOST and we send X-RapidAPI-Key instead.)
  *
  * Endpoint:  GET /v1/aviation:traffic?lat=36.08&lon=-115.15&dist=50   (auth required)
+ *
+ * getPositionByRegistration() (2026-09-16, CODEX 91) — live current position
+ * for one specific tail, no lat/lon needed. Confirmed directly against the
+ * real RapidAPI-hosted product this session: /v2/reg/{reg}/ does NOT exist
+ * (404), /v2/registration/{reg}/ does — verified with a live curl call
+ * before writing this, not assumed from documentation (their own docs page
+ * is a JS app that can't be read without a real account). Used by
+ * missionLegTracker.js's polling job to build up mission-leg history going
+ * forward, since the existing live connector has no historical endpoint —
+ * see CODEX 91 for the full gap analysis.
  */
 
 const { recordDataFee } = require("../billing/dataFee");
@@ -81,6 +91,32 @@ async function getTraffic({ lat, lon, distNm = 50, userId = null, tenantId = nul
   };
 }
 
+/**
+ * Live current position of one specific tail by registration. Returns null
+ * (not an error) if the aircraft isn't currently airborne/visible — that's
+ * an expected, normal result, not a failure.
+ */
+async function getPositionByRegistration({ registration, userId = null, tenantId = null }) {
+  const reg = String(registration || "").trim().toUpperCase();
+  if (!reg) return { error: "registration is required" };
+
+  const url = `${ADSB_BASE}/registration/${encodeURIComponent(reg)}/`;
+  const resp = await fetch(url, { headers: authHeaders() });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    return { error: `ADS-B Exchange ${resp.status}: ${body.slice(0, 120)}`, status: resp.status };
+  }
+  const json = await resp.json();
+  const ac = Array.isArray(json?.ac) ? json.ac : [];
+
+  if (userId) {
+    recordDataFee({ source: "adsb_exchange:registration", userId, tenantId, units: 1, metadata: { registration: reg } })
+      .catch((e) => console.warn("[adsb] dataFee failed:", e.message));
+  }
+
+  return { registration: reg, aircraft: ac.length ? normalizeAircraft(ac[0]) : null };
+}
+
 async function handleTraffic(req, res, ctx = {}) {
   const lat = req.query?.lat ?? req.body?.lat;
   const lon = req.query?.lon ?? req.body?.lon;
@@ -94,4 +130,4 @@ async function handleTraffic(req, res, ctx = {}) {
   res.status(200).json({ ok: true, source: "adsb_exchange", ...result });
 }
 
-module.exports = { getTraffic, handleTraffic, normalizeAircraft };
+module.exports = { getTraffic, handleTraffic, getPositionByRegistration, normalizeAircraft };
