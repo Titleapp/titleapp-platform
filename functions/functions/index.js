@@ -37688,7 +37688,8 @@ exports.qualityCanary = onSchedule(
 );
 
 // ----------------------------
-// DAILY X MARKETING WORKER (9am PT — one first-party promo video/day)
+// EVERY-OTHER-DAY X MARKETING WORKER (9am PT — fires daily, posts on
+// even days-of-year only — see dailyXPost.js header)
 // ----------------------------
 // Rotates through the SOCIII Digital Worker showcase clips, posts to our own
 // @SOCIIIai account. Organic only (no paid promotion). Kill switch:
@@ -37704,6 +37705,47 @@ exports.dailyXMarketingPost = onSchedule(
     const { runDailyXPost } = require("./marketing/dailyXPost");
     const result = await runDailyXPost();
     console.log("[dailyXMarketingPost]", result);
+  }
+);
+
+// ----------------------------
+// EVERY-OTHER-DAY LINKEDIN MARKETING WORKER (9:15am PT, same cadence as X)
+// ----------------------------
+// Posts the same roster pick as X, as a text-only update to whichever
+// personal LinkedIn profile is configured at
+// config/marketingWorker.socialPosterUserId (Sean, connected 2026-09-15).
+// Kill switch: config/marketingWorker.linkedInEveryOtherDayEnabled = false.
+exports.everyOtherDayLinkedInPost = onSchedule(
+  {
+    schedule: "15 17 * * *", // 17:15 UTC — a few minutes after the X post
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { runDailyLinkedInPost } = require("./marketing/dailyLinkedInPost");
+    const result = await runDailyLinkedInPost();
+    console.log("[everyOtherDayLinkedInPost]", result);
+  }
+);
+
+// ----------------------------
+// EVERY-OTHER-DAY TIKTOK MARKETING WORKER (9:30am PT, same cadence as X)
+// ----------------------------
+// Posts the same roster video as X to whichever TikTok creator account is
+// configured at config/marketingWorker.socialPosterUserId. As of 2026-09-15
+// no account has completed the TikTok OAuth connect flow yet — this worker
+// will log an "account not connected" error and no-op until that's done via
+// Settings. Kill switch: config/marketingWorker.tiktokEveryOtherDayEnabled = false.
+exports.everyOtherDayTikTokPost = onSchedule(
+  {
+    schedule: "30 17 * * *", // 17:30 UTC — a few minutes after LinkedIn
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { runDailyTikTokPost } = require("./marketing/dailyTikTokPost");
+    const result = await runDailyTikTokPost();
+    console.log("[everyOtherDayTikTokPost]", result);
   }
 );
 

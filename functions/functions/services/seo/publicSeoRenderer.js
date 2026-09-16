@@ -320,6 +320,250 @@ const DOCS_INDEX_COPY = {
   `,
 };
 
+// 2026-09-15 — real investor landing page, sourced from the actual Sep 2026
+// investor memorandum (apps/business/public/data-room/SOCIII-Investor-
+// Memorandum-2026-09-08.docx), NOT invented pitch copy. Deliberately excludes
+// raise mechanics (SAFE minimums/targets) — those are negotiating-sensitive
+// and belong in a real conversation, not a crawler-visible page. This page's
+// job is credibility + a real "request access" path, matching how the memo
+// itself gates deal terms behind Part VII.
+const INVESTORS_COPY = {
+  title: "SOCIII — Investors",
+  description:
+    "SOCIII built a 4-vertical production platform — aviation, nursing education, real estate, EU compliance — on $13,436.56 of total operating spend in 6 months, bank-verified. Six USPTO provisional patents filed. Regulatory-driven adoption, not AI hype.",
+  bodyHtml: `
+    <main>
+      <h1>SOCIII — Investors</h1>
+      <p><em>Where SOCIII actually stands today.</em></p>
+      <h2>The real thesis: regulation forces adoption, not AI hype</h2>
+      <p>SOCIII is a platform where seasoned professionals — the ICU nurse with 20 years of bedside
+      judgment, the Part 135 pilot tracking currency against FAA minimums, the title clerk who knows
+      a county's unwritten rules — capture both the rules and the judgment of their work into a
+      Digital Worker that other practitioners subscribe to. Every one of SOCIII's live verticals was
+      adopted because a real regulatory or licensing requirement forced the issue, not because AI was
+      trendy: EU Battery Regulation (EU) 2023/1542 for Traitly's Digital Product Passport, FAA Part
+      135/91 currency and maintenance-logbook requirements for SKYE, state nursing-board licensure
+      for the University of Hawaii's nursing program, county-recording statutes for Petra's title
+      work. Every output runs inside a four-tier rules engine (RAAS) and is recorded in an
+      append-only, cryptographically anchored audit trail.</p>
+      <h2>The real scale, stated plainly</h2>
+      <ul>
+        <li><strong>345 workers</strong> live in the platform catalog today, across <strong>24
+        industries</strong> — real, code-verified counts queried directly from production data.</li>
+        <li><strong>Four core verticals</strong> carry a fully live, demo-verified, chat-grounded
+        product today: Aviation (Skye), Nursing Education (Hannah, built with the University of
+        Hawaii), Real Estate (Petra), and EU Digital Product Passport (Elara, with Traitly). Each is
+        real production, not a finished product — known gaps are tracked openly, not hidden.</li>
+        <li><strong>$13,436.56</strong> in total operating spend over 6 months (Feb–Jul 2026,
+        bank-verified) produced this 4-vertical platform and its 345-worker catalog. <strong>$0</strong>
+        in outside capital to date.</li>
+        <li><strong>Six USPTO provisional patent applications</strong> filed May 24, 2026, covering
+        the Audit Trail (event-sourced, append-only, anchored to a public blockchain), the RAAS
+        four-tier rules engine, and Build-Without-Code worker authoring, among others. Conversion
+        deadline May 2027.</li>
+        <li>Creators earn <strong>75% of every subscription</strong> and <strong>20% of data/token
+        fees</strong> on workers they author — domain experts participate because they get paid, not
+        because they're recruited.</li>
+      </ul>
+      <h2>Get in touch</h2>
+      <p>This page intentionally doesn't cover raise terms — those belong in a real conversation. If
+      you'd like the full investor memorandum and Data Room access:</p>
+      <p><a href="mailto:sean@sociii.ai">sean@sociii.ai</a> — Sean Lee Combs, Founder &amp; CEO<br/>
+      <a href="mailto:kent@sociii.ai">kent@sociii.ai</a> — Kent Redwine, Cofounder</p>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/about">About</a> · <a href="/press">Press</a></p>
+    </main>
+  `,
+};
+
+// Sourced from the real worker system prompts in functions/index.js
+// (_SUITE_PERSONAS + per-slug systemPrompt blocks for av-copilot-001,
+// av-mx-001, av-dispatch-001, av-ground-school-001) — not invented copy.
+// No testimonials: SOCIII is pre-revenue on this vertical: (Sean, 2026-09-15
+// — "we're new so can't have testimonials but will add them as we go").
+const AVIATION_COPY = {
+  title: "SOCIII for Aviation — Skye, the Owner-Operator's Digital Copilot",
+  description:
+    "Skye is SOCIII's governed AI for owner-operator pilots: preflight packages, currency tracking, fail-closed trip release under 14 CFR §135.273, maintenance logs, and checkride prep — built by a working ATP.",
+  bodyHtml: `
+    <main>
+      <h1>Skye — Governed AI for Owner-Operator Pilots</h1>
+      <p>Skye is SOCIII's Digital Worker for owner-operators flying Part 91 and Part 135 —
+      turbine singles and twins, training aircraft, and everything in between. One persona, four
+      workers, each grounded in your real fleet and your real certificates — not a generic chatbot
+      that guesses at your operation.</p>
+      <h2>Four workers, one persona</h2>
+      <ul>
+        <li><strong>CoPilot</strong> — assembles a full preflight package in one conversation: live
+        METARs and TAFs, active NOTAMs, weight and balance, and an auto-scored Flight Risk Assessment
+        Tool (FRAT). Tracks currency across every certificate and rating — medical, BFR, IPC, type
+        recurrent, 135 line check — and logs flights to an append-only Vault logbook.</li>
+        <li><strong>MX</strong> — the maintenance tracker and squawk log for your fleet. Files
+        timestamped squawks, tracks inspection due dates and component life, monitors AD/SB
+        compliance, and coordinates A&amp;P scheduling. Airworthiness determination always stays with
+        the A&amp;P/IA — this worker documents, it doesn't decide.</li>
+        <li><strong>Dispatch</strong> — builds the trip release package: crew legality under 14 CFR
+        &sect;135.273, aircraft airworthiness, live weather, FRAT score, weight and balance, and
+        NOTAMs. It fails closed: if any required data source is missing, the release is <strong>BLOCKED</strong>,
+        never "conditional." Missing data is never treated as permission to proceed.</li>
+        <li><strong>Ground School</strong> — checkride and type-recurrent prep grounded in your
+        actual aircraft's real performance numbers and systems — not generic study guides.</li>
+      </ul>
+      <h2>Built by a working ATP, not a team guessing at your job</h2>
+      <p>SOCIII's founder has flown professionally for over 25 years, including air-medical
+      operations, and holds an ATP certificate with PC-12 and King Air B200 type ratings. Skye was
+      built against a real owner-operator's real fleet and real regulatory obligations — the same
+      discipline SOCIII applies to every regulated vertical it serves.</p>
+      <h2>Fail-closed, not fail-open</h2>
+      <p>Every Skye worker is built on one rule: never fabricate weather, NOTAMs, currency status,
+      or maintenance records. When live data isn't available, Skye says so plainly and blocks the
+      decision — it does not fill the gap with a plausible-sounding guess.</p>
+      <p>SOCIII is a new platform — we don't have customer testimonials to show you yet, and we'd
+      rather tell you that than invent some. <a href="mailto:sean@sociii.ai">sean@sociii.ai</a> to
+      talk about your operation.</p>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/investors">Investors</a> ·
+      <a href="/marketplace">Marketplace</a></p>
+    </main>
+  `,
+};
+
+// Sourced from the real _SUITE_PERSONAS worker-slug list for Petra
+// (functions/index.js) — Sean, 2026-09-05: "Title being the lynchpin of
+// all real estate ... it's all one identity." Not invented copy.
+const REAL_ESTATE_COPY = {
+  title: "SOCIII for Real Estate & Title — Petra, One Worker Across the Deal",
+  description:
+    "Petra is SOCIII's governed AI for real estate: title search and escrow, wire-fraud prevention, closing disclosures, construction lending, property management, and more — one persona across the entire transaction.",
+  bodyHtml: `
+    <main>
+      <h1>Petra — Governed AI for Real Estate and Title</h1>
+      <p>Title is the lynchpin of all real estate — so on SOCIII it's one persona, not a dozen
+      disconnected tools. Petra is the same Digital Worker whether you're clearing a lien, verifying
+      a wire before it moves, or underwriting a construction draw.</p>
+      <h2>Title &amp; escrow</h2>
+      <ul>
+        <li>Title search and commitment, with lien clearance management</li>
+        <li>Escrow locker tracking from contract to close</li>
+        <li>Wire-fraud prevention — verifies wire instructions before funds move</li>
+        <li>Disclosure packages and closing disclosures</li>
+        <li>FIRPTA and 1031 exchange handling</li>
+        <li>Commission reconciliation, HOA estoppel letters, and recording-status monitoring</li>
+      </ul>
+      <h2>Commercial &amp; construction</h2>
+      <ul>
+        <li>CRE analysis and site due diligence</li>
+        <li>Construction draws, construction lending, and capital-stack optimization</li>
+        <li>Land-use entitlement</li>
+      </ul>
+      <h2>Ongoing operations</h2>
+      <ul>
+        <li>Property management — lease administration, maintenance coordination, owner reporting</li>
+        <li>Mortgage brokering, appraisal &amp; valuation, and market research</li>
+        <li>Legal contracts and compliance tracking</li>
+      </ul>
+      <h2>Built on real recording statutes, not generic AI</h2>
+      <p>Petra runs on SOCIII's jurisdictional rules engine — county recording statutes and
+      state-specific requirements are built into the compliance layer per jurisdiction, not
+      approximated by a general-purpose model.</p>
+      <p>SOCIII is a new platform — we don't have customer testimonials to show you yet, and we'd
+      rather tell you that than invent some. <a href="mailto:sean@sociii.ai">sean@sociii.ai</a> to
+      talk about your pipeline.</p>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/investors">Investors</a> ·
+      <a href="/marketplace">Marketplace</a></p>
+    </main>
+  `,
+};
+
+// Sourced from the real system prompts for eu-battery-dpp-001,
+// eu-passport-registry-001, and eu-supply-chain-tracer-001
+// (functions/index.js) — real client Voltara BV, real regulation
+// (EU) 2023/1542 Annex XIII, real 7-cluster/90-attribute structure. Not
+// invented copy.
+const DPP_COPY = {
+  title: "SOCIII for EU Digital Product Passports — Elara, Battery Regulation (EU) 2023/1542",
+  description:
+    "Elara is SOCIII's governed AI for EU Digital Product Passport compliance under Battery Regulation (EU) 2023/1542 — tracks 7 clusters and 90 attributes per SKU, and never claims compliance it hasn't earned.",
+  bodyHtml: `
+    <main>
+      <h1>Elara — Governed AI for EU Digital Product Passports</h1>
+      <p>Elara is SOCIII's Digital Worker for manufacturers and importers who need EU Digital
+      Battery Passports under Battery Regulation (EU) 2023/1542, Annex XIII. Built and refined
+      against a real client's real SKUs — not a generic compliance chatbot.</p>
+      <h2>Three workers across the passport lifecycle</h2>
+      <ul>
+        <li><strong>DPP Compliance Tracker</strong> — tracks per-SKU, per-cluster data-intake
+        progress across all 7 clusters (90 attributes total: general battery &amp; manufacturer
+        information, compliance &amp; certifications, carbon footprint/LCA, supply chain due
+        diligence, materials &amp; composition, circularity, and performance &amp; durability), and
+        surfaces exactly what's missing and why.</li>
+        <li><strong>Passport &amp; Registry Manager</strong> — generates the structured JSON-LD
+        Digital Product Passport once a SKU's clusters are complete, and tracks registry submission
+        status. Hard-gated on Cluster 3 (battery carbon footprint / LCA): no passport is generated or
+        exported below 100% on that cluster, per Annex XIII — no placeholders, no partial passports.</li>
+        <li><strong>Supply Chain Tracer</strong> — onboards component suppliers and automates
+        collection of Cluster 4 (supply chain due diligence) and Cluster 5 (materials &amp;
+        composition) data, so each supplier submits once and that data flows to every passport using
+        their components.</li>
+      </ul>
+      <h2>Never claims compliance it hasn't earned</h2>
+      <p>Elara will not describe a SKU as "compliant" until its passport is actually registered —
+      "on track" or "ready to submit" for everything short of that. It never invents a registry
+      reference number or QR code (those are assigned by the EU DPP Central Registry at registration,
+      not generated locally), and it never reports a completion percentage that isn't in its own
+      records.</p>
+      <p>SOCIII is a new platform — we don't have customer testimonials to show you yet, and we'd
+      rather tell you that than invent some. <a href="mailto:sean@sociii.ai">sean@sociii.ai</a> to
+      talk about your SKUs.</p>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/investors">Investors</a> ·
+      <a href="/marketplace">Marketplace</a></p>
+    </main>
+  `,
+};
+
+// Sourced from the real system prompts for nursing-education-001 (Hannah),
+// nursing-micro-001 (Morgan), and nursing-ob-001 (Clara) in
+// functions/index.js — real domain-expert author (Dr. Ruthie
+// Clearwater, CRNA). Not invented copy. Deliberately doesn't cite a launch
+// date for the University of Hawaii partnership — not re-verified this
+// session.
+const EDUCATION_COPY = {
+  title: "SOCIII for Nursing Education — Hannah, Program Records + Real Tutors",
+  description:
+    "Hannah is SOCIII's governed AI for nursing program faculty and administrators — student records, SLO tracking, and chain-anchored grading — built by a working CRNA, alongside Socratic-method tutors for students.",
+  bodyHtml: `
+    <main>
+      <h1>Hannah — Governed AI for Nursing Education</h1>
+      <p>Hannah was built by Dr. Ruthie Clearwater, CRNA, for nursing program faculty and
+      administrators — not students. It's a program-administration tool first, with real
+      student-facing tutors built on the same rules discipline running alongside it.</p>
+      <h2>What Hannah manages</h2>
+      <ul>
+        <li>Student longitudinal records — competencies, reflections, SLO progress, clinical
+        hours, ATI scores, professionalism flags, attendance, and clinical incidents</li>
+        <li>45 Student Learning Outcomes mapped to ANA Standards of Practice</li>
+        <li>The Tanner Clinical Judgment Framework for reflection grading (Noticing &rarr;
+        Interpreting &rarr; Responding &rarr; Reflecting)</li>
+        <li>Chain-anchored grade locking — once a grade is anchored, it cannot be modified</li>
+      </ul>
+      <h2>Real tutors alongside program administration</h2>
+      <ul>
+        <li><strong>Morgan</strong> — a Socratic-method microbiology tutor grounded in OpenStax
+        Microbiology 2e, quizzing students at four cognitive levels from recall to clinical synthesis</li>
+        <li><strong>Clara</strong> — a Socratic-method obstetrics &amp; maternity tutor grounded
+        in OpenStax Anatomy &amp; Physiology, StatPearls, and WHO/ACOG clinical guidelines</li>
+      </ul>
+      <h2>Built by faculty, for faculty</h2>
+      <p>Hannah never fabricates a student name, score, or record — if the data isn't in yet, it
+      says so plainly rather than inventing a roster. Every tutor cites its source material rather
+      than answering from unattributed general knowledge.</p>
+      <p>SOCIII is a new platform — we don't have customer testimonials to show you yet, and we'd
+      rather tell you that than invent some. <a href="mailto:sean@sociii.ai">sean@sociii.ai</a> to
+      talk about your program.</p>
+      <p><a href="/">&larr; Back to SOCIII</a> · <a href="/investors">Investors</a> ·
+      <a href="/marketplace">Marketplace</a></p>
+    </main>
+  `,
+};
+
 const WHITEPAPER_COPY = {
   title: "SOCIII Whitepaper — Governed AI Workers for Regulated Professions",
   description:
@@ -452,6 +696,16 @@ async function renderPublicPage(db, path) {
     // under public/docs/. No per-page wiring needed for new docs pages.
     const slug = path.slice("/docs/".length).replace(/\/+$/, "");
     if (slug) routeContent = await renderDocPage(slug);
+  } else if (path === "/investors" || path === "/investors/") {
+    routeContent = INVESTORS_COPY;
+  } else if (path === "/aviation" || path === "/aviation/") {
+    routeContent = AVIATION_COPY;
+  } else if (path === "/real-estate" || path === "/real-estate/") {
+    routeContent = REAL_ESTATE_COPY;
+  } else if (path === "/dpp" || path === "/dpp/") {
+    routeContent = DPP_COPY;
+  } else if (path === "/education" || path === "/education/") {
+    routeContent = EDUCATION_COPY;
   } else if (path === "/whitepaper" || path === "/whitepaper/") {
     routeContent = WHITEPAPER_COPY;
   } else if (path === "/creators/journey" || path === "/creators/journey/") {
@@ -476,5 +730,10 @@ module.exports = {
   CREATORS_JOURNEY_COPY,
   SANDBOX_WORKER_COPY,
   ABOUT_COPY,
+  INVESTORS_COPY,
+  AVIATION_COPY,
+  REAL_ESTATE_COPY,
+  DPP_COPY,
+  EDUCATION_COPY,
   PRESS_ITEMS,
 };

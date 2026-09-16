@@ -99,10 +99,7 @@ import WorkerMarketplace from "./pages/WorkerMarketplace";
 import { useWorkerCatalog } from "./data/useWorkerCatalog";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
 import LegalPage from "./pages/LegalPage";
-import TitleEscrowLanding from "./pages/landing/TitleEscrowLanding";
-import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
-import PilotLanding from "./pages/landing/PilotLanding";
 import AlexWorkspace from "./pages/AlexWorkspace";
 import PlatformInventory from "./pages/PlatformInventory";
 import CampaignPage from "./pages/campaigns/CampaignPage";
@@ -4520,10 +4517,7 @@ export default function App() {
   const isPlannedWorker = workerRoute && workerRoute.status === "planned";
 
   // ── Vertical landing pages ──────────────────────────────────
-  const isTitleEscrowLanding = /^\/title-escrow\/?$/.test(window.location.pathname);
-  const isPropMgmtLanding = /^\/property-management\/?$/.test(window.location.pathname);
   const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
-  const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
   const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
   const isDataRoom = /^\/data-room\/?$/.test(window.location.pathname);
   const isFundraiseAdmin = /^\/fundraise\/admin\/?$/.test(window.location.pathname);
@@ -5873,10 +5867,7 @@ export default function App() {
   }
 
   // ── Vertical landing pages: no auth required ────────────────
-  if (isTitleEscrowLanding) return <TitleEscrowLanding />;
-  if (isPropMgmtLanding) return <PropertyMgmtLanding />;
   if (isDevelopersLanding) return <DeveloperLanding />;
-  if (isPilotLanding) return <PilotLanding />;
   if (isWhitepaper) {
     const Whitepaper = React.lazy(() => import("./pages/Whitepaper"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><Whitepaper /></React.Suspense>;

@@ -13,6 +13,12 @@
 //
 // Kill switch: Firestore doc `config/marketingWorker` field `xDailyEnabled`
 // (defaults ON; set to false to pause without redeploying).
+//
+// Cadence: the Cloud Scheduler trigger still fires daily, but the handler
+// only actually posts on even days-of-year (Sean, 2026-09-15: "every other
+// day"). LinkedIn's and TikTok's every-other-day posters (dailyLinkedInPost.js,
+// dailyTikTokPost.js) use the same day-of-year parity so all three channels
+// post the same roster pick on the same days, staying in sync.
 // ----------------------------------------------------------------------------
 
 const { TwitterApi } = require("twitter-api-v2");
@@ -162,6 +168,13 @@ async function runDailyXPost(opts = {}) {
   const pick = pickForToday(now);
   const dayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 
+  // Every-other-day cadence — see file header. Scheduler fires daily; this
+  // is the actual gate.
+  if (!opts.force && pick.dayOfYear % 2 !== 0) {
+    console.log(`[dailyXPost] off-day (dayOfYear=${pick.dayOfYear}), skipping`);
+    return { skipped: "off-day" };
+  }
+
   // De-dupe: one post per UTC day (deterministic doc id).
   const postRef = db.collection("marketingPosts").doc(`x-${dayKey}`);
   if (!opts.force) {
@@ -203,4 +216,4 @@ async function runDailyXPost(opts = {}) {
   }
 }
 
-module.exports = { runDailyXPost, pickForToday, ROSTER };
+module.exports = { runDailyXPost, pickForToday, ROSTER, TAGLINE };
