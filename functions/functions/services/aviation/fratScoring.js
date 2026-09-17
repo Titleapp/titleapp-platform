@@ -314,7 +314,12 @@ function resolveScopeId({ userId, tenantId }) {
 
 /**
  * POST /v1/aviation:frat:compute
- * Body: { tailNumber, depIcao, arrIcao, date?, flightRules?, etd?, altitude?, route?, selfReport?: {...} }
+ * Body: { tailNumber, depIcao, arrIcao, date?, flightRules?, etd?, altitude?, route?,
+ *   altIcao?, tas?, ete?, fuelOnBoard?, personsAboard?, remarks?, selfReport?: {...} }
+ * The flight-plan fields (flightRules through remarks) mirror FAA Form 7233-1 —
+ * the actual filed-flight-plan field set ForeFlight's own filing screen is
+ * built on — not an invented schema. None of them are scored (see
+ * scoreSelfReport below); they're persisted as the actual plan for this flight.
  *
  * Server computes weather/rest-duty/MEL itself from real data — client-
  * supplied weather or MEL data is never trusted for a safety-relevant score
@@ -371,13 +376,22 @@ async function handleComputeFrat(req, res, ctx) {
     depIcao,
     arrIcao,
     date: body.date || null,
-    // Real flight-plan fields, added 2026-09-17 replacing the low-value
-    // "how's the day going"/"rushed" self-report questions — not scored,
-    // just persisted as the actual plan for this flight.
+    // Real flight-plan fields (FAA Form 7233-1 field set), added 2026-09-17
+    // replacing the low-value "how's the day going"/"rushed" self-report
+    // questions — not scored, just persisted as the actual plan for this
+    // flight. Extended same day with the remaining 7233-1 fields
+    // (alternate/TAS/ETE/fuel/persons/remarks) so this isn't a partial copy
+    // of the standard flight plan.
     flightRules: body.flightRules || null, // "IFR" | "VFR"
     etd: body.etd || null,
     altitude: body.altitude || null,
     route: body.route || null,
+    altIcao: body.altIcao || null,
+    tas: body.tas || null,
+    ete: body.ete || null,
+    fuelOnBoard: body.fuelOnBoard || null,
+    personsAboard: body.personsAboard || null,
+    remarks: body.remarks || null,
     result,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });

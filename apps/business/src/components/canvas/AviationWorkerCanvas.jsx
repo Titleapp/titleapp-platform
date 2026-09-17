@@ -1215,9 +1215,12 @@ export function NewFlightModal({ onClose, onBuilt }) {
     tailNumber: "", depIcao: "", arrIcao: "", date: new Date().toISOString().slice(0, 10),
     // 2026-09-17 (Sean, live-testing): "how's the day going"/"rushed to get
     // off the ground" removed as low-value; replaced with real flight-plan
-    // fields (flight rules, ETD, altitude, route) — see fratScoring.js for
-    // why these aren't scored, just persisted as the actual plan.
-    flightRules: "VFR", etd: "", altitude: "", route: "",
+    // fields. Field set is FAA Form 7233-1 (the actual flight plan form
+    // ForeFlight files against) — not invented. Alternate/TAS/ETE/fuel/
+    // persons-aboard/remarks added same day per Sean: "copy ForeFlight...
+    // it's an overlay on the FAA required data, don't reinvent it."
+    flightRules: "VFR", etd: "", altitude: "", route: "", altIcao: "",
+    tas: "", ete: "", fuelOnBoard: "", personsAboard: "", remarks: "",
     dayOrNight: "day",
     usedChartsOrComputer: true, verifiedWeightBalance: true, evaluatedPerformance: true, briefedPassengers: true,
   });
@@ -1241,6 +1244,12 @@ export function NewFlightModal({ onClose, onBuilt }) {
         etd: form.etd.trim(),
         altitude: form.altitude.trim(),
         route: form.route.trim(),
+        altIcao: form.altIcao.trim().toUpperCase(),
+        tas: form.tas.trim(),
+        ete: form.ete.trim(),
+        fuelOnBoard: form.fuelOnBoard.trim(),
+        personsAboard: form.personsAboard.trim(),
+        remarks: form.remarks.trim(),
         selfReport: {
           dayOrNight: form.dayOrNight,
           usedChartsOrComputer: form.usedChartsOrComputer,
@@ -1299,7 +1308,9 @@ export function NewFlightModal({ onClose, onBuilt }) {
               <div><label style={labelStyle}>Tail number *</label><input style={fieldStyle} value={form.tailNumber} onChange={(e) => set("tailNumber", e.target.value)} placeholder="N701AA" /></div>
               <div><label style={labelStyle}>Date *</label><input type="date" style={fieldStyle} value={form.date} onChange={(e) => set("date", e.target.value)} /></div>
               <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="KLAS" /></div>
-              <div><label style={labelStyle}>Arrival ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="KLAX" /></div>
+              <div><label style={labelStyle}>Destination ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="KLAX" /></div>
+              <div><label style={labelStyle}>Alternate ICAO</label><input style={fieldStyle} value={form.altIcao} onChange={(e) => set("altIcao", e.target.value)} placeholder="KBUR" /></div>
+              <div><label style={labelStyle}>ETD (local)</label><input style={fieldStyle} value={form.etd} onChange={(e) => set("etd", e.target.value)} placeholder="1430" /></div>
               <div>
                 <label style={labelStyle}>IFR or VFR *</label>
                 <select style={fieldStyle} value={form.flightRules} onChange={(e) => set("flightRules", e.target.value)}>
@@ -1314,9 +1325,13 @@ export function NewFlightModal({ onClose, onBuilt }) {
                   <option value="night">Night</option>
                 </select>
               </div>
-              <div><label style={labelStyle}>ETD (local)</label><input style={fieldStyle} value={form.etd} onChange={(e) => set("etd", e.target.value)} placeholder="1430" /></div>
-              <div><label style={labelStyle}>Planned altitude</label><input style={fieldStyle} value={form.altitude} onChange={(e) => set("altitude", e.target.value)} placeholder="9500" /></div>
+              <div><label style={labelStyle}>Cruising altitude</label><input style={fieldStyle} value={form.altitude} onChange={(e) => set("altitude", e.target.value)} placeholder="9500" /></div>
+              <div><label style={labelStyle}>True airspeed (kts)</label><input style={fieldStyle} value={form.tas} onChange={(e) => set("tas", e.target.value)} placeholder="140" /></div>
               <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Route of flight</label><input style={fieldStyle} value={form.route} onChange={(e) => set("route", e.target.value)} placeholder="KLAS..HEC..PMD..KLAX" /></div>
+              <div><label style={labelStyle}>Est. time enroute</label><input style={fieldStyle} value={form.ete} onChange={(e) => set("ete", e.target.value)} placeholder="1:15" /></div>
+              <div><label style={labelStyle}>Fuel on board (hrs:min)</label><input style={fieldStyle} value={form.fuelOnBoard} onChange={(e) => set("fuelOnBoard", e.target.value)} placeholder="4:30" /></div>
+              <div><label style={labelStyle}>Persons aboard</label><input style={fieldStyle} value={form.personsAboard} onChange={(e) => set("personsAboard", e.target.value)} placeholder="2" /></div>
+              <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Remarks</label><input style={fieldStyle} value={form.remarks} onChange={(e) => set("remarks", e.target.value)} placeholder="Optional" /></div>
             </div>
             <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
               <label style={checkRow}><input type="checkbox" checked={form.usedChartsOrComputer} onChange={(e) => set("usedChartsOrComputer", e.target.checked)} /> Used charts/computer for all planning</label>

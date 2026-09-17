@@ -34,6 +34,15 @@ export const AV_CANVAS = {
     cas: { RED: 0, YELLOW: 9, BLUE: 0, WHITE: 6, GREEN: 6 },
     tabs: [
       {
+        id: "map",
+        label: "Map",
+        description: "Live aviation map — METAR dots always on. Toggle Airports, Airspace, Navaids, and Traffic layers. Click any marker for detail.",
+        blocks: [
+          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 560,
+            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"] },
+        ],
+      },
+      {
         id: "flight",
         label: "Flight",
         description: "Your next planned flight — ForeFlight-style. Fill in the details with Skye and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
@@ -67,15 +76,6 @@ export const AV_CANVAS = {
             { band: "BLUE", label: "BUILD PREFLIGHT PACKAGE", title: "Tell Skye to pull the full go/no-go package", detail: "Say: 'Build me a preflight package for PHOG to PHNL tomorrow at 08:00.' Skye pulls live weather, NOTAMs, computes W&B with your pax weights, scores the FRAT, and generates the release package.", action: "Open chat" },
             { band: "BLUE", label: "FILE FLIGHT PLAN", title: "Tell Skye to file IFR with PHOG clearance delivery", detail: "Say: 'File my IFR for PHOG PHNL FL230 V19 at 0800Z.' Skye formats the flight plan and confirms filing.", action: "File plan" },
           ] },
-        ],
-      },
-      {
-        id: "map",
-        label: "Map",
-        description: "Live aviation map — METAR dots always on. Toggle Airports, Airspace, Navaids, and Traffic layers. Click any marker for detail.",
-        blocks: [
-          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 560,
-            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"] },
         ],
       },
       {
