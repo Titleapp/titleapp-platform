@@ -5200,6 +5200,45 @@ export default function App() {
             viewResolvedRef.current = true;
             transitionTo("app");
           } else if (localStorage.getItem("TENANT_ID")) {
+            // 2026-09-17 fix — a native aviation launch whose webview
+            // retained its route/sessionStorage across a rebuild (a real,
+            // observed Capacitor/WKWebView behavior: reinstalling the same
+            // bundle ID doesn't always clear its persisted storage) never
+            // hits the `ta_redirect_page` branch above at all — main.jsx
+            // only sets that flag when `window.location.pathname === "/"`,
+            // which a retained route can skip. Result: this branch blindly
+            // trusted a stale TENANT_ID from a completely unrelated tenant
+            // (confirmed live: "Title App LLC," a generic no-aviation-worker
+            // tenant, left over from earlier unrelated testing) instead of
+            // ever checking it actually has an aviation worker — the same
+            // bug class this file's own comment two branches up says
+            // "shipped once already." Fix: for an aviation-flavored native
+            // build specifically, verify the stored tenant actually has an
+            // av- worker before trusting it; if not, clear it and fall
+            // through to real re-resolution instead of the stale value.
+            const storedTid = localStorage.getItem("TENANT_ID");
+            const storedTenant = (data.tenants || {})[storedTid] || {};
+            const storedTenantIsAviation = Array.isArray(storedTenant.activeWorkers)
+              && storedTenant.activeWorkers.some((w) => typeof w === "string" && w.startsWith("av-"));
+            if (import.meta.env.VITE_NATIVE_FLAVOR === "aviation" && !storedTenantIsAviation) {
+              localStorage.removeItem("TENANT_ID");
+              const mems = data.memberships || [];
+              const tenants = data.tenants || {};
+              const aviationMem = mems.find((m) => {
+                const t = tenants[m.tenantId] || {};
+                return Array.isArray(t.activeWorkers) && t.activeWorkers.some((w) => typeof w === "string" && w.startsWith("av-"));
+              });
+              if (aviationMem) {
+                const tenant = tenants[aviationMem.tenantId] || {};
+                localStorage.setItem("TENANT_ID", aviationMem.tenantId);
+                if (tenant.vertical && tenant.vertical !== "GLOBAL") localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+                if (tenant.companyName || tenant.name) {
+                  localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+                  localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+                }
+                sessionStorage.setItem("ta_redirect_page", "av-copilot-001");
+              }
+            }
             // Returning user with existing workspace — go straight to app
             viewResolvedRef.current = true;
             transitionTo("app");
