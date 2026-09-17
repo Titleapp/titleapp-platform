@@ -35487,6 +35487,41 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // REAL ESTATE MAINTENANCE — tenant/GM/field-tech maintenance ticket
+    // workflow (CODEX 90 consolidation, 2026-09-16). See
+    // services/re/maintenanceTickets.js for the schema-consolidation
+    // rationale — this replaces three previously-disconnected
+    // implementations (an API-key-gated route, an unread demo-seeded
+    // collection, and three fully-mocked canvas components) with one real
+    // path. Deliberately does NOT include the buyer/lessor walkthrough or
+    // building-inspector flows from CODEX 90 — those stay unbuilt pending
+    // the security review that doc flags as unresolved.
+    // ----------------------------
+    if (route && route.startsWith("/re:")) {
+      const reAction = route.replace("/re:", "");
+      const reHandlers = require("./services/re/maintenanceTickets");
+      const rctx = getCtx(req, req.body || {}, auth.user);
+      try {
+        switch (reAction) {
+        case "createMaintenanceTicket":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await reHandlers.handleCreateMaintenanceTicket(req, res, rctx);
+        case "listMaintenanceTickets":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await reHandlers.handleListMaintenanceTickets(req, res, rctx);
+        case "updateMaintenanceTicket":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await reHandlers.handleUpdateMaintenanceTicket(req, res, rctx);
+        default:
+          return jsonError(res, 404, "Unknown re action: " + reAction);
+        }
+      } catch (e) {
+        console.error("re failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // AVIATION CREW SCHEDULING — roster, swap/release/pickup within OT
     // rules, bid windows (CODEX aviation-suite crew-scheduling buildout,
     // Sean 2026-08-17). See services/scheduling/crewScheduling.js.

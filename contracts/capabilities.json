@@ -1359,6 +1359,39 @@
       "writesAudit": true
     },
     {
+      "id": "re.create_maintenance_ticket_v1",
+      "class": "re",
+      "summary": "2026-09-16, CODEX 90 — a tenant (or GM/PM, via source:\"pm_dashboard\") files a maintenance ticket. First real capability in a namespace that was a hard zero before this (contracts/capabilities.json had no real-estate/property/maintenance capability at all — see CODEX 90 §2.4). Writes tenants/{scopeId}/maintenanceTickets/{id}, the schema this doc consolidates onto (previously three disconnected implementations: an API-key-gated route nothing called, a demo-seeded collection nothing read, and three hardcoded canvas components whose Submit/Pay Now buttons had no handlers at all). An optional photo is persisted via the generic Storage service (functions/functions/lib/storage) — stores the objectId, not a URL, since Storage's signed URLs expire after 1 hour (the exact bug CODEX 90 caught in the schema it's replacing). Dispatched by POST /v1/re:createMaintenanceTicket (services/re/maintenanceTickets.js). Wired to TenantPortalCanvas.jsx's previously-dead \"Submit\" button.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "re.list_maintenance_tickets_v1",
+      "class": "re",
+      "summary": "2026-09-16, CODEX 90 — real read of tenants/{scopeId}/maintenanceTickets for the tenant portal (own tickets) and property-manager dashboard (all tickets) canvases, replacing PropertyManagerCanvas.jsx's and TenantPortalCanvas.jsx's hardcoded DEMO_MAINTENANCE/MAINTENANCE constants. No per-unit/per-role scoping yet — every member of the tenant sees every ticket, same as the rest of the platform pending the role-model work CODEX 90 §2.6 flags as separate, cross-vertical, not-yet-built work. Dispatched by GET /v1/re:listMaintenanceTickets.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "re.update_maintenance_ticket_v1",
+      "class": "re",
+      "summary": "2026-09-16, CODEX 90 — GM/field-tech side: assign a ticket, update its status, record a resolution description, attach an optional resolution photo (same Storage-objectId pattern as the issue photo), and mark complete. Replaces REMaintenance.jsx's \"AI: Dispatch vendor\"/\"AI: Follow up\" buttons, which previously only pre-filled a chat prompt and called no real API. Dispatched by POST /v1/re:updateMaintenanceTicket (services/re/maintenanceTickets.js).",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
       "id": "aviation.log_flight_v1",
       "class": "aviation",
       "summary": "2026-08-21 gap-audit fix — pilot logs a flight to their personal Vault logbook (append-only aviation.flight record in logbookEntries). Dispatched by POST /v1/logbook:flight:add (functions/functions/index.js), the same write shape as the existing chat-based log_flight tool on the universal Alex Chief-of-Staff persona. Wired to the \"+ Log Flight\" button on the Aviation CoPilot worker canvas (AviationWorkerCanvas.jsx). No requirement (yet) that the flight reference an active dispatch flight release — open design question, not resolved here.",

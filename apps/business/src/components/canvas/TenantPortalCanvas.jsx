@@ -1,10 +1,53 @@
 // TenantPortalCanvas — consumer-facing tenant portal (Merritt Capital Group)
 // Slug: tenant-portal-001 — rendered for Sara Kahele as a renter.
-import React, { useState } from "react";
+//
+// CODEX 90 (2026-09-16): the maintenance tab now writes/reads a real ticket
+// via services/re/maintenanceTickets.js (tenants/{scopeId}/maintenanceTickets)
+// instead of a hardcoded array with no-op Submit/Pay Now buttons. Rent/lease
+// data (UNIT, PAYMENTS) is intentionally still fixture data — that's a
+// separate, not-yet-scoped real-data pass, not part of CODEX 90.
+import React, { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
 
 const ACCENT = "#0ea5e9";
 const GREEN = "#16a34a";
 const AMBER = "#d97706";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function apiGet(path) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+async function apiPost(path, payload) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) throw new Error(json.error || json.message || `Request failed (${res.status})`);
+  return json;
+}
 
 const UNIT = {
   address: "Kona Gardens Apt 204",
@@ -28,18 +71,14 @@ const PAYMENTS = [
   { month: "March 2026", amount: 1850, date: "Mar 1, 2026", status: "paid", method: "ACH" },
 ];
 
-const MAINTENANCE = [
-  { id: "MR-2026-041", title: "Bathroom faucet dripping", category: "Plumbing", submitted: "Jul 8, 2026", status: "scheduled", scheduled: "Jul 22, 2026", priority: "normal" },
-  { id: "MR-2026-018", title: "AC filter replacement", category: "HVAC", submitted: "Mar 15, 2026", status: "completed", completed: "Mar 18, 2026", priority: "normal" },
-  { id: "MR-2026-003", title: "Kitchen light fixture flickering", category: "Electrical", submitted: "Jan 20, 2026", status: "completed", completed: "Jan 23, 2026", priority: "normal" },
-];
-
 const STATUS_PILL = (status) => {
   const map = {
     "paid": { bg: "#dcfce7", color: "#15803d", label: "Paid" },
     "scheduled": { bg: "#dbeafe", color: "#1d4ed8", label: "Scheduled" },
     "completed": { bg: "#f1f5f9", color: "#475569", label: "Completed" },
     "open": { bg: "#fef3c7", color: "#b45309", label: "Open" },
+    "assigned": { bg: "#dbeafe", color: "#1d4ed8", label: "Assigned" },
+    "in_progress": { bg: "#dbeafe", color: "#1d4ed8", label: "In Progress" },
     "overdue": { bg: "#fee2e2", color: "#b91c1c", label: "Overdue" },
   };
   const s = map[status] || map["open"];
@@ -71,6 +110,43 @@ export default function TenantPortalCanvas() {
   const [tab, setTab] = useState("rent");
   const [mxOpen, setMxOpen] = useState(false);
   const [mxForm, setMxForm] = useState({ title: "", category: "Plumbing", description: "" });
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  async function loadTickets() {
+    try {
+      const result = await apiGet("/v1/re:listMaintenanceTickets");
+      setTickets(Array.isArray(result.tickets) ? result.tickets : []);
+    } catch (e) {
+      console.warn("[TenantPortalCanvas] failed to load maintenance tickets:", e.message);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }
+
+  useEffect(() => { loadTickets(); }, []);
+
+  async function handleSubmitMaintenance() {
+    if (!mxForm.title && !mxForm.description) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await apiPost("/v1/re:createMaintenanceTicket", {
+        description: mxForm.description || mxForm.title,
+        category: mxForm.category,
+        reportedBy: "Sara Kahele", // TODO: real signed-in user's display name, not the fixture UNIT/tenant identity
+      });
+      setMxForm({ title: "", category: "Plumbing", description: "" });
+      setMxOpen(false);
+      await loadTickets();
+    } catch (e) {
+      setSubmitError(e.message || "Failed to submit request");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const nextDue = new Date();
   nextDue.setDate(1);
@@ -207,9 +283,16 @@ export default function TenantPortalCanvas() {
                 rows={3}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #bae6fd", fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 8 }}
               />
+              {submitError && (
+                <div style={{ fontSize: 12, color: "#b91c1c", marginBottom: 8 }}>{submitError}</div>
+              )}
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ padding: "8px 16px", background: ACCENT, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Submit
+                <button
+                  onClick={handleSubmitMaintenance}
+                  disabled={submitting}
+                  style={{ padding: "8px 16px", background: ACCENT, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.6 : 1 }}
+                >
+                  {submitting ? "Submitting…" : "Submit"}
                 </button>
                 <button onClick={() => setMxOpen(false)} style={{ padding: "8px 16px", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
                   Cancel
@@ -218,18 +301,26 @@ export default function TenantPortalCanvas() {
             </div>
           )}
 
-          {MAINTENANCE.map((m, i) => (
-            <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
+          {ticketsLoading && (
+            <div style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", padding: 16 }}>Loading requests…</div>
+          )}
+          {!ticketsLoading && tickets.length === 0 && (
+            <div style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", padding: 16 }}>No maintenance requests yet.</div>
+          )}
+          {tickets.map((t) => (
+            <div key={t.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px 16px", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{m.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{m.category} · Submitted {m.submitted}</div>
-                  {m.scheduled && <div style={{ fontSize: 12, color: "#0369a1", marginTop: 4 }}>Scheduled {m.scheduled}</div>}
-                  {m.completed && <div style={{ fontSize: 12, color: "#15803d", marginTop: 4 }}>Completed {m.completed}</div>}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{t.description}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    {t.category}{t.reportedAt?._seconds ? ` · Submitted ${new Date(t.reportedAt._seconds * 1000).toLocaleDateString()}` : ""}
+                  </div>
+                  {t.assignedTo && <div style={{ fontSize: 12, color: "#0369a1", marginTop: 4 }}>Assigned to {t.assignedTo}</div>}
+                  {t.completedAt && <div style={{ fontSize: 12, color: "#15803d", marginTop: 4 }}>Completed</div>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                  {STATUS_PILL(m.status)}
-                  <span style={{ fontSize: 10, color: "#94a3b8" }}>{m.id}</span>
+                  {STATUS_PILL(t.status)}
+                  <span style={{ fontSize: 10, color: "#94a3b8" }}>{t.id.slice(0, 8)}</span>
                 </div>
               </div>
             </div>
