@@ -401,7 +401,16 @@ function ComplianceTab() {
 export default function PropertyManagerCanvas({ payload: directPayload, onBack, resolved: _resolved = {}, context: _context = {}, onDismiss }) {
   const _payload = directPayload || _context?.payload || _resolved?.payload || {}; void _payload;
   const handleBack = onBack || onDismiss || null;
-  const [tab, setTab] = useState("Properties");
+  // 2026-09-17 — role switcher (Sidebar's Operations/Compliance roles both
+  // point at this same canvas, see utils/propertyRole.js) sets this flag
+  // before mounting so the right tab opens by default per role.
+  const [tab, setTab] = useState(() => {
+    try {
+      const preferred = sessionStorage.getItem("ta_property_default_tab");
+      if (preferred && TABS.includes(preferred)) return preferred;
+    } catch { /* sessionStorage unavailable — fall back to default */ }
+    return "Properties";
+  });
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
 
@@ -417,6 +426,17 @@ export default function PropertyManagerCanvas({ payload: directPayload, onBack, 
   }
 
   useEffect(() => { loadTickets(); }, []);
+
+  // Property RoleSwitcher (Sidebar) fires this when switching Operations
+  // <-> Compliance while already on this worker, since that switch doesn't
+  // remount the canvas and so can't rely on the useState initializer above.
+  useEffect(() => {
+    function onRoleTab(e) {
+      if (e.detail && TABS.includes(e.detail)) setTab(e.detail);
+    }
+    window.addEventListener("ta:property-role-tab", onRoleTab);
+    return () => window.removeEventListener("ta:property-role-tab", onRoleTab);
+  }, []);
 
   async function handleAssign(ticketId, assignedTo) {
     try {

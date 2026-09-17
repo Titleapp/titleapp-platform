@@ -10,6 +10,8 @@ import useCreatorStatus from "../hooks/useCreatorStatus";
 import { ALEX_SLUGS } from "../utils/workerConstants";
 import CrewRoleChooser from "./CrewRoleChooser";
 import { CREW_ROLE_TO_WORKER_SLUG, WORKER_SLUG_TO_CREW_ROLE } from "../utils/crewRole";
+import PropertyRoleChooser from "./PropertyRoleChooser";
+import { PROPERTY_ROLE_TO_WORKER_SLUG, PROPERTY_ROLE_LABELS, PROPERTY_ROLE_TO_DEFAULT_TAB } from "../utils/propertyRole";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -959,6 +961,13 @@ export default function Sidebar({
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [makeRoleDefault, setMakeRoleDefault] = useState(false);
+  const [showPropertyRoleSwitcher, setShowPropertyRoleSwitcher] = useState(false);
+  // Operations and Compliance share a worker slug (see utils/propertyRole.js),
+  // so unlike aviation's role this can't be derived from selectedWorker alone
+  // — tracked directly, session-only, defaulting to "operations".
+  const [selectedPropertyRole, setSelectedPropertyRole] = useState(
+    () => sessionStorage.getItem("ta_property_role") || "operations"
+  );
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
   // __vault__ defaults collapsed so Academic Record tucks UNDER My Vault
@@ -1182,6 +1191,31 @@ export default function Sidebar({
     }
     setShowRoleSwitcher(false);
     setMakeRoleDefault(false);
+  }
+
+  // 2026-09-17 — PropertyRoleSwitcher. Session-only, same reasoning as
+  // handleCrewRoleSwitch above (no persisted default yet — no membership
+  // schema field for it and no native PETRA launch path to resolve on
+  // sign-in the way aviation's does, so that's scope-cut for now, not an
+  // oversight). Compliance shares Operations' worker slug, so this also
+  // sets the default-tab flag PropertyManagerCanvas reads on mount.
+  function handlePropertyRoleSwitch(role) {
+    const slug = PROPERTY_ROLE_TO_WORKER_SLUG[role];
+    const defaultTab = PROPERTY_ROLE_TO_DEFAULT_TAB[role];
+    try {
+      if (defaultTab) sessionStorage.setItem("ta_property_default_tab", defaultTab);
+      else sessionStorage.removeItem("ta_property_default_tab");
+      sessionStorage.setItem("ta_property_role", role);
+    } catch { /* best-effort */ }
+    setSelectedPropertyRole(role);
+    if (slug !== selectedWorker) {
+      handleWorkerClick({ slug, name: WORKER_DISPLAY_NAMES[slug], vertical: "Real Estate" });
+    } else if (defaultTab) {
+      // Already on this worker (Operations <-> Compliance share one) — no
+      // remount to pick up the new default tab, so tell the mounted canvas directly.
+      window.dispatchEvent(new CustomEvent("ta:property-role-tab", { detail: defaultTab }));
+    }
+    setShowPropertyRoleSwitcher(false);
   }
 
   // CODEX 48.3 Phase A — return to vault home (clears worker selection)
@@ -1610,6 +1644,35 @@ export default function Sidebar({
                       <input type="checkbox" checked={makeRoleDefault} onChange={(e) => setMakeRoleDefault(e.target.checked)} />
                       Make this my default next time I sign in
                     </label>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2026-09-17 — persistent PropertyRoleSwitcher (Operations/
+                Leasing/Compliance), mirroring the aviation RoleSwitcher
+                above. Finance & Acquisition deliberately excluded — see
+                utils/propertyRole.js for why. */}
+            {workerList.some(w => w.slug === "re-property-manager" || w.slug === "re-salesperson") && (
+              <div style={{ margin: "8px 0 10px" }}>
+                <button
+                  onClick={() => setShowPropertyRoleSwitcher(v => !v)}
+                  style={{
+                    width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fafafa", cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.3 }}>Property Role</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                    {PROPERTY_ROLE_LABELS[selectedPropertyRole] || "Switch role"}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: showPropertyRoleSwitcher ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <path d="M2 4L6 8L10 4"/>
+                  </svg>
+                </button>
+                {showPropertyRoleSwitcher && (
+                  <div style={{ marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" }}>
+                    <PropertyRoleChooser selected={selectedPropertyRole} onSelect={handlePropertyRoleSwitch} />
                   </div>
                 )}
               </div>
