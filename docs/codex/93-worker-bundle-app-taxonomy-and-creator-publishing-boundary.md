@@ -2,6 +2,16 @@
 
 **Status:** Strategy/scoping doc only. Formalizes a live conversation (2026-09-17) into a named framework and a numbered set of open decisions. Nothing built yet.
 
+**Decisions from Sean (2026-09-17, same day), resolving Open Decisions #1–#7 below:**
+- **#1 (revenue share):** unchanged — the split stays the same as it is today. Nothing new to design.
+- **#2 (graduation criteria, layer 2 → 3):** deliberately **not** a rubric. This is a one-off decision Sean makes personally, triggered by revenue or investment considerations as they come up — not a threshold or process to formalize.
+- **#3 (creator wrapper re-auth):** reconfirmed yes.
+- **#4 (mechanical gate contents):** confirmed as proposed below, then refined by #7's liability framing — see the updated §4.
+- **#5 (Business-in-a-Box vs. Flagship App):** confirmed as **two distinct layers**, not one bundle with two GTM wrappers. New implication worth tracking: this creates a **second graduation path**, symmetric to layer 2→3 — SOCIII may run many Business-in-a-Box variants across different business types, and only a few of those will ever get promoted into a fully-built Flagship App. Same "rare, deliberate SOCIII-initiated" shape as the creator-graduation path, not a creator-side decision this time either.
+- **(no number, technical confirmation):** the creator-native-wrapper mechanism itself should reuse the *same* flavor-based Capacitor approach already used for SOCIII's own flagship apps ("the same, with a wrapper") — at least for now. Not a second, bespoke technical system.
+- **#6 (productizing the hand-off):** explicitly **stays manual for now** — "I don't want to get distracted." No self-serve build pipeline to design or build until real creator demand justifies it.
+- **#7 (liability/support boundary):** **liability for a creator's own domain content sits with the creator, not SOCIII** — "it's not our kuleana to check their compliance, our job is to give them a platform that enables them to do things properly and makes customer billing and account stuff easy." This meaningfully narrows what §4's mechanical gate needs to do — see the revised Tier B below.
+
 **Origin:** Grew directly out of two same-day conversations: (1) whether PETRA's title-search capability should be a separate app from property management (resolved: no — see §2.4 and CODEX 92-adjacent findings below), and (2) Sean's own framing of the product stack — "we have workers, we have Business in a Box, we have these initial apps... but if a creator wants to make an app out of their worker, we should probably give them that option, but how do we do that without making ourselves a cat herding shop."
 
 ---
@@ -52,10 +62,10 @@ Native (Capacitor) wraps are not applied uniformly even within one flagship app.
 | **0. Worker** | Atomic RAAS-governed capability | `re-title-search-001` | SOCIII | Not sold standalone | N/A | No | Capability registry |
 | **1a. Business in a Box** | Curated operational bundle for running a business type | Education Business in a Box, Compliance in a Box | SOCIII | Direct to operators | Business subscription | No | Bundle-level QA |
 | **1b. Flagship App** | Curated, branded, role-entitled bundle with real UX | SKYE, PETRA, ELARA | SOCIII, end to end | App Store + web | Consumer subscription or business-in-a-box | Yes, selectively (§2.4's rule) | Full product review |
-| **2. Creator Storefront** | One creator's own worker, published under their name | (none live yet) | Creator (content) + SOCIII (infra/shell) | SOCIII marketplace + creator-branded web page | Revenue share (unchanged split — see Open Decision #1) | **No** — no separate native build published or maintained by SOCIII | Mechanical: capability registry validation, not manual product review |
+| **2. Creator Storefront** | One creator's own worker, published under their name | (none live yet) | Creator (content) + SOCIII (infra/shell) | SOCIII marketplace + creator-branded web page | Revenue share (unchanged split — Resolved #1) | **No** — no separate native build published or maintained by SOCIII | Mechanical: capability registry validation, not manual product review |
 | **3. Graduated Flagship** *(rare, deliberate)* | A creator's work invested into its own dedicated app | (none yet) | SOCIII (deliberate investment decision) | App Store + web | Case-by-case | Yes | Same bar as any flagship decision — SOCIII-initiated only |
 
-Open question carried from the earlier conversation and not yet resolved: **whether 1a and 1b are actually distinct layers or just two go-to-market wrappers on the same underlying bundle concept** (Open Decision #5).
+**Resolved 2026-09-17 (#5): 1a and 1b are two distinct layers, not one bundle with two GTM wrappers.** This surfaces a second graduation path, symmetric to 2→3: SOCIII may run many Business-in-a-Box variants across different business types, and only a few will ever be promoted into a fully-built Flagship App. Same shape as the creator-graduation path — rare, deliberate, SOCIII-initiated, not a rubric (see Resolved #2 below).
 
 ---
 
@@ -73,21 +83,33 @@ This is the actual strategic decision this doc exists to record.
 - **Authentication round-trips through SOCIII, confirmed by Sean this session** — a subscriber's entitlement lives in SOCIII's system, not the creator's. This is what keeps the hand-off a wrapper-and-continue-the-relationship model rather than a disguised full exit.
 - What actually transfers to the creator is narrow and deliberate: the App Store/Play Store developer account, the review process, the ongoing OS-compatibility burden, and the 15–30% store cut on whatever revenue flows through that specific native channel. The underlying platform IP — the RAAS engine, the rules for other tenants, other workers — never leaves SOCIII's infrastructure, consistent with `CLAUDE.md`'s own framing of defensive IP as the engine and record model, not the UI.
 
+**Resolved 2026-09-17 (technical confirmation, no number):** the wrapper described above should reuse the *same* flavor-based Capacitor mechanism already used for SOCIII's own flagship apps, not a second bespoke system — "the same, with a wrapper," at least for now.
+
+**Resolved 2026-09-17 (#4 and #7 together) — the mechanical gate, narrowed by where liability actually sits:**
+
+Sean's answer to #7 is explicit: **liability for a creator's own domain content sits with the creator, not SOCIII** — "it's not our kuleana to check their compliance, our job is to give them a platform that enables them to do things properly and makes customer billing and account stuff easy." That meaningfully narrows what the gate needs to do, into three tiers:
+
+- **Tier A — auto-approved, fully mechanical, this is most submissions.** A creator worker may only declare capabilities from a new, deliberately narrow `creator.*` class — content generation, chat, scheduling, read-only lookups on the creator's own content. No write access to another tenant's data, no direct financial-transaction capability, no direct PHI-adjacent capability. The check is a set-membership test: every capability referenced exists in the allowlist, and the worker defines zero new capability IDs of its own. It then inherits the same `requiredKyc`/`requiredRoles`/tenant-scoping enforcement every other capability already gets platform-wide — nothing new to build there. **This tier does the real regulatory-exposure work, structurally, not by reviewing content:** by simply never granting a creator worker a capability that touches money-movement or health data directly, SOCIII's own platform-level exposure on those fronts is prevented by scope restriction, before liability allocation even matters. Billing/account handling itself stays entirely inside SOCIII's own already-compliant Stripe/account infrastructure — exactly the "customer billing and account stuff easy" half of what Sean says the platform actually owes the creator.
+- **Tier B — automated scan, narrowed by #7 to platform-integrity only, not domain-compliance.** Originally scoped (in the first draft of this doc) to flag regulated-domain vocabulary (medical/legal/financial claims) for human review — **that's now out of scope per #7**, since vetting whether a creator's domain content is *correct* isn't SOCIII's kuleana. What remains genuinely SOCIII's problem regardless of liability allocation: impersonation of SOCIII/Anthropic/a real person, prompt-injection/self-jailbreak attempts, and attempted capability-scope violations (Tier A already blocks these mechanically, but a text-level scan catches an attempt to talk the model into acting outside its declared scope at runtime, not just at submission). This is a materially smaller, more mechanical job than the original Tier B — a platform-abuse scan, not a compliance review.
+- **Tier C — not self-serve.** Any request for a capability outside `creator.*`, or a genuinely new capability, still routes to a real human decision — which in practice overlaps with the graduation conversation (Resolved #2) and shouldn't pretend to be mechanical.
+
 **Why this self-selects correctly:** most creators will be satisfied with a web storefront reaching their whole audience without any app-store friction. Only creators serious enough to run their own developer account will bother with the native option — which is exactly the population equipped to carry that overhead, rather than SOCIII carrying it on their behalf.
 
 **Layer 3 stays separate and rare.** A creator's work becoming a fully SOCIII-built, SOCIII-published flagship app is a deliberate investment decision SOCIII initiates (based on revenue, strategic fit, or exclusivity) — never something a creator graduates into by request or by hitting a metric threshold on their own.
 
 ---
 
-## 5. Open Decisions
+## 5. Open Decisions — all seven resolved 2026-09-17
 
-1. **Revenue-share mechanics for layer 2, unchanged per Sean (2026-09-17), but not yet written down anywhere durable.** Needs the actual percentage and calculation basis (gross vs. net of Stripe fees) recorded once, not just referenced.
-2. **Graduation criteria for layer 2 → layer 3 are undefined.** What actually triggers SOCIII investing in a creator's own dedicated app — revenue threshold, strategic exclusivity, a specific request SOCIII decides to honor? Needs a real answer before the first graduation happens, not decided ad hoc under deal pressure.
-3. ~~Does the creator wrapper re-authenticate through SOCIII's own auth?~~ **Resolved 2026-09-17 — yes**, per Sean's direct answer this session. Recorded here so it isn't re-litigated later.
-4. **The capability-registry gate is currently a manual, engineer-authored process — there is no submission-time validation pipeline for a creator-authored ruleset.** Needs real design: what specifically gets checked mechanically (capability calls stay within `allowedCallers`/`requiredKyc`/`requiredRoles`) versus what still needs a human look (is the ruleset's actual advice safe/compliant in its domain) before a creator's worker goes live.
-5. **Whether Business-in-a-Box (1a) and Flagship App (1b) are meaningfully distinct layers, or two GTM wrappers on one bundle concept.** Carried over from the chart-outline stage of this conversation, not yet resolved.
-6. **Productizing the hand-off itself.** `VITE_NATIVE_FLAVOR` today is an internally-set build-time value requiring a SOCIII engineer to cut each build. Turning this into something a creator can actually self-generate (a real CI/build pipeline, not a manual per-creator engineering task) is real, unscoped work — without it, "hand them a repo" still means SOCIII engineering time per creator, which partially reintroduces the scaling problem this doc is trying to solve.
-7. **Liability/support boundary once a creator's native app is live under their own developer account.** The capability registry prevents a creator's worker from calling capabilities it isn't entitled to — it does not evaluate whether the ruleset's actual domain content (medical, legal, financial) is sound. Needs an explicit answer on what SOCIII is and isn't responsible for once a creator-authored worker is live and reachable via a native app SOCIII didn't build.
+1. ~~Revenue-share mechanics for layer 2~~ — **Resolved: unchanged.** Same split as today; nothing new to design. (Still worth writing the actual percentage/calculation basis down somewhere durable outside this doc — that's a documentation task, not an open decision anymore.)
+2. ~~Graduation criteria for layer 2 → layer 3~~ — **Resolved: deliberately not a rubric.** A one-off decision Sean makes personally, triggered by revenue or investment considerations as they arise. Same answer extends to the new 1a→1b graduation path found while resolving #5.
+3. ~~Does the creator wrapper re-authenticate through SOCIII's own auth?~~ — **Resolved 2026-09-17 — yes.** Reconfirmed.
+4. ~~What the mechanical gate checks~~ — **Resolved: three tiers (A/B/C), see §4.** Narrowed materially by #7's liability answer — Tier B dropped from "flag regulated-domain content for human review" to "platform-integrity/abuse scan only."
+5. ~~Whether Business-in-a-Box (1a) and Flagship App (1b) are meaningfully distinct layers~~ — **Resolved: yes, two distinct layers**, with a symmetric 1a→1b graduation path (see §3).
+6. ~~Productizing the hand-off itself~~ — **Resolved: stays manual, on purpose.** "I don't want to get distracted" — no self-serve build pipeline until real creator demand justifies the investment. A SOCIII engineer cuts each creator build by hand for now.
+7. ~~Liability/support boundary once a creator's native app is live~~ — **Resolved: liability for the creator's own domain content sits with the creator, not SOCIII.** SOCIII's job is the enabling platform (properly-scoped capabilities, billing, account infrastructure), not compliance-checking what creators build with it. This is also what narrowed #4's Tier B.
+
+**No open decisions remain from this doc's original scope.** Any of these can still be revisited if real creator activity surfaces something the framework didn't anticipate — this is a strategy doc formalizing decisions already made, not a permanent constraint on revisiting them.
 
 ---
 
