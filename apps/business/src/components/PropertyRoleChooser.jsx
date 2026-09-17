@@ -1,14 +1,15 @@
 import React from "react";
 import { PROPERTY_ROLE_LABELS } from "../utils/propertyRole";
 
-// 2026-09-17 — the 3 property-role cards for PropertyRolePrompt/Sidebar's
+// 2026-09-17 — the property-role cards for PropertyRolePrompt/Sidebar's
 // RoleSwitcher, mirroring CrewRoleChooser's pattern for aviation. "Who are
-// you," not "pick a tool" — see propertyRole.js for why there are 3, not 4.
-const ROLE_ICONS = { operations: "OP", leasing: "L", compliance: "C" };
+// you," not "pick a tool" — see propertyRole.js for why Title & Escrow is
+// in this set (real backend) and Finance & Acquisition isn't (not yet).
+const ROLE_ICONS = { operations: "OP", leasing: "L", compliance: "C", title: "T" };
 
 export default function PropertyRoleChooser({ selected, onSelect }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
       {Object.entries(PROPERTY_ROLE_LABELS).map(([role, label]) => {
         const isSelected = selected === role;
         return (

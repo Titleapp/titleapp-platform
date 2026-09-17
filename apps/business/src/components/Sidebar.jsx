@@ -861,6 +861,7 @@ const WORKER_DISPLAY_NAMES = {
   "re-salesperson": "Real Estate Advocate",
   "re-advocate": "Real Estate Advocate",
   "re-property-manager": "Property Manager",
+  "re-title-search-001": "Title & Escrow",
   "title-abstract-001": "Title & Abstract",
   "zoning-001": "Zoning & Land Use",
   // Education K-12 — S52.54/S52.55, built via the upload-first fast path
@@ -1650,10 +1651,11 @@ export default function Sidebar({
             )}
 
             {/* 2026-09-17 — persistent PropertyRoleSwitcher (Operations/
-                Leasing/Compliance), mirroring the aviation RoleSwitcher
-                above. Finance & Acquisition deliberately excluded — see
-                utils/propertyRole.js for why. */}
-            {workerList.some(w => w.slug === "re-property-manager" || w.slug === "re-salesperson") && (
+                Leasing/Compliance/Title & Escrow — added same day per CODEX
+                93), mirroring the aviation RoleSwitcher above. Finance &
+                Acquisition deliberately excluded — see utils/propertyRole.js
+                for why. */}
+            {workerList.some(w => w.slug === "re-property-manager" || w.slug === "re-salesperson" || w.slug === "re-title-search-001") && (
               <div style={{ margin: "8px 0 10px" }}>
                 <button
                   onClick={() => setShowPropertyRoleSwitcher(v => !v)}
