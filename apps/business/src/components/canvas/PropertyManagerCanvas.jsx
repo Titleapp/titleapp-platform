@@ -1,4 +1,49 @@
-import { useState } from "react";
+// CODEX 90 (2026-09-16): the Maintenance tab now reads/writes real tickets
+// via services/re/maintenanceTickets.js (tenants/{scopeId}/maintenanceTickets)
+// instead of the DEMO_MAINTENANCE fixture. Properties, Lease-Up, Screening,
+// Evictions, and Compliance tabs are intentionally still fixture data — no
+// real backend exists for any of those yet (a much larger, separate scope
+// than the maintenance-ticket loop CODEX 90 called "buildable now"). The
+// per-unit `mxOpen` badges on the Properties tab also stay hardcoded, since
+// real tickets aren't currently linked to these fixture unit IDs.
+import { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function apiGet(path) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+async function apiPost(path, payload) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) throw new Error(json.error || json.message || `Request failed (${res.status})`);
+  return json;
+}
 
 const DEMO_PROPERTIES = [
   {
@@ -232,29 +277,71 @@ function ScreeningTab() {
   );
 }
 
-function MaintenanceTab() {
-  const open = DEMO_MAINTENANCE.filter((m) => m.status !== "closed");
-  const closed = DEMO_MAINTENANCE.filter((m) => m.status === "closed");
+function MaintenanceTab({ tickets, ticketsLoading, onAssign, onComplete }) {
+  const open = tickets.filter((t) => t.status !== "completed");
+  const closed = tickets.filter((t) => t.status === "completed");
+  const [assigningId, setAssigningId] = useState(null);
+  const [assignName, setAssignName] = useState("");
+
+  if (ticketsLoading) {
+    return <div style={{ color: "#6b7280", fontSize: 13, textAlign: "center", padding: 24 }}>Loading maintenance tickets…</div>;
+  }
+  if (tickets.length === 0) {
+    return <div style={{ color: "#6b7280", fontSize: 13, textAlign: "center", padding: 24 }}>No maintenance tickets yet.</div>;
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {open.map((m) => (
-        <div key={m.id} style={{ background: "#fff", border: `1px solid ${m.type === "emergency" ? "#fca5a5" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px" }}>
+      {open.map((t) => (
+        <div key={t.id} style={{ background: "#fff", border: `1px solid ${t.severityReported === "emergency" ? "#fca5a5" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: MX_TYPE_COLOR[m.type], borderRadius: 4, padding: "1px 7px", textTransform: "uppercase" }}>{m.type}</span>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", background: "#f3f4f6", borderRadius: 4, padding: "1px 7px" }}>{MX_STATUS_LABEL[m.status]}</span>
-            <span style={{ fontSize: 11, color: "#6b7280", marginLeft: "auto" }}>Est. ${m.estCost}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: MX_TYPE_COLOR[t.severityReported] || "#3b82f6", borderRadius: 4, padding: "1px 7px", textTransform: "uppercase" }}>{t.category}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", background: "#f3f4f6", borderRadius: 4, padding: "1px 7px" }}>{MX_STATUS_LABEL[t.status] || t.status}</span>
+            {t.costEstimate != null && <span style={{ fontSize: 11, color: "#6b7280", marginLeft: "auto" }}>Est. ${t.costEstimate}</span>}
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{m.issue}</div>
-          <div style={{ fontSize: 11, color: "#6b7280" }}>{m.unit} · Opened {m.opened} · Vendor: {m.vendor}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{t.description}</div>
+          <div style={{ fontSize: 11, color: "#6b7280" }}>
+            {t.unitId ? `Unit ${t.unitId} · ` : ""}Reported by {t.reportedBy || "tenant"}
+            {t.assignedTo ? ` · Assigned to ${t.assignedTo}` : ""}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            {!t.assignedTo && assigningId !== t.id && (
+              <button onClick={() => { setAssigningId(t.id); setAssignName(""); }} style={{ padding: "5px 10px", fontSize: 11, fontWeight: 600, background: "#f3f4f6", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                Assign
+              </button>
+            )}
+            {assigningId === t.id && (
+              <>
+                <input
+                  autoFocus
+                  placeholder="Tech/vendor name"
+                  value={assignName}
+                  onChange={(e) => setAssignName(e.target.value)}
+                  style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #d1d5db", borderRadius: 6, width: 140 }}
+                />
+                <button
+                  onClick={() => { if (assignName.trim()) { onAssign(t.id, assignName.trim()); setAssigningId(null); } }}
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 600, background: "#7c3aed", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+                >
+                  Save
+                </button>
+              </>
+            )}
+            {t.status !== "completed" && (
+              <button onClick={() => onComplete(t.id)} style={{ padding: "5px 10px", fontSize: 11, fontWeight: 600, background: "#16a34a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                Mark Complete
+              </button>
+            )}
+          </div>
         </div>
       ))}
       {closed.length > 0 && (
         <>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", marginTop: 6 }}>CLOSED</div>
-          {closed.map((m) => (
-            <div key={m.id} style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px", opacity: 0.7 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{m.issue}</div>
-              <div style={{ fontSize: 11, color: "#9ca3af" }}>{m.unit} · Closed · ${m.estCost}</div>
+          {closed.map((t) => (
+            <div key={t.id} style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 14px", opacity: 0.7 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{t.description}</div>
+              <div style={{ fontSize: 11, color: "#9ca3af" }}>{t.unitId ? `Unit ${t.unitId} · ` : ""}Closed{t.costEstimate != null ? ` · $${t.costEstimate}` : ""}</div>
             </div>
           ))}
         </>
@@ -315,6 +402,39 @@ export default function PropertyManagerCanvas({ payload: directPayload, onBack, 
   const _payload = directPayload || _context?.payload || _resolved?.payload || {}; void _payload;
   const handleBack = onBack || onDismiss || null;
   const [tab, setTab] = useState("Properties");
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+
+  async function loadTickets() {
+    try {
+      const result = await apiGet("/v1/re:listMaintenanceTickets");
+      setTickets(Array.isArray(result.tickets) ? result.tickets : []);
+    } catch (e) {
+      console.warn("[PropertyManagerCanvas] failed to load maintenance tickets:", e.message);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }
+
+  useEffect(() => { loadTickets(); }, []);
+
+  async function handleAssign(ticketId, assignedTo) {
+    try {
+      await apiPost("/v1/re:updateMaintenanceTicket", { ticketId, assignedTo });
+      await loadTickets();
+    } catch (e) {
+      console.warn("[PropertyManagerCanvas] assign failed:", e.message);
+    }
+  }
+
+  async function handleComplete(ticketId) {
+    try {
+      await apiPost("/v1/re:updateMaintenanceTicket", { ticketId, markComplete: true });
+      await loadTickets();
+    } catch (e) {
+      console.warn("[PropertyManagerCanvas] complete failed:", e.message);
+    }
+  }
 
   const allUnits = DEMO_PROPERTIES.flatMap((p) => p.units);
   const occupied = allUnits.filter((u) => u.status === "occupied" || u.status === "eviction").length;
@@ -323,7 +443,7 @@ export default function PropertyManagerCanvas({ payload: directPayload, onBack, 
     Properties: <PropertiesTab />,
     "Lease-Up": <LeaseUpTab />,
     Screening: <ScreeningTab />,
-    Maintenance: <MaintenanceTab />,
+    Maintenance: <MaintenanceTab tickets={tickets} ticketsLoading={ticketsLoading} onAssign={handleAssign} onComplete={handleComplete} />,
     Evictions: <EvictionsTab />,
     Compliance: <ComplianceTab />,
   };

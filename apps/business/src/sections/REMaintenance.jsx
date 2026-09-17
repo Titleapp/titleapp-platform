@@ -1,14 +1,74 @@
-import React, { useState } from "react";
+// CODEX 90 (2026-09-16): reads/writes real tickets via
+// services/re/maintenanceTickets.js (tenants/{scopeId}/maintenanceTickets)
+// instead of the hardcoded REQUESTS array below. Column mapping (this board
+// uses new/in-progress/waiting-vendor/complete; the backend uses
+// open/in_progress/assigned/completed):
+//   open -> "new", assigned -> "waiting-vendor" (assigned to a named
+//   vendor/tech IS "waiting on vendor"), in_progress -> "in-progress",
+//   completed -> "complete". No backend schema change needed for this.
+import React, { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
 
-const REQUESTS = [
-  { id: 1, title: "Water Heater Replacement", property: "Riverside Apartments", unit: "1A", tenant: "Maria Santos", priority: "emergency", status: "in-progress", created: "2026-02-14", vendor: "ABC Plumbing", cost: 1200, description: "No hot water. Water heater leaking. Emergency dispatch.", flag: "5 days overdue", photos: 2 },
-  { id: 2, title: "Garbage Disposal Repair", property: "San Marco Townhomes", unit: "TH-3", tenant: "Chris Adams", priority: "medium", status: "new", created: "2026-02-18", vendor: null, cost: null, description: "Disposal jammed and making grinding noise.", photos: 1 },
-  { id: 3, title: "HVAC Filter Change", property: "Beach Cottages", unit: "C", tenant: "Brian Foster", priority: "low", status: "complete", created: "2026-02-10", vendor: "Cool Air HVAC", cost: 85, description: "Quarterly filter replacement. Completed Feb 15.", photos: 0 },
-  { id: 4, title: "Toilet Running", property: "Riverside Apartments", unit: "4B", tenant: "Nicole Johnson", priority: "medium", status: "new", created: "2026-02-17", vendor: null, cost: null, description: "Toilet in master bath runs continuously.", photos: 0 },
-  { id: 5, title: "Broken Window Lock", property: "Southside Flats", unit: "1", tenant: "Angela Davis", priority: "high", status: "waiting-vendor", created: "2026-02-15", vendor: "SecureAll Windows", cost: 250, description: "Bedroom window lock broken. Security concern.", scheduledDate: "2026-02-21", photos: 1 },
-  { id: 6, title: "Parking Lot Light Out", property: "Riverside Apartments", unit: "Common", tenant: null, priority: "medium", status: "in-progress", created: "2026-02-16", vendor: "BrightStar Electric", cost: 175, description: "Light pole #3 in parking lot not functioning.", photos: 0 },
-  { id: 7, title: "Roof Leak - Unit 2B", property: "Riverside Apartments", unit: "2B", tenant: "Ashley Torres", priority: "high", status: "waiting-vendor", created: "2026-02-13", vendor: "TopNotch Roofing", cost: 800, description: "Ceiling stain growing in bedroom. Roof inspection scheduled.", scheduledDate: "2026-02-22", photos: 3 },
-];
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function apiGet(path) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+async function apiPost(path, payload) {
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken(false).catch(() => null) : null;
+  const tenantId = typeof localStorage !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantId && tenantId !== "vault" ? { "X-Tenant-Id": tenantId } : {}),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) throw new Error(json.error || json.message || `Request failed (${res.status})`);
+  return json;
+}
+
+const STATUS_FROM_BACKEND = {
+  open: "new",
+  assigned: "waiting-vendor",
+  in_progress: "in-progress",
+  completed: "complete",
+};
+
+function ticketToRequest(t) {
+  return {
+    id: t.id,
+    title: t.description,
+    property: t.assetId || "",
+    unit: t.unitId || "",
+    tenant: t.reportedBy || null,
+    priority: t.severityReported === "emergency" ? "emergency" : (t.severityReported || "medium"),
+    status: STATUS_FROM_BACKEND[t.status] || "new",
+    created: t.reportedAt?._seconds ? new Date(t.reportedAt._seconds * 1000).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+    vendor: t.assignedTo || null,
+    cost: t.costEstimate ?? null,
+    description: t.description,
+    flag: null,
+    photos: (t.photosIssue?.length || 0) + (t.photosResolution?.length || 0),
+  };
+}
 
 const PRIORITY_BADGES = {
   emergency: { background: "#fee2e2", color: "#dc2626" },
@@ -33,6 +93,21 @@ function daysOpen(created) {
 
 export default function REMaintenance() {
   const [expandedId, setExpandedId] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadRequests() {
+    try {
+      const result = await apiGet("/v1/re:listMaintenanceTickets");
+      setRequests(Array.isArray(result.tickets) ? result.tickets.map(ticketToRequest) : []);
+    } catch (e) {
+      console.warn("[REMaintenance] failed to load tickets:", e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadRequests(); }, []);
 
   function openChat(prompt) {
     window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
@@ -40,17 +115,31 @@ export default function REMaintenance() {
     }));
   }
 
+  async function dispatchVendor(r) {
+    openChat(`Dispatch a vendor for maintenance request: "${r.title}" at ${r.property} unit ${r.unit}. ${r.description} Priority: ${r.priority}.`);
+    try {
+      await apiPost("/v1/re:updateMaintenanceTicket", { ticketId: r.id, status: "in_progress" });
+      await loadRequests();
+    } catch (e) {
+      console.warn("[REMaintenance] status update failed:", e.message);
+    }
+  }
+
   // KPIs
-  const openCount = REQUESTS.filter((r) => r.status !== "complete").length;
-  const emergencyCount = REQUESTS.filter((r) => r.priority === "emergency").length;
-  const overdueCount = REQUESTS.filter((r) => r.flag && r.flag.includes("overdue")).length;
+  const openCount = requests.filter((r) => r.status !== "complete").length;
+  const emergencyCount = requests.filter((r) => r.priority === "emergency").length;
+  const overdueCount = requests.filter((r) => r.flag && r.flag.includes("overdue")).length;
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading maintenance requests…</div>;
+  }
 
   return (
     <div>
       <div className="pageHeader">
         <div>
           <h1 className="h1">Maintenance</h1>
-          <p className="subtle">{REQUESTS.length} requests -- {openCount} open</p>
+          <p className="subtle">{requests.length} requests -- {openCount} open</p>
         </div>
         <button
           className="iconBtn"
@@ -89,7 +178,7 @@ export default function REMaintenance() {
         alignItems: "start",
       }}>
         {COLUMNS.map((col) => {
-          const items = REQUESTS.filter((r) => r.status === col.key);
+          const items = requests.filter((r) => r.status === col.key);
           return (
             <div key={col.key}>
               {/* Column Header */}
@@ -258,7 +347,7 @@ export default function REMaintenance() {
                                   color: "white",
                                   border: "none",
                                 }}
-                                onClick={() => openChat(`Dispatch a vendor for maintenance request: "${r.title}" at ${r.property} unit ${r.unit}. ${r.description} Priority: ${r.priority}.`)}
+                                onClick={() => dispatchVendor(r)}
                               >
                                 AI: Dispatch vendor
                               </button>
