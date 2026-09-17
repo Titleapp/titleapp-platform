@@ -12,7 +12,6 @@ const buyersRouter = require("./routes/buyers");
 const transactionsRouter = require("./routes/transactions");
 const propertiesRouter = require("./routes/properties");
 const tenantsRouter = require("./routes/tenants");
-const maintenanceRouter = require("./routes/maintenance");
 const inventoryRouter = require("./routes/inventory");
 const customersRouter = require("./routes/customers");
 const dealsRouter = require("./routes/deals");
@@ -103,7 +102,12 @@ app.use("/v1/workspaces", buyersRouter);       // /:workspace_id/buyers
 app.use("/v1/workspaces", transactionsRouter); // /:workspace_id/transactions
 app.use("/v1/workspaces", propertiesRouter);   // /:workspace_id/properties
 app.use("/v1/workspaces", tenantsRouter);      // /:workspace_id/tenants
-app.use("/v1/workspaces", maintenanceRouter);  // /:workspace_id/maintenance
+// maintenanceRouter removed 2026-09-16 (CODEX 90) -- API-key-gated route with
+// zero real callers anywhere (grepped the repo, no frontend/partner/docs
+// reference). Confirmed dead by Sean, not vestigial "vibe coding" worth
+// keeping around. Real maintenance-ticket capability now lives at
+// POST/GET /v1/re:* (services/re/maintenanceTickets.js), Firebase-auth-gated
+// like the rest of the main app, not the API-key partner surface.
 
 // Phase 3 — Auto
 app.use("/v1/workspaces", inventoryRouter);    // /:workspace_id/inventory
