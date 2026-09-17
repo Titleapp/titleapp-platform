@@ -156,6 +156,27 @@ async function fetchOriginShell() {
   return resp.text();
 }
 
+// 2026-09-17 (Sean, live feedback) — this content is real and necessary
+// (crawlers like GPTBot/ClaudeBot need actual readable HTML, not an empty
+// #root), but it previously carried zero styling, so real visitors briefly
+// saw raw browser-default serif text before React mounted and replaced it —
+// reads as a broken page or a sketchy redirect, not a loading state. This
+// styles the SAME text every crawler sees (nothing here is crawler-only or
+// hidden from bots) so the flash looks like an intentional, branded loading
+// moment instead. Colors/font match the real app's own branding (purple
+// #7c3aed accent, Inter font) rather than inventing a new look.
+const SEO_SHELL_STYLE = `<style>
+  body { margin: 0; background: #ffffff; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; color: #0f172a; }
+  #root main { max-width: 720px; margin: 0 auto; padding: 32px 24px; line-height: 1.6; }
+  #root main h1 { font-size: 28px; font-weight: 800; margin: 0 0 12px; color: #0f172a; }
+  #root main h2 { font-size: 18px; font-weight: 700; margin: 24px 0 8px; color: #0f172a; }
+  #root main p { margin: 0 0 12px; color: #334155; }
+  #root main a { color: #7c3aed; text-decoration: none; }
+  #root main a:hover { text-decoration: underline; }
+  #root main ul { padding-left: 20px; }
+  #root main li { margin-bottom: 6px; }
+</style>`;
+
 function injectIntoShell(shellHtml, { title, description, bodyHtml }) {
   let html = shellHtml;
   if (title) {
@@ -167,6 +188,7 @@ function injectIntoShell(shellHtml, { title, description, bodyHtml }) {
       `<meta name="description" content="${escapeHtml(description)}" />`
     );
   }
+  html = html.replace("</head>", `${SEO_SHELL_STYLE}</head>`);
   // Replace whatever's inside the root div, not just an empty/whitespace-only
   // div — index.html itself carries static homepage fallback content baked in
   // at build time (its own crawler-safety net for when this function is down),

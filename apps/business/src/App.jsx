@@ -6189,6 +6189,22 @@ export default function App() {
           />
         )}
         {isDemoSession && <DemoWelcomeBanner />}
+        {isDemoSession && (
+          // 2026-09-17 (Sean) — a persistent, non-dismissible "DEMO" label,
+          // distinct from DemoWelcomeBanner above (that's a one-time,
+          // dismissible walkthrough tooltip, not a standing disclosure).
+          // Needed for showing this to an outside party (e.g. a real title
+          // attorney) so illustrative data is never mistaken for live
+          // production data once the walkthrough is closed.
+          <div style={{
+            position: "fixed", bottom: 14, left: 14, zIndex: 9999,
+            background: "#7c3aed", color: "white", fontSize: 11, fontWeight: 700,
+            padding: "5px 10px", borderRadius: 999, letterSpacing: 0.4,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)", pointerEvents: "none",
+          }}>
+            DEMO — illustrative data
+          </div>
+        )}
         {lockerWorker && (
           <WorkerLockerPanel
             worker={lockerWorker}
