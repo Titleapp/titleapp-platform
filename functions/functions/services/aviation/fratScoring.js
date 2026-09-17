@@ -66,9 +66,13 @@ const MS_PER_HOUR = 3600000;
 
 // ---- Self-report PAVE items (real FAA sample values, reused verbatim) ----
 const SELF_REPORT_POINTS = {
-  howDayGoing: { great: 0, roughDay: 3 },
+  // howDayGoing and planningRushed removed 2026-09-17 (Sean, live-testing
+  // the real build) — subjective mood/rushed self-report questions, not
+  // useful. Self-report max dropped from 20 to 14, non-MEL max from 30 to
+  // 24 — the calibrated band cuts below (0-9/10-19/20-29) were proportioned
+  // to the old 30pt scale and may want revisiting now that the ceiling
+  // moved, but that's a real calibration call, not something to invent here.
   dayOrNight: { day: 1, night: 3 },
-  planningRushed: { no: 0, yes: 3 },
   usedChartsOrComputer: { yes: 0, no: 3 },
   verifiedWeightBalance: { yes: 0, no: 3 },
   evaluatedPerformance: { yes: 0, no: 3 },
@@ -85,12 +89,8 @@ function scoreSelfReport(input = {}) {
     items.push({ key, label, value, points: pts, source: "self-report (FAA SE-42 sample)" });
   };
 
-  add("howDayGoing", "How the day's going", input.howDayGoing === "roughDay" ? "roughDay" : "great",
-    SELF_REPORT_POINTS.howDayGoing);
   add("dayOrNight", "Day or night", input.dayOrNight === "night" ? "night" : "day",
     SELF_REPORT_POINTS.dayOrNight);
-  add("planningRushed", "Rushed planning?", input.planningRushed ? "yes" : "no",
-    SELF_REPORT_POINTS.planningRushed);
   add("usedChartsOrComputer", "Used charts/computer for planning?", input.usedChartsOrComputer === false ? "no" : "yes",
     SELF_REPORT_POINTS.usedChartsOrComputer);
   add("verifiedWeightBalance", "Verified weight & balance?", input.verifiedWeightBalance === false ? "no" : "yes",
@@ -314,7 +314,7 @@ function resolveScopeId({ userId, tenantId }) {
 
 /**
  * POST /v1/aviation:frat:compute
- * Body: { tailNumber, depIcao, arrIcao, date?, selfReport?: {...} }
+ * Body: { tailNumber, depIcao, arrIcao, date?, flightRules?, etd?, altitude?, route?, selfReport?: {...} }
  *
  * Server computes weather/rest-duty/MEL itself from real data — client-
  * supplied weather or MEL data is never trusted for a safety-relevant score
@@ -371,6 +371,13 @@ async function handleComputeFrat(req, res, ctx) {
     depIcao,
     arrIcao,
     date: body.date || null,
+    // Real flight-plan fields, added 2026-09-17 replacing the low-value
+    // "how's the day going"/"rushed" self-report questions — not scored,
+    // just persisted as the actual plan for this flight.
+    flightRules: body.flightRules || null, // "IFR" | "VFR"
+    etd: body.etd || null,
+    altitude: body.altitude || null,
+    route: body.route || null,
     result,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });

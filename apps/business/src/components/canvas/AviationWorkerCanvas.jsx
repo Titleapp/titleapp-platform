@@ -16,8 +16,6 @@ import AviationQRH from "./AviationQRH";
 import WeightBalanceCalculator from "./WeightBalanceCalculator";
 import PerformanceCalculator from "./PerformanceCalculator";
 import { getAircraftTypeProfile } from "./aircraftTypeProfiles";
-import ScratchPad from "../aviation/ScratchPad";
-import AviationProfileView from "./AviationProfileView";
 import CoPilotEFB from "../../sections/CoPilotEFB";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -1215,7 +1213,12 @@ export function LogFlightModal({ onClose, onLogged }) {
 export function NewFlightModal({ onClose, onBuilt }) {
   const [form, setForm] = useState({
     tailNumber: "", depIcao: "", arrIcao: "", date: new Date().toISOString().slice(0, 10),
-    howDayGoing: "great", dayOrNight: "day", planningRushed: false,
+    // 2026-09-17 (Sean, live-testing): "how's the day going"/"rushed to get
+    // off the ground" removed as low-value; replaced with real flight-plan
+    // fields (flight rules, ETD, altitude, route) — see fratScoring.js for
+    // why these aren't scored, just persisted as the actual plan.
+    flightRules: "VFR", etd: "", altitude: "", route: "",
+    dayOrNight: "day",
     usedChartsOrComputer: true, verifiedWeightBalance: true, evaluatedPerformance: true, briefedPassengers: true,
   });
   const [status, setStatus] = useState(null);
@@ -1234,10 +1237,12 @@ export function NewFlightModal({ onClose, onBuilt }) {
         depIcao: form.depIcao.trim().toUpperCase(),
         arrIcao: form.arrIcao.trim().toUpperCase(),
         date: form.date,
+        flightRules: form.flightRules,
+        etd: form.etd.trim(),
+        altitude: form.altitude.trim(),
+        route: form.route.trim(),
         selfReport: {
-          howDayGoing: form.howDayGoing,
           dayOrNight: form.dayOrNight,
-          planningRushed: form.planningRushed,
           usedChartsOrComputer: form.usedChartsOrComputer,
           verifiedWeightBalance: form.verifiedWeightBalance,
           evaluatedPerformance: form.evaluatedPerformance,
@@ -1296,10 +1301,10 @@ export function NewFlightModal({ onClose, onBuilt }) {
               <div><label style={labelStyle}>Departure ICAO *</label><input style={fieldStyle} value={form.depIcao} onChange={(e) => set("depIcao", e.target.value)} placeholder="KLAS" /></div>
               <div><label style={labelStyle}>Arrival ICAO *</label><input style={fieldStyle} value={form.arrIcao} onChange={(e) => set("arrIcao", e.target.value)} placeholder="KLAX" /></div>
               <div>
-                <label style={labelStyle}>How's the day going?</label>
-                <select style={fieldStyle} value={form.howDayGoing} onChange={(e) => set("howDayGoing", e.target.value)}>
-                  <option value="great">Great day</option>
-                  <option value="roughDay">One thing after another (late, errors, out of step)</option>
+                <label style={labelStyle}>IFR or VFR *</label>
+                <select style={fieldStyle} value={form.flightRules} onChange={(e) => set("flightRules", e.target.value)}>
+                  <option value="VFR">VFR</option>
+                  <option value="IFR">IFR</option>
                 </select>
               </div>
               <div>
@@ -1309,9 +1314,11 @@ export function NewFlightModal({ onClose, onBuilt }) {
                   <option value="night">Night</option>
                 </select>
               </div>
+              <div><label style={labelStyle}>ETD (local)</label><input style={fieldStyle} value={form.etd} onChange={(e) => set("etd", e.target.value)} placeholder="1430" /></div>
+              <div><label style={labelStyle}>Planned altitude</label><input style={fieldStyle} value={form.altitude} onChange={(e) => set("altitude", e.target.value)} placeholder="9500" /></div>
+              <div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Route of flight</label><input style={fieldStyle} value={form.route} onChange={(e) => set("route", e.target.value)} placeholder="KLAS..HEC..PMD..KLAX" /></div>
             </div>
             <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-              <label style={checkRow}><input type="checkbox" checked={form.planningRushed} onChange={(e) => set("planningRushed", e.target.checked)} /> Rushed to get off the ground</label>
               <label style={checkRow}><input type="checkbox" checked={form.usedChartsOrComputer} onChange={(e) => set("usedChartsOrComputer", e.target.checked)} /> Used charts/computer for all planning</label>
               <label style={checkRow}><input type="checkbox" checked={form.verifiedWeightBalance} onChange={(e) => set("verifiedWeightBalance", e.target.checked)} /> Verified weight & balance</label>
               <label style={checkRow}><input type="checkbox" checked={form.evaluatedPerformance} onChange={(e) => set("evaluatedPerformance", e.target.checked)} /> Evaluated performance</label>
@@ -2824,20 +2831,18 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
   // persisted per-device (localStorage) and wins over the worker default —
   // same reasoning as the shared-device case in the RoleSwitcher itself.
   const AV_THEME_STORAGE_KEY = "sociii_aviation_theme_v1";
-  const [avTheme, setAvTheme] = useState(() => {
+  // 2026-09-17: setter removed along with the manual Dark/Light toggle
+  // button (see the removed pill row above) — theme is now always whatever
+  // was last persisted, or the default. Default changed same day (Sean) to
+  // dark for every aviation worker/role, not just CoPilot — MX and Dispatch
+  // previously defaulted to light.
+  const [avTheme] = useState(() => {
     try {
       const stored = localStorage.getItem(AV_THEME_STORAGE_KEY);
       if (stored === "light" || stored === "dark") return stored;
     } catch { /* ignore */ }
-    return workerSlug.startsWith("av-copilot") ? "dark" : "light";
+    return "dark";
   });
-  function toggleAvTheme() {
-    setAvTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      try { localStorage.setItem(AV_THEME_STORAGE_KEY, next); } catch { /* ignore */ }
-      return next;
-    });
-  }
   const spec = getAvCanvas(workerSlug);
   const [liveBlocks, setLiveBlocks] = useState({});
   const [loading, setLoading] = useState({});
@@ -3061,12 +3066,11 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
 
   return (
     <div data-av-theme={avTheme} style={{ padding: "20px 20px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 720, margin: "0 auto", background: "var(--av-bg)", color: "var(--av-text)" }}>
-      {/* RoleSwitcher + Scratch Pad + Terrain Profile all sit outside the
-          tab-content below, so switching Copilot/MX/Dispatch never hides or
-          resets any of them — same ScratchPad component/localStorage note
-          as the pilot cockpit (CockpitView.jsx); AviationProfileView
-          (Profile — the ForeFlight-style terrain/vertical-profile chart)
-          follows the identical mount-once-works-from-both-surfaces pattern. */}
+      {/* 2026-09-17 (Sean, live-testing the real build): removed the Dark/
+          Scratch Pad/Profile pill row here — "add no value." Dark-mode
+          toggle, ScratchPad, and AviationProfileView components themselves
+          are untouched (still used elsewhere, e.g. CockpitView.jsx) — only
+          this always-visible entry point into them is gone. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         <RoleSwitcher currentSlug={workerSlug} onSwitch={(slug) => {
           setRoleOverride(slug);
@@ -3081,27 +3085,6 @@ export default function AviationWorkerCanvas({ workerSlug: incomingWorkerSlug })
           // [[SWITCH_WORKER:...]]) already uses to keep chat in sync.
           window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: { slug } }));
         }} />
-        {AVIATION_ROLES.some(r => r.slug === workerSlug) && (
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              type="button"
-              onClick={toggleAvTheme}
-              title={avTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              aria-label={avTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 12px", fontSize: 12.5, fontWeight: 700,
-                borderRadius: 8, border: "1.5px solid var(--av-border-strong)", background: "var(--av-bg-card)",
-                color: "var(--av-text)", cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              <span aria-hidden="true">{avTheme === "dark" ? "☀️" : "🌙"}</span>
-              {avTheme === "dark" ? "Light" : "Dark"}
-            </button>
-            <ScratchPad />
-            <AviationProfileView />
-          </div>
-        )}
       </div>
 
       {/* Header */}

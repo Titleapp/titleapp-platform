@@ -34,41 +34,6 @@ export const AV_CANVAS = {
     cas: { RED: 0, YELLOW: 9, BLUE: 0, WHITE: 6, GREEN: 6 },
     tabs: [
       {
-        id: "map",
-        label: "Map",
-        description: "Live aviation map — METAR dots always on. Toggle Airports, Airspace, Navaids, and Traffic layers. Click any marker for detail.",
-        blocks: [
-          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 560,
-            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"] },
-        ],
-      },
-      {
-        id: "dashboard",
-        label: "Dashboard",
-        description: "Your compliance and currency snapshot — everything that needs attention before your next flight, pulled directly from your training record.",
-        blocks: [
-          { type: "heroes", items: [
-            { band: "YELLOW", title: "9 items expiring 09/30/2026",  detail: "Recurrent training window — FW Gen Sub · PC12 Flight · PC12 Ground · PC12 CTS + 5 more" },
-            { band: "GREEN",  title: "Medical current · Class 1",    detail: "Completed 05/11/2026 · Expires 05/31/2027" },
-            { band: "GREEN",  title: "116.8 cal-year hours · PC-12", detail: "170.1 last 12 months · 54.9 last 90 days · 7.0 last 30 days" },
-          ] },
-          { type: "kpis", items: [
-            { label: "Medical (Class 1)",   value: "Expires 05/31/2027",   band: "GREEN" },
-            { label: "FW - 299",            value: "Expires 03/31/2027",   band: "GREEN" },
-            { label: "CBT Q1",              value: "Expires 03/31/2027",   band: "GREEN" },
-            { label: "CBT Q2",              value: "Expires 06/30/2027",   band: "GREEN" },
-            { label: "CBT Q4",              value: "Expires 12/31/2026",   band: "GREEN" },
-            { label: "HUET - Raft Hands On","value": "Expires 09/30/2027", band: "GREEN" },
-            { label: "FW - Gen Sub",        value: "Expiring 09/30/2026",  band: "YELLOW" },
-            { label: "PC12 - Flight",       value: "Expiring 09/30/2026",  band: "YELLOW" },
-            { label: "PC12 - Ground",       value: "Expiring 09/30/2026",  band: "YELLOW" },
-          ] },
-          { type: "cards", items: [
-            { band: "YELLOW", label: "ACTION REQUIRED", title: "Schedule recurrent training — 9 items expire 09/30/2026", detail: "FW Gen Sub · PC12 Emergency Training · PC12 Flight · PC12 Ground · PC12 293 · PC12 297 · FW 293(a) · CBT Q3 (no completion on file) · PC12 CTS. Recurrent window closes Sep 30.", action: "View Currency" },
-          ] },
-        ],
-      },
-      {
         id: "flight",
         label: "Flight",
         description: "Your next planned flight — ForeFlight-style. Fill in the details with Skye and get a complete go/no-go package: weather, W&B, FRAT, NOTAMs, and navlog.",
@@ -105,35 +70,24 @@ export const AV_CANVAS = {
         ],
       },
       {
-        id: "currency",
-        label: "Currency",
-        description: "Your full compliance record — every training item, completion date, and expiration. This is what FVO shows you, plus the intelligence to act on it.",
+        id: "map",
+        label: "Map",
+        description: "Live aviation map — METAR dots always on. Toggle Airports, Airspace, Navaids, and Traffic layers. Click any marker for detail.",
         blocks: [
-          { type: "heroes", items: [
-            { band: "YELLOW", title: "9 items expiring 09/30/2026", detail: "All in the same recurrent window — schedule simulator and CBT modules now" },
-            { band: "GREEN",  title: "6 items current",             detail: "Medical · FW-299 · CBT Q1/Q2/Q4 · HUET — all clear through 2027" },
-          ] },
-          { type: "table", title: "Training record — PC-12 / Aeromed Air", cols: ["Item", "Completed", "Expires", "Status"], rows: [
-            ["Medical 1 Year",             "05/11/2026", "05/31/2027", "Current ✓"],
-            ["FW - 299",                   "03/21/2026", "03/31/2027", "Current ✓"],
-            ["FW - CBT Q1",                "03/30/2026", "03/31/2027", "Current ✓"],
-            ["FW - CBT Q2",                "06/27/2026", "06/30/2027", "Current ✓"],
-            ["FW - CBT Q4",                "12/29/2025", "12/31/2026", "Current ✓"],
-            ["HUET - Raft Hands On",       "09/22/2025", "09/30/2027", "Current ✓"],
-            ["FW - Gen Sub",               "09/19/2025", "09/30/2026", "⚠ Expiring"],
-            ["PC12 - Emergency Training",  "09/19/2025", "09/30/2026", "⚠ Expiring"],
-            ["PC12 - Flight",              "03/21/2026", "09/30/2026", "⚠ Expiring"],
-            ["PC12 - Ground",              "09/19/2025", "09/30/2026", "⚠ Expiring"],
-            ["PC12 - 293",                 "09/19/2025", "09/30/2026", "⚠ Expiring"],
-            ["PC12 - 297",                 "03/21/2026", "09/30/2026", "⚠ Expiring"],
-            ["FW - 293 (a) 1, 4-8",        "10/12/2025", "09/30/2026", "⚠ Expiring"],
-            ["FW - CBT Q3",                "—",          "09/30/2026", "⚠ No completion on file"],
-            ["PC12 - CTS",                 "—",          "09/30/2026", "⚠ No completion on file"],
-          ] },
-          { type: "prose", items: [
-            { band: "YELLOW", title: "What SOCIII does that FVO can't", text: "FVO shows you a table. SOCIII watches the table, surfaces the deadline before it becomes a problem, and helps you schedule the sim block or CBT module — right from this conversation. All 9 expiring items are in the same recurrent window (Sep 30). Tell Skye 'help me schedule my PC-12 recurrent' and it drafts the FlightSafety request for you." },
-          ] },
+          { type: "aviationMap", center: [20.5, -157.0], zoom: 7, height: 560,
+            icaos: ["PHOG", "PHNL", "PHKO", "PHTO", "PHNY", "PHJH", "PHLI"] },
         ],
+      },
+      {
+        // S52.71 Step 2 — Pilot read-only visibility into MX's world:
+        // operational status, open squawks, upcoming MX, and recent history,
+        // all from the same real endpoints MX/Dispatch already read. One
+        // consolidated view rather than porting MX's 5 separate tabs — see
+        // myAircraftToBlocks in AviationWorkerCanvas.jsx.
+        id: "my-aircraft",
+        label: "My Aircraft(s)",
+        description: "Every aircraft in the fleet — operational status, open squawks, upcoming maintenance, and recent history. Read-only; MX maintains the underlying records. Shows the whole fleet for now, not just aircraft you're rated to fly — per-pilot type ratings aren't tracked yet.",
+        blocks: [],
       },
       {
         id: "preflight",
@@ -168,6 +122,63 @@ export const AV_CANVAS = {
           { type: "map", address: "Teterboro Airport, NJ", sectionLabel: "Route: KTEB → KPBI · IFR FL230" },
           { type: "prose", items: [
             { band: "WHITE", title: "Example go/no-go assessment (not a real briefing)", text: "This illustrates the shape of a completed package. Conditions support the flight. KPBI departure weather is MVFR with improving TAF — if KPBI holds below minimums at arrival, KFLL is a solid alternate 14 miles south. W&B is within limits at all fuel states. FRAT is Low. One NOTAM: ILS 10L OTS at KPBI — file for 28L ILS or expect visual. Suggest requesting IFR clearance direct KPBI with KFLL as alternate. File flight plan and obtain official briefing via 1800wxbrief.com before departure." },
+          ] },
+        ],
+      },
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        description: "Your compliance and currency snapshot — everything that needs attention before your next flight, pulled directly from your training record.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "YELLOW", title: "9 items expiring 09/30/2026",  detail: "Recurrent training window — FW Gen Sub · PC12 Flight · PC12 Ground · PC12 CTS + 5 more" },
+            { band: "GREEN",  title: "Medical current · Class 1",    detail: "Completed 05/11/2026 · Expires 05/31/2027" },
+            { band: "GREEN",  title: "116.8 cal-year hours · PC-12", detail: "170.1 last 12 months · 54.9 last 90 days · 7.0 last 30 days" },
+          ] },
+          { type: "kpis", items: [
+            { label: "Medical (Class 1)",   value: "Expires 05/31/2027",   band: "GREEN" },
+            { label: "FW - 299",            value: "Expires 03/31/2027",   band: "GREEN" },
+            { label: "CBT Q1",              value: "Expires 03/31/2027",   band: "GREEN" },
+            { label: "CBT Q2",              value: "Expires 06/30/2027",   band: "GREEN" },
+            { label: "CBT Q4",              value: "Expires 12/31/2026",   band: "GREEN" },
+            { label: "HUET - Raft Hands On","value": "Expires 09/30/2027", band: "GREEN" },
+            { label: "FW - Gen Sub",        value: "Expiring 09/30/2026",  band: "YELLOW" },
+            { label: "PC12 - Flight",       value: "Expiring 09/30/2026",  band: "YELLOW" },
+            { label: "PC12 - Ground",       value: "Expiring 09/30/2026",  band: "YELLOW" },
+          ] },
+          { type: "cards", items: [
+            { band: "YELLOW", label: "ACTION REQUIRED", title: "Schedule recurrent training — 9 items expire 09/30/2026", detail: "FW Gen Sub · PC12 Emergency Training · PC12 Flight · PC12 Ground · PC12 293 · PC12 297 · FW 293(a) · CBT Q3 (no completion on file) · PC12 CTS. Recurrent window closes Sep 30.", action: "View Currency" },
+          ] },
+        ],
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        description: "Your full compliance record — every training item, completion date, and expiration. This is what FVO shows you, plus the intelligence to act on it.",
+        blocks: [
+          { type: "heroes", items: [
+            { band: "YELLOW", title: "9 items expiring 09/30/2026", detail: "All in the same recurrent window — schedule simulator and CBT modules now" },
+            { band: "GREEN",  title: "6 items current",             detail: "Medical · FW-299 · CBT Q1/Q2/Q4 · HUET — all clear through 2027" },
+          ] },
+          { type: "table", title: "Training record — PC-12 / Aeromed Air", cols: ["Item", "Completed", "Expires", "Status"], rows: [
+            ["Medical 1 Year",             "05/11/2026", "05/31/2027", "Current ✓"],
+            ["FW - 299",                   "03/21/2026", "03/31/2027", "Current ✓"],
+            ["FW - CBT Q1",                "03/30/2026", "03/31/2027", "Current ✓"],
+            ["FW - CBT Q2",                "06/27/2026", "06/30/2027", "Current ✓"],
+            ["FW - CBT Q4",                "12/29/2025", "12/31/2026", "Current ✓"],
+            ["HUET - Raft Hands On",       "09/22/2025", "09/30/2027", "Current ✓"],
+            ["FW - Gen Sub",               "09/19/2025", "09/30/2026", "⚠ Expiring"],
+            ["PC12 - Emergency Training",  "09/19/2025", "09/30/2026", "⚠ Expiring"],
+            ["PC12 - Flight",              "03/21/2026", "09/30/2026", "⚠ Expiring"],
+            ["PC12 - Ground",              "09/19/2025", "09/30/2026", "⚠ Expiring"],
+            ["PC12 - 293",                 "09/19/2025", "09/30/2026", "⚠ Expiring"],
+            ["PC12 - 297",                 "03/21/2026", "09/30/2026", "⚠ Expiring"],
+            ["FW - 293 (a) 1, 4-8",        "10/12/2025", "09/30/2026", "⚠ Expiring"],
+            ["FW - CBT Q3",                "—",          "09/30/2026", "⚠ No completion on file"],
+            ["PC12 - CTS",                 "—",          "09/30/2026", "⚠ No completion on file"],
+          ] },
+          { type: "prose", items: [
+            { band: "YELLOW", title: "What SOCIII does that FVO can't", text: "FVO shows you a table. SOCIII watches the table, surfaces the deadline before it becomes a problem, and helps you schedule the sim block or CBT module — right from this conversation. All 9 expiring items are in the same recurrent window (Sep 30). Tell Skye 'help me schedule my PC-12 recurrent' and it drafts the FlightSafety request for you." },
           ] },
         ],
       },
@@ -262,17 +273,6 @@ export const AV_CANVAS = {
         id: "aircraft-logbook",
         label: "Aircraft Logbook",
         description: "The aircraft's own legal logbook (CAN) — every maintenance action, inspection, and AD compliance, A&P/IA-signed and append-only. Read-only here; MX maintains it.",
-        blocks: [],
-      },
-      {
-        // S52.71 Step 2 — Pilot read-only visibility into MX's world:
-        // operational status, open squawks, upcoming MX, and recent history,
-        // all from the same real endpoints MX/Dispatch already read. One
-        // consolidated view rather than porting MX's 5 separate tabs — see
-        // myAircraftToBlocks in AviationWorkerCanvas.jsx.
-        id: "my-aircraft",
-        label: "My Aircraft(s)",
-        description: "Every aircraft in the fleet — operational status, open squawks, upcoming maintenance, and recent history. Read-only; MX maintains the underlying records. Shows the whole fleet for now, not just aircraft you're rated to fly — per-pilot type ratings aren't tracked yet.",
         blocks: [],
       },
       {
