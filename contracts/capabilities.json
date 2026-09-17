@@ -1621,6 +1621,94 @@
       "requiredRoles": [],
       "emitsEvent": true,
       "writesAudit": true
+    },
+    {
+      "id": "creator.submit_worker_v1",
+      "class": "creator",
+      "summary": "CODEX 93, 2026-09-17 — a creator submits a new layer-2 storefront worker. Real, request-time Tier A/B enforcement (services/creator/workerGate.js), NOT platform-wide registry enforcement (this file's own _enforcement.runtimeEnforced is false) — this is its own gate, scoped to this one new code path. Hard-rejects any capability outside the creator.* allowlist; flags regulated-domain content for mandatory subscriber disclosure + creator-identity display rather than blocking (per CODEX 93 #4, resolved post-legal-call). Requires displayName + creatorCredentials — the creator's identity must be immediately viewable, enforced as a submission requirement, not optional. Dispatched by POST /v1/creator:submitWorker (functions/functions/index.js).",
+      "contexts": ["civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creator.update_worker_v1",
+      "class": "creator",
+      "summary": "CODEX 93, 2026-09-17 — a creator edits their own worker's capabilities or system prompt. Re-runs the FULL Tier A/B gate on every edit, not just the capability list (CODEX 93 round 2's fix — a prompt-only edit previously wouldn't have been re-checked at all, the most direct evasion path in the first design). Dispatched by POST /v1/creator:updateWorker.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creator.suspend_worker_v1",
+      "class": "creator",
+      "summary": "CODEX 93 #8, resolved 2026-09-17 — suspend a creator worker. Currently only self-service (a creator suspending their own worker); SOCIII-initiated discretionary suspension (\"restaurant rule,\" any reason, per Sean) is NOT yet implemented — no platform-staff/admin authorization model exists anywhere in this codebase to gate that half against (confirmed by repo search before building this). Flagged loudly in services/creator/creatorWorkers.js rather than faking a check. Dispatched by POST /v1/creator:suspendWorker.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creator.get_worker_status_v1",
+      "class": "creator",
+      "summary": "CODEX 93, 2026-09-17 — read a creator worker's status, disclosure/identity-display requirements, for any future creator-storefront UI to render. Read-only. Dispatched by GET /v1/creator:workerStatus.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "creator.chat_v1",
+      "class": "creator",
+      "summary": "CODEX 93 Tier A allowlist entry — the baseline capability every creator worker needs. Declarative today: enforced by services/creator/workerGate.js's CREATOR_CAPABILITY_ALLOWLIST at submission/edit time, not yet wired to a real chat-dispatch runtime (no creator-storefront chat surface exists yet — only the submission/gate layer is built). Bounds actions only, not content — see CODEX 93 #4 on why a bare chat capability is still sufficient for regulated-content risk.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "creator.generate_content_v1",
+      "class": "creator",
+      "summary": "CODEX 93 Tier A allowlist entry — content generation for a creator's own storefront. Declarative today, same status as creator.chat_v1 above.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "creator.read_own_content_v1",
+      "class": "creator",
+      "summary": "CODEX 93 Tier A allowlist entry — read-only lookups scoped to the creator's own published content. Declarative today, same status as creator.chat_v1 above.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+    {
+      "id": "creator.schedule_v1",
+      "class": "creator",
+      "summary": "CODEX 93 Tier A allowlist entry — scheduling actions for a creator's own storefront. Declarative today, same status as creator.chat_v1 above.",
+      "contexts": ["civilian"],
+      "allowedCallers": ["chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
     }
   ]
 }

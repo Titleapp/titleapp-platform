@@ -35522,6 +35522,42 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // CREATOR STOREFRONT — CODEX 93 Tier A/B mechanical gate for
+    // creator-published workers (layer 2). Real, request-time enforcement
+    // scoped to this one new code path — the platform-wide capability
+    // registry is documentation-only today (contracts/capabilities.json's
+    // own _enforcement.runtimeEnforced: false), a separate, larger,
+    // already-planned initiative this doesn't wait for or retrofit. See
+    // services/creator/workerGate.js for the Tier A/B logic.
+    // ----------------------------
+    if (route && route.startsWith("/creator:")) {
+      const creatorAction = route.replace("/creator:", "");
+      const creatorHandlers = require("./services/creator/creatorWorkers");
+      const cctx = getCtx(req, req.body || {}, auth.user);
+      try {
+        switch (creatorAction) {
+        case "submitWorker":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await creatorHandlers.handleSubmitCreatorWorker(req, res, cctx);
+        case "updateWorker":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await creatorHandlers.handleUpdateCreatorWorker(req, res, cctx);
+        case "suspendWorker":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await creatorHandlers.handleSuspendCreatorWorker(req, res, cctx);
+        case "workerStatus":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await creatorHandlers.handleGetCreatorWorkerStatus(req, res);
+        default:
+          return jsonError(res, 404, "Unknown creator action: " + creatorAction);
+        }
+      } catch (e) {
+        console.error("creator failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // AVIATION CREW SCHEDULING — roster, swap/release/pickup within OT
     // rules, bid windows (CODEX aviation-suite crew-scheduling buildout,
     // Sean 2026-08-17). See services/scheduling/crewScheduling.js.
