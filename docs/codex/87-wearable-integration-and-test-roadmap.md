@@ -1,8 +1,29 @@
 # CODEX 87 — Wearable Integration: Build-Out and Crawl/Walk/Run Test Roadmap
 
-**Status:** SPEC — no build started, for Sean's review
-**Suite:** Cross-vertical (Aviation MX, Aviation Pilot Ops, Nursing)
-**Date:** 2026-09-04
+**Status:** SPEC — hardware now physically in hand (see 2026-09-19 revision below); build not yet started
+**Suite:** Cross-vertical (Aviation MX, Aviation Pilot Ops, Nursing, LFN Flight/Med Crew). See companion doc **CODEX 96** for the PETRA/real-estate front, split out separately given its own scope (property inspection + property MX/landscaping/engineering).
+**Date:** 2026-09-04 (original), revised 2026-09-19
+
+---
+
+## Revision, 2026-09-19 — hardware arrived, training-first reframing, a fourth front
+
+**Hardware is physically in hand.** RealWear units arrived today. Sean demoed the concept informally to LFN's flight/med crew (not a real patient encounter — showing them the hardware and idea) and, unprompted, their reaction named three distinct real features:
+1. **HUD checklist/dosage display** — hands-free reference during patient care. Lowest risk of the three: it's read-only reference display, not capture of anything.
+2. **Remote medical director communication** — a live comms channel through the headset. Likely overlaps with an already-regulated medical-control communication system LFN has in place — needs LFN's clinical/ops leadership involved before any building starts, not a SOCIII-internal product-test decision.
+3. **Ambient capture during patient care, fed into charting** — the highest-stakes version of the "patient-adjacent" boundary this doc already drew as "full stop" (§6 item 5). Real patient, real PHI, real emergency care. **Not proceeding on this one informally** — it needs LFN's own clinical/compliance/legal sign-off, not a SOCIII pilot decision, regardless of how enthusiastic the crew is. Key distinction that changes the calculus entirely: a flight-team member separately asked about doing this in **training/simulation labs** — confirmed with Sean as literal training/simulation (mannequins, tabletop, no real patient), not a chemistry/clinical lab. That has none of PHI/consent problem — it's the same risk category as this doc's existing nursing self-narration/simulated-encounter stages (§5.3), just a second real client group (LFN's own flight/med crew) hitting the identical pipeline.
+
+**Strategic reframe, Sean's own insight — training-first across every front, not just nursing.** The original crawl/walk sequencing (§5.1/§5.2) had Sean and MX techs starting in **live operations** (his real walkaround/logbook, real MX squawks). Sean's proposed change: start pilot and MX in **training/procedure-practice contexts** instead — preflight flows, checklist use, procedure training (same logic for turbine-aircraft "flows," which are operator-specific per aircraft, same as operator-specific checklists) — for two reasons: (1) it's uniformly lower-risk, matching the same "no live consequence" logic already used for nursing and now the med-crew lab case; (2) training adoption may convert to real-operations adoption *faster* than trying to change already-habituated senior staff behavior — new pilots/techs build the habit on the tool from day one. This unifies all four fronts under one simple rule instead of four separate risk calculations: **every front starts in training/simulation, not live ops.**
+
+**RAAS tiering confirmed for aviation checklists specifically (Sean's own clarification):** AFM/POH-approved checklists are the Tier 1 (manufacturer/regulatory) baseline; each operator's own specific checklist, and for turbine aircraft their own memorized "flows," are Tier 2 (operator policy) documents layered on top. This is the exact same RAAS four-tier shape already used everywhere else in this codebase — no new architecture needed, just real content to encode per operator.
+
+**Revised stage structure, replacing §5's original crawl/walk assignment (see §5 below for the full, updated detail):**
+- **Stage 1 — training/simulation, all four fronts, in parallel, not sequenced by device availability:** pilot checklist/procedure training; MX procedure training (not live squawks); nursing self-narration/simulated encounter (unchanged from original §5.3a/b); LFN flight/med crew training-lab charting capture (new).
+- **Stage 2 — live operations, per front, only once that front's training stage proves out AND (where relevant) gets real institutional sign-off.** Sean's own live logbook stays the lowest-barrier live candidate (existing personal practice, no new risk). MX live squawks, and any live medical charting, each need their own real sign-off before Stage 2 starts — this doc does not presume that sign-off, it's a gate.
+
+**What this doc does NOT resolve, still open:** whether the aviation/MX training use case runs through LFN's own formal recurrent-training/checklist-proficiency program (a real stakeholder relationship to manage) or starts informally with Sean and a few willing pilots/techs — genuinely unanswered as of this revision, worth Sean confirming before Stage 1 building starts for those two fronts specifically.
+
+---
 **Trigger:** Same session as CODEX 86 (nursing charting) and the wearable-strategy-memo Sean shared (`wearable-strategy-memo.md`, forwarded via WhatsApp). Hardware decision, revised once during this same session: **both Sean and Ruthie start on RealWear** — one unit each, RealWear Developer Program (~$1,200 each, each ships a free Navigator 500). Meta glasses are now a possible secondary device for Sean later, not part of the starting hardware — deliberately deferred rather than run in parallel with RealWear from day one. Sean asked for a build-out plan plus a genuine crawl/walk/run test methodology — not literal test *flights*, a staged plan for validating whether the wearable capture actually helps or creates friction before expanding scope — starting from the simplest real primitive: observe something, tell it to remember. Sean's explicit addition: every go/no-go has to capture **why**, not just whether — a failed stage without a real diagnosis (hardware fit, pipeline gap, task mismatch, user resistance) isn't actionable.
 **Research method:** Synthesizes the wearable-strategy-memo's own findings (RealWear/Vuzix institutional positioning, Meta's gated/consumer-motion limitations, the "capture → CODEX reasoning → structured record" architecture) with this session's own file-level audit of what capture/structured-output pipeline already exists in the codebase today (Logbook, `AviationWorkerCanvas.jsx`'s Release Flight form, the RAAS invariant generally). No new external research this pass — the memo already did that work; this doc is the build/test plan on top of it.
 
@@ -105,6 +126,15 @@ Per CODEX 86, nursing is the highest-value vertical here — this roadmap delibe
 - **Success criteria:** matches CODEX 86's own framing — does real-time rules validation measurably reduce missing-required-field errors compared to DocuCare's current manual-faculty-grading baseline. This needs a real comparison, not a vibe check — Ruthie is well-positioned to set up that comparison given she owns the program relationship.
 - **Go/no-go:** this is the highest-value, highest-complexity stage, and per the memo, entirely Ruthie's call on how (or whether) it feeds into the charting worker — this doc scopes the test, it doesn't presume the outcome or push a spec onto her program. Tag the cause from the taxonomy above.
 
+### 5.4 LFN flight/med crew — training-lab charting capture (RealWear) — added 2026-09-19
+
+- **Task:** during a training/simulation lab scenario (mannequin, tabletop — explicitly NOT a real patient encounter), a flight medic or nurse narrates patient-care observations and actions as they'd occur in the field, gets a structured draft chart entry back, validated against the same kind of documentation-standards ruleset used for nursing (CODEX 86) adapted to EMS/flight-medicine charting requirements (a real, not-yet-audited ruleset gap — see §6 item 7).
+- **Device:** RealWear.
+- **Recording context:** no real patient anywhere in the loop — same risk category as nursing's self-narration/simulated-encounter stages (§5.3), not the live-operations category. No LFN clinical/compliance sign-off needed for the training-lab version specifically; **explicitly does not extend to real patient encounters** — see the 2026-09-19 revision note above for why that stays parked.
+- **Success criteria:** same shape as nursing (§5.3) — does capture-to-structured-chart reduce missing/incomplete documentation versus however the training program currently grades or reviews charting today. Needs a real baseline comparison, not a vibe check.
+- **Go/no-go:** tag the cause from the taxonomy in §5's intro. A real failure here (hardware fit in a hands-busy clinical simulation, transcription accuracy on medical terminology, task mismatch) should stop expansion toward the live-operations conversation, not get waved past because the crew was excited about the concept.
+- **Open question, not yet answered:** is this SOCIII's own internal capture, or does it plug into an existing training/simulation record system LFN already uses? Same "second system vs. real system of record" question CODEX 87 already flagged for MX (§5.2) — don't assume it away here either.
+
 ---
 
 ## 6. Open Decisions for Sean
@@ -115,6 +145,9 @@ Per CODEX 86, nursing is the highest-value vertical here — this roadmap delibe
 4. **What happens on a "no-go"** — the memo's own framing ("decide whether to expand hardware, proceed to a paid customer pilot, or stop here") applies per-stage, not just at the end — worth deciding whether a walk-stage failure blocks run from starting, or whether they're independent enough to run in parallel once crawl passes.
 5. **§5.3b's patient-adjacent boundary — genuinely unresolved, needs Sean's direct answer.** Does "no patient-adjacent use, full stop" cover a standardized-patient/classmate role-play scenario (a real person recorded, even though not a real patient), or does run stay at the self-narration level (§5.3a) until this is explicitly decided? This is the one open item in this document that blocks a specific sub-stage from starting — everything else can proceed without it.
 6. **MX record-of-record status** (§5.2) — does a Part 135 operator's official squawk/discrepancy system need to stay the record of record regardless of what SOCIII's capture produces, or is there a real path to SOCIII's output *becoming* that record? This shapes whether walk's success criteria should include "was this accepted as the actual record" as a hard requirement, not just a nice-to-have observation.
+7. **Added 2026-09-19 — is aviation/MX training-first (Stage 1) a formal LFN training-program engagement, or informal?** Changes who the real stakeholder is (a training department vs. just Sean and willing colleagues) and how fast this can actually start. Genuinely unanswered as of this revision.
+8. **Added 2026-09-19 — EMS/flight-medicine charting ruleset doesn't exist yet.** §5.4's training-lab charting capture needs a real documentation-standards ruleset the way nursing has CODEX 86 — this hasn't been scoped. Likely needs its own short research pass (what do EMS/flight-medicine charting standards actually require) before §5.4 can produce a real structured output, not just a transcript.
+9. **Added 2026-09-19 — does §5.4 plug into an existing LFN training/simulation record system, or is it standalone SOCIII capture?** Same record-of-record question as item 6, applied to the med-crew front — don't assume it away.
 
 ---
 
