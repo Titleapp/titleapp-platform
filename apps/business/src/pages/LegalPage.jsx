@@ -1,12 +1,14 @@
 import { EDUCATION_TERMS_HTML, EDUCATION_DPA_HTML } from "../legal/educationLegal";
+import { PRIVACY_POLICY_HTML } from "../legal/privacyPolicy";
+import { TERMS_OF_SERVICE_HTML } from "../legal/termsOfService";
 
 const LEGAL_DOCS = {
-  "privacy-policy": { title: "Privacy Policy", updated: "August 2026" },
+  "privacy-policy": { title: "Privacy Policy", updated: "August 2026", body: PRIVACY_POLICY_HTML },
   "security-policy": { title: "Security Policy", updated: "August 2026" },
   "subscriber-data-rights": { title: "Subscriber Data Rights", updated: "August 2026" },
   "creator-agreement": { title: "Creator Agreement", updated: "August 2026" },
   "business-associate-agreement": { title: "Business Associate Agreement", updated: "August 2026" },
-  "terms-of-service": { title: "Terms of Service", updated: "August 2026" },
+  "terms-of-service": { title: "Terms of Service", updated: "August 2026", body: TERMS_OF_SERVICE_HTML },
   // SOCIII for Education — rendered inline as HTML (body) instead of a PDF.
   "education-terms": { title: "SOCIII for Education — Terms of Service", updated: "June 2026", body: EDUCATION_TERMS_HTML },
   "education-dpa": { title: "SOCIII for Education — Data Processing & FERPA Addendum", updated: "June 2026", body: EDUCATION_DPA_HTML },
@@ -46,11 +48,28 @@ export default function LegalPage({ slug }) {
         <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "24px" }}>Last updated: {doc.updated}</p>
 
         {doc.body ? (
-          <div
-            className="legalBody"
-            style={{ fontSize: "15px", lineHeight: 1.65, color: "#334155" }}
-            dangerouslySetInnerHTML={{ __html: doc.body }}
-          />
+          <>
+            <div
+              className="legalBody"
+              style={{ fontSize: "15px", lineHeight: 1.65, color: "#334155" }}
+              dangerouslySetInnerHTML={{ __html: doc.body }}
+            />
+            <div style={{ marginTop: "24px" }}>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "10px 20px", background: "#7c3aed", color: "white",
+                  borderRadius: "8px", fontSize: "14px", fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Download PDF
+              </a>
+            </div>
+          </>
         ) : (
           <>
             <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", marginBottom: "24px" }}>
