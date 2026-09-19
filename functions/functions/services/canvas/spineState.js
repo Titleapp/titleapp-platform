@@ -298,12 +298,29 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     // has Viewer access on the property — see services/analytics/ga4.js.
     const SOCIII_OWN_TENANT_ID = "ws_1779846027006_hc71aw";
     let ga4 = null;
+    let googleAds = null;
     if (tenantId === SOCIII_OWN_TENANT_ID) {
       try {
         const { getSiteTrafficSummary } = require("../analytics/ga4");
         ga4 = await getSiteTrafficSummary(7);
       } catch (err) {
         console.warn("[spineState] GA4 fetch failed:", err.message);
+      }
+      // Google Ads — same SOCIII-own-tenant gate as GA4 above. Requires
+      // BOTH the developer token (GOOGLE_ADS_DEVELOPER_TOKEN, blocked on
+      // brand verification — CODEX 94 §5) AND Sean having connected his
+      // Google Ads account via Settings (OAuth, not a service account —
+      // see services/analytics/googleAds.js header for why). Fails closed
+      // (null) until both are true, same convention as GA4.
+      try {
+        const cfgSnap = await db.doc("config/marketingWorker").get();
+        const uid = cfgSnap.exists ? cfgSnap.data().socialPosterUserId : null;
+        if (uid) {
+          const { getSearchCampaignSummary } = require("../analytics/googleAds");
+          googleAds = await getSearchCampaignSummary(uid, 7);
+        }
+      } catch (err) {
+        console.warn("[spineState] Google Ads fetch failed:", err.message);
       }
     }
 
@@ -326,6 +343,12 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
           "Site sessions (7d)":  ga4.sessions,
           "Site users (7d)":     ga4.activeUsers,
           "Engaged sessions (7d)": ga4.engagedSessions,
+        } : {}),
+        ...(googleAds ? {
+          "Ad impressions (7d)": googleAds.impressions,
+          "Ad clicks (7d)":      googleAds.clicks,
+          "Ad spend (7d)":       `$${(googleAds.costMicros / 1e6).toFixed(2)}`,
+          "Ad conversions (7d)": googleAds.conversions,
         } : {}),
       } : { "Note": "no campaigns, drafts, or contact lists yet" },
       ...(topCampaigns.length ? { campaigns: topCampaigns } : {}),

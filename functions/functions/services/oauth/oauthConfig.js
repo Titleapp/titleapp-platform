@@ -58,6 +58,31 @@ const OAUTH_PLATFORMS = {
     connectorId: "google_business_posting",
   },
 
+  // CODEX 94 — SOCIII's own Google Ads account (read-only reporting for
+  // Ivy's canvas), not a per-customer posting connector like the platforms
+  // above. Reuses the same shared Google OAuth client (GOOGLE_OAUTH_CLIENT_ID/
+  // SECRET) as google_business — one Google Cloud OAuth client can cover
+  // multiple scopes/APIs, no new client needed. access_type=offline +
+  // prompt=consent are required here specifically — without them Google
+  // only returns a short-lived access token, not the refresh token this
+  // needs for unattended backend polling (see oauthHandler.js's
+  // extraAuthParams support). Blocked on Google Ads developer token /
+  // brand verification being approved — see CODEX 94 §3.1 — but the
+  // connect/callback/status/disconnect flow itself works today via the
+  // existing generic OAuth endpoints regardless of that approval.
+  google_ads: {
+    id: "google_ads",
+    label: "Google Ads",
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    scopes: ["https://www.googleapis.com/auth/adwords"],
+    clientIdEnv: "GOOGLE_OAUTH_CLIENT_ID",
+    clientSecretEnv: "GOOGLE_OAUTH_CLIENT_SECRET",
+    redirectUri: "https://app.sociii.ai/auth/google-ads/callback",
+    connectorId: "google_ads_reporting",
+    extraAuthParams: { access_type: "offline", prompt: "consent" },
+  },
+
   quickbooks: {
     id: "quickbooks",
     label: "QuickBooks Online",

@@ -88,6 +88,15 @@ async function getAuthorizationUrl(platformId, subscriberId) {
     params.set("scope", platform.scopes.join(" "));
   }
 
+  // Static extra query params a platform needs on the initial authorize
+  // redirect (not the token exchange) — e.g. Google's access_type=offline +
+  // prompt=consent, required to get a refresh_token back at all (Google Ads
+  // reporting needs a long-lived refresh token, not just a short access
+  // token). Generic so any future Google-family platform can reuse it.
+  if (platform.extraAuthParams) {
+    for (const [k, v] of Object.entries(platform.extraAuthParams)) params.set(k, v);
+  }
+
   return `${platform.authUrl}?${params.toString()}`;
 }
 
