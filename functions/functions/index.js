@@ -36966,6 +36966,41 @@ Analyze now:`;
       }
     }
 
+    // POST /v1/marketing:createDripCampaign — define a lead-follow-up drip
+    // sequence for this tenant (CODEX 94 §3.7). Ivy can draft the stages, or
+    // a human writes them directly.
+    if (route === "/marketing:createDripCampaign" && method === "POST") {
+      try {
+        const { name, stages } = body || {};
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const { createDripCampaign } = require("./services/marketing/leadDrip");
+        const result = await createDripCampaign(ctx.tenantId, { name, stages });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:createDripCampaign failed:", e);
+        return jsonError(res, 500, "Failed to create drip campaign");
+      }
+    }
+
+    // POST /v1/marketing:enrollLeadDrip — enroll one contact/lead in this
+    // tenant's drip campaign.
+    if (route === "/marketing:enrollLeadDrip" && method === "POST") {
+      try {
+        const { contactId, campaignId } = body || {};
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const { enrollContactInDrip } = require("./services/marketing/leadDrip");
+        const result = await enrollContactInDrip(ctx.tenantId, contactId, campaignId);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:enrollLeadDrip failed:", e);
+        return jsonError(res, 500, "Failed to enroll contact in drip campaign");
+      }
+    }
+
     // POST /v1/marketing:importContacts — Import contacts to SendGrid list
     if (route === "/marketing:importContacts" && method === "POST") {
       try {
@@ -37917,6 +37952,26 @@ exports.everyOtherDayTikTokPost = onSchedule(
     const { runDailyTikTokPost } = require("./marketing/dailyTikTokPost");
     const result = await runDailyTikTokPost();
     console.log("[everyOtherDayTikTokPost]", result);
+  }
+);
+
+// ----------------------------
+// LEAD-FOLLOW-UP DRIP QUEUE PROCESSOR (CODEX 94 §3.7)
+// ----------------------------
+// Sends any customer tenant's pending lead-drip emails whose scheduledAt has
+// passed, then auto-enqueues each contact's next stage. Runs hourly, not
+// daily, since a drip stage's delayDays can be 0 (immediate) and a tenant
+// enrolling a lead shouldn't wait up to 24h for the first email to go out.
+exports.leadDripQueueProcessor = onSchedule(
+  {
+    schedule: "0 * * * *", // every hour, on the hour
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { processLeadDripQueue } = require("./services/marketing/leadDrip");
+    const result = await processLeadDripQueue();
+    console.log("[leadDripQueueProcessor]", result);
   }
 );
 
