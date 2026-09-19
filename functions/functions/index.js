@@ -1308,6 +1308,7 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
               plainContent: d.plainContent || d.body || "",
               fromName: d.fromName,
               fromEmail: d.fromEmail,
+              tenantId,
             });
             console.log("chatEngine side-effect: sendEmailCampaign", result.ok ? "OK" : "FAIL", result.campaignId || result.error);
             // Audit-log the successful execution with controller context.
@@ -21533,6 +21534,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
                 plainContent: data.plainContent || data.body || "",
                 fromName: data.fromName,
                 fromEmail: data.fromEmail,
+                tenantId: ctx.tenantId,
               });
             } else {
               executionResult = { ok: false, error: "Missing listId" };
@@ -36916,14 +36918,51 @@ Analyze now:`;
         if (!listId) return jsonError(res, 400, "Missing listId");
         if (!subject) return jsonError(res, 400, "Missing subject");
         if (!htmlContent) return jsonError(res, 400, "Missing htmlContent");
+        const ctx = getCtx(req, body, auth.user);
         const result = await getEmailMarketingService().sendMarketingEmail(auth.user.uid, {
-          listId, subject, htmlContent, plainContent, fromName, fromEmail,
+          listId, subject, htmlContent, plainContent, fromName, fromEmail, tenantId: ctx.tenantId,
         });
         if (!result.ok) return jsonError(res, 500, result.error);
         return res.json(result);
       } catch (e) {
         console.error("marketing:createEmailCampaign failed:", e);
         return jsonError(res, 500, "Failed to create email campaign");
+      }
+    }
+
+    // POST /v1/marketing:startDomainAuth — begin SendGrid domain
+    // authentication for this tenant's own sending domain, returns the DNS
+    // (SPF/DKIM CNAME) records the client needs to add to their DNS — CODEX 94 §3.6
+    if (route === "/marketing:startDomainAuth" && method === "POST") {
+      try {
+        const { domain } = body || {};
+        if (!domain) return jsonError(res, 400, "Missing domain");
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const { startDomainAuthentication } = require("./services/emailService/domainAuth");
+        const result = await startDomainAuthentication(ctx.tenantId, domain);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:startDomainAuth failed:", e);
+        return jsonError(res, 500, "Failed to start domain authentication");
+      }
+    }
+
+    // POST /v1/marketing:checkDomainAuth — re-check whether the tenant's
+    // DNS records have propagated and SendGrid now considers the domain
+    // verified. Human-initiated, not polled automatically.
+    if (route === "/marketing:checkDomainAuth" && method === "POST") {
+      try {
+        const ctx = getCtx(req, body, auth.user);
+        if (!ctx.tenantId) return jsonError(res, 400, "tenantId required");
+        const { checkDomainAuthentication } = require("./services/emailService/domainAuth");
+        const result = await checkDomainAuthentication(ctx.tenantId);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:checkDomainAuth failed:", e);
+        return jsonError(res, 500, "Failed to check domain authentication");
       }
     }
 

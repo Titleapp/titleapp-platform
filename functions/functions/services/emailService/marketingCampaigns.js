@@ -68,16 +68,33 @@ async function createContactList(userId, { name, contacts }) {
 /**
  * Send a marketing email via SendGrid Single Send.
  * @param {string} userId
- * @param {object} opts - { listId, subject, htmlContent, plainContent, fromName, fromEmail }
+ * @param {object} opts - { listId, subject, htmlContent, plainContent, fromName, fromEmail, tenantId }
  * @returns {{ ok, campaignId }}
  */
-async function sendMarketingEmail(userId, { listId, subject, htmlContent, plainContent, fromName, fromEmail }) {
+async function sendMarketingEmail(userId, { listId, subject, htmlContent, plainContent, fromName, fromEmail, tenantId }) {
   if (!listId) return { ok: false, error: "Missing listId" };
   if (!subject) return { ok: false, error: "Missing subject" };
   if (!htmlContent) return { ok: false, error: "Missing htmlContent" };
 
-  const senderEmail = fromEmail || process.env.SENDGRID_FROM_EMAIL || "alex@sociii.ai";
-  const senderName = fromName || process.env.SENDGRID_FROM_NAME || "Alex — SOCIII";
+  // CODEX 94 §3.6 fix: if this tenant has a verified authenticated sending
+  // domain, use it instead of the alex@sociii.ai platform default — a
+  // client's referral-partner emails should look like they're from the
+  // client, not SOCIII's own assistant. Only applies when the caller didn't
+  // already pass an explicit fromEmail. Fails silently to the old default
+  // if no verified domain exists yet (most tenants, today) — see
+  // domainAuth.js for how a tenant gets a verified domain in the first place.
+  let clientIdentity = null;
+  if (!fromEmail && tenantId) {
+    try {
+      const { getVerifiedSendingIdentity } = require("./domainAuth");
+      clientIdentity = await getVerifiedSendingIdentity(tenantId);
+    } catch (err) {
+      console.warn("[marketingCampaigns] getVerifiedSendingIdentity failed:", err.message);
+    }
+  }
+
+  const senderEmail = fromEmail || clientIdentity?.fromEmail || process.env.SENDGRID_FROM_EMAIL || "alex@sociii.ai";
+  const senderName = fromName || clientIdentity?.fromName || process.env.SENDGRID_FROM_NAME || "Alex — SOCIII";
   const senderId = process.env.SENDGRID_SENDER_ID ? Number(process.env.SENDGRID_SENDER_ID) : null;
   const db = getDb();
   const campaignId = "mc_" + require("crypto").randomUUID().replace(/-/g, "").slice(0, 16);
