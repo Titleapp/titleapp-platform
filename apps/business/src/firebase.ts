@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken } from "firebase/app-check";
+import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
 import { Capacitor } from "@capacitor/core";
 
 // NOTE: Web config for Firebase project: title-app-alpha
@@ -35,6 +36,20 @@ export const auth = Capacitor.isNativePlatform()
   : getAuth(app);
 
 export const db = getFirestore(app);
+
+// GA4 (CODEX 94) — found 2026-09-18: `measurementId` was configured here all
+// along, but `getAnalytics()` was never actually called anywhere in the app,
+// so zero events had ever been sent to the property despite the config
+// looking "live." Web only — native shells (Capacitor) have their own
+// separate Firebase Analytics streams (SKYE Aviation iOS/Android) that this
+// should not duplicate or interfere with. `isSupported()` guards environments
+// where Analytics can't run (e.g. some webviews, Safari private browsing)
+// so this fails silently rather than throwing.
+if (!Capacitor.isNativePlatform()) {
+  isAnalyticsSupported()
+    .then((supported) => { if (supported) getAnalytics(app); })
+    .catch(() => { /* analytics unsupported in this environment — non-fatal */ });
+}
 
 // App Check — ties requests to the deployed app binary.
 // Set VITE_RECAPTCHA_SITE_KEY in .env to activate (requires Firebase Console setup).

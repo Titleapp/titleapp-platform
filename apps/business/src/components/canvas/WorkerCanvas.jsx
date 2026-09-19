@@ -324,6 +324,7 @@ export const WORKER_INTELLIGENCE = {
   },
   "platform-marketing": {
     kpis: [
+      { id: "site-sessions", label: "Site Sessions (7d)", value: "--", unit: "", hint: "GA4 — real, SOCIII's own site only" },
       { id: "campaign-roi", label: "Campaign ROI", value: "--", unit: "%", hint: "Run a campaign to populate" },
       { id: "leads", label: "Leads", value: "--", unit: "", hint: "Import contacts to populate" },
       { id: "email-open-rate", label: "Email Open Rate", value: "--", unit: "%", hint: "Send campaigns to populate" },
@@ -423,6 +424,7 @@ const LIVE_KPI_LABEL_MAP = {
     "cash-flow": null, // not computed live yet — same gap as the briefings path
   },
   "platform-marketing": {
+    "site-sessions": "Site sessions (7d)", // real, GA4 — see services/analytics/ga4.js, CODEX 94
     "campaign-roi": null, // not computed live yet
     "leads": null,
     "email-open-rate": null,

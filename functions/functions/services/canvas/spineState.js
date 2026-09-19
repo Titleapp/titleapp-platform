@@ -288,6 +288,25 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
     const topCampaigns = campaigns
       .slice(0, 6)
       .map(c => `${c.name || c.title || "Campaign"}${c.channel ? ` (${c.channel})` : ""}${c.ctr != null ? ` · ${c.ctr}% CTR` : ""}${c.leads != null ? ` · ${c.leads} leads` : ""}`);
+    // GA4 site-traffic KPIs — CODEX 94 §3.2. Scoped to SOCIII's own marketing
+    // site (sociii.ai), not a per-customer feature, since there is exactly
+    // one GA4 property and it tracks SOCIII's own site, not any tenant's own
+    // website. Only fetched for SOCIII's own workspace so a customer tenant's
+    // Ivy canvas never shows SOCIII's traffic numbers under their name.
+    // Returns null (not an error) until GA4_PROPERTY_ID is set and the
+    // runtime service account (496560182504-compute@developer.gserviceaccount.com)
+    // has Viewer access on the property — see services/analytics/ga4.js.
+    const SOCIII_OWN_TENANT_ID = "ws_1779846027006_hc71aw";
+    let ga4 = null;
+    if (tenantId === SOCIII_OWN_TENANT_ID) {
+      try {
+        const { getSiteTrafficSummary } = require("../analytics/ga4");
+        ga4 = await getSiteTrafficSummary(7);
+      } catch (err) {
+        console.warn("[spineState] GA4 fetch failed:", err.message);
+      }
+    }
+
     live["platform-marketing"] = {
       label: "Marketing & Content",
       kpis: hasAnyMarketing ? {
@@ -303,9 +322,15 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
           "Individual sends":       sentIndividual,
           "Batches pending":        pendingBatches || 0,
         } : {}),
+        ...(ga4 ? {
+          "Site sessions (7d)":  ga4.sessions,
+          "Site users (7d)":     ga4.activeUsers,
+          "Engaged sessions (7d)": ga4.engagedSessions,
+        } : {}),
       } : { "Note": "no campaigns, drafts, or contact lists yet" },
       ...(topCampaigns.length ? { campaigns: topCampaigns } : {}),
       ...(topEmailBatches.length ? { investorBatches: topEmailBatches } : {}),
+      ...(ga4?.topLandingPages?.length ? { topLandingPages: ga4.topLandingPages.map(p => `${p.page} — ${p.sessions} sessions`) } : {}),
     };
 
     // ── HR & People ── prefer tenants/{tenantId}/teamMembers (the actual
