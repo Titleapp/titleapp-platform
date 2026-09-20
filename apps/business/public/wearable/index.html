@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>SOCIII Wearable Capture</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #000; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100%; padding: 16px; gap: 12px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  input[type=text], input[type=email], input[type=password] {
+    flex: 0 0 auto; width: 100%; font-size: 22px; padding: 14px;
+    border-radius: 8px; border: 1px solid #444; background: #111; color: #fff;
+  }
+  button {
+    font-size: 22px; padding: 16px; border-radius: 10px; border: none;
+    background: #7c3aed; color: #fff; font-weight: 600; cursor: pointer;
+    width: 100%;
+  }
+  button:disabled { background: #333; color: #888; }
+  button.secondary { background: #222; border: 1px solid #444; }
+  button.danger { background: #b91c1c; }
+  #status { font-size: 15px; color: #aaa; min-height: 20px; }
+  #transcript {
+    font-size: 20px; line-height: 1.4; background: #111; border-radius: 10px;
+    padding: 14px; min-height: 60px; border: 1px solid #333;
+  }
+  #hudResponse {
+    font-size: 28px; line-height: 1.35; font-weight: 600;
+    background: #0a2e0a; border: 1px solid #1f6b1f; border-radius: 10px;
+    padding: 18px; flex: 1; overflow-y: auto;
+  }
+  #hudResponse.error { background: #2e0a0a; border-color: #6b1f1f; }
+  .label-btn {
+    display: block; text-align: center;
+  }
+  #loginScreen, #captureScreen { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+  h1 { font-size: 24px; margin: 0 0 4px 0; }
+  .hint { font-size: 14px; color: #888; }
+  #photoInput { display: none; }
+  #workerBadge { font-size: 14px; color: #a78bfa; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <h1>SOCIII Wearable Capture</h1>
+    <div class="hint">Sign in to connect this device.</div>
+    <input id="email" type="email" placeholder="Email" title="email address" tabindex="0" autocapitalize="off" />
+    <input id="password" type="password" placeholder="Password" title="password" tabindex="0" />
+    <button id="signInBtn" title="sign in">Sign In</button>
+    <div id="loginStatus" class="hint"></div>
+  </div>
+
+  <!-- CAPTURE -->
+  <div id="captureScreen" style="display:none;">
+    <div id="workerBadge"></div>
+    <div id="hudResponse">Ready. Say something or take a photo.</div>
+    <div id="transcript"></div>
+    <div id="status"></div>
+    <div class="row">
+      <button id="speakBtn" title="start recording" tabindex="0">🎤 Speak</button>
+    </div>
+    <div class="row">
+      <label class="label-btn" for="photoInput" title="take photo" tabindex="0">
+        <button type="button" id="photoBtnVisual" title="take photo" tabindex="0">📷 Photo</button>
+      </label>
+      <input id="photoInput" type="file" accept="image/*" capture="environment" title="take photo" />
+    </div>
+    <div class="row">
+      <button id="signOutBtn" class="secondary" title="sign out" tabindex="0">Sign Out</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+// Same Firebase project config as the main SOCIII app (title-app-alpha).
+const firebaseConfig = {
+  apiKey: "AIzaSyBY6fvHTTR4jVVEAlXua4Mwb1bwsksVeUY",
+  authDomain: "title-app-alpha.firebaseapp.com",
+  projectId: "title-app-alpha",
+  storageBucket: "title-app-alpha.firebasestorage.app",
+  messagingSenderId: "496560182504",
+  appId: "1:496560182504:web:d3c393bd7d4898a891e55d",
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const API_BASE = "https://api-feyfibglbq-uc.a.run.app";
+
+// ── Device config: worker + tenant, set once via URL params, then persisted ──
+// e.g. https://sociii.ai/wearable/?worker=nursing-education-001&tenant=<tenantId>
+const params = new URLSearchParams(location.search);
+if (params.get("worker")) localStorage.setItem("WEARABLE_WORKER_SLUG", params.get("worker"));
+if (params.get("tenant")) localStorage.setItem("WEARABLE_TENANT_ID", params.get("tenant"));
+const WORKER_SLUG = localStorage.getItem("WEARABLE_WORKER_SLUG") || "nursing-education-001";
+const TENANT_ID = localStorage.getItem("WEARABLE_TENANT_ID") || "";
+
+const $ = (id) => document.getElementById(id);
+const loginScreen = $("loginScreen");
+const captureScreen = $("captureScreen");
+const hudResponse = $("hudResponse");
+const transcriptEl = $("transcript");
+const statusEl = $("status");
+
+$("workerBadge").textContent = `Worker: ${WORKER_SLUG}${TENANT_ID ? " · Tenant: " + TENANT_ID : " · NO TENANT SET"}`;
+
+function setStatus(text) { statusEl.textContent = text || ""; }
+function setHud(text, isError) {
+  hudResponse.textContent = text;
+  hudResponse.classList.toggle("error", !!isError);
+}
+
+// ── Auth ──
+onAuthStateChanged(auth, (user) => {
+  loginScreen.style.display = user ? "none" : "flex";
+  captureScreen.style.display = user ? "flex" : "none";
+});
+
+$("signInBtn").addEventListener("click", async () => {
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  $("loginStatus").textContent = "Signing in...";
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    $("loginStatus").textContent = "Sign in failed: " + (e.message || e.code || "unknown error");
+  }
+});
+
+$("signOutBtn").addEventListener("click", () => signOut(auth));
+
+// ── Deterministic sessionId — same scheme as the main app (wkr_{uid}_{tenantId}_{slug})
+// so this lands in the SAME ongoing conversation as any other device/surface,
+// per CODEX 87's device-agnostic capture model. ──
+function getSessionId(uid) {
+  const safeSlug = WORKER_SLUG.replace(/[^a-z0-9-]/gi, "_");
+  return `wkr_${uid}_${TENANT_ID || "vault"}_${safeSlug}`;
+}
+
+// ── Core: send a message (from voice transcript or with a photo attached) ──
+async function sendToWorker({ text, filePayload }) {
+  const user = auth.currentUser;
+  if (!user) { setHud("Not signed in.", true); return; }
+  if (!TENANT_ID) { setHud("No tenant configured. Open this page with ?tenant=<id> once to set it up.", true); return; }
+
+  setStatus("Sending...");
+  setHud("Thinking...");
+  try {
+    const token = await user.getIdToken();
+    const res = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Tenant-Id": TENANT_ID,
+      },
+      body: JSON.stringify({
+        message: text || "(photo attached)",
+        userInput: text || "(photo attached)",
+        sessionId: getSessionId(user.uid),
+        selectedWorker: WORKER_SLUG,
+        responseMode: "voice", // short, no-markdown, hands-free-friendly response
+        ...(filePayload ? { file: filePayload } : {}),
+        context: {
+          source: "wearable_realwear",
+          currentSection: "worker-canvas",
+        },
+      }),
+    });
+    const data = await res.json();
+    const reply = data?.response || data?.message || "(no response)";
+    setHud(reply);
+    speak(reply);
+  } catch (e) {
+    setHud("Error: " + (e.message || "request failed"), true);
+  } finally {
+    setStatus("");
+  }
+}
+
+function speak(text) {
+  try {
+    if (!("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(text.slice(0, 400)); // keep TTS short
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch { /* non-fatal */ }
+}
+
+// ── Voice capture (Web Speech API — RealWear's browser is Chromium/Android) ──
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizing = false;
+
+$("speakBtn").addEventListener("click", () => {
+  if (!SpeechRecognition) {
+    setHud("Voice capture isn't supported in this browser.", true);
+    return;
+  }
+  if (recognizing) return;
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognizing = true;
+  $("speakBtn").textContent = "🔴 Listening...";
+  transcriptEl.textContent = "";
+  setStatus("Listening — speak now.");
+
+  recognition.onresult = (event) => {
+    let finalText = "";
+    let interim = "";
+    for (let i = 0; i < event.results.length; i++) {
+      const r = event.results[i];
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    transcriptEl.textContent = finalText || interim;
+  };
+  recognition.onerror = (event) => {
+    setStatus("");
+    setHud("Voice capture error: " + event.error, true);
+  };
+  recognition.onend = () => {
+    recognizing = false;
+    $("speakBtn").textContent = "🎤 Speak";
+    setStatus("");
+    const finalText = transcriptEl.textContent.trim();
+    if (finalText) sendToWorker({ text: finalText });
+  };
+  recognition.start();
+});
+
+// ── Photo capture — same base64-inline + real-Storage-persistence pattern
+// the main ChatPanel already uses (NOT the aviation-squawk anti-pattern that
+// never persists — see CODEX 90/96). ──
+function inferMime(file) {
+  if (file.type) return file.type;
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  return ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic" })[ext] || "application/octet-stream";
+}
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, type: inferMime(file), data: reader.result });
+    reader.onerror = () => reject(new Error("failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadToStorage(file, token) {
+  const mime = inferMime(file);
+  const signRes = await fetch(`${API_BASE}/api?path=/v1/files:sign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "x-tenant-id": TENANT_ID },
+    body: JSON.stringify({
+      filename: file.name, contentType: mime, sizeBytes: file.size, purpose: "drive",
+      tags: [`worker:${WORKER_SLUG}`, "source:wearable"],
+      related: { workerSlug: WORKER_SLUG, source: "wearable_capture" },
+    }),
+  });
+  const sign = await signRes.json();
+  if (!sign?.ok || !sign?.uploadUrl) throw new Error(sign?.error || "sign failed");
+  const putRes = await fetch(sign.uploadUrl, { method: "PUT", headers: { "Content-Type": mime }, body: file });
+  if (!putRes.ok) throw new Error(`storage PUT failed (${putRes.status})`);
+  await fetch(`${API_BASE}/api?path=/v1/files:finalize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "x-tenant-id": TENANT_ID },
+    body: JSON.stringify({ fileId: sign.fileId, storagePath: sign.storagePath, contentType: mime, sizeBytes: file.size }),
+  });
+}
+
+$("photoInput").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ""; // allow re-selecting the same file next time
+  if (!file) return;
+  const user = auth.currentUser;
+  if (!user) { setHud("Not signed in.", true); return; }
+
+  setStatus("Uploading photo...");
+  try {
+    const token = await user.getIdToken();
+    const [filePayload] = await Promise.all([
+      readFileAsDataUrl(file),
+      uploadToStorage(file, token).catch((err) => {
+        console.error("[wearable] Storage persist failed (continuing with inline copy only):", err.message);
+      }),
+    ]);
+    await sendToWorker({ text: "Photo attached from RealWear capture.", filePayload });
+  } catch (err) {
+    setHud("Photo capture failed: " + err.message, true);
+  } finally {
+    setStatus("");
+  }
+});
+</script>
+</body>
+</html>
