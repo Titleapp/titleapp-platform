@@ -172,6 +172,21 @@ Per CODEX 86, nursing is the highest-value vertical here — this roadmap delibe
 - **Go/no-go:** tag the cause from the taxonomy in §5's intro. A real failure here (hardware fit in a hands-busy clinical simulation, transcription accuracy on medical terminology, task mismatch) should stop expansion toward the live-operations conversation, not get waved past because the crew was excited about the concept.
 - **Open question, not yet answered:** is this SOCIII's own internal capture, or does it plug into an existing training/simulation record system LFN already uses? Same "second system vs. real system of record" question CODEX 87 already flagged for MX (§5.2) — don't assume it away here either.
 
+### 5.5 Design sketch — real patient-care capture (gated behind LFN sign-off; NOT active scope)
+
+Added 2026-09-19 (continued), prompted by walking through a concrete example (in-flight high-alert medication administration) during design discussion. **This section is architectural thinking only, recorded so it isn't lost — it does not authorize building anything here.** Everything below remains blocked by this doc's existing boundary: real patient encounters are "full stop" pending LFN's own clinical/compliance/legal sign-off (see the 2026-09-19 revision note near the top of this doc, and §5.4's recording-context note). None of this proceeds until that sign-off exists.
+
+**Storage, if this proceeds:** needs the Storage-routing fix already flagged in CODEX 90/96 (real Firebase Storage + a Firestore metadata pointer — not the aviation-squawk pattern, which sends images inline as base64 to Claude's vision API and never persists them anywhere), *plus* PHI-specific handling on top: encryption, access logging (who viewed this capture, when), and operating under SOCIII's own Business Associate Agreement program — which already exists on paper (it's referenced in the privacy policy fixed earlier this session) but hasn't been wired into this specific capture path.
+
+**Capture model: voice-triggered and scoped, never continuous/ambient recording.** Ambient recording of a full patient encounter is a worse outcome independent of technical feasibility — a HIPAA/consent problem, a litigation-discoverability problem most clinical programs deliberately avoid, and mostly noise against a small number of decision points that actually matter. Capture should trigger on a deliberate, distinct wake phrase at defined checkpoints only — same wake-phrase design pass already open in §6 item 13, not a new mechanism.
+
+**Worked example — high-alert medication independent double-check (e.g., in-flight ketamine administration):** maps directly onto existing real-world clinical practice (two-clinician independent verification for high-alert drugs), and is structurally well-suited to two-wearer capture specifically because independence is the entire point:
+1. First clinician triggers with a distinct phrase (e.g., "starting ketamine check") and states dose, drug/concentration, route, and current monitor readings (HR, SpO2, BP, EtCO2).
+2. Second clinician independently confirms the same fields **on their own device** — genuinely independent, not an echo of the first clinician's entry, or the double-check is meaningless.
+3. RAAS compares the two independent entries. A match produces a structured, timestamped record. A mismatch is a hard Tier-1 safety flag, routed through the Tier-B human-escalation path (see the escalation model above) — not a soft note logged for later review.
+4. What's retained is structured data only — drug, dose, route, time, both clinicians' independent confirmations, monitor values at that moment — never a raw audio/video recording of the encounter.
+5. RAAS tiering, if this proceeds: Tier 1 = the actual evidence-based/accreditation standard for high-alert medication double-checks; Tier 2 = LFN's own specific in-flight protocol layered on top — same four-tier shape used everywhere else in this doc, no new architecture, just real content that would need sourcing and LFN sign-off before encoding.
+
 ---
 
 ## 6. Open Decisions for Sean
