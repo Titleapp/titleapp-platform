@@ -11,8 +11,12 @@ router.get("/:workspace_id/assets", requireWorkspaceAccess, async (req, res) => 
     const { workspace_id } = req.params;
     const { type, limit = 50, offset = 0 } = req.query;
 
-    // Assets come from DTCs scoped to the user behind the API key
-    let q = getDb().collection("dtcs").where("userId", "==", req.apiKey.user_id);
+    // Assets come from DTCs scoped to the user behind the API key AND this
+    // workspace — userId alone let one uid's DTCs from every tenant they
+    // belong to leak into a single workspace's asset list (fixed 2026-09-21).
+    let q = getDb().collection("dtcs")
+      .where("userId", "==", req.apiKey.user_id)
+      .where("tenantId", "==", workspace_id);
     if (type) q = q.where("type", "==", type);
     q = q.orderBy("createdAt", "desc").limit(parseInt(limit)).offset(parseInt(offset));
 

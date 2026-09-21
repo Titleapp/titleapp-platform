@@ -29054,6 +29054,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         let q = db.collection("logbookEntries")
           .where("userId", "==", ctx.userId)
+          .where("tenantId", "==", ctx.tenantId)
           .orderBy("createdAt", "desc")
           .limit(100);
 
@@ -29221,6 +29222,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const nAuth = await requireFirebaseUser(req, res);
         if (nAuth.handled) return nAuth.res;
         const program = req.query?.program?.toString() || "clearwater-nursing";
+        // FERPA: caller must have faculty or admin membership in the requested
+        // program tenant — this route returns full student academic records
+        // and had no tenant-membership check at all (fixed 2026-09-21).
+        const studentsMemberSnap = await db.collection("memberships")
+          .where("uid", "==", nAuth.user.uid)
+          .where("tenantId", "==", program)
+          .limit(1)
+          .get();
+        if (studentsMemberSnap.empty || !["admin", "faculty"].includes(studentsMemberSnap.docs[0].data().role)) {
+          return jsonError(res, 403, "Access denied: faculty or admin role required for this program");
+        }
         const snap = await db.collection("dtcs")
           .where("tenantId", "==", program).where("type", "==", "academic_record").get();
         const students = [];
@@ -30537,6 +30549,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         // Aggregate asset values from DTCs
         const dtcsSnap = await db.collection("dtcs")
           .where("userId", "==", ctx.userId)
+          .where("tenantId", "==", ctx.tenantId)
           .get();
 
         const assets = {
@@ -30619,6 +30632,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       try {
         const snap = await db.collection("capTables")
           .where("userId", "==", ctx.userId)
+          .where("tenantId", "==", ctx.tenantId)
           .orderBy("createdAt", "desc")
           .get();
 
@@ -30668,7 +30682,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         const doc = await db.collection("capTables").doc(id).get();
         if (!doc.exists) return jsonError(res, 404, "Cap table not found");
         const data = doc.data();
-        if (data.userId !== ctx.userId && data.tenantId !== ctx.tenantId) {
+        if (data.userId !== ctx.userId || data.tenantId !== ctx.tenantId) {
           return jsonError(res, 403, "Access denied");
         }
         return res.json({ ok: true, capTable: { id: doc.id, ...data } });
