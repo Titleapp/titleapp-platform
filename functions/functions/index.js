@@ -743,6 +743,16 @@ async function requireMembershipIfNeeded({ uid, tenantId }, res) {
         status: "active",
         createdAt: nowServerTs(),
       });
+      const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+      await recordMembershipEvent(db, {
+        membershipId: memRef.id,
+        uid,
+        tenantId,
+        changeType: "created",
+        fromValue: null,
+        toValue: { role: wsRole, status: "active" },
+        changedBy: uid,
+      }).catch((e) => console.error("recordMembershipEvent failed (auto-repair create path):", e));
       return { ok: true, membership: { id: memRef.id, userId: uid, tenantId, role: wsRole, status: "active" } };
     }
     return jsonError(res, 403, "Forbidden", { reason: "No active membership", uid, tenantId });
@@ -1142,13 +1152,24 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
             .limit(1)
             .get();
           if (memSnap.empty) {
-            await db.collection("memberships").add({
+            const role = d.tenantType === "business" ? "admin" : "owner";
+            const claimMemRef = await db.collection("memberships").add({
               userId,
               tenantId,
-              role: d.tenantType === "business" ? "admin" : "owner",
+              role,
               status: "active",
               createdAt: nowServerTs(),
             });
+            const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+            await recordMembershipEvent(db, {
+              membershipId: claimMemRef.id,
+              uid: userId,
+              tenantId,
+              changeType: "created",
+              fromValue: null,
+              toValue: { role, status: "active" },
+              changedBy: userId,
+            }).catch((e) => console.error("recordMembershipEvent failed (chatEngine claimTenant path):", e));
           }
           console.log("chatEngine side-effect: claimTenant OK", tenantId);
           break;
@@ -11931,12 +11952,22 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                 .limit(1)
                 .get();
               if (memSnap.empty) {
-                await db.collection("memberships").add({
+                const devMemRef = await db.collection("memberships").add({
                   userId: sessionState.userId,
                   tenantId,
                   role: "owner",
                   createdAt: nowServerTs(),
                 });
+                const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+                await recordMembershipEvent(db, {
+                  membershipId: devMemRef.id,
+                  uid: sessionState.userId,
+                  tenantId,
+                  changeType: "created",
+                  fromValue: null,
+                  toValue: { role: "owner" },
+                  changedBy: sessionState.userId,
+                }).catch((e) => console.error("recordMembershipEvent failed (developer-session claim path):", e));
               }
 
               // Create deferred Worker if spec was stashed before signup
