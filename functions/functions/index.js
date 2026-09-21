@@ -37956,6 +37956,48 @@ exports.everyOtherDayTikTokPost = onSchedule(
 );
 
 // ----------------------------
+// BLOG/PRESS PROMOTION — X, 3x/week (Mon/Wed/Fri, 9:45am PT)
+// ----------------------------
+// Sean, 2026-09-20: promote real published blog/press posts on LinkedIn and
+// X 3x per week, in addition to (not replacing) the every-other-day video
+// roster above — X ends up with a mix, weighted more toward blog posts.
+// Roster lives in marketing/blogRoster.js. Kill switch:
+// config/marketingWorker.xBlogPromoEnabled = false.
+exports.blogPromoPostX = onSchedule(
+  {
+    schedule: "45 17 * * 1,3,5", // 17:45 UTC, Mon/Wed/Fri
+    timeZone: "UTC",
+    region: "us-central1",
+    secrets: ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"],
+  },
+  async () => {
+    const { runBlogPromoPost } = require("./marketing/blogPromoPost");
+    const result = await runBlogPromoPost("x");
+    console.log("[blogPromoPostX]", result);
+  }
+);
+
+// ----------------------------
+// BLOG/PRESS PROMOTION — LinkedIn, 3x/week (Mon/Wed/Fri, 9:50am PT)
+// ----------------------------
+// LinkedIn is blog-posts-only per Sean's direction ("LinkedIn is the blog
+// posts") — see everyOtherDayLinkedInPost above, now paused via
+// config/marketingWorker.linkedInEveryOtherDayEnabled = false. Kill switch
+// for this poster: config/marketingWorker.linkedInBlogPromoEnabled = false.
+exports.blogPromoPostLinkedIn = onSchedule(
+  {
+    schedule: "50 17 * * 1,3,5", // 17:50 UTC, Mon/Wed/Fri
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { runBlogPromoPost } = require("./marketing/blogPromoPost");
+    const result = await runBlogPromoPost("linkedin");
+    console.log("[blogPromoPostLinkedIn]", result);
+  }
+);
+
+// ----------------------------
 // LEAD-FOLLOW-UP DRIP QUEUE PROCESSOR (CODEX 94 §3.7)
 // ----------------------------
 // Sends any customer tenant's pending lead-drip emails whose scheduledAt has
