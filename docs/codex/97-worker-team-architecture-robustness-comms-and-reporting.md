@@ -41,6 +41,18 @@ Triggered by a same-session security audit (see the personaEmailIdentities.js cr
 
 **Not yet built** — this is a real, standalone feature (a consent-record data model, a notification/approval flow through an authenticated channel, and anomaly detection on the requesting side), worth its own follow-up CODEX doc rather than folding a full spec in here, but the design above is decided, not open. What's live tonight is the safe interim default (deny/scope-to-current-tenant) on the two flagged functions — not the consent flow itself.
 
+### Permission/access events need the same append-only + anchor treatment as DTC content (Sean, 2026-09-21)
+
+Sean asked directly whether signups, access, and permissions should be feeding the same blockchain-anchored audit trail as content, "vs something just handled in Firestore." Checked rather than assumed: **`memberships.status` (who has access) is mutated in place today**, with only an `updatedAt` timestamp — no record of what it changed from, when, or who triggered it. There is no endpoint anywhere that changes a member's `role` after creation either — role grants today happen via direct Firestore writes or admin scripts, entirely outside any audit trail. This is a real gap, and it matters more than most, because it's the layer the consent model above (and every tenant-scoping fix from tonight) depends on being trustworthy — if a permission grant can be silently rewritten with no trace, so can a fake consent approval.
+
+The right fix reuses infrastructure that already exists rather than inventing something new: DTCs already get a SHA-256 `contentHash`, batched daily into a Merkle tree, anchored to Bitcoin via OpenTimestamps (`services/anchor/hashAnchor.js`, CODEX 50.14 Layer A). That pipeline should widen to cover three things it currently doesn't:
+
+1. **Membership/role/status changes** — need an append-only event log (e.g. `membershipEvents`: who changed what, from what, to what, when, under whose authority), same shape as `logbookEntries` relative to `dtcs`. The `memberships` doc stays the fast-lookup current state; the event log becomes the actual source of truth and feeds the Merkle batch.
+2. **Sign-up/account-creation events** — already timestamped, not currently hash-anchored the way DTC content is. Should be, for the same tamper-evidence reason.
+3. **Actual access events** (who *viewed* a sensitive record, distinct from who's *permitted* to) — appears not to exist at the application level at all right now. Matters most for FERPA-type contexts specifically, where "who accessed this record" is often its own explicit requirement, separate from authorization.
+
+**Not yet built.** Real scope: new event collection(s), rewiring every membership-mutation call site to write an event instead of (or alongside) the in-place update, and extending the daily batch-anchor job to include these new leaf types. Bigger than tonight's query-scoping fixes — those were wrong behavior; this is a missing capability, worth its own deliberate build rather than a rushed late-night patch.
+
 ---
 
 ## 1. Robustness (workers actually finishing the job correctly)
