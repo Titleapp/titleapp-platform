@@ -9796,19 +9796,40 @@ IDENTITY RULES:
                 .limit(1)
                 .get();
               if (memSnap.empty) {
-                await db.collection("memberships").add({
+                const newMemRef = await db.collection("memberships").add({
                   userId: sessionState.userId,
                   tenantId,
                   role: "owner",
                   status: "active",
                   createdAt: nowServerTs(),
                 });
+                const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+                await recordMembershipEvent(db, {
+                  membershipId: newMemRef.id,
+                  uid: sessionState.userId,
+                  tenantId,
+                  changeType: "created",
+                  fromValue: null,
+                  toValue: { role: "owner", status: "active" },
+                  changedBy: sessionState.userId,
+                }).catch((e) => console.error("recordMembershipEvent failed (investor terms-accept create path):", e));
               } else {
                 // Ensure existing membership has status: "active"
+                const prevStatus = memSnap.docs[0].data().status || null;
                 await db.collection("memberships").doc(memSnap.docs[0].id).update({
                   status: "active",
                   updatedAt: nowServerTs(),
                 });
+                const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+                await recordMembershipEvent(db, {
+                  membershipId: memSnap.docs[0].id,
+                  uid: sessionState.userId,
+                  tenantId,
+                  changeType: "status_changed",
+                  fromValue: prevStatus,
+                  toValue: "active",
+                  changedBy: sessionState.userId,
+                }).catch((e) => console.error("recordMembershipEvent failed (investor terms-accept path):", e));
               }
 
               sessionState.termsAccepted = true;
@@ -26254,19 +26275,41 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         .get();
 
       if (memSnap.empty) {
-        await db.collection("memberships").add({
+        const role = tenantType === "business" ? "admin" : "owner";
+        const newMemRef = await db.collection("memberships").add({
           userId: auth.user.uid,
           tenantId: finalTenantId,
-          role: tenantType === "business" ? "admin" : "owner",
+          role,
           status: "active",
           createdAt: nowServerTs(),
         });
+        const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+        await recordMembershipEvent(db, {
+          membershipId: newMemRef.id,
+          uid: auth.user.uid,
+          tenantId: finalTenantId,
+          changeType: "created",
+          fromValue: null,
+          toValue: { role, status: "active" },
+          changedBy: auth.user.uid,
+        }).catch((e) => console.error("recordMembershipEvent failed (tenant-join create path):", e));
       } else {
         // FIX: Use update() for explicit field changes only
+        const prevStatus = memSnap.docs[0].data().status || null;
         await db.collection("memberships").doc(memSnap.docs[0].id).update({
           status: "active",
           updatedAt: nowServerTs(),
         });
+        const { recordMembershipEvent } = require("./services/anchor/membershipEvents");
+        await recordMembershipEvent(db, {
+          membershipId: memSnap.docs[0].id,
+          uid: auth.user.uid,
+          tenantId: finalTenantId,
+          changeType: "status_changed",
+          fromValue: prevStatus,
+          toValue: "active",
+          changedBy: auth.user.uid,
+        }).catch((e) => console.error("recordMembershipEvent failed (tenant-join path):", e));
       }
 
       return res.json({ ok: true, tenantId: finalTenantId });
