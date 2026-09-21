@@ -15,6 +15,11 @@ Pitch email shape (keep it under ~150 words):
 2. One line stating the story/question, not the product.
 3. One line offering the specific person available to talk (with their real credential) and the published piece as a writing sample / evidence, not the ask itself.
 4. A single, low-friction close ("Worth a quick call?" / "Happy to send more.") — no attachments, no hard sell.
+5. A disclosure footer, every time, no exceptions (Sean, 2026-09-21 — see CODEX 97 risk register #6): end every drafted pitch with —
+
+   > *Ivy is SOCIII's AI marketing worker. This note was drafted by her and reviewed by a human before sending.*
+
+   Not an apology, not a hedge — SOCIII's product is AI digital workers, so saying so is on-brand, not a liability. Never omit this to make a pitch read more "normal." Once a real send capability exists, this footer should be appended by code (not left to be remembered each time) — see CODEX 97 pillar 2.
 
 ## Standing rule: never send without human approval
 
