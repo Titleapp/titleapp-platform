@@ -1,10 +1,12 @@
 # You're an Expert. You Just Never Learned to Code. Now You Don't Have To.
 
-**Status:** Finalized copy — ready for PR Newswire submission (story 2 of 5 in the Sep 2026 wire package). Also live as a blog post: https://sociii.ai/press/expert-not-engineer
-**Word count:** 425 (base PR Newswire tier is 400 words; ~25 words of overage, negligible)
-**Byline/quote attribution:** Sean Lee Combs. Ruthie Clearwater, PhD quoted directly, credited as a nursing-education specialist and flight nurse who advises SOCIII on nursing education — advisor relationship, not an independent creator/revenue-share claim (deck flags the creator-marketplace revenue mechanic as thesis-stage, not yet proven at scale).
+**Status:** SUBMISSION-READY — story 2 of 5 in the EIN Presswire package (order #U89836, paid). Also live as a blog post: https://sociii.ai/press/expert-not-engineer
+**Word count:** 425
+**Byline/quote attribution:** Sean Lee Combs. Ruthie Clearwater, PhD quoted directly, credited as a nursing-education specialist and flight nurse who advises SOCIII on nursing education — advisor relationship, not an independent creator/revenue-share claim (deck flags the creator-marketplace revenue mechanic as thesis-stage, not yet proven at scale). Sent to her for review/comment 2026-09-20, awaiting reply.
 
 ---
+
+LAS VEGAS, Nev., Sept. 20, 2026 /EINPresswire/ --
 
 For as long as there's been software, a gatekeeper has stood between someone who knew something valuable and the product that knowledge could become — an engineer, a technical cofounder, a shop you had to pay. A nurse with twenty years of clinical documentation experience never had a way around that gatekeeper. She could consult. She could write a manual nobody read past the first chapter. What she couldn't do was build the thing herself — not because her knowledge wasn't valuable, but because turning it into software required a skill she'd never had time to learn, on the other side of a door that cost millions to open.
 
@@ -20,10 +22,16 @@ The company that used to need a nurse for two hours of consulting now needs one 
 
 "Software companies used to go find domain experts," said Sean Lee Combs, founder of SOCIII. "Now the domain expert doesn't need to find a software company. She already has the one thing every software company spends years chasing — an audience waiting for exactly what she knows."
 
+About SOCIII
+
+SOCIII, Inc. is a Delaware C Corporation building governed AI Digital Workers — AI agents authored by domain experts, running on a patented rules-and-audit substrate, for regulated industries including real estate title, aviation, nursing education, and EU compliance. Learn more at sociii.ai.
+
+Media Contact
+SOCIII, Inc.
+press@sociii.ai
+sociii.ai
+
 ---
 
-## For the actual PR Newswire submission, still needed
-- Dateline (CITY, State, Month Day, Year /PRNewswire/ —) at the top of the body
-- "About SOCIII" boilerplate paragraph
-- Media contact line (name, email, phone) at the very end
-- Confirm with Ruthie that she's comfortable being quoted by name in a public wire release with this exact bio line, before submission
+## Before actually submitting this one
+- Confirm with Ruthie that she's comfortable being quoted by name in a public wire release with this exact bio line (email sent 2026-09-20, awaiting reply) — hold submission until she responds.

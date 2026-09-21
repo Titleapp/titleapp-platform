@@ -1,11 +1,13 @@
 # How Do You Know Your EV Battery Isn't Secretly a Cheap Knockoff? Starting in 2027, You're Supposed to Be Able to Check.
 
-**Status:** Finalized copy — ready for PR Newswire submission (story 3 of 5 in the Sep 2026 wire package). Also live as a blog post: https://sociii.ai/press/battery-passport-knockoff
-**Word count:** ~455 (base tier 400 words; modest overage)
-**Quote attributions:** Elise van der Bel (EU compliance specialist, advisor to SOCIII, owns the Traitly deployment) and Sean Lee Combs, founder of SOCIII.
-**Fact-checked claims:** QR-code data carrier requirement, no special app needed, printed/engraved placement on battery or packaging, and the July 2026 EU central registry are all confirmed against real sources (EU Batteries Regulation 2023/1542, European Commission DPP page) — see citations in the git history / chat log for this doc if anyone asks for sourcing.
+**Status:** SUBMISSION-READY — story 3 of 5 in the EIN Presswire package (order #U89836, paid). Also live as a blog post: https://sociii.ai/press/battery-passport-knockoff
+**Word count:** ~455
+**Quote attributions:** Elise van der Bel (EU compliance specialist, advisor to SOCIII, owns the Traitly deployment) and Sean Lee Combs, founder of SOCIII. Sent to Elise for review/comment 2026-09-20, awaiting reply.
+**Fact-checked claims:** QR-code data carrier requirement, no special app needed, printed/engraved placement on battery or packaging, and the July 2026 EU central registry are all confirmed against real sources (EU Batteries Regulation 2023/1542, European Commission DPP page).
 
 ---
+
+LAS VEGAS, Nev., Sept. 20, 2026 /EINPresswire/ --
 
 There's a whole industry built around one question: is this actually a real Birkin bag? Authentication services, serial numbers, holograms — because counterfeits are common enough that even luxury buyers can't just trust a label. Nobody thinks to ask the same question about something far more dangerous to fake: the battery inside their car.
 
@@ -21,10 +23,16 @@ SOCIII, a startup building AI "digital workers" for regulated industries, built 
 
 "When you're shopping for an EV, scan the passport the way you'd check a used car's title," said Sean Lee Combs, founder of SOCIII. "If the seller can't produce one, or the code doesn't check out, that tells you more than the price tag ever will."
 
+About SOCIII
+
+SOCIII, Inc. is a Delaware C Corporation building governed AI Digital Workers — AI agents authored by domain experts, running on a patented rules-and-audit substrate, for regulated industries including real estate title, aviation, nursing education, and EU compliance. Learn more at sociii.ai.
+
+Media Contact
+SOCIII, Inc.
+press@sociii.ai
+sociii.ai
+
 ---
 
-## For the actual PR Newswire submission, still needed
-- Dateline (CITY, State, Month Day, Year /PRNewswire/ —) at the top of the body
-- "About SOCIII" boilerplate paragraph
-- Media contact line (name, email, phone) at the very end
-- Confirm with Elise that she's comfortable with her exact quote and bio line going out publicly
+## Before actually submitting this one
+- Confirm with Elise that she's comfortable with her exact quote and bio line going out publicly (email sent 2026-09-20, awaiting reply) — hold submission until she responds.

@@ -1,10 +1,12 @@
 # The Real Rogue AI Threat Isn't a Robot Uprising. It's Rewriting History.
 
-**Status:** Finalized copy — ready for PR Newswire submission (story 1 of 5 in the Sep 2026 wire package). Also live as a blog post: https://sociii.ai/press/rogue-ai-rewriting-history
-**Word count:** 453 (base PR Newswire tier is 400 words; ~53 words of overage, well under one full bracket)
+**Status:** SUBMISSION-READY — story 1 of 5 in the EIN Presswire package (order #U89836, paid). Also live as a blog post: https://sociii.ai/press/rogue-ai-rewriting-history
+**Word count:** 453
 **Byline/quote attribution:** Sean Lee Combs (not "Sean Combs" — deliberate, avoids the Diddy association)
 
 ---
+
+LAS VEGAS, Nev., Sept. 20, 2026 /EINPresswire/ --
 
 Say "rogue AI attack" and most people picture killer robots, a blacked-out data center, a synthetic voice taking control — Skynet, HAL 9000. Big AI labs talk about that threat constantly.
 
@@ -26,9 +28,11 @@ Most software treats a record as whatever was written last — prior versions si
 
 "In the age of AI, protecting data isn't enough," said Sean Lee Combs, founder of SOCIII. "You have to protect its history too — that's the one thing a lie can't rewrite."
 
----
+About SOCIII
 
-## For the actual PR Newswire submission, still needed
-- Dateline (CITY, State, Month Day, Year /PRNewswire/ —) at the top of the body
-- "About SOCIII" boilerplate paragraph
-- Media contact line (name, email, phone) at the very end
+SOCIII, Inc. is a Delaware C Corporation building governed AI Digital Workers — AI agents authored by domain experts, running on a patented rules-and-audit substrate, for regulated industries including real estate title, aviation, nursing education, and EU compliance. Learn more at sociii.ai.
+
+Media Contact
+SOCIII, Inc.
+press@sociii.ai
+sociii.ai
