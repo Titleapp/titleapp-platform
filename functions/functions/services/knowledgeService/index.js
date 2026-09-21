@@ -25,6 +25,7 @@ function loadWorkerKnowledge(workerSlug) {
     files.push("compliance-tiers.md");
     files.push("brand-voice-marketing.md");
     files.push("titleapp-launch-may-2026.md");
+    files.push("press-releases-sep-2026.md");
   }
 
   for (const file of files) {
