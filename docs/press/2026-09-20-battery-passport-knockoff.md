@@ -2,7 +2,7 @@
 
 **Status:** SUBMISSION-READY — story 3 of 5 in the EIN Presswire package (order #U89836, paid). Also live as a blog post: https://sociii.ai/press/battery-passport-knockoff
 **Word count:** ~455
-**Quote attributions:** Elise van der Bel (EU compliance specialist, advisor to SOCIII, owns the Traitly deployment) and Sean Lee Combs, founder of SOCIII. Sent to Elise for review/comment 2026-09-20, awaiting reply.
+**Quote attributions:** Kent Redwine, co-founder of SOCIII with a long history in the electric vehicle industry, and Sean Lee Combs, founder of SOCIII. Originally drafted with the quote attributed to Elise van der Bel; Elise reviewed 2026-09-21 and asked not to use her name (potential conflict with her employer). Sean and Elise agreed by email the same day to reattribute the quote to Kent instead — quote wording unchanged, attribution/bio only.
 **Fact-checked claims:** QR-code data carrier requirement, no special app needed, printed/engraved placement on battery or packaging, and the July 2026 EU central registry are all confirmed against real sources (EU Batteries Regulation 2023/1542, European Commission DPP page).
 
 ---
@@ -17,7 +17,7 @@ Starting February 2027, the EU is requiring a fix: every electric vehicle, e-bik
 
 But a passport only works if it can't be faked — and that's exactly where counterfeiters have always found the opening. A fake Birkin can come with a fake authentication card too. Papers don't prove anything if whoever's issuing them can just write down whatever they want.
 
-"A passport is only as good as the system that produced it," said Elise van der Bel, an EU compliance specialist who has spent years navigating battery-passport regulation for European ecommerce. "If a manufacturer can just type in whatever composition and origin data it wants, with nobody able to verify it later, you haven't solved the counterfeit problem. You've just given it a form to fill out."
+"A passport is only as good as the system that produced it," said Kent Redwine, co-founder of SOCIII, who has a long history in the electric vehicle industry. "If a manufacturer can just type in whatever composition and origin data it wants, with nobody able to verify it later, you haven't solved the counterfeit problem. You've just given it a form to fill out."
 
 SOCIII, a startup building AI "digital workers" for regulated industries, built its passport worker, Elara, to close exactly that gap: every field in a battery's passport is sourced and recorded with a verifiable history, so nobody — not even the manufacturer — can quietly rewrite it after the fact. Elara is already live, deployed with Traitly, a Netherlands-based EU ecommerce company, ahead of the February deadline.
 
@@ -35,4 +35,5 @@ sociii.ai
 ---
 
 ## Before actually submitting this one
-- Confirm with Elise that she's comfortable with her exact quote and bio line going out publicly (email sent 2026-09-20, awaiting reply) — hold submission until she responds.
+- Elise's sign-off is resolved (she asked to be removed, agreed to Kent instead, confirmed "sounds good" 2026-09-21).
+- **Still needed: confirm with Kent that he's comfortable being quoted with this exact wording and bio line** — the quote content originated from Elise's expertise, not Kent's own words, so he should see and approve it before this goes out under his name, same as every other advisor quote in this series.

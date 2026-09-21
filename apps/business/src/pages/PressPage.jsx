@@ -283,7 +283,7 @@ const ARTICLE_BODIES = {
         But a passport only works if it can't be faked — and that's exactly where counterfeiters have always found the opening. A fake Birkin can come with a fake authentication card too. Papers don't prove anything if whoever's issuing them can just write down whatever they want.
       </p>
       <p className="lead">
-        "A passport is only as good as the system that produced it," said Elise van der Bel, an EU compliance specialist who has spent years navigating battery-passport regulation for European ecommerce. "If a manufacturer can just type in whatever composition and origin data it wants, with nobody able to verify it later, you haven't solved the counterfeit problem. You've just given it a form to fill out."
+        "A passport is only as good as the system that produced it," said Kent Redwine, co-founder of SOCIII, who has a long history in the electric vehicle industry. "If a manufacturer can just type in whatever composition and origin data it wants, with nobody able to verify it later, you haven't solved the counterfeit problem. You've just given it a form to fill out."
       </p>
       <p>
         SOCIII, a startup building AI "digital workers" for regulated industries, built its passport worker, Elara, to close exactly that gap: every field in a battery's passport is sourced and recorded with a verifiable history, so nobody — not even the manufacturer — can quietly rewrite it after the fact. Elara is already live, deployed with Traitly, a Netherlands-based EU ecommerce company, ahead of the February deadline.
