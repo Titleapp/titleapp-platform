@@ -51,15 +51,28 @@
  * crewQualsEngine.js's currencyChecks label for the same split.
  */
 
-function computePilotCurrency(db, targetUserId) {
-  return _compute(db, targetUserId);
+// tenantId is required. Default is deny cross-tenant unification, always —
+// a pilot flying for two operators must not have one operator's crew-quals
+// check pull in flight/event data logged under the other operator, and a
+// self-view must not silently merge every tenant a pilot belongs to into
+// one currency picture. (2026-09-21: this was previously userId-only, found
+// during a tenant-scoping audit alongside CODEX-S52.65-class bugs. Whether
+// a pilot can ever OPT IN to a real unified-record view across tenants is a
+// separate, deliberate feature — see CODEX 97's consent-primitive design —
+// not something this function decides on its own.)
+function computePilotCurrency(db, targetUserId, tenantId) {
+  if (!tenantId) {
+    throw new Error("computePilotCurrency: tenantId is required — refusing to compute currency without it to avoid merging flight/event data across tenants.");
+  }
+  return _compute(db, targetUserId, tenantId);
 }
 
-async function _compute(db, targetUserId) {
+async function _compute(db, targetUserId, tenantId) {
   const now = new Date();
 
   const flightSnap = await db.collection("logbookEntries")
     .where("userId", "==", targetUserId)
+    .where("tenantId", "==", tenantId)
     .where("entryType", "==", "aviation.flight")
     .orderBy("createdAt", "desc")
     .limit(500)
@@ -68,6 +81,7 @@ async function _compute(db, targetUserId) {
 
   const eventSnap = await db.collection("logbookEntries")
     .where("userId", "==", targetUserId)
+    .where("tenantId", "==", tenantId)
     .where("entryType", "==", "aviation.currency_event")
     .orderBy("createdAt", "desc")
     .limit(100)

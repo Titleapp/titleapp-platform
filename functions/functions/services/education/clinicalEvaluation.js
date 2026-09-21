@@ -116,16 +116,31 @@ async function signAndMintEvaluation({ studentId, evaluation, signer, signedAtIs
  * List a student's signed clinical evaluations from their Vault, each with a
  * recomputed signature-verification verdict (proof it's untampered).
  *
+ * institutionTenantId is OPTIONAL and deliberately so — the caller (see
+ * index.js's /edu:evaluations route) already draws this distinction: a
+ * student viewing their OWN record sees everything, unfiltered, by design
+ * ("portable record for life" — no third party gains new visibility when a
+ * person looks at their own data, so this isn't the cross-tenant-consent
+ * case). A THIRD PARTY (instructor/employer) viewing a specific student's
+ * record must pass institutionTenantId, scoping results to that one
+ * institution — never everything the student has ever done everywhere.
+ * Do not make this required without checking the caller's self-view path
+ * first; that path relies on it staying optional.
+ *
  * @param {object} a
  * @param {object} a.db        firestore instance
  * @param {string} a.studentId
+ * @param {string} [a.institutionTenantId] required for third-party views, omit for self-view
  */
-async function listStudentEvaluations({ db, studentId }) {
+async function listStudentEvaluations({ db, studentId, institutionTenantId }) {
   if (!studentId) return { ok: false, error: "studentId required" };
-  const snap = await db.collection("dtcs")
+  let q = db.collection("dtcs")
     .where("userId", "==", studentId)
-    .where("type", "==", "clinical_evaluation")
-    .get();
+    .where("type", "==", "clinical_evaluation");
+  if (institutionTenantId) {
+    q = q.where("metadata.institutionTenantId", "==", institutionTenantId);
+  }
+  const snap = await q.get();
 
   const evaluations = snap.docs.map(d => {
     const data = d.data();

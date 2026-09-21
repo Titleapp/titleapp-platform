@@ -29039,7 +29039,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // second disconnected copy. This route's own behavior for the
         // signed-in caller (self) is unchanged.
         const { computePilotCurrency } = require("./services/aviation/pilotCurrency");
-        const currency = await computePilotCurrency(db, pcCtx.userId);
+        const currency = await computePilotCurrency(db, pcCtx.userId, pcCtx.tenantId);
         return res.json({ ok: true, currency });
       } catch (e) {
         console.error("pilot:currency failed:", e);
@@ -35203,7 +35203,7 @@ Analyze now:`;
           // crewQualsEngine.js's documented fallback behavior.
           const isMx = b.role === "mx";
           const [currency, mxCurrency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap, effectiveLimits] = await Promise.all([
-            isMx ? Promise.resolve(null) : computePilotCurrency(db, b.pilotUserId),
+            isMx ? Promise.resolve(null) : computePilotCurrency(db, b.pilotUserId, dctx.tenantId),
             isMx ? computeMxCurrency(db, b.pilotUserId) : Promise.resolve(null),
             db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
             db.collection("dutyPeriods").doc(b.pilotUserId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
@@ -35292,7 +35292,7 @@ Analyze now:`;
             // pilot-currency checklist regardless of real duty role.
             const isMx = c.role === "mx";
             const [currency, mxCurrency, dutyPeriodsSnap, activeDutySnap, logEntriesSnap] = await Promise.all([
-              isMx ? Promise.resolve(null) : computePilotCurrency(db, c.crewId),
+              isMx ? Promise.resolve(null) : computePilotCurrency(db, c.crewId, dctx.tenantId),
               isMx ? computeMxCurrency(db, c.crewId) : Promise.resolve(null),
               db.collection("dutyPeriods").doc(c.crewId).collection("periods").orderBy("dutyStartZulu", "desc").limit(50).get(),
               db.collection("dutyPeriods").doc(c.crewId).collection("periods").where("dutyEndZulu", "==", null).limit(1).get(),
@@ -36635,7 +36635,7 @@ Analyze now:`;
           scopeToTenantId = ctx.tenantId;
         }
 
-        const out = await listStudentEvaluations({ db, studentId: requestedStudentId });
+        const out = await listStudentEvaluations({ db, studentId: requestedStudentId, institutionTenantId: scopeToTenantId || undefined });
         if (scopeToTenantId && out.ok) {
           out.evaluations = out.evaluations.filter(e => e.institutionTenantId === scopeToTenantId);
           out.count = out.evaluations.length;

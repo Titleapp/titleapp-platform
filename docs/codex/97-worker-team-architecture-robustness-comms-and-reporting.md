@@ -25,6 +25,24 @@ A red-team review of the first draft of this doc flagged real gaps before any of
 
 ---
 
+## Cross-tenant data access consent model (Sean, 2026-09-21 — general Vault/DTC primitive, not worker-comms-specific)
+
+Triggered by a same-session security audit (see the personaEmailIdentities.js cross-tenant fix above, and a broader audit that found and fixed live tenant-scoping bugs in `capTables`, `nurse-edu:students`, `logbook:list`, `wallet:assets`, and workspace-scoped asset queries — real findings, already committed and deployed 2026-09-21). Two of the audit's findings — `pilotCurrency.js` and `clinicalEvaluation.js`'s handling of a person's own record across tenants — turned out to need a real product decision, not just a missing filter. Sean's answer, refined through discussion, is the actual design:
+
+**The rule:** a person's own data may unify across tenants/institutions *only* when the person has explicitly authorized that specific relationship — never silently, never by default, never inferred from an old, differently-scoped authorization. Concretely:
+
+1. **Deny by default, always.** No response to an access request means denied, not approved — fail-safe, not fail-open. This is the actual fix already shipped tonight for `pilotCurrency.js` (Dispatch checking a crew member, and self-view) and `clinicalEvaluation.js`'s third-party view: scope to the current/requesting tenant only until a real consent mechanism exists.
+2. **Consent is scoped narrowly: (person, data type, granting tenant/relationship, purpose) — never a blanket toggle.** This is what makes the student→employee case self-enforcing: "share my nursing records with Clearwater Nursing's instructors, for coursework evaluation" does not match a later request from an unrelated employer — no matching key, no access, forced to ask fresh. Consent must never be modeled as a single per-person yes/no.
+3. **The nightmare scenario this has to survive:** a compromised or malicious institution masking an access request as routine, hoping the person waves it through without noticing. The mitigating design, explicitly: **deny the requesting party, notify the actual person through a channel the requester cannot control or intercept, and require their explicit approval before anything is granted.** The notification must go through the person's own authenticated SOCIII session (already logged in, ideally MFA-backed) as the primary channel — email/SMS is a fallback notice only, never the approval mechanism itself, or a phished/intercepted link defeats the whole safeguard.
+4. **The approval prompt must be transparent by design:** who is asking, what specifically they want, and why (if given) — matching the same disclosure principle already applied to persona sends.
+5. **On approval, the person chooses "ask me every time" or "don't ask again for this exact relationship + purpose."** Either way, every actual access is logged permanently to the person's own audit trail — silence applies to the notification, never to the record. Matches the disclosure/correction-protocol precedent already set for persona comms: notification is optional, the record never is.
+6. **Anomaly detection as a backstop, not just trusting each person to catch it every time.** If the same requesting tenant generates an unusual volume of these requests in a short window (fishing for one person who approves without reading), that pattern itself should alert SOCIII — the same real-time/high-risk-nudge instinct already designed for persona sends, applied here to the requesting side.
+7. **Scope of this gate, precisely:** it applies only when the requesting tenant does *not* already have an established relationship with the person — a new institution, a new employer, anyone outside the person's *current* enrollment/membership. It does not apply to an instructor or dispatcher who already has a legitimate, verified membership/role with that person's *current* tenant — that's the ordinary membership+role check (already fixed tonight on `nurse-edu:students`), not a new-relationship consent event.
+
+**Not yet built** — this is a real, standalone feature (a consent-record data model, a notification/approval flow through an authenticated channel, and anomaly detection on the requesting side), worth its own follow-up CODEX doc rather than folding a full spec in here, but the design above is decided, not open. What's live tonight is the safe interim default (deny/scope-to-current-tenant) on the two flagged functions — not the consent flow itself.
+
+---
+
 ## 1. Robustness (workers actually finishing the job correctly)
 
 **Gap, not a new idea** — this is the same concern behind [Real worker functional QA (2026-09-18)](../../memory-adjacent note: see project memory `project_real_worker_functional_qa_sep2026`): assume most workers are basic/broken at real tasks until proven otherwise.
