@@ -38233,6 +38233,28 @@ exports.processChainMints = onSchedule(
 );
 
 // ----------------------------
+// MEMBERSHIP AUDIT-TRAIL RECONCILIATION (CODEX 98)
+// ----------------------------
+// Sharper detector alongside Firestore Data Access audit logging (enabled
+// 2026-09-21): compares each memberships doc's current state against its
+// own membershipEvents history, alerting on any mismatch — which means
+// something wrote to memberships outside the 7 audited call sites in this
+// file. Hourly, since the collection is small and the alert is what
+// matters, not sub-minute latency.
+const { runMembershipReconciliation } = require("./services/anchor/membershipReconciliation");
+exports.membershipReconciliation = onSchedule(
+  { schedule: "0 * * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    try {
+      const result = await runMembershipReconciliation();
+      console.log("[membershipReconciliation]", result.checked, "checked,", result.mismatches.length, "mismatch(es)");
+    } catch (e) {
+      console.error("[membershipReconciliation] failed:", e);
+    }
+  }
+);
+
+// ----------------------------
 // COS WORKERS: Morning Run (7am PT) + Evening Run (6pm PT)
 // ----------------------------
 const { runCosMorning, runCosEvening } = require("./services/cosScheduler");
