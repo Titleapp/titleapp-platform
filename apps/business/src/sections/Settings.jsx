@@ -700,7 +700,6 @@ function PersonalSettings() {
   });
 
   const [toast, setToast] = useState(null);
-  const [blockchainEnabled, setBlockchainEnabled] = useState(() => localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true");
 
   const [notifications, setNotifications] = useState({
     email: true,
@@ -787,11 +786,6 @@ function PersonalSettings() {
     reader.readAsDataURL(file);
     // Reset input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-
-  function handleBlockchainToggle(checked) {
-    setBlockchainEnabled(checked);
-    localStorage.setItem("VAULT_BLOCKCHAIN_ENABLED", String(checked));
   }
 
   return (
@@ -1082,12 +1076,6 @@ function PersonalSettings() {
           </div>
 
           <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Blockchain Recording</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$0.99</div>
-            <div style={{ fontSize: '13px', color: '#64748b' }}>Per DTC. Permanent record on the Base blockchain via Venly (Polygon available). Tamper-proof.</div>
-          </div>
-
-          <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
             <div style={{ fontWeight: '600', marginBottom: '4px' }}>E-Signature Requests</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$1.99</div>
             <div style={{ fontSize: '13px', color: '#64748b' }}>Per request. BoldSign-powered third-party attestation on logbook entries.</div>
@@ -1105,44 +1093,9 @@ function PersonalSettings() {
           <div style={{ fontWeight: '600', marginBottom: '8px' }}>Usage This Month</div>
           <div style={{ display: 'flex', gap: '24px', fontSize: '14px' }}>
             <div><span style={{ fontWeight: '600' }}>0</span> ID verifications</div>
-            <div><span style={{ fontWeight: '600' }}>0</span> blockchain recordings</div>
             <div><span style={{ fontWeight: '600' }}>0</span> e-signature requests</div>
           </div>
           <div style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>Total charges this month: $0.00</div>
-        </div>
-      </div>
-
-      {/* Blockchain Verification */}
-      <div className="card" style={{ marginBottom: "16px" }}>
-        <div className="cardHeader">
-          <div>
-            <div className="cardTitle">Blockchain Verification</div>
-            <div className="cardSub">Permanent, tamper-proof records</div>
-          </div>
-        </div>
-        <div style={{ padding: "16px" }}>
-          <div style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.7", marginBottom: "20px" }}>
-            Save your most important records on the blockchain so they can never be lost, altered, or forged. Each verified item gets a permanent digital certificate that exists independently of any company or service.
-          </div>
-          <div style={{
-            padding: "14px 16px",
-            background: blockchainEnabled ? "#f0fdf4" : "#f8fafc",
-            border: blockchainEnabled ? "1px solid #86efac" : "1px solid #e5e7eb",
-            borderRadius: "10px",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <input
-                type="checkbox"
-                checked={blockchainEnabled}
-                onChange={(e) => handleBlockchainToggle(e.target.checked)}
-                style={{ width: "20px", height: "20px" }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: "2px" }}>Enable Blockchain Record Keeping</div>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Additional fee applies. Records are minted to the Base blockchain by default via VENLY (Polygon available).</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
