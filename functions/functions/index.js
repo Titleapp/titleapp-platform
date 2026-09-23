@@ -16800,6 +16800,159 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/workspace:member:remove (2026-09-23 — real gap, no removal
+    // path existed at all: seatSync.js could only ever sync seats UP,
+    // never down, because there was no way to actually remove a member.
+    // Admin-only (matches membershipCheck.js's own documented authority:
+    // "only admin can... add/remove members"). Soft-deletes the
+    // membership (status: "removed", not a hard delete — matches this
+    // codebase's append-only/audit-friendly convention elsewhere), clears
+    // the users/{uid}/workspaces/{tenantId} mirror so the removed user's
+    // own client stops treating this as an active workspace, then
+    // immediately re-syncs that ONE tenant's Stripe seat quantity via the
+    // same syncOneTenant() logic the quarterly job uses — real-time on
+    // removal, not a wait for the next quarterly run.
+    if (route === "/workspace:member:remove" && method === "POST") {
+      try {
+        const { tenantId, membershipId } = body || {};
+        if (!tenantId) return jsonError(res, 400, "MISSING_TENANT_ID");
+        if (!membershipId) return jsonError(res, 400, "MISSING_MEMBERSHIP_ID");
+
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(auth.user.uid, tenantId, "admin");
+        if (!gate.ok) {
+          return res.status(403).json({ ok: false, error: "NOT_ADMIN", requiredRole: "admin", currentRole: gate.role });
+        }
+
+        const memRef = db.collection("memberships").doc(String(membershipId));
+        const memSnap = await memRef.get();
+        if (!memSnap.exists) return jsonError(res, 404, "MEMBERSHIP_NOT_FOUND");
+        const mem = memSnap.data();
+        // Belt-and-suspenders — never trust the client-supplied tenantId
+        // alone for something this sensitive (same pattern as the
+        // chat-session resume fix, CODEX-S52.65).
+        if (mem.tenantId !== tenantId) return jsonError(res, 400, "TENANT_MISMATCH");
+        if (mem.status !== "active") return jsonError(res, 409, "ALREADY_REMOVED");
+
+        // Safety invariant: a tenant must always retain at least one
+        // active admin. Refuse a removal that would leave zero.
+        if (mem.role === "admin") {
+          const adminSnap = await db.collection("memberships")
+            .where("tenantId", "==", tenantId)
+            .where("status", "==", "active")
+            .where("role", "==", "admin")
+            .get();
+          if (adminSnap.size <= 1) {
+            return jsonError(res, 409, "LAST_ADMIN", { message: "Cannot remove the workspace's only remaining admin." });
+          }
+        }
+
+        await memRef.update({
+          status: "removed",
+          removedAt: admin.firestore.FieldValue.serverTimestamp(),
+          removedBy: auth.user.uid,
+        });
+        await db.doc(`users/${mem.userId}/workspaces/${tenantId}`)
+          .set({ status: "removed", removedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true })
+          .catch((e) => console.warn("[workspace:member:remove] mirror-doc update failed (continuing):", e.message));
+
+        let seatSync = null;
+        try {
+          const { syncOneTenant } = require("./billing/seatSync");
+          const Stripe = require("stripe");
+          const stripeKey = process.env.STRIPE_SECRET_KEY;
+          const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+          if (stripeKey && tenantSnap.exists) {
+            const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+            seatSync = await syncOneTenant(stripe, db, tenantSnap);
+          }
+        } catch (syncErr) {
+          // Never fail the removal itself over a billing-sync hiccup —
+          // the quarterly job is still a backstop if this fails.
+          console.warn("[workspace:member:remove] immediate seat sync failed (quarterly job remains a backstop):", syncErr.message);
+        }
+
+        return res.json({ ok: true, removedMembershipId: membershipId, seatSync });
+      } catch (e) {
+        console.error("workspace:member:remove failed:", e);
+        return jsonError(res, 500, e.message || "Failed to remove member");
+      }
+    }
+
+    // POST /v1/workspace:worker:activate (2026-09-23 — real gap: every
+    // existing activeWorkers write was a one-off, hardcoded to a specific
+    // workerSlug at onboarding or a specific bundle-purchase route. No
+    // general "add any valid worker" endpoint existed. Validates the
+    // workerSlug against the real digitalWorkers catalog before adding —
+    // arrayUnion into an invalid slug would silently create a worker that
+    // doesn't exist. NOTE (honest caveat): activeWorkers is not currently
+    // enforced as an access gate anywhere in the backend — this list
+    // drives what the UI shows, not what a direct API call can reach. See
+    // Still Open note in this route's sibling, workspace:worker:deactivate.
+    if (route === "/workspace:worker:activate" && method === "POST") {
+      try {
+        const { tenantId, workerSlug } = body || {};
+        if (!tenantId) return jsonError(res, 400, "MISSING_TENANT_ID");
+        if (!workerSlug) return jsonError(res, 400, "MISSING_WORKER_SLUG");
+
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(auth.user.uid, tenantId, "admin");
+        if (!gate.ok) {
+          return res.status(403).json({ ok: false, error: "NOT_ADMIN", requiredRole: "admin", currentRole: gate.role });
+        }
+
+        const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
+        if (!dwSnap.exists) return jsonError(res, 404, "WORKER_NOT_FOUND");
+        const dw = dwSnap.data();
+        if (dw.visibility === "organization" && dw.ownerTenantId && dw.ownerTenantId !== tenantId) {
+          return jsonError(res, 403, "PRIVATE_WORKER");
+        }
+
+        await db.doc(`users/${auth.user.uid}/workspaces/${tenantId}`).set({
+          activeWorkers: admin.firestore.FieldValue.arrayUnion(workerSlug),
+        }, { merge: true });
+
+        return res.json({ ok: true, tenantId, workerSlug, activated: true });
+      } catch (e) {
+        console.error("workspace:worker:activate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to activate worker");
+      }
+    }
+
+    // POST /v1/workspace:worker:deactivate (2026-09-23 — companion to
+    // :activate above; no arrayRemove existed anywhere in this file for
+    // activeWorkers before this. STILL OPEN, flagged honestly rather than
+    // silently implied as solved: activeWorkers is not read as an
+    // enforcement gate anywhere in the worker-chat path today (confirmed
+    // by grep — no code path checks activeWorkers.includes(workerSlug)
+    // before serving a turn). This endpoint correctly updates the catalog
+    // list; it does not yet actually block chat access to a deactivated
+    // worker. Real enforcement is a separate, not-yet-scoped piece of
+    // work — don't tell a user "removed" implies "blocked" until that
+    // exists.
+    if (route === "/workspace:worker:deactivate" && method === "POST") {
+      try {
+        const { tenantId, workerSlug } = body || {};
+        if (!tenantId) return jsonError(res, 400, "MISSING_TENANT_ID");
+        if (!workerSlug) return jsonError(res, 400, "MISSING_WORKER_SLUG");
+
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(auth.user.uid, tenantId, "admin");
+        if (!gate.ok) {
+          return res.status(403).json({ ok: false, error: "NOT_ADMIN", requiredRole: "admin", currentRole: gate.role });
+        }
+
+        await db.doc(`users/${auth.user.uid}/workspaces/${tenantId}`).set({
+          activeWorkers: admin.firestore.FieldValue.arrayRemove(workerSlug),
+        }, { merge: true });
+
+        return res.json({ ok: true, tenantId, workerSlug, activated: false, note: "Removed from the workspace's worker catalog. Not yet an enforced access block — see code comment." });
+      } catch (e) {
+        console.error("workspace:worker:deactivate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to deactivate worker");
+      }
+    }
+
     // POST /v1/workspace:invite:redeem (CODEX 50.10-T2)
     // Recipient accepts an invite. Validates email match, creates the
     // memberships/{id} doc and the users/{uid}/workspaces/{tenantId} mirror

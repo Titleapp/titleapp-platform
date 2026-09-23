@@ -81,4 +81,4 @@ async function syncBoxPlanSeats() {
   return { checked: results.length, updated: updated.length, failed: failed.length, results };
 }
 
-module.exports = { syncBoxPlanSeats };
+module.exports = { syncBoxPlanSeats, syncOneTenant };
