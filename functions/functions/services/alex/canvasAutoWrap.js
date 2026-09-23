@@ -227,8 +227,18 @@ function autoWrap({ aiText, userInput, defaultTitle }) {
   const isFalseClaim = FALSE_CANVAS_CLAIM_RE.test(aiText) && aiText.length < 700;
   if (isFalseClaim) {
     const { type, title } = pickTypeAndTitleFromAsk(userInput);
+    // 2026-09-23 — found in worker QA: this used to fully discard the
+    // model's real answer and replace it with a canned "on the canvas"
+    // line, even when the original text had a genuine short answer
+    // alongside a stray canvas-claim phrase (Jordan/HR: a real "0
+    // employees on file" answer got swallowed into a non-answer pointing
+    // at an empty canvas — the worker never actually answered the
+    // question asked). Now strips just the false-claim phrase out of the
+    // model's real text and keeps the rest as the chat reply, only
+    // falling back to the canned line if nothing real is left.
+    const strippedText = aiText.replace(FALSE_CANVAS_CLAIM_RE, "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
     return {
-      aiText: `${title} is on the canvas — this is a starting structure. Tell me which numbers you want me to swap in.`,
+      aiText: strippedText || `${title} is on the canvas — this is a starting structure. Tell me which numbers you want me to swap in.`,
       canvasRender: {
         type,
         payload: placeholderPayloadFor(type, title),
@@ -240,10 +250,28 @@ function autoWrap({ aiText, userInput, defaultTitle }) {
   const sections = splitSections(aiText);
   const summary = firstNonHeaderLine(aiText) || `${title} ready for review.`;
 
+  // 2026-09-23 — found in worker QA (Reed/IR and Ivy/Marketing canvas
+  // write-ups both repeated their own opening line twice): splitSections()
+  // puts the leading untitled text block into an auto-generated "Overview"
+  // section, which naturally starts with the same sentence firstNonHeaderLine
+  // just extracted as `summary` above — the frontend card shows both
+  // `summary` as its headline and this section's body right below it,
+  // duplicating that line. Strip it from Overview's body since it's already
+  // shown separately as the headline.
+  if (sections[0]?.heading === "Overview" && sections[0].body.startsWith(summary)) {
+    const rest = sections[0].body.slice(summary.length).trim();
+    if (rest) sections[0].body = rest;
+    else sections.shift();
+  }
+
   // If we couldn't extract sections, fall back to summary + raw body.
   if (sections.length === 0) {
     return {
-      aiText: `${title} is ready in the canvas on the right. Let me know if you want adjustments.`,
+      // 2026-09-23 — same fix as the false-claim branch above: use the
+      // real extracted summary sentence as the chat reply instead of an
+      // always-generic "ready in the canvas" line, so a short factual
+      // answer stays visible in chat rather than only living in the canvas.
+      aiText: summary,
       canvasRender: {
         type: "card:work-product",
         payload: {
