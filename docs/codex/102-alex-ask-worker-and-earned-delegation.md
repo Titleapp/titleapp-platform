@@ -1,6 +1,17 @@
 # CODEX 102 — Alex's `ask_worker` Capability, and Earned Delegation Rights
 
-**Status:** Scoped 2026-09-23, revised same night after two red-team passes caught real design gaps before anything was built — the cheap moment to fix them. Not yet built. Sean approved v1 for build; the redesign below is what should actually get built, not the first draft.
+**Status, updated 2026-09-23:** Part 1 (`ask_worker`) is now BUILT and DEPLOYED, following the redesign below point-for-point after two design-only red-team passes. Part 2 (earned delegation) remains explicitly deferred and not started — hard-blocked on pillar-3 bounds per round 2's correction, below.
+
+New files: `services/alex/askWorker.js` (core capability — zero tools bound, tenant-scoped grounding, dual-store logging), `services/alex/askWorkerRateLimiter.js` (per-tenant hourly budget, modeled on `personaSendRateLimiter.js`). Wired into `index.js`'s existing Alex (`_isCos`) block only — new tool `_askWorkerTool` added to `_cosTools`, a new dispatch branch in the existing tool_use if/else chain, nothing exported as a route.
+
+**Verified live before deploy, against real production Firestore and a real Anthropic call, not just locally reasoned about:**
+- Rate limiter: happy path, full-budget exhaustion (fails closed), and per-tenant isolation (a second tenant's budget is unaffected by the first's) — all confirmed via a real transactional read/write cycle.
+- `runAskWorker` end-to-end against Sean's own real SOCIII tenant (`ws_1779846027006_hc71aw`) and a real worker (`platform-accounting`/Max): correctly refused asking `chief-of-staff` (self), correctly refused an unknown workerSlug, and a real call returned a real grounded answer from Max.
+- All three writes confirmed landed: the target's own `chatSessions` history (tagged `viaAskWorker: true`), the durable `messageEvents` audit entry (`type: "chat:message:ask_worker"`), and the `alexAskWorkerLog` rollup entry Dev reads.
+- Dev's new `checkAskWorkerVolume()` (CODEX 102 point 6, extending CODEX 100's Dev worker) ran live against real data and returned correctly (empty — one real test call is far below the 20-calls/24h warn threshold).
+- `lint-gmail-watch-callsites.js`, `lint-dev-worker-scope.js`, and `capabilityGates.test.js` all still pass — this build didn't touch any of those boundaries.
+
+**Known, accepted v1 simplification, not a shortcut around the design:** the target worker's grounding uses `dw.systemPrompt` plus the calling tenant's real `buildWorkspaceBrief()` output — the same workspace-brief function Alex's own prompt uses — but does NOT replicate the full sibling-state/RAAS-rules injection the worker's own normal chat turn gets. Several real `digitalWorkers` docs (e.g. `platform-accounting`) have an empty `systemPrompt` field in Firestore today, so `ask_worker` falls back to a generic "you are {name}, a specialist worker" prompt for those — a real, live limitation worth knowing about, not hidden. Worth revisiting once/if a real per-worker tool-and-prompt registry exists (see the round-1 red-team finding that no such registry exists today — everything is hardcoded per-branch).
 
 **Sean, 2026-09-23**, on the "staff meeting" discussion: workers stay siloed from each other — that isolation is a deliberate security boundary (CODEX-S52.65), not something to remove. The one exception: Alex should be able to reach into any worker's silo on request, audited, not a live multi-agent meeting. Separately, on delegation generally: *"It seems like there should be some method of earning the trust of the platform before you can delegate to others. Otherwise we might end up with the lazy bossy coworker syndrome."*
 

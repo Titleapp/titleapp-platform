@@ -276,6 +276,40 @@ async function checkPendingApprovalAge(db) {
   return findings;
 }
 
+// ── Check: ask_worker usage rollup ──
+// CODEX 102 Part 1, point 6: "a visible rollup of usage... readable by Dev,
+// extending Dev's existing 'Dev cannot be the only thing checking Dev'
+// pattern, so a volume spike or a suspicious cross-silo fishing pattern is
+// actually detectable in one place." Deterministic, no LLM judgment — a
+// simple per-tenant volume threshold over alexAskWorkerLog, same as every
+// other check in this file.
+const ASK_WORKER_VOLUME_WINDOW_HOURS = 24;
+const ASK_WORKER_VOLUME_WARN_THRESHOLD = 20; // well above one hour's 10-call budget — signals sustained use, not a single burst
+async function checkAskWorkerVolume(db) {
+  const cutoff = new Date(Date.now() - ASK_WORKER_VOLUME_WINDOW_HOURS * 3600000);
+  let snap;
+  try {
+    snap = await db.collection("alexAskWorkerLog").where("createdAt", ">=", cutoff).get();
+  } catch (e) {
+    return [{ severity: "warn", scope: "ask-worker", id: "read-failed", reason: `alexAskWorkerLog read failed: ${e.message}` }];
+  }
+  const byTenant = {};
+  snap.forEach((doc) => {
+    const d = doc.data();
+    const t = d.tenantId || "unknown";
+    if (!byTenant[t]) byTenant[t] = { total: 0, pasted: 0 };
+    byTenant[t].total++;
+    if (d.pastedContentFlag) byTenant[t].pasted++;
+  });
+  const findings = [];
+  for (const [tenantId, stats] of Object.entries(byTenant)) {
+    if (stats.total >= ASK_WORKER_VOLUME_WARN_THRESHOLD) {
+      findings.push({ severity: "warn", scope: "ask-worker", id: `volume-${tenantId}`, reason: `tenant ${tenantId} made ${stats.total} ask_worker calls in the last ${ASK_WORKER_VOLUME_WINDOW_HOURS}h (${stats.pasted} pasted-content-flagged) — worth a look for over-reliance or a fishing pattern` });
+    }
+  }
+  return findings;
+}
+
 // ── Check: expiry-sweep heartbeat ──
 // personaEmailApprovalExpirySweep (personaEmailReplyPipeline.js) is now the
 // fail-safe standing between "an approval sits forever" and "safe default:
@@ -354,9 +388,10 @@ async function runDevChecks(opts = {}) {
   const watchFindings = await checkGmailWatchHealth(db, approxGatesAllow);
   const queueFindings = await checkPendingApprovalAge(db);
   const sweepFindings = await checkExpirySweepHeartbeat(db);
+  const askWorkerFindings = await checkAskWorkerVolume(db);
   const surfacedFindings = await surfaceWorkerCanaryFindings(db);
 
-  const ownFindings = [...registryFindings, ...watchFindings, ...queueFindings, ...sweepFindings];
+  const ownFindings = [...registryFindings, ...watchFindings, ...queueFindings, ...sweepFindings, ...askWorkerFindings];
   const allFindings = [...ownFindings, ...surfacedFindings];
 
   const reds = allFindings.filter((f) => f.severity === "red");
@@ -378,4 +413,4 @@ async function runDevChecks(opts = {}) {
   return result;
 }
 
-module.exports = { runDevChecks, HEALTH_DOC, checkGateRegistryIntegrity, checkGmailWatchHealth, checkPendingApprovalAge, checkExpirySweepHeartbeat, surfaceWorkerCanaryFindings, looksLikeHardcodedStub, isPermissionDenied };
+module.exports = { runDevChecks, HEALTH_DOC, checkGateRegistryIntegrity, checkGmailWatchHealth, checkPendingApprovalAge, checkExpirySweepHeartbeat, checkAskWorkerVolume, surfaceWorkerCanaryFindings, looksLikeHardcodedStub, isPermissionDenied };

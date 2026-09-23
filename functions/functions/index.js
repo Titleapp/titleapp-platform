@@ -10284,6 +10284,7 @@ YOUR TOOLS — the complete list of what you can actually call. Never claim a to
 - file_squawk: file a maintenance squawk on an aircraft. Writes to the operator's aircraft maintenance record. Confirm with user before calling.
 - log_maintenance_entry: append an entry to an aircraft's real Aircraft Logbook (CAN) — inspections, component work, AD/SB compliance, anything not an open discrepancy. Append-only — confirm description, signing A&P/IA, and TTSN before calling.
 - push_alert / resolve_alert / snooze_alert: manage the Operating Feed (see rules above).
+- ask_worker: ask one of this business's other Digital Workers (e.g. Max/accounting, Jordan/HR, Ivy/marketing, Sage/contacts) a specific question and relay their real, grounded answer. Q&A ONLY — this cannot make them take any action, only answer. Do not overuse this as a substitute for your own reasoning on things you can already answer yourself; it's rate-limited.
 
 TOOL ENFORCEMENT — read before every response:
 If a user asks to browse the web, search the internet, or look something up — call web_search. Answer is YES, you can.
@@ -10301,6 +10302,7 @@ If a user says "log a maintenance entry", "log this in the logbook", or describe
 If you identify an urgent action item that meets the OPERATING FEED rules above — call push_alert to surface it in the feed.
 If a user says "mark that resolved", "close that alert", or "that's done" about an Operating Feed item — call resolve_alert with the itemId.
 If a user says "remind me later", "snooze that", or "not now" about a feed item — call snooze_alert with an appropriate snoozeHours.
+If a question genuinely needs another specific worker's own knowledge (their domain data, not general knowledge you already have) — call ask_worker with that worker's slug and a specific question. If the call fails or the budget is exhausted, say so honestly — never present a guess as if it came from them.
 
 BEHAVIORAL RULES — non-negotiable:
 1. Never present numbered options (1/2/3) or ask the user to choose an approach. Pick the best path and execute it. If you need a clarification, ask ONE specific question in plain prose.
@@ -10669,7 +10671,25 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                     required: ["itemId", "snoozeHours"],
                   },
                 };
-                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool, _cosLogMaintenanceEntryTool, _cosPushAlertTool, _cosResolveAlertTool, _cosSnoozeAlertTool];
+                // CODEX 102 Part 1 — ask_worker. Answer-only by construction
+                // (see services/alex/askWorker.js's header comment): the
+                // underlying call binds zero tools to the target worker, so
+                // there is nothing here for a malicious question to trigger
+                // beyond a read-only answer. Alex-only — never added to the
+                // generic-worker `businessTools` array.
+                const _askWorkerTool = {
+                  name: "ask_worker",
+                  description: "Ask another one of this business's Digital Workers a question and get a real, grounded answer from their own knowledge and this business's data — for you to relay or use in your own reply. Q&A ONLY: this cannot make the other worker take any action (send anything, write any record, change anything) — it can only answer. Never claim it did anything beyond answering. Do not use this as a substitute for your own reasoning on things you can already answer directly.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      workerSlug: { type: "string", description: "The target worker's slug, e.g. platform-accounting, platform-hr, platform-marketing, platform-contacts. Never chief-of-staff (that's you)." },
+                      question: { type: "string", description: "The specific question to ask that worker." },
+                    },
+                    required: ["workerSlug", "question"],
+                  },
+                };
+                const _cosTools = [_cosDocTool, _cosFetchTool, _cosSearchTool, _cosDriveSearchTool, _cosDriveReadTool, _cosWriteAccountingTool, _cosSearchEmailTool, _cosSendEmailTool, _cosListEventsTool, _cosApolloSearchTool, _cosEnrichContactTool, _cosImageTool, _cosWeatherTool, _cosNotamTool, _cosLogFlightTool, _cosFileSquawkTool, _cosLogMaintenanceEntryTool, _cosPushAlertTool, _cosResolveAlertTool, _cosSnoozeAlertTool, _askWorkerTool];
                 // Build follow-up messages for a tool call — includes stub tool_results for any
                 // extra tool_use blocks in _resp.content so Anthropic never sees an unmatched pair.
                 const _cosFollowUpMsgs = (resp, primaryToolId, primaryResult) => {
@@ -11499,6 +11519,38 @@ Call get_campaigns before proposing a new email campaign. Campaigns move: propos
                       tools: _cosTools, tool_choice: { type: "none" },
                     }, { timeoutMs: 20000 });
                     _txt = _composeTxt(_snoozeFollowUp, _snoozeResult);
+                  } else if (_cosTool && _cosTool.name === "ask_worker") {
+                    let _askResult;
+                    const { runAskWorker, AskWorkerBudgetExhaustedError, AskWorkerRefusedError } = require("./services/alex/askWorker");
+                    try {
+                      const inp = _cosTool.input || {};
+                      const { answer, workerName: _askedWorkerName } = await runAskWorker({
+                        tenantId: _cosTenantId,
+                        callingUid: authUser.uid,
+                        targetSlug: inp.workerSlug,
+                        question: inp.question,
+                        triggeringMessage: userInput,
+                      });
+                      _askResult = `${_askedWorkerName} answered: "${answer}". Relay or synthesize this into your reply. This was an answer only — ${_askedWorkerName} did not take any action.`;
+                    } catch (_askErr) {
+                      if (_askErr instanceof AskWorkerBudgetExhaustedError) {
+                        // Round-2 point 5a — must surface as an honest statement,
+                        // never a silent fallback to Alex's own reasoning with
+                        // matching confidence.
+                        _askResult = `You could not ask that worker — this hour's ask_worker budget is used up for this business. Tell the user plainly that you couldn't check with them this hour, and either answer from what you already know (clearly flagged as not verified with them) or offer to check again next hour. Do not present an unverified guess as if it came from them.`;
+                      } else if (_askErr instanceof AskWorkerRefusedError) {
+                        _askResult = `You could not ask that worker: ${_askErr.message}. Tell the user plainly and either pick a different, valid worker or answer from what you already know.`;
+                      } else {
+                        console.warn("[COS] ask_worker failed:", _askErr.message);
+                        _askResult = `Asking that worker failed unexpectedly. Tell the user plainly that you couldn't get an answer from them right now.`;
+                      }
+                    }
+                    const _askFollowUp = await anthropic.messages.create({
+                      model: "claude-sonnet-4-6", max_tokens: 1024, system: cosPrompt,
+                      messages: _cosFollowUpMsgs(_resp, _cosTool.id, _askResult),
+                      tools: _cosTools, tool_choice: { type: "none" },
+                    }, { timeoutMs: 30000 });
+                    _txt = _composeTxt(_askFollowUp, _askResult);
                   }
                 }
                 if (!_txt) {
