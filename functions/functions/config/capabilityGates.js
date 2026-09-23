@@ -65,7 +65,11 @@ const CAPABILITY_GATES = {
           }
           return { pass: true };
         } catch (e) {
-          return { pass: false, reason: `rate limiter self-test failed: ${e.message}` };
+          // code carried through so a caller (devWorker.js) can classify a
+          // PERMISSION_DENIED failure by the actual gRPC/HTTP status rather
+          // than string-matching e.message, which can drift silently across
+          // client library versions.
+          return { pass: false, reason: `rate limiter self-test failed: ${e.message}`, code: e.code };
         }
       },
     },
@@ -124,7 +128,9 @@ const CAPABILITY_GATES = {
           }
           return { pass: true };
         } catch (e) {
-          return { pass: false, reason: `correction protocol self-test failed: ${e.message}` };
+          // See rate-limiter-live's matching comment — code carried through
+          // for the same reason.
+          return { pass: false, reason: `correction protocol self-test failed: ${e.message}`, code: e.code };
         }
       },
     },

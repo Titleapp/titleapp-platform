@@ -38316,6 +38316,26 @@ exports.devWorker = onSchedule(
 );
 
 // ----------------------------
+// PERSONA-EMAIL PENDING-APPROVAL EXPIRY (CODEX 100 round-2 red-team gap,
+// closed 2026-09-23) — every 6h. A held-for-approval draft that's never
+// actioned within 48h expires unsent, never auto-sends on timeout. Sean
+// flies 14-on/14-off; this is the fail-closed default while a real
+// backup-approver decision remains open.
+// ----------------------------
+exports.personaEmailApprovalExpirySweep = onSchedule(
+  {
+    schedule: "0 */6 * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { expireStalePersonaEmailApprovals } = require("./communications/personaEmailReplyPipeline");
+    const result = await expireStalePersonaEmailApprovals();
+    console.log("[personaEmailApprovalExpirySweep]", JSON.stringify(result));
+  }
+);
+
+// ----------------------------
 // COMMITMENT LEDGER — overdue sweep (CODEX 101), every 6h. Missed
 // commitments become visible ("expired"), never silently vanish.
 // ----------------------------

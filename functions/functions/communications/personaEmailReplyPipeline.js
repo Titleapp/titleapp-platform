@@ -191,9 +191,58 @@ async function handlePersonaEmailApprovalAction(req, res, action) {
   }
 }
 
+// CODEX 100's round-2 red-team pass flagged this as a real gap, not a
+// "decide later" item: Sean flies 14-on/14-off, and the doc's own
+// escalation thresholds (24h warn / 48h red) assume someone can act
+// within that window — a red alert firing on day 2 of a rotation could sit
+// for 12+ days with no decided fallback. The doc's own text already names
+// the safe default ("a stale draft expires unsent, never auto-sends on
+// timeout") — that default needs no judgment call from Sean to implement
+// (a specific backup-approver identity would), so it ships now rather
+// than waiting on him. A backup-approver is still a real, separate,
+// open decision — this doesn't resolve that, it just closes the
+// worse failure mode (silent indefinite limbo / accidental auto-send)
+// while it's still undecided.
+const STALE_APPROVAL_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+async function expireStalePersonaEmailApprovals() {
+  const db = getDb();
+  const cutoffMs = Date.now() - STALE_APPROVAL_THRESHOLD_MS;
+  const snap = await db.collection("pendingPersonaEmailApprovals")
+    .where("status", "==", "pending")
+    .get();
+  let expired = 0;
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const createdMs = data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : null;
+    if (createdMs === null || createdMs > cutoffMs) continue;
+    await doc.ref.update({
+      status: "expired",
+      resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiredReason: `never actioned within ${STALE_APPROVAL_THRESHOLD_MS / 3600000}h — safe default is expire unsent, never auto-send on timeout`,
+    });
+    expired++;
+  }
+  if (expired > 0) console.log(`[personaEmailReplyPipeline] expired ${expired} stale pending approval(s), unsent`);
+
+  // Heartbeat — red-team round 4: this sweep is now a safety-critical
+  // fail-safe (expires stuck approvals unsent rather than letting them sit
+  // in limbo), so something needs to confirm it's still running on
+  // schedule rather than assuming silence means healthy. Written on every
+  // run, even when nothing expired. Read by devWorker.js's
+  // checkExpirySweepHeartbeat().
+  await db.doc("config/personaEmailExpirySweepHealth").set({
+    lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastRunAtMs: Date.now(),
+    lastExpiredCount: expired,
+  }, { merge: true });
+
+  return { expired };
+}
+
 module.exports = {
   processInboundPersonaMessage,
   MAILBOX_OWNER_EMAIL,
   notifySeanOfPendingApproval,
   handlePersonaEmailApprovalAction,
+  expireStalePersonaEmailApprovals,
 };

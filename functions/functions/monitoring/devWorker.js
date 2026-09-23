@@ -40,11 +40,26 @@
 // of executing it. The other two predicates (disclosure-footer,
 // task-canary) are genuinely read-only and are still actually executed.
 //
+// Write target, confirmed (red-team round 4 asked): both predicates write
+// only to a disposable doc keyed by a reserved test slug that can never
+// collide with a real persona ("gate-self-test-rate-limiter" /
+// "gate-self-test-correction", not ivy/max/jordan/etc.) —
+// personaEmailSafety/{testSlug} and, for the correction predicate,
+// personaEmailCorrections docs it deletes by id immediately after. Nothing
+// here touches real config or a real persona's state. The scenario this
+// check exists to catch (IAM quietly loosened) makes the write briefly
+// succeed instead of throwing, but even then it's a disposable test doc
+// under test-only ids, cleaned up in the same call — functionally inert
+// either way, not a risk to production state.
+//
 // v1 checks (CODEX 100, in priority order):
 //   1. Gate-registry integrity — see above for the read-only redesign.
 //   2. Gmail watch health — active/expired/expiring, cross-checked against
 //      an approximate read-only gate-pass signal from check 1.
 //   3. Pending moderation-queue age (pendingPersonaEmailApprovals).
+//   4a. personaEmailApprovalExpirySweep heartbeat — the sweep is now a
+//      safety-critical fail-safe (expires stuck approvals unsent), so it
+//      gets the same "silence isn't green" treatment Dev applies to itself.
 //   5. workerCanary.js's current reds/warns, surfaced for visibility only —
 //      NOT re-alerted (workerCanary already pages for its own reds; paging
 //      twice for the same incident is exactly what CODEX 100 flags to avoid).
@@ -88,6 +103,30 @@ function looksLikeHardcodedStub(fn) {
   return isTrivialReturn && !/await|if\s*\(/.test(stripped);
 }
 
+// A write-based predicate run under Dev's read-only identity is expected
+// to fail with a permission-denied-flavored error — that's the healthy
+// outcome, not a false alarm.
+//
+// 2026-09-23 — red-team round 4 correction (external review): the first
+// version of this classified purely by matching e.message text, which
+// drifts silently if a future GCP client library version or API response
+// shape changes the wording — a real denial could stop matching (weakening
+// the signal) or, worse, some unrelated error could start matching
+// (masking a real problem). Fixed: capabilityGates.js's two write-based
+// predicates now carry the raw e.code through in their returned {pass,
+// reason, code}, and this checks that actual gRPC/HTTP status (7 /
+// "permission-denied" / "PERMISSION_DENIED") first. String-matching on the
+// message stays only as a fallback for the case where no usable code
+// survived (e.g. a caught-and-restringified error) — a weaker signal, kept
+// for coverage, not the primary classification.
+function isPermissionDenied(x) {
+  const code = x && x.code;
+  const normalizedCode = String(code || "").toLowerCase().replace(/_/g, "-");
+  if (code === 7 || code === "7" || normalizedCode === "permission-denied") return true;
+  const text = (x && x.reason) || (x && x.message) || (typeof x === "string" ? x : "");
+  return /permission.?denied|insufficient permission|access denied/i.test(String(text || ""));
+}
+
 // ── Check 1: gate-registry integrity (read-only redesign) ──
 async function checkGateRegistryIntegrity() {
   const findings = [];
@@ -120,14 +159,45 @@ async function checkGateRegistryIntegrity() {
       continue;
     }
     if (WRITE_BASED_PREDICATE_IDS.has(expected)) {
+      // 2026-09-23 — red-team correction (external review of CODEX 100):
+      // the original version of this branch avoided executing these
+      // predicates at all (shape-check only), reasoning a write attempt
+      // under Dev's restricted identity would throw a false-alarm-looking
+      // permission error. That reasoning had it backwards. A write attempt
+      // getting PERMISSION_DENIED under Dev's restricted identity isn't a
+      // false alarm — it's the expected, correct outcome, and a stronger
+      // proof of "read-only is real" than a source-shape heuristic ever
+      // was. So: actually run the predicate. If it reports pass:true
+      // anyway, that's not healthy — a genuine predicate's write cannot
+      // succeed under Dev's viewer-only role, so pass:true here means
+      // either the predicate is stubbed/fake or Dev's own IAM restriction
+      // has been silently loosened. Either way, real tamper evidence, and
+      // now caught by actually exercising the mechanism instead of
+      // guessing from its source text. The shape check stays too, as a
+      // cheap secondary signal — defense in depth, not a replacement.
       if (looksLikeHardcodedStub(gate.check)) {
         findings.push({ severity: "red", scope: "gate-registry", id: expected, reason: `predicate "${expected}" looks like a hardcoded stub (trivial return, no real logic) — possible tamper` });
         approxGatesAllow = false;
+        continue;
       }
-      // Presence + non-stub shape confirmed. Real pass/fail for this
-      // predicate is verified where it's actually enforced (inside the
-      // api function, at real activation/send time) — Dev doesn't
-      // re-execute a self-test that writes, under an identity that can't.
+      try {
+        const result = await gate.check();
+        if (result.pass) {
+          findings.push({ severity: "red", scope: "gate-registry", id: expected, reason: `predicate "${expected}" returned pass:true under Dev's read-only identity — its self-test writes should be impossible to succeed here. Either the predicate is stubbed, or Dev's IAM restriction has been loosened. Real tamper evidence.` });
+          approxGatesAllow = false;
+        } else if (!isPermissionDenied(result)) {
+          // Failed, but not for the expected reason — ambiguous, not
+          // necessarily tamper (could be a real transient issue), but
+          // worth a human look since it didn't fail the way it should.
+          findings.push({ severity: "warn", scope: "gate-registry", id: expected, reason: `predicate "${expected}" failed for a reason other than the expected permission denial: ${result.reason}` });
+        }
+        // else: failed with a permission-denied status — the expected,
+        // healthy outcome. No finding.
+      } catch (e) {
+        if (!isPermissionDenied(e)) {
+          findings.push({ severity: "warn", scope: "gate-registry", id: expected, reason: `predicate "${expected}" threw an unexpected (non-permission) error: ${e.message}` });
+        }
+      }
       continue;
     }
     // Genuinely read-only predicates — safe to actually execute.
@@ -206,6 +276,33 @@ async function checkPendingApprovalAge(db) {
   return findings;
 }
 
+// ── Check: expiry-sweep heartbeat ──
+// personaEmailApprovalExpirySweep (personaEmailReplyPipeline.js) is now the
+// fail-safe standing between "an approval sits forever" and "safe default:
+// expires unsent." Red-team round 4: that fail-safe needs the same "silence
+// must not read as green" heartbeat treatment Dev applies to itself (see
+// workerCanary.js) — nothing else was confirming it's still running on its
+// 6h schedule.
+const EXPIRY_SWEEP_STALE_MS = 8 * 60 * 60 * 1000; // 6h schedule + 2h slack before alarming
+async function checkExpirySweepHeartbeat(db) {
+  const snap = await db.doc("config/personaEmailExpirySweepHealth").get();
+  if (!snap.exists) {
+    // Not a bug: expected until the sweep's first scheduled run has fired
+    // (e.g. right after this was deployed).
+    return [{ severity: "warn", scope: "expiry-sweep", id: "no-heartbeat-yet", reason: "personaEmailApprovalExpirySweep has never recorded a heartbeat — expected until its first scheduled run, not itself a fault" }];
+  }
+  const d = snap.data();
+  const lastRunMs = d.lastRunAtMs;
+  if (!lastRunMs) {
+    return [{ severity: "warn", scope: "expiry-sweep", id: "heartbeat-missing-timestamp", reason: "expiry-sweep heartbeat doc exists but has no lastRunAtMs" }];
+  }
+  const ageMs = Date.now() - lastRunMs;
+  if (ageMs > EXPIRY_SWEEP_STALE_MS) {
+    return [{ severity: "red", scope: "expiry-sweep", id: "stale-heartbeat", reason: `personaEmailApprovalExpirySweep last ran ${(ageMs / 3600000).toFixed(1)}h ago (scheduled every 6h) — the fail-safe against stuck pending approvals may not be running` }];
+  }
+  return [];
+}
+
 // ── Check 5: surface workerCanary's current reds/warns for visibility ──
 // Marked `surfaced: true` so the recorder excludes these from Dev's OWN
 // alert trigger — workerCanary.js already pages for its own reds; this is
@@ -256,9 +353,10 @@ async function runDevChecks(opts = {}) {
   const { findings: registryFindings, approxGatesAllow } = await checkGateRegistryIntegrity();
   const watchFindings = await checkGmailWatchHealth(db, approxGatesAllow);
   const queueFindings = await checkPendingApprovalAge(db);
+  const sweepFindings = await checkExpirySweepHeartbeat(db);
   const surfacedFindings = await surfaceWorkerCanaryFindings(db);
 
-  const ownFindings = [...registryFindings, ...watchFindings, ...queueFindings];
+  const ownFindings = [...registryFindings, ...watchFindings, ...queueFindings, ...sweepFindings];
   const allFindings = [...ownFindings, ...surfacedFindings];
 
   const reds = allFindings.filter((f) => f.severity === "red");
@@ -280,4 +378,4 @@ async function runDevChecks(opts = {}) {
   return result;
 }
 
-module.exports = { runDevChecks, HEALTH_DOC, checkGateRegistryIntegrity, checkGmailWatchHealth, checkPendingApprovalAge, surfaceWorkerCanaryFindings, looksLikeHardcodedStub };
+module.exports = { runDevChecks, HEALTH_DOC, checkGateRegistryIntegrity, checkGmailWatchHealth, checkPendingApprovalAge, checkExpirySweepHeartbeat, surfaceWorkerCanaryFindings, looksLikeHardcodedStub, isPermissionDenied };
