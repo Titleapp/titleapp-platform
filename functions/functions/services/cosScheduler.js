@@ -169,11 +169,20 @@ async function gatherControlCenterData(userId) {
   } catch {}
 
   // Pipeline
+  // 2026-09-23 — real incident, caught by Sean reading his own real morning
+  // digest: every doc in this collection was fabricated demo/seed data
+  // (fake company names like "Premier Auto Sales", "Pacific Title
+  // Insurance") with no field distinguishing them from a real deal — his
+  // own executive briefing was presenting fiction as his actual pipeline.
+  // Tagged the known-fake docs `isDemoData: true` (not deleted — may serve
+  // a real purpose for product demos) and filtering them here. Any deal
+  // added going forward without that flag is treated as real by default —
+  // set isDemoData explicitly on anything seeded for demo/testing purposes.
   let deals = [];
   let totalPipeline = 0;
   try {
     const dealsSnap = await db.collection("pipeline").doc("b2b").collection("deals").get();
-    deals = dealsSnap.docs.map(d => d.data()).filter(d => !["CLOSED_LOST", "ACTIVE"].includes(d.stage));
+    deals = dealsSnap.docs.map(d => d.data()).filter(d => !d.isDemoData && !["CLOSED_LOST", "ACTIVE"].includes(d.stage));
     deals.sort((a, b) => (b.estimatedARR || 0) - (a.estimatedARR || 0));
     totalPipeline = deals.reduce((s, d) => s + (d.estimatedARR || 0), 0);
   } catch {}
