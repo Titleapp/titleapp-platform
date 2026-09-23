@@ -661,6 +661,14 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         <aside
           className="chatSidebar"
           style={{ width: chatWidth + "%", maxWidth: "none" }}
+          // 2026-09-23 — found in worker QA: both the desktop and mobile
+          // ChatPanel are always mounted (by design, to preserve state
+          // across resize/rotation — see the mobileChatPanel comment below),
+          // visibility-gated only by CSS at the DESKTOP_MIN_WIDTH breakpoint.
+          // That's invisible to assistive tech and a11y tooling, which saw
+          // it as two live chat inputs. This marks whichever copy CSS is
+          // currently hiding, without changing the mount/visibility logic.
+          aria-hidden={!isDesktopViewport}
         >
           {guestMode ? children : <ChatPanel currentSection={currentSection} isVisible={isDesktopViewport} />}
         </aside>
@@ -685,7 +693,10 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       {/* Mobile chat — always mounted to preserve state across open/close + rotation.
           Primary view on mobile (chat-first, like Claude.ai). Header has hamburger
           for left nav and canvas icon for right panel. */}
-      <div className={`mobileChatPanel${chatOpen ? " mobileChatPanelOpen" : ""}`}>
+      <div
+        className={`mobileChatPanel${chatOpen ? " mobileChatPanelOpen" : ""}`}
+        aria-hidden={isDesktopViewport}
+      >
         <div className="mobileChatHeader">
           {/* Hamburger — opens left sidebar drawer */}
           <button

@@ -1012,7 +1012,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     try {
       const token = await currentUser.getIdToken(true);
       const tenantId = localStorage.getItem('TENANT_ID') || '';
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+      // 2026-09-23 — found in worker QA: this was the only file in the app
+      // whose fallback bypassed the locked Cloudflare frontdoor (docs/STATE.md)
+      // and hit the raw Cloud Run origin directly. Harmless as long as
+      // VITE_API_BASE is set (it is, in every real build), but a bare
+      // checkout with no .env.local would silently skip the frontdoor.
+      // Matched to every other file's fallback for consistency.
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
       await fetch(`${apiBase}/api?path=/v1/workspace:acceptDisclaimer`, {
         method: 'POST',
         headers: {
@@ -1795,7 +1801,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         const uploadToDrive = async (file) => {
           const idToken = localStorage.getItem('ID_TOKEN');
           const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
-          const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+          // 2026-09-23 — found in worker QA: this was the only file in the app
+      // whose fallback bypassed the locked Cloudflare frontdoor (docs/STATE.md)
+      // and hit the raw Cloud Run origin directly. Harmless as long as
+      // VITE_API_BASE is set (it is, in every real build), but a bare
+      // checkout with no .env.local would silently skip the frontdoor.
+      // Matched to every other file's fallback for consistency.
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
           const tags = activeWorkerSlug ? [`worker:${activeWorkerSlug}`, 'source:chat'] : ['source:chat'];
           const mime = inferMime(file);
           // Step 1: get signed upload URL + provisional Firestore record
@@ -1924,7 +1936,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const vertical = localStorage.getItem('VERTICAL') || 'consumer';
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';
 
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+      // 2026-09-23 — found in worker QA: this was the only file in the app
+      // whose fallback bypassed the locked Cloudflare frontdoor (docs/STATE.md)
+      // and hit the raw Cloud Run origin directly. Harmless as long as
+      // VITE_API_BASE is set (it is, in every real build), but a bare
+      // checkout with no .env.local would silently skip the frontdoor.
+      // Matched to every other file's fallback for consistency.
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
       const _chatAbort = new AbortController();
       chatAbortRef.current = _chatAbort;
       const _chatTimeout = setTimeout(() => _chatAbort.abort(), 120000);
@@ -2158,7 +2176,40 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           pump();
         });
       } else {
-        data = await response.json();
+        // 2026-09-23 — defensive fallback for a real bug found in worker QA:
+        // the accounting worker's multi-round verification loop can flip the
+        // SAME request's response to SSE mid-flight, decided by model
+        // behavior (does it need a second source check), not by anything the
+        // client sends (see CODEX S52.49 / index.js's _sseProgressActive).
+        // The content-type sniff above (_isSSE) is supposed to catch that,
+        // but if headers ever arrive stripped/reordered through a proxy hop,
+        // response.json() throws a raw "Unexpected token 'd', "data: {...}"
+        // parse error straight at the user instead of a real answer. Rather
+        // than trust the header alone, fall back to parsing the body as SSE
+        // lines when plain JSON parsing fails and the body actually looks
+        // like one — same line-parsing logic as the SSE branch above.
+        const _rawText = await response.text();
+        try {
+          data = JSON.parse(_rawText);
+        } catch (_parseErr) {
+          if (_rawText.trimStart().startsWith('data:')) {
+            let _donePayload = null;
+            for (const _line of _rawText.split('\n')) {
+              if (!_line.startsWith('data: ')) continue;
+              try {
+                const _parsed = JSON.parse(_line.slice(6));
+                if (_parsed.done) _donePayload = _parsed;
+              } catch { /* ignore malformed SSE line */ }
+            }
+            if (_donePayload) {
+              data = { ok: true, ..._donePayload };
+            } else {
+              throw _parseErr;
+            }
+          } else {
+            throw _parseErr;
+          }
+        }
         if (!response.ok) throw new Error(data.error || 'Request failed');
       }
 
@@ -2536,7 +2587,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setGenerating(true);
       try {
         const token = await getAuth().currentUser?.getIdToken();
-        const apiBase = import.meta.env.VITE_API_BASE || 'https://api-feyfibglbq-uc.a.run.app';
+        // 2026-09-23 — found in worker QA: this was the only file in the app
+      // whose fallback bypassed the locked Cloudflare frontdoor (docs/STATE.md)
+      // and hit the raw Cloud Run origin directly. Harmless as long as
+      // VITE_API_BASE is set (it is, in every real build), but a bare
+      // checkout with no .env.local would silently skip the frontdoor.
+      // Matched to every other file's fallback for consistency.
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
         const res = await fetch(`${apiBase}/api?path=/v1/user:generateInvite`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
