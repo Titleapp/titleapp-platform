@@ -587,7 +587,12 @@ export default function Contacts() {
       )}
       {!loading && loadError && (
         <div className="card" style={{ padding: 24, textAlign: "center", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca" }}>
-          Failed to load contacts: {loadError}
+          {/* 2026-09-23 — loadError already includes a "Failed to load
+              contacts" fallback (see refresh()'s catch path), so prefixing
+              the same phrase here doubled it: "Failed to load contacts:
+              Failed to load contacts". Only prefix when the error is a
+              distinct message. */}
+          {loadError === "Failed to load contacts" ? loadError : `Failed to load contacts: ${loadError}`}
         </div>
       )}
       {!loading && !loadError && contacts.length === 0 && (

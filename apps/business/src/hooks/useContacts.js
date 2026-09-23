@@ -1,11 +1,19 @@
 import { useState, useCallback } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api-feyfibglbq-uc.a.run.app";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 async function apiFetch(path, method = "GET", body = null) {
   const token = localStorage.getItem("ID_TOKEN");
   const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
-  const res = await fetch(`${API_BASE}${path}`, {
+  // 2026-09-23 — found in worker QA (Sage/Contacts canvas showing "Failed to
+  // load contacts" while chat answered correctly): this was hitting a
+  // literal /v1/contacts:... path instead of the Frontdoor's documented
+  // generic proxy contract (/api?path=/v1/...) — the literal path isn't in
+  // its route table (docs/STATE.md) and falls through to its default
+  // response, which isn't valid JSON for this endpoint. Same root cause and
+  // fix already applied to useGmail.js/useCalendar.js/useDrive.js earlier.
+  const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
