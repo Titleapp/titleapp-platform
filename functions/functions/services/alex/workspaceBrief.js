@@ -39,6 +39,15 @@ async function buildWorkspaceBrief({ uid, tenantId }) {
       if (s && (s.revenueMtd || s.cashOnHand)) {
         let line = `FINANCES (month-to-date): revenue ${usd(cents(s.revenueMtd))}, expenses ${usd(cents(s.expensesMtd))}, net ${usd(cents(s.netIncomeMtd))}. Cash on hand ${usd(cents(s.cashOnHand))}.`;
         if (s.runway && s.runway.months != null) line += ` Runway ≈ ${Math.round(s.runway.months)} months.`;
+        // 2026-09-23 — real incident: this tenant's underlying transaction
+        // records were found to diverge sharply from the real, CPA-reviewed
+        // financials. Never present a number from a flagged tenant with
+        // full confidence — surface the caveat, don't silently trust it.
+        try {
+          const { getDataQualityFlag } = require("../accounting/dataQualityFlags");
+          const flag = await getDataQualityFlag(tenantId);
+          if (flag) line += ` CAVEAT — this tenant's transaction data is flagged as unreliable (${flag.reason}). Present these figures as provisional/unverified, not settled fact, until this flag is cleared.`;
+        } catch (_) {}
         sections.push(line);
       }
     } catch (e) { /* omit */ }
