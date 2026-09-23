@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 const FEATURED_WORKERS = [
@@ -13,8 +13,8 @@ const FEATURED_WORKERS = [
     color: "#16a34a",
   },
   {
-    slug: "accounting",
-    name: "Accounting",
+    slug: "platform-accounting",
+    name: "Max — Accounting",
     vertical: "Platform",
     tagline: "P&L, burn, runway, bank reconciliation, monthly close. Controller-pattern guardrails.",
     replaces: "Replaces an accounting platform + a bookkeeper",
@@ -24,7 +24,7 @@ const FEATURED_WORKERS = [
   },
   {
     slug: "platform-marketing",
-    name: "Marketing",
+    name: "Ivy — Marketing",
     vertical: "Platform",
     tagline: "Campaign orchestration, brand voice, asset registry, ad copy, email sequences.",
     replaces: "Replaces a marketing platform + a junior marketer",
@@ -63,8 +63,8 @@ const FEATURED_WORKERS = [
     color: "#7c3aed",
   },
   {
-    slug: "fundraise",
-    name: "Investor Relations",
+    slug: "investor-relations",
+    name: "Reed — Investor Relations",
     vertical: "Banking & Finance",
     tagline: "Pipeline CRM, data room, SAFE generation, investor voting, cap-table integration.",
     replaces: "Replaces a cap-table tool + a DocSend + a junior IR person",
@@ -74,7 +74,7 @@ const FEATURED_WORKERS = [
   },
   {
     slug: "cre-analyst",
-    name: "CRE Deal Analyst",
+    name: "Petra — CRE Deal Analyst",
     vertical: "Real Estate",
     tagline: "Evidence-first deal analysis in minutes — feasibility to underwriting, with comparables.",
     replaces: "Replaces a junior analyst + a deal-modeling platform",
@@ -84,7 +84,7 @@ const FEATURED_WORKERS = [
   },
   {
     slug: "av-mission-builder",
-    name: "Mission Builder",
+    name: "Skye — Mission Builder",
     vertical: "Aviation · Part 135",
     tagline: "Every mission authorized with full context — crew, aircraft, weather, risk score, MEL check.",
     replaces: "Replaces a dispatch platform + a part-time dispatcher",
@@ -113,6 +113,19 @@ export default function LandingPage() {
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
   const [fading, setFading] = useState(false);
+  // Top-10 worker rows have no flex-wrap, and their fixed-width columns
+  // (rank 18 + accent 4 + vertical tag 140 + price ~65 + arrow ~50 + 5
+  // gaps of 14 + 40 padding) already sum to ~387px on their own — on a
+  // ~390px phone viewport that leaves nothing for the worker's actual
+  // name, the one thing in the row that matters most. Hiding the least
+  // essential column (the vertical/category tag) below 480px keeps the
+  // row from crushing the name instead of trying to reflow it.
+  const [isNarrowViewport, setIsNarrowViewport] = useState(() => typeof window !== "undefined" && window.innerWidth < 480);
+  useEffect(() => {
+    const onResize = () => setIsNarrowViewport(window.innerWidth < 480);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [fadeVisible, setFadeVisible] = useState(false);
   const recognitionRef = useRef(null);
 
@@ -238,6 +251,7 @@ export default function LandingPage() {
             {[
               {
                 name: "Real Estate — Brokerage",
+                value: "Run deals like a 200-agent brokerage — with a team of two.",
                 pitch: "Full transaction stack for residential teams. CMA, buyer analysis, site recon, land use, and comparable data in one place.",
                 workers: ["Real Estate Advocate", "Site Recon", "Land Use"],
                 price: "$99/mo + $5/seat · Free 14 days",
@@ -245,6 +259,7 @@ export default function LandingPage() {
               },
               {
                 name: "Title & Escrow",
+                value: "Never lose a chain-of-title fight to a title giant again.",
                 pitch: "Chain-of-title pulls, escrow order management, and a client portal — all with an append-only audit trail.",
                 workers: ["Title Search", "Escrow"],
                 price: "$99/mo + $5/seat · Free 14 days",
@@ -252,6 +267,7 @@ export default function LandingPage() {
               },
               {
                 name: "Nursing Education",
+                value: "Accreditation-ready on day one, not after a semester of spreadsheets.",
                 pitch: "Clinical hour tracking, competency mapping, and accreditation-ready reporting. Replaces months of manual assembly.",
                 workers: ["Student Evaluation", "Tutor", "Accreditation"],
                 price: "$99/mo + $5/seat · Free 14 days",
@@ -259,6 +275,7 @@ export default function LandingPage() {
               },
               {
                 name: "Technical Education",
+                value: "Give every student an IEP without hiring a case manager.",
                 pitch: "Adaptive tutoring, IEP documentation that builds itself, and compliance reporting on demand — works for K-12, colleges, and vocational programs.",
                 workers: ["Tutor", "Student Records", "Comms"],
                 price: "$99/mo + $5/student",
@@ -266,6 +283,7 @@ export default function LandingPage() {
               },
               {
                 name: "Aviation",
+                value: "Part 135 compliance without a compliance department.",
                 pitch: "Currency tracking, fleet maintenance queue, and NOTAM-aware flight planning — purpose-built for Part 91 and 135 ops.",
                 workers: ["CoPilot", "Maintenance", "Dispatch"],
                 price: "$99/mo + $5/seat",
@@ -273,6 +291,7 @@ export default function LandingPage() {
               },
               {
                 name: "Commercial Real Estate",
+                value: "Underwrite like an institutional shop, priced like a solo broker.",
                 pitch: "Deal screening, ATTOM data, zoning analysis, and special-servicer contact lookup for acquisitions and workouts.",
                 workers: ["CRE Analyst", "Site Recon", "Feasibility"],
                 price: "$99/mo + $5/seat · Free 14 days",
@@ -280,6 +299,7 @@ export default function LandingPage() {
               },
               {
                 name: "Digital Product Passport",
+                value: "Meet EU battery law before your competitors even read it.",
                 pitch: "EU Battery Regulation compliance, tamper-evident product records, and chain-of-custody for retail and manufacturing.",
                 workers: ["Product Passport", "Compliance"],
                 price: "$99/mo + $5/seat · Free 14 days",
@@ -287,16 +307,18 @@ export default function LandingPage() {
               },
               {
                 name: "Mortgage Servicing",
+                value: "Service loans like a top-10 servicer, without the headcount.",
                 pitch: "Reg X/Reg Z servicing compliance — early intervention, loss mitigation, NOE/RFI tracking — plus a borrower self-service portal.",
                 workers: ["MSR Servicing & Compliance", "Borrower Portal"],
                 price: "$99/mo + $5/seat · Free 14 days",
                 demo: "/demo/msr",
               },
-            ].map(({ name, pitch, workers, price, demo }) => (
+            ].map(({ name, value, pitch, workers, price, demo }) => (
               <div key={name} style={S.verticalCard}>
                 <div style={S.verticalCardAccent} />
                 <div style={S.verticalCardBody}>
                   <div style={S.verticalCardName}>{name}</div>
+                  <div style={S.verticalCardValue}>{value}</div>
                   <div style={S.verticalCardPitch}>{pitch}</div>
                   <div style={S.verticalCardWorkers}>
                     {workers.map(w => (
@@ -329,7 +351,7 @@ export default function LandingPage() {
                 <span style={S.workerRowRank}>{i + 1}</span>
                 <span style={{ ...S.workerRowAccent, background: w.color }} />
                 <span style={S.workerRowName}>{w.name}</span>
-                <span style={S.workerRowVertical}>{w.vertical}</span>
+                {!isNarrowViewport && <span style={S.workerRowVertical}>{w.vertical}</span>}
                 <span style={{ ...S.workerRowPrice, ...(w.priceTier === "Free" ? S.workerPriceBoxFree : {}) }}>
                   {w.priceLabel}
                 </span>
@@ -558,6 +580,7 @@ const S = {
     gap: 10,
   },
   verticalCardName: { fontSize: 15, fontWeight: 700, color: "#111827", letterSpacing: "-0.2px" },
+  verticalCardValue: { fontSize: 14, fontWeight: 700, color: "#111827", lineHeight: 1.35 },
   verticalCardPitch: { fontSize: 13, color: "#6b7280", lineHeight: 1.55, flex: 1 },
   verticalCardWorkers: { display: "flex", gap: 6, flexWrap: "wrap" },
   verticalCardWorkerPill: {
@@ -618,7 +641,7 @@ const S = {
   },
   workerRowRank: { fontSize: 12, fontWeight: 700, color: "#d1d5db", width: 18, textAlign: "right", flexShrink: 0 },
   workerRowAccent: { width: 4, height: 28, borderRadius: 3, flexShrink: 0 },
-  workerRowName: { fontSize: 15, fontWeight: 700, color: "#111827", flex: "1 1 180px", minWidth: 0 },
+  workerRowName: { fontSize: 15, fontWeight: 700, color: "#111827", flex: "1 1 180px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   workerRowVertical: { fontSize: 11, fontWeight: 600, color: "#9ca3af", letterSpacing: "0.5px", textTransform: "uppercase", flex: "0 0 140px" },
   workerRowPrice: {
     fontSize: 12,

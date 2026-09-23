@@ -96,6 +96,23 @@ async function checkCatalogHealth(db) {
   return { findings, total };
 }
 
+// ── Part C: Dev heartbeat (CODEX 100 check #7 — "Dev cannot be the only
+// thing checking Dev's own health; silence must not read as green.") ──
+const DEV_EXPECTED_INTERVAL_MS = 30 * 60 * 1000; // devWorker is scheduled every 30 min
+const DEV_STALE_AFTER_MS = 2 * DEV_EXPECTED_INTERVAL_MS; // one missed run tolerated, not two
+function checkDevHeartbeat(devHealthData) {
+  if (!devHealthData || !devHealthData.lastCheckedMs) {
+    // Not yet reported at all — a warn, not an immediate red: could simply
+    // mean Dev was deployed very recently and hasn't had its first run yet.
+    return [{ severity: "warn", scope: "dev-worker", id: "heartbeat", reason: "Dev (devWorker.js) has never reported a health check — confirm it's deployed and scheduled" }];
+  }
+  const ageMs = Date.now() - devHealthData.lastCheckedMs;
+  if (ageMs > DEV_STALE_AFTER_MS) {
+    return [{ severity: "red", scope: "dev-worker", id: "heartbeat", reason: `Dev has not reported in ${Math.round(ageMs / 60000)} min (expected every ~30 min) — Dev may be down, and Dev cannot alert on its own silence` }];
+  }
+  return [];
+}
+
 async function sendAlerts(recipients, smsText, emailSubject, emailHtml) {
   let sendSMSDirect = null;
   try { ({ sendSMSDirect } = require("../communications/twilioHelper")); } catch { /* unavailable */ }
@@ -123,7 +140,10 @@ async function runWorkerCanary(opts = {}) {
 
   const rulesFindings = checkRulesHealth();
   const { findings: catalogFindings, total } = await checkCatalogHealth(db);
-  const findings = [...rulesFindings, ...catalogFindings];
+  let devHealthData = null;
+  try { const s = await db.doc("config/devHealth").get(); devHealthData = s.exists ? s.data() : null; } catch { /* leave null — heartbeat check treats this as "never reported" */ }
+  const devFindings = checkDevHeartbeat(devHealthData);
+  const findings = [...rulesFindings, ...catalogFindings, ...devFindings];
   const reds = findings.filter((f) => f.severity === "red");
   const warns = findings.filter((f) => f.severity === "warn");
   const status = reds.length ? "red" : (warns.length ? "yellow" : "green");

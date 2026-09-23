@@ -377,8 +377,26 @@ async function searchEmails(uid, tenantId, query, opts = {}) {
  * This handles the case where a user removes+re-adds their account via "+ Add account" (which goes
  * to the extra-accounts subcollection, leaving the primary slot empty).
  */
-async function sendEmail(uid, tenantId, { to, subject, body, htmlBody, cc, replyTo, attachments, fromEmail }) {
+async function sendEmail(uid, tenantId, { to, subject, body, htmlBody, cc, replyTo, attachments, fromEmail, threadId, inReplyTo, references }) {
   requireTenantId(tenantId);
+  // Red-team round 2, point #1: gate every persona send here, in the one
+  // function every send path (auto-send, the approval-flow send) actually
+  // goes through — not duplicated at each call site, and not limited to
+  // whichever call site someone remembers to add it to. A non-persona
+  // fromEmail (a human's own connected Gmail) is unaffected.
+  let personaSlug = null;
+  if (fromEmail) {
+    const { getWorkerSlugForEmail } = require("../../config/personaEmailIdentities");
+    personaSlug = getWorkerSlugForEmail(fromEmail);
+    if (personaSlug) {
+      await require("../../config/capabilityGates").assertGatesPass("persona-email-inbound-listener");
+      // Safeguard #1 (CODEX 97): per-persona rate limiter / circuit breaker.
+      // Throws (fails closed) if suspended or over its day/hour cap — before
+      // any Gmail API call is made, not after.
+      const { assertWithinLimit } = require("../communications/personaSendRateLimiter");
+      await assertWithinLimit(personaSlug);
+    }
+  }
   let auth;
   try {
     auth = await buildAuthedClient(uid, tenantId);
@@ -421,9 +439,39 @@ async function sendEmail(uid, tenantId, { to, subject, body, htmlBody, cc, reply
   const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
   const boundary = `----=_Part_${Date.now()}`;
 
+  // Safeguard #2 (CODEX 97): AI-disclosure footer, appended by CODE — not
+  // left to the drafting model or moderation gate to decide to include.
+  // Idempotent: skips if the exact marker is already present (e.g. a draft
+  // that already included it), so it's never doubled.
+  if (personaSlug) {
+    const { buildDisclosureFooter, DISCLOSURE_MARKER } = require("../../config/personaEmailIdentities");
+    const footer = buildDisclosureFooter(personaSlug);
+    if (htmlBody && !htmlBody.includes(DISCLOSURE_MARKER)) {
+      htmlBody = `${htmlBody}<br><br>—<br>${footer}`;
+    }
+    if (body && !body.includes(DISCLOSURE_MARKER)) {
+      body = `${body}\n\n—\n${footer}`;
+    }
+    if (!htmlBody && !body) {
+      body = `—\n${footer}`;
+    }
+  }
+
   let raw = `To: ${toLine}\r\n`;
+  // fromEmail, when it matches a Workspace domain alias of the authenticated
+  // account (e.g. ivy@sociii.ai is an alias of alex@sociii.ai), is a valid
+  // From: address without any separate "send as" verification — Google
+  // accepts sending on behalf of a domain alias by default. This does NOT
+  // work for arbitrary external addresses; it only holds for alias domains
+  // the authenticated mailbox actually owns.
+  if (fromEmail) raw += `From: ${fromEmail}\r\n`;
   if (ccLine) raw += `Cc: ${ccLine}\r\n`;
   if (replyTo) raw += `Reply-To: ${replyTo}\r\n`;
+  // Threading: Gmail groups by these headers (plus matching subject), not
+  // just by the API's threadId param — both are needed for a reply to land
+  // in the original thread instead of starting a new one.
+  if (inReplyTo) raw += `In-Reply-To: ${inReplyTo}\r\n`;
+  if (references) raw += `References: ${references}\r\n`;
   raw += `Subject: ${encodeSubject(subject)}\r\n`;
   raw += `MIME-Version: 1.0\r\n`;
 
@@ -484,8 +532,153 @@ async function sendEmail(uid, tenantId, { to, subject, body, htmlBody, cc, reply
   }
 
   const encoded = Buffer.from(raw).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-  const sent = await gmail.users.messages.send({ userId: "me", requestBody: { raw: encoded } });
+  const requestBody = { raw: encoded };
+  if (threadId) requestBody.threadId = threadId;
+  const sent = await gmail.users.messages.send({ userId: "me", requestBody });
   return { ok: true, messageId: sent.data?.id || null, threadId: sent.data?.threadId || null };
+}
+
+/**
+ * watchMailbox — starts Gmail push notifications for a connected account
+ * (primary or extra) via Cloud Pub/Sub. Must be renewed before Google's
+ * 7-day expiry (see services/communications/gmailWatchRenewal.js).
+ *
+ * Gated (2026-09-22, red-team finding): this is the ONE function both the
+ * "official" startPersonaWatch route and the Cloud Scheduler renewal route
+ * call — gating it here, not just at one call site, closes both paths at
+ * once. Fails closed via assertGatesPass(); see config/capabilityGates.js.
+ * Do not remove this call without wiring the underlying gates to something
+ * real first — this exists specifically because that sequencing was
+ * gotten wrong once already the same night this function was written.
+ *
+ * @param {string} topicName — full Pub/Sub topic resource name, e.g.
+ *   "projects/title-app-alpha/topics/gmail-persona-email-push"
+ */
+async function watchMailbox(uid, tenantId, { fromEmail, topicName, labelIds } = {}) {
+  requireTenantId(tenantId);
+  if (!topicName) throw new Error("watchMailbox: topicName is required");
+  // Gate every call, unconditionally — this function currently has exactly
+  // one real use (the persona-email inbound listener). If it ever gains a
+  // second, unrelated use, that call site needs its own registered gate,
+  // not a silent bypass of this one.
+  await require("../../config/capabilityGates").assertGatesPass("persona-email-inbound-listener");
+  let auth;
+  if (fromEmail) {
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
+    const aId = accountId(fromEmail);
+    const targetDoc = extras.docs.find((d) => d.id === aId);
+    if (!targetDoc) throw new Error(`watchMailbox: no connected account found for ${fromEmail}`);
+    auth = await buildAuthedClientForAccount(uid, tenantId, targetDoc.id);
+  } else {
+    auth = await buildAuthedClient(uid, tenantId);
+  }
+  const google = getGoogle();
+  const gmail = google.gmail({ version: "v1", auth });
+  const resp = await gmail.users.watch({
+    userId: "me",
+    requestBody: { topicName, labelIds: labelIds || ["INBOX"], labelFilterAction: "include" },
+  });
+  const historyId = resp.data?.historyId || null;
+  const expiration = resp.data?.expiration || null;
+  // Persisted so Dev (CODEX 100 check #2) has ground truth to check watch
+  // health against — watchMailbox()/stopWatch() previously returned this to
+  // the HTTP caller only and discarded it otherwise, meaning there was no
+  // stored answer to "does a watch currently exist" at all. Single shared
+  // doc since there is currently exactly one shared mailbox (alex@sociii.ai).
+  await getDb().doc("config/gmailPersonaWatchState").set({
+    active: true, historyId, expiration, topicName,
+    startedAt: admin.firestore.FieldValue.serverTimestamp(),
+    stoppedAt: null, stoppedReason: null,
+  }, { merge: true });
+  return { ok: true, historyId, expiration };
+}
+
+async function stopWatch(uid, tenantId, { fromEmail, reason } = {}) {
+  requireTenantId(tenantId);
+  let auth;
+  if (fromEmail) {
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
+    const aId = accountId(fromEmail);
+    const targetDoc = extras.docs.find((d) => d.id === aId);
+    if (!targetDoc) throw new Error(`stopWatch: no connected account found for ${fromEmail}`);
+    auth = await buildAuthedClientForAccount(uid, tenantId, targetDoc.id);
+  } else {
+    auth = await buildAuthedClient(uid, tenantId);
+  }
+  const google = getGoogle();
+  const gmail = google.gmail({ version: "v1", auth });
+  await gmail.users.stop({ userId: "me" });
+  await getDb().doc("config/gmailPersonaWatchState").set({
+    active: false,
+    stoppedAt: admin.firestore.FieldValue.serverTimestamp(),
+    stoppedReason: reason || "manual stopWatch() call",
+  }, { merge: true });
+  return { ok: true };
+}
+
+/**
+ * historySince — fetch message-added events since a stored historyId, for
+ * the Pub/Sub push webhook. Returns the raw history records; callers filter
+ * for the events they care about (new messages in INBOX).
+ */
+async function historySince(uid, tenantId, { fromEmail, startHistoryId } = {}) {
+  requireTenantId(tenantId);
+  let auth;
+  if (fromEmail) {
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
+    const aId = accountId(fromEmail);
+    const targetDoc = extras.docs.find((d) => d.id === aId);
+    if (!targetDoc) throw new Error(`historySince: no connected account found for ${fromEmail}`);
+    auth = await buildAuthedClientForAccount(uid, tenantId, targetDoc.id);
+  } else {
+    auth = await buildAuthedClient(uid, tenantId);
+  }
+  const google = getGoogle();
+  const gmail = google.gmail({ version: "v1", auth });
+  const resp = await gmail.users.history.list({
+    userId: "me",
+    startHistoryId,
+    historyTypes: ["messageAdded"],
+  });
+  return resp.data?.history || [];
+}
+
+async function getMessageRaw(uid, tenantId, { fromEmail, messageId } = {}) {
+  requireTenantId(tenantId);
+  let auth;
+  if (fromEmail) {
+    const extras = await resolveTenantIntegrationCollection({
+      newColl: extraAccountsColl(uid, tenantId),
+      legacyColl: legacyExtraAccountsColl(uid),
+      isConnected: isGmailConnected,
+      tenantId,
+    });
+    const aId = accountId(fromEmail);
+    const targetDoc = extras.docs.find((d) => d.id === aId);
+    if (!targetDoc) throw new Error(`getMessageRaw: no connected account found for ${fromEmail}`);
+    auth = await buildAuthedClientForAccount(uid, tenantId, targetDoc.id);
+  } else {
+    auth = await buildAuthedClient(uid, tenantId);
+  }
+  const google = getGoogle();
+  const gmail = google.gmail({ version: "v1", auth });
+  const resp = await gmail.users.messages.get({ userId: "me", id: messageId, format: "full" });
+  return resp.data;
 }
 
 /**
@@ -796,4 +989,8 @@ module.exports = {
   listRecentSummary,
   listRecentSummaryAllAccounts,
   buildAuthedClient,
+  watchMailbox,
+  stopWatch,
+  historySince,
+  getMessageRaw,
 };

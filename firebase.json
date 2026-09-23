@@ -78,7 +78,9 @@
     "source": "functions/functions",
     "runtime": "nodejs22",
     "predeploy": [
-      "node -e \"const fs=require('fs');fs.mkdirSync('functions/functions/contracts',{recursive:true});fs.copyFileSync('contracts/capabilities.json','functions/functions/contracts/capabilities.json');console.log('[predeploy] synced capabilities.json into function package')\""
+      "node -e \"const fs=require('fs');fs.mkdirSync('functions/functions/contracts',{recursive:true});fs.copyFileSync('contracts/capabilities.json','functions/functions/contracts/capabilities.json');console.log('[predeploy] synced capabilities.json into function package')\"",
+      "node functions/functions/scripts/lint-gmail-watch-callsites.js",
+      "node functions/functions/config/capabilityGates.test.js"
     ],
     "ignore": [
       "node_modules",

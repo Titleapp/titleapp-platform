@@ -37,9 +37,14 @@ async function calendarApi(action, method = "GET", body = null) {
     },
   };
   if (body && method !== "GET") opts.body = JSON.stringify(body);
-  const url = method === "GET" && body
-    ? `${API_BASE}/v1/calendar:${action}?${new URLSearchParams(body).toString()}`
-    : `${API_BASE}/v1/calendar:${action}`;
+  // See useGmail.js's gmailApi() for why this goes through /api?path= —
+  // same fix, same root cause. GET-with-params folds its query string into
+  // the embedded path value (path=/v1/calendar:list?foo=bar), which is the
+  // documented Frontdoor contract for that case (see docs/STATE.md).
+  const innerPath = method === "GET" && body
+    ? `/v1/calendar:${action}?${new URLSearchParams(body).toString()}`
+    : `/v1/calendar:${action}`;
+  const url = `${API_BASE}/api?path=${encodeURIComponent(innerPath)}`;
   const res = await fetch(url, opts);
   return res.json();
 }

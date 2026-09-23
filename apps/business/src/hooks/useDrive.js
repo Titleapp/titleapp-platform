@@ -33,7 +33,10 @@ async function driveApi(action, method = "GET", body = null) {
     },
   };
   if (body && method !== "GET") opts.body = JSON.stringify(body);
-  const url = `${API_BASE}/v1/drive:${action}`;
+  // See useGmail.js's gmailApi() for why this goes through /api?path= —
+  // same fix, same root cause (a literal /v1/drive:<action> path isn't in
+  // the Frontdoor worker's route table).
+  const url = `${API_BASE}/api?path=${encodeURIComponent(`/v1/drive:${action}`)}`;
   const res = await fetch(url, opts);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

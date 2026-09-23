@@ -28,19 +28,26 @@ async function processOne(doc) {
   const dtc = doc.data();
   const dtcId = doc.id;
   const jobId = dtc.crossmintJobId || null;
+  // 2026-09-21: mintChain lets a DTC target either supported chain; defaults
+  // to polygon for any DTC that predates multi-chain support. walletAddress
+  // (if the tenant set their own Coinbase wallet) routes the mint directly
+  // to them instead of SOCIII's managed treasury recipient.
+  const chain = dtc.mintChain || "polygon";
+  const walletAddress = dtc.mintWalletAddress || null;
 
   // Submit if no jobId yet.
   if (!jobId) {
     try {
-      const submit = await mintDtc({ dtcId, dtc });
+      const submit = await mintDtc({ dtcId, dtc, chain, walletAddress });
       await doc.ref.update({
         crossmintJobId: submit.jobId,
+        mintChain: chain,
         crossmintLastStatus: submit.status,
         crossmintSubmittedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      return { dtcId, action: "submitted", jobId: submit.jobId };
+      return { dtcId, action: "submitted", jobId: submit.jobId, chain };
     } catch (e) {
-      console.error(`[processChainMints] submit failed for ${dtcId}:`, e.message);
+      console.error(`[processChainMints] submit failed for ${dtcId} (${chain}):`, e.message);
       await doc.ref.update({
         chain_anchor_status: "chain_failed",
         chainFailureReason: e.message || String(e),
@@ -51,7 +58,7 @@ async function processOne(doc) {
 
   // Otherwise poll status.
   try {
-    const result = await getMintStatus(jobId);
+    const result = await getMintStatus(jobId, chain);
     if (TERMINAL_SUCCESS.has(result.status)) {
       await doc.ref.update({
         chain_anchor_status: "chain_confirmed",

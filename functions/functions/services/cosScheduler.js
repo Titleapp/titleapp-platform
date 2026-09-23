@@ -21,6 +21,11 @@ const { logActivity } = require("../admin/logActivity");
 
 function getDb() { return admin.firestore(); }
 
+// Same admin identity used throughout the CODEX 97/100/101 build — gates
+// the CODEX-101 "Worker Team" digest section to Sean's own subscription
+// only (see runCosWorkers).
+const SEAN_UID = "WResykI56hW16silsOtvlw1UjJK2";
+
 // ═══════════════════════════════════════════════════════════════
 //  STATUS HELPERS — same design system as admin + subscriber digests
 // ═══════════════════════════════════════════════════════════════
@@ -359,11 +364,18 @@ function pickPriority(cc, runType) {
 //  HTML EMAIL — MORNING (forward-looking)
 // ═══════════════════════════════════════════════════════════════
 
-function buildMorningHtml({ userName, today, priority, cc, reData, avData, verticals }) {
+function buildMorningHtml({ userName, today, priority, cc, reData, avData, verticals, workerTeamData }) {
   const s = `style="padding:16px 24px;border-bottom:1px solid #e5e7eb"`;
   const h = `style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#6b7280;margin:0 0 8px 0"`;
   const r = `style="font-size:14px;line-height:1.8;margin:0"`;
   const sub = `style="font-size:12px;color:#6b7280;margin:0 0 4px 18px"`;
+  let workerTeamSection = "";
+  if (workerTeamData) {
+    try {
+      const { buildWorkerTeamHtmlSection } = require("./worker-team/workerTeamDigest");
+      workerTeamSection = buildWorkerTeamHtmlSection(workerTeamData, { s, h, r });
+    } catch (e) { console.warn("cosScheduler: buildWorkerTeamHtmlSection failed:", e.message); }
+  }
   const priorityColor = COLORS[priority.level] || COLORS.green;
 
   const isSandbox = process.env.CONTROL_CENTER_DATA_MODE !== "live";
@@ -484,6 +496,7 @@ function buildMorningHtml({ userName, today, priority, cc, reData, avData, verti
   ${revenueSection}
   ${pipelineSection}
   ${platformSection}
+  ${workerTeamSection}
   ${reSection}
   ${avSection}
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
@@ -498,11 +511,18 @@ function buildMorningHtml({ userName, today, priority, cc, reData, avData, verti
 //  HTML EMAIL — EVENING (backward-looking)
 // ═══════════════════════════════════════════════════════════════
 
-function buildEveningHtml({ userName, today, priority, cc, reData, avData, verticals }) {
+function buildEveningHtml({ userName, today, priority, cc, reData, avData, verticals, workerTeamData }) {
   const s = `style="padding:16px 24px;border-bottom:1px solid #e5e7eb"`;
   const h = `style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#6b7280;margin:0 0 8px 0"`;
   const r = `style="font-size:14px;line-height:1.8;margin:0"`;
   const sub = `style="font-size:12px;color:#6b7280;margin:0 0 4px 18px"`;
+  let workerTeamSection = "";
+  if (workerTeamData) {
+    try {
+      const { buildWorkerTeamHtmlSection } = require("./worker-team/workerTeamDigest");
+      workerTeamSection = buildWorkerTeamHtmlSection(workerTeamData, { s, h, r });
+    } catch (e) { console.warn("cosScheduler: buildWorkerTeamHtmlSection failed:", e.message); }
+  }
   const priorityColor = COLORS[priority.level] || COLORS.green;
 
   const isSandbox = process.env.CONTROL_CENTER_DATA_MODE !== "live";
@@ -608,6 +628,7 @@ function buildEveningHtml({ userName, today, priority, cc, reData, avData, verti
   ${summarySection}
   ${stalledSection}
   ${platformSection}
+  ${workerTeamSection}
   ${reSection}
   ${avSection}
   ${tomorrowSection}
@@ -623,7 +644,7 @@ function buildEveningHtml({ userName, today, priority, cc, reData, avData, verti
 //  PLAIN TEXT BUILDER
 // ═══════════════════════════════════════════════════════════════
 
-function buildPlainText(runType, { userName, today, priority, cc, verticals, reData, avData }) {
+function buildPlainText(runType, { userName, today, priority, cc, verticals, reData, avData, workerTeamData }) {
   const lines = [];
   const greeting = runType === "morning"
     ? `Good morning${userName ? " " + userName : ""} — here is your day`
@@ -652,6 +673,14 @@ function buildPlainText(runType, { userName, today, priority, cc, verticals, reD
   }
   if (verticals.has("aviation") && avData && avData.hasData) {
     lines.push(`\nAVIATION OPS: ${avData.fleet.length} aircraft, ${avData.flights.length} flights today`);
+  }
+
+  if (workerTeamData) {
+    try {
+      const { buildWorkerTeamPlainSection } = require("./worker-team/workerTeamDigest");
+      const section = buildWorkerTeamPlainSection(workerTeamData);
+      if (section) lines.push(section);
+    } catch (e) { console.warn("cosScheduler: buildWorkerTeamPlainSection failed:", e.message); }
   }
 
   lines.push(`\n— Alex`);
@@ -772,6 +801,22 @@ async function runCosWorkers(runType) {
         avData = await gatherAviationOpsData(sub.userId);
       }
 
+      // CODEX 101 — "Worker Team" section: SOCIII's own back-office data
+      // (commitment track records, Dev's findings, Ivy's task canary).
+      // SEAN_UID-gated, deliberately — this digest goes to every paid
+      // subscriber platform-wide, and this section is SOCIII-internal
+      // operational data, not a per-tenant feature. Showing it to a
+      // customer would leak SOCIII's own internal status into their inbox.
+      let workerTeamData = null;
+      if (sub.userId === SEAN_UID) {
+        try {
+          const { gatherWorkerTeamData } = require("./worker-team/workerTeamDigest");
+          workerTeamData = await gatherWorkerTeamData();
+        } catch (e) {
+          console.warn("cosScheduler: gatherWorkerTeamData failed:", e.message);
+        }
+      }
+
       const priority = pickPriority(cc, runType);
 
       const templateData = {
@@ -782,6 +827,7 @@ async function runCosWorkers(runType) {
         reData,
         avData,
         verticals,
+        workerTeamData,
       };
 
       const htmlBody = runType === "morning"

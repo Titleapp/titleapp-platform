@@ -1193,17 +1193,28 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
             console.log(`[DTC gate] chatEngine createDtc skipped for non-provenance type: ${reqType || "(empty)"}`);
             break;
           }
-          // Entitlement gate — requires blockchain minting activation on user.
-          try {
-            const uDoc = await db.collection("users").doc(userId).get();
-            const enabled = !!(uDoc.exists && uDoc.data().blockchainMintingEnabled === true);
-            if (!enabled) {
-              console.log(`[DTC gate] chatEngine createDtc skipped — user ${userId} has not activated blockchain minting`);
-              break;
+          // 2026-09-21: gate consolidated onto tenants/{tenantId}.auditTrail.enabled
+          // — the old gate (users/{uid}.blockchainMintingEnabled) was dead,
+          // written nowhere, ever. Same fix as the main /dtc:create route.
+          // This path previously skipped DTC creation entirely when the gate
+          // failed and never set chain_anchor_status even when it didn't —
+          // meaning a fixed gate alone still wouldn't have produced a mint.
+          // Now: DTC always gets created (hash-anchored for everyone, same
+          // as the main route), chain_pending only when the tenant has
+          // actually opted in.
+          let chatChainEnabled = false;
+          let chatMintChain = "polygon";
+          let chatMintWalletAddress = null;
+          if (tenantId) {
+            try {
+              const tSnap = await db.collection("tenants").doc(tenantId).get();
+              const at = tSnap.exists ? (tSnap.data().auditTrail || {}) : {};
+              chatChainEnabled = at.enabled === true;
+              chatMintWalletAddress = at.coinbaseWalletAddress || null;
+              chatMintChain = chatMintWalletAddress ? "base" : "polygon";
+            } catch (tErr) {
+              console.warn("[DTC gate] chatEngine tenant lookup failed:", tErr.message);
             }
-          } catch (uErr) {
-            console.warn("[DTC gate] chatEngine user lookup failed:", uErr.message);
-            break;
           }
           const files = d.files || [];
           const ref = await db.collection("dtcs").add({
@@ -1215,6 +1226,11 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
             files: files.map(f => ({ name: f.name, path: f.path, url: f.url })),
             blockchainProof: null,
             logbookCount: 0,
+            chain_anchor_status: chatChainEnabled ? "chain_pending" : "hash_only",
+            chain: chatChainEnabled ? `${chatMintChain}-mainnet` : null,
+            mintChain: chatChainEnabled ? chatMintChain : null,
+            mintWalletAddress: chatChainEnabled ? chatMintWalletAddress : null,
+            batchId: null,
             createdAt: nowServerTs(),
           });
           console.log("chatEngine side-effect: createDtc OK", ref.id, "with", files.length, "files");
@@ -13804,6 +13820,230 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/webhooks/gmail-push (PUBLIC — Cloud Pub/Sub push target, no
+    // Firebase user; Pub/Sub push requests carry no Firebase ID token. If
+    // the subscription is configured with OIDC auth, verify the bearer
+    // token here before trusting the payload — not yet added.)
+    if (route === "/webhooks/gmail-push" && method === "POST") {
+      const { handleGmailPushWebhook } = require("./communications/gmailPushWebhook");
+      return await handleGmailPushWebhook(req, res);
+    }
+
+    // GET /v1/persona-email/approve, /v1/persona-email/reject (PUBLIC —
+    // clicked from an email link; the random approvalToken query param is
+    // the only auth, checked inside the handler against the stored doc.)
+    if (route === "/persona-email/approve" && method === "GET") {
+      const { handlePersonaEmailApprovalAction } = require("./communications/personaEmailReplyPipeline");
+      return await handlePersonaEmailApprovalAction(req, res, "approve");
+    }
+    if (route === "/persona-email/reject" && method === "GET") {
+      const { handlePersonaEmailApprovalAction } = require("./communications/personaEmailReplyPipeline");
+      return await handlePersonaEmailApprovalAction(req, res, "reject");
+    }
+
+    // POST /v1/admin/gmail/renew-watch (Cloud Scheduler HTTP target — shared
+    // secret header, not a Firebase user, since Scheduler can't hold one.)
+    if (route === "/admin/gmail/renew-watch" && method === "POST") {
+      const provided = req.headers["x-renew-secret"];
+      if (!process.env.GMAIL_WATCH_RENEW_SECRET || provided !== process.env.GMAIL_WATCH_RENEW_SECRET) {
+        return jsonError(res, 403, "Invalid or missing renew secret");
+      }
+      try {
+        const gm = require("./services/social/gmail");
+        const admin2 = require("firebase-admin");
+        const { SOCIII_TENANT_ID } = require("./config/personaEmailIdentities");
+        const { MAILBOX_OWNER_EMAIL } = require("./communications/personaEmailReplyPipeline");
+        const seanUser = await admin2.auth().getUserByEmail("sean@sociii.ai");
+        const topicName = process.env.GMAIL_PUSH_TOPIC || "projects/title-app-alpha/topics/gmail-persona-email-push";
+        const result = await gm.watchMailbox(seanUser.uid, SOCIII_TENANT_ID, { fromEmail: MAILBOX_OWNER_EMAIL, topicName });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("gmail watch renewal failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/internal/dev-worker/record-findings — shared-secret header,
+    // not a Firebase user (Dev's scheduled function calls this as a
+    // machine, not as anyone's session). This is the write+alert half of
+    // Dev (CODEX 100): Dev's own dedicated service account is deliberately
+    // read-only (datastore.viewer only, no Secret Manager bindings), so
+    // persisting results and sending SMS/email alerts happens HERE, under
+    // `api`'s broader identity, not inside devWorker.js. See devWorker.js's
+    // header for the real incident (a live scheduled run threw
+    // PERMISSION_DENIED) that made this split necessary.
+    if (route === "/internal/dev-worker/record-findings" && method === "POST") {
+      const provided = req.headers["x-dev-worker-secret"];
+      if (!process.env.DEV_WORKER_INTERNAL_SECRET || provided !== process.env.DEV_WORKER_INTERNAL_SECRET) {
+        return jsonError(res, 403, "Invalid or missing dev-worker secret");
+      }
+      try {
+        const { recordAndAlert } = require("./monitoring/devWorkerRecorder");
+        const result = await recordAndAlert(body || {});
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("dev-worker record-findings failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/admin/persona-email/report-bad-send, /v1/admin/persona-email/resume
+    // (CODEX 97 safeguard #3 — correction protocol. Firebase-authenticated
+    // AND restricted to Sean's own uid: this suspends/resumes a persona's
+    // ability to send email as SOCIII, not something any signed-in user
+    // should be able to trigger.)
+    if (route === "/admin/persona-email/report-bad-send" && method === "POST") {
+      const rbAuth = await requireFirebaseUser(req, res);
+      if (rbAuth.handled) return;
+      if (rbAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { workerSlug, description } = body || {};
+        if (!workerSlug || !description) return jsonError(res, 400, "workerSlug and description are required");
+        const { reportBadSend } = require("./services/communications/personaEmailCorrection");
+        const result = await reportBadSend({ workerSlug, reportedBy: rbAuth.user.email || rbAuth.user.uid, description });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("report-bad-send failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+    if (route === "/admin/persona-email/resume" && method === "POST") {
+      const rsAuth = await requireFirebaseUser(req, res);
+      if (rsAuth.handled) return;
+      if (rsAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { workerSlug, note } = body || {};
+        if (!workerSlug) return jsonError(res, 400, "workerSlug is required");
+        const { resumeSending } = require("./services/communications/personaEmailCorrection");
+        const result = await resumeSending({ workerSlug, resumedBy: rsAuth.user.email || rsAuth.user.uid, note });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("persona-email resume failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/admin/persona-email/run-task-canary (Sean-only — run the
+    // CODEX 97 safeguard #4 task canary now instead of waiting for the
+    // 30-min schedule, e.g. right after standing up a new persona.)
+    if (route === "/admin/persona-email/run-task-canary" && method === "POST") {
+      const tcAuth = await requireFirebaseUser(req, res);
+      if (tcAuth.handled) return;
+      if (tcAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { workerSlug } = body || {};
+        const { runAndRecordPersonaTaskCanary } = require("./monitoring/personaTaskCanary");
+        const result = await runAndRecordPersonaTaskCanary(workerSlug || "platform-marketing");
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("run-task-canary failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/admin/dev-worker/run (Sean-only — run Dev's checks now
+    // instead of waiting for the 30-min schedule.)
+    if (route === "/admin/dev-worker/run" && method === "POST") {
+      const dwAuth = await requireFirebaseUser(req, res);
+      if (dwAuth.handled) return;
+      if (dwAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { runDevChecks } = require("./monitoring/devWorker");
+        const result = await runDevChecks();
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("dev-worker run failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // COMMITMENT LEDGER (CODEX 101) — piece 2 of the worker-team concept.
+    // Sean-only for now (his own internal ops tool, ahead of any meeting UI
+    // or per-worker autonomy that would call these programmatically).
+    // Completion always goes through /commitments:verify — no route lets a
+    // caller mark its own commitment "done" directly; see commitmentLedger.js.
+    // ----------------------------
+    if (route === "/commitments:create" && method === "POST") {
+      const cAuth = await requireFirebaseUser(req, res);
+      if (cAuth.handled) return;
+      if (cAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { tenantId, workerSlug, title, description, dueAt, createdBy } = body || {};
+        const { createCommitment } = require("./services/worker-team/commitmentLedger");
+        const result = await createCommitment({ tenantId, workerSlug, title, description, dueAt, createdBy: createdBy || cAuth.user.email || cAuth.user.uid });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("commitments:create failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+    if (route === "/commitments:updateProgress" && method === "POST") {
+      const cAuth = await requireFirebaseUser(req, res);
+      if (cAuth.handled) return;
+      if (cAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { commitmentId, status, note, actor } = body || {};
+        const { updateProgress } = require("./services/worker-team/commitmentLedger");
+        const result = await updateProgress({ commitmentId, status, note, actor: actor || cAuth.user.email || cAuth.user.uid });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("commitments:updateProgress failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+    if (route === "/commitments:requestVerification" && method === "POST") {
+      const cAuth = await requireFirebaseUser(req, res);
+      if (cAuth.handled) return;
+      if (cAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { commitmentId, evidenceType, evidenceRef, evidenceNote, actor } = body || {};
+        const { requestVerification } = require("./services/worker-team/commitmentLedger");
+        const result = await requestVerification({ commitmentId, evidenceType, evidenceRef, evidenceNote, actor: actor || cAuth.user.email || cAuth.user.uid });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("commitments:requestVerification failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+    // POST /v1/commitments:verify — the ONLY route that can mark a
+    // commitment "done". Human-only via HTTP (Sean-only); a "system:"
+    // verifiedBy is reserved for internal in-process callers and is never
+    // accepted from this route.
+    if (route === "/commitments:verify" && method === "POST") {
+      const cAuth = await requireFirebaseUser(req, res);
+      if (cAuth.handled) return;
+      if (cAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const { commitmentId, evidenceType, evidenceRef, evidenceNote } = body || {};
+        const { verifyAndComplete } = require("./services/worker-team/commitmentLedger");
+        const result = await verifyAndComplete({
+          commitmentId,
+          verifiedBy: cAuth.user.email || cAuth.user.uid,
+          evidence: { type: evidenceType, ref: evidenceRef || null, note: evidenceNote || null },
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("commitments:verify failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+    if (route === "/commitments:trackRecord" && method === "GET") {
+      const cAuth = await requireFirebaseUser(req, res);
+      if (cAuth.handled) return;
+      if (cAuth.user.uid !== "WResykI56hW16silsOtvlw1UjJK2") return jsonError(res, 403, "Admin only");
+      try {
+        const workerSlug = req.query.workerSlug;
+        const tenantId = req.query.tenantId;
+        const { getWorkerTrackRecord } = require("./services/worker-team/commitmentLedger");
+        const result = await getWorkerTrackRecord(workerSlug, tenantId);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("commitments:trackRecord failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // POST /v1/waitlist:investor (PUBLIC — no auth required)
     if (route === "/waitlist:investor" && method === "POST") {
       try {
@@ -20294,8 +20534,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         try {
           if (process.env.CROSSMINT_SERVER_API_KEY) {
             const { mintDtc } = require("./services/minting/crossmintMinter");
-            const r = await mintDtc({ dtcId: actionId, dtc: testDtc });
-            mintResult = { ok: true, attempted: true, jobId: r.jobId || null, status: r.status || "pending" };
+            // This route has always hardcoded chain: "base" in the ledger below
+            // (matching the coinbaseWalletAddress field this whole flow was
+            // clearly designed around) but never actually passed chain to
+            // mintDtc — before 2026-09-21's multi-chain support, that meant it
+            // silently minted on Polygon while the ledger claimed Base. Fixed:
+            // real chain matches the tenant's actual wallet setup (Base when
+            // they've set a wallet, Polygon otherwise — the collection that's
+            // actually been live since this was built), and the ledger below
+            // now records whatever chain the mint actually used, not a fixed
+            // literal.
+            const testChain = at.coinbaseWalletAddress ? "base" : "polygon";
+            const r = await mintDtc({ dtcId: actionId, dtc: testDtc, chain: testChain, walletAddress: at.coinbaseWalletAddress || null });
+            mintResult = { ok: true, attempted: true, jobId: r.jobId || null, status: r.status || "pending", chain: r.chain || testChain };
           } else {
             mintResult = { ok: false, attempted: false, reason: "CROSSMINT_SERVER_API_KEY not set (env)" };
           }
@@ -20318,7 +20569,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           mintOk: mintResult.ok === true,
           mintError: mintResult.error || null,
           mintReason: mintResult.reason || null,
-          chain: "base",
+          chain: mintResult.chain || (at.coinbaseWalletAddress ? "base" : "polygon"),
           coinbaseWalletAddress: at.coinbaseWalletAddress || null,
           custodyOnly: !at.coinbaseWalletAddress,
           mintedAt: mintResult.ok ? nowServerTs() : null,
@@ -28956,13 +29207,28 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const createdAtTimestamp = admin.firestore.Timestamp.fromDate(createdAtDate);
         const createdAtIso = createdAtDate.toISOString();
 
-        // CODEX 50.14 Layer D — chain anchor for entitled users. Users
-        // with blockchainMintingEnabled=true get an additional Crossmint
-        // mint on Polygon. Hash anchor still runs for everyone (universal
-        // default). Async via the processChainMints scheduler.
-        const chainEnabled = userData.blockchainMintingEnabled === true;
+        // CODEX 50.14 Layer D — chain anchor for entitled tenants. Hash
+        // anchor still runs for everyone (universal default). Async via the
+        // processChainMints scheduler.
+        //
+        // 2026-09-21: gate consolidated onto tenants/{tenantId}.auditTrail.enabled
+        // — the one real, working toggle (Settings UI, POST /v1/tenant:auditTrail:update).
+        // The old gate here (users/{uid}.blockchainMintingEnabled) was dead:
+        // read in exactly two places, written nowhere, ever — no route, UI, or
+        // script ever set it, so it could never become true. That's the actual
+        // reason zero DTCs had ever reached chain_pending as of this date.
+        let chainEnabled = false;
+        let mintChain = "polygon";
+        let mintWalletAddress = null;
+        if (ctx.tenantId) {
+          const tenantSnap = await db.collection("tenants").doc(ctx.tenantId).get();
+          const at = tenantSnap.exists ? (tenantSnap.data().auditTrail || {}) : {};
+          chainEnabled = at.enabled === true;
+          mintWalletAddress = at.coinbaseWalletAddress || null;
+          mintChain = mintWalletAddress ? "base" : "polygon";
+        }
         const initialChainStatus = chainEnabled ? "chain_pending" : "hash_only";
-        const initialChain = chainEnabled ? "polygon-mainnet" : null;
+        const initialChain = chainEnabled ? `${mintChain}-mainnet` : null;
 
         const dtcRecord = {
           userId: ctx.userId,
@@ -28977,6 +29243,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           modification_authority: isPersonal ? "owner_only" : "workspace_role:admin",
           chain_anchor_status: initialChainStatus,
           chain: initialChain,
+          mintChain: chainEnabled ? mintChain : null,
+          mintWalletAddress: chainEnabled ? mintWalletAddress : null,
           credentialing_projection_schema: null,
           batchId: null,
           createdAt: createdAtTimestamp,
@@ -35811,6 +36079,18 @@ Analyze now:`;
           const result = await gm.sendEmail(auth.user.uid, _gmailTenantId, { to, subject, body: emailBody, htmlBody, cc, replyTo, attachments });
           return res.json(result);
         }
+        case "startPersonaWatch": {
+          // One-time (then renewed by /v1/admin/gmail/renew-watch on a
+          // schedule) — starts Gmail push notifications for the connected
+          // alex@sociii.ai account so incoming mail to ivy@/max@/jordan@
+          // triggers personaEmailReplyPipeline. Call this once Sean has
+          // completed the "add Gmail account" OAuth flow for alex@sociii.ai.
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const { fromEmail } = body || {};
+          const topicName = process.env.GMAIL_PUSH_TOPIC || "projects/title-app-alpha/topics/gmail-persona-email-push";
+          const result = await gm.watchMailbox(auth.user.uid, _gmailTenantId, { fromEmail: fromEmail || "alex@sociii.ai", topicName });
+          return res.json(result);
+        }
         default:
           return jsonError(res, 404, "Unknown gmail action: " + gmailAction);
         }
@@ -37978,6 +38258,77 @@ exports.qualityCanary = onSchedule(
     const { runQualityCanary } = require("./monitoring/qualityCanary");
     const result = await runQualityCanary();
     console.log("[qualityCanary]", JSON.stringify({ healthy: result.healthy, red: result.redCount, warn: result.warnCount }));
+  }
+);
+
+// ----------------------------
+// PERSONA TASK CANARY (every 30 min — CODEX 97 safeguard #4: task-graded
+// correctness for a persona email is allowed to reply as, not just uptime).
+// Ivy (platform-marketing) only for now — she's first in line per CODEX 97.
+// capabilityGates.js's task-canary-passing predicate reads the status doc
+// this writes; a missed/failing run fails the gate closed.
+// ----------------------------
+exports.personaTaskCanary = onSchedule(
+  {
+    schedule: "*/30 * * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { runAndRecordPersonaTaskCanary } = require("./monitoring/personaTaskCanary");
+    const result = await runAndRecordPersonaTaskCanary("platform-marketing");
+    console.log("[personaTaskCanary]", JSON.stringify({ workerSlug: result.workerSlug, allPass: result.allPass }));
+  }
+);
+
+// ----------------------------
+// DEV — back-of-house IT/ops worker (CODEX 100), every 30 min.
+// KNOWN GAP, flagged not silently shipped: CODEX 100 requires Dev to run
+// under its own dedicated, viewer-only service account (datastore.viewer,
+// logging.viewer, monitoring.viewer, pubsub.viewer — nothing else) so
+// "read-only" is an IAM fact, not just a coding convention. The account
+// (dev-worker-readonly@title-app-alpha.iam.gserviceaccount.com) exists but
+// granting it those roles is an IAM policy change the deploy environment's
+// auto-mode classifier correctly declined to let an agent do unattended —
+// see project_worker_team_staff_meeting_dev memory / ask Sean. Until that's
+// granted AND `serviceAccount` below is set to it, Dev runs under this
+// deployment's default service account like everything else — Dev's own
+// code only ever reads and writes its own operational docs (devHealth,
+// devFindings, config/gmailPersonaWatchState) so the practical blast radius
+// is low, but the IAM-level guarantee CODEX 100 calls a hard requirement
+// is NOT yet true. Do not treat this function as fully shipped per CODEX
+// 100 until the service account is wired in.
+exports.devWorker = onSchedule(
+  {
+    schedule: "*/30 * * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+    // Sean granted the 4 viewer roles 2026-09-23 (datastore/logging/monitoring/
+    // pubsub) — "read-only" is now an IAM fact, not just a code convention,
+    // per CODEX 100's own hard requirement.
+    serviceAccount: "dev-worker-readonly@title-app-alpha.iam.gserviceaccount.com",
+  },
+  async () => {
+    const { runDevChecks } = require("./monitoring/devWorker");
+    const result = await runDevChecks();
+    console.log("[devWorker]", JSON.stringify({ status: result.status, redCount: result.redCount, warnCount: result.warnCount }));
+  }
+);
+
+// ----------------------------
+// COMMITMENT LEDGER — overdue sweep (CODEX 101), every 6h. Missed
+// commitments become visible ("expired"), never silently vanish.
+// ----------------------------
+exports.commitmentExpirySweep = onSchedule(
+  {
+    schedule: "0 */6 * * *",
+    timeZone: "UTC",
+    region: "us-central1",
+  },
+  async () => {
+    const { expireOverdueCommitments } = require("./services/worker-team/commitmentLedger");
+    const result = await expireOverdueCommitments();
+    console.log("[commitmentExpirySweep]", JSON.stringify(result));
   }
 );
 

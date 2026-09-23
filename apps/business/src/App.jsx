@@ -96,7 +96,7 @@ import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
 import WorkerMarketplace from "./pages/WorkerMarketplace";
-import { useWorkerCatalog } from "./data/useWorkerCatalog";
+import { useWorkerCatalog, useWorkerCatalogLoaded } from "./data/useWorkerCatalog";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
 import LegalPage from "./pages/LegalPage";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
@@ -4412,6 +4412,7 @@ class SandboxErrorBoundary extends React.Component {
 
 export default function App() {
   const workerCatalog = useWorkerCatalog();
+  const workerCatalogLoaded = useWorkerCatalogLoaded();
 
   // Stamp demo session so the welcome banner knows to appear even after the
   // ?demo=1 query param is stripped during SPA navigation.
@@ -5398,43 +5399,43 @@ export default function App() {
   // ── Demo routes — all URL-based, open, auto-sign-in ─────────────────────────
   if (isNursingStudentDemo) {
     const C = React.lazy(() => import("./pages/NursingStudentDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isNursingAdminDemo) {
     const C = React.lazy(() => import("./pages/NursingAdminDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isUHStudentDemo) {
     const C = React.lazy(() => import("./pages/UHStudentDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isUHAdminDemo) {
     const C = React.lazy(() => import("./pages/UHAdminDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isMsrBorrowerDemo) {
     const C = React.lazy(() => import("./pages/MsrBorrowerDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isMsrServicingDemo) {
     const C = React.lazy(() => import("./pages/MsrServicingDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isTitleClientDemo) {
     const C = React.lazy(() => import("./pages/TitleClientDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isTitleDemo) {
     const C = React.lazy(() => import("./pages/TitleDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isVetClientDemo) {
     const C = React.lazy(() => import("./pages/VetClientDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isRETenantDemo) {
     const C = React.lazy(() => import("./pages/RETenantDemoSignIn"));
-    return <React.Suspense fallback={null}><C /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><C /></React.Suspense>;
   }
   if (isREDemo) {
     // Merged into /demo/title 2026-08-20 (Sean: "why not just have /title
@@ -5450,27 +5451,27 @@ export default function App() {
   }
   if (isDPPDemo) {
     const TraitlyDemoSignIn = React.lazy(() => import("./pages/TraitlyDemoSignIn"));
-    return <React.Suspense fallback={null}><TraitlyDemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><TraitlyDemoSignIn /></React.Suspense>;
   }
   if (isAviationCoPilotDemo || isAviationMXDemo || isAviationDispatchDemo) {
     const AviationDemoSignIn = React.lazy(() => import("./pages/AviationDemoSignIn"));
-    return <React.Suspense fallback={null}><AviationDemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><AviationDemoSignIn /></React.Suspense>;
   }
   if (isSkyePilotDemo) {
     const SkyeDemoSignIn = React.lazy(() => import("./pages/SkyeDemoSignIn"));
-    return <React.Suspense fallback={null}><SkyeDemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><SkyeDemoSignIn /></React.Suspense>;
   }
   if (isBrokerageDemo) {
     const BrokerageDemoSignIn = React.lazy(() => import("./pages/BrokerageDemoSignIn"));
-    return <React.Suspense fallback={null}><BrokerageDemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><BrokerageDemoSignIn /></React.Suspense>;
   }
   if (isEducationDemo) {
     const EducationDemoSignIn = React.lazy(() => import("./pages/EducationDemoSignIn"));
-    return <React.Suspense fallback={null}><EducationDemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><EducationDemoSignIn /></React.Suspense>;
   }
   if (isDemo) {
     const DemoSignIn = React.lazy(() => import("./pages/DemoSignIn"));
-    return <React.Suspense fallback={null}><DemoSignIn /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><DemoSignIn /></React.Suspense>;
   }
 
   // ── /portal: white-label customer surface (pet owner / advisor) ──
@@ -5478,7 +5479,7 @@ export default function App() {
   // the customer never sees the operator cockpit. (See CODEX-CUSTOMER-PORTAL.)
   if (isPortal) {
     const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
-    return <React.Suspense fallback={null}><ClientPortal /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}><ClientPortal /></React.Suspense>;
   }
   if (isDppScan) {
     window.location.replace(`/portal?company=nordholm&persona=consumer&passportId=${encodeURIComponent(dppPassportId)}`);
@@ -5704,7 +5705,7 @@ export default function App() {
   if (isEducationUpload) {
     const CourseUploader = React.lazy(() => import("./pages/CourseUploader"));
     return (
-      <React.Suspense fallback={null}>
+      <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}>
         <CourseUploader />
       </React.Suspense>
     );
@@ -5714,7 +5715,7 @@ export default function App() {
   if (courseSlugMatch) {
     const CoursePage = React.lazy(() => import("./pages/CoursePage"));
     return (
-      <React.Suspense fallback={null}>
+      <React.Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div></div>}>
         <CoursePage slug={courseSlugMatch[1]} />
       </React.Suspense>
     );
@@ -5757,7 +5758,19 @@ export default function App() {
     );
   }
 
-  // ── Workers: unknown slug ─────────────────────────────────
+  // ── Workers: catalog still loading — an empty first-render array must
+  // not be treated as "not found" (that was the flash-of-404 bug: the
+  // Firestore snapshot hasn't arrived yet on first paint, so workerRoute
+  // is briefly falsy for every valid slug too).
+  if (workerSlug && !workerRoute && !workerCatalogLoaded) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+        <div style={{ fontSize: 14, color: "#9ca3af" }}>Loading…</div>
+      </div>
+    );
+  }
+
+  // ── Workers: unknown slug (catalog loaded, genuinely not in it) ──────
   if (workerSlug && !workerRoute) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", flexDirection: "column", gap: 16 }}>

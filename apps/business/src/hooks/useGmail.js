@@ -34,7 +34,14 @@ async function gmailApi(action, method = "GET", body = null) {
     },
   };
   if (body && method !== "GET") opts.body = JSON.stringify(body);
-  const url = `${API_BASE}/v1/gmail:${action}`;
+  // Route through the Frontdoor's documented generic proxy contract
+  // (/api?path=/v1/...) rather than a literal /v1/gmail:<action> path — the
+  // latter isn't in the worker's route table (see docs/STATE.md) and falls
+  // through to its default response, which the app then fails to parse as
+  // JSON. This form also resolves correctly hitting the backend directly
+  // (its own getRoute() understands the same ?path= contract), so it works
+  // against both API_BASE values.
+  const url = `${API_BASE}/api?path=${encodeURIComponent(`/v1/gmail:${action}`)}`;
   const res = await fetch(url, opts);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
