@@ -49,6 +49,19 @@ function CodeBlock({ inline, className, children, ...props }) {
 
 export default function ChatMarkdown({ children }) {
   if (typeof children !== "string") return children || null;
+  // 2026-09-23 — found in worker QA: Skye Dispatch's chat responses
+  // sometimes rendered as raw, unformatted markdown (literal ##, |, ---
+  // showing as plain text) instead of real headers/tables/bold, while
+  // CoPilot's identical-shaped responses rendered correctly through this
+  // same component. remark-gfm requires headers and table rows to each be
+  // on their own real line to recognize the syntax at all — a string
+  // carrying literal "\n" escape sequences (surviving a JSON round-trip
+  // somewhere upstream, e.g. a tool-result re-stringified once too many
+  // times on a verification-heavy path, similar in shape to the
+  // SSE-response-shape bug found in Max/Accounting) would run every
+  // "line" together as one, and the whole block falls back to plain text.
+  // Normalizing here is defensive and a no-op when there's nothing to fix.
+  const normalized = children.includes("\\n") ? children.replace(/\\n/g, "\n") : children;
   return (
     <div className="chat-md">
       <ReactMarkdown
@@ -60,7 +73,7 @@ export default function ChatMarkdown({ children }) {
           code: CodeBlock,
         }}
       >
-        {children}
+        {normalized}
       </ReactMarkdown>
     </div>
   );
