@@ -166,6 +166,28 @@ async function sumCreditsSince(tenantId, fromDate) {
 async function computeSummary({ tenantId }) {
   if (!tenantId) throw new Error("Missing tenantId");
 
+  // 2026-09-23 — red-team correction (round 3, CODEX 103's own accounting
+  // finding): the data-quality caveat was first added only in
+  // workspaceBrief.js, one of ~20+ places in this codebase that read the
+  // transactions collection — the exact "convention, not enforcement"
+  // pattern CODEX 100's watchMailbox() fix already corrected once. Moved
+  // here, into computeSummary() itself, so every caller of THIS function
+  // (workspaceBrief.js, the dashboard API route, any future one) gets the
+  // same warning without re-implementing the lookup. This does NOT cover
+  // every raw `db.collection("transactions")` read elsewhere in the
+  // codebase (spineState.js, workerOwnData.js, qualityCanary.js, and
+  // others each query it directly for their own purposes) — flagged
+  // honestly as a partial fix, not claimed as complete. A true single
+  // choke point would need those call sites to route through this
+  // function too, which is a larger, more careful refactor than this
+  // session has time for tonight.
+  let dataQualityWarning = null;
+  try {
+    const { getDataQualityFlag } = require("./dataQualityFlags");
+    const flag = await getDataQualityFlag(tenantId);
+    if (flag) dataQualityWarning = flag.reason;
+  } catch (_) {}
+
   const { firstOfMonth, daysInMonth, daysElapsed } = currentMonthBounds();
   const [snapshot, budget, connectedTotal, burn30, burn12mo, mtd, revMtd, rev30] = await Promise.all([
     getLatestBalanceSnapshot(tenantId),
@@ -266,6 +288,7 @@ async function computeSummary({ tenantId }) {
     unpaidInvoicesCount: 0, // no invoices feature yet
     openExpensesCount: 0,
     asOf: isoToday(),
+    dataQualityWarning,
   };
 }
 
