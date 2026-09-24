@@ -2217,7 +2217,7 @@ exports.api = onRequest(
             // real since 2026-06-26) that had no instructor persona actually
             // carrying it in activeWorkers, so it was built but unreachable.
             // Instructor-only — never given to the student persona below.
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           "nursing-student": {
             uid:           "sara-kahele-demo",
@@ -2241,7 +2241,7 @@ exports.api = onRequest(
             // signed UH Maui College order form. The worker + canvas
             // (card:clinical-eval, ClinicalEvalCard.jsx) were real and fully
             // wired, but no instructor persona had it active — unreachable.
-            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["nursing-education-001", "nursing-micro-001", "nursing-ob-001", "clinical-evaluation-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           "uh-student": {
             uid:           "sara-kahele-demo",
@@ -2296,7 +2296,7 @@ exports.api = onRequest(
             role:          "admin",
             // Found live (2026-08-21, Sean): the back-of-house workers every
             // other operator demo persona gets were missing here entirely.
-            activeWorkers: ["msr-servicing-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["msr-servicing-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           // ── MSR borrower (customer portal) ──────────────────────────────
           "msr-borrower": {
@@ -2342,7 +2342,7 @@ exports.api = onRequest(
             vertical:      "aviation",
             name:          "Alex Rivera",
             role:          "admin",
-            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["av-copilot-001", "av-mx-001", "av-dispatch-001", "av-ground-school-001", "av-crew-scheduling", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           // ── SKYE (aviation native app) — line pilot, Pacific Air Partners ──
           // Distinct from `aviation` above (Alex Rivera is the operator admin
@@ -2376,7 +2376,7 @@ exports.api = onRequest(
             vertical:      "real-estate",
             name:          "Jordan Blake",
             role:          "admin",
-            activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["re-salesperson", "law-landuse-001", "site-recon-001", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           // ── Education K-12 (Westview Elementary) — CODEX S52.54/S52.55 ──────
           // Was wired to nursing-education-001 (a nursing CE worker) under a
@@ -2394,7 +2394,7 @@ exports.api = onRequest(
             vertical:      "education",
             name:          "Dr. Patricia Wells",
             role:          "admin",
-            activeWorkers: ["watercyclehelper-mswpe8no", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts"],
+            activeWorkers: ["watercyclehelper-mswpe8no", "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts", "investor-relations", "platform-legal"],
           },
           // ── TRAITLY / EU Battery DPP (Volta Advisory) ─────────────────────
           traitly: {
@@ -2417,6 +2417,8 @@ exports.api = onRequest(
               "platform-hr",
               "platform-marketing",
               "platform-contacts",
+              "investor-relations",
+              "platform-legal",
             ],
           },
         };
