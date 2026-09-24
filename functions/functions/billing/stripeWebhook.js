@@ -398,18 +398,46 @@ async function handleStripeWebhook(req, res) {
 
   let event;
 
-  // Verify webhook signature
-  if (webhookSecret) {
-    const sig = req.headers["stripe-signature"];
-    try {
-      event = stripe.webhooks.constructEvent(req.rawBody || req.body, sig, webhookSecret);
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err.message);
-      return res.status(400).json({ error: "Invalid signature" });
-    }
-  } else {
-    // Dev fallback — no signature check
-    event = req.body;
+  // Verify webhook signature. 2026-09-24 (Sean's own stated core fear — a
+  // platform "changing and swallowing" a customer's financial data):
+  // this used to silently fall back to accepting an UNVERIFIED payload
+  // whenever the secret env var was unset for any reason (a missing
+  // secret at deploy time, a typo, a redeploy race) — anyone could POST a
+  // fake payment/subscription event and it would be processed as real.
+  // Every Tier-0 rule elsewhere in this codebase says fail closed, never
+  // open; this handler didn't match that. Refuse instead.
+  if (!webhookSecret) {
+    console.error("Stripe webhook secret is not configured — refusing to process any event (fail closed).");
+    return res.status(500).json({ error: "Webhook not configured" });
+  }
+  const sig = req.headers["stripe-signature"];
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody || req.body, sig, webhookSecret);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).json({ error: "Invalid signature" });
+  }
+
+  // 2026-09-24 — idempotency. Stripe retries webhook deliveries
+  // automatically on any timeout or non-2xx response, and this handler
+  // had no dedup by event.id at all: a retried "payment_intent.succeeded"
+  // would double-book revenue, a retried subscription event would
+  // double-apply a seat/credit change, etc. A processed-events log,
+  // written BEFORE any side effect and checked first, makes a retry a
+  // true no-op instead of a silent double-charge/double-book.
+  const processedRef = db.collection("stripeProcessedEvents").doc(event.id);
+  const alreadyProcessed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(processedRef);
+    if (snap.exists) return true;
+    tx.set(processedRef, {
+      type: event.type,
+      receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return false;
+  });
+  if (alreadyProcessed) {
+    console.log(`Stripe event ${event.id} (${event.type}) already processed — skipping duplicate delivery.`);
+    return res.status(200).json({ received: true, duplicate: true });
   }
 
   const type = event.type;
@@ -915,6 +943,13 @@ async function handleStripeWebhook(req, res) {
     }
   } catch (err) {
     console.error(`Error handling ${type}:`, err);
+    // The processed-events claim above was written BEFORE this try block
+    // so two concurrent deliveries of the same retry can't both proceed —
+    // but that means a real failure here would otherwise leave this event
+    // marked "processed" forever, silently swallowing Stripe's own retry
+    // (a real event whose side effects genuinely never happened). Clear
+    // the claim on failure so Stripe's automatic retry can actually run.
+    await processedRef.delete().catch(() => {});
     return res.status(500).json({ error: "Webhook handler error" });
   }
 
