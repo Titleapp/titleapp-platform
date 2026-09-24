@@ -3030,6 +3030,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               "platform-marketing": "Ivy",
               "investor-relations": "Reed",
               "ir-worker": "Reed",
+              "platform-legal": "Sterling",
               // Aviation — Skye (owner-operator demo suite)
               "av-copilot-001": "Skye", "av-copilot-sr22": "Skye",
               "av-mx-001": "Skye", "av-dispatch-001": "Skye", "av-ground-school-001": "Skye",
