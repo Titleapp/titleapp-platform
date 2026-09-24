@@ -7390,6 +7390,26 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
               let _liveNetSheet = null;      // Phase 3 — typed net sheet canvas render data
               let _livePropertyDeep = null;  // Phase 3 — typed property deep canvas render data
               const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
+              // FIX 2026-09-24 (real bug, found live via investor-relations —
+              // "who do I call today" silently failed as a generic "I'm
+              // Reed. How can I help?" instead of a real answer): the model
+              // can emit MORE THAN ONE tool_use block in a single turn.
+              // Every follow-up round below replays the full aiResponse.
+              // content (all tool_use blocks from this turn) back to the
+              // model but only ever supplies a tool_result for the ONE
+              // block we actually resolve (toolBlock) — Anthropic's API
+              // rejects that outright ("tool_use ids were found without
+              // tool_result blocks immediately after"), and the resulting
+              // 400 was silently swallowed by this dispatch's generic
+              // fallback instead of surfacing as a real answer or error.
+              // Strip any OTHER tool_use blocks before replaying this turn,
+              // so every tool_use we send back always has a matching
+              // tool_result — same discipline as CODEX 100's own predicate-
+              // classification fix: a real structural guarantee, not a
+              // hope that the model only ever calls one tool at a time.
+              const _assistantContentForToolResult = toolBlock
+                ? aiResponse.content.filter(b => b.type !== 'tool_use' || b.id === toolBlock.id)
+                : aiResponse.content;
               if (toolBlock && toolBlock.name === 'generate_image') {
                 try {
                   const ar = toolBlock.input.aspect_ratio || "1:1";
@@ -7422,7 +7442,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                   : (workerImgErrMsg || "Image generation failed. Tell the user briefly.");
                 const followUpMessages = [
                   ...messages,
-                  { role: "assistant", content: aiResponse.content },
+                  { role: "assistant", content: _assistantContentForToolResult },
                   { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _imgToolResult }] },
                 ];
                 const followUp = await anthropic.messages.create({
@@ -7445,7 +7465,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     : `No commercial candidates returned for "${toolBlock.input.metro}". Ask the user to try a major metro (e.g. San Francisco, Oakland, Austin, Los Angeles).`;
                   const followUpMessages = [
                     ...messages,
-                    { role: "assistant", content: aiResponse.content },
+                    { role: "assistant", content: _assistantContentForToolResult },
                     { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                   ];
                   // S52.45: no tools on the narration step (prevents a 2nd
@@ -7483,7 +7503,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     : `Apollo returned no matches${firms.length ? " for " + firms.join(", ") : ""}. Suggest the user name specific firms (e.g. LNR Partners, Rialto Capital, Berkadia) or broaden the titles.`;
                   const followUpMessages = [
                     ...messages,
-                    { role: "assistant", content: aiResponse.content },
+                    { role: "assistant", content: _assistantContentForToolResult },
                     { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                   ];
                   const followUp = await anthropic.messages.create({
@@ -7522,7 +7542,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                       const attomDownText = `ATTOM property data is not currently available (this workspace's ATTOM API connection returned HTTP ${bundle.propertyDetail.httpStatus} — the trial key has expired and a paid ATTOM subscription has not been set up yet). Tell the user plainly that live ATTOM parcel data isn't connected right now, and offer to search the web for general/public information about this address instead if that would help.`;
                       const followUpMessages = [
                         ...messages,
-                        { role: "assistant", content: aiResponse.content },
+                        { role: "assistant", content: _assistantContentForToolResult },
                         { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: attomDownText }] },
                       ];
                       const followUp = await anthropic.messages.create({
@@ -7565,7 +7585,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                       const toolResultText = `Live ATTOM pull for ${addr}. FEASIBILITY VERDICT: ${feas.verdict}${feas.namedBlocker ? " — named blocker: " + feas.namedBlocker : ""} (confidence ${feas.confidenceScore ?? "n/a"}). Present this plain-English, LEAD with the Green/Yellow/Red verdict and the named blocker, then the facts. Be explicit about what still needs a deeper paid pull (full title chain, liens, current servicer) — but do NOT tell the user to go research it themselves; you already pulled what's below:\n${facts}`;
                       const followUpMessages = [
                         ...messages,
-                        { role: "assistant", content: aiResponse.content },
+                        { role: "assistant", content: _assistantContentForToolResult },
                         { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                       ];
                       const followUp = await anthropic.messages.create({
@@ -7593,7 +7613,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     : `Live fetch failed: ${result.error}`;
                   const followUpMessages = [
                     ...messages,
-                    { role: "assistant", content: aiResponse.content },
+                    { role: "assistant", content: _assistantContentForToolResult },
                     { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] },
                   ];
                   const followUp = await anthropic.messages.create({
@@ -7634,7 +7654,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     ].join("\n");
                     liveReLookup = { address: a.address, lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null, facts };
                     const toolResultText = `Property data for ${addr}${r.fromCache ? " (demo portfolio)" : " (live ATTOM)"}. Present these facts in plain English, framed through THIS worker's specialty. Be specific with the numbers; do NOT tell the user to research it themselves:\n${facts}`;
-                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
+                    const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: toolResultText }] }];
                     const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || `Here's what I pulled on ${addr}.`;
                   }
@@ -7693,7 +7713,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                       `Offer to pass the chain-of-title bundle to re-commitment-001 to draft the title commitment. ` +
                       `Do NOT invent facts beyond what is shown here — the chain events are the authoritative record.`;
                   }
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Title order opened.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] open_title_order failed:`, e.message); }
@@ -7705,7 +7725,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                   const { getTitleOrder } = require("./workers/re-title-search-001/handler");
                   const result = await getTitleOrder({ orderId: String(toolBlock.input.orderId || ""), db });
                   if (!result) {
-                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Title order ${toolBlock.input.orderId} not found.` }] }];
+                    const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Title order ${toolBlock.input.orderId} not found.` }] }];
                     const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || "Order not found.";
                   } else {
@@ -7721,7 +7741,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                         `  [${e.severity}] ${e.description}`).join("\n") + "\n\n" +
                       `Present this as the current title order status. Cite only the facts above. ` +
                       `Flag any open P0/P1 defects. Offer next steps appropriate to ${workerSlug}.`;
-                    const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                    const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                     const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: workerPrompt, messages: followUpMessages });
                     aiText = followUp.content.find(b => b.type === 'text')?.text || "Here's the current title order.";
                   }
@@ -7744,13 +7764,13 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     `The defect is now a permanent chain event in the title order. ` +
                     `Summarize the defect clearly and state the suggested curative action if provided. ` +
                     `If severity is P0, remind the user this blocks final commitment until cured.`;
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || "Defect logged.";
                 } catch (e) {
                   const errMsg = e.message.includes("TX-T-001") ? e.message : `Failed to log defect: ${e.message}`;
                   console.warn(`[worker:${workerSlug}] log_title_defect failed:`, e.message);
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Error: ${errMsg}` }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: `Error: ${errMsg}` }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 500, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || errMsg;
                 }
@@ -7770,7 +7790,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     ).join("\n");
                     resultText = `Live listings in ${toolBlock.input.location} (${r.count} results). Present each with price, beds/baths, days on market. Flag any listed significantly above the CMA if you have that data. NEVER say these look like good deals — present facts, let the user decide:\n${lines}`;
                   }
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here are the listings.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] search_listings failed:`, e.message); }
@@ -7804,7 +7824,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                     ].filter(Boolean).join("\n");
                   }
                   if (r.ok) _liveCMA = r; // Phase 3 — typed canvas render built below
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here is the CMA.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] run_cma failed:`, e.message); }
@@ -7837,7 +7857,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                       "Present these facts directly. If the AVM is materially different from any listed/offer price, flag the gap explicitly.",
                     ].filter(Boolean).join("\n");
                   }
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here is the property detail.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_property_deep failed:`, e.message); }
@@ -7870,7 +7890,7 @@ LISTINGS SEARCH RULE (MANDATORY): You have a search_listings tool backed by a re
                   const resultText = txId
                     ? `Transaction created (ID: ${txId}) for ${propertyAddress}. Role: ${role}. Key dates saved: ${Object.keys(keyDates || {}).join(", ") || "none yet"}. Confirm to the user and offer to track next steps, key dates, and documents.`
                     : `Transaction record could not be saved (missing tenantId or uid). Confirm the details verbally and ask the user to try again.`;
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Transaction started.";
                 } catch (e) { console.warn(`[worker:${workerSlug}] start_transaction failed:`, e.message); }
@@ -7999,7 +8019,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                   const courses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                   const cohortText = `Makai School of Nursing — BSN Program Class of 2028. ${students.length} students total. At-risk: ${students.filter(s=>s.status==="at-risk").length}. Ready: ${students.filter(s=>s.status==="ready").length}. On track: ${students.filter(s=>s.status==="on-track").length}.\n\nStudents:\n${students.map(s=>`- ${s.name}: ${s.status}, ${s.clinicalHours}/${s.clinicalHoursRequired} clinical hours, ATI ${s.atiScore}%`).join("\n")}\n\nCourses: ${courses.map(c=>`${c.name} (${c.enrolledCount} enrolled, week ${c.currentWeek} of ${c.totalWeeks})`).join("; ")}`;
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: cohortText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: cohortText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_cohort failed:`, e.message); }
@@ -8019,7 +8039,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   let studentText = studentDoc.exists
                     ? `Student record for ${studentDoc.data().name}:\n${JSON.stringify({ ...studentDoc.data(), id: studentDoc.id }, null, 2)}\n\nCompetencies (${competenciesSnap.size}):\n${competenciesSnap.docs.map(d=>`- ${d.data().name}: ${d.data().status}`).join("\n") || "None recorded"}`
                     : `Student ${studentId} not found in the Makai demo tenant.`;
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: studentText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: studentText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] get_nursing_student failed:`, e.message); }
@@ -8034,7 +8054,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   await db.collection("tenants").doc("demo-makai-nursing").collection("nursingStudents").doc(studentId)
                     .collection("atiScores").doc(eventId).set({ type: "ati_score", source: "ati_lti_simulated", studentId, courseId, assessmentName: assessmentName || "ATI Assessment", score: Number(score), band, simulated: true, createdAt: nowServerTs() });
                   const resultText = `ATI score delivered: ${assessmentName || "ATI Assessment"} — ${score}% (${band}). Logbook entry minted for ${studentId}. If the score is below 70%, surface the gap and recommend targeted review using the OER materials in this workspace.`;
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: resultText }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (e) { console.warn(`[worker:${workerSlug}] deliver_ati_score failed:`, e.message); }
@@ -8062,7 +8082,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   // "confirmed" call inside this same request/turn.
                   const _askFollowUp = await anthropic.messages.create({
                     model: 'claude-sonnet-4-6', max_tokens: 1024, system: workerPrompt,
-                    messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _resultText }] }],
+                    messages: [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _resultText }] }],
                   });
                   aiText = _askFollowUp.content.find(b => b.type === 'text')?.text || aiText;
                 };
@@ -8155,7 +8175,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     }
                     const _execFollowUp = await anthropic.messages.create({
                       model: 'claude-sonnet-4-6', max_tokens: 4096, system: workerPrompt,
-                      messages: [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _resultText }] }],
+                      messages: [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _resultText }] }],
                       tools: businessTools, tool_choice: { type: "auto" },
                     });
                     aiText = _execFollowUp.content.find(b => b.type === 'text')?.text || aiText;
@@ -8196,7 +8216,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     console.warn(`[worker:${workerSlug}] generate_document ok:false`, { error: docResult.error, templateId: toolBlock.input.templateId, contentKeys: Object.keys(toolBlock.input.content || {}) });
                     docToolResult = `Document generation failed: ${docResult.error || "unknown error"}. Apologize briefly and offer to try again or provide the content as text instead.`;
                   }
-                  const followUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: docToolResult }] }];
+                  const followUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: docToolResult }] }];
                   const followUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1024, system: workerPrompt, messages: followUpMessages });
                   aiText = followUp.content.find(b => b.type === 'text')?.text || aiText;
                 } catch (docErr) {
@@ -8236,7 +8256,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   console.warn(`[worker:${workerSlug}] ${toolBlock.name} failed:`, _ssErr.message);
                   _socialStatusText = "Could not check connection status right now — a transient error occurred.";
                 }
-                const _ssFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _socialStatusText }] }];
+                const _ssFollowUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _socialStatusText }] }];
                 const _ssFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _ssFollowUpMessages });
                 aiText = _ssFollowUp.content.find(b => b.type === 'text')?.text || aiText;
               }
@@ -8284,7 +8304,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   console.warn(`[worker:${workerSlug}] check_stripe_status failed:`, _stripeErr.message);
                   _stripeStatusText = "Could not check Stripe status right now — a transient error occurred.";
                 }
-                const _stripeFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _stripeStatusText }] }];
+                const _stripeFollowUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _stripeStatusText }] }];
                 const _stripeFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _stripeFollowUpMessages });
                 aiText = _stripeFollowUp.content.find(b => b.type === 'text')?.text || aiText;
               }
@@ -8365,7 +8385,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   console.warn(`[worker:${workerSlug}] ${toolBlock.name} failed:`, _sageErr.message);
                   _sageToolText = "Could not complete that action right now — a transient error occurred.";
                 }
-                const _sageFollowUpMessages = [...messages, { role: "assistant", content: aiResponse.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _sageToolText }] }];
+                const _sageFollowUpMessages = [...messages, { role: "assistant", content: _assistantContentForToolResult }, { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _sageToolText }] }];
                 const _sageFollowUp = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 600, system: workerPrompt, messages: _sageFollowUpMessages });
                 aiText = _sageFollowUp.content.find(b => b.type === 'text')?.text || aiText;
               }
@@ -8873,7 +8893,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                     ];
                     let _loopMessages = [
                       ...messages,
-                      { role: "assistant", content: aiResponse.content },
+                      { role: "assistant", content: _assistantContentForToolResult },
                       { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: _driveToolResult }] },
                     ];
                     let _rounds = 0;

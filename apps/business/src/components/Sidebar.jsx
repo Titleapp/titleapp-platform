@@ -1616,40 +1616,6 @@ export default function Sidebar({
               </>
             )}
 
-            {/* S52.71 Step 1 — persistent RoleSwitcher (Pilot/MX/Dispatch).
-                Only shown when this workspace has an aviation worker at all;
-                deliberately styled apart from the generic worker list below —
-                this is "who are you right now," not "pick a tool," which
-                matters on a shared device passed between crew members. */}
-            {workerList.some(w => w.slug && w.slug.startsWith("av-")) && (
-              <div style={{ margin: "8px 0 10px" }}>
-                <button
-                  onClick={() => setShowRoleSwitcher(v => !v)}
-                  style={{
-                    width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fafafa", cursor: "pointer",
-                  }}
-                >
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.3 }}>Crew Role</span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                    {WORKER_SLUG_TO_CREW_ROLE[selectedWorker] ? WORKER_DISPLAY_NAMES[selectedWorker] : "Switch role"}
-                  </span>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: showRoleSwitcher ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                    <path d="M2 4L6 8L10 4"/>
-                  </svg>
-                </button>
-                {showRoleSwitcher && (
-                  <div style={{ marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" }}>
-                    <CrewRoleChooser selected={WORKER_SLUG_TO_CREW_ROLE[selectedWorker] || null} onSelect={handleCrewRoleSwitch} />
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "#6b7280", cursor: "pointer" }}>
-                      <input type="checkbox" checked={makeRoleDefault} onChange={(e) => setMakeRoleDefault(e.target.checked)} />
-                      Make this my default next time I sign in
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* 2026-09-17 — persistent PropertyRoleSwitcher (Operations/
                 Leasing/Compliance/Title & Escrow — added same day per CODEX
                 93), mirroring the aviation RoleSwitcher above. Finance &
@@ -1748,6 +1714,39 @@ export default function Sidebar({
                           <path d="M2 4L6 8L10 4"/>
                         </svg>
                       </button>
+                      {/* S52.71 Step 1 — persistent RoleSwitcher (Pilot/MX/Dispatch).
+                          Sean, 2026-09-24: this belongs INSIDE the Aviation group,
+                          not floating above the whole Workers tree — moved here
+                          from its old top-level position, same component/state,
+                          just scoped to render only under the Aviation group. */}
+                      {!isCollapsed && verticalName === "Aviation" && (
+                        <div style={{ margin: "4px 8px 8px 26px" }}>
+                          <button
+                            onClick={() => setShowRoleSwitcher(v => !v)}
+                            style={{
+                              width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
+                              padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fafafa", cursor: "pointer",
+                            }}
+                          >
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.3 }}>Crew Role</span>
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                              {WORKER_SLUG_TO_CREW_ROLE[selectedWorker] ? WORKER_DISPLAY_NAMES[selectedWorker] : "Switch role"}
+                            </span>
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, stroke: "#9ca3af", transform: showRoleSwitcher ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                              <path d="M2 4L6 8L10 4"/>
+                            </svg>
+                          </button>
+                          {showRoleSwitcher && (
+                            <div style={{ marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" }}>
+                              <CrewRoleChooser selected={WORKER_SLUG_TO_CREW_ROLE[selectedWorker] || null} onSelect={handleCrewRoleSwitch} />
+                              <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "#6b7280", cursor: "pointer" }}>
+                                <input type="checkbox" checked={makeRoleDefault} onChange={(e) => setMakeRoleDefault(e.target.checked)} />
+                                Make this my default next time I sign in
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {!isCollapsed && workers.map(worker => (
                         <button key={worker.slug}
                           className={`navItem ${selectedWorker === worker.slug ? "navItemActive" : ""}`}
