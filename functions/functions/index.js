@@ -2172,6 +2172,12 @@ exports.api = onRequest(
           "re-salesperson", "site-recon-001", "re-marketing-001",
           "cre-analyst", "feasibility-001", "law-landuse-001", "investor-relations",
           "platform-accounting", "platform-hr", "platform-marketing", "platform-contacts",
+          // Sterling (CODEX 103), added 2026-09-24 — was missing here, so it
+          // kept disappearing from these demo tenants: this list is what
+          // /v1/demo:token re-provisions activeWorkers FROM on every sign-in,
+          // overwriting any one-off Firestore edit made directly on the
+          // workspace doc (found live after Sean reported it still missing).
+          "platform-legal",
         ];
         const PERSONAS = {
           vet: {
