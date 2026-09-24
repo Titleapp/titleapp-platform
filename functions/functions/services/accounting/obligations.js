@@ -61,14 +61,19 @@ function delawareCorpAnnual(year) {
   return { type: "delaware_corp_annual", year, date: `${year + 1}-03-01` };
 }
 
-function severityFromTaxDate(dueDateIso) {
+// General form — accepts caller-supplied red/amber windows so an item with
+// a much longer real lead time (e.g. a patent conversion deadline, which
+// needs ~a quarter of runway) doesn't get the same 7/30-day tax window as
+// a same-week filing. Defaults preserve the original tax behavior exactly.
+function severityFromDate(dueDateIso, { redDays = TAX_RED_WINDOW_DAYS, amberDays = TAX_AMBER_WINDOW_DAYS } = {}) {
   const due = new Date(dueDateIso + "T00:00:00Z");
   const days = daysBetween(today(), due);
   if (days < 0) return { severity: "red", daysUntilDue: days };
-  if (days <= TAX_RED_WINDOW_DAYS) return { severity: "red", daysUntilDue: days };
-  if (days <= TAX_AMBER_WINDOW_DAYS) return { severity: "amber", daysUntilDue: days };
+  if (days <= redDays) return { severity: "red", daysUntilDue: days };
+  if (days <= amberDays) return { severity: "amber", daysUntilDue: days };
   return { severity: "green", daysUntilDue: days };
 }
+function severityFromTaxDate(dueDateIso) { return severityFromDate(dueDateIso); }
 
 async function getActiveConnectedAccounts(tenantId) {
   const snap = await getDb().collection("connectedAccounts")
@@ -340,14 +345,20 @@ async function listObligations({ tenantId, userId = null }) {
   for (const c of customs) {
     if (!c.dueDate) continue;
     if (completedKeys[c.obligationKey]) continue;
-    const { severity, daysUntilDue } = severityFromTaxDate(c.dueDate);
+    // Per-item lead-time window when the seeding worker supplied one (e.g.
+    // Sterling's patent deadlines need ~a quarter of runway, not the 30/7-day
+    // tax default) — always recomputed from the date, never stored stale.
+    const { severity, daysUntilDue } = severityFromDate(c.dueDate, {
+      redDays: typeof c.redDays === "number" ? c.redDays : undefined,
+      amberDays: typeof c.amberDays === "number" ? c.amberDays : undefined,
+    });
     out.push({
       obligationKey: c.obligationKey,
       label: c.label || c.obligationKey,
       detail: c.detail || "",
       dueDate: c.dueDate,
       daysUntilDue,
-      severity: c.severity && ["red","amber","green"].includes(c.severity) && daysUntilDue >= 0 ? c.severity : severity,
+      severity,
       lastCompletedAt: null,
       action: { kind: "mark_complete" },
       source: c.createdByWorker || "custom",
