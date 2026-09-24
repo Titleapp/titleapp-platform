@@ -6856,18 +6856,34 @@ IMPORTANT — a due date passing does not automatically mean money is owed. Reas
               if (workerSlug === "investor-relations" || workerSlug === "ir-worker") {
                 businessTools.push({
                   name: "query_investors",
-                  description: "Search this tenant's actual investor/CRM records by keyword (name, email, or type) and/or status. Call this to verify an investor's real status, target amount, or last activity before answering — do not assume or invent investor details.",
+                  description: "Search this tenant's actual investor/CRM records by keyword (name, firm, or vertical), status, or who they're assigned to call. Call this to verify an investor's real status, call date, or notes before answering — do not assume or invent investor details. Use assignedTo + callDate:'today' to get 'who do I call today'.",
                   input_schema: {
                     type: "object",
                     properties: {
-                      query: { type: "string", description: "Keyword to match against investor name, email, or type." },
-                      status: { type: "string", description: "Filter by status, e.g. 'Contacted', 'Committed', 'Passed'. Omit for all statuses." },
+                      query: { type: "string", description: "Keyword to match against investor name, firm/company, or vertical." },
+                      status: { type: "string", description: "Filter by status, e.g. 'not_called', 'called', 'no_answer', 'follow_up', 'passed'. Omit for all statuses." },
+                      assignedTo: { type: "string", enum: ["sean", "kent"], description: "Filter to whoever's real call list this is." },
+                      callDate: { type: "string", description: "YYYY-MM-DD, or the literal word 'today', to filter to a specific day's real scheduled calls." },
                       limit: { type: "integer", description: "Max investors to return (default 25, max 100)." },
                     },
                     required: [],
                   },
                 });
-                workerPrompt += `\n\nINVESTOR DATA ACCESS: You have a query_investors tool that reads this tenant's actual investor records. Use it to verify real status/commitment details instead of guessing or inventing them.`;
+                businessTools.push({
+                  name: "update_investor_status",
+                  description: "Log the real outcome of a call — status and/or notes — for a specific investor record the user just told you about. Match by name and/or firm from query_investors first if you're not certain of the exact record. Never invent an outcome the user didn't tell you.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "The investor contact's name, exactly as it appears in query_investors results." },
+                      company: { type: "string", description: "The firm name, to disambiguate if needed." },
+                      status: { type: "string", enum: ["not_called", "called", "no_answer", "left_voicemail", "follow_up", "meeting_booked", "passed", "invested"], description: "New status. Omit to leave unchanged." },
+                      notes: { type: "string", description: "Real notes from the call — what was actually said. Append-style; never overwrites prior notes silently, ask if unsure whether to replace or add." },
+                    },
+                    required: ["name"],
+                  },
+                });
+                workerPrompt += `\n\nINVESTOR DATA ACCESS: You have query_investors (read) and update_investor_status (write) tools over this tenant's real investor-call-list records — a verified, real list of 100 real firms/contacts (27 assigned to Sean, 73 to Kent), each with a real scheduled call day, the pitch angle, stage/check size, and known flags. Use query_investors to verify real status/details instead of guessing. Use update_investor_status only when the user tells you a real outcome — never guess or assume a call happened. IMPORTANT — this is a phone-call list, not an email list: there are no email addresses on file, and that's deliberate (Reg D 506(b) — a first call builds the relationship; it is not the moment to send terms or any written offering material). Never draft or suggest sending an email or any written pitch to anyone on this list. If asked "who do I call today," call query_investors with assignedTo + callDate:'today'.`;
               }
 
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
@@ -8349,6 +8365,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 query_legal_compliance_calendar: ["platform-legal"],
                 add_compliance_item: ["platform-legal"],
                 review_contract: ["platform-legal"],
+                update_investor_status: ["investor-relations", "ir-worker"],
               };
               const _isOwnDataTool = toolBlock && !!_OWN_DATA_TOOL_WORKERS[toolBlock.name] && _OWN_DATA_TOOL_WORKERS[toolBlock.name].includes(workerSlug);
               const _isDriveTool = toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected;
@@ -8455,20 +8472,79 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   const lim = Math.max(1, Math.min(parseInt(input.limit, 10) || 25, 100));
                   let q = db.collection("investors").where("tenantId", "==", reqTenantId);
                   if (input.status) q = q.where("status", "==", input.status);
-                  const snap = await q.limit(200).get();
+                  if (input.assignedTo) q = q.where("assignedTo", "==", input.assignedTo);
+                  const snap = await q.limit(300).get();
                   const kw = (input.query || "").trim().toLowerCase();
                   let rows = snap.docs.map(d => d.data());
                   if (kw) {
                     rows = rows.filter(i =>
                       (i.name || "").toLowerCase().includes(kw) ||
                       (i.email || "").toLowerCase().includes(kw) ||
+                      (i.company || "").toLowerCase().includes(kw) ||
+                      (i.vertical || "").toLowerCase().includes(kw) ||
                       (i.type || "").toLowerCase().includes(kw)
                     );
                   }
+                  if (input.callDate) {
+                    const targetDate = input.callDate === "today" ? new Date().toISOString().slice(0, 10) : input.callDate;
+                    rows = rows.filter(i => i.callDate === targetDate);
+                  }
+                  rows.sort((a, b) => {
+                    const d = (a.callDate || "9999").localeCompare(b.callDate || "9999");
+                    if (d !== 0) return d;
+                    return (a.callOrder || 999) - (b.callOrder || 999);
+                  });
                   rows = rows.slice(0, lim);
-                  if (rows.length === 0) return `No investors found matching query=${JSON.stringify(input.query || "")} status=${input.status || "(any)"}.`;
-                  const lines = rows.map(i => `${i.name || "(no name)"} | ${i.email || ""} | ${i.type || ""} | status=${i.status || ""} | target=$${i.targetAmount ?? "?"} | lastActivity=${i.lastActivity || ""}`);
-                  return `${rows.length} investor(s) (name | email | type | status | target | last activity):\n${lines.join("\n")}`;
+                  if (rows.length === 0) return `No investors/call-list records found matching query=${JSON.stringify(input.query || "")} status=${input.status || "(any)"} assignedTo=${input.assignedTo || "(any)"} callDate=${input.callDate || "(any)"}.`;
+                  // Real calling-list records carry firm/vertical/pitch-angle/stage/warm-path/flags —
+                  // richer than the legacy generic investor-CRM shape, so include them when present.
+                  const lines = rows.map(i => {
+                    if (i.company || i.callDate) {
+                      return [
+                        `${i.name || "(no name)"} @ ${i.company || "(no firm)"}${i.title ? ` (${i.title})` : ""}`,
+                        i.callDate ? `call day: ${i.callDayLabel || i.callDate}${i.callOrder ? ` (#${i.callOrder})` : ""}` : null,
+                        i.assignedTo ? `assigned to: ${i.assignedTo}` : null,
+                        `status: ${i.status || "not_called"}`,
+                        i.vertical ? `vertical: ${i.vertical}` : null,
+                        i.stageCheck ? `stage/check: ${i.stageCheck}` : null,
+                        i.whyThem ? `why them: ${i.whyThem}` : null,
+                        i.warmPath ? `warm path: ${i.warmPath}` : null,
+                        i.flags ? `flags: ${i.flags}` : null,
+                        i.website ? `site: ${i.website}` : null,
+                        i.notes ? `notes: ${i.notes}` : null,
+                      ].filter(Boolean).join(" | ");
+                    }
+                    return `${i.name || "(no name)"} | ${i.email || ""} | ${i.type || ""} | status=${i.status || ""} | target=$${i.targetAmount ?? "?"} | lastActivity=${i.lastActivity || ""}`;
+                  });
+                  return `${rows.length} investor/call-list record(s):\n${lines.join("\n")}`;
+                };
+
+                const _updateInvestorStatus = async (input) => {
+                  input = input || {};
+                  if (!input.name) return "Cannot update: no investor name given.";
+                  let q = db.collection("investors").where("tenantId", "==", reqTenantId);
+                  const snap = await q.limit(300).get();
+                  const nameKw = input.name.toLowerCase();
+                  const companyKw = (input.company || "").toLowerCase();
+                  let matches = snap.docs.filter(d => {
+                    const v = d.data();
+                    const nameMatch = (v.name || "").toLowerCase().includes(nameKw);
+                    const companyMatch = !companyKw || (v.company || "").toLowerCase().includes(companyKw);
+                    return nameMatch && companyMatch;
+                  });
+                  if (matches.length === 0) return `No investor record found matching name="${input.name}"${input.company ? ` at company="${input.company}"` : ""}. Use query_investors first to find the exact record.`;
+                  if (matches.length > 1) {
+                    const options = matches.slice(0, 8).map(d => `${d.data().name} @ ${d.data().company || "?"}`).join("; ");
+                    return `Multiple matches for "${input.name}" — be more specific (include the firm name): ${options}`;
+                  }
+                  const ref = matches[0].ref;
+                  const existing = matches[0].data();
+                  const update = {};
+                  if (input.status) update.status = input.status;
+                  if (input.notes) update.notes = existing.notes ? `${existing.notes}\n---\n${input.notes}` : input.notes;
+                  update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+                  await ref.update(update);
+                  return `Updated ${existing.name} @ ${existing.company || "?"}: ${input.status ? `status → ${input.status}` : ""}${input.status && input.notes ? ", " : ""}${input.notes ? `notes appended` : ""}.`;
                 };
 
                 const _queryComplianceFilings = async () => {
@@ -8540,6 +8616,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   if (name === 'query_legal_compliance_calendar') return _queryLegalComplianceCalendar();
                   if (name === 'add_compliance_item') return _addComplianceItem(input);
                   if (name === 'review_contract') return _reviewContract(input);
+                  if (name === 'update_investor_status') return _updateInvestorStatus(input);
                   return `Unknown tool: ${name}`;
                 };
 
@@ -8697,7 +8774,8 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       query_ledger: { name: "query_ledger", description: "Search this tenant's recorded transactions by keyword and/or date range.", input_schema: { type: "object", properties: { query: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       query_contacts: { name: "query_contacts", description: "Search this tenant's CRM contact records by keyword (name, email, company, or title).", input_schema: { type: "object", properties: { query: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       query_campaigns: { name: "query_campaigns", description: "Search this tenant's marketing campaigns by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
-                      query_investors: { name: "query_investors", description: "Search this tenant's investor records by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      query_investors: { name: "query_investors", description: "Search this tenant's investor/call-list records by keyword, status, assignedTo, and/or callDate.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, assignedTo: { type: "string" }, callDate: { type: "string" }, limit: { type: "integer" } }, required: [] } },
+                      update_investor_status: { name: "update_investor_status", description: "Log a real call outcome (status/notes) for an investor record.", input_schema: { type: "object", properties: { name: { type: "string" }, company: { type: "string" }, status: { type: "string" }, notes: { type: "string" } }, required: ["name"] } },
                       query_compliance_filings: { name: "query_compliance_filings", description: "List this tenant's tracked tax/compliance obligations with live-recomputed status.", input_schema: { type: "object", properties: {}, required: [] } },
                       query_legal_compliance_calendar: { name: "query_legal_compliance_calendar", description: "List this tenant's tracked corporate-compliance deadlines with live-recomputed severity.", input_schema: { type: "object", properties: {}, required: [] } },
                       add_compliance_item: { name: "add_compliance_item", description: "Record a new compliance deadline sourced from a real document.", input_schema: { type: "object", properties: { type: { type: "string" }, label: { type: "string" }, dueDate: { type: "string" }, dateConfidence: { type: "string" }, sourceNote: { type: "string" } }, required: ["type", "label", "dueDate"] } },
