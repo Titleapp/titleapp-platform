@@ -67,6 +67,7 @@ How to structure the worker itself (the 5 files, canvas tabs, service.js) is in 
 **What:** your worker can read/return files and email **in the systems the user already uses** — Google Drive, Gmail, Google Calendar — instead of making them upload everything.
 **Why it's easy:** these are connected MCP tools; your Code can call them.
 **Hook:** the Google Drive / Gmail / Google Calendar MCP tools. "Read the rubric from their Drive and pre-fill the form."
+**This isn't hypothetical — Alex (the Chief of Staff) already does all of it, live, today, out of the box, no setup required:** searches and reads across every connected Gmail inbox, sends email with the user's explicit approval, lists real Google Calendar events, searches and reads real Google Drive files, searches Apollo.io for contacts/companies, generates real downloadable documents (PDF/Word/Excel/PowerPoint), and runs live web search. A creator doesn't have to wire any of this up to see it work — open Alex and ask it to check your email or pull a Drive file right now.
 
 ### 9. Rules + approval gates (so nothing happens by accident)
 **What:** consequential actions go **propose → human approves → commit**. The worker suggests; the user confirms; only then does a record append. Business logic lives in rules, not in a prompt.
@@ -97,8 +98,16 @@ How to structure the worker itself (the 5 files, canvas tabs, service.js) is in 
 - `components/canvas/VetDosingCard.jsx` — propose → approve, with sourced data (§4+§9).
 - `config/connectors.js` — the whole connector menu (§1).
 
-## Want it in chat too?
-Ask Sean's team to surface this capability menu inside Alex's knowledge, so the in-app chat can tell any creator "yes, you can do that" without them reading a doc. (Tracked separately.)
+**The platform's own back-of-house workers are real, live, studyable examples too** — these aren't demo scaffolding, they're the actual production workers every real business on SOCIII gets by default. If you're building something in the same shape as one of these, read its real code first instead of starting from scratch:
+- **Max** (`platform-accounting`, tools wired in `functions/functions/index.js` + `services/accounting/`) — real ledger/P&L queries, a compliance-deadline calendar, source-verified financial answers instead of guesses.
+- **Jordan** (`platform-hr`) — HR & people records.
+- **Ivy** (`platform-marketing`) — campaigns, content drafts, email outreach.
+- **Sage** (`platform-contacts`) — CRM/contacts search and segmentation.
+- **Reed** (`investor-relations`) — a real imported dataset (an investor call list) made queryable and updatable from chat, plus a real write into the user's own Google Calendar (`schedule_call`) — a good reference for "take a real dataset + a real external-tool write and expose both through chat."
+- **Sterling** (`platform-legal`, `functions/functions/services/legal/complianceCalendar.js` + `contractReview.js`) — the reference implementation for "flag, don't resolve": every finding's quoted source text is verified in *code* against the real document before it's ever shown to the user (never trust the model to have quoted correctly), and there's no severity/opinion output shape at all — only present/absent/unusual + a question for a human. Copy this pattern any time a worker's answer could carry real legal, financial, or safety weight.
+
+## In chat, not just this doc
+Alex's own system prompt now names all six of these workers directly (fixed 2026-09-24 — it used to only mention four), so the in-app chat can already tell a user "yes, we have a worker for that" without them reading this file. Ask Alex "what other workers do we have" to see it live.
 
 ---
 *Keep this file current as new capabilities ship — it's the first thing a creator's AI should read to know what's possible. Pair with `CREATOR-WORKER-BUILD.md` (how to assemble a worker) and `CREATOR-SETUP.md` (how to get set up).*

@@ -96,7 +96,7 @@ English what it does and one thing I could improve. I'm not a coder.
 ```
 When Claude Code answers about *their* worker, they're in. 🎉
 
-**Step 11 (optional, recommended) — Install Claude in Chrome.** Once their worker is running and they're testing it in a browser tab at `sociii.ai`, this saves the screenshot-and-paste dance. Go to **claude.ai/chrome** and add the extension (free, a few clicks). After that, Claude Code (in Terminal) can be told to open their worker's page and look at it directly — "check my worker's canvas and tell me if it's showing up right" — instead of them screenshotting and pasting it in. It only sees **browser tabs**, not the Terminal itself, so the paste-back workflow above still applies to anything Terminal-related.
+**Step 11 (optional, recommended) — Install Claude in Chrome.** This is the real pre-ship stress-test tool for a worker, not just a convenience for looking at a canvas. Go to **claude.ai/chrome** and add the extension (free, a few clicks). Once installed, Claude Code (in Terminal) can drive the worker directly in a real browser tab — click through its actual flows, try to break it with edge-case inputs, check that tool calls really fire and canvases really render — the same way an internal build gets stress-tested before it ships. Before calling a worker done, ask Claude Code to "open my worker, try to break it, and tell me what's actually broken" rather than just eyeballing it yourself. It only sees **browser tabs**, not the Terminal itself, so the paste-back workflow above still applies to anything Terminal-related.
 
 ---
 

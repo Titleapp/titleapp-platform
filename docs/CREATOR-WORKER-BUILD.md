@@ -247,6 +247,8 @@ When in doubt, look at:
 | `creators/ruthie/nurse-eval-001/` | The reference example for evaluation-style workers |
 | `apps/business/src/sections/HRSchedulePanel.jsx` | A canvas-tab UI pattern (full read/write CRUD against backend) |
 
+**The platform's own back-of-house workers are real, live production code, not just demo examples** — see `CREATOR-CAPABILITIES.md`'s "Study these working examples" section for the full list (Max, Jordan, Ivy, Sage, Reed, Sterling) with real file paths. Sterling in particular is the reference pattern for any worker whose answer could carry real weight (legal, financial, safety) — code-verified source quotes, no severity/opinion output shape at all.
+
 ## When your worker generates revenue
 
 Once merged and live in the marketplace:
