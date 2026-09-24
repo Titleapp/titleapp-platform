@@ -6883,7 +6883,22 @@ IMPORTANT — a due date passing does not automatically mean money is owed. Reas
                     required: ["name"],
                   },
                 });
-                workerPrompt += `\n\nINVESTOR DATA ACCESS: You have query_investors (read) and update_investor_status (write) tools over this tenant's real investor-call-list records — a verified, real list of 100 real firms/contacts (27 assigned to Sean, 73 to Kent), each with a real scheduled call day, the pitch angle, stage/check size, and known flags. Use query_investors to verify real status/details instead of guessing. Use update_investor_status only when the user tells you a real outcome — never guess or assume a call happened. IMPORTANT — this is a phone-call list, not an email list: there are no email addresses on file, and that's deliberate (Reg D 506(b) — a first call builds the relationship; it is not the moment to send terms or any written offering material). Never draft or suggest sending an email or any written pitch to anyone on this list. If asked "who do I call today," call query_investors with assignedTo + callDate:'today'.`;
+                businessTools.push({
+                  name: "schedule_call",
+                  description: "Put a real block of time on the CURRENT USER's own Google Calendar for a call with someone on the investor/call list (self-only — never invites the investor, since there are no email addresses on file). Look them up with query_investors first if you don't already have their exact name/company. Defaults the date to their real scheduled call day and duration to 20 minutes if not given.",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "The contact's name, exactly as it appears in query_investors results." },
+                      company: { type: "string", description: "The firm name, to disambiguate if needed." },
+                      date: { type: "string", description: "YYYY-MM-DD. Defaults to the record's real scheduled call day if omitted." },
+                      startTime: { type: "string", description: "24-hour HH:MM, in Hawaii time (Pacific/Honolulu) unless the user says otherwise. Required." },
+                      durationMinutes: { type: "integer", description: "Default 20." },
+                    },
+                    required: ["name", "startTime"],
+                  },
+                });
+                workerPrompt += `\n\nINVESTOR DATA ACCESS: You have query_investors (read), update_investor_status (write), and schedule_call (real Google Calendar write) tools over this tenant's real investor-call-list records — a verified, real list of 100 real firms/contacts (27 assigned to Sean, 73 to Kent), each with a real scheduled call day, the pitch angle, stage/check size, and known flags. Use query_investors to verify real status/details instead of guessing. Use update_investor_status only when the user tells you a real outcome — never guess or assume a call happened. Use schedule_call only when the user actually wants a real calendar block created — always confirm the date/time back to them in your reply since it's a real write to their real calendar. IMPORTANT — this is a phone-call list, not an email list: there are no email addresses on file, and that's deliberate (Reg D 506(b) — a first call builds the relationship; it is not the moment to send terms or any written offering material). Never draft or suggest sending an email or any written pitch to anyone on this list, and never add an investor as a calendar attendee — schedule_call is self-only by design. If asked "who do I call today," call query_investors with assignedTo + callDate:'today'.`;
               }
 
               // S52.44 — CRE Analyst can live-query ATTOM for distressed CRE.
@@ -8366,6 +8381,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                 add_compliance_item: ["platform-legal"],
                 review_contract: ["platform-legal"],
                 update_investor_status: ["investor-relations", "ir-worker"],
+                schedule_call: ["investor-relations", "ir-worker"],
               };
               const _isOwnDataTool = toolBlock && !!_OWN_DATA_TOOL_WORKERS[toolBlock.name] && _OWN_DATA_TOOL_WORKERS[toolBlock.name].includes(workerSlug);
               const _isDriveTool = toolBlock && (toolBlock.name === 'search_drive' || toolBlock.name === 'read_drive_file') && _driveConnected;
@@ -8547,6 +8563,65 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   return `Updated ${existing.name} @ ${existing.company || "?"}: ${input.status ? `status → ${input.status}` : ""}${input.status && input.notes ? ", " : ""}${input.notes ? `notes appended` : ""}.`;
                 };
 
+                const _scheduleCall = async (input) => {
+                  input = input || {};
+                  if (!input.name) return "Cannot schedule: no contact name given.";
+                  if (!input.startTime || !/^\d{1,2}:\d{2}$/.test(input.startTime)) return "Cannot schedule: startTime must be 24-hour HH:MM.";
+                  if (!authUser || !authUser.uid) return "Cannot schedule: no authenticated user.";
+
+                  const nameKw = input.name.toLowerCase();
+                  const companyKw = (input.company || "").toLowerCase();
+                  const snap = await db.collection("investors").where("tenantId", "==", reqTenantId).limit(300).get();
+                  const matches = snap.docs.filter(d => {
+                    const v = d.data();
+                    const nameMatch = (v.name || "").toLowerCase().includes(nameKw);
+                    const companyMatch = !companyKw || (v.company || "").toLowerCase().includes(companyKw);
+                    return nameMatch && companyMatch;
+                  });
+                  let record = null;
+                  if (matches.length === 1) record = matches[0].data();
+                  else if (matches.length > 1) {
+                    const options = matches.slice(0, 8).map(d => `${d.data().name} @ ${d.data().company || "?"}`).join("; ");
+                    return `Multiple matches for "${input.name}" — be more specific (include the firm name): ${options}`;
+                  }
+                  // Not finding a record isn't fatal — still schedule for whoever the
+                  // user named, just without the enriched description.
+
+                  const date = input.date || (record && record.callDate) || null;
+                  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                    return `Cannot schedule: no valid date. ${record ? "" : "This name wasn't found in the tracked call list, so I need an explicit date."} Ask the user for a YYYY-MM-DD date.`;
+                  }
+                  const durationMin = Math.max(5, Math.min(parseInt(input.durationMinutes, 10) || 20, 120));
+                  const { createEvent } = require("./services/calendar/googleCalendarService");
+                  const [sh, sm] = input.startTime.split(":").map(Number);
+                  let eh = sh, em = sm + durationMin;
+                  while (em >= 60) { em -= 60; eh += 1; }
+                  const endTimeStr = `${String(eh % 24).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+
+                  try {
+                    const event = await createEvent(authUser.uid, reqTenantId, {
+                      summary: `Call: ${record ? record.name : input.name}${record && record.company ? ` — ${record.company}` : (input.company ? ` — ${input.company}` : "")}`,
+                      description: [
+                        record && record.title ? `Title: ${record.title}` : null,
+                        record && record.vertical ? `Vertical: ${record.vertical}` : null,
+                        record && record.whyThem ? `Why them: ${record.whyThem}` : null,
+                        record && record.stageCheck ? `Stage/check: ${record.stageCheck}` : null,
+                        record && record.warmPath ? `Warm path: ${record.warmPath}` : null,
+                        "(Self-only block — no investor is invited; this list has no email addresses on file by design, Reg D 506(b).)",
+                      ].filter(Boolean).join("\n\n"),
+                      start: { dateTime: `${date}T${input.startTime}:00`, timeZone: "Pacific/Honolulu" },
+                      end: { dateTime: `${date}T${endTimeStr}:00`, timeZone: "Pacific/Honolulu" },
+                      attendees: [],
+                      workerSlug: "investor-relations",
+                      source: "chat",
+                    });
+                    return `Real calendar block created: "${event.summary}" on ${date} ${input.startTime}–${endTimeStr} (Hawaii time). Link: ${event.htmlLink}`;
+                  } catch (e) {
+                    if ((e.message || "").includes("not connected")) return "Cannot schedule: Google Calendar isn't connected for this account. Connect it in Settings first.";
+                    return `Could not create the calendar event: ${e.message}`;
+                  }
+                };
+
                 const _queryComplianceFilings = async () => {
                   const { listObligations } = require("./services/accounting/obligations");
                   const result = await listObligations({ tenantId: reqTenantId, userId: authUser ? authUser.uid : null });
@@ -8617,6 +8692,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                   if (name === 'add_compliance_item') return _addComplianceItem(input);
                   if (name === 'review_contract') return _reviewContract(input);
                   if (name === 'update_investor_status') return _updateInvestorStatus(input);
+                  if (name === 'schedule_call') return _scheduleCall(input);
                   return `Unknown tool: ${name}`;
                 };
 
@@ -8776,6 +8852,7 @@ LEASE:\n${String(leaseText).slice(0, 6000)}`;
                       query_campaigns: { name: "query_campaigns", description: "Search this tenant's marketing campaigns by keyword and/or status.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       query_investors: { name: "query_investors", description: "Search this tenant's investor/call-list records by keyword, status, assignedTo, and/or callDate.", input_schema: { type: "object", properties: { query: { type: "string" }, status: { type: "string" }, assignedTo: { type: "string" }, callDate: { type: "string" }, limit: { type: "integer" } }, required: [] } },
                       update_investor_status: { name: "update_investor_status", description: "Log a real call outcome (status/notes) for an investor record.", input_schema: { type: "object", properties: { name: { type: "string" }, company: { type: "string" }, status: { type: "string" }, notes: { type: "string" } }, required: ["name"] } },
+                      schedule_call: { name: "schedule_call", description: "Create a real, self-only Google Calendar block for a call with an investor-list contact.", input_schema: { type: "object", properties: { name: { type: "string" }, company: { type: "string" }, date: { type: "string" }, startTime: { type: "string" }, durationMinutes: { type: "integer" } }, required: ["name", "startTime"] } },
                       query_compliance_filings: { name: "query_compliance_filings", description: "List this tenant's tracked tax/compliance obligations with live-recomputed status.", input_schema: { type: "object", properties: {}, required: [] } },
                       query_legal_compliance_calendar: { name: "query_legal_compliance_calendar", description: "List this tenant's tracked corporate-compliance deadlines with live-recomputed severity.", input_schema: { type: "object", properties: {}, required: [] } },
                       add_compliance_item: { name: "add_compliance_item", description: "Record a new compliance deadline sourced from a real document.", input_schema: { type: "object", properties: { type: { type: "string" }, label: { type: "string" }, dueDate: { type: "string" }, dateConfidence: { type: "string" }, sourceNote: { type: "string" } }, required: ["type", "label", "dueDate"] } },
